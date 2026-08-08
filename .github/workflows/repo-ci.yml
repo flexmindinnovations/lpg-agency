@@ -1,0 +1,49 @@
+name: Repository CI
+
+# Repository-wide checks that belong to no single stack.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: repo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No committed environment files
+        run: |
+          # .env is git-ignored, but `git add --force` bypasses that.
+          # Cheap to check here; expensive to discover the other way.
+          if git ls-files | grep -E '(^|/)\.env$|\.env\.(local|production|staging)$'; then
+            echo "::error::An environment file is committed. Remove it and rotate anything it contained."
+            exit 1
+          fi
+          echo "No environment files committed."
+
+      - name: Superseded architecture stays superseded
+        run: |
+          # Phase 0 superseded the .NET architecture but preserved it for
+          # traceability. A document instructing an agent to build with .NET
+          # must never reappear outside docs/architecture/superseded/.
+          matches=$(git ls-files 'docs/architecture/*.md' \
+            | grep -v 'superseded/' \
+            | xargs grep -lE 'ASP\.NET Core [0-9]|EF Core DbContext|MediatR IPipelineBehavior' 2>/dev/null || true)
+          if [ -n "$matches" ]; then
+            echo "::error::A superseded .NET instruction appeared on an active documentation path:"
+            echo "$matches"
+            exit 1
+          fi
+          echo "Active architecture documentation is consistent."
+
+      - name: Planning system is present
+        run: |
+          test -f planning/current_phase.md \
+            || { echo "::error::planning/current_phase.md is missing"; exit 1; }
+          echo "Planning system present."

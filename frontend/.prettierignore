@@ -1,0 +1,9 @@
+# Generated — regenerate with: node ../scripts/generate-tokens.mjs
+libs/shared/design-tokens/src/lib/tokens.css
+libs/shared/design-tokens/src/lib/tokens.ts
+
+dist
+.nx
+coverage
+node_modules
+package-lock.json

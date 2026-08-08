@@ -1,0 +1,63 @@
+# Line-ending normalization.
+# Development happens on Windows; CI runs on Linux. Without this, every file
+# round-trips as a whitespace-only diff and shell scripts arrive at CI with
+# CRLF endings that make them unexecutable.
+
+* text=auto eol=lf
+
+# Scripts must be LF regardless of platform — a CRLF shebang line fails on Linux
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Explicit text types
+*.py     text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.js     text eol=lf
+*.mjs    text eol=lf
+*.dart   text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.md     text eol=lf
+*.html   text eol=lf
+*.css    text eol=lf
+*.scss   text eol=lf
+*.sql    text eol=lf
+*.toml   text eol=lf
+*.gradle text eol=lf
+Dockerfile      text eol=lf
+*.dockerfile    text eol=lf
+.gitignore      text eol=lf
+.editorconfig   text eol=lf
+
+# Binary — never normalize, never diff
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.jar  binary
+*.keystore binary
+
+# Lockfiles: keep them out of diffs and out of language statistics
+uv.lock          -diff linguist-generated
+package-lock.json -diff linguist-generated
+pubspec.lock     -diff linguist-generated
+
+# Generated code should not skew language statistics
+*.g.dart        linguist-generated
+*.freezed.dart  linguist-generated
+*.drift.dart    linguist-generated
+backend/openapi/openapi.json linguist-generated

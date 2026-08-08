@@ -1,0 +1,215 @@
+/* Global styles.
+ *
+ * Order matters: design tokens must load before Tailwind, because the Tailwind
+ * theme maps directly onto the token custom properties.
+ */
+@import '../../../libs/shared/design-tokens/src/lib/tokens.css';
+@import 'tailwindcss';
+
+/* Bridge tokens into Tailwind v4's theme so utilities resolve to token values.
+ * A utility like `bg-surface-base` therefore cannot drift from the token
+ * system — there is only one definition of the colour.
+ */
+@theme inline {
+  --color-surface-base: var(--semantic-color-surface-base);
+  --color-surface-raised: var(--semantic-color-surface-raised);
+  --color-surface-overlay: var(--semantic-color-surface-overlay);
+  --color-text-primary: var(--semantic-color-text-primary);
+  --color-text-secondary: var(--semantic-color-text-secondary);
+  --color-text-inverse: var(--semantic-color-text-inverse);
+  --color-border-default: var(--semantic-color-border-default);
+  --color-border-focus: var(--semantic-color-border-focus);
+  --color-action-primary: var(--semantic-color-action-primary);
+  --color-action-primary-hover: var(--semantic-color-action-primary-hover);
+  --color-status-success: var(--semantic-color-status-success);
+  --color-status-warning: var(--semantic-color-status-warning);
+  --color-status-danger: var(--semantic-color-status-danger);
+  --color-status-info: var(--semantic-color-status-info);
+
+  --spacing-xs: var(--semantic-spacing-xs);
+  --spacing-sm: var(--semantic-spacing-sm);
+  --spacing-md: var(--semantic-spacing-md);
+  --spacing-lg: var(--semantic-spacing-lg);
+  --spacing-xl: var(--semantic-spacing-xl);
+
+  --radius-sm: var(--semantic-radius-sm);
+  --radius-md: var(--semantic-radius-md);
+  --radius-lg: var(--semantic-radius-lg);
+}
+
+html,
+body {
+  block-size: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--semantic-color-surface-base);
+  color: var(--semantic-color-text-primary);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: var(--typography-body-font-size);
+  line-height: var(--typography-body-line-height);
+}
+
+/* A visible focus indicator is a WCAG 2.2 AA requirement (D-35), and must not
+ * rely on colour alone — hence an offset outline rather than a colour change.
+ */
+:focus-visible {
+  outline: var(--component-focus-ring-width) solid var(--component-focus-ring-color);
+  outline-offset: var(--component-focus-ring-offset);
+}
+
+/* --- Application shell ---------------------------------------------------
+ * Shell layout lives in global styles because it is the document frame, not a
+ * reusable component. Every value is a token.
+ */
+.skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  z-index: var(--z-index-tooltip);
+  padding: var(--semantic-spacing-sm) var(--semantic-spacing-md);
+  background: var(--semantic-color-action-primary);
+  color: var(--semantic-color-action-primary-text);
+  border-radius: var(--semantic-radius-md);
+}
+.skip-link:focus {
+  inset-inline-start: var(--semantic-spacing-sm);
+  inset-block-start: var(--semantic-spacing-sm);
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  block-size: 100vh;
+}
+
+.shell__top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  block-size: var(--component-app-shell-top-bar-height);
+  padding-inline: var(--semantic-spacing-lg);
+  background: var(--semantic-color-surface-raised);
+  border-block-end: var(--semantic-border-width) solid var(--semantic-color-border-default);
+}
+
+.shell__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--semantic-spacing-sm);
+}
+.shell__brand-mark {
+  color: var(--semantic-color-action-primary);
+}
+.shell__brand-name {
+  font-size: var(--typography-heading2-font-size);
+  font-weight: var(--typography-heading2-font-weight);
+}
+
+.shell__top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--semantic-spacing-sm);
+}
+.shell__theme-label {
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+}
+.shell__theme-select {
+  padding: var(--semantic-spacing-xs) var(--semantic-spacing-sm);
+  border: var(--semantic-border-width) solid var(--semantic-color-border-default);
+  border-radius: var(--semantic-radius-sm);
+  background: var(--semantic-color-surface-base);
+  color: var(--semantic-color-text-primary);
+  font-size: var(--typography-body-small-font-size);
+}
+
+.shell__body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+
+.shell__sidebar {
+  inline-size: var(--component-app-shell-sidebar-width);
+  flex-shrink: 0;
+  padding: var(--semantic-spacing-md);
+  background: var(--semantic-color-surface-raised);
+  border-inline-end: var(--semantic-border-width) solid var(--semantic-color-border-default);
+  overflow-y: auto;
+}
+
+.shell__nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--semantic-spacing-xs);
+}
+.shell__nav-link {
+  display: block;
+  padding: var(--semantic-spacing-sm) var(--semantic-spacing-md);
+  border-radius: var(--semantic-radius-sm);
+  color: var(--semantic-color-text-primary);
+  text-decoration: none;
+}
+.shell__nav-link:hover {
+  background: var(--semantic-color-surface-overlay);
+}
+.shell__nav-link.is-active {
+  background: var(--semantic-color-action-primary);
+  color: var(--semantic-color-action-primary-text);
+}
+.shell__nav-note {
+  margin-block-start: var(--semantic-spacing-lg);
+  color: var(--semantic-color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.shell__main {
+  flex: 1;
+  padding: var(--semantic-spacing-xl);
+  overflow-y: auto;
+}
+.shell__main:focus {
+  outline: none;
+}
+
+.page-title {
+  font-size: var(--typography-heading1-font-size);
+  font-weight: var(--typography-heading1-font-weight);
+  margin: 0 0 var(--semantic-spacing-sm);
+}
+.page-lede {
+  color: var(--semantic-color-text-secondary);
+  margin: 0 0 var(--semantic-spacing-xl);
+  max-inline-size: 60ch;
+}
+
+.card {
+  padding: var(--component-card-padding);
+  border-radius: var(--component-card-radius);
+  background: var(--component-card-background);
+  border: var(--semantic-border-width) solid var(--component-card-border);
+  box-shadow: var(--elevation-1);
+  max-inline-size: 60ch;
+}
+.card__title {
+  font-size: var(--typography-heading3-font-size);
+  font-weight: var(--typography-heading3-font-weight);
+  margin: 0 0 var(--semantic-spacing-sm);
+}
+.card__list {
+  margin: 0;
+  padding-inline-start: var(--semantic-spacing-lg);
+  color: var(--semantic-color-text-secondary);
+}
+.link {
+  color: var(--semantic-color-action-primary);
+}

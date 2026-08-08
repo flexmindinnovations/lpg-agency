@@ -1,0 +1,206 @@
+// GENERATED FILE — DO NOT EDIT BY HAND.
+// Source: design-tokens/tokens.json
+// Regenerate: node scripts/generate-tokens.mjs
+
+import 'package:flutter/material.dart';
+
+/// Design tokens, generated from the same source as the web tokens.
+///
+/// Wired into a ThemeExtension by `LpgTheme` so widgets consume
+/// theme-scoped values rather than referencing these directly.
+abstract final class LpgTokens {
+  static const primitiveColorBlue50 = Color(0xFFEFF6FF);
+  static const primitiveColorBlue100 = Color(0xFFDBEAFE);
+  static const primitiveColorBlue400 = Color(0xFF60A5FA);
+  static const primitiveColorBlue500 = Color(0xFF3B82F6);
+  static const primitiveColorBlue600 = Color(0xFF2563EB);
+  static const primitiveColorBlue700 = Color(0xFF1D4ED8);
+  static const primitiveColorBlue900 = Color(0xFF1E3A8A);
+  static const primitiveColorGray50 = Color(0xFFF9FAFB);
+  static const primitiveColorGray100 = Color(0xFFF3F4F6);
+  static const primitiveColorGray200 = Color(0xFFE5E7EB);
+  static const primitiveColorGray300 = Color(0xFFD1D5DB);
+  static const primitiveColorGray400 = Color(0xFF9CA3AF);
+  static const primitiveColorGray500 = Color(0xFF6B7280);
+  static const primitiveColorGray600 = Color(0xFF4B5563);
+  static const primitiveColorGray700 = Color(0xFF374151);
+  static const primitiveColorGray800 = Color(0xFF1F2937);
+  static const primitiveColorGray900 = Color(0xFF111827);
+  static const primitiveColorGray950 = Color(0xFF0B0F16);
+  static const primitiveColorGreen400 = Color(0xFF4ADE80);
+  static const primitiveColorGreen600 = Color(0xFF16A34A);
+  static const primitiveColorGreen700 = Color(0xFF15803D);
+  static const primitiveColorRed400 = Color(0xFFF87171);
+  static const primitiveColorRed600 = Color(0xFFDC2626);
+  static const primitiveColorRed700 = Color(0xFFB91C1C);
+  static const primitiveColorAmber400 = Color(0xFFFBBF24);
+  static const primitiveColorAmber600 = Color(0xFFD97706);
+  static const primitiveColorAmber700 = Color(0xFFB45309);
+  static const primitiveColorWhite = Color(0xFFFFFFFF);
+  static const primitiveColorBlack = Color(0xFF000000);
+  static const primitiveColorHcBlue = Color(0xFF0000EE);
+  static const primitiveColorHcYellow = Color(0xFFFFFF00);
+  static const primitiveSpacing0 = 0;
+  static const primitiveSpacing1 = 4;
+  static const primitiveSpacing2 = 8;
+  static const primitiveSpacing3 = 12;
+  static const primitiveSpacing4 = 16;
+  static const primitiveSpacing6 = 24;
+  static const primitiveSpacing8 = 32;
+  static const primitiveSpacing12 = 48;
+  static const primitiveSpacing16 = 64;
+  static const primitiveRadiusNone = 0;
+  static const primitiveRadiusSm = 4;
+  static const primitiveRadiusMd = 8;
+  static const primitiveRadiusLg = 12;
+  static const primitiveRadiusFull = 9999;
+  static const primitiveFontSizeXs = 12;
+  static const primitiveFontSizeSm = 14;
+  static const primitiveFontSizeBase = 16;
+  static const primitiveFontSizeLg = 18;
+  static const primitiveFontSizeXl = 24;
+  static const primitiveFontSize2xl = 32;
+  static const primitiveFontWeightRegular = 400;
+  static const primitiveFontWeightMedium = 500;
+  static const primitiveFontWeightSemibold = 600;
+  static const primitiveFontWeightBold = 700;
+  static const primitiveLineHeightTight = 1.2;
+  static const primitiveLineHeightSnug = 1.3;
+  static const primitiveLineHeightNormal = 1.4;
+  static const primitiveLineHeightRelaxed = 1.5;
+  static const primitiveBorderWidthNone = 0;
+  static const primitiveBorderWidthThin = 1;
+  static const primitiveBorderWidthThick = 2;
+
+  static const spacingNone = 0;
+  static const spacingXs = 4;
+  static const spacingSm = 8;
+  static const spacingMd = 16;
+  static const spacingLg = 24;
+  static const spacingXl = 32;
+  static const spacing2xl = 48;
+  static const radiusSm = 4;
+  static const radiusMd = 8;
+  static const radiusLg = 12;
+  static const radiusFull = 9999;
+  static const typographyDisplayFontSize = 32;
+  static const typographyDisplayFontWeight = 700;
+  static const typographyDisplayLineHeight = 1.2;
+  static const typographyHeading1FontSize = 24;
+  static const typographyHeading1FontWeight = 700;
+  static const typographyHeading1LineHeight = 1.2;
+  static const typographyHeading2FontSize = 18;
+  static const typographyHeading2FontWeight = 600;
+  static const typographyHeading2LineHeight = 1.3;
+  static const typographyHeading3FontSize = 16;
+  static const typographyHeading3FontWeight = 600;
+  static const typographyHeading3LineHeight = 1.3;
+  static const typographyBodyFontSize = 16;
+  static const typographyBodyFontWeight = 400;
+  static const typographyBodyLineHeight = 1.5;
+  static const typographyBodySmallFontSize = 14;
+  static const typographyBodySmallFontWeight = 400;
+  static const typographyBodySmallLineHeight = 1.5;
+  static const typographyCaptionFontSize = 12;
+  static const typographyCaptionFontWeight = 400;
+  static const typographyCaptionLineHeight = 1.4;
+  static const typographyLabelFontSize = 14;
+  static const typographyLabelFontWeight = 500;
+  static const typographyLabelLineHeight = 1.4;
+  static const motionDurationMicro = Duration(milliseconds: 100);
+  static const motionDurationSmall = Duration(milliseconds: 150);
+  static const motionDurationMedium = Duration(milliseconds: 250);
+  static const motionDurationLarge = Duration(milliseconds: 350);
+  static const motionReducedMotionDurationMicro = Duration(milliseconds: 0);
+  static const motionReducedMotionDurationSmall = Duration(milliseconds: 0);
+  static const motionReducedMotionDurationMedium = Duration(milliseconds: 50);
+  static const motionReducedMotionDurationLarge = Duration(milliseconds: 50);
+  static const opacityDisabled = 0.5;
+  static const opacityOverlay = 0.4;
+  static const opacityHover = 0.08;
+  static const zIndexDropdown = 1000;
+  static const zIndexSticky = 1100;
+  static const zIndexDrawer = 1200;
+  static const zIndexModal = 1300;
+  static const zIndexToast = 1400;
+  static const zIndexTooltip = 1500;
+  static const componentButtonRadius = 8;
+  static const componentButtonPaddingX = 16;
+  static const componentButtonPaddingY = 8;
+  static const componentCardPadding = 24;
+  static const componentCardRadius = 8;
+  static const componentDataGridRowHeight = 40;
+  static const componentDataGridHeaderHeight = 44;
+  static const componentDataGridCellPaddingX = 8;
+  static const componentAppShellSidebarWidth = 260;
+  static const componentAppShellSidebarCollapsedWidth = 64;
+  static const componentAppShellTopBarHeight = 56;
+  static const componentFocusRingWidth = 2;
+  static const componentFocusRingOffset = 4;
+}
+
+/// light theme colour values.
+abstract final class LpgTokensLight {
+  static const colorTextPrimary = Color(0xFF111827);
+  static const colorTextSecondary = Color(0xFF6B7280);
+  static const colorTextDisabled = Color(0xFF9CA3AF);
+  static const colorTextInverse = Color(0xFFF9FAFB);
+  static const colorSurfaceBase = Color(0xFFFFFFFF);
+  static const colorSurfaceRaised = Color(0xFFF9FAFB);
+  static const colorSurfaceOverlay = Color(0xFFF3F4F6);
+  static const colorBorderDefault = Color(0xFFE5E7EB);
+  static const colorBorderStrong = Color(0xFFD1D5DB);
+  static const colorBorderFocus = Color(0xFF2563EB);
+  static const colorActionPrimary = Color(0xFF2563EB);
+  static const colorActionPrimaryHover = Color(0xFF1D4ED8);
+  static const colorActionPrimaryText = Color(0xFFFFFFFF);
+  static const colorStatusSuccess = Color(0xFF16A34A);
+  static const colorStatusWarning = Color(0xFFD97706);
+  static const colorStatusDanger = Color(0xFFDC2626);
+  static const colorStatusInfo = Color(0xFF2563EB);
+  static const borderWidth = 1;
+}
+
+/// dark theme colour values.
+abstract final class LpgTokensDark {
+  static const colorTextPrimary = Color(0xFFF9FAFB);
+  static const colorTextSecondary = Color(0xFF9CA3AF);
+  static const colorTextDisabled = Color(0xFF4B5563);
+  static const colorTextInverse = Color(0xFF111827);
+  static const colorSurfaceBase = Color(0xFF0B0F16);
+  static const colorSurfaceRaised = Color(0xFF111827);
+  static const colorSurfaceOverlay = Color(0xFF1F2937);
+  static const colorBorderDefault = Color(0xFF374151);
+  static const colorBorderStrong = Color(0xFF4B5563);
+  static const colorBorderFocus = Color(0xFF60A5FA);
+  static const colorActionPrimary = Color(0xFF60A5FA);
+  static const colorActionPrimaryHover = Color(0xFF3B82F6);
+  static const colorActionPrimaryText = Color(0xFF0B0F16);
+  static const colorStatusSuccess = Color(0xFF4ADE80);
+  static const colorStatusWarning = Color(0xFFFBBF24);
+  static const colorStatusDanger = Color(0xFFF87171);
+  static const colorStatusInfo = Color(0xFF60A5FA);
+  static const borderWidth = 1;
+}
+
+/// high-contrast theme colour values.
+abstract final class LpgTokensHighContrast {
+  static const colorTextPrimary = Color(0xFF000000);
+  static const colorTextSecondary = Color(0xFF000000);
+  static const colorTextDisabled = Color(0xFF374151);
+  static const colorTextInverse = Color(0xFFFFFFFF);
+  static const colorSurfaceBase = Color(0xFFFFFFFF);
+  static const colorSurfaceRaised = Color(0xFFFFFFFF);
+  static const colorSurfaceOverlay = Color(0xFFFFFFFF);
+  static const colorBorderDefault = Color(0xFF000000);
+  static const colorBorderStrong = Color(0xFF000000);
+  static const colorBorderFocus = Color(0xFF0000EE);
+  static const colorActionPrimary = Color(0xFF0000EE);
+  static const colorActionPrimaryHover = Color(0xFF0000EE);
+  static const colorActionPrimaryText = Color(0xFFFFFFFF);
+  static const colorStatusSuccess = Color(0xFF15803D);
+  static const colorStatusWarning = Color(0xFFB45309);
+  static const colorStatusDanger = Color(0xFFB91C1C);
+  static const colorStatusInfo = Color(0xFF0000EE);
+  static const borderWidth = 2;
+}

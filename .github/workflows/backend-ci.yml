@@ -1,0 +1,79 @@
+name: Backend CI
+
+# Path-filtered so a Flutter-only change never rebuilds the backend
+# (docs/architecture/13-deployment.md §5).
+on:
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+  push:
+    branches: [main]
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      # Integration tests run against a real PostgreSQL, never SQLite or a
+      # mock — RLS policies and PostgreSQL-specific types must actually be
+      # exercised (docs/implementation/testing-strategy.md).
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: lpg_admin
+          POSTGRES_PASSWORD: ci_only_not_a_real_secret
+          POSTGRES_DB: lpg_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lpg_admin -d lpg_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+
+    env:
+      LPG_DATABASE_URL: postgresql+asyncpg://lpg_admin:ci_only_not_a_real_secret@localhost:5432/lpg_test
+      LPG_REDIS_URL: redis://localhost:6379/1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Type check (mypy --strict)
+        run: uv run mypy
+
+      # ADR-024: the Clean Architecture dependency rule is a merge-blocking
+      # check, not a convention. This replaces what NetArchTest would have
+      # provided in the superseded .NET design.
+      - name: Architecture boundaries (import-linter)
+        run: uv run lint-imports
+
+      # ADR-026: the committed OpenAPI spec is the client contract. If it can
+      # drift from the implementation, it is not a contract.
+      - name: OpenAPI contract drift
+        run: uv run python scripts/export_openapi.py --check
+
+      - name: Tests
+        run: uv run pytest -q

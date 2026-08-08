@@ -1,0 +1,21 @@
+# Before implementing any feature
+
+1. Read AGENTS.md
+
+2. Read relevant documentation
+
+3. Never invent architecture
+
+4. Never duplicate code
+
+5. Follow Angular 22 best practices
+
+6. Follow FastAPI best practices
+
+7. Follow Design Tokens
+
+8. Write tests
+
+9. Update documentation
+
+10. Ask if requirements conflict

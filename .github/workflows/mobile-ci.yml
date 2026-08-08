@@ -1,0 +1,52 @@
+name: Mobile CI
+
+on:
+  pull_request:
+    paths: ['mobile/**', 'design-tokens/**', '.github/workflows/mobile-ci.yml']
+  push:
+    branches: [main]
+    paths: ['mobile/**', 'design-tokens/**', '.github/workflows/mobile-ci.yml']
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # fail-fast off: when several packages break, seeing all of them in one
+      # run is worth more than finishing thirty seconds sooner.
+      fail-fast: false
+      matrix:
+        package:
+          - mobile/packages/core
+          - mobile/packages/design_system
+          - mobile/packages/local_storage
+          - mobile/apps/customer_app
+          - mobile/apps/driver_app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: ${{ matrix.package }}
+
+      - name: Format check
+        run: dart format --set-exit-if-changed .
+        working-directory: ${{ matrix.package }}
+
+      - name: Analyze
+        run: flutter analyze
+        working-directory: ${{ matrix.package }}
+
+      - name: Test
+        run: flutter test
+        working-directory: ${{ matrix.package }}

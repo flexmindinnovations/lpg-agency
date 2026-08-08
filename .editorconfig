@@ -1,0 +1,66 @@
+# EditorConfig — https://editorconfig.org
+# Keeps formatting consistent across editors and matches each stack's
+# formatter (Ruff for Python, Prettier for TS/JS, dart format for Dart)
+# so the editor and the linter never disagree.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# --- Python: Ruff defaults ------------------------------------------------
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+[*.pyi]
+indent_size = 4
+
+# --- TypeScript / JavaScript: Prettier defaults ---------------------------
+[*.{ts,tsx,js,jsx,mjs,cjs}]
+indent_size = 2
+max_line_length = 100
+
+[*.{json,jsonc}]
+indent_size = 2
+
+# --- Dart: dart format ----------------------------------------------------
+[*.dart]
+indent_size = 2
+max_line_length = 80
+
+# --- Web ------------------------------------------------------------------
+[*.{html,css,scss}]
+indent_size = 2
+
+# --- Config & data --------------------------------------------------------
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.toml]
+indent_size = 4
+
+[*.sql]
+indent_size = 2
+
+# --- Markdown -------------------------------------------------------------
+# Trailing whitespace is significant in Markdown (two spaces = line break)
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# --- Files with fixed conventions ----------------------------------------
+[Makefile]
+indent_style = tab
+
+[*.{bat,cmd,ps1}]
+end_of_line = crlf
+
+[{package.json,package-lock.json,nx.json,project.json}]
+indent_size = 2

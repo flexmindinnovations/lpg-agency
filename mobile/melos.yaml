@@ -1,0 +1,30 @@
+name: lpg_mobile
+
+# Melos manages the two apps and their shared packages as one workspace, so a
+# change to a shared package is immediately visible to both apps without
+# publishing (docs/architecture/05-mobile-architecture.md section 1).
+
+packages:
+  - apps/**
+  - packages/**
+
+command:
+  bootstrap:
+    runPubGetInParallel: true
+
+scripts:
+  analyze:
+    run: melos exec -- dart analyze --fatal-infos
+    description: Static analysis across every package.
+
+  test:
+    run: melos exec --dir-exists=test -- flutter test
+    description: Run tests in every package that has them.
+
+  format:
+    run: melos exec -- dart format .
+    description: Format every package.
+
+  format-check:
+    run: melos exec -- dart format --set-exit-if-changed .
+    description: Verify formatting without modifying files.
