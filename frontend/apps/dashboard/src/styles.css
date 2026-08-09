@@ -6,35 +6,41 @@
 @import '../../../libs/shared/design-tokens/src/lib/tokens.css';
 @import 'tailwindcss';
 
+/* PrimeNG's own theme CSS is injected at runtime by `providePrimeNG()`
+ * (libs/shared/design-tokens/src/lib/primeng-preset.ts) — every colour in it
+ * traces back to a token custom property above, never a hardcoded value.
+ * Only the icon font needs an explicit stylesheet import. */
+@import 'primeicons/primeicons.css';
+
 /* Bridge tokens into Tailwind v4's theme so utilities resolve to token values.
  * A utility like `bg-surface-base` therefore cannot drift from the token
  * system — there is only one definition of the colour.
  */
 @theme inline {
-  --color-surface-base: var(--semantic-color-surface-base);
-  --color-surface-raised: var(--semantic-color-surface-raised);
-  --color-surface-overlay: var(--semantic-color-surface-overlay);
-  --color-text-primary: var(--semantic-color-text-primary);
-  --color-text-secondary: var(--semantic-color-text-secondary);
-  --color-text-inverse: var(--semantic-color-text-inverse);
-  --color-border-default: var(--semantic-color-border-default);
-  --color-border-focus: var(--semantic-color-border-focus);
-  --color-action-primary: var(--semantic-color-action-primary);
-  --color-action-primary-hover: var(--semantic-color-action-primary-hover);
-  --color-status-success: var(--semantic-color-status-success);
-  --color-status-warning: var(--semantic-color-status-warning);
-  --color-status-danger: var(--semantic-color-status-danger);
-  --color-status-info: var(--semantic-color-status-info);
+  --color-surface-base: var(--color-surface-base);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-overlay: var(--color-surface-overlay);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-border-default: var(--color-border-default);
+  --color-border-focus: var(--color-border-focus);
+  --color-action-primary: var(--color-action-primary);
+  --color-action-primary-hover: var(--color-action-primary-hover);
+  --color-status-success: var(--color-status-success);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-danger: var(--color-status-danger);
+  --color-status-info: var(--color-status-info);
 
-  --spacing-xs: var(--semantic-spacing-xs);
-  --spacing-sm: var(--semantic-spacing-sm);
-  --spacing-md: var(--semantic-spacing-md);
-  --spacing-lg: var(--semantic-spacing-lg);
-  --spacing-xl: var(--semantic-spacing-xl);
+  --spacing-xs: var(--spacing-xs);
+  --spacing-sm: var(--spacing-sm);
+  --spacing-md: var(--spacing-md);
+  --spacing-lg: var(--spacing-lg);
+  --spacing-xl: var(--spacing-xl);
 
-  --radius-sm: var(--semantic-radius-sm);
-  --radius-md: var(--semantic-radius-md);
-  --radius-lg: var(--semantic-radius-lg);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
 }
 
 html,
@@ -44,8 +50,8 @@ body {
 }
 
 body {
-  background-color: var(--semantic-color-surface-base);
-  color: var(--semantic-color-text-primary);
+  background-color: var(--color-surface-base);
+  color: var(--color-text-primary);
   font-family:
     system-ui,
     -apple-system,
@@ -72,14 +78,14 @@ body {
   position: absolute;
   inset-inline-start: -9999px;
   z-index: var(--z-index-tooltip);
-  padding: var(--semantic-spacing-sm) var(--semantic-spacing-md);
-  background: var(--semantic-color-action-primary);
-  color: var(--semantic-color-action-primary-text);
-  border-radius: var(--semantic-radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+  border-radius: var(--radius-md);
 }
 .skip-link:focus {
-  inset-inline-start: var(--semantic-spacing-sm);
-  inset-block-start: var(--semantic-spacing-sm);
+  inset-inline-start: var(--spacing-sm);
+  inset-block-start: var(--spacing-sm);
 }
 
 .shell {
@@ -93,18 +99,18 @@ body {
   align-items: center;
   justify-content: space-between;
   block-size: var(--component-app-shell-top-bar-height);
-  padding-inline: var(--semantic-spacing-lg);
-  background: var(--semantic-color-surface-raised);
-  border-block-end: var(--semantic-border-width) solid var(--semantic-color-border-default);
+  padding-inline: var(--spacing-lg);
+  background: var(--color-surface-raised);
+  border-block-end: var(--border-width) solid var(--color-border-default);
 }
 
 .shell__brand {
   display: flex;
   align-items: center;
-  gap: var(--semantic-spacing-sm);
+  gap: var(--spacing-sm);
 }
 .shell__brand-mark {
-  color: var(--semantic-color-action-primary);
+  color: var(--color-action-primary);
 }
 .shell__brand-name {
   font-size: var(--typography-heading2-font-size);
@@ -114,18 +120,18 @@ body {
 .shell__top-bar-actions {
   display: flex;
   align-items: center;
-  gap: var(--semantic-spacing-sm);
+  gap: var(--spacing-sm);
 }
 .shell__theme-label {
   font-size: var(--typography-label-font-size);
   font-weight: var(--typography-label-font-weight);
 }
 .shell__theme-select {
-  padding: var(--semantic-spacing-xs) var(--semantic-spacing-sm);
-  border: var(--semantic-border-width) solid var(--semantic-color-border-default);
-  border-radius: var(--semantic-radius-sm);
-  background: var(--semantic-color-surface-base);
-  color: var(--semantic-color-text-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
   font-size: var(--typography-body-small-font-size);
 }
 
@@ -138,9 +144,9 @@ body {
 .shell__sidebar {
   inline-size: var(--component-app-shell-sidebar-width);
   flex-shrink: 0;
-  padding: var(--semantic-spacing-md);
-  background: var(--semantic-color-surface-raised);
-  border-inline-end: var(--semantic-border-width) solid var(--semantic-color-border-default);
+  padding: var(--spacing-md);
+  background: var(--color-surface-raised);
+  border-inline-end: var(--border-width) solid var(--color-border-default);
   overflow-y: auto;
 }
 
@@ -150,31 +156,31 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--semantic-spacing-xs);
+  gap: var(--spacing-xs);
 }
 .shell__nav-link {
   display: block;
-  padding: var(--semantic-spacing-sm) var(--semantic-spacing-md);
-  border-radius: var(--semantic-radius-sm);
-  color: var(--semantic-color-text-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
   text-decoration: none;
 }
 .shell__nav-link:hover {
-  background: var(--semantic-color-surface-overlay);
+  background: var(--color-surface-overlay);
 }
 .shell__nav-link.is-active {
-  background: var(--semantic-color-action-primary);
-  color: var(--semantic-color-action-primary-text);
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
 }
 .shell__nav-note {
-  margin-block-start: var(--semantic-spacing-lg);
-  color: var(--semantic-color-text-secondary);
+  margin-block-start: var(--spacing-lg);
+  color: var(--color-text-secondary);
   font-size: var(--typography-caption-font-size);
 }
 
 .shell__main {
   flex: 1;
-  padding: var(--semantic-spacing-xl);
+  padding: var(--spacing-xl);
   overflow-y: auto;
 }
 .shell__main:focus {
@@ -184,11 +190,11 @@ body {
 .page-title {
   font-size: var(--typography-heading1-font-size);
   font-weight: var(--typography-heading1-font-weight);
-  margin: 0 0 var(--semantic-spacing-sm);
+  margin: 0 0 var(--spacing-sm);
 }
 .page-lede {
-  color: var(--semantic-color-text-secondary);
-  margin: 0 0 var(--semantic-spacing-xl);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-xl);
   max-inline-size: 60ch;
 }
 
@@ -196,20 +202,20 @@ body {
   padding: var(--component-card-padding);
   border-radius: var(--component-card-radius);
   background: var(--component-card-background);
-  border: var(--semantic-border-width) solid var(--component-card-border);
+  border: var(--border-width) solid var(--component-card-border);
   box-shadow: var(--elevation-1);
   max-inline-size: 60ch;
 }
 .card__title {
   font-size: var(--typography-heading3-font-size);
   font-weight: var(--typography-heading3-font-weight);
-  margin: 0 0 var(--semantic-spacing-sm);
+  margin: 0 0 var(--spacing-sm);
 }
 .card__list {
   margin: 0;
-  padding-inline-start: var(--semantic-spacing-lg);
-  color: var(--semantic-color-text-secondary);
+  padding-inline-start: var(--spacing-lg);
+  color: var(--color-text-secondary);
 }
 .link {
-  color: var(--semantic-color-action-primary);
+  color: var(--color-action-primary);
 }

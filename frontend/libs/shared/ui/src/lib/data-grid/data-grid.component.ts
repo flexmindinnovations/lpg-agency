@@ -29,16 +29,16 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
 /**
  * The one place AG Grid is used.
  *
- * ADR-020 requires AG Grid Enterprise to sit behind an application-level
- * component, with feature libraries never importing AG Grid types or calling
- * its APIs. That constraint is what keeps the grid replaceable if licensing or
- * product requirements change.
+ * ADR-020 (amended by ADR-028) requires AG Grid to sit behind an
+ * application-level component, with feature libraries never importing AG Grid
+ * types or calling its APIs. That constraint is what keeps the grid
+ * replaceable if licensing or product requirements change.
  *
- * **Licence:** AG Grid Enterprise is a commercial product. Procurement is not
- * yet confirmed (DW-08), so this currently runs on AG Grid Community. Enabling
- * Enterprise is a two-line change here — register the licence key from
- * `AG_GRID_LICENSE_KEY` and swap the module import — and touches no feature
- * code, which is precisely the point of the wrapper.
+ * **Licence:** AG Grid Community is the platform default (ADR-028). AG Grid
+ * Enterprise is optional, enabled only per feature against a documented
+ * requirement. Enabling it is a two-line change here — register the licence
+ * key from `AG_GRID_LICENSE_KEY` and swap the module import — and touches no
+ * feature code, which is precisely the point of the wrapper.
  */
 @Component({
   selector: 'lpg-data-grid',
@@ -70,8 +70,8 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         --ag-cell-horizontal-padding: var(--component-data-grid-cell-padding-x);
         --ag-border-color: var(--component-data-grid-border-color);
         --ag-header-background-color: var(--component-data-grid-header-background);
-        --ag-background-color: var(--semantic-color-surface-base);
-        --ag-foreground-color: var(--semantic-color-text-primary);
+        --ag-background-color: var(--color-surface-base);
+        --ag-foreground-color: var(--color-text-primary);
         --ag-font-size: var(--typography-body-small-font-size);
       }
     `,

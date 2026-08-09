@@ -90,12 +90,33 @@ function collect(node, path = [], out = []) {
     } else if (value && typeof value === 'object') {
       collect(value, next, out);
     } else {
-      out.push({
-        name: next.map(kebab).join('-'),
-        pathParts: next,
-        themed: false,
-        value: resolveRef(value),
-      });
+      // `value` here is a leaf — usually a string reference like
+      // `{semantic.color.action.primary}`. `resolveRef` follows the chain
+      // until it lands on something that isn't itself a `{...}` reference,
+      // but that landing spot can be a *themed* object (e.g. component.button
+      // .primaryBackground references semantic.color.action.primary, which is
+      // themed) rather than a plain primitive. Only the isThemed(value) branch
+      // above ever produced a themed entry, so a reference-to-a-themed-value
+      // fell through to here and got stringified as the value itself —
+      // "[object Object]" in CSS, silently dropped in Dart. Re-checking the
+      // *resolved* result (not just the raw, pre-resolution value) for
+      // theming is what closes that gap.
+      const resolved = resolveRef(value);
+      if (isThemed(resolved)) {
+        out.push({
+          name: next.map(kebab).join('-'),
+          pathParts: next,
+          themed: true,
+          values: Object.fromEntries(THEMES.map((t) => [t, resolveRef(resolved[t])])),
+        });
+      } else {
+        out.push({
+          name: next.map(kebab).join('-'),
+          pathParts: next,
+          themed: false,
+          value: resolved,
+        });
+      }
     }
   }
   return out;

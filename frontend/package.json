@@ -51,6 +51,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@angular/animations": "~22.0.4",
     "@angular/cdk": "^22.1.1",
     "@angular/common": "~22.0.4",
     "@angular/compiler": "~22.0.4",
@@ -60,8 +61,11 @@
     "@angular/platform-browser": "~22.0.4",
     "@angular/platform-browser-dynamic": "~22.0.4",
     "@angular/router": "~22.0.4",
+    "@primeuix/themes": "^3.0.0",
     "ag-grid-angular": "^36.1.0",
     "ag-grid-community": "^36.1.0",
+    "primeicons": "^8.0.0",
+    "primeng": "^22.0.0",
     "rxjs": "~7.8.0"
   }
 }

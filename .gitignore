@@ -25,6 +25,13 @@ secrets/
 ag-grid-license*
 *.aggrid-license
 
+# PrimeNG licence key (ADR-020/ADR-028) — same rule as AG Grid above
+frontend/apps/dashboard/src/app/prime-license.ts
+!frontend/apps/dashboard/src/app/prime-license.example.ts
+
+# Claude Code local settings (personal, machine-specific)
+.claude/settings.local.json
+
 # --------------------------------------------------------------------------
 # Python / backend
 # --------------------------------------------------------------------------

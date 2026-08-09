@@ -121,26 +121,18 @@ Regenerate: node scripts/generate-tokens.mjs
   --z-index-modal: 1300;
   --z-index-toast: 1400;
   --z-index-tooltip: 1500;
-  --component-button-primary-background: [object Object];
-  --component-button-primary-background-hover: [object Object];
-  --component-button-primary-text: [object Object];
   --component-button-radius: 8px;
   --component-button-padding-x: 16px;
   --component-button-padding-y: 8px;
   --component-card-padding: 24px;
   --component-card-radius: 8px;
-  --component-card-background: [object Object];
-  --component-card-border: [object Object];
   --component-data-grid-row-height: 40px;
   --component-data-grid-header-height: 44px;
   --component-data-grid-cell-padding-x: 8px;
-  --component-data-grid-border-color: [object Object];
-  --component-data-grid-header-background: [object Object];
   --component-app-shell-sidebar-width: 260px;
   --component-app-shell-sidebar-collapsed-width: 64px;
   --component-app-shell-top-bar-height: 56px;
   --component-focus-ring-width: 2px;
-  --component-focus-ring-color: [object Object];
   --component-focus-ring-offset: 4px;
 
   /* Light is the default theme; no attribute required. */
@@ -166,6 +158,14 @@ Regenerate: node scripts/generate-tokens.mjs
   --elevation-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+  --component-button-primary-background: #2563eb;
+  --component-button-primary-background-hover: #1d4ed8;
+  --component-button-primary-text: #ffffff;
+  --component-card-background: #f9fafb;
+  --component-card-border: #e5e7eb;
+  --component-data-grid-border-color: #e5e7eb;
+  --component-data-grid-header-background: #f9fafb;
+  --component-focus-ring-color: #2563eb;
 }
 
 [data-theme='dark'] {
@@ -191,6 +191,14 @@ Regenerate: node scripts/generate-tokens.mjs
   --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
+  --component-button-primary-background: #60a5fa;
+  --component-button-primary-background-hover: #3b82f6;
+  --component-button-primary-text: #0b0f16;
+  --component-card-background: #111827;
+  --component-card-border: #374151;
+  --component-data-grid-border-color: #374151;
+  --component-data-grid-header-background: #111827;
+  --component-focus-ring-color: #60a5fa;
 }
 
 [data-theme='high-contrast'] {
@@ -216,6 +224,14 @@ Regenerate: node scripts/generate-tokens.mjs
   --elevation-1: none;
   --elevation-2: none;
   --elevation-3: none;
+  --component-button-primary-background: #0000ee;
+  --component-button-primary-background-hover: #0000ee;
+  --component-button-primary-text: #ffffff;
+  --component-card-background: #ffffff;
+  --component-card-border: #000000;
+  --component-data-grid-border-color: #000000;
+  --component-data-grid-header-background: #ffffff;
+  --component-focus-ring-color: #0000ee;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -242,6 +258,14 @@ Regenerate: node scripts/generate-tokens.mjs
     --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
     --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
     --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
+    --component-button-primary-background: #60a5fa;
+    --component-button-primary-background-hover: #3b82f6;
+    --component-button-primary-text: #0b0f16;
+    --component-card-background: #111827;
+    --component-card-border: #374151;
+    --component-data-grid-border-color: #374151;
+    --component-data-grid-header-background: #111827;
+    --component-focus-ring-color: #60a5fa;
   }
 }
 

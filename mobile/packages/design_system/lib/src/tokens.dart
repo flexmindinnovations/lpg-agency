@@ -159,6 +159,14 @@ abstract final class LpgTokensLight {
   static const colorStatusDanger = Color(0xFFDC2626);
   static const colorStatusInfo = Color(0xFF2563EB);
   static const borderWidth = 1;
+  static const componentButtonPrimaryBackground = Color(0xFF2563EB);
+  static const componentButtonPrimaryBackgroundHover = Color(0xFF1D4ED8);
+  static const componentButtonPrimaryText = Color(0xFFFFFFFF);
+  static const componentCardBackground = Color(0xFFF9FAFB);
+  static const componentCardBorder = Color(0xFFE5E7EB);
+  static const componentDataGridBorderColor = Color(0xFFE5E7EB);
+  static const componentDataGridHeaderBackground = Color(0xFFF9FAFB);
+  static const componentFocusRingColor = Color(0xFF2563EB);
 }
 
 /// dark theme colour values.
@@ -181,6 +189,14 @@ abstract final class LpgTokensDark {
   static const colorStatusDanger = Color(0xFFF87171);
   static const colorStatusInfo = Color(0xFF60A5FA);
   static const borderWidth = 1;
+  static const componentButtonPrimaryBackground = Color(0xFF60A5FA);
+  static const componentButtonPrimaryBackgroundHover = Color(0xFF3B82F6);
+  static const componentButtonPrimaryText = Color(0xFF0B0F16);
+  static const componentCardBackground = Color(0xFF111827);
+  static const componentCardBorder = Color(0xFF374151);
+  static const componentDataGridBorderColor = Color(0xFF374151);
+  static const componentDataGridHeaderBackground = Color(0xFF111827);
+  static const componentFocusRingColor = Color(0xFF60A5FA);
 }
 
 /// high-contrast theme colour values.
@@ -203,4 +219,12 @@ abstract final class LpgTokensHighContrast {
   static const colorStatusDanger = Color(0xFFB91C1C);
   static const colorStatusInfo = Color(0xFF0000EE);
   static const borderWidth = 2;
+  static const componentButtonPrimaryBackground = Color(0xFF0000EE);
+  static const componentButtonPrimaryBackgroundHover = Color(0xFF0000EE);
+  static const componentButtonPrimaryText = Color(0xFFFFFFFF);
+  static const componentCardBackground = Color(0xFFFFFFFF);
+  static const componentCardBorder = Color(0xFF000000);
+  static const componentDataGridBorderColor = Color(0xFF000000);
+  static const componentDataGridHeaderBackground = Color(0xFFFFFFFF);
+  static const componentFocusRingColor = Color(0xFF0000EE);
 }
