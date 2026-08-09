@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard-dev",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd frontend && npx nx serve dashboard"],
+      "port": 4200
+    }
+  ]
+}
