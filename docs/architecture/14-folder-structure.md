@@ -72,7 +72,7 @@ frontend/
     features/             # customers, orders, delivery, inventory,
                           # accounting, complaints, reporting, tenant-admin
     shared/
-      ui/                 # design-system components, incl. the AG Grid wrapper
+      ui/                 # design-system components (PrimeNG-based), incl. the AG Grid wrapper
       data-access/        # generated API client, shared state
       util/               # pipes, validators, formatters, keyboard shortcuts
       auth/

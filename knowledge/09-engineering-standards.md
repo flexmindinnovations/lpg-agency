@@ -158,7 +158,7 @@ State management follows the ordered rule set in ADR-019: Signals by default; Ng
 
 The workspace is **Nx**, rooted at `frontend/`. Feature libraries may never import each other directly — enforced by the `enforce-module-boundaries` lint rule.
 
-Data grids use **AG Grid Enterprise only through the shared wrapper components** in `libs/shared/ui`. Feature libraries must never import AG Grid types or call its APIs directly (ADR-020).
+Data grids use **AG Grid — Community by default, Enterprise optional per feature — only through the shared wrapper components** in `libs/shared/ui`. Feature libraries must never import AG Grid types or call its APIs directly (ADR-020, amended by ADR-028). **PrimeNG is the primary Angular UI component library**; both PrimeNG and AG Grid must consume the centralized design-token system wherever their theming APIs allow.
 
 ---
 

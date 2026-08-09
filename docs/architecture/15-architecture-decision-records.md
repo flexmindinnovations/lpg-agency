@@ -400,7 +400,9 @@ Left unresolved, each feature would pick a different pattern.
 
 ## ADR-020: AG Grid Enterprise Behind an Application-Level Abstraction
 
-**Status:** Accepted
+**Status:** Accepted · *amended by [ADR-028](#adr-028-hybrid-ui-component-strategy-primeng-primary-ag-grid-community-default-ag-grid-enterprise-optional-amends-adr-020) (component-library strategy)*
+
+> **Amendment note (2026-08-09):** The core replaceability mechanism decided here — AG Grid encapsulated behind an application-level wrapper in `libs/shared/ui`, feature libraries never importing AG Grid types directly, the licence key never committed — is **unchanged and remains binding**. What changed: AG Grid Enterprise is no longer adopted as "the standard" by default. **AG Grid Community is now the default grid engine**; AG Grid Enterprise becomes an **optional, per-instance upgrade**, enabled only when a documented feature requirement needs an Enterprise-only capability and a licence is available. **PrimeNG is adopted** as the primary Angular UI component library, reversing this ADR's "PrimeNG is not adopted" consequence below. See [ADR-028](#adr-028-hybrid-ui-component-strategy-primeng-primary-ag-grid-community-default-ag-grid-enterprise-optional-amends-adr-020) for the full hybrid decision, the PrimeNG licensing analysis, and the design-token integration requirement. The text below is preserved verbatim as the original decision record.
 
 **Context:** `AGENTS.md` and `knowledge/02` mandate AG Grid Enterprise. The superseded frontend document instead prescribed Angular CDK + Material with "PrimeNG only where beneficial," and never mentioned AG Grid. The enterprise-grid requirements in `docs/srs/non-functional.md` §7 and `docs/ui/14-data-grid-guidelines.md` (grouping, column chooser, saved views, export, virtualization at scale) are substantial, and AG Grid Enterprise is a **commercial, paid-licence** product — so the choice carries a procurement dependency, not just a technical one.
 
@@ -473,7 +475,9 @@ Phase 0 establishes only the **Azure-compatible architectural direction**:
 
 ## ADR-023: Background Job Architecture (Conceptual; Library Deferred)
 
-**Status:** Accepted (architecture) · **Library selection: deferred**
+**Status:** Accepted (architecture) · **Library selection: deferred** · *resolved by [ADR-029](#adr-029-arq-as-the-background-job-library-resolves-adr-023s-deferral)*
+
+> **Resolution note (2026-08-09, Phase 2):** The architecture below is unchanged and remains binding. The deferred library selection is resolved: **ARQ**. See ADR-029 for the spike outcome and reasoning.
 
 **Context:** The superseded backend document assigned scheduled and deferred work to Azure Functions (timer-triggered) and Hangfire (on-demand). Both are .NET/Azure-bound. The workload itself is unchanged and well-specified: refill reminders (D-26), scheduled reports (D-28), complaint SLA breach scanning (D-20), low-stock alerts (FR-IM-04), daily reconciliation prompts (D-31), and notification retries.
 
@@ -648,6 +652,82 @@ Practically:
 
 ---
 
+## ADR-028: Hybrid UI Component Strategy — PrimeNG Primary, AG Grid Community Default, AG Grid Enterprise Optional (amends ADR-020)
+
+**Status:** Accepted · **Amends:** ADR-020
+
+**Context:** ADR-020 adopted AG Grid Enterprise as the standard data-grid implementation and, as a direct consequence, dropped PrimeNG: *"With AG Grid for grids and Angular Material + CDK for interaction primitives, it has no remaining role, and a third component library would fragment the design-token implementation."* That reasoning held given a single-library assumption where AG Grid Enterprise covered grids and Material/CDK covered everything else.
+
+The product owner has since confirmed a **valid PrimeNG licence** exists and wants PrimeNG restored as the platform's primary UI component library, with AG Grid narrowed to a data-grid-only role and its Enterprise tier made conditional rather than standard.
+
+**A licence key was found hardcoded in `frontend/apps/dashboard/src/app/app.config.ts`** as an unreferenced constant, during this review — a real, uncommitted secret in a tracked source file. It was removed before it could enter git history, per the same rule ADR-020 itself established for the AG Grid licence key (*"the licence key is supplied as environment configuration, never committed"*). The key decodes (JWT payload, not verified cryptographically here) to a **Community-tier, dev-type** PrimeUI licence issued 2026-07-18, expiring 2027-07-18 — consistent with the free tier, not a paid Commercial licence.
+
+**PrimeNG's licensing model is corrected here, not assumed.** Checked directly against the npm registry and the package's own `LICENSE.md` (`primeng@22.0.0`, `license: "SEE LICENSE IN LICENSE.md"` — not an SPDX-free identifier): current-generation PrimeNG ships under a proprietary **PrimeUI License** with two tiers — a free **Community License** for organisations/individuals meeting PrimeTek's eligibility criteria, and a paid **Commercial License** otherwise. This is **not MIT**, correcting an assumption present nowhere in this repository's committed documentation but worth stating plainly so it is never asserted later. Whether this organisation qualifies for the Community tier is a licensing/eligibility question only the product owner can answer — this ADR does not resolve it, and treats the existing key as unverified with respect to eligibility until confirmed.
+
+**Decision:** Adopt a **hybrid UI component strategy**, replacing ADR-020's single-library standard:
+
+1. **PrimeNG is the primary Angular UI component library** for forms, inputs, overlays, navigation, and general-purpose components.
+2. **AG Grid Community is the default complex data-grid engine.** It remains encapsulated behind the existing `libs/shared/ui` wrapper (ADR-020 constraints 1–2 carry forward unchanged).
+3. **AG Grid Enterprise is optional**, enabled only per-instance when a documented feature requirement identifies an Enterprise-only capability (server-side row model at scale, range selection, Excel export, pivoting, etc.) **and** a licence is available. Enabling it is a feature-level decision made against a documented requirement, not a platform default.
+4. **Angular CDK remains available** for low-level accessibility, overlay, drag/drop, scrolling, and interaction primitives — unchanged from ADR-020/ADR-011.
+5. **Angular Material may be used selectively** where it provides a superior primitive or integration not otherwise covered; it is no longer the primary visual component library.
+6. **Tailwind CSS v4 remains the layout/utility layer**, unchanged.
+7. **Design tokens (`libs/shared/design-tokens`) remain the single source of visual truth.** PrimeNG and AG Grid **must consume the centralized token system wherever their theming APIs allow** — PrimeNG via `@primeuix/themes`' CSS-custom-property-based preset system (which can be bound to the existing token output rather than a separate PrimeNG theme file), AG Grid via its CSS custom-property theming API (Theming API, not legacy Sass themes). **No vendor-specific styling values may be hardcoded into application styles** — the same rule §7 of `04-frontend-architecture.md` already applies to raw hex/px values applies equally to PrimeNG- or AG Grid-specific tokens.
+
+**Version selected:** `primeng@22.0.0`, whose peer dependencies (`@angular/core`, `@angular/cdk`, `@angular/common`, `@angular/forms`, `@angular/router`, `@angular/platform-browser`, all `^22.0.0`) match the installed Angular 22.0.8 / Angular CDK 22.1.1 exactly. Paired with `@primeuix/themes@3.0.0` for token-based theming and `primeicons` for iconography. **Not yet installed** — this ADR authorises the direction; the dependency addition, theme-token wiring, and first PrimeNG component happen in Phase 4 (Angular Web Foundation) implementation, not in Phase 0/1 documentation work.
+
+**Consequences:**
+- **The AG Grid wrapper's replaceability guarantee, and its constraints, are unaffected.** Constraint 2 from ADR-020 (feature libraries never import AG Grid types directly) is exactly what makes narrowing AG Grid's default tier from Enterprise to Community a two-line configuration change rather than a rewrite — the abstraction is doing the job it was built for.
+- **DW-08 is resolved, not merely deferred.** ADR-020 recorded AG Grid Enterprise licence procurement as an unconfirmed dependency blocking Phase 4. Since AG Grid Community — not Enterprise — is now the default, there is no standing licence-procurement blocker. Enterprise licence procurement becomes a **per-feature decision**, triggered only if a future feature's documented requirements genuinely need an Enterprise-only capability, evaluated at that time against the actual requirement rather than provisioned speculatively.
+- **A third component library returns, deliberately.** ADR-020's fragmentation concern is addressed structurally, not dismissed: the token-consumption requirement (Decision point 7) is what prevents PrimeNG and AG Grid from each carrying their own hardcoded visual language. If either library's theming API cannot express a given token faithfully, that is a real constraint to document per-component when it is hit — not a reason to hardcode around it.
+- **Accessibility enforcement is unaffected.** ADR-011's shared-library concentration strategy still applies: PrimeNG components used across features should be wrapped or configured centrally in `libs/shared/ui` where they carry accessibility-relevant behaviour, the same way the AG Grid wrapper already concentrates grid accessibility. `docs/architecture/11-accessibility-strategy.md` had already anticipated PrimeNG's possible return in its third-party component audit language — that anticipation is now realised rather than contradicted.
+- **PrimeNG licence eligibility remains an open item for the product owner, not engineering.** The Community-tier key found in source is dev-type and unverified against PrimeTek's actual eligibility criteria (Community-license thresholds are not publicly documented in a form this review could confirm — PrimeNG's own licensing pages did not yield machine-fetchable detail). Recorded as a new discovered-work item, **DW-22**: confirm Community-tier eligibility (or budget for Commercial) before Phase 4 wires PrimeNG into a production build.
+- **Licence key handling mirrors AG Grid's existing rule exactly.** Whichever tier applies, the PrimeNG licence key is supplied as build-time environment configuration from the secret store and is **never committed** — the same constraint ADR-020 established for AG Grid, now applied consistently to both vendor licences. The exact PrimeNG API for supplying a licence key at bootstrap (a provider function vs. an environment-read at app init) was not confirmed against current PrimeNG docs during this review and must be verified before Phase 4 wiring, not assumed.
+- **No functional or test-affecting change to the existing frontend.** `frontend/libs/shared/ui/src/lib/data-grid/data-grid.component.ts` and its AG Grid Community usage are unchanged; this ADR is a documentation and direction change only. Phase 2 remains not started.
+
+**Alternatives Considered:**
+- **Leave ADR-020 as-is (AG Grid Enterprise standard, PrimeNG dropped)** — rejected; the product owner has a business reason (an existing licence, a preference for PrimeNG's component breadth) that the original single-library assumption didn't anticipate.
+- **Adopt PrimeNG for everything, including data grids (`p-table`/`p-treeTable`), dropping AG Grid entirely** — rejected; AG Grid's Community tier already meets the documented grid requirements (`docs/ui/14-data-grid-guidelines.md`) more directly for grouping/virtualization-at-scale than PrimeNG's table components, and the existing wrapper investment (with its 9 passing tests proving real AG Grid Community rendering) would be discarded for no functional gain.
+- **Make AG Grid Enterprise a blanket default again "just in case"** — rejected; that reintroduces DW-08's speculative procurement dependency for capabilities no current feature has requested, which is exactly what the Community-default reverses.
+- **Skip the design-token consumption requirement and let PrimeNG ship its own default theme** — rejected; it would reintroduce the visual fragmentation ADR-020 originally worried about, just with PrimeNG's default look instead of a hand-rolled one.
+
+> **Implementation note (2026-08-09, same day, Phase 1 close-out — T-68):** The "Not yet installed" line above is superseded. PrimeNG is installed (`primeng@22.0.0`, `@primeuix/themes@3.0.0`, `primeicons@8.0.0`) and wired: `LpgPrimeNgPreset` (`libs/shared/design-tokens/src/lib/primeng-preset.ts`) binds every PrimeNG semantic/primitive token to the existing design-token custom properties, `providePrimeNG()` is registered in `apps/dashboard/src/app/app.config.ts`, and the previously-open "exact PrimeNG API for supplying a licence key" question is resolved: `providePrimeNG({ license })`, a plain string input, fed from a git-ignored `prime-license.ts` (template: `prime-license.example.ts`) — never committed, absence never fails the build. Brought forward from Phase 4 to Phase 1 close-out on explicit instruction, not a phase-ordering change to this ADR's own reasoning. **While implementing this, a pre-existing Phase 1 defect was found and fixed** (unrelated to PrimeNG's own correctness): `styles.css` and the AG Grid wrapper referenced `var(--semantic-color-*)`-prefixed custom properties the token generator has never emitted (real names are the bare `--color-*`/`--spacing-*`/`--radius-*`); every such reference had resolved to nothing since the original Phase 1 commit. Full record: [`planning/features/01-repository-foundation/TASKS.md`](../../planning/features/01-repository-foundation/TASKS.md) (T-68) and [`STATUS.md`](../../planning/features/01-repository-foundation/STATUS.md).
+
+---
+
+## ADR-029: ARQ as the Background Job Library (resolves ADR-023's deferral)
+
+**Status:** Accepted · **Resolves:** ADR-023's deferred library selection (DW-06)
+
+**Context:** ADR-023 fixed the background-job *architecture* — jobs as application-layer use cases, a separate worker process, Redis as the broker, per-tenant context, idempotent/retry-safe — and deferred only which library runs it, pending a Phase 2 spike over three candidates: **ARQ** (async-native, Redis-backed, minimal), **Dramatiq** (simple, robust), **Celery** (mature, heavyweight, largest ecosystem). The decision was scoped to hinge on "async-native ergonomics and operational simplicity at this scale."
+
+That framing turns out to answer itself once stated precisely. Every other piece of this backend is async-first and non-negotiably so: FastAPI, SQLAlchemy 2.x's async engine, asyncpg, the Redis client, the WebSocket/Pub/Sub real-time layer (ADR-015). A job library whose own execution model is synchronous forces one of two costs onto every job: wrapping each task body in `asyncio.run()` (a new event loop per job, unable to share connection pools with the rest of the process) or adopting a sync ORM/driver path solely for jobs (a second persistence stack to maintain). Neither is "operationally simple" at this scale; both are exactly the kind of friction ADR-012 already paid down once by choosing an async stack throughout.
+
+**Decision:** **ARQ** is the background job library.
+
+| Candidate | Execution model | Broker | Verdict |
+|---|---|---|---|
+| **ARQ** | Native `asyncio` — a job is `async def job(ctx, ...)`, run directly on the event loop | Redis (already committed, ADR-015) | **Selected** |
+| Dramatiq | Threads/processes calling sync task functions | Redis or RabbitMQ (would add a broker if not Redis) | Rejected — sync-first; async work needs a wrapper per task |
+| Celery | Prefork worker pool, sync-first, with an async story that exists but is not its native model | Redis, RabbitMQ, or others | Rejected — heaviest operationally (broker + optional result backend + worker pool tuning) for a benefit (ecosystem maturity, exotic routing) this platform's job list doesn't need |
+
+Concretely: ARQ jobs are plain `async def` functions receiving a context dict, run on ARQ's own asyncio event loop in the worker process — no thread pool, no process pool, no second connection-pooling story. It depends on nothing but `redis` (already a hard dependency) and integrates directly with the same `asyncpg`/SQLAlchemy async session machinery every other part of this codebase already uses. Scheduled (cron-style) jobs are a first-class ARQ feature, covering the Refill Reminder / Scheduled Report / SLA Breach Scanner / Low Stock Alert / Reconciliation Reminder triggers from ADR-023's job table without an additional scheduler process.
+
+**Consequences:**
+- **No new infrastructure dependency.** ARQ's broker is the same Redis instance already serving cache, sessions, rate limiting, and the real-time Pub/Sub backplane — consistent with ADR-015's "no new managed service" reasoning, extended here to jobs.
+- **A job function looks like every other function in this codebase** — `async def`, awaiting the same repositories, the same Unit of Work, the same tenant-scoping seam (ADR-017). There is no second calling convention for background code to learn.
+- **Smaller ecosystem than Celery.** Accepted deliberately: the job list ADR-023 documents (six triggers, all in-house) does not need Celery's routing/canvas/multi-broker breadth, and that breadth is exactly the operational surface area this decision avoids paying for.
+- **Worker process is still separate from the API** (ADR-023 unchanged) — `arq.worker.run_worker` is its own entry point, deployed and scaled independently.
+- **No business job is implemented by this decision.** Phase 2 delivers the worker skeleton and the job-function contract (tenant-scoped, idempotent, observable, retry-safe); the six real jobs arrive with the phases that need them.
+
+**Alternatives Considered:**
+- **Dramatiq** — genuinely close second; simpler operationally than Celery. Rejected on the async-mismatch grounds above — its actor model expects synchronous callables, and this platform has no synchronous data-access path to hand it.
+- **Celery** — rejected; the most mature option, but its operational surface (broker + optional separate result backend + prefork worker tuning + a sync-first execution model requiring `asgiref`-style bridging for async work) is disproportionate to six well-specified, in-house jobs run by a small team, and duplicates infrastructure ADR-015 already committed to (Redis) if a different broker were chosen for Celery's sake.
+- **FastAPI `BackgroundTasks`** — not a candidate; ADR-023 already rejected it for anything beyond trivial post-response side effects, since it has no persistence, no retry, and dies with the worker process.
+- **Cloud-managed scheduling (Azure Functions timers)** — rejected on ADR-023's original grounds: splits business logic across two runtimes and binds to a hosting decision ADR-022 deliberately still defers.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -671,14 +751,16 @@ Practically:
 | 017 | PostgreSQL RLS + repository tenant scoping | Accepted (amends 003) |
 | 018 | Angular 22 + Nx under `frontend/` | Accepted |
 | 019 | Signals-first + NgRx SignalStore | Accepted |
-| 020 | AG Grid Enterprise behind an abstraction | Accepted; licence procurement open |
+| 020 | AG Grid Enterprise behind an abstraction | Accepted — amended by 028, Community now default |
 | 021 | RFC 7807 error contract | Accepted |
 | 022 | Azure target cloud; topology deferred | Accepted (direction only) — amended by 027 |
-| 023 | Background job architecture | Accepted; library deferred |
+| 023 | Background job architecture | Accepted (architecture) — resolved by 029 (library: ARQ) |
 | 024 | Python architecture-boundary enforcement | Accepted |
 | 025 | Polyglot monorepo layout | Accepted (amends 001) |
 | 026 | Code-first OpenAPI, generated spec as contract | Accepted |
 | 027 | Supabase as managed PostgreSQL host **only** | Accepted (amends 013, 022) |
+| 028 | Hybrid UI strategy — PrimeNG primary, AG Grid Community default, Enterprise optional | Accepted (amends 020) |
+| 029 | ARQ as the background job library | Accepted (resolves 023's deferral) |
 
 ## Deferred Decisions
 
@@ -687,9 +769,9 @@ Decisions deliberately left open, each with a defined trigger point:
 | Item | Decide by | Reference |
 |---|---|---|
 | Azure hosting topology (Container Apps vs App Service vs other) and IaC tool (Bicep vs Terraform) | Before production deployment | ADR-022 · DW-05 |
-| Background job library (ARQ vs Dramatiq vs Celery) | Phase 2 — Backend Foundation | ADR-023 · DW-06 |
 | PDF rendering library (WeasyPrint vs ReportLab) | Phase 17 — Printing | ADR-016 · DW-07 |
-| AG Grid Enterprise licence procurement | Before Phase 4 — Angular Foundation | ADR-020 · DW-08 |
+| AG Grid Enterprise licence procurement (only if a future feature needs it) | As triggered — no longer a standing Phase 4 blocker | ADR-020 · ADR-028 · DW-08 |
+| PrimeNG licence-tier eligibility confirmation | Before Phase 4 — Angular Foundation | ADR-028 · DW-22 |
 | Supabase production tier (lower tiers pause idle projects) | Before production | ADR-027 · DW-05 |
 
 ## Review Cadence

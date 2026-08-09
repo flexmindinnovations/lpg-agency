@@ -204,7 +204,7 @@ The specific Azure hosting products and the IaC tool are **deliberately not fixe
 | ORM / Migrations | SQLAlchemy 2.x (async), Alembic | Repository/Unit-of-Work implementation, versioned schema history |
 | Validation | Pydantic v2 | Request/response models; also the source of the generated OpenAPI contract |
 | Database | PostgreSQL | Relational integrity critical for ledger/inventory invariants (BR-01–BR-15, BR-29); RLS, JSONB, native full-text search, offline-safe UUID generation (ADR-013) |
-| Web Dashboard | Angular 22, Nx workspace, Tailwind CSS v4, Angular Material + CDK, AG Grid Enterprise | Per `AGENTS.md`; Nx enforces feature-library boundaries (ADR-018, ADR-020) |
+| Web Dashboard | Angular 22, Nx workspace, Tailwind CSS v4, PrimeNG (primary), Angular Material + CDK (selective/primitives), AG Grid Community (default; Enterprise optional) | Per `AGENTS.md`; Nx enforces feature-library boundaries (ADR-018, ADR-020, ADR-028) |
 | Mobile Apps | Flutter, Riverpod, Drift SQLite | Single codebase for Customer + Driver apps across Android/iOS (ADR-006) |
 | Caching | Redis | Sessions, reference-data cache, rate limiting, job queue, real-time backplane |
 | Real-Time | FastAPI WebSockets + Redis Pub/Sub | Order/delivery/assignment/dispatcher/dashboard push to all three clients (ADR-015) |

@@ -23,7 +23,7 @@ This document is updated after every major milestone.
 | Backend | Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic v2 |
 | Database | PostgreSQL on **Supabase** (managed host only, ADR-027); RLS tenant isolation |
 | Cache / Queue / Real-time | Redis |
-| Web Dashboard | Angular 22 in an Nx workspace (`frontend/`), Signals + NgRx SignalStore, Angular Material + CDK, Tailwind CSS v4, AG Grid Enterprise |
+| Web Dashboard | Angular 22 in an Nx workspace (`frontend/`), Signals + NgRx SignalStore, PrimeNG (primary) + Angular CDK (Material selective), Tailwind CSS v4, AG Grid Community (Enterprise optional per feature) |
 | Mobile | Flutter, Riverpod, Drift SQLite (Driver App offline-first) |
 | Real-Time | FastAPI WebSockets + Redis Pub/Sub |
 | Container / CI / Cloud | Docker, GitHub Actions, Azure (hosting topology deferred) |
@@ -45,21 +45,22 @@ This document is updated after every major milestone.
 | Engineering Standards | ✅ Complete |
 | **Documentation Reconciliation (Phase 0)** | ✅ **Complete — 2026-08-09** |
 | **Repository / Development Foundation (Phase 1)** | ✅ **Complete — 2026-08-09** |
-| Backend Development | 🔨 Foundation only — no business features |
+| **Backend Foundation (Phase 2)** | ✅ **Complete — 2026-08-09** |
+| Backend Development | 🔨 Foundation + reusable infrastructure only — no business features |
 | Frontend Development | 🔨 Foundation only — no business features |
 | Mobile Development | 🔨 Shells only — no business features |
-| Testing | 🔨 Harness in place — 75 foundation tests pass |
+| Testing | 🔨 Harness in place — **230 foundation tests pass** (182 backend, up from 83; 36 frontend; 12 Flutter) |
 | Deployment | 🔨 CI validation only — no deployment pipelines |
 
 ---
 
 # Current Phase
 
-**Completed:** Phase 1 — Repository / Development Foundation
+**Completed:** Phase 2 — Backend Foundation (2026-08-09)
 
-**Next:** Phase 2 — Backend Foundation (**not started**; requires explicit go-ahead)
+**Next:** Phase 3 — Shared Infrastructure, or Phase 4 — Angular Web Foundation (**not started**; requires explicit go-ahead). Recommendation: Phase 6 (Authentication) is the more natural next dependency — the interim `HeaderTenantResolver` (Phase 2) and the not-yet-mandatory-unscoped-session seam (DW-12) both exist specifically to be replaced by it.
 
-Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Alembic migration with RLS policies, tenant-isolation test suite, background worker, real-time publisher. Still no business features.
+Phase 2 delivered: Unit of Work (`SqlAlchemyUnitOfWork`), one illustrative repository + CQRS use case (`Tenant`/`RenameTenantUseCase`, not a business feature), in-process domain-event dispatcher, the first three Alembic migrations (`citext`/`pg_trgm` extensions, `tenant.tenant` + self-referential RLS, `audit.audit_log` + RLS with database-enforced immutability), a dedicated tenant-isolation test suite (two seeded tenants, RLS proven directly against the app role, not through application filters), the background worker (ARQ, ADR-029) with a trivial round-trip-proof job, Redis cache/idempotency/rate-limit infrastructure, and an observability gap closed (tenant_id/user_id now bind to structured logs). Still no business features — no authentication, no domain aggregates beyond the RLS-proof `Tenant`, no business routes.
 
 ---
 
@@ -69,17 +70,18 @@ Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Ale
 
 | Area | Status |
 |---|---|
-| `backend/` | FastAPI app, Clean Architecture layers, live-verified Supabase config, 83 tests passing |
-| `frontend/` | Nx workspace, Angular 22.0.8 dashboard, 14 tests passing |
+| `backend/` | FastAPI app, Clean Architecture layers, Unit of Work + illustrative repository/CQRS/domain-events, ARQ worker, Redis cache/idempotency/rate-limit infrastructure, audit foundation, 3 Alembic migrations applied to local DEV/UAT, 182 tests passing |
+| `frontend/` | Nx workspace, Angular 22.0.8 dashboard, 36 tests passing |
 | `mobile/` | Melos workspace, two app shells, three packages, 12 tests passing |
 | `design-tokens/` | One JSON source → 229 CSS vars + TypeScript + Dart |
 | `infrastructure/` | Docker Compose (PostgreSQL 17 + Redis 7) |
 | `scripts/` | setup, dev-up/down, test, lint, format, check, tokens |
 | `.github/workflows/` | 4 path-filtered validation workflows |
 | `.gitignore` | Present, verified behaviourally |
-| Git commits | `470436e` — 428 files, working tree clean |
 
-**131 tests pass** (83 backend + 36 frontend + 12 Flutter), re-verified fresh with caches bypassed. Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass.
+**230 tests pass** (182 backend, up from 83 + 36 frontend + 12 Flutter), re-verified fresh — no cache to bypass for pytest; Nx cache explicitly bypassed for frontend. Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass on the backend (80 files, 198 dependencies analyzed).
+
+**Migrations exist for the first time.** `574dc291c82c` (citext/pg_trgm extensions), `0242df1a3871` (`tenant.tenant` + self-referential RLS — a tenant can see/rename only its own row, never another's, proven with real Tenant A/B rows against the actual `lpg_app` role), `40065f2b4dc3` (`audit.audit_log` + RLS + database-enforced immutability — `UPDATE`/`DELETE` denied to the application role at the grant level, not just by convention). Applied to local DEV, UAT, and the test database. **Not yet applied to hosted Supabase PROD** — deliberately, pending explicit go-ahead per Phase 2's DEV/UAT/PROD safety instructions.
 
 **Local database and Redis are fully verified** against real PostgreSQL 17 and Redis 7, with two per-environment application roles (`lpg_app`, `lpg_app_uat`) and the environment boundary enforced by revoking `PUBLIC`'s default `CONNECT`, not just documenting it.
 
@@ -108,11 +110,11 @@ Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Ale
 # Current Priorities
 
 1. ~~Repository / Foundation~~ ✅ complete
-2. **Backend Foundation** — Unit of Work, base repository, domain events, first migration with RLS, tenant-isolation suite, background worker, real-time publisher
-3. **Shared Infrastructure** — audit logging, idempotency store, caching, rate limiting, file storage
-4. **Angular Web Foundation completion** — Storybook, Playwright execution, AG Grid Enterprise licence
+2. ~~Backend Foundation~~ ✅ complete — Unit of Work, illustrative repository/CQRS/domain events, first 3 migrations with RLS, tenant-isolation suite, ARQ worker, audit/idempotency/rate-limit/cache infrastructure
+3. **Shared Infrastructure remaining** — real-time publisher implementation (port already exists, ADR-015), file storage
+4. **Angular Web Foundation completion** — Storybook, Playwright execution, PrimeNG licence-tier confirmation (DW-22). PrimeNG dependency install + token-theme wiring is **done** (Phase 1 close-out, T-68, 2026-08-09) — brought forward from this list on explicit instruction.
 5. **Flutter Foundation completion** — `api_client`, `auth`, `sync_engine` packages
-6. **Authentication & Authorization**
+6. **Authentication & Authorization** — replaces Phase 2's interim `HeaderTenantResolver` with a real `JwtTenantResolver` (same protocol, drop-in); closes DW-12 (mandatory tenant-scoped session)
 
 Full dependency-ordered roadmap: [`docs/implementation/roadmap.md`](../docs/implementation/roadmap.md) and `planning/current_phase.md`.
 
@@ -131,7 +133,7 @@ All resolved. ADR-001 … ADR-026 in [`docs/architecture/15-architecture-decisio
 - PostgreSQL RLS + repository scoping for tenant isolation (ADR-017)
 - Angular 22 + Nx under `frontend/` (ADR-018)
 - Signals-first with NgRx SignalStore (ADR-019)
-- AG Grid Enterprise behind an abstraction (ADR-020)
+- AG Grid Community (Enterprise optional per feature) behind an abstraction; PrimeNG as primary component library (ADR-020, amended by ADR-028)
 - RFC 7807 error contract (ADR-021)
 - Azure target cloud, hosting topology deferred (ADR-022)
 - Background jobs: separate worker, Redis queue; library deferred (ADR-023)
@@ -142,6 +144,8 @@ All resolved. ADR-001 … ADR-026 in [`docs/architecture/15-architecture-decisio
 **Confirmed 2026-08-09 (post-Phase-1):**
 
 - **Supabase as the managed PostgreSQL host only** (ADR-027) — amends ADR-013 (host named) and ADR-022 (database no longer maps to Azure). Supabase Auth, Storage, Realtime and Edge Functions are **not** adopted. Alembic remains the sole owner of schema; the application never connects as `service_role`.
+- **Hybrid UI strategy** (ADR-028) — PrimeNG primary component library, AG Grid Community default (Enterprise optional per feature), amends ADR-020.
+- **ARQ as the background job library** (ADR-029) — resolves ADR-023's deferral; async-native, Redis-backed, no second broker.
 
 The superseded .NET architecture documents are preserved at [`docs/architecture/superseded/`](../docs/architecture/superseded/README.md) — historical only.
 
@@ -153,8 +157,8 @@ Deliberately open, each with a trigger point:
 
 | Decision | Decide by |
 |---|---|
-| Background job library (ARQ / Dramatiq / Celery) | Backend Foundation |
-| AG Grid Enterprise licence procurement | Angular Foundation |
+| PrimeNG licence-tier eligibility confirmation (DW-22) | Angular Foundation |
+| AG Grid Enterprise licence procurement (only if a feature needs it) | As triggered, no longer a standing blocker |
 | PDF rendering library (WeasyPrint / ReportLab) | Printing phase |
 | Azure **application** hosting topology + IaC tool (Bicep / Terraform) | Before production |
 | Supabase production tier (lower tiers pause idle projects) | Before production |
@@ -168,12 +172,12 @@ Deliberately open, each with a trigger point:
 
 # Known Risks
 
-- **The Supabase application role is not provisioned** (DW-19) — the live connection currently verified uses `postgres`, which has `rolbypassrls=True`. Must not be the application's own connection. Role creation is administrative, not schema, so it cannot go through Alembic.
-- **`citext` and `pg_trgm` not installed on Supabase** (DW-20) — only `pgcrypto` is, confirmed live.
-- Authentication not implemented — every module depends on it.
-- No database migrations yet; the first arrives in Phase 2 with the `tenant` schema and its RLS policies.
-- Unit of Work, repositories and the domain-event dispatcher are designed but not implemented.
-- AG Grid runs on **Community**, not Enterprise — licence procurement unconfirmed. The wrapper (ADR-020) keeps this a two-line change rather than a refactor.
+- **The Supabase application role is not provisioned** (DW-19) — the live connection currently verified uses `postgres`, which has `rolbypassrls=True`. Must not be the application's own connection. Role creation is administrative, not schema, so it cannot go through Alembic. Still open; Phase 2's migrations were deliberately **not** applied to Supabase PROD, only local DEV/UAT, pending this.
+- **`citext` and `pg_trgm` not installed on Supabase** (DW-20) — only `pgcrypto` is, confirmed live. Phase 2 wrote the Alembic migration that will install them (`574dc291c82c`); it has not been applied to Supabase yet, deliberately, pending explicit go-ahead.
+- **`backend/.env` currently on disk is configured for PROD** (real Supabase host, `postgres` superuser credential) but with `LPG_REDIS_URL`/`LPG_MIGRATION_DATABASE_URL` left empty — a half-configured leftover from Phase 1's live-connection verification. Importing `lpg.api.app` or `lpg.infrastructure.jobs.worker` directly (e.g. `uvicorn lpg.api.app:app`, `arq lpg.infrastructure.jobs.worker.WorkerSettings`) with this file as-is will crash at startup on a `pydantic` validation error, not silently misconfigure. Recommended: run `cp .env.dev.example .env` (or supply real production values) before starting either process locally. Not fixed automatically in Phase 2 — it is the user's own local file.
+- Authentication not implemented — every module depends on it. Phase 2 added the extension point (`TenantResolver` protocol) it will plug into.
+- Unit of Work, one illustrative repository/CQRS use case, and the domain-event dispatcher are now implemented (Phase 2) — no business aggregate, repository, or router exists yet.
+- AG Grid runs on **Community** — this is now the confirmed platform default (ADR-028), not a discrepancy against ADR-020 as it was previously recorded. Enterprise remains available per feature; the wrapper (ADR-020) keeps enabling it a two-line change rather than a refactor. **PrimeNG is installed and token-wired** (T-68, 2026-08-09, brought forward from Phase 4 to Phase 1 close-out on explicit instruction); only its licence-tier eligibility (DW-22) remains open, a product-owner decision, not an engineering one.
 - `mobile/packages/api_client`, `auth` and `sync_engine` are documented but not created; they have no content until Phase 6 and Phase 11.
 - `docs/modules/` per-module specifications referenced by several documents **do not exist**; equivalent content is distributed across `docs/srs/`, `docs/business/`, `docs/engineering/`, and `docs/data/` (see [`docs/README.md`](../docs/README.md)).
 
@@ -206,6 +210,8 @@ Never:
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2026-08-09 | 1.6 | Phase 2 (Backend Foundation) complete: Unit of Work, illustrative repository/CQRS/domain-event seam (`Tenant`/`RenameTenantUseCase`), 3 Alembic migrations (extensions, `tenant.tenant`+RLS, `audit.audit_log`+RLS+DB-enforced immutability) applied to local DEV/UAT, dedicated `tests/tenant_isolation/` suite, ARQ background-worker foundation (ADR-029), Redis cache/idempotency/rate-limit infrastructure, an observability gap closed (tenant_id/user_id now bind to structured logs). 182 backend tests (up from 83), 230 total. |
+| 2026-08-09 | 1.5 | Frontend component-library architecture revised: hybrid UI strategy adopted (ADR-028, amends ADR-020) — PrimeNG restored as primary component library, AG Grid Community made the default data-grid engine with Enterprise now optional per feature. A hardcoded PrimeNG licence key found and removed from `app.config.ts` before it reached git history. |
 | 2026-08-09 | 1.4 | Phase 1 re-verified fresh: live Supabase connection confirmed (found rolbypassrls=True on `postgres`, citext/pg_trgm missing), dev/uat password rotation verified from host, dotenv-hermeticity bug in tests fixed, 22 tests added closing a zero-coverage gap in two shared libraries. 131 tests total. |
 | 2026-08-09 | 1.3 | Phase 1 closed out: Docker verifications completed, tenant-context bug found and fixed, Supabase config added, architecture-consistency checker introduced |
 | 2026-08-09 | 1.2 | Phase 1 complete: all three stacks scaffolded and verified; 75 tests passing; boundary enforcement live; first commit made |

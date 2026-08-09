@@ -52,7 +52,7 @@ Dependency-ordered. The full roadmap with rationale is in [`planning/current_pha
 | 1 | Repository / Foundation | 0 | `.gitignore`, first commit, monorepo skeleton, Docker Compose (PostgreSQL + Redis), lint/format configs, minimal CI |
 | 2 | Backend Foundation | 1 | FastAPI skeleton, Clean Architecture layers, SQLAlchemy async, Alembic baseline, RFC 7807 middleware, structured logging, tenant context + RLS wiring, test harness, `import-linter` contracts |
 | 3 | Shared Infrastructure (backend) | 2 | Unit of Work, base repository, audit logging, domain-event dispatcher, idempotency store, caching, background worker, file storage, rate limiting, real-time publisher |
-| 4 | Angular 22 Web Foundation | 1 (2 for live API) | Nx workspace, design tokens, theme system, shared UI library, AG Grid wrapper, layout shell, interceptors, generated API client, Storybook, Jest, Playwright, axe-core gate |
+| 4 | Angular 22 Web Foundation | 1 (2 for live API) | Nx workspace, design tokens, theme system, shared UI library (PrimeNG-based), AG Grid Community wrapper, layout shell, interceptors, generated API client, Storybook, Jest, Playwright, axe-core gate |
 | 5 | Flutter Application Foundations | 2 | Melos workspace, shared packages, Riverpod, go_router, Drift schema + encrypted storage, both app shells |
 | 6 | Authentication & Authorization | 3, 4, 5 | Login/logout/refresh, password reset, OTP, JWT, RBAC (D-37, D-38), tenant resolution, guards on all clients, security tests |
 | 7 | Administration & Tenant/Master Data | 6 | Tenant, branch, warehouse, cylinder types, pricing/tax config (D-42), user management, feature flags, audit log viewer |
@@ -89,7 +89,7 @@ ADRs are reviewed at each major phase gate (`docs/architecture/15-architecture-d
 | Decision | Must be resolved by |
 |---|---|
 | Background job library (ARQ / Dramatiq / Celery) | Phase 2 |
-| AG Grid Enterprise licence procurement | Phase 4 |
+| PrimeNG licence-tier eligibility confirmation (DW-22) | Before Phase 4 |
 | Inventory counter granularity (D-04/D-14 residual) | Phase 9 |
 | Cancellation fee amount and configurability (D-19 residual) | Phase 10 |
 | Warehouse Staff vs Warehouse Manager role identity (D-38 residual) | Phase 6 |

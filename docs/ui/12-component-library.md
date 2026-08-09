@@ -13,7 +13,7 @@ Sidebar Nav Item, Top Bar, Breadcrumb, Tabs, Command Palette, Pagination, Steppe
 Dialog (modal), Drawer, Bottom Sheet (mobile), Toast, Snackbar, Banner (inline page-level alert), Tooltip, Popover, Loading Skeleton, Progress Bar, Spinner.
 
 ## 4. Data Display
-Data Grid (AG Grid Enterprise-based on Dashboard), Card, Badge, Status Pill, Avatar, Timeline/Activity Feed, Key-Value Summary Panel, Empty State, Chart (line/bar/donut), Calendar (month/week/day view for route/report date navigation).
+Data Grid (AG Grid-based on Dashboard — Community by default, Enterprise optional per feature requirement, ADR-028), Card, Badge, Status Pill, Avatar, Timeline/Activity Feed, Key-Value Summary Panel, Empty State, Chart (line/bar/donut), Calendar (month/week/day view for route/report date navigation).
 
 ## 5. Domain-Specific Components
 Receipt Viewer, Print Preview, Barcode Viewer, QR Viewer, Signature Pad, Map (delivery address/route visualization), Cylinder Balance Card (a specialized Card variant showing filled/empty/damaged counts per cylinder type), Order Status Stepper (renders the Order state machine visually), SLA Countdown Badge (complaint-specific).
@@ -35,7 +35,7 @@ Page Header, Section, Grid (12-column layout helper), Divider, Spacer.
 | Wizard Stepper | Tenant Onboarding flow (if surfaced in-product), multi-step forms |
 
 ## Platform Implementation Notes
-- Angular: every component in this catalog is a standalone component in the shared UI library, built on Angular Material plus Angular CDK primitives where a suitable base exists (Dialog, Drawer via CDK Overlay, Autocomplete), with AG Grid Enterprise specifically for Data Grid (`14-data-grid-guidelines.md`).
+- Angular: every component in this catalog is a standalone component in the shared UI library, built primarily on **PrimeNG**, with Angular CDK primitives where a suitable low-level base exists (Overlay positioning, focus trap, key-manager) and Angular Material used selectively where it offers a superior primitive (per ADR-028), plus AG Grid — Community by default, Enterprise optional per feature — specifically for Data Grid (`14-data-grid-guidelines.md`).
 - Flutter: an equivalent widget exists in the shared design system package for every component used in the Customer/Driver apps (a strict subset of this catalog — Data Grid, Command Palette, and several Dashboard-only components have no Flutter equivalent since they do not apply to a mobile context).
 
 ## Best Practices
@@ -46,7 +46,8 @@ Page Header, Section, Grid (12-column layout helper), Divider, Spacer.
 - Component catalog growth without governance leads to near-duplicate components (e.g., two slightly different status badge patterns) — mitigated by the design-system-owner review gate referenced in `08-design-system.md`.
 
 ## Alternatives Considered
-- Building Data Grid features from scratch rather than AG Grid Enterprise — rejected; AG Grid Enterprise's built-in sorting, filtering, grouping, column-pinning, virtual-scroll, and export capabilities directly satisfy `14-data-grid-guidelines.md`'s requirements without reinventing well-solved enterprise-grid problems.
+- Building Data Grid features from scratch rather than AG Grid — rejected; AG Grid Community's built-in sorting, filtering, column-pinning, virtual-scroll, and export capabilities directly satisfy most of `14-data-grid-guidelines.md`'s requirements without reinventing well-solved grid problems; AG Grid Enterprise remains available per-grid for the subset of requirements (row grouping, advanced server-side model) that are genuinely Enterprise-only (ADR-028).
+- PrimeNG as the sole component library, dropping AG Grid entirely — rejected; AG Grid's Community tier meets the documented grid requirements more directly than PrimeNG's table components, and the existing AG Grid wrapper investment stands.
 
 ## Future Scalability
 - The Angular/Flutter component parity table is the reference used when a new Phase 2 screen is designed — if its needed components already exist in both catalogs, implementation is largely composition, not new component design.

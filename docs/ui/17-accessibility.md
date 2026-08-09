@@ -48,10 +48,10 @@ Full detail `13-component-specifications.md` Worked Spec 3 — dialog role, aria
 
 ## Best Practices
 - Accessibility acceptance criteria are part of every screen's Definition of Done (`26-design-review-checklist.md`), never a separate, deferrable workstream.
-- New third-party component adoption (e.g., a specific AG Grid or Angular Material feature) is accessibility-audited before adoption, since inheriting an inaccessible third-party widget undermines the shared-library accessibility strategy.
+- New third-party component adoption (e.g., a specific PrimeNG, AG Grid, or Angular Material feature) is accessibility-audited before adoption, since inheriting an inaccessible third-party widget undermines the shared-library accessibility strategy.
 
 ## Risks
-- Data Grid complexity is the single highest-risk area for accessibility regressions given AG Grid Enterprise's feature surface — mitigated by concentrating extra manual testing effort there specifically.
+- Data Grid complexity is the single highest-risk area for accessibility regressions given AG Grid's feature surface (Community by default, Enterprise where a feature enables it per ADR-028) — mitigated by concentrating extra manual testing effort there specifically.
 - Tenant branding color customization is the highest risk to consistent contrast compliance across tenants — mitigated by the automated contrast-checking fallback (`10-color-system.md` section 5).
 
 ## Alternatives Considered

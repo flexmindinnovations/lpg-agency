@@ -32,7 +32,7 @@ Applies to every endpoint in `11-api-contracts.md`. Implementation-independent â
 - Deprecated versions supported for a minimum 12-month window with a `Sunset` header.
 
 ## 4. Pagination
-- **Offset-based** (`page`, `page_size`, default 25, max 100) for UI-grid-driven lists (AG Grid Enterprise on the Dashboard expects page-number navigation).
+- **Offset-based** (`page`, `page_size`, default 25, max 100) for UI-grid-driven lists (AG Grid on the Dashboard expects page-number navigation; Community by default, per ADR-028).
 - **Cursor-based** (`cursor`, `limit`) for high-volume append-only history (`ledger_transaction`, `inventory_transaction`, `audit_log`), avoiding the performance cliff of deep offset pagination.
 - Standard envelope:
 ```json
@@ -41,7 +41,7 @@ Applies to every endpoint in `11-api-contracts.md`. Implementation-independent â
 
 ## 5. Filtering
 - One query parameter per filterable field (`?status=delivered&branch_id=...`).
-- Complex/combined filters via a whitelisted filter-expression subset for AG Grid's "saved filters" feature â€” never an unbounded arbitrary expression tree.
+- Complex/combined filters via a whitelisted filter-expression subset for AG Grid's "saved filters" feature (an Enterprise-tier capability, enabled per ADR-028 only where a feature documents the need) â€” never an unbounded arbitrary expression tree.
 
 ## 6. Sorting
 - `?sort=field_name` ascending, `?sort=-field_name` descending, comma-separated for multi-field.

@@ -8,9 +8,11 @@ LPG Agency Management Platform
 
 ## Current Phase
 
-**Phase 1 — Repository / Development Foundation** ✅ **COMPLETE** — 63/66 actionable tasks (95%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4)
+**Phase 2 — Backend Foundation** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction. 34/34 tracked tasks complete and verified. See [`planning/features/02-backend-foundation/STATUS.md`](./features/02-backend-foundation/STATUS.md).
 
-**Next phase — Phase 2: Backend Foundation — NOT STARTED.** It requires an explicit go-ahead.
+**Next phase — awaiting explicit go-ahead.** Recommendation: Phase 6 (Authentication) is the more natural next dependency over Phase 3/4/5, since Phase 2's `HeaderTenantResolver` (interim, header-based, not a security boundary) and the not-yet-mandatory tenant-scoped session (DW-12) both exist specifically as extension points for it.
+
+Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).
 
 Phase 0 — Documentation Reconciliation & Technical Baseline — is also complete; see [`planning/features/00-documentation-reconciliation/STATUS.md`](./features/00-documentation-reconciliation/STATUS.md).
 
@@ -109,7 +111,7 @@ Confirmed by the product owner on 2026-08-09. Recorded as ADR-012 … ADR-026.
 | Backend | Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic v2 |
 | Database | PostgreSQL on **Supabase** (managed host only, ADR-027), with Row-Level Security tenant isolation |
 | Cache / queue / real-time backplane | Redis |
-| Web dashboard | Angular 22, strict TypeScript, **Nx** workspace at `frontend/`, Signals + NgRx SignalStore, Angular Material + CDK, Tailwind CSS v4, **AG Grid Enterprise** (behind a wrapper), Storybook, Jest, Playwright |
+| Web dashboard | Angular 22, strict TypeScript, **Nx** workspace at `frontend/`, Signals + NgRx SignalStore, **PrimeNG** (primary component library) + Angular CDK (Material selective), Tailwind CSS v4, **AG Grid Community** (default, behind a wrapper; Enterprise optional per feature) — ADR-028, Storybook, Jest, Playwright |
 | Mobile | Flutter, Riverpod, Drift SQLite; Driver App offline-first |
 | Real-time | FastAPI WebSockets + Redis Pub/Sub — **Phase 1 scope** |
 | Boundary enforcement | `import-linter`, `mypy --strict` (backend); Nx `enforce-module-boundaries` (frontend) |
@@ -122,7 +124,7 @@ Confirmed by the product owner on 2026-08-09. Recorded as ADR-012 … ADR-026.
 | D1 | .NET vs Python backend | Python/FastAPI — ADR-012; .NET preserved under `superseded/` |
 | D2 | Angular 20 vs 22; Nx unconfirmed | Angular 22 + Nx at `frontend/` — ADR-018 |
 | D3 | Three conflicting state-management positions | Ordered Signals-first rule set — ADR-019 |
-| D4 | AG Grid vs Material/PrimeNG | AG Grid Enterprise behind an abstraction; PrimeNG dropped — ADR-020 |
+| D4 | AG Grid vs Material/PrimeNG | AG Grid Community default (Enterprise optional) behind an abstraction; PrimeNG adopted as primary component library — ADR-020, amended by ADR-028 (2026-08-09) |
 | D5 | `{success, error}` vs RFC 7807 | RFC 7807 + `error_code` — ADR-021 |
 | D6 | "OpenAPI first" vs "code-first" | Code-first generation, generated spec committed as the client contract — ADR-026 |
 | D7 | Azure SignalR, no FastAPI equivalent | FastAPI WebSockets + Redis Pub/Sub — ADR-015 |
@@ -146,7 +148,7 @@ Confirmed by the product owner on 2026-08-09. Recorded as ADR-012 … ADR-026.
 - **Real-time** — transport-agnostic publisher port, tenant-namespaced channels, RBAC-authorized subscriptions, at-most-once delivery with REST as the source of truth
 - **Background jobs** — separate worker process, jobs as use cases, always tenant-scoped, idempotent
 - **Printing** — server-side, block-based, tenant-configurable, renderer-agnostic
-- **Frontend** — Nx feature libraries that cannot import each other, Signals-first state, design tokens, AG Grid behind a wrapper, WCAG 2.2 AA
+- **Frontend** — Nx feature libraries that cannot import each other, Signals-first state, design tokens, PrimeNG as the primary component library, AG Grid Community behind a wrapper (Enterprise optional per feature), WCAG 2.2 AA
 - **Testing** — six layers, with tenant isolation as its own suite and boundary contracts as merge-blocking CI checks
 
 ### Gaps closed
@@ -187,7 +189,7 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 |---|---|---|
 | 0 | Documentation Reconciliation & Technical Baseline | ✅ **Complete** |
 | 1 | Repository / Development Foundation | ✅ **Complete** |
-| 2 | **Backend Foundation** | ⏳ **Next** |
+| 2 | **Backend Foundation** | ✅ **Complete** |
 | 3 | Shared Infrastructure (backend cross-cutting) | Not started |
 | 4 | Angular 22 Web Foundation | Not started |
 | 5 | Flutter Application Foundations | Not started |
@@ -213,33 +215,26 @@ Two sequencing notes carried forward: **real-time and printing cross-cut** rathe
 
 ## Current Priority
 
-### Phase 2 — Backend Foundation
+### Phase 2 — Backend Foundation ✅ Complete
 
-**Not started. Awaiting explicit go-ahead.**
+Delivered (full detail: [`planning/features/02-backend-foundation/`](./features/02-backend-foundation/)):
 
-Phase 1 built the backend *skeleton*: app factory, settings, logging, errors, health, connections. Phase 2 builds the *machinery* that business features will sit on:
-
-1. **Unit of Work** — the transaction boundary, with audit-row writing and post-commit event dispatch (`03-backend-architecture.md` §4).
-2. **Base repository** and the aggregate↔ORM mapping conventions.
-3. **Domain-event dispatcher**, in-process, with the transactional-outbox seam documented.
-4. **Tenant-scoped session dependency** — the version that *requires* a resolved tenant context, closing DW-12. Note this genuinely depends on Authentication for the JWT, so part of it may have to land in Phase 6; worth resolving early in Phase 2 planning.
-5. **First Alembic migration** — the `tenant` schema, with its RLS policies created in the same migration. **Against Supabase** (ADR-027): Alembic is the sole owner of schema, and the application role must be `NOSUPERUSER`/`NOBYPASSRLS`, never `service_role`. Provisioning that role on Supabase is DW-19 and cannot go through Alembic — role creation is administrative, not schema.
-6. **Tenant-isolation test suite** — two seeded tenants, every cross-tenant read returning nothing.
-7. **Background worker** skeleton and the ARQ/Dramatiq/Celery decision (ADR-023, DW-06).
-8. **Real-time publisher** implementation behind the existing port (ADR-015).
-9. **Idempotency store**, caching, and rate limiting.
+1. **Unit of Work** — `SqlAlchemyUnitOfWork`: transaction boundary, audit-row writing (via a SQLAlchemy `before_flush` hook, generic across every ORM model), post-commit event dispatch (`03-backend-architecture.md` §4).
+2. **One illustrative repository + CQRS use case** — `TenantRepository`/`SqlAlchemyTenantRepository`, `RenameTenantCommand`/`RenameTenantUseCase`, exercising the full Command → Application Service → Repository → UoW → domain event seam. Not a business feature (see `PLAN.md`).
+3. **Domain-event dispatcher**, in-process, wired into `SqlAlchemyUnitOfWork.commit()`. The transactional-outbox seam remains documented, not built.
+4. **Tenant context extension point** — `TenantResolver` protocol + interim `HeaderTenantResolver` (not a security boundary, not wired to any reachable endpoint) + `get_tenant_context`/`get_unit_of_work` FastAPI dependencies. DW-12 (mandatory resolved context) genuinely still depends on Authentication for the JWT — correctly not closed this phase, per the original plan.
+5. **First three Alembic migrations** — extensions (`citext`/`pg_trgm`), `tenant.tenant` + self-referential RLS, `audit.audit_log` + RLS + database-enforced immutability. Applied to local DEV/UAT/test; **not applied to Supabase PROD**, deliberately (DW-19/DW-20 still open there).
+6. **Tenant-isolation test suite** (`tests/tenant_isolation/`) — two (then three) seeded tenants; read/modify/delete all proven blocked by RLS directly against the `lpg_app` role, symmetrically in both directions, with positive controls proving the negative results are RLS-specific.
+7. **Background worker** — ARQ selected (ADR-029, resolves ADR-023/DW-06), worker entry point + job contract + trivial round-trip-proof job.
+8. **Idempotency, caching, rate-limiting infrastructure** — all Redis-backed, tenant-aware by key convention. No `RealtimePublisher` implementation yet (ADR-015's port still unwired) — genuinely Phase 3+ scope, not attempted.
 
 Still no business features. No Customer, Order, Inventory, Delivery, Accounting.
-
-**First, though:** close out the five environment-blocked verifications by running `./scripts/dev-up.sh && ./scripts/check.sh` on a machine with a working Docker daemon.
 
 ---
 
 ## Next Step
 
-Await explicit instruction to begin Phase 2.
-
-When authorized: create `planning/features/02-backend-foundation/` with `PLAN.md`, `TASKS.md` and `STATUS.md` per `AGENTS.md` Step 3, then execute.
+Await explicit instruction for the next phase. Recommendation: **Phase 6 (Authentication)** over Phase 3/4/5 — it is what Phase 2's `HeaderTenantResolver` and DW-12 are waiting on, and unlocks real business-facing endpoints for the first time. `planning/features/02-backend-foundation/{PLAN,TASKS,STATUS}.md` remain as the complete record of what Phase 2 delivered.
 
 ---
 
@@ -266,8 +261,8 @@ All seven questions from the initial assessment were answered by the product own
 
 | Deferred decision | Needed by |
 |---|---|
-| Background job library (ARQ / Dramatiq / Celery) | Phase 2 |
-| AG Grid Enterprise licence procurement | Phase 4 |
+| PrimeNG licence-tier eligibility confirmation (DW-22) | Phase 4 |
+| AG Grid Enterprise licence procurement (only if a feature needs it) | As triggered — no longer a standing Phase 4 blocker |
 | Warehouse Staff vs Warehouse Manager (D-38 residual) | Phase 6 |
 | KYC document types (pending business/legal) | Phase 8 |
 | Inventory counter granularity (D-04/D-14 residual) | Phase 9 |
@@ -276,7 +271,7 @@ All seven questions from the initial assessment were answered by the product own
 | Statutory backup retention duration | Phase 18 |
 | Azure hosting topology + IaC tool (Bicep / Terraform) | Before production |
 
-One item is worth flagging early rather than at its trigger point: **AG Grid Enterprise is a paid product and procurement is unconfirmed.** It does not block Phase 1, but it does block Phase 4, and lead time on commercial licensing is outside engineering's control.
+**Revised 2026-08-09 (same day, out of session): AG Grid Enterprise is no longer a standing procurement blocker.** ADR-028 (amends ADR-020) makes AG Grid Community the default data-grid engine; Enterprise is opt-in per feature, evaluated only when a documented requirement demands it. In its place: **PrimeNG is adopted as the primary Angular UI component library**, and its licence-tier eligibility (Community vs Commercial) needs product-owner confirmation before Phase 4 (DW-22) — a much lower-stakes item than commercial AG Grid procurement, since a Community-tier PrimeNG key already exists.
 
 ---
 
@@ -294,7 +289,7 @@ One item is worth flagging early rather than at its trigger point: **AG Grid Ent
 | 017 | PostgreSQL RLS + repository scoping for tenant isolation (amends ADR-003) |
 | 018 | Angular 22 + Nx workspace under `frontend/` |
 | 019 | Signals-first state management with NgRx SignalStore |
-| 020 | AG Grid Enterprise behind an application-level abstraction |
+| 020 | AG Grid Enterprise behind an application-level abstraction — *amended by 028, Community now default* |
 | 021 | RFC 7807 Problem Details as the API error contract |
 | 022 | Azure target cloud; hosting topology and IaC tool deferred |
 | 023 | Background job architecture; library deferred |
@@ -302,6 +297,7 @@ One item is worth flagging early rather than at its trigger point: **AG Grid Ent
 | 025 | Polyglot monorepo layout; `frontend/` not renamed (amends ADR-001) |
 | 026 | Code-first OpenAPI, generated spec committed as the frozen client contract |
 | 027 | **Supabase as the managed PostgreSQL host only** — amends 013 and 022. Auth, Storage, Realtime and Edge Functions not adopted; Alembic keeps sole ownership of schema |
+| 028 | **Hybrid UI strategy** — PrimeNG primary, AG Grid Community default, AG Grid Enterprise optional per feature (amends 020) |
 
 ### Decisions that survived the stack change
 
@@ -319,7 +315,7 @@ Multi-tenant SaaS from Phase 1 (D-01) · multi-branch/warehouse (D-02) · four c
 
 One verification remains **blocked**, recorded as blocked rather than complete: a live SQLAlchemy/Alembic connection to Supabase, pending credentials. Phase 1's foundation is fully verified against local PostgreSQL 17 and Redis 7.
 
-Phase 2 is **NOT STARTED**.
+**Phase 2 is COMPLETE**, started and finished 2026-08-09. 34/34 tracked tasks verified — see [`planning/features/02-backend-foundation/STATUS.md`](./features/02-backend-foundation/STATUS.md). 182 backend tests passing (up from 83), 230 overall across all three stacks.
 
 ---
 

@@ -19,7 +19,7 @@ Authoritative status: [`planning/current_phase.md`](./planning/current_phase.md)
 | Application | Stack | Location |
 |---|---|---|
 | **Backend API** | Python 3.13 · FastAPI · SQLAlchemy 2.x · Alembic · Pydantic v2 · PostgreSQL · Redis | `backend/` |
-| **Agency Web Dashboard** | Angular 22 · Nx · Signals · Angular Material + CDK · Tailwind CSS v4 · AG Grid | `frontend/` |
+| **Agency Web Dashboard** | Angular 22 · Nx · Signals · PrimeNG · Angular CDK (Material selective) · Tailwind CSS v4 · AG Grid Community (Enterprise optional) | `frontend/` |
 | **Customer Mobile App** | Flutter · Riverpod · go_router | `mobile/apps/customer_app/` |
 | **Driver Mobile App** | Flutter · Riverpod · go_router · Drift (offline-first) | `mobile/apps/driver_app/` |
 

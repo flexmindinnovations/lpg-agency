@@ -127,7 +127,7 @@ Separate containers per data category — `kyc-documents`, `delivery-proofs`, `i
 
 ## 9. Secrets
 
-One secret store per environment. Application instances and workers authenticate by **managed identity** — no secrets in source control, no secrets in pipeline variables. The AG Grid Enterprise licence key (ADR-020) is supplied this way to the frontend build.
+One secret store per environment. Application instances and workers authenticate by **managed identity** — no secrets in source control, no secrets in pipeline variables. The AG Grid Enterprise licence key, where a feature enables Enterprise (ADR-020, amended by ADR-028), and the PrimeNG licence key (ADR-028) are supplied this way to the frontend build.
 
 ## 10. Best Practices
 

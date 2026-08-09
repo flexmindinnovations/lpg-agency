@@ -7,13 +7,13 @@
 
 ## Status
 
-**COMPLETE — 63/66 actionable tasks verified (95%), 1 blocked, all verifications re-run fresh this session**
+**COMPLETE — 64/67 actionable tasks verified (96%), 1 blocked, all verifications re-run fresh this session**
 
-Every check below was re-executed from scratch this session, not read from a prior report. Nx cache was explicitly bypassed for the frontend re-check. Two things closed that were open at the start of this session: the live **Supabase** connection (T-63) and zero test coverage on two shared libraries (DW-21).
+Every check below was re-executed from scratch this session, not read from a prior report. Nx cache was explicitly bypassed for the frontend re-check. Three things closed that were open at the start of this session: the live **Supabase** connection (T-63), zero test coverage on two shared libraries (DW-21), and PrimeNG installation & integration (T-68).
 
 ## Progress
 
-**63 / 66 actionable tasks complete (95%)** · 1 blocked · 2 intentionally not done
+**64 / 67 actionable tasks complete (96%)** · 1 blocked · 2 intentionally not done
 
 | Group | Complete | State |
 |---|---|---|
@@ -24,7 +24,7 @@ Every check below was re-executed from scratch this session, not read from a pri
 | E — Flutter foundation | 6/6 | ✅ Verified |
 | F — Scripts, CI, documentation | 5/5 | ✅ Verified |
 | G — Verification & closeout | 4/4 | ✅ Verified |
-| H — Phase 1 close-out | 10/10 | ✅ **Complete — T-63 closed this session** |
+| H — Phase 1 close-out | 11/11 | ✅ **Complete — T-63, T-68 closed this session** |
 | I — Password rotation (prior session) | included above | ✅ Verified |
 
 ---
@@ -117,6 +117,17 @@ Closed rather than deferred, since Phase 1's own Definition of Done requires a w
 
 The AG Grid test in particular is worth more than its count suggests: it's the first proof that ADR-020's wrapper actually mounts a real grid, not just that its mapping functions compile.
 
+### T-68 — PrimeNG installation & integration: NOT INSTALLED → ✅ COMPLETE
+
+ADR-028's hybrid UI strategy (PrimeNG primary) had been decided but never actually installed. Closed this session:
+
+- Installed `primeng@22.0.0` + `@primeuix/themes@3.0.0` + `primeicons@8.0.0` + `@angular/animations@~22.0.4`, version-matched to installed Angular `~22.0.4` against the npm registry.
+- Built `LpgPrimeNgPreset` (`libs/shared/design-tokens/src/lib/primeng-preset.ts`) — every PrimeNG colour, radius, spacing and transition-duration value is `var(--token-name)` or a `color-mix()` derivative of one. No second design system.
+- **Found and fixed a pre-existing Phase 1 bug, confirmed with the user before touching already-completed files:** `styles.css` and the AG Grid wrapper referenced `var(--semantic-color-*)` / `var(--semantic-spacing-*)` / `var(--semantic-radius-*)` / `var(--semantic-border-width)` — none of which the token generator has ever emitted (it strips the `semantic` group's prefix to nothing by design; real names are the bare `--color-*` / `--spacing-*` / `--radius-*` / `--border-width`). Introduced in the original Phase 1 commit (`470436e`) — every one of those `var()` references had been silently resolving to nothing since Phase 1 was marked complete. Fixed both files (mechanical rename, no logic change); re-verified light/dark/high-contrast rendering live and AG Grid's own 9-test suite still passes.
+- Fixed a real accessibility gap: PrimeNG's `p-dialog` does not return focus to its trigger element on close (no such input exists — checked `primeng-dialog.d.ts`). Added an explicit `viewChild` + `(onHide)` handler; verified Escape closes the dialog and focus returns to the "Open dialog" button (WCAG 2.2 AA, D-35).
+- Licence key never hardcoded (same rule as `AG_GRID_LICENSE_KEY`). `prime-license.ts` is git-ignored; `prime-license.example.ts` is the committed template; `app.config.ts` passes the (possibly-`undefined`) key straight into `providePrimeNG({ license: ... })` — its absence never fails the build, PrimeNG just runs unlicensed.
+- Verified fresh: `nx build dashboard` (536.39kB initial, under the raised 550kB budget), `nx lint` + `nx test` across `dashboard` / `shared-design-tokens` / `shared-ui`, `prettier --check`, design-token drift check, and live-browser checks (light/dark/high-contrast themes, dialog focus trap and focus-return, breadcrumb/tabs/select/toast/tooltip rendering).
+
 ---
 
 ## Still Blocked
@@ -143,7 +154,7 @@ That is now the **only** remaining blocked item.
 1. ~~Live Supabase connectivity unverified~~ — **closed this session.**
 2. **`citext` and `pg_trgm` not installed on Supabase** — DW-20, new this session.
 3. **The Supabase application role is not provisioned** (DW-19) — confirmed more urgent now that the raw `postgres` credential is live and usable but unsafe for the application connection.
-4. **AG Grid runs on Community, not Enterprise** — licence procurement unconfirmed (DW-08). Unchanged.
+4. ~~AG Grid runs on Community, not Enterprise — licence procurement unconfirmed (DW-08)~~ — **resolved 2026-08-09, out of session.** ADR-028 (amends ADR-020) makes AG Grid Community the platform default; DW-08 is no longer a standing blocker, only a per-feature question if a future requirement needs Enterprise. Same session added PrimeNG as the primary component library; new open item **DW-22** (PrimeNG licence-tier eligibility) tracked in `planning/current_phase.md`.
 5. **Three documented mobile packages not created** — `api_client`, `auth`, `sync_engine` (DW-17). No content until Phase 6 / Phase 11.
 
 ---
@@ -156,4 +167,4 @@ Awaiting explicit instruction. When it comes, DW-19 (provision the Supabase appl
 
 ## Last Updated
 
-2026-08-09 (re-verification pass)
+2026-08-09 (PrimeNG installation & integration, T-68)

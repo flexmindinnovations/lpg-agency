@@ -138,19 +138,18 @@ Do not use RxJS where Signals provide a simpler solution.
 
 ---
 
-## Angular Material
+## Angular Material (Selective Use)
 
 Purpose
 
-Enterprise UI components.
+Per ADR-028, Angular Material is **not the primary component library** — PrimeNG is (see below). Material is used selectively, only where it offers a superior primitive or integration not otherwise covered by PrimeNG or Angular CDK directly.
 
 Use for
 
-- Dialogs
-- Menus
-- Navigation
-- Forms
-- Accessibility
+- Specific primitives where Material's implementation is genuinely the better fit
+- Accessibility scaffolding it already solves well
+
+Angular CDK (overlay, focus trap, drag/drop, scrolling, key-manager) remains available independently of Material for low-level interaction primitives.
 
 ---
 
@@ -185,21 +184,23 @@ Rules
 
 ---
 
-## AG Grid Enterprise
+## PrimeNG + AG Grid (Hybrid UI Strategy)
 
 Purpose
 
-Enterprise data grids: large datasets, filtering, grouping, export, virtual scrolling, column management, saved views.
+**PrimeNG is the primary Angular UI component library** (ADR-028, amends ADR-020). **AG Grid Community is the default data-grid engine** — large datasets, filtering, column management, virtual scrolling, export. **AG Grid Enterprise is optional**, enabled per grid only where a documented feature requirement needs an Enterprise-only capability (e.g. row grouping, advanced server-side model) and a licence is available.
 
-**Three binding constraints (ADR-020):**
+**Binding constraints, unchanged from ADR-020 regardless of AG Grid tier:**
 
 1. AG Grid is **encapsulated behind application-level grid components** in `libs/shared/ui`.
 2. Feature libraries **must not** import AG Grid types or call AG Grid APIs directly — they configure the wrapper through an application-defined contract. A wrapper that leaks AG Grid types is not an abstraction.
-3. **AG Grid Enterprise is a commercial, paid-licence product.** The licence key is supplied as build-time environment configuration from the secret store and is never committed.
+3. **Whichever tier a grid uses, licence keys are supplied as build-time environment configuration from the secret store and are never committed.** This applies equally to a PrimeNG licence key.
 
-The architecture must remain replaceable if licensing or product requirements change. Licence procurement is currently **unconfirmed** — it blocks the Angular Foundation phase.
+The architecture must remain replaceable if licensing or product requirements change. Since AG Grid Community is the default, Enterprise licence procurement is **no longer a standing Phase 4 blocker** — it is a per-feature decision made only when a real requirement demands it.
 
-**PrimeNG is not adopted.** With AG Grid for grids and Angular Material + CDK for interaction primitives, a third component library would only fragment the design-token implementation.
+**PrimeNG is adopted, installed and token-wired** as the primary component library (T-68, Phase 1 close-out, 2026-08-09). Angular CDK remains available for low-level primitives; Angular Material is used selectively, not as the primary library. PrimeNG and AG Grid must both consume the centralized design-token system wherever their theming APIs allow — no vendor-specific hardcoded styling values.
+
+**PrimeNG licensing note:** current-generation PrimeNG ships under a proprietary PrimeUI License (Community/Commercial tiers), not MIT. Community-tier eligibility for this organisation is unconfirmed — DW-22, a product-owner decision, still open (the licence key is supplied via a git-ignored local/CI file, `apps/dashboard/src/app/prime-license.ts`, never committed; its absence degrades to an unlicensed banner, not a build failure).
 
 ---
 
@@ -328,7 +329,7 @@ Because Redis serves five distinct roles, it is a **critical dependency** and mo
 
 A **separate worker process** sharing the backend codebase, with Redis as the queue substrate. Jobs are application-layer use cases, never logic that exists only inside a scheduler, and every job runs inside a tenant context.
 
-**The specific library is deferred** to the Backend Foundation phase — ARQ, Dramatiq, and Celery are the candidates (ADR-023).
+**Library: ARQ** (ADR-029, resolves ADR-023's deferral) — async-native, Redis-backed, no second broker to operate. Selected over Dramatiq/Celery specifically because this backend is async-first throughout (FastAPI, SQLAlchemy 2.x async, asyncpg); a sync-first job library would force either an `asyncio.run()` wrapper per task or a second, sync-only persistence path. Worker entry point and job contract exist (Phase 2); no business job is implemented yet.
 
 ---
 

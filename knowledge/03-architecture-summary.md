@@ -121,7 +121,7 @@ Technology
 - Angular Signals, with NgRx SignalStore for justified shared state
 - Angular Material + Angular CDK
 - Tailwind CSS v4 (design-token driven)
-- AG Grid Enterprise, behind an application-level wrapper
+- PrimeNG as the primary UI component library; AG Grid Community (Enterprise optional per feature) behind an application-level wrapper (ADR-028)
 
 Purpose
 

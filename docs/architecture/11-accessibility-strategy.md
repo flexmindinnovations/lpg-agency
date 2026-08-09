@@ -65,10 +65,10 @@ flowchart LR
 
 ## 10. Best Practices
 - Accessibility acceptance criteria included in every feature's Definition of Done (per `../srs/documentation` expectations elsewhere in the SRS), not treated as a separate, deferrable workstream.
-- New third-party component libraries (e.g., a specific PrimeNG component brought in per `04-frontend-architecture.md` §6) are accessibility-audited before adoption, since inheriting an inaccessible third-party widget undermines the shared-library strategy in §2.
+- Each PrimeNG component is accessibility-audited before adoption into `shared/ui`, per ADR-028's hybrid component strategy (`04-frontend-architecture.md` §5), since inheriting an inaccessible third-party widget undermines the shared-library strategy in §2.
 
 ## 11. Risks
-- **Data Grid complexity**: the Enterprise Data Grid (sorting/filtering/grouping/column-chooser) is the single highest-risk component for accessibility regressions given its complexity — mitigated by concentrating extra manual testing effort here specifically, and by not allowing feature teams to build ad-hoc alternative grids that bypass the shared, tested implementation.
+- **Data Grid complexity**: the AG Grid data grid (sorting/filtering/grouping/column-chooser, at whichever tier a given instance uses — Community by default, Enterprise where a documented requirement needs it, per ADR-028) is the single highest-risk component for accessibility regressions given its complexity — mitigated by concentrating extra manual testing effort here specifically, and by not allowing feature teams to build ad-hoc alternative grids that bypass the shared, tested implementation.
 - **Third-party widget gaps**: PrimeNG/Angular Material components may have accessibility gaps in edge cases — mitigated by the pre-adoption audit in §10 and by wrapping (not directly exposing) third-party components through `shared/ui`, so gaps can be patched centrally.
 
 ## 12. Alternatives Considered

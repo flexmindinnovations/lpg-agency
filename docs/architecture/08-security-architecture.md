@@ -88,7 +88,7 @@ Payment card data is never stored by the platform directly — card transactions
 ## 7. Secrets Management
 
 - **Azure Key Vault** holds all connection strings, API keys (payment gateway, SMS/email provider), and encryption keys.
-- Application instances and the background worker use **Managed Identity** to access Key Vault — no secrets in application configuration, source control, or CI/CD variables in plaintext. This includes the AG Grid Enterprise licence key used at frontend build time (ADR-020).
+- Application instances and the background worker use **Managed Identity** to access Key Vault — no secrets in application configuration, source control, or CI/CD variables in plaintext. This includes the AG Grid (Enterprise, where enabled per feature) and PrimeNG licence keys used at frontend build time (ADR-020, ADR-028) — never committed, regardless of tier.
 - Secret rotation policy: automated rotation for Key Vault-managed keys where supported; documented manual rotation runbook for third-party API keys (payment gateway, SMS provider).
 
 ## 8. Session Management

@@ -8,7 +8,7 @@ Applies to the single backend application (modular monolith, per ADR-002). Does 
 
 > **Stack note.** This document was written in Phase 0 (2026-08-09) for the confirmed **Python 3.13 / FastAPI / SQLAlchemy 2.x / PostgreSQL** stack. It replaces an ASP.NET Core version preserved at [`superseded/03-backend-architecture-dotnet.md`](./superseded/03-backend-architecture-dotnet.md). The five cross-cutting behaviors that document specified encode binding business rules (BR-28, BR-30) and are re-expressed here in §3 rather than dropped. See ADR-012 and ADR-014.
 
-> **Code in this document is illustrative pseudocode**, showing shape and intent only. It is not implementation and is not to be copied verbatim. No backend source code exists yet; see `planning/current_phase.md`.
+> **Code in this document is illustrative pseudocode**, showing shape and intent only. It is not implementation and is not to be copied verbatim. **Updated Phase 2 (2026-08-09):** the shapes below are now real, tested code — `SqlAlchemyUnitOfWork` (§4), `get_unit_of_work`/`get_tenant_context` (§3.2), `DomainEventDispatcher` (§6), `AuditRecorder` (§10, via a SQLAlchemy `before_flush` hook rather than the pseudocode's inline description — see `lpg.infrastructure.persistence.audit`), and one illustrative repository + use case (`Tenant`/`RenameTenantUseCase`, not a business feature — see `planning/features/02-backend-foundation/PLAN.md`). No business aggregate, repository, or router exists yet; see `planning/current_phase.md`.
 
 ## 1. Clean Architecture Layers
 
@@ -168,7 +168,7 @@ class OrderRepository(Protocol):
 
 ## 7. Background Jobs
 
-Architecture per ADR-023; **library selection deliberately deferred** to Phase 2 (Backend Foundation), pending a spike over ARQ, Dramatiq, and Celery.
+Architecture per ADR-023; **library: ARQ** (ADR-029, resolved Phase 2) — async-native, Redis-backed, no second broker. Worker entry point and job contract scaffolded (`lpg.infrastructure.jobs.worker`); no business job implemented yet.
 
 - Jobs are **application-layer use cases**, invoked by a worker. The same use case is callable from an HTTP request, a test, or the job runner. Nothing business-meaningful lives only inside a scheduler.
 - The **worker is a separate process** sharing the same codebase, so batch work never competes with request latency.

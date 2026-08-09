@@ -52,7 +52,8 @@ Confirmed 2026-08-09. Full rationale in `docs/architecture/15-architecture-decis
 - Angular Material
 - Angular CDK
 - Tailwind CSS v4
-- **AG Grid Enterprise** — commercial licence; used **only** through the shared wrapper in `libs/shared/ui`
+- **PrimeNG** — primary Angular UI component library (ADR-028); consumes the design-token system via `@primeuix/themes`
+- **AG Grid Community** — default data-grid engine, used **only** through the shared wrapper in `libs/shared/ui`; **AG Grid Enterprise** is optional, enabled per feature only where a documented requirement needs an Enterprise-only capability and a licence is available (ADR-028, amends ADR-020)
 - Storybook
 - Jest
 - Playwright

@@ -247,7 +247,7 @@ Enterprise tables should support:
 
 Large datasets should use virtualization.
 
-**Implementation: AG Grid Enterprise, behind an application-level wrapper** in `libs/shared/ui` (ADR-020). Feature libraries configure the wrapper through an application-defined contract and must never import AG Grid types or call its APIs directly. Accessibility is verified once, in the wrapper, per ADR-011. AG Grid Enterprise requires a **commercial licence**, supplied as build-time configuration.
+**Implementation: AG Grid, behind an application-level wrapper** in `libs/shared/ui` (ADR-020, amended by ADR-028). **AG Grid Community is the default; AG Grid Enterprise is optional**, enabled per grid only where a documented feature requirement needs an Enterprise-only capability (e.g. row grouping). Feature libraries configure the wrapper through an application-defined contract and must never import AG Grid types or call its APIs directly. Accessibility is verified once, in the wrapper, per ADR-011. Where Enterprise is used, it requires a **commercial licence**, supplied as build-time configuration and never committed — the same rule applies to the PrimeNG licence key.
 
 ---
 

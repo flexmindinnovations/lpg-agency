@@ -25,7 +25,7 @@ STYLING DIRECTION: Modern enterprise SaaS aesthetic benchmarked against Linear, 
 
 BUSINESS CONTEXT: Agency staff need to see every incoming refill booking and move it toward fulfillment. This is the highest-traffic screen in the Dashboard — the entry point to the entire delivery pipeline.
 USER GOAL: Dispatcher/Manager needs to scan pending orders, filter by status/branch/date, and select orders to build into a delivery route.
-REQUIRED COMPONENTS: Data Grid (AG Grid Enterprise), Filter Bar, Page Header with primary Create Order button, Bulk Action Bar, Status Pill (per Order state), Column Chooser.
+REQUIRED COMPONENTS: Data Grid (AG Grid Community; Enterprise only if grouping is enabled for this grid), Filter Bar, Page Header with primary Create Order button, Bulk Action Bar, Status Pill (per Order state), Column Chooser.
 INTERACTIONS: Row click opens Order Detail. Multi-select rows enables an Add to Route bulk action. Filter Bar defaults to active statuses only (excludes Closed/Cancelled). Sort defaults to Requested Date ascending.
 ACCESSIBILITY: Grid role semantics with sort-state on headers; arrow-key row navigation, Enter opens detail, Space toggles selection; bulk-selection count announced via a polite live region; filter inputs properly labeled.
 ANIMATIONS: Skeleton rows on load (never a blank spinner); row fade-plus-height animation (150ms) on filter-driven insert/remove; no animation on initial data population.

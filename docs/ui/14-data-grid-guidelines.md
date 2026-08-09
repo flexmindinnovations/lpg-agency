@@ -1,7 +1,7 @@
 # 14 — Data Grid Guidelines
 
 ## Purpose
-Designs the enterprise Data Grid pattern used throughout the Dashboard (AG Grid Enterprise-based): sorting, filtering, grouping, column chooser, column pinning, virtual scroll, pagination, saved views, bulk actions, keyboard navigation, accessibility.
+Designs the Data Grid pattern used throughout the Dashboard (AG Grid-based — Community by default, Enterprise enabled per grid instance only where a documented requirement needs it, per ADR-028): sorting, filtering, grouping, column chooser, column pinning, virtual scroll, pagination, saved views, bulk actions, keyboard navigation, accessibility.
 
 ## 1. Sorting
 - Click a column header to sort ascending, click again for descending, click again to clear. Shift+click adds a secondary sort column.
@@ -15,7 +15,7 @@ Designs the enterprise Data Grid pattern used throughout the Dashboard (AG Grid 
 - Server-side filtering via the whitelisted filter-expression subset (`docs/data/10-api-design-guidelines.md` section 5).
 
 ## 3. Grouping
-- Available on select grids where it adds real value (e.g. grouping the Cylinder Movement report by Cylinder Type, or Orders by Branch for multi-branch tenants) — not enabled universally, since grouping adds complexity that most list screens (Customer List, Complaint Queue) don't need.
+- Available on select grids where it adds real value (e.g. grouping the Cylinder Movement report by Cylinder Type, or Orders by Branch for multi-branch tenants) — not enabled universally, since grouping adds complexity that most list screens (Customer List, Complaint Queue) don't need. Row grouping is an AG Grid **Enterprise-only** capability — a grid that enables it is exactly the kind of documented, per-feature requirement ADR-028 has in mind for opting that specific grid instance into Enterprise, not a reason to make Enterprise the platform default.
 - Grouped rows show an aggregate summary (count, sum) in the group header row.
 
 ## 4. Column Chooser
@@ -72,10 +72,10 @@ Below the tablet breakpoint, every Data Grid converts to a stacked card list: ea
 - Default page size, default sort, and default filter (if any) are chosen per module to match the most common real-world task (e.g. Order Queue defaults to sorting by Requested Date ascending, status filter defaulted to active/pending statuses, not showing Closed/Cancelled by default).
 
 ## Risks
-- AG Grid Enterprise licensing/bundle-size cost — accepted given the enterprise feature requirements (grouping, column pinning, advanced filtering) genuinely needed here; a lighter-weight grid library was considered and rejected (see Alternatives).
+- Where a grid genuinely needs an Enterprise-only capability (row grouping is the main one in this document), AG Grid Enterprise's licensing/bundle-size cost applies to that grid instance specifically — accepted per ADR-028 as a per-feature decision, not a platform-wide default; a lighter-weight grid library was considered and rejected for the Community-tier baseline (see Alternatives).
 
 ## Alternatives Considered
-- A lightweight/custom-built table component — rejected; the feature set required (server-side everything, grouping, column pinning, saved views, virtual scroll, accessibility) is exactly AG Grid Enterprise's core value proposition, and building/maintaining equivalent functionality in-house is a worse 10-year investment than licensing a purpose-built product.
+- A lightweight/custom-built table component — rejected; the feature set required (server-side everything, column pinning, saved views, virtual scroll, accessibility) is exactly AG Grid Community's core value proposition, and building/maintaining equivalent functionality in-house is a worse 10-year investment than using a purpose-built product. Row grouping specifically remains available via AG Grid Enterprise, opted into per grid where documented (ADR-028), rather than built by hand or licensed platform-wide by default.
 
 ## Future Scalability
 - Saved Views' share-with-team extension point and potential future export-scheduling integration (tying into the Reporting module's async export jobs) are both additive to the current grid architecture, requiring no restructuring.
