@@ -8,61 +8,72 @@ LPG Agency Management Platform
 
 ## Current Phase
 
-**Phase 0 — Documentation Reconciliation & Technical Baseline** ✅ **COMPLETE**
+**Phase 1 — Repository / Development Foundation** ✅ **COMPLETE** (5 verifications environment-blocked)
 
-**Next phase — Phase 1: Repository / Foundation — NOT STARTED.** It requires an explicit go-ahead.
+**Next phase — Phase 2: Backend Foundation — NOT STARTED.** It requires an explicit go-ahead.
+
+Phase 0 — Documentation Reconciliation & Technical Baseline — is also complete; see [`planning/features/00-documentation-reconciliation/STATUS.md`](./features/00-documentation-reconciliation/STATUS.md).
 
 ---
 
 ## Phase Objective
 
-Make the documentation set unambiguous, so the first line of application code is written against a single coherent architecture — and so the reasoning behind the change stays traceable.
+**Phase 1 (complete):** establish the production-ready repository structure and developer tooling for the Angular 22, FastAPI, Flutter, PostgreSQL and Redis applications — foundation only, no business functionality.
 
-The repository contained two mutually exclusive architecture descriptions: `docs/architecture/` specified ASP.NET Core 8 / C# / EF Core / MediatR / Azure SQL; `AGENTS.md`, `knowledge/`, and all 20 documents in `docs/data/` specified Python 3.13 / FastAPI / SQLAlchemy / PostgreSQL. Both looked authoritative. `docs/architecture/03-backend-architecture.md` — the document an implementer would follow to lay out the backend — described MediatR pipeline behaviors carrying binding business rules (BR-28 audit logging, BR-30 tenant scoping) with no FastAPI equivalent written down anywhere.
-
-**Objective achieved.** The backend stack is confirmed as Python/FastAPI/PostgreSQL, the .NET architecture is superseded through traceable ADRs with the original documents preserved, the missing Python architecture is authored, and the six cross-cutting contradictions are resolved.
+Achieved. A developer can clone, run one setup command, and every application starts, every test suite runs, and every quality gate passes — with no business logic present.
 
 ---
 
 ## Current Repository State
 
-Verified 2026-08-09, post-Phase-0.
+Verified 2026-08-09, post-Phase-1. Every figure below came from running a command.
 
-**There is still no application source code. That is by design — Phase 0 was documentation-only.**
+**The repository now contains working, verified code — and still no business features.** No authentication, no domain aggregates, no business routes or screens. That is deliberate; each arrives in its own phase.
 
-### Completed
+### Built and verified
 
 | Area | State |
 |---|---|
-| Business analysis, SRS, business decisions D-01…D-42 | Complete, unchanged by Phase 0 |
-| Data architecture (`docs/data/`, 20 docs incl. full PostgreSQL schema) | Complete, unchanged — it was already Python-native |
-| UX architecture & design system (`docs/ui/`, 26 docs) | Complete, unchanged |
-| **Solution architecture, reconciled to Python/FastAPI** | **Complete — 6 documents rewritten, 6 corrected in place, 1 created** |
-| **Architecture Decision Records ADR-001 … ADR-026** | **Complete — 3 superseded, 3 amended, 15 added** |
-| **Superseded .NET architecture, preserved** | **Complete — `docs/architecture/superseded/` with banners + README** |
-| **Real-time architecture** | **Complete — new `16-realtime-architecture.md`** |
-| **Implementation roadmap & module plan** | **Complete — resolved two dangling links** |
-| **Documentation index & legacy path map** | **Complete — new `docs/README.md`** |
-| Knowledge summaries | Updated to match the confirmed stack |
-| `AGENTS.md`, `README.md` | Updated |
-| Planning system | `planning/current_phase.md` + `planning/features/00-documentation-reconciliation/` |
+| **Backend** (`backend/`) | FastAPI app on Python 3.13.5. Clean Architecture layers, Pydantic settings with production guard rails, structlog with central redaction, correlation IDs, RFC 7807 errors, async SQLAlchemy with the RLS tenant seam, Redis client, split liveness/readiness probes, Alembic harness, committed + drift-checked OpenAPI spec. **49 tests pass.** |
+| **Frontend** (`frontend/`) | Nx 23.1.1 workspace, **Angular 22.0.8** dashboard. Design tokens, three themes, four shared libraries, AG Grid behind a wrapper, RFC 7807 + correlation interceptors, accessible app shell. **14 tests pass.** |
+| **Mobile** (`mobile/`) | Melos workspace: `customer_app`, `driver_app`, and `core`/`design_system`/`local_storage` packages. Riverpod, go_router, generated Dart tokens with three themes. **12 tests pass.** |
+| **Design tokens** (`design-tokens/`) | One JSON source generating 229 CSS variables, TypeScript constants and Dart constants. Drift-checked in CI. |
+| **Local environment** (`infrastructure/`) | Docker Compose: PostgreSQL 17 + Redis 7, non-default ports, healthchecks, init SQL creating the `NOBYPASSRLS` application role. |
+| **Scripts** (`scripts/`) | setup, dev-up, dev-down, test, lint, format, check, generate-tokens. |
+| **CI** (`.github/workflows/`) | Four path-filtered workflows; validation only, no deployment. |
+| **Git** | First commit `470436e`, 428 files, working tree clean. |
+
+**75 tests passing overall.** Lint, format, type check and boundary contracts pass on all three stacks.
+
+### Enforcement that is live
+
+Not conventions — these fail the build:
+
+| Rule | Mechanism | Status |
+|---|---|---|
+| Clean Architecture dependency direction | `import-linter`, 5 contracts | ✅ 5 kept, 0 broken |
+| Full type coverage at boundaries | `mypy --strict` | ✅ 36 files clean |
+| Feature libraries never import each other | Nx `enforce-module-boundaries` | ✅ 6 projects clean |
+| Design tokens match their single source | Generator `--check` | ✅ |
+| OpenAPI spec matches implementation | Export `--check` | ✅ |
+| No environment file committed | Repository CI | ✅ |
+| Superseded .NET architecture stays superseded | Repository CI | ✅ |
+
+The boundary contracts earned their place on first run: they caught the API layer importing `Database` directly. Fixed properly by depending on the application-layer `HealthCheck` port, with the composition root carrying a declared exception.
 
 ### Not started
 
-- Backend application (`backend/` is empty) — no FastAPI app, no layers, no models, no migrations, no tests
-- Angular 22 dashboard (`frontend/` is empty) — no Nx workspace, no design tokens, no shared UI
-- Flutter apps (`mobile/` is empty)
-- Local development environment (Docker Compose, `.env` templates, seed scripts)
-- CI/CD (`.github/` does not exist)
-- Infrastructure as code (`infrastructure/` does not exist)
-- `.gitignore`, `CONTRIBUTING.md`
-- **Git: still zero commits.** Every file is untracked.
+Authentication · RBAC · every business module · background worker · real-time WebSocket implementation · printing engine · production infrastructure · deployment pipelines · offline sync.
 
-### Known documentation gap (recorded, not blocking)
+### Environment-blocked verifications
 
-Several documents reference per-module specification files under `docs/modules/` — `order-management.md`, `inventory-management.md`, `reporting.md`, `accounting.md`, `notifications.md`, `customer-management.md`. **That folder was never created.** Equivalent content is distributed across `docs/srs/functional.md`, `docs/business/`, `docs/engineering/`, and `docs/data/`; the mapping is documented in `docs/README.md` §Legacy Path Map, and per-module implementation scope is now consolidated in `docs/implementation/module-implementation-plan.md`.
+**Docker Desktop's daemon would not start here.** Five verifications could not be executed and are marked blocked, not complete: container startup (T-08), live database connection (T-15), live Redis connection (T-16), `alembic current` against a live database (T-19), and Playwright e2e execution (T-34, needs browser binaries).
 
-Remaining `modules/` references inside `docs/business/` were deliberately left in place — those files are a stakeholder-approved historical record, and editing them to fix a path would alter the record for no functional gain.
+Configuration is authored and validated — `docker compose config` parses, and the readiness endpoint correctly reports both dependencies unreachable with per-dependency detail. One command closes these out on a machine with working Docker:
+
+```bash
+./scripts/dev-up.sh && ./scripts/check.sh
+```
 
 ---
 
@@ -98,9 +109,9 @@ Confirmed by the product owner on 2026-08-09. Recorded as ADR-012 … ADR-026.
 
 ## Architecture Baseline
 
-**Still nothing in code.** The baseline below is documented and internally consistent; it has not been built.
+**Documented, and now partly realised.** The foundation layers below exist in code and are enforced by CI. The business layers above them do not exist yet.
 
-### Documented and unambiguous
+### Documented, with foundation implemented
 
 - **Clean Architecture** — Domain → Application → Infrastructure → API, dependency rule pointing inward, enforced in CI by `import-linter` and `mypy --strict` (`docs/architecture/03-backend-architecture.md`)
 - **DDD** — aggregates with single roots, domain events dispatched **after** commit, bounded contexts matching both backend module folders and PostgreSQL schema names
@@ -115,9 +126,13 @@ Confirmed by the product owner on 2026-08-09. Recorded as ADR-012 … ADR-026.
 - **Frontend** — Nx feature libraries that cannot import each other, Signals-first state, design tokens, AG Grid behind a wrapper, WCAG 2.2 AA
 - **Testing** — six layers, with tenant isolation as its own suite and boundary contracts as merge-blocking CI checks
 
-### Gaps closed by Phase 0
+### Gaps closed
 
-All nine architecture gaps (A1–A9) from the initial assessment are closed: folder structure reconciled, docs sub-structure mapped, Python backend layering authored, the MediatR-equivalent designed, tenant isolation unified on PostgreSQL RLS, printing rebound to Python, real-time designed, background jobs designed, and boundary enforcement specified.
+**Phase 0** closed all nine documentation gaps (A1–A9): folder structure reconciled, docs sub-structure mapped, Python backend layering authored, the MediatR-equivalent designed, tenant isolation unified on PostgreSQL RLS, printing rebound to Python, real-time designed, background jobs designed, boundary enforcement specified.
+
+**Phase 1** turned the load-bearing parts of that into running, enforced code: the layer structure exists and `import-linter` guards it; the RFC 7807 contract is implemented and tested; the RLS tenant seam is wired; the design-token pipeline generates all three platforms from one source; the OpenAPI contract is committed and drift-checked.
+
+Still documentation-only, by design: the Unit of Work, repositories, domain-event dispatcher, background worker, real-time publisher implementation, and printing engine. Each arrives with the phase that needs it.
 
 ---
 
@@ -148,8 +163,8 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 | # | Phase | Status |
 |---|---|---|
 | 0 | Documentation Reconciliation & Technical Baseline | ✅ **Complete** |
-| 1 | **Repository / Foundation** | ⏳ **Next** |
-| 2 | Backend Foundation | Not started |
+| 1 | Repository / Development Foundation | ✅ **Complete** |
+| 2 | **Backend Foundation** | ⏳ **Next** |
 | 3 | Shared Infrastructure (backend cross-cutting) | Not started |
 | 4 | Angular 22 Web Foundation | Not started |
 | 5 | Flutter Application Foundations | Not started |
@@ -175,41 +190,43 @@ Two sequencing notes carried forward: **real-time and printing cross-cut** rathe
 
 ## Current Priority
 
-### Phase 1 — Repository / Foundation
+### Phase 2 — Backend Foundation
 
 **Not started. Awaiting explicit go-ahead.**
 
-Scope, when authorized:
+Phase 1 built the backend *skeleton*: app factory, settings, logging, errors, health, connections. Phase 2 builds the *machinery* that business features will sit on:
 
-1. `.gitignore` covering Python, Node/Nx, Flutter, and IDE artifacts — **before** anything else, so secrets and build output are never committed.
-2. First commit of the existing documentation and planning tree.
-3. Monorepo skeleton per `docs/architecture/14-folder-structure.md`: `backend/`, `frontend/`, `mobile/`, plus `infrastructure/`, `scripts/`, `.github/`.
-4. Docker Compose for local PostgreSQL and Redis.
-5. `.env.example` templates; no real secrets anywhere.
-6. Root and per-stack lint/format configuration.
-7. `CONTRIBUTING.md`.
-8. A minimal CI workflow that runs on every PR.
+1. **Unit of Work** — the transaction boundary, with audit-row writing and post-commit event dispatch (`03-backend-architecture.md` §4).
+2. **Base repository** and the aggregate↔ORM mapping conventions.
+3. **Domain-event dispatcher**, in-process, with the transactional-outbox seam documented.
+4. **Tenant-scoped session dependency** — the version that *requires* a resolved tenant context, closing DW-12. Note this genuinely depends on Authentication for the JWT, so part of it may have to land in Phase 6; worth resolving early in Phase 2 planning.
+5. **First Alembic migration** — the `tenant` schema, with its RLS policies created in the same migration.
+6. **Tenant-isolation test suite** — two seeded tenants, every cross-tenant read returning nothing.
+7. **Background worker** skeleton and the ARQ/Dramatiq/Celery decision (ADR-023, DW-06).
+8. **Real-time publisher** implementation behind the existing port (ADR-015).
+9. **Idempotency store**, caching, and rate limiting.
 
-**No business features. No FastAPI application code. No Angular application code. No Flutter applications.** Those are Phase 2, 4, and 5.
+Still no business features. No Customer, Order, Inventory, Delivery, Accounting.
+
+**First, though:** close out the five environment-blocked verifications by running `./scripts/dev-up.sh && ./scripts/check.sh` on a machine with a working Docker daemon.
 
 ---
 
 ## Next Step
 
-Await explicit instruction to begin Phase 1.
+Await explicit instruction to begin Phase 2.
 
-When authorized: create `planning/features/01-repository-foundation/` with `PLAN.md`, `TASKS.md`, and `STATUS.md` per `AGENTS.md` Step 3, then execute.
+When authorized: create `planning/features/02-backend-foundation/` with `PLAN.md`, `TASKS.md` and `STATUS.md` per `AGENTS.md` Step 3, then execute.
 
 ---
 
 ## Blockers
 
-**None.**
+**None blocking Phase 2.**
 
-Both blockers from the initial assessment are cleared:
+One environment limitation carried forward:
 
-- ~~B1: two mutually exclusive backend stacks documented as authoritative~~ — resolved by ADR-012 and the Phase 0 rewrites.
-- ~~B2: no `.gitignore`, no commits~~ — still true, but it is now *scope of Phase 1* rather than a blocker to it.
+- **Docker daemon unavailable in the Phase 1 environment.** Five verifications are marked blocked rather than complete (T-08, T-15, T-16, T-19, T-34). This blocks *closing out Phase 1's verification*, not starting Phase 2 — and it is an environment issue, not a code defect. Configuration is authored and validates.
 
 ---
 
@@ -269,9 +286,9 @@ Multi-tenant SaaS from Phase 1 (D-01) · multi-branch/warehouse (D-02) · four c
 
 ## Status
 
-**COMPLETE** — for Phase 0.
+**COMPLETE** — for Phase 1, with 5 environment-blocked verifications recorded honestly as blocked rather than complete.
 
-Phase 1 is **NOT STARTED**.
+Phase 2 is **NOT STARTED**.
 
 ---
 

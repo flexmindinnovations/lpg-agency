@@ -44,41 +44,44 @@ This document is updated after every major milestone.
 | Design System | ✅ Complete |
 | Engineering Standards | ✅ Complete |
 | **Documentation Reconciliation (Phase 0)** | ✅ **Complete — 2026-08-09** |
-| Repository Setup / Scaffolding | ⏳ Not started |
-| Backend Development | ⏳ Not started |
-| Frontend Development | ⏳ Not started |
-| Mobile Development | ⏳ Not started |
-| Testing | ⏳ Not started |
-| Deployment | ⏳ Not started |
+| **Repository / Development Foundation (Phase 1)** | ✅ **Complete — 2026-08-09** |
+| Backend Development | 🔨 Foundation only — no business features |
+| Frontend Development | 🔨 Foundation only — no business features |
+| Mobile Development | 🔨 Shells only — no business features |
+| Testing | 🔨 Harness in place — 75 foundation tests pass |
+| Deployment | 🔨 CI validation only — no deployment pipelines |
 
 ---
 
 # Current Phase
 
-**Completed:** Phase 0 — Documentation Reconciliation & Technical Baseline
+**Completed:** Phase 1 — Repository / Development Foundation
 
-**Next:** Phase 1 — Repository / Foundation (**not started**; requires explicit go-ahead)
+**Next:** Phase 2 — Backend Foundation (**not started**; requires explicit go-ahead)
 
-Phase 1 scope: `.gitignore`, first commit, monorepo skeleton, Docker Compose (PostgreSQL + Redis), lint/format configuration, `.env` templates, minimal CI. No business features.
+Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Alembic migration with RLS policies, tenant-isolation test suite, background worker, real-time publisher. Still no business features.
 
 ---
 
 # Repository Reality Check
 
-**There is no source code in this repository.** This is worth stating plainly, because the volume and quality of documentation can create the opposite impression.
+**The foundation is built and verified. There are still no business features** — no authentication, no domain aggregates, no business routes or screens.
 
 | Area | Status |
 |---|---|
-| `backend/` | Empty directory |
-| `frontend/` | Empty directory |
-| `mobile/` | Empty directory |
-| `infrastructure/` | Does not exist yet |
-| `scripts/` | Does not exist yet |
-| `.github/` | Does not exist yet |
-| `.gitignore` | Does not exist yet |
-| Git commits | **Zero** — the repository has never been committed to |
+| `backend/` | FastAPI app, Clean Architecture layers, 49 tests passing |
+| `frontend/` | Nx workspace, Angular 22.0.8 dashboard, 14 tests passing |
+| `mobile/` | Melos workspace, two app shells, three packages, 12 tests passing |
+| `design-tokens/` | One JSON source → 229 CSS vars + TypeScript + Dart |
+| `infrastructure/` | Docker Compose (PostgreSQL 17 + Redis 7) |
+| `scripts/` | setup, dev-up/down, test, lint, format, check, tokens |
+| `.github/workflows/` | 4 path-filtered validation workflows |
+| `.gitignore` | Present, verified behaviourally |
+| Git commits | `470436e` — 428 files, working tree clean |
 
-Everything present is documentation, plus the planning system under `planning/`.
+**75 tests pass.** Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass.
+
+**Five verifications are blocked, not complete:** Docker's daemon would not start in the Phase 1 environment, so live PostgreSQL/Redis connection and Playwright execution are unverified. Close out with `./scripts/dev-up.sh && ./scripts/check.sh`.
 
 ---
 
@@ -102,11 +105,11 @@ Everything present is documentation, plus the planning system under `planning/`.
 
 # Current Priorities
 
-1. **Repository / Foundation** — skeleton, tooling, local dev environment, first commit
-2. **Backend Foundation** — FastAPI skeleton, layers, SQLAlchemy, Alembic, RLS wiring, test harness, boundary contracts
-3. **Shared Infrastructure** — Unit of Work, repositories, audit, domain events, jobs, real-time publisher
-4. **Angular 22 Web Foundation** — Nx workspace, design tokens, shared UI, AG Grid wrapper
-5. **Flutter Application Foundations**
+1. ~~Repository / Foundation~~ ✅ complete
+2. **Backend Foundation** — Unit of Work, base repository, domain events, first migration with RLS, tenant-isolation suite, background worker, real-time publisher
+3. **Shared Infrastructure** — audit logging, idempotency store, caching, rate limiting, file storage
+4. **Angular Web Foundation completion** — Storybook, Playwright execution, AG Grid Enterprise licence
+5. **Flutter Foundation completion** — `api_client`, `auth`, `sync_engine` packages
 6. **Authentication & Authorization**
 
 Full dependency-ordered roadmap: [`docs/implementation/roadmap.md`](../docs/implementation/roadmap.md) and `planning/current_phase.md`.
@@ -194,6 +197,7 @@ Never:
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2026-08-09 | 1.2 | Phase 1 complete: all three stacks scaffolded and verified; 75 tests passing; boundary enforcement live; first commit made |
 | 2026-08-09 | 1.1 | Phase 0 complete: .NET architecture superseded, Python/FastAPI architecture documented, ADR-012…026 added, status corrected to reflect an empty repository |
 | — | 1.0 | Initial knowledge base created |
 
