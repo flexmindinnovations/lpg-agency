@@ -69,7 +69,7 @@ Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Ale
 
 | Area | Status |
 |---|---|
-| `backend/` | FastAPI app, Clean Architecture layers, Supabase-aware config, 76 tests passing |
+| `backend/` | FastAPI app, Clean Architecture layers, live-verified Supabase config, 83 tests passing |
 | `frontend/` | Nx workspace, Angular 22.0.8 dashboard, 14 tests passing |
 | `mobile/` | Melos workspace, two app shells, three packages, 12 tests passing |
 | `design-tokens/` | One JSON source → 229 CSS vars + TypeScript + Dart |
@@ -79,11 +79,11 @@ Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Ale
 | `.gitignore` | Present, verified behaviourally |
 | Git commits | `470436e` — 428 files, working tree clean |
 
-**102 tests pass** (76 backend + 14 frontend + 12 Flutter). Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass.
+**131 tests pass** (83 backend + 36 frontend + 12 Flutter), re-verified fresh with caches bypassed. Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass.
 
-**Local database and Redis are now fully verified** against real PostgreSQL 17 and Redis 7 — including that the application role cannot bypass RLS, and that `/health/ready` returns 200 with both dependencies healthy.
+**Local database and Redis are fully verified** against real PostgreSQL 17 and Redis 7, with two per-environment application roles (`lpg_app`, `lpg_app_uat`) and the environment boundary enforced by revoking `PUBLIC`'s default `CONNECT`, not just documenting it.
 
-**One verification remains blocked:** a live SQLAlchemy/Alembic connection to **Supabase**, pending credentials. Configuration is written and unit-tested; no connection has been attempted.
+**Live Supabase connection is now verified** — password supplied, connection made via the application's real connection-composition code and independently via Alembic. Found: `postgres` on Supabase has `rolbypassrls=True` (DW-19, provisioning a safe role is the next step); `citext`/`pg_trgm` are not yet installed there (DW-20).
 
 ---
 
@@ -168,8 +168,8 @@ Deliberately open, each with a trigger point:
 
 # Known Risks
 
-- **Live Supabase connectivity is unverified** — credentials not yet supplied. Local PostgreSQL and Redis are fully verified.
-- **The Supabase application role is not provisioned** (DW-19) — only Supabase's built-in roles exist. Role creation is administrative, not schema, so it cannot go through Alembic.
+- **The Supabase application role is not provisioned** (DW-19) — the live connection currently verified uses `postgres`, which has `rolbypassrls=True`. Must not be the application's own connection. Role creation is administrative, not schema, so it cannot go through Alembic.
+- **`citext` and `pg_trgm` not installed on Supabase** (DW-20) — only `pgcrypto` is, confirmed live.
 - Authentication not implemented — every module depends on it.
 - No database migrations yet; the first arrives in Phase 2 with the `tenant` schema and its RLS policies.
 - Unit of Work, repositories and the domain-event dispatcher are designed but not implemented.
@@ -206,6 +206,7 @@ Never:
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2026-08-09 | 1.4 | Phase 1 re-verified fresh: live Supabase connection confirmed (found rolbypassrls=True on `postgres`, citext/pg_trgm missing), dev/uat password rotation verified from host, dotenv-hermeticity bug in tests fixed, 22 tests added closing a zero-coverage gap in two shared libraries. 131 tests total. |
 | 2026-08-09 | 1.3 | Phase 1 closed out: Docker verifications completed, tenant-context bug found and fixed, Supabase config added, architecture-consistency checker introduced |
 | 2026-08-09 | 1.2 | Phase 1 complete: all three stacks scaffolded and verified; 75 tests passing; boundary enforcement live; first commit made |
 | 2026-08-09 | 1.1 | Phase 0 complete: .NET architecture superseded, Python/FastAPI architecture documented, ADR-012…026 added, status corrected to reflect an empty repository |

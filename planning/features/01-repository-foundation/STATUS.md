@@ -7,68 +7,31 @@
 
 ## Status
 
-**COMPLETE — with one verification blocked on credentials that have not been supplied**
+**COMPLETE — 63/66 actionable tasks verified (95%), 1 blocked, all verifications re-run fresh this session**
 
-Every Phase 1 deliverable is built and verified by running the command, not by inspecting generated files. The five Docker-blocked verifications from the previous session are now **closed**. One new item is blocked: a live connection to **Supabase** PostgreSQL, because those credentials were not provided.
+Every check below was re-executed from scratch this session, not read from a prior report. Nx cache was explicitly bypassed for the frontend re-check. Two things closed that were open at the start of this session: the live **Supabase** connection (T-63) and zero test coverage on two shared libraries (DW-21).
 
 ## Progress
 
-**58 / 60 actionable tasks complete (97%)** · 2 blocked · 2 intentionally not done
+**63 / 66 actionable tasks complete (95%)** · 1 blocked · 2 intentionally not done
 
-| Group | Description | Complete | State |
-|---|---|---|---|
-| A | Repository skeleton & Git | 4/4 | ✅ Verified |
-| B | **Local development environment** | **4/4** | ✅ **Verified — was 3/4** |
-| C | **Backend foundation (FastAPI)** | **14/14** | ✅ **Verified — was 11/14** |
-| D | Frontend foundation (Angular 22 + Nx) | 12/14 | ✅ Verified (2 deferred/blocked, unchanged) |
-| E | Flutter foundation | 6/6 | ✅ Verified |
-| F | Scripts, CI, documentation | 5/5 | ✅ Verified |
-| G | Verification & closeout | 4/4 | ✅ Verified |
-| H | **Phase 1 close-out (new)** | **9/10** | ⚠️ 1 blocked on Supabase credentials |
-
----
-
-## Previously Blocked — Now Verified
-
-Docker Desktop started this session, which closed all five.
-
-| Task | Evidence |
-|---|---|
-| **T-08** Environment health | Both containers healthy · `pg_isready` accepting · `redis-cli ping` → PONG · `lpg_dev` + `lpg_test` created · `pgcrypto`/`citext`/`pg_trgm` installed · **`lpg_app` confirmed `super=false bypassrls=false`** · `app.current_tenant_id` defaults empty (fail-closed) |
-| **T-15** Database foundation | **15 integration tests** against real PostgreSQL 17 |
-| **T-16** Redis foundation | **6 integration tests** against real Redis 7 |
-| **T-19** Alembic | `current`, `heads`, `history`, `upgrade head` all run against the live database; `alembic_version` created; offline `--sql` also works |
-| **Readiness endpoint** | `/health/ready` → **200 `"status":"ready"`** with both dependencies healthy — the first time it has reported ready |
+| Group | Complete | State |
+|---|---|---|
+| A — Repository skeleton & Git | 4/4 | ✅ Verified |
+| B — Local development environment | 4/4 | ✅ Verified |
+| C — Backend foundation (FastAPI) | 14/14 | ✅ Verified |
+| D — Frontend foundation (Angular 22 + Nx) | 12/14 | ✅ Verified (1 blocked, 1 deferred, unchanged) |
+| E — Flutter foundation | 6/6 | ✅ Verified |
+| F — Scripts, CI, documentation | 5/5 | ✅ Verified |
+| G — Verification & closeout | 4/4 | ✅ Verified |
+| H — Phase 1 close-out | 10/10 | ✅ **Complete — T-63 closed this session** |
+| I — Password rotation (prior session) | included above | ✅ Verified |
 
 ---
 
-## The Bug the Integration Tests Found
+## This Session's Verification (2026-08-09, re-run)
 
-Worth calling out, because it is the reason integration tests against a real database are not optional.
-
-`Database.session()` issued:
-
-```sql
-SET LOCAL app.current_tenant_id = :tenant_id
-```
-
-**PostgreSQL's `SET` command does not accept bind parameters.** The placeholder is a syntax error. This is the single line the entire Row-Level Security backstop depends on (ADR-017), and it would have failed the moment Phase 2 ran its first tenant-scoped query — after the schema, repositories and Unit of Work had all been built on top of it.
-
-Replaced with:
-
-```sql
-SELECT set_config('app.current_tenant_id', :tenant_id, true)
-```
-
-Transaction-scoped (identical semantics to `SET LOCAL`), parameter-safe so the value can never be interpolated into SQL, and compatible with transaction-mode pooling — which matters now that Supabase's Supavisor is in the picture.
-
-A second finding from the same run: the application role correctly **cannot** `CREATE TABLE`. My first draft of the rollback test assumed it could. The least-privilege grant was right and the test was wrong.
-
----
-
-## Verification Results
-
-Every figure below came from running the command.
+Every number below came from a command executed in this session.
 
 ### Backend — Python 3.13.5 / FastAPI
 
@@ -77,42 +40,82 @@ Every figure below came from running the command.
 | `ruff check` | ✅ All checks passed |
 | `ruff format --check` | ✅ 41 files |
 | `mypy --strict` | ✅ 38 source files |
-| `lint-imports` | ✅ **5 contracts kept, 0 broken** |
-| `pytest` | ✅ **76 passed** (55 unit + 21 integration) |
-| OpenAPI drift | ✅ Committed spec matches generated |
-| Alembic (live) | ✅ connects, inspects state, upgrades |
-| `/health/live` | ✅ 200, correlation ID echoed |
-| `/health/ready` | ✅ **200 `ready`**, both dependencies healthy |
-| Problem Details | ✅ `application/problem+json` on unknown route |
+| `lint-imports` | ✅ **5 contracts kept, 0 broken** (50 files, 79 dependencies analyzed) |
+| `pytest` | ✅ **83 passed**, 0 skipped — confirms the 21 integration tests genuinely ran against live services, not skipped |
+| OpenAPI drift | ✅ Matches, both with and without a real `backend/.env` present (tested both states) |
+| Alembic, local `lpg_dev` | ✅ `current`/`heads` clean |
+| **Alembic, live Supabase** | ✅ **NEW** — `current`/`heads` clean against the real hosted project |
+| Live server, `/health/live` | ✅ 200, correlation ID echoed |
+| Live server, `/health/ready` | ✅ **200 `"status":"ready"`**, both dependencies healthy |
+| Live server, unknown route | ✅ `application/problem+json`, 404 |
 
 ### Frontend — Angular 22.0.8 / Nx 23.1.1
 
 | Check | Result |
 |---|---|
 | `prettier --check` | ✅ |
-| `nx lint` (all) | ✅ 6 projects — includes module boundaries |
-| `nx test` (all) | ✅ 5 projects, 14 tests |
-| `nx build` (all) | ✅ |
+| `nx lint` (all, cache bypassed) | ✅ 6 projects — module boundaries intact |
+| `nx test` (all, cache bypassed) | ✅ **36 tests** — was 14; **+22 added this session** |
+| `nx build` (all, cache bypassed) | ✅ |
 
-Frontend was not modified this session beyond verification.
+**Per-project test breakdown** (first genuine per-project audit — a prior "14 tests" figure had never been broken down by project):
+
+| Project | Tests |
+|---|---|
+| `dashboard` | 5 |
+| `shared-design-tokens` | 5 |
+| `shared-data-access` | 4 |
+| `shared-ui` | **9 — was 0** |
+| `shared-util` | **13 — was 0** |
 
 ### Mobile — Flutter 3.44.2
 
-All five packages: `dart format --set-exit-if-changed` ✅ · `flutter analyze` ✅ · `flutter test` ✅ (12 tests). Not modified this session.
+All five packages: format ✅ · analyze ✅ · test ✅ (12 tests, unchanged, not modified this session).
 
 ### Repository
 
 | Check | Result |
 |---|---|
-| Architecture consistency | ✅ **271 files scanned, 0 superseded-architecture instructions** |
-| Markdown link integrity | ✅ 133 files, **0 broken links**, 0 references to missing files |
+| Architecture consistency | ✅ 273 files scanned, 0 findings |
+| Markdown link integrity | ✅ 133 files, 0 broken links |
 | Design token drift | ✅ |
 | Workflow YAML | ✅ 4 workflows valid |
 | `.env` tracked | ✅ None |
 | `service_role` key committed | ✅ None |
-| `supabase/migrations/` absent | ✅ Alembic is sole schema owner |
+| `supabase/migrations/` absent | ✅ |
+| Password strings outside `.example`/docs | ✅ Only in `01-init.sql` and `conftest.py`, as expected |
+| Supabase CLI present | ✅ 2.113.0 |
+| Docker containers | ✅ Both healthy, up ~1 hour |
 
-**Total: 102 tests passing** (76 backend + 14 frontend + 12 Flutter).
+**Total: 131 tests passing** (83 backend + 36 frontend + 12 Flutter) — up from 102 at last verification.
+
+---
+
+## Closed This Session
+
+### T-63 — Live Supabase connection: BLOCKED → ✅ VERIFIED
+
+The user supplied the Supabase database password. Verified via the application's actual connection path (`Settings.effective_database_url`, the same DSN-composition code the app runs in production) and independently via Alembic:
+
+- `SELECT current_database(), current_user, version()` → PostgreSQL 17.6, `db=postgres`, `user=postgres`
+- `alembic current` / `alembic heads` both ran cleanly against the live project
+- The credential was never printed in any command output
+
+**Two real findings, not just a pass/fail:**
+
+1. **`postgres` on Supabase has `rolbypassrls=True`.** Not a surprise — `.env.prod.example` already documented this risk — but now confirmed live rather than theoretical. Using this role for the application (not just migrations) would silently void tenant isolation (ADR-017). DW-19 (provision a dedicated `NOSUPERUSER`/`NOBYPASSRLS` role) remains open and is now the concrete next step, not a hypothetical one.
+2. **Only `pgcrypto` is installed** on the live project; `citext` and `pg_trgm` — the other two extensions ADR-013 depends on — are not yet enabled. New: **DW-20**.
+
+### DW-21 — Zero test coverage on two shared libraries: found and closed
+
+Re-verifying with the Nx cache bypassed (rather than trusting a cached "passed" result) surfaced `"No tests found, exiting with code 0"` for `shared-ui` and `shared-util`. Both had shipped in Phase 1 with implementation but no spec file — the prior "14 tests passing" figure was accurate but had never been broken down per project, so this had gone unnoticed across multiple verification passes.
+
+Closed rather than deferred, since Phase 1's own Definition of Done requires a working testing foundation:
+
+- **`keyboard-shortcuts.service.spec.ts`** (13 tests) — exact modifier matching, metaKey/ctrl equivalence, editable-target exclusion (input/textarea/select/contenteditable), the Escape exception, `preventDefault` only on match, unregister, multi-binding isolation.
+- **`data-grid.component.spec.ts`** (9 tests) — **renders real AG Grid Community in jsdom** (not mocked), required `ariaLabel` enforcement, column-definition mapping including a custom `valueFormatter`, default sort/filter/resize behaviour, all three `selectionMode` values, the `ready` output.
+
+The AG Grid test in particular is worth more than its count suggests: it's the first proof that ADR-020's wrapper actually mounts a real grid, not just that its mapping functions compile.
 
 ---
 
@@ -120,10 +123,9 @@ All five packages: `dart format --set-exit-if-changed` ✅ · `flutter analyze` 
 
 | Task | Why | To close |
 |---|---|---|
-| **T-63** Live SQLAlchemy/Alembic connection to **Supabase** PostgreSQL | Supabase database credentials were not supplied. They were described as coming separately and have not arrived. | Provide a connection string; put it in `backend/.env` (git-ignored), not in a message. Then `uv run pytest -m integration` against it. |
-| **T-34** Playwright e2e execution | Browser binaries not downloaded (`npx playwright install`). Unchanged from previous session. | Phase 4 |
+| **T-34** Playwright e2e execution | Browser binaries not downloaded (`npx playwright install`) | Phase 4 |
 
-**On T-63, precisely what is and is not verified:** the configuration is written and its loading is unit-tested (6 tests covering the separate migration URL, the pooler statement-cache setting, and a Supabase-style pooler DSN). The Supabase MCP confirms the *project* is reachable — `ayqphthelemlnbtnknkp`, zero tables, zero migrations. That is **not** a verified SQLAlchemy connection and is not being claimed as one.
+That is now the **only** remaining blocked item.
 
 ---
 
@@ -132,16 +134,17 @@ All five packages: `dart format --set-exit-if-changed` ✅ · `flutter analyze` 
 | Task | Reason |
 |---|---|
 | T-35 Storybook | Deferred to Phase 4, where `shared/ui` gains components worth documenting |
-| T-52 Start Phase 2 | Explicit instruction — Phase 2 remains NOT STARTED |
+| T-52 / T-68 Start Phase 2 | Explicit instruction, every session — Phase 2 remains NOT STARTED |
 
 ---
 
-## Known Issues
+## Known Issues (carried forward, one closed)
 
-1. **Supabase live connectivity unverified** (T-63) — see above.
-2. **AG Grid runs on Community, not Enterprise** — licence procurement unconfirmed (DW-08). Unchanged.
-3. **Supabase application role not provisioned** (DW-19) — the hosted database has only Supabase's built-in roles. Role creation is administrative, not schema, so it cannot go through Alembic. The local init SQL is the reference.
-4. **Three documented mobile packages not created** — `api_client`, `auth`, `sync_engine` (DW-17). No content until Phase 6 / Phase 11.
+1. ~~Live Supabase connectivity unverified~~ — **closed this session.**
+2. **`citext` and `pg_trgm` not installed on Supabase** — DW-20, new this session.
+3. **The Supabase application role is not provisioned** (DW-19) — confirmed more urgent now that the raw `postgres` credential is live and usable but unsafe for the application connection.
+4. **AG Grid runs on Community, not Enterprise** — licence procurement unconfirmed (DW-08). Unchanged.
+5. **Three documented mobile packages not created** — `api_client`, `auth`, `sync_engine` (DW-17). No content until Phase 6 / Phase 11.
 
 ---
 
@@ -149,8 +152,8 @@ All five packages: `dart format --set-exit-if-changed` ✅ · `flutter analyze` 
 
 **Phase 2 — Backend Foundation. NOT STARTED.**
 
-Awaiting explicit instruction.
+Awaiting explicit instruction. When it comes, DW-19 (provision the Supabase application role) and DW-20 (install `citext`/`pg_trgm` on Supabase) should be early items — both are now concrete, both are cheap, and both are prerequisites for the first migration to be safe and complete.
 
 ## Last Updated
 
-2026-08-09
+2026-08-09 (re-verification pass)

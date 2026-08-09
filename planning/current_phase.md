@@ -8,7 +8,7 @@ LPG Agency Management Platform
 
 ## Current Phase
 
-**Phase 1 — Repository / Development Foundation** ✅ **COMPLETE** — 58/60 actionable tasks (97%); 1 verification blocked on Supabase credentials
+**Phase 1 — Repository / Development Foundation** ✅ **COMPLETE** — 63/66 actionable tasks (95%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4)
 
 **Next phase — Phase 2: Backend Foundation — NOT STARTED.** It requires an explicit go-ahead.
 
@@ -26,7 +26,7 @@ Achieved. A developer can clone, run one setup command, and every application st
 
 ## Current Repository State
 
-Verified 2026-08-09, post-Phase-1. Every figure below came from running a command.
+Re-verified fresh 2026-08-09 (Nx cache explicitly bypassed for the frontend recheck; nothing in this section is read from a prior report). Every figure below came from running a command this session.
 
 **The repository now contains working, verified code — and still no business features.** No authentication, no domain aggregates, no business routes or screens. That is deliberate; each arrives in its own phase.
 
@@ -34,16 +34,30 @@ Verified 2026-08-09, post-Phase-1. Every figure below came from running a comman
 
 | Area | State |
 |---|---|
-| **Backend** (`backend/`) | FastAPI app on Python 3.13.5. Clean Architecture layers, Pydantic settings with production guard rails and Supabase-aware connection config, structlog with central redaction, correlation IDs, RFC 7807 errors, async SQLAlchemy with a working RLS tenant seam, Redis client, split liveness/readiness probes, Alembic verified against a live database, committed + drift-checked OpenAPI spec. **76 tests pass** (55 unit + 21 integration). |
-| **Frontend** (`frontend/`) | Nx 23.1.1 workspace, **Angular 22.0.8** dashboard. Design tokens, three themes, four shared libraries, AG Grid behind a wrapper, RFC 7807 + correlation interceptors, accessible app shell. **14 tests pass.** |
+| **Backend** (`backend/`) | FastAPI app on Python 3.13.5. Clean Architecture layers, Pydantic settings with production guard rails, discrete Supabase connection keys with URL-encoded `SecretStr` password, structlog with central redaction, correlation IDs, RFC 7807 errors, async SQLAlchemy with a working RLS tenant seam, Redis client, split liveness/readiness probes, Alembic verified against **both** local Docker and **live Supabase**, committed + drift-checked OpenAPI spec. **83 tests pass** (62 unit + 21 integration), 0 skipped. |
+| **Frontend** (`frontend/`) | Nx 23.1.1 workspace, **Angular 22.0.8** dashboard. Design tokens, three themes, four shared libraries, AG Grid behind a wrapper (now with 9 tests proving it renders real AG Grid Community, not just that its mapping compiles), RFC 7807 + correlation interceptors, accessible app shell. **36 tests pass** — up from 14; the two shared libraries that had zero coverage on every prior pass are now tested. |
 | **Mobile** (`mobile/`) | Melos workspace: `customer_app`, `driver_app`, and `core`/`design_system`/`local_storage` packages. Riverpod, go_router, generated Dart tokens with three themes. **12 tests pass.** |
 | **Design tokens** (`design-tokens/`) | One JSON source generating 229 CSS variables, TypeScript constants and Dart constants. Drift-checked in CI. |
-| **Local environment** (`infrastructure/`) | Docker Compose: PostgreSQL 17 + Redis 7, non-default ports, healthchecks, init SQL creating the `NOBYPASSRLS` application role. |
-| **Scripts** (`scripts/`) | setup, dev-up, dev-down, test, lint, format, check, generate-tokens. |
+| **Local environment** (`infrastructure/`) | Docker Compose: PostgreSQL 17 + Redis 7, non-default ports, healthchecks, init SQL creating **two** application roles (`lpg_app` for dev/test, `lpg_app_uat` for uat), each `NOBYPASSRLS`, `PUBLIC` revoked from `CONNECT` on all three databases so the environment boundary is enforced, not just documented. |
+| **Hosted database** | **Supabase** (ADR-027), live-verified this session — see below. |
+| **Scripts** (`scripts/`) | setup, dev-up, dev-down, test, lint, format, check, generate-tokens, check_architecture_consistency. |
 | **CI** (`.github/workflows/`) | Four path-filtered workflows; validation only, no deployment. |
-| **Git** | First commit `470436e`, 428 files, working tree clean. |
+| **Git** | Working tree clean, latest commit `4a1b109`. |
 
-**102 tests passing overall** (76 backend + 14 frontend + 12 Flutter). Lint, format, type check and boundary contracts pass on all three stacks.
+**131 tests passing overall** (83 backend + 36 frontend + 12 Flutter) — up from 102. Lint, format, type check and boundary contracts pass on all three stacks.
+
+### Supabase — live-verified this session
+
+The user supplied the database password. Verified using the application's actual connection-composition code (`Settings.effective_database_url`), not a hand-rolled test:
+
+- `SELECT current_database(), current_user, version()` → PostgreSQL 17.6, `db=postgres`, `user=postgres`
+- Alembic `current`/`heads` both ran cleanly against the live project
+- Credential never printed in any command output
+
+**Two things this surfaced, not just a pass:**
+
+1. `postgres` on Supabase has `rolsuper=False` but **`rolbypassrls=True`** — confirms live the risk `.env.prod.example` already documented. DW-19 (provision a dedicated `NOSUPERUSER`/`NOBYPASSRLS` application role) is now concrete, not hypothetical.
+2. Only `pgcrypto` is installed on the live project; `citext` and `pg_trgm` are not yet enabled (DW-20). Both are available and needed before Phase 2's first migration.
 
 ### Enforcement that is live
 
@@ -57,7 +71,7 @@ Not conventions — these fail the build:
 | Design tokens match their single source | Generator `--check` | ✅ |
 | OpenAPI spec matches implementation | Export `--check` | ✅ |
 | No environment file committed | Repository CI | ✅ |
-| Superseded architecture stays superseded | `scripts/check_architecture_consistency.py` in CI | ✅ 271 files, 0 findings |
+| Superseded architecture stays superseded | `scripts/check_architecture_consistency.py` in CI | ✅ 273 files, 0 findings |
 | Alembic is the sole owner of schema | Repository CI | ✅ |
 | No `service_role` key committed | Repository CI | ✅ |
 
@@ -67,21 +81,22 @@ The boundary contracts earned their place on first run: they caught the API laye
 
 Authentication · RBAC · every business module · background worker · real-time WebSocket implementation · printing engine · production infrastructure · deployment pipelines · offline sync.
 
-### Verification closed out (2026-08-09)
+### Verification history
 
-Docker became available, closing all five previously-blocked verifications:
+Three rounds, each closing what the previous one left open:
 
-| Was blocked | Now |
-|---|---|
-| Container startup (T-08) | ✅ Both healthy; roles, extensions and the fail-closed tenant default all confirmed |
-| Live database connection (T-15) | ✅ 15 integration tests against real PostgreSQL 17 |
-| Live Redis connection (T-16) | ✅ 6 integration tests against real Redis 7 |
-| Alembic against a live database (T-19) | ✅ `current` / `heads` / `history` / `upgrade head` all run |
-| `/health/ready` reporting ready | ✅ **200 `ready`**, both dependencies healthy — first time |
+**Round 1 (Docker unavailable):** all Docker-dependent checks blocked; documented honestly as blocked, not complete.
 
-**The integration tests immediately found a real bug.** `SET LOCAL app.current_tenant_id = :tenant_id` is a PostgreSQL syntax error — `SET` does not accept bind parameters. That is the one line the entire RLS backstop depends on (ADR-017), and it would have failed at Phase 2's first tenant-scoped query, after the schema and repositories had been built on top of it. Replaced with `set_config('app.current_tenant_id', :tenant_id, true)`: same transaction scope, parameter-safe, and pooler-compatible.
+**Round 2 (Docker available):** closed all five — container health, 15 live PostgreSQL integration tests, 6 live Redis integration tests, Alembic against a live local database, `/health/ready` reporting `ready` for the first time. **Found a real bug in the process**: `SET LOCAL app.current_tenant_id = :tenant_id` is a PostgreSQL syntax error — `SET` does not accept bind parameters. That is the one line the entire RLS backstop depends on (ADR-017); it would have failed at Phase 2's first tenant-scoped query. Fixed with `set_config('app.current_tenant_id', :tenant_id, true)`.
 
-**Still blocked:** a live SQLAlchemy/Alembic connection to **Supabase** (T-63) — those credentials were not supplied. Configuration is written and unit-tested; no connection has been attempted, and none is claimed. Also unchanged: Playwright e2e execution (T-34), deferred to Phase 4.
+**Round 3 — this session (2026-08-09), everything re-run fresh:**
+
+- **T-63 closed** — live Supabase connection verified (password supplied by the user), both application-path and Alembic. See the Supabase section above for what it found.
+- **Dev/uat password rotation** verified live from the host (not via `docker compose exec`, which hits `pg_hba.conf`'s loopback `trust` rule and proves nothing about real authentication) — 8/8 checks: each role reaches only its own database, old password rejected, cross-role/cross-database attempts rejected.
+- **A latent test-hygiene bug found and fixed**: `backend/.env` now exists on disk (normal setup), and `Settings()` was silently inheriting it in tests and in `scripts/export_openapi.py` — 19 failures, 24 errors, one drift-check failure, none related to the actual change being verified. Fixed with an autouse fixture disabling dotenv in tests, and explicit safe env-var defaults before `export_openapi.py`'s import of the composition root (which builds a module-level `app` singleton with unoverridden settings as an import-time side effect). Verified identical behaviour with `.env` present and absent.
+- **Frontend re-verified with Nx cache bypassed** (a cached "passed" is not a re-verification) — surfaced `shared-ui` and `shared-util` at zero tests across every prior pass. Closed rather than deferred: 22 tests added, including one that renders real AG Grid Community in jsdom.
+
+**Only remaining blocked item:** Playwright e2e execution (T-34) — browser binaries not downloaded, deferred to Phase 4.
 
 ---
 
@@ -232,9 +247,14 @@ When authorized: create `planning/features/02-backend-foundation/` with `PLAN.md
 
 **None blocking Phase 2.**
 
-One environment limitation carried forward:
+One item remains blocked within Phase 1 itself, and does not block starting Phase 2:
 
-- **Docker daemon unavailable in the Phase 1 environment.** Five verifications are marked blocked rather than complete (T-08, T-15, T-16, T-19, T-34). This blocks *closing out Phase 1's verification*, not starting Phase 2 — and it is an environment issue, not a code defect. Configuration is authored and validates.
+- **T-34, Playwright e2e execution** — browser binaries not downloaded (`npx playwright install`). Configuration and CI wiring are in place; deferred to Phase 4.
+
+Two items are open but not blocking — both are cheap, concrete next steps rather than obstacles:
+
+- **DW-19** — the Supabase application role is not yet provisioned; the live connection currently used for verification is the `postgres` superuser-adjacent role, which has `rolbypassrls=True` and must never be the application's own connection.
+- **DW-20** — `citext` and `pg_trgm` are not yet installed on the live Supabase project (only `pgcrypto` is).
 
 ---
 
@@ -295,7 +315,7 @@ Multi-tenant SaaS from Phase 1 (D-01) · multi-branch/warehouse (D-02) · four c
 
 ## Status
 
-**COMPLETE** — for Phase 1. 58 of 60 actionable tasks verified by running the command (97%).
+**COMPLETE** — for Phase 1. 63 of 66 actionable tasks verified by running the command (95%), re-verified fresh this session with the Nx cache explicitly bypassed. 131 tests passing overall.
 
 One verification remains **blocked**, recorded as blocked rather than complete: a live SQLAlchemy/Alembic connection to Supabase, pending credentials. Phase 1's foundation is fully verified against local PostgreSQL 17 and Redis 7.
 
