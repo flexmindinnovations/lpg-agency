@@ -32,6 +32,17 @@ Regenerate: node scripts/generate-tokens.mjs
   --primitive-color-amber-400: #fbbf24;
   --primitive-color-amber-600: #d97706;
   --primitive-color-amber-700: #b45309;
+  --primitive-color-forest-50: #eaf5f2;
+  --primitive-color-forest-100: #cde7df;
+  --primitive-color-forest-300: #7fd0b9;
+  --primitive-color-forest-400: #4fb89c;
+  --primitive-color-forest-500: #1c8570;
+  --primitive-color-forest-700: #0f5a4e;
+  --primitive-color-forest-800: #0a4a41;
+  --primitive-color-forest-900: #013e37;
+  --primitive-color-cream-50: #fffbe8;
+  --primitive-color-cream-100: #fff3c4;
+  --primitive-color-cream-200: #ffefb3;
   --primitive-color-white: #ffffff;
   --primitive-color-black: #000000;
   --primitive-color-hc-blue: #0000ee;
@@ -145,27 +156,29 @@ Regenerate: node scripts/generate-tokens.mjs
   --color-surface-overlay: #f3f4f6;
   --color-border-default: #e5e7eb;
   --color-border-strong: #d1d5db;
-  --color-border-focus: #2563eb;
-  --color-action-primary: #2563eb;
-  --color-action-primary-hover: #1d4ed8;
+  --color-border-focus: #0a4a41;
+  --color-action-primary: #0a4a41;
+  --color-action-primary-hover: #013e37;
   --color-action-primary-text: #ffffff;
   --color-status-success: #16a34a;
   --color-status-warning: #d97706;
   --color-status-danger: #dc2626;
   --color-status-info: #2563eb;
+  --color-highlight-background: #ffefb3;
+  --color-highlight-color: #013e37;
   --border-width: 1px;
   --elevation-0: none;
   --elevation-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
-  --component-button-primary-background: #2563eb;
-  --component-button-primary-background-hover: #1d4ed8;
+  --component-button-primary-background: #0a4a41;
+  --component-button-primary-background-hover: #013e37;
   --component-button-primary-text: #ffffff;
   --component-card-background: #f9fafb;
   --component-card-border: #e5e7eb;
   --component-data-grid-border-color: #e5e7eb;
   --component-data-grid-header-background: #f9fafb;
-  --component-focus-ring-color: #2563eb;
+  --component-focus-ring-color: #0a4a41;
 }
 
 [data-theme='dark'] {
@@ -178,27 +191,29 @@ Regenerate: node scripts/generate-tokens.mjs
   --color-surface-overlay: #1f2937;
   --color-border-default: #374151;
   --color-border-strong: #4b5563;
-  --color-border-focus: #60a5fa;
-  --color-action-primary: #60a5fa;
-  --color-action-primary-hover: #3b82f6;
+  --color-border-focus: #4fb89c;
+  --color-action-primary: #4fb89c;
+  --color-action-primary-hover: #1c8570;
   --color-action-primary-text: #0b0f16;
   --color-status-success: #4ade80;
   --color-status-warning: #fbbf24;
   --color-status-danger: #f87171;
   --color-status-info: #60a5fa;
+  --color-highlight-background: #0f5a4e;
+  --color-highlight-color: #fff3c4;
   --border-width: 1px;
   --elevation-0: none;
   --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
-  --component-button-primary-background: #60a5fa;
-  --component-button-primary-background-hover: #3b82f6;
+  --component-button-primary-background: #4fb89c;
+  --component-button-primary-background-hover: #1c8570;
   --component-button-primary-text: #0b0f16;
   --component-card-background: #111827;
   --component-card-border: #374151;
   --component-data-grid-border-color: #374151;
   --component-data-grid-header-background: #111827;
-  --component-focus-ring-color: #60a5fa;
+  --component-focus-ring-color: #4fb89c;
 }
 
 [data-theme='high-contrast'] {
@@ -219,6 +234,8 @@ Regenerate: node scripts/generate-tokens.mjs
   --color-status-warning: #b45309;
   --color-status-danger: #b91c1c;
   --color-status-info: #0000ee;
+  --color-highlight-background: #ffffff;
+  --color-highlight-color: #0000ee;
   --border-width: 2px;
   --elevation-0: none;
   --elevation-1: none;
@@ -245,27 +262,29 @@ Regenerate: node scripts/generate-tokens.mjs
     --color-surface-overlay: #1f2937;
     --color-border-default: #374151;
     --color-border-strong: #4b5563;
-    --color-border-focus: #60a5fa;
-    --color-action-primary: #60a5fa;
-    --color-action-primary-hover: #3b82f6;
+    --color-border-focus: #4fb89c;
+    --color-action-primary: #4fb89c;
+    --color-action-primary-hover: #1c8570;
     --color-action-primary-text: #0b0f16;
     --color-status-success: #4ade80;
     --color-status-warning: #fbbf24;
     --color-status-danger: #f87171;
     --color-status-info: #60a5fa;
+    --color-highlight-background: #0f5a4e;
+    --color-highlight-color: #fff3c4;
     --border-width: 1px;
     --elevation-0: none;
     --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
     --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
     --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
-    --component-button-primary-background: #60a5fa;
-    --component-button-primary-background-hover: #3b82f6;
+    --component-button-primary-background: #4fb89c;
+    --component-button-primary-background-hover: #1c8570;
     --component-button-primary-text: #0b0f16;
     --component-card-background: #111827;
     --component-card-border: #374151;
     --component-data-grid-border-color: #374151;
     --component-data-grid-header-background: #111827;
-    --component-focus-ring-color: #60a5fa;
+    --component-focus-ring-color: #4fb89c;
   }
 }
 

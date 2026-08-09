@@ -16,6 +16,25 @@
     },
     "lint": {
       "executor": "@nx/eslint:lint"
+    },
+    "storybook": {
+      "executor": "@storybook/angular:start-storybook",
+      "options": {
+        "configDir": "libs/shared/ui/.storybook",
+        "browserTarget": "dashboard:build:development",
+        "compodoc": false,
+        "port": 4400
+      }
+    },
+    "build-storybook": {
+      "executor": "@storybook/angular:build-storybook",
+      "outputs": ["{options.outputDir}"],
+      "options": {
+        "configDir": "libs/shared/ui/.storybook",
+        "browserTarget": "dashboard:build:development",
+        "compodoc": false,
+        "outputDir": "dist/storybook/shared-ui"
+      }
     }
   }
 }

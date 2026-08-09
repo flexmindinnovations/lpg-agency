@@ -36,6 +36,17 @@ abstract final class LpgTokens {
   static const primitiveColorAmber400 = Color(0xFFFBBF24);
   static const primitiveColorAmber600 = Color(0xFFD97706);
   static const primitiveColorAmber700 = Color(0xFFB45309);
+  static const primitiveColorForest50 = Color(0xFFEAF5F2);
+  static const primitiveColorForest100 = Color(0xFFCDE7DF);
+  static const primitiveColorForest300 = Color(0xFF7FD0B9);
+  static const primitiveColorForest400 = Color(0xFF4FB89C);
+  static const primitiveColorForest500 = Color(0xFF1C8570);
+  static const primitiveColorForest700 = Color(0xFF0F5A4E);
+  static const primitiveColorForest800 = Color(0xFF0A4A41);
+  static const primitiveColorForest900 = Color(0xFF013E37);
+  static const primitiveColorCream50 = Color(0xFFFFFBE8);
+  static const primitiveColorCream100 = Color(0xFFFFF3C4);
+  static const primitiveColorCream200 = Color(0xFFFFEFB3);
   static const primitiveColorWhite = Color(0xFFFFFFFF);
   static const primitiveColorBlack = Color(0xFF000000);
   static const primitiveColorHcBlue = Color(0xFF0000EE);
@@ -150,23 +161,25 @@ abstract final class LpgTokensLight {
   static const colorSurfaceOverlay = Color(0xFFF3F4F6);
   static const colorBorderDefault = Color(0xFFE5E7EB);
   static const colorBorderStrong = Color(0xFFD1D5DB);
-  static const colorBorderFocus = Color(0xFF2563EB);
-  static const colorActionPrimary = Color(0xFF2563EB);
-  static const colorActionPrimaryHover = Color(0xFF1D4ED8);
+  static const colorBorderFocus = Color(0xFF0A4A41);
+  static const colorActionPrimary = Color(0xFF0A4A41);
+  static const colorActionPrimaryHover = Color(0xFF013E37);
   static const colorActionPrimaryText = Color(0xFFFFFFFF);
   static const colorStatusSuccess = Color(0xFF16A34A);
   static const colorStatusWarning = Color(0xFFD97706);
   static const colorStatusDanger = Color(0xFFDC2626);
   static const colorStatusInfo = Color(0xFF2563EB);
+  static const colorHighlightBackground = Color(0xFFFFEFB3);
+  static const colorHighlightColor = Color(0xFF013E37);
   static const borderWidth = 1;
-  static const componentButtonPrimaryBackground = Color(0xFF2563EB);
-  static const componentButtonPrimaryBackgroundHover = Color(0xFF1D4ED8);
+  static const componentButtonPrimaryBackground = Color(0xFF0A4A41);
+  static const componentButtonPrimaryBackgroundHover = Color(0xFF013E37);
   static const componentButtonPrimaryText = Color(0xFFFFFFFF);
   static const componentCardBackground = Color(0xFFF9FAFB);
   static const componentCardBorder = Color(0xFFE5E7EB);
   static const componentDataGridBorderColor = Color(0xFFE5E7EB);
   static const componentDataGridHeaderBackground = Color(0xFFF9FAFB);
-  static const componentFocusRingColor = Color(0xFF2563EB);
+  static const componentFocusRingColor = Color(0xFF0A4A41);
 }
 
 /// dark theme colour values.
@@ -180,23 +193,25 @@ abstract final class LpgTokensDark {
   static const colorSurfaceOverlay = Color(0xFF1F2937);
   static const colorBorderDefault = Color(0xFF374151);
   static const colorBorderStrong = Color(0xFF4B5563);
-  static const colorBorderFocus = Color(0xFF60A5FA);
-  static const colorActionPrimary = Color(0xFF60A5FA);
-  static const colorActionPrimaryHover = Color(0xFF3B82F6);
+  static const colorBorderFocus = Color(0xFF4FB89C);
+  static const colorActionPrimary = Color(0xFF4FB89C);
+  static const colorActionPrimaryHover = Color(0xFF1C8570);
   static const colorActionPrimaryText = Color(0xFF0B0F16);
   static const colorStatusSuccess = Color(0xFF4ADE80);
   static const colorStatusWarning = Color(0xFFFBBF24);
   static const colorStatusDanger = Color(0xFFF87171);
   static const colorStatusInfo = Color(0xFF60A5FA);
+  static const colorHighlightBackground = Color(0xFF0F5A4E);
+  static const colorHighlightColor = Color(0xFFFFF3C4);
   static const borderWidth = 1;
-  static const componentButtonPrimaryBackground = Color(0xFF60A5FA);
-  static const componentButtonPrimaryBackgroundHover = Color(0xFF3B82F6);
+  static const componentButtonPrimaryBackground = Color(0xFF4FB89C);
+  static const componentButtonPrimaryBackgroundHover = Color(0xFF1C8570);
   static const componentButtonPrimaryText = Color(0xFF0B0F16);
   static const componentCardBackground = Color(0xFF111827);
   static const componentCardBorder = Color(0xFF374151);
   static const componentDataGridBorderColor = Color(0xFF374151);
   static const componentDataGridHeaderBackground = Color(0xFF111827);
-  static const componentFocusRingColor = Color(0xFF60A5FA);
+  static const componentFocusRingColor = Color(0xFF4FB89C);
 }
 
 /// high-contrast theme colour values.
@@ -218,6 +233,8 @@ abstract final class LpgTokensHighContrast {
   static const colorStatusWarning = Color(0xFFB45309);
   static const colorStatusDanger = Color(0xFFB91C1C);
   static const colorStatusInfo = Color(0xFF0000EE);
+  static const colorHighlightBackground = Color(0xFFFFFFFF);
+  static const colorHighlightColor = Color(0xFF0000EE);
   static const borderWidth = 2;
   static const componentButtonPrimaryBackground = Color(0xFF0000EE);
   static const componentButtonPrimaryBackgroundHover = Color(0xFF0000EE);

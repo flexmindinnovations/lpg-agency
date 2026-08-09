@@ -5,10 +5,14 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/out-tsc'],
+    // `libs/shared/data-access/src/lib/generated/**` is ng-openapi-gen
+    // output (ADR-032) — regenerated from the committed OpenAPI spec, never
+    // hand-edited, so it is not held to hand-written-code lint rules.
+    ignores: ['**/dist', '**/out-tsc', '**/lib/generated/**'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    ignores: ['**/.storybook/**'],
     rules: {
       '@nx/enforce-module-boundaries': [
         'error',

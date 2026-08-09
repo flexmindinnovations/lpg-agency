@@ -2,6 +2,9 @@
 libs/shared/design-tokens/src/lib/tokens.css
 libs/shared/design-tokens/src/lib/tokens.ts
 
+# Generated — regenerate with: npx ng-openapi-gen --config ng-openapi-gen.json
+libs/shared/data-access/src/lib/generated
+
 dist
 .nx
 coverage

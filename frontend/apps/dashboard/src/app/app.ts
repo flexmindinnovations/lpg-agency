@@ -1,39 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { ThemeService, type ThemePreference } from '@lpg/shared/design-tokens';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { AppShellComponent, type NavGroup } from '@lpg/shared/ui';
 
 /**
- * Application shell: top bar, sidebar navigation, routed content.
+ * Application root: wires the shared `AppShellComponent` to this app's
+ * navigation model.
  *
- * Foundation only. There are no business pages — Customer, Inventory, Order,
- * Delivery and Accounting screens each arrive in their own phase, behind their
- * own plan.
+ * `navGroups` intentionally lists only "Home" — there are no business
+ * modules yet (Customer, Inventory, Order, Delivery, Accounting each arrive
+ * in their own phase, behind their own plan). The shell itself is fully
+ * data-driven, so extending this list is the only change a future phase
+ * needs to make here.
  */
 @Component({
   selector: 'lpg-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, AppShellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
 })
 export class App {
-  private readonly themeService = inject(ThemeService);
-
-  protected readonly themePreference = this.themeService.preference;
-  protected readonly activeTheme = this.themeService.activeTheme;
-
-  protected readonly themeOptions = computed<readonly ThemePreference[]>(() => [
-    'system',
-    ...this.themeService.availableThemes,
-  ]);
-
-  protected setTheme(value: string): void {
-    this.themeService.setPreference(value as ThemePreference);
-  }
-
-  protected themeLabel(preference: ThemePreference): string {
-    return preference === 'high-contrast'
-      ? 'High contrast'
-      : preference.charAt(0).toUpperCase() + preference.slice(1);
-  }
+  protected readonly navGroups: readonly NavGroup[] = [
+    {
+      items: [{ label: 'Home', icon: 'pi pi-home', route: '/', exact: true }],
+    },
+  ];
 }

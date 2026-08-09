@@ -29,12 +29,27 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
-  /* Run your local dev server before starting the tests */
+  /* Run your local dev server before starting the tests. `ng serve` doesn't
+   * work here (this is a project.json-only Nx workspace, no angular.json —
+   * "not available outside a workspace"), so this stays `nx run`. See the
+   * NX_INVOCATION_ROOT_PID note below for the one thing that makes it safe
+   * to nest. */
   webServer: {
     command: 'npx nx run dashboard:serve',
     url: 'http://localhost:4200',
     reuseExistingServer: true,
     cwd: workspaceRoot,
+    env: {
+      // Nx 23's cross-process recursive-task-invocation guard tracks task
+      // IDs in a local DB keyed by "root PID" (NX_INVOCATION_ROOT_PID, or
+      // process.pid if unset). Without this, the server spawned here
+      // inherits the *parent* `nx e2e` process's root-PID lineage and its
+      // task ID collides with that same task appearing to have already run
+      // in the chain — a false positive, not an actual loop (this command
+      // starts `dashboard:serve`, never `dashboard-e2e:e2e` again). Giving
+      // it its own root breaks that false linkage.
+      NX_INVOCATION_ROOT_PID: String(process.pid),
+    },
   },
   projects: [
     {

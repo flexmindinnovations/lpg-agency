@@ -83,7 +83,7 @@ import { Tooltip } from 'primeng/tooltip';
         to confirm nothing here is hardcoded.
       </p>
 
-      <p-breadcrumb [model]="breadcrumbItems" [home]="breadcrumbHome" />
+      <p-breadcrumb [model]="breadcrumbItems" [home]="breadcrumbHome" homeAriaLabel="Home" />
 
       <div
         style="display: flex; gap: var(--spacing-sm); align-items: center; margin-top: var(--spacing-lg); flex-wrap: wrap;"
@@ -160,6 +160,7 @@ import { Tooltip } from 'primeng/tooltip';
         [style]="{ width: '28rem' }"
         [closeOnEscape]="true"
         [dismissableMask]="true"
+        closeAriaLabel="Close dialog"
         (onHide)="dialogTrigger()?.nativeElement?.focus()"
       >
         <p>

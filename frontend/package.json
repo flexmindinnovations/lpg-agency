@@ -2,15 +2,19 @@
   "name": "@org/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "generate:api-client": "ng-openapi-gen --config ng-openapi-gen.json"
+  },
   "private": true,
   "devDependencies": {
+    "@angular-devkit/build-angular": "~22.1.0",
     "@angular-devkit/core": "~22.0.4",
     "@angular-devkit/schematics": "~22.0.4",
     "@angular/build": "~22.0.4",
     "@angular/cli": "~22.0.4",
     "@angular/compiler-cli": "~22.0.4",
     "@angular/language-service": "~22.0.4",
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.8.0",
     "@nx/angular": "23.1.1",
     "@nx/devkit": "23.1.1",
@@ -19,9 +23,11 @@
     "@nx/jest": "23.1.1",
     "@nx/js": "23.1.1",
     "@nx/playwright": "23.1.1",
+    "@nx/storybook": "^23.1.1",
     "@nx/web": "23.1.1",
     "@playwright/test": "^1.37.0",
     "@schematics/angular": "~22.0.4",
+    "@storybook/angular": "~10.5.7",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
@@ -37,9 +43,11 @@
     "jest-environment-jsdom": "~30.3.0",
     "jest-preset-angular": "~17.0.0",
     "jest-util": "~30.3.0",
+    "ng-openapi-gen": "^1.0.5",
     "nx": "23.1.1",
     "postcss": "^8.5.26",
     "prettier": "^3.8.1",
+    "storybook": "~10.5.7",
     "tailwindcss": "^4.3.3",
     "ts-jest": "^29.4.7",
     "ts-node": "10.9.1",
@@ -67,5 +75,8 @@
     "primeicons": "^8.0.0",
     "primeng": "^22.0.0",
     "rxjs": "~7.8.0"
+  },
+  "overrides": {
+    "webpack": "5.109.2"
   }
 }
