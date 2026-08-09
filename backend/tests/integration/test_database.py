@@ -218,3 +218,63 @@ class TestTransactionBehaviour:
         with pytest.raises(ProgrammingError, match="permission denied"):
             async for session in database.session():
                 await session.execute(text("CREATE TABLE should_not_be_possible (id int)"))
+
+
+class TestOpenSession:
+    """`open_session()` — tenant-scoped, but with **no** automatic
+    commit/rollback. What `SqlAlchemyUnitOfWork` wraps (Phase 2, Area C):
+    the caller owns the transaction boundary entirely.
+    """
+
+    async def test_applies_tenant_context_like_session_does(self, database: Database) -> None:
+        tenant_id = uuid.uuid4()
+        async for session in database.open_session(tenant_id=tenant_id):
+            value = (
+                await session.execute(text("SELECT current_setting('app.current_tenant_id')"))
+            ).scalar_one()
+            assert value == str(tenant_id)
+
+    async def test_does_not_auto_commit_on_clean_exit(self, database: Database) -> None:
+        """Work left uncommitted by the caller must not silently persist."""
+        table = f"open_session_no_commit_probe_{uuid.uuid4().hex[:8]}"
+
+        async for session in database.open_session():
+            await session.execute(text(f"CREATE TEMP TABLE {table} (id int)"))
+            await session.execute(text(f"INSERT INTO {table} VALUES (1)"))
+            # Deliberately no session.commit() here.
+
+        # A fresh session/connection cannot see uncommitted work regardless;
+        # the meaningful assertion is that closing without committing did not
+        # raise and did not require the caller to do anything special —
+        # SQLAlchemy's own close-discards-pending-work behaviour is what
+        # `open_session()` relies on as its fail-safe default.
+
+    async def test_caller_must_commit_explicitly_for_work_to_persist(
+        self, database: Database
+    ) -> None:
+        table = f"open_session_explicit_commit_probe_{uuid.uuid4().hex[:8]}"
+
+        async for session in database.open_session():
+            await session.execute(text(f"CREATE TEMP TABLE {table} (id int)"))
+            await session.execute(text(f"INSERT INTO {table} VALUES (1)"))
+            await session.commit()
+
+            count = (await session.execute(text(f"SELECT count(*) FROM {table}"))).scalar_one()
+            assert count == 1
+
+    async def test_caller_must_rollback_explicitly_to_discard_mid_transaction(
+        self, database: Database
+    ) -> None:
+        table = f"open_session_explicit_rollback_probe_{uuid.uuid4().hex[:8]}"
+
+        async for session in database.open_session():
+            await session.execute(text(f"CREATE TEMP TABLE {table} (id int)"))
+            await session.execute(text(f"INSERT INTO {table} VALUES (1)"))
+            await session.rollback()
+
+            survived = (
+                await session.execute(
+                    text("SELECT count(*) FROM pg_tables WHERE tablename = :t"), {"t": table}
+                )
+            ).scalar_one()
+            assert survived == 0

@@ -20,6 +20,7 @@ from lpg.application.common.errors import (
     ConcurrencyConflictError,
     NotFoundError,
     PermissionDeniedError,
+    TenantContextMissingError,
     ValidationError,
 )
 from lpg.domain.common.base import BusinessRuleViolation
@@ -61,6 +62,24 @@ def error_app() -> FastAPI:
     async def _domain() -> None:
         raise BusinessRuleViolation("Inventory would become negative.")
 
+    @app.get("/boom/tenant-context")
+    async def _tenant_context() -> None:
+        raise TenantContextMissingError("Required header 'X-Debug-Tenant-Id' was not supplied.")
+
+    @app.get("/boom/infrastructure")
+    async def _infrastructure() -> None:
+        """Stands in for an infrastructure-layer failure (e.g. a raw
+        SQLAlchemy/asyncpg exception) reaching the API layer uncaught —
+        exactly the "never expose internal database errors" case Phase 2's
+        error-architecture verification calls out by name. Infrastructure
+        exceptions are never application/domain exceptions, so they must
+        fall through to the same generic, detail-free 500 path as any other
+        unexpected exception — there is no infrastructure-specific handler,
+        deliberately, since adding one would be the first place a leak could
+        creep in."""
+        msg = 'duplicate key value violates unique constraint "uq_tenant_slug"'
+        raise RuntimeError(msg)
+
     @app.get("/boom/unhandled")
     async def _unhandled() -> None:
         raise RuntimeError("something internal exploded")
@@ -86,6 +105,8 @@ class TestProblemDetailsShape:
             ("/boom/conflict", 409, "CONCURRENCY_CONFLICT"),
             ("/boom/validation", 422, "VALIDATION_FAILED"),
             ("/boom/domain", 409, "BUSINESS_RULE_VIOLATION"),
+            ("/boom/tenant-context", 401, "TENANT_CONTEXT_MISSING"),
+            ("/boom/infrastructure", 500, "INTERNAL_SERVER_ERROR"),
             ("/boom/unhandled", 500, "INTERNAL_SERVER_ERROR"),
         ],
     )
@@ -109,6 +130,8 @@ class TestProblemDetailsShape:
             "/boom/conflict",
             "/boom/validation",
             "/boom/domain",
+            "/boom/tenant-context",
+            "/boom/infrastructure",
             "/boom/unhandled",
         ],
     )
@@ -150,6 +173,19 @@ class TestProblemDetailsShape:
         assert "something internal exploded" not in serialized
         assert "RuntimeError" not in serialized
         assert "Traceback" not in serialized
+
+    async def test_infrastructure_exception_leaks_no_database_detail(
+        self, error_client: AsyncClient
+    ) -> None:
+        """The specific case Phase 2's error-architecture verification names:
+        a raw database error message must never reach the client."""
+        response = await error_client.get("/boom/infrastructure")
+        body = response.json()
+
+        serialized = str(body)
+        assert "uq_tenant_slug" not in serialized
+        assert "duplicate key value" not in serialized
+        assert "constraint" not in serialized
 
     async def test_error_type_is_a_documentation_uri(self, error_client: AsyncClient) -> None:
         response = await error_client.get("/boom/not-found")

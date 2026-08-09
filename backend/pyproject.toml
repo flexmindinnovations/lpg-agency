@@ -18,6 +18,8 @@ dependencies = [
     "alembic>=1.14.0",
     # Cache / queue / real-time backplane
     "redis>=5.2.0",
+    # Background jobs (ADR-029) — async-native, Redis-backed, no second broker
+    "arq>=0.26.0",
     # Observability
     "structlog>=24.4.0",
 ]
@@ -79,6 +81,10 @@ ignore = [
 # uuid4 hex generated in the test, never user input. Application code keeps the
 # rule.
 "tests/**/*.py" = ["ARG001", "S105", "S106", "S608"]
+# Migrations interpolate module-level schema/table name constants into DDL —
+# never user input, and Alembic's own generated revision IDs/messages are not
+# request-controlled either. Application code keeps the rule.
+"migrations/versions/*.py" = ["S608"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["lpg"]
@@ -195,6 +201,11 @@ ignore_imports = [
     "lpg.api.app -> lpg.infrastructure.persistence.database",
     "lpg.api.app -> lpg.infrastructure.redis.client",
     "lpg.api.app -> lpg.infrastructure.health",
+    # Dependency-wiring modules under api/v1/dependencies/ are the other
+    # place the API layer is allowed to know concrete infrastructure types
+    # exist — exactly the composition root's role, scoped to one seam each,
+    # so that routers and use cases never import infrastructure directly.
+    "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.unit_of_work",
 ]
 
 [[tool.importlinter.contracts]]

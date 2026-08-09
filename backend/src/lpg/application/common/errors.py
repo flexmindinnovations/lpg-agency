@@ -55,6 +55,19 @@ class AuthenticationError(ApplicationError):
     title = "Authentication required"
 
 
+class TenantContextMissingError(AuthenticationError):
+    """No tenant context could be resolved for this request.
+
+    Distinct from a generic authentication failure so infrastructure can log
+    and test for it specifically. Phase 2's ``TenantResolver`` implementations
+    raise this when their (interim, pre-authentication) resolution mechanism
+    finds nothing to resolve from — see ``lpg.infrastructure.tenant``.
+    """
+
+    error_code = "TENANT_CONTEXT_MISSING"
+    title = "Tenant context could not be resolved"
+
+
 class ConflictError(ApplicationError):
     """The request conflicts with current state."""
 
@@ -73,6 +86,31 @@ class ConcurrencyConflictError(ConflictError):
 
     error_code = "CONCURRENCY_CONFLICT"
     title = "Resource was modified concurrently"
+
+
+class IdempotencyConflictError(ConflictError):
+    """The same Idempotency-Key was reused with a different request payload.
+
+    A client retrying its own request must send byte-identical (or at least
+    fingerprint-identical) content; reusing a key for a genuinely different
+    request is a client bug, not a network retry, and must not silently
+    execute against, or replay, unrelated stored state.
+    """
+
+    error_code = "IDEMPOTENCY_KEY_CONFLICT"
+    title = "Idempotency key reused with a different request"
+
+
+class RateLimitExceededError(ApplicationError):
+    """The caller has exceeded the permitted request rate."""
+
+    error_code = "RATE_LIMIT_EXCEEDED"
+    http_status = 429
+    title = "Rate limit exceeded"
+
+    def __init__(self, message: str, *, retry_after_seconds: int, **context: Any) -> None:
+        super().__init__(message, **context)
+        self.retry_after_seconds = retry_after_seconds
 
 
 class ValidationError(ApplicationError):

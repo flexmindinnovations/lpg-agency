@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from lpg.infrastructure.jobs.pool import JobQueue
     from lpg.infrastructure.persistence.database import Database
     from lpg.infrastructure.redis.client import RedisClient
 
@@ -45,3 +46,17 @@ class RedisHealthCheck:
 
     async def check(self) -> bool:
         return await self._client.ping()
+
+
+class JobQueueHealthCheck:
+    """Reports whether the ARQ job queue's Redis connection is reachable."""
+
+    def __init__(self, queue: JobQueue) -> None:
+        self._queue = queue
+
+    @property
+    def name(self) -> str:
+        return "job_queue"
+
+    async def check(self) -> bool:
+        return await self._queue.ping()

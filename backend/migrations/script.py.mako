@@ -8,11 +8,14 @@ Create Date: ${create_date}
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from alembic import op
 import sqlalchemy as sa
 ${imports if imports else ""}
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 revision: str = ${repr(up_revision)}
 down_revision: str | None = ${repr(down_revision)}

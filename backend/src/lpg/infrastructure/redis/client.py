@@ -42,7 +42,13 @@ class RedisClient:
 
     def connect(self) -> None:
         """Create the connection pool. Does not open a connection."""
-        self._client = redis.from_url(
+        # redis-py's `from_url` (and several `Redis` instance methods) lose
+        # their type annotations under the <6 ceiling ADR-029's `arq`
+        # dependency forces (arq pins `redis<6`); this project ran fully
+        # typed 8.x before that constraint existed. The ignores at this
+        # call site and at each affected call site downstream are the
+        # version gap, not a real typing hole in this codebase's own code.
+        self._client = redis.from_url(  # type: ignore[no-untyped-call]
             str(self._settings.redis_url),
             encoding="utf-8",
             decode_responses=True,

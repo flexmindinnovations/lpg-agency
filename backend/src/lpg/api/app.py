@@ -24,7 +24,9 @@ from lpg.api.middleware.problem_details import register_exception_handlers
 from lpg.api.v1.routers import health
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
-from lpg.infrastructure.health import DatabaseHealthCheck, RedisHealthCheck
+from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
+from lpg.infrastructure.health import DatabaseHealthCheck, JobQueueHealthCheck, RedisHealthCheck
+from lpg.infrastructure.jobs.pool import JobQueue
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.redis.client import RedisClient
 
@@ -43,6 +45,8 @@ class AppState:
     database: Database | None = None
     redis: RedisClient | None = None
     health_checks: list[HealthCheck] = field(default_factory=list)
+    event_dispatcher: DomainEventDispatcher | None = None
+    job_queue: JobQueue | None = None
 
 
 _state = AppState()
@@ -67,10 +71,17 @@ def get_health_checks() -> list[HealthCheck]:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastAPI signature
     """Open and close process-wide resources.
 
-    Connections are created but not dialled here. If the database is briefly
-    unavailable at boot the application still starts and reports itself
-    *not ready* — which is correct. Refusing to start would mean an instance
-    could never recover from a dependency that comes up a few seconds late.
+    Database and Redis connections are created but not dialled here. If a
+    dependency is briefly unavailable at boot the application still starts
+    and reports itself *not ready* — which is correct. Refusing to start
+    would mean an instance could never recover from a dependency that comes
+    up a few seconds late.
+
+    ``JobQueue`` is the one exception: ARQ's ``create_pool`` connects
+    eagerly, with no lazy variant. A failure here is caught rather than
+    left to propagate, so a Redis outage at boot degrades the queue to
+    *not ready* — exactly like the other two — instead of preventing the
+    application from starting at all.
     """
     settings = get_settings()
 
@@ -80,11 +91,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     redis_client = RedisClient(settings)
     redis_client.connect()
 
+    job_queue = JobQueue(settings)
+    try:
+        await job_queue.connect()
+    except Exception as exc:  # noqa: BLE001 - degrade to not-ready, never crash startup
+        _logger.warning("job_queue_connect_failed_at_startup", error=str(exc))
+
     _state.database = database
     _state.redis = redis_client
+    _state.event_dispatcher = DomainEventDispatcher()
+    _state.job_queue = job_queue
     _state.health_checks = [
         DatabaseHealthCheck(database),
         RedisHealthCheck(redis_client),
+        JobQueueHealthCheck(job_queue),
     ]
 
     _logger.info(
@@ -99,8 +119,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     finally:
         await database.disconnect()
         await redis_client.disconnect()
+        await job_queue.disconnect()
         _state.database = None
         _state.redis = None
+        _state.event_dispatcher = None
+        _state.job_queue = None
         _state.health_checks = []
         _logger.info("application_stopped")
 

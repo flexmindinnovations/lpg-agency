@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
 
     from fastapi import FastAPI
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 @pytest.fixture(autouse=True)
@@ -119,6 +120,34 @@ def _redis_url() -> str:
     return os.environ.get("LPG_TEST_REDIS_URL", "redis://localhost:56379/1")
 
 
+def _admin_database_url() -> str:
+    """Connection string for **seeding** data that RLS would otherwise block.
+
+    Uses ``lpg_admin`` — the elevated, superuser role migrations run as
+    (``06-database-architecture.md`` §2.2) — deliberately, so tests can set up
+    fixture rows that the tenant-scoped ``lpg_app`` role could never insert
+    itself (e.g. ``tenant.tenant``, whose RLS policy makes self-registration
+    impossible by design — see migration ``0242df1a3871``). Never used to
+    perform the *action under test*; only to arrange state before it.
+    """
+    return os.environ.get(
+        "LPG_TEST_ADMIN_DATABASE_URL",
+        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_test",
+    )
+
+
+@pytest.fixture
+async def admin_engine() -> AsyncIterator[AsyncEngine]:
+    """An engine connected as the elevated role, for fixture setup only."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(_admin_database_url())
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
+
+
 @pytest.fixture
 def integration_settings() -> Settings:
     """Settings pointed at the docker compose services."""
@@ -154,7 +183,10 @@ async def redis_available() -> bool:
     """Whether the docker compose Redis is reachable."""
     import redis.asyncio as redis
 
-    client = redis.from_url(_redis_url(), decode_responses=True)
+    # redis-py 5.x's `from_url` loses its type annotation under the <6
+    # ceiling `arq` forces (ADR-029) — see the identical note in
+    # RedisClient.connect().
+    client = redis.from_url(_redis_url(), decode_responses=True)  # type: ignore[no-untyped-call]
     try:
         await client.ping()
     except Exception:  # noqa: BLE001 - availability probe

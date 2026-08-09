@@ -62,6 +62,26 @@ class TenantContext(Protocol):
 
 
 @runtime_checkable
+class TenantResolver(Protocol):
+    """Resolves a ``TenantContext`` for the current request.
+
+    The extension point Phase 6 (Authentication) plugs into: once JWTs exist,
+    a ``JwtTenantResolver`` reads the verified `tenant_id`/`sub` claims and
+    implements this same protocol. Application and domain code depend only on
+    the resolved ``TenantContext``, never on how it was resolved — swapping
+    the resolver touches one infrastructure module and nothing else.
+
+    **No implementation of this protocol is trusted for production traffic
+    until Phase 6.** The Phase 2 implementation resolves from an explicit,
+    unverified request header for local development and testing only — see
+    ``lpg.infrastructure.tenant.header_resolver`` for why that is safe *only*
+    because no protected endpoint yet consumes it.
+    """
+
+    async def resolve(self, request: Any) -> TenantContext: ...
+
+
+@runtime_checkable
 class RealtimePublisher(Protocol):
     """Transport-agnostic publication of real-time messages.
 

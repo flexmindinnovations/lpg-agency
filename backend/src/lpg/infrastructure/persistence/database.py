@@ -117,12 +117,40 @@ class Database:
             self._session_factory = None
             _logger.info("database_engine_disposed")
 
+    @staticmethod
+    async def _apply_tenant_context(session: AsyncSession, tenant_id: uuid.UUID | None) -> None:
+        """Set ``app.current_tenant_id`` transaction-scoped, if given.
+
+        `set_config(..., is_local => true)` rather than the literal `SET
+        LOCAL` statement. Both are transaction-scoped and equivalent in
+        effect, but PostgreSQL's `SET` command does **not** accept bind
+        parameters — `SET LOCAL x = :tenant_id` is a syntax error at the
+        placeholder. `set_config` is a normal function call, so the value
+        binds properly and can never be string-interpolated into SQL.
+
+        Transaction-scoped is the important part: the value must not survive
+        on a pooled connection and be inherited by the next request, which
+        would be a cross-tenant leak through the pool. It is also what keeps
+        this compatible with transaction-mode server-side pooling (Supavisor
+        on Supabase, PgBouncer).
+        """
+        if tenant_id is not None:
+            await session.execute(
+                text("SELECT set_config('app.current_tenant_id', :tenant_id, true)"),
+                {"tenant_id": str(tenant_id)},
+            )
+
     async def session(self, *, tenant_id: uuid.UUID | None = None) -> AsyncIterator[AsyncSession]:
         """Yield a session bound to a transaction, optionally tenant-scoped.
 
-        When ``tenant_id`` is supplied, ``app.current_tenant_id`` is set
-        transaction-scoped as the first statement, which is what the RLS
-        policies read.
+        **Owns commit/rollback itself** — commits on clean exit, rolls back on
+        exception. Correct for simple, self-contained database access with no
+        separate transaction-boundary owner. **Not** what the Unit of Work
+        dependency uses (``lpg.api.v1.dependencies.unit_of_work``): a
+        ``UnitOfWork`` needs to control exactly when the transaction commits
+        (a use case may call ``uow.commit()`` explicitly, mid-flow), which
+        this method's automatic commit-on-exit would race against. That path
+        uses ``open_session()`` instead.
 
         ``tenant_id`` is optional in Phase 1 only because authentication does
         not exist yet, so there is no JWT to resolve a tenant from. From Phase 6
@@ -136,30 +164,33 @@ class Database:
             raise RuntimeError(msg)
 
         async with self._session_factory() as session:
-            if tenant_id is not None:
-                # `set_config(..., is_local => true)` rather than the literal
-                # `SET LOCAL` statement. Both are transaction-scoped and
-                # equivalent in effect, but PostgreSQL's `SET` command does
-                # **not** accept bind parameters — `SET LOCAL x = :tenant_id`
-                # is a syntax error at the placeholder. `set_config` is a
-                # normal function call, so the value binds properly and can
-                # never be string-interpolated into SQL.
-                #
-                # Transaction-scoped is the important part: the value must not
-                # survive on a pooled connection and be inherited by the next
-                # request, which would be a cross-tenant leak through the pool.
-                # It is also what keeps this compatible with transaction-mode
-                # server-side pooling (Supavisor on Supabase, PgBouncer).
-                await session.execute(
-                    text("SELECT set_config('app.current_tenant_id', :tenant_id, true)"),
-                    {"tenant_id": str(tenant_id)},
-                )
+            await self._apply_tenant_context(session, tenant_id)
             try:
                 yield session
                 await session.commit()
             except Exception:
                 await session.rollback()
                 raise
+
+    async def open_session(
+        self, *, tenant_id: uuid.UUID | None = None
+    ) -> AsyncIterator[AsyncSession]:
+        """Yield a tenant-scoped session with **no automatic commit/rollback**.
+
+        The caller owns the transaction boundary entirely — this is what
+        ``SqlAlchemyUnitOfWork`` wraps. If the caller never commits or rolls
+        back explicitly, closing the session at the end of this generator
+        implicitly discards any pending transaction (SQLAlchemy's normal
+        behaviour for a session closed with open work) — the fail-safe
+        default is "nothing is persisted", never "silently committed".
+        """
+        if self._session_factory is None:
+            msg = "Database.connect() has not been called"
+            raise RuntimeError(msg)
+
+        async with self._session_factory() as session:
+            await self._apply_tenant_context(session, tenant_id)
+            yield session
 
     async def ping(self) -> bool:
         """Return whether the database is reachable. Used by readiness."""
