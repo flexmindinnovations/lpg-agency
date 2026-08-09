@@ -25,10 +25,17 @@ from lpg.api.v1.routers import health
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
-from lpg.infrastructure.health import DatabaseHealthCheck, JobQueueHealthCheck, RedisHealthCheck
+from lpg.infrastructure.health import (
+    DatabaseHealthCheck,
+    JobQueueHealthCheck,
+    RedisHealthCheck,
+    StorageHealthCheck,
+)
 from lpg.infrastructure.jobs.pool import JobQueue
 from lpg.infrastructure.persistence.database import Database
+from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
 from lpg.infrastructure.redis.client import RedisClient
+from lpg.infrastructure.storage.client import S3CompatibleFileStorage
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -47,6 +54,8 @@ class AppState:
     health_checks: list[HealthCheck] = field(default_factory=list)
     event_dispatcher: DomainEventDispatcher | None = None
     job_queue: JobQueue | None = None
+    realtime_publisher: RedisRealtimePublisher | None = None
+    storage: S3CompatibleFileStorage | None = None
 
 
 _state = AppState()
@@ -97,14 +106,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     except Exception as exc:  # noqa: BLE001 - degrade to not-ready, never crash startup
         _logger.warning("job_queue_connect_failed_at_startup", error=str(exc))
 
+    # Same eager-connect exception as JobQueue: ensuring the bucket exists
+    # (head_bucket/create_bucket) means storage.connect() makes a real network
+    # call at boot. A failure degrades to not-ready rather than crashing startup.
+    storage = S3CompatibleFileStorage(settings)
+    try:
+        await storage.connect()
+    except Exception as exc:  # noqa: BLE001 - degrade to not-ready, never crash startup
+        _logger.warning("storage_connect_failed_at_startup", error=str(exc))
+
     _state.database = database
     _state.redis = redis_client
     _state.event_dispatcher = DomainEventDispatcher()
     _state.job_queue = job_queue
+    _state.realtime_publisher = RedisRealtimePublisher(redis_client)
+    _state.storage = storage
     _state.health_checks = [
         DatabaseHealthCheck(database),
         RedisHealthCheck(redis_client),
         JobQueueHealthCheck(job_queue),
+        StorageHealthCheck(storage),
     ]
 
     _logger.info(
@@ -120,10 +141,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
         await database.disconnect()
         await redis_client.disconnect()
         await job_queue.disconnect()
+        await storage.disconnect()
         _state.database = None
         _state.redis = None
         _state.event_dispatcher = None
         _state.job_queue = None
+        _state.storage = None
+        _state.realtime_publisher = None
         _state.health_checks = []
         _logger.info("application_stopped")
 

@@ -1,9 +1,9 @@
 """Shared pytest fixtures.
 
-Integration tests run against a **real PostgreSQL and Redis** from docker
-compose — never SQLite, never a mock. RLS policies and PostgreSQL-specific
-types must actually be exercised, and a mock cannot exercise either
-(``docs/implementation/testing-strategy.md``).
+Integration tests run against a **real PostgreSQL, Redis, and MinIO** from
+docker compose — never SQLite, never a mock. RLS policies and
+PostgreSQL-specific types must actually be exercised, and a mock cannot
+exercise either (``docs/implementation/testing-strategy.md``).
 
 When those services are unreachable, integration tests **skip with a reason**
 rather than fail. A red suite caused by a stopped container trains people to
@@ -120,6 +120,16 @@ def _redis_url() -> str:
     return os.environ.get("LPG_TEST_REDIS_URL", "redis://localhost:56379/1")
 
 
+def _storage_endpoint_url() -> str:
+    return os.environ.get("LPG_TEST_STORAGE_ENDPOINT_URL", "http://localhost:59000")
+
+
+def _storage_bucket() -> str:
+    # Separate from the dev/uat buckets, mirroring the test database/Redis
+    # logical-database separation above.
+    return os.environ.get("LPG_TEST_STORAGE_BUCKET", "lpg-test")
+
+
 def _admin_database_url() -> str:
     """Connection string for **seeding** data that RLS would otherwise block.
 
@@ -157,6 +167,8 @@ def integration_settings() -> Settings:
         database_url=_database_url(),
         redis_url=_redis_url(),
         health_check_timeout_seconds=5.0,
+        storage_endpoint_url=_storage_endpoint_url(),
+        storage_bucket=_storage_bucket(),
     )
 
 
@@ -195,3 +207,24 @@ async def redis_available() -> bool:
         return True
     finally:
         await client.aclose()
+
+
+@pytest.fixture
+async def storage_available() -> bool:
+    """Whether the docker compose MinIO is reachable."""
+    import aioboto3
+
+    session = aioboto3.Session()
+    try:
+        async with session.client(
+            "s3",
+            endpoint_url=_storage_endpoint_url(),
+            aws_access_key_id="lpg_storage",
+            aws_secret_access_key="dev_only_not_a_real_secret",
+            region_name="us-east-1",
+        ) as client:
+            await client.list_buckets()
+    except Exception:  # noqa: BLE001 - availability probe
+        return False
+    else:
+        return True

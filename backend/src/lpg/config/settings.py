@@ -127,6 +127,20 @@ class Settings(BaseSettings):
     # Pub/Sub backplane (ADR-015). A critical dependency, monitored as one.
     redis_url: RedisDsn = Field(default=RedisDsn("redis://localhost:56379/0"))
 
+    # -- Object storage (D-40) ---------------------------------------------
+    # S3-compatible client against MinIO for every environment that exists
+    # today (local, UAT); a production cloud vendor is deferred with hosting
+    # topology (ADR-022, Phase 3 ADR). No credential is ever hardcoded — the
+    # defaults below point at the local docker compose MinIO, whose
+    # credentials are worthless outside the container.
+    storage_endpoint_url: str = "http://localhost:59000"
+    storage_access_key: str = "lpg_storage"
+    storage_secret_key: SecretStr = SecretStr("dev_only_not_a_real_secret")
+    storage_bucket: str = "lpg-dev"
+    # boto3's S3 client requires a region even against MinIO, which does not
+    # use one — any non-empty string satisfies the client-side validation.
+    storage_region: str = "us-east-1"
+
     # -- Observability ----------------------------------------------------
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_json: bool = True

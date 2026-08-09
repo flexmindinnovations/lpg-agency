@@ -20,6 +20,10 @@ dependencies = [
     "redis>=5.2.0",
     # Background jobs (ADR-029) — async-native, Redis-backed, no second broker
     "arq>=0.26.0",
+    # Object storage (D-40) — S3-compatible client, async-native to match the
+    # rest of the stack. MinIO locally/UAT; production vendor deferred with
+    # hosting topology (ADR-022, Phase 3 ADR).
+    "aioboto3>=13.2.0",
     # Observability
     "structlog>=24.4.0",
 ]
@@ -35,6 +39,9 @@ dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "import-linter>=2.1",
+    # Type stubs for aioboto3's S3 client (mypy --strict, ADR-024) — dev-only,
+    # no runtime effect.
+    "types-aiobotocore[s3]",
 ]
 
 [build-system]
@@ -110,6 +117,14 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+# aioboto3 itself ships no py.typed marker / stubs (unlike aiobotocore,
+# covered by the types-aiobotocore[s3] dev dependency, which is what types
+# every S3Client call this codebase actually makes). Narrowly scoped to
+# this one genuinely-unstubbed third-party import, not a blanket relaxation.
+module = ["aioboto3", "aioboto3.*"]
+ignore_missing_imports = true
 
 # ==========================================================================
 # pytest
@@ -201,6 +216,8 @@ ignore_imports = [
     "lpg.api.app -> lpg.infrastructure.persistence.database",
     "lpg.api.app -> lpg.infrastructure.redis.client",
     "lpg.api.app -> lpg.infrastructure.health",
+    "lpg.api.app -> lpg.infrastructure.realtime.publisher",
+    "lpg.api.app -> lpg.infrastructure.storage.client",
     # Dependency-wiring modules under api/v1/dependencies/ are the other
     # place the API layer is allowed to know concrete infrastructure types
     # exist — exactly the composition root's role, scoped to one seam each,

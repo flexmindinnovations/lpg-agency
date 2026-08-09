@@ -1,4 +1,4 @@
-# Local development environment — PostgreSQL + Redis
+# Local development environment — PostgreSQL + Redis + MinIO
 #
 # Development only. Production infrastructure is a later phase, and the Azure
 # hosting topology is deliberately undecided (ADR-022).
@@ -7,9 +7,9 @@
 #   Stop:   docker compose -f infrastructure/docker/docker-compose.yml down
 #   Reset:  docker compose -f infrastructure/docker/docker-compose.yml down -v
 #
-# Ports are deliberately non-default (55432 / 56379) so this stack does not
-# collide with any PostgreSQL or Redis already running on the developer's
-# machine — a common and confusing failure mode.
+# Ports are deliberately non-default (55432 / 56379 / 59000-59001) so this
+# stack does not collide with any PostgreSQL, Redis, or MinIO already
+# running on the developer's machine — a common and confusing failure mode.
 
 name: lpg-agency-dev
 
@@ -77,8 +77,39 @@ services:
       - "60"
       - "1"
 
+  minio:
+    image: minio/minio:latest
+    container_name: lpg-minio
+    restart: unless-stopped
+    environment:
+      # Local-development credentials only, worthless outside the container —
+      # same posture as the Postgres/Redis services above. Phase 3 (Shared
+      # Infrastructure): MinIO is the S3-compatible local/UAT object store
+      # behind the FileStorage port; a production cloud vendor is deferred
+      # with hosting topology (ADR-022) — see docs/architecture/13-deployment.md.
+      MINIO_ROOT_USER: lpg_storage
+      MINIO_ROOT_PASSWORD: dev_only_not_a_real_secret
+    ports:
+      - "${MINIO_API_PORT:-59000}:9000"
+      - "${MINIO_CONSOLE_PORT:-59001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":9001"
+
 volumes:
   postgres-data:
     name: lpg-postgres-data
   redis-data:
     name: lpg-redis-data
+  minio-data:
+    name: lpg-minio-data
