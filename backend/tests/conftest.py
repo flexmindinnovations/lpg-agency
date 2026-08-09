@@ -39,6 +39,28 @@ def _reset_settings_cache() -> Iterator[None]:
     get_settings.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent a real ``backend/.env`` from leaking into the test suite.
+
+    Normal setup is ``cp .env.dev.example .env`` — every developer following
+    the documented workflow ends up with a real, git-ignored ``.env`` on disk.
+    ``Settings`` reads that file directly as a config *source*, independent of
+    ``os.environ``, so ``monkeypatch.setenv``/``delenv`` alone do not shield a
+    test from it: a bare ``Settings()`` call would silently pick up whatever
+    environment a developer happens to have configured (production URLs,
+    ``LPG_ENVIRONMENT=production`` triggering the non-local guard rails in
+    ``model_post_init``, or fields left empty pending real credentials) instead
+    of the value a test intends to exercise.
+
+    A test suite whose outcome depends on which environment file happens to
+    exist on the machine running it is not hermetic. Disabling dotenv loading
+    for the duration of every test closes that gap without touching every call
+    site that constructs ``Settings()``.
+    """
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+
+
 @pytest.fixture
 def settings() -> Settings:
     return Settings(environment="local", log_json=False, docs_enabled=True)
@@ -89,7 +111,7 @@ def _database_url() -> str:
     """
     return os.environ.get(
         "LPG_TEST_DATABASE_URL",
-        "postgresql+asyncpg://lpg_app:dev_only_not_a_real_secret@localhost:55432/lpg_test",
+        "postgresql+asyncpg://lpg_app:dev123@localhost:55432/lpg_test",
     )
 
 

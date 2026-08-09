@@ -7,14 +7,22 @@
 -- Establishes the role separation that tenant isolation depends on
 -- (ADR-017, docs/architecture/06-database-architecture.md §2.2):
 --
---   lpg_admin  — superuser. Migrations and administration only.
---   lpg_app    — the application role. NOT a superuser, NOT the table owner,
---                and explicitly WITHOUT BYPASSRLS.
+--   lpg_admin     — superuser. Migrations and administration only.
+--   lpg_app       — application role for lpg_dev and lpg_test.
+--                   NOT a superuser, NOT the table owner, WITHOUT BYPASSRLS.
+--   lpg_app_uat   — application role for lpg_uat, same restrictions.
 --
 -- This matters from day one. Row-Level Security is the backstop that holds
 -- when application code is wrong; a role that can bypass it removes the
 -- backstop entirely. Getting the roles right now costs nothing — retrofitting
 -- them after tables exist is a migration with a security window in the middle.
+--
+-- Two application roles, not one, because PostgreSQL roles are cluster-wide:
+-- a single username cannot hold two different passwords depending on which
+-- database you connect to. dev and test share a password (and a role)
+-- because they are both throwaway local sandboxes; uat gets its own role and
+-- password so it stays a distinct credential, mirroring how dev/uat/prod are
+-- kept distinct everywhere else.
 -- ==========================================================================
 
 \set ON_ERROR_STOP on
@@ -47,7 +55,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'lpg_app') THEN
         CREATE ROLE lpg_app
             WITH LOGIN
-            PASSWORD 'dev_only_not_a_real_secret'
+            PASSWORD 'dev123'
             NOSUPERUSER
             NOCREATEDB
             NOCREATEROLE
@@ -56,6 +64,20 @@ BEGIN
         RAISE NOTICE 'Created application role lpg_app (NOBYPASSRLS)';
     ELSE
         RAISE NOTICE 'Application role lpg_app already exists';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'lpg_app_uat') THEN
+        CREATE ROLE lpg_app_uat
+            WITH LOGIN
+            PASSWORD 'uat123'
+            NOSUPERUSER
+            NOCREATEDB
+            NOCREATEROLE
+            NOBYPASSRLS
+            INHERIT;
+        RAISE NOTICE 'Created application role lpg_app_uat (NOBYPASSRLS)';
+    ELSE
+        RAISE NOTICE 'Application role lpg_app_uat already exists';
     END IF;
 END
 $$;
@@ -66,6 +88,14 @@ $$;
 -- Connect + schema usage. Table privileges are granted by migrations as
 -- tables are created, so this stays a least-privilege baseline rather than a
 -- blanket grant.
+--
+-- PostgreSQL grants CONNECT to PUBLIC on every new database by default, and
+-- every role implicitly inherits PUBLIC — so a plain GRANT here is not the
+-- whole story. Without the REVOKE, lpg_app_uat could still authenticate
+-- against lpg_dev despite never being granted access to it, which would
+-- make the "each environment has its own credential" boundary documentary
+-- rather than real.
+REVOKE CONNECT ON DATABASE lpg_dev FROM PUBLIC;
 GRANT CONNECT ON DATABASE lpg_dev TO lpg_app;
 GRANT USAGE ON SCHEMA public TO lpg_app;
 
@@ -119,14 +149,15 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-GRANT CONNECT ON DATABASE lpg_uat TO lpg_app;
-GRANT USAGE ON SCHEMA public TO lpg_app;
+REVOKE CONNECT ON DATABASE lpg_uat FROM PUBLIC;
+GRANT CONNECT ON DATABASE lpg_uat TO lpg_app_uat;
+GRANT USAGE ON SCHEMA public TO lpg_app_uat;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT ON TABLES TO lpg_app;
+    GRANT SELECT, INSERT ON TABLES TO lpg_app_uat;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO lpg_app;
+    GRANT USAGE, SELECT ON SEQUENCES TO lpg_app_uat;
 
 ALTER DATABASE lpg_uat SET app.current_tenant_id = '';
 
@@ -136,6 +167,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+REVOKE CONNECT ON DATABASE lpg_test FROM PUBLIC;
 GRANT CONNECT ON DATABASE lpg_test TO lpg_app;
 GRANT USAGE ON SCHEMA public TO lpg_app;
 

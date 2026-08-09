@@ -25,9 +25,12 @@
 | **prod** | `postgres` | **Supabase cloud** (ADR-027) | `backend/.env.prod.example` |
 
 dev and uat are separate *databases* on one instance rather than separate
-instances: same engine version, same extensions, same role privileges, a
-fraction of the resources. Each has its own `app.current_tenant_id` default and
-its own `lpg_app` grants, so a mistake in one cannot reach the other.
+instances: same engine version, same extensions, a fraction of the resources.
+Each has its own `app.current_tenant_id` default and its own application role
+and password, so a mistake in one cannot reach the other — dev and test share
+`lpg_app` (PostgreSQL roles are cluster-wide, so a shared role means a shared
+password), while uat has its own `lpg_app_uat` role specifically so it can
+carry a different password.
 
 Ports are deliberately non-default so this stack does not collide with a
 PostgreSQL or Redis already running on your machine — a confusing failure mode
@@ -35,19 +38,26 @@ where the application connects successfully to entirely the wrong database.
 
 ### Database roles
 
-`docker/postgres/init/01-init.sql` creates two roles, and the separation is
+`docker/postgres/init/01-init.sql` creates three roles, and the separation is
 load-bearing rather than cosmetic (ADR-017,
 `docs/architecture/06-database-architecture.md` §2.2):
 
 | Role | Rights | Used by |
 |---|---|---|
 | `lpg_admin` | superuser | Alembic migrations, administration |
-| `lpg_app` | `NOSUPERUSER`, **`NOBYPASSRLS`** | the application |
+| `lpg_app` | `NOSUPERUSER`, **`NOBYPASSRLS`** | the application, against `lpg_dev` and `lpg_test` |
+| `lpg_app_uat` | `NOSUPERUSER`, **`NOBYPASSRLS`** | the application, against `lpg_uat` only |
+
+`lpg_app` and `lpg_app_uat` are two separate roles rather than one, because
+PostgreSQL roles are cluster-wide — a single username cannot hold two
+different passwords depending on which database you connect to. Keeping uat on
+its own role means its password can differ from dev's without either database
+accepting the other's credential.
 
 PostgreSQL Row-Level Security is the backstop that holds when application code
 is wrong. An application role able to bypass RLS removes that backstop
-entirely, so `lpg_app` must never be granted `BYPASSRLS` and must never own the
-tables. Getting this right now costs nothing; retrofitting it after tables
+entirely, so neither application role may ever be granted `BYPASSRLS` or own
+the tables. Getting this right now costs nothing; retrofitting it after tables
 exist is a migration with a security window in the middle.
 
 The init script also sets a database-level default for
