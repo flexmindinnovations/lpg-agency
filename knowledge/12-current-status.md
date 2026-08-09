@@ -161,11 +161,12 @@ Deliberately open, each with a trigger point:
 
 # Known Risks
 
-- No repository scaffolding, no `.gitignore`, no commits — every file is currently untracked.
-- Authentication foundation not implemented.
-- Shared component library not created.
-- Database migrations not created.
-- AG Grid Enterprise licence unconfirmed — blocks the Angular Foundation phase.
+- **Five Phase 1 verifications are unclosed** — Docker's daemon would not start in the Phase 1 environment, so live PostgreSQL/Redis connection and Playwright execution remain unverified. Close out with `./scripts/dev-up.sh && ./scripts/check.sh`.
+- Authentication not implemented — every module depends on it.
+- No database migrations yet; the first arrives in Phase 2 with the `tenant` schema and its RLS policies.
+- Unit of Work, repositories and the domain-event dispatcher are designed but not implemented.
+- AG Grid runs on **Community**, not Enterprise — licence procurement unconfirmed. The wrapper (ADR-020) keeps this a two-line change rather than a refactor.
+- `mobile/packages/api_client`, `auth` and `sync_engine` are documented but not created; they have no content until Phase 6 and Phase 11.
 - `docs/modules/` per-module specifications referenced by several documents **do not exist**; equivalent content is distributed across `docs/srs/`, `docs/business/`, `docs/engineering/`, and `docs/data/` (see [`docs/README.md`](../docs/README.md)).
 
 No critical business risks identified.
