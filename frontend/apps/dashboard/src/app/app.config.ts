@@ -3,15 +3,23 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
-import { correlationIdInterceptor, problemDetailsInterceptor } from '@lpg/shared/data-access';
+import {
+  correlationIdInterceptor,
+  problemDetailsInterceptor,
+  provideApiConfiguration,
+} from '@lpg/shared/data-access';
 import { LpgPrimeNgPreset } from '@lpg/shared/design-tokens';
 import { appRoutes } from './app.routes';
 import { PRIME_NG_LICENSE_KEY } from './prime-license';
+import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
+    // Backend root URL, swapped per build configuration via `fileReplacements`
+    // (`apps/dashboard/project.json`) — see `src/environments/environment.ts`.
+    provideApiConfiguration(environment.apiUrl),
     provideHttpClient(
       // Order matters: correlation ID is attached on the way out, Problem
       // Details are translated on the way back.
