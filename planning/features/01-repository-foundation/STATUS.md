@@ -103,8 +103,8 @@ The user supplied the Supabase database password. Verified via the application's
 
 **Two real findings, not just a pass/fail:**
 
-1. **`postgres` on Supabase has `rolbypassrls=True`.** Not a surprise — `.env.prod.example` already documented this risk — but now confirmed live rather than theoretical. Using this role for the application (not just migrations) would silently void tenant isolation (ADR-017). DW-19 (provision a dedicated `NOSUPERUSER`/`NOBYPASSRLS` role) remains open and is now the concrete next step, not a hypothetical one.
-2. **Only `pgcrypto` is installed** on the live project; `citext` and `pg_trgm` — the other two extensions ADR-013 depends on — are not yet enabled. New: **DW-20**.
+1. **`postgres` on Supabase has `rolbypassrls=True`.** Not a surprise — `.env.prod.example` already documented this risk — but now confirmed live rather than theoretical. Using this role for the application (not just migrations) would silently void tenant isolation (ADR-017). DW-19 (provision a dedicated `NOSUPERUSER`/`NOBYPASSRLS` role) remains open and is now the concrete next step, not a hypothetical one. **Resolved 2026-08-09** — see "Closed This Session" below.
+2. **Only `pgcrypto` is installed** on the live project; `citext` and `pg_trgm` — the other two extensions ADR-013 depends on — are not yet enabled. New: **DW-20**. **Resolved 2026-08-09** — see "Closed This Session" below.
 
 ### DW-21 — Zero test coverage on two shared libraries: found and closed
 
@@ -132,11 +132,9 @@ ADR-028's hybrid UI strategy (PrimeNG primary) had been decided but never actual
 
 ## Still Blocked
 
-| Task | Why | To close |
-|---|---|---|
-| **T-34** Playwright e2e execution | Browser binaries not downloaded (`npx playwright install`) | Phase 4 |
+~~T-34 Playwright e2e execution~~ — **resolved 2026-08-09, Phase 4.** Browser binaries installed; the placeholder smoke test (which asserted content this app never had) rewritten into 4 real tests against the actual shell; 12/12 passed across chromium/firefox/webkit. See `planning/features/04-angular-web-foundation/STATUS.md`.
 
-That is now the **only** remaining blocked item.
+No blocked items remain from Phase 1.
 
 ---
 
@@ -152,18 +150,16 @@ That is now the **only** remaining blocked item.
 ## Known Issues (carried forward, one closed)
 
 1. ~~Live Supabase connectivity unverified~~ — **closed this session.**
-2. **`citext` and `pg_trgm` not installed on Supabase** — DW-20, new this session.
-3. **The Supabase application role is not provisioned** (DW-19) — confirmed more urgent now that the raw `postgres` credential is live and usable but unsafe for the application connection.
-4. ~~AG Grid runs on Community, not Enterprise — licence procurement unconfirmed (DW-08)~~ — **resolved 2026-08-09, out of session.** ADR-028 (amends ADR-020) makes AG Grid Community the platform default; DW-08 is no longer a standing blocker, only a per-feature question if a future requirement needs Enterprise. Same session added PrimeNG as the primary component library; new open item **DW-22** (PrimeNG licence-tier eligibility) tracked in `planning/current_phase.md`.
+2. ~~`citext` and `pg_trgm` not installed on Supabase~~ — **DW-20, resolved 2026-08-09** (Phase 2 close-out). See `planning/features/02-backend-foundation/STATUS.md`.
+3. ~~The Supabase application role is not provisioned~~ — **DW-19, resolved 2026-08-09** (Phase 2 close-out). `lpg_app` now provisioned on Supabase, application connects as it, not `postgres`. See `planning/features/02-backend-foundation/STATUS.md`.
+4. ~~AG Grid runs on Community, not Enterprise — licence procurement unconfirmed (DW-08)~~ — **resolved 2026-08-09, out of session.** ADR-028 (amends ADR-020) makes AG Grid Community the platform default; DW-08 is no longer a standing blocker, only a per-feature question if a future requirement needs Enterprise. Same session added PrimeNG as the primary component library; **DW-22** (PrimeNG licence-tier eligibility) also resolved 2026-08-09 — product owner confirmed the organisation meets PrimeTek's Community-tier thresholds.
 5. **Three documented mobile packages not created** — `api_client`, `auth`, `sync_engine` (DW-17). No content until Phase 6 / Phase 11.
 
 ---
 
 ## Next
 
-**Phase 2 — Backend Foundation. NOT STARTED.**
-
-Awaiting explicit instruction. When it comes, DW-19 (provision the Supabase application role) and DW-20 (install `citext`/`pg_trgm` on Supabase) should be early items — both are now concrete, both are cheap, and both are prerequisites for the first migration to be safe and complete.
+**Phase 2 — Backend Foundation. COMPLETE** (see `planning/features/02-backend-foundation/STATUS.md`), including DW-19 and DW-20, both resolved 2026-08-09. This section is left as it read at Phase 1 close-out for historical accuracy; it is no longer current.
 
 ## Last Updated
 

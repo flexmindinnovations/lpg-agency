@@ -86,8 +86,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` complete (verified) · `
   *Verify:* `npx nx build dashboard` succeeds; route config contains no domain route.
 - [x] **T-33** Jest configured and passing.
   *Verify:* `npx nx test dashboard` passes.
-- [!] **T-34** Playwright e2e foundation — scaffolded by the Nx generator (`apps/dashboard-e2e`).
-  *Verify:* **BLOCKED** — `npx nx e2e dashboard-e2e` needs `npx playwright install` to download browser binaries, which was not run in this environment. Configuration is present and wired into CI; execution unverified.
+- [x] **T-34** Playwright e2e foundation — scaffolded by the Nx generator (`apps/dashboard-e2e`). **Resolved 2026-08-09, Phase 4.**
+  *Verify:* `npx playwright install` run; `nx e2e dashboard-e2e` — 12/12 passed (chromium/firefox/webkit). See `planning/features/04-angular-web-foundation/TASKS.md` Area D for the full record, including a real Nx 23 recursive-task-invocation bug found and fixed along the way.
 - [-] **T-35** Storybook foundation. **Not done.** Deferred to Phase 4 (Angular Foundation), where the shared UI library gains components worth documenting. Storybook over a single grid wrapper is tooling without content.
   *Verify:* n/a — deferred, recorded as DW-14.
 - [x] **T-36** Prettier + ESLint configuration consistent across the workspace.
@@ -186,7 +186,7 @@ Recorded, not implemented — per `AGENTS.md` §Scope Control.
 | DW-12 | `Database.session()` accepts an optional `tenant_id`. From Phase 6 the API dependency producing sessions must **require** a resolved tenant context, so an unscoped session is unobtainable through the request path. | Cannot be enforced before Authentication exists — there is no JWT to resolve a tenant from yet. |
 | DW-13 | The `create-nx-workspace` `angular-monorepo` preset silently maps to a demo e-commerce template that ignores `--appName`, `--unitTestRunner` and `--e2eTestRunner`, and ships a conflicting `apps/api`. Worked around by generating an empty workspace and adding Angular explicitly. | Upstream tooling behaviour. Worth knowing before anyone regenerates the workspace. |
 | DW-14 | Storybook not configured (T-35). | Deferred to Phase 4, where `shared/ui` gains components worth documenting. Storybook over a single grid wrapper is tooling without content. |
-| DW-15 | Playwright browser binaries not downloaded, so the e2e smoke test was never executed (T-34). | `npx playwright install` is a large download; scaffolding and CI wiring are present. Close out in Phase 4. |
+| ~~DW-15~~ | ~~Playwright browser binaries not downloaded, so the e2e smoke test was never executed (T-34).~~ | **Resolved 2026-08-09, Phase 4.** |
 | DW-16 | AG Grid wrapper runs on AG Grid **Community**, not Enterprise. | Enterprise licence procurement is unconfirmed (DW-08 from Phase 0). The wrapper is what makes this a two-line change later rather than a refactor. |
 | DW-17 | `mobile/packages/api_client`, `auth` and `sync_engine` are documented in `05-mobile-architecture.md` §8 but not created. | They have no content until Authentication (Phase 6) and Delivery (Phase 11). Creating empty packages now would be structure without substance. |
 | DW-18 | **Assert the application's database role cannot bypass RLS.** ADR-027 requires a `NOSUPERUSER`, `NOBYPASSRLS` role on Supabase, mirroring `lpg_app` locally. CI can check `supabase/migrations/` absence and scan for a committed `service_role` key (both added to `repo-ci.yml`), but verifying the *live* role's attributes needs a database connection. | Phase 2, alongside the first migration and the tenant-isolation suite — that is where a live connection exists and where getting it wrong would first matter. |

@@ -10,7 +10,13 @@ LPG Agency Management Platform
 
 **Phase 2 — Backend Foundation** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction. 34/34 tracked tasks complete and verified. See [`planning/features/02-backend-foundation/STATUS.md`](./features/02-backend-foundation/STATUS.md).
 
-**Next phase — awaiting explicit go-ahead.** Recommendation: Phase 6 (Authentication) is the more natural next dependency over Phase 3/4/5, since Phase 2's `HeaderTenantResolver` (interim, header-based, not a security boundary) and the not-yet-mandatory tenant-scoped session (DW-12) both exist specifically as extension points for it.
+**Phase 3 — Shared Infrastructure (real-time publisher, file storage)** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction, immediately after DW-19/DW-20 closure. 13/13 tracked tasks complete and verified. See [`planning/features/03-shared-infrastructure/STATUS.md`](./features/03-shared-infrastructure/STATUS.md). Scoped to exactly two items — the `RealtimePublisher` port implementation and file storage — since everything else the original roadmap called "Phase 3" was already delivered under Phase 2's execution numbering.
+
+**Phase 4 — Angular 22 Web Foundation** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction. 17/18 tracked tasks complete and verified, 1 explicitly deferred to post-MVP by product owner decision (DW-24, Storybook's build — non-blocking). See [`planning/features/04-angular-web-foundation/STATUS.md`](./features/04-angular-web-foundation/STATUS.md). Brand palette refresh (ADR-031, deep forest green replacing blue), the collapsible-sidebar layout shell, T-34 (Playwright e2e execution, closed after being blocked since Phase 1), a WCAG 2.2 AA axe-core gate (found and fixed 3 real accessibility bugs), and the generated API client (ADR-032, `ng-openapi-gen`) are all done and verified. The API client's base URL was subsequently wired end-to-end same day, on explicit instruction, ahead of the phase originally expected to need it — see ADR-033.
+
+Phase 5 (Flutter Application Foundations) started 2026-08-09 on explicit instruction, immediately after ADR-033 closed out.
+
+**Still recommended for after Phase 5:** Phase 6 (Authentication) — Phase 2's `HeaderTenantResolver` (interim, header-based, not a security boundary), the not-yet-mandatory tenant-scoped session (DW-12), and Phase 3's excluded WebSocket-subscription-authorization remain **three** separate things waiting specifically on real Authentication existing.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).
 
@@ -58,8 +64,8 @@ The user supplied the database password. Verified using the application's actual
 
 **Two things this surfaced, not just a pass:**
 
-1. `postgres` on Supabase has `rolsuper=False` but **`rolbypassrls=True`** — confirms live the risk `.env.prod.example` already documented. DW-19 (provision a dedicated `NOSUPERUSER`/`NOBYPASSRLS` application role) is now concrete, not hypothetical.
-2. Only `pgcrypto` is installed on the live project; `citext` and `pg_trgm` are not yet enabled (DW-20). Both are available and needed before Phase 2's first migration.
+1. `postgres` on Supabase has `rolsuper=False` but **`rolbypassrls=True`** — confirms live the risk `.env.prod.example` already documented. DW-19 (provision a dedicated `NOSUPERUSER`/`NOBYPASSRLS` application role) is now concrete, not hypothetical. **Resolved 2026-08-09** — see below.
+2. Only `pgcrypto` is installed on the live project; `citext` and `pg_trgm` are not yet enabled (DW-20). Both are available and needed before Phase 2's first migration. **Resolved 2026-08-09** — see below.
 
 ### Enforcement that is live
 
@@ -98,7 +104,7 @@ Three rounds, each closing what the previous one left open:
 - **A latent test-hygiene bug found and fixed**: `backend/.env` now exists on disk (normal setup), and `Settings()` was silently inheriting it in tests and in `scripts/export_openapi.py` — 19 failures, 24 errors, one drift-check failure, none related to the actual change being verified. Fixed with an autouse fixture disabling dotenv in tests, and explicit safe env-var defaults before `export_openapi.py`'s import of the composition root (which builds a module-level `app` singleton with unoverridden settings as an import-time side effect). Verified identical behaviour with `.env` present and absent.
 - **Frontend re-verified with Nx cache bypassed** (a cached "passed" is not a re-verification) — surfaced `shared-ui` and `shared-util` at zero tests across every prior pass. Closed rather than deferred: 22 tests added, including one that renders real AG Grid Community in jsdom.
 
-**Only remaining blocked item:** Playwright e2e execution (T-34) — browser binaries not downloaded, deferred to Phase 4.
+~~Only remaining blocked item: Playwright e2e execution (T-34)~~ — **resolved 2026-08-09, Phase 4.** 27/27 e2e tests passing (chromium/firefox/webkit).
 
 ---
 
@@ -190,9 +196,9 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 | 0 | Documentation Reconciliation & Technical Baseline | ✅ **Complete** |
 | 1 | Repository / Development Foundation | ✅ **Complete** |
 | 2 | **Backend Foundation** | ✅ **Complete** |
-| 3 | Shared Infrastructure (backend cross-cutting) | Not started |
-| 4 | Angular 22 Web Foundation | Not started |
-| 5 | Flutter Application Foundations | Not started |
+| 3 | Shared Infrastructure (real-time publisher, file storage) | ✅ Complete |
+| 4 | Angular 22 Web Foundation | ✅ Complete |
+| 5 | Flutter Application Foundations | 🔄 In progress |
 | 6 | Authentication & Authorization | Not started |
 | 7 | Administration & Tenant/Master Data | Not started |
 | 8 | Customer Management | Not started |
@@ -223,10 +229,10 @@ Delivered (full detail: [`planning/features/02-backend-foundation/`](./features/
 2. **One illustrative repository + CQRS use case** — `TenantRepository`/`SqlAlchemyTenantRepository`, `RenameTenantCommand`/`RenameTenantUseCase`, exercising the full Command → Application Service → Repository → UoW → domain event seam. Not a business feature (see `PLAN.md`).
 3. **Domain-event dispatcher**, in-process, wired into `SqlAlchemyUnitOfWork.commit()`. The transactional-outbox seam remains documented, not built.
 4. **Tenant context extension point** — `TenantResolver` protocol + interim `HeaderTenantResolver` (not a security boundary, not wired to any reachable endpoint) + `get_tenant_context`/`get_unit_of_work` FastAPI dependencies. DW-12 (mandatory resolved context) genuinely still depends on Authentication for the JWT — correctly not closed this phase, per the original plan.
-5. **First three Alembic migrations** — extensions (`citext`/`pg_trgm`), `tenant.tenant` + self-referential RLS, `audit.audit_log` + RLS + database-enforced immutability. Applied to local DEV/UAT/test; **not applied to Supabase PROD**, deliberately (DW-19/DW-20 still open there).
+5. **First three Alembic migrations** — extensions (`citext`/`pg_trgm`), `tenant.tenant` + self-referential RLS, `audit.audit_log` + RLS + database-enforced immutability. Applied to local DEV/UAT/test, and **now also applied to Supabase PROD** (2026-08-09, DW-19/DW-20 closed).
 6. **Tenant-isolation test suite** (`tests/tenant_isolation/`) — two (then three) seeded tenants; read/modify/delete all proven blocked by RLS directly against the `lpg_app` role, symmetrically in both directions, with positive controls proving the negative results are RLS-specific.
 7. **Background worker** — ARQ selected (ADR-029, resolves ADR-023/DW-06), worker entry point + job contract + trivial round-trip-proof job.
-8. **Idempotency, caching, rate-limiting infrastructure** — all Redis-backed, tenant-aware by key convention. No `RealtimePublisher` implementation yet (ADR-015's port still unwired) — genuinely Phase 3+ scope, not attempted.
+8. **Idempotency, caching, rate-limiting infrastructure** — all Redis-backed, tenant-aware by key convention. No `RealtimePublisher` implementation yet (ADR-015's port still unwired) — genuinely Phase 3+ scope, not attempted at the time this list was written. **`RealtimePublisher` is now implemented, in Phase 3** (2026-08-09) — see `planning/features/03-shared-infrastructure/STATUS.md`. This numbered list is left as it read at Phase 2 close-out for historical accuracy.
 
 Still no business features. No Customer, Order, Inventory, Delivery, Accounting.
 
@@ -234,7 +240,7 @@ Still no business features. No Customer, Order, Inventory, Delivery, Accounting.
 
 ## Next Step
 
-Await explicit instruction for the next phase. Recommendation: **Phase 6 (Authentication)** over Phase 3/4/5 — it is what Phase 2's `HeaderTenantResolver` and DW-12 are waiting on, and unlocks real business-facing endpoints for the first time. `planning/features/02-backend-foundation/{PLAN,TASKS,STATUS}.md` remain as the complete record of what Phase 2 delivered.
+~~Await explicit instruction for the next phase.~~ **Phase 3 is now also complete** (2026-08-09) — see the top of this document and `planning/features/03-shared-infrastructure/STATUS.md`. This section (written at Phase 2 close-out) otherwise stands: `planning/features/02-backend-foundation/{PLAN,TASKS,STATUS}.md` remain the complete record of what Phase 2 delivered. Recommendation for what comes after Phase 3: **Phase 6 (Authentication)** over Phase 4/5 — it is what Phase 2's `HeaderTenantResolver`, DW-12, and Phase 3's excluded WebSocket-subscription-authorization are all waiting on.
 
 ---
 
@@ -242,14 +248,16 @@ Await explicit instruction for the next phase. Recommendation: **Phase 6 (Authen
 
 **None blocking Phase 2.**
 
-One item remains blocked within Phase 1 itself, and does not block starting Phase 2:
+~~One item remains blocked within Phase 1 itself~~ — **T-34, Playwright e2e execution, resolved 2026-08-09, Phase 4.** 27/27 e2e tests passing.
 
-- **T-34, Playwright e2e execution** — browser binaries not downloaded (`npx playwright install`). Configuration and CI wiring are in place; deferred to Phase 4.
+~~Two items were open but not blocking~~ — **both closed 2026-08-09:**
 
-Two items are open but not blocking — both are cheap, concrete next steps rather than obstacles:
+- **DW-19 — resolved.** `lpg_app` provisioned on Supabase directly (`CREATE ROLE ... NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS INHERIT`), verified live (`rolsuper=false`, `rolbypassrls=false`, `rolcanlogin=true`). `backend/.env`'s application connection now uses `lpg_app`, not `postgres`; `LPG_MIGRATION_DATABASE_URL` carries the superuser DSN for Alembic only, per the existing role-separation design.
+- **DW-20 — resolved.** `alembic upgrade head` applied all three pending migrations to Supabase: `citext`/`pg_trgm` now installed, `tenant.tenant` and `audit.audit_log` created with RLS, `lpg_app`'s table grants self-applied correctly via the migrations' own dynamic role-detection logic (SELECT/UPDATE/DELETE on `tenant.tenant`, SELECT/INSERT on `audit.audit_log`).
 
-- **DW-19** — the Supabase application role is not yet provisioned; the live connection currently used for verification is the `postgres` superuser-adjacent role, which has `rolbypassrls=True` and must never be the application's own connection.
-- **DW-20** — `citext` and `pg_trgm` are not yet installed on the live Supabase project (only `pgcrypto` is).
+**One incident during DW-19, self-corrected:** the local dev role-provisioning pattern includes `REVOKE CONNECT ... FROM PUBLIC` to isolate per-database roles — appropriate on local Postgres (separate `lpg_dev`/`lpg_uat`/`lpg_test` databases) but wrong on Supabase, which is a single shared `postgres` database that other Supabase-internal service roles also connect to without an explicit grant. Running it broke the Supabase Management API/MCP tooling's own connectivity for a few minutes; caught immediately via a failed verification call, and reverted (`GRANT CONNECT ... TO PUBLIC`) before any migration or application traffic was affected. No tenant data existed yet (the tables were created moments later in the same session), so there was nothing to expose.
+
+**A second, unrelated finding closed the same session:** Supabase's own security linter flagged `public.alembic_version` (Alembic's bookkeeping table, auto-exposed by PostgREST to the anon API by default) as having RLS disabled. Consistent with ADR-027 ("Supabase is the managed PostgreSQL host and nothing more" — PostgREST is not part of this project's architecture), RLS was enabled on it with no policies, which is the correct deny-all posture for a table nobody should ever query over REST.
 
 ---
 
@@ -261,7 +269,6 @@ All seven questions from the initial assessment were answered by the product own
 
 | Deferred decision | Needed by |
 |---|---|
-| PrimeNG licence-tier eligibility confirmation (DW-22) | Phase 4 |
 | AG Grid Enterprise licence procurement (only if a feature needs it) | As triggered — no longer a standing Phase 4 blocker |
 | Warehouse Staff vs Warehouse Manager (D-38 residual) | Phase 6 |
 | KYC document types (pending business/legal) | Phase 8 |
@@ -270,8 +277,18 @@ All seven questions from the initial assessment were answered by the product own
 | PDF rendering library (WeasyPrint / ReportLab) | Phase 17 |
 | Statutory backup retention duration | Phase 18 |
 | Azure hosting topology + IaC tool (Bicep / Terraform) | Before production |
+| Production object-storage vendor (Azure Blob if Azure is chosen; ADR-030) | Before production, tied to hosting topology |
 
-**Revised 2026-08-09 (same day, out of session): AG Grid Enterprise is no longer a standing procurement blocker.** ADR-028 (amends ADR-020) makes AG Grid Community the default data-grid engine; Enterprise is opt-in per feature, evaluated only when a documented requirement demands it. In its place: **PrimeNG is adopted as the primary Angular UI component library**, and its licence-tier eligibility (Community vs Commercial) needs product-owner confirmation before Phase 4 (DW-22) — a much lower-stakes item than commercial AG Grid procurement, since a Community-tier PrimeNG key already exists.
+**Revised 2026-08-09 (same day, out of session): AG Grid Enterprise is no longer a standing procurement blocker.** ADR-028 (amends ADR-020) makes AG Grid Community the default data-grid engine; Enterprise is opt-in per feature, evaluated only when a documented requirement demands it. In its place: **PrimeNG is adopted as the primary Angular UI component library**, and its licence-tier eligibility (Community vs Commercial) needed product-owner confirmation before Phase 4 (DW-22) — a much lower-stakes item than commercial AG Grid procurement, since a Community-tier PrimeNG key already exists.
+
+**DW-22 — resolved 2026-08-09.** PrimeTek's published Community-license eligibility criteria, confirmed directly against `primeui.dev/licenses/community` — an organisation must meet **all** of:
+- Under $1M USD annual gross revenue
+- Fewer than 5 developers (max 4 developer seats)
+- Fewer than 10 total employees
+- Never received more than $3M USD in outside funding
+- Not a government/tax-funded public entity or public university
+
+Community licenses are valid 12 months, renewable at no cost by reconfirming eligibility, with a 30-day grace period after expiry. **The product owner confirmed fewer than 5 developers and $0 annual revenue** — comfortably within the two most restrictive thresholds for a small team. Employee count and outside-funding history weren't separately itemised but aren't in tension with either confirmed figure. Treated as eligible; worth reconfirming at each 12-month renewal, not just once.
 
 ---
 

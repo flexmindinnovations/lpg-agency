@@ -62,6 +62,8 @@ The architecture depends on these capabilities. Azure product names are the expe
 
 **Nothing in the application code binds to any of these.** Object storage sits behind a port, Redis behind the cache and publisher ports, secrets behind configuration. Local development uses Docker Compose with PostgreSQL, Redis, and a MinIO-compatible object store, so local and deployed topologies stay structurally similar.
 
+**Implemented 2026-08-09 (Phase 3, ADR-030):** the `FileStorage` port and its MinIO-backed adapter (`S3CompatibleFileStorage`) now exist. Azure Blob Storage above remains the *illustrative* target, not a committed one — it is not S3-compatible, so a production adapter for it (or for an S3-compatible managed service that reuses the existing adapter) is still deferred with the hosting-topology decision (§1, ADR-022).
+
 ## 4. Environments
 
 | Environment | Purpose | Notes |

@@ -81,11 +81,11 @@ Phase 2 delivered: Unit of Work (`SqlAlchemyUnitOfWork`), one illustrative repos
 
 **230 tests pass** (182 backend, up from 83 + 36 frontend + 12 Flutter), re-verified fresh — no cache to bypass for pytest; Nx cache explicitly bypassed for frontend. Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass on the backend (80 files, 198 dependencies analyzed).
 
-**Migrations exist for the first time.** `574dc291c82c` (citext/pg_trgm extensions), `0242df1a3871` (`tenant.tenant` + self-referential RLS — a tenant can see/rename only its own row, never another's, proven with real Tenant A/B rows against the actual `lpg_app` role), `40065f2b4dc3` (`audit.audit_log` + RLS + database-enforced immutability — `UPDATE`/`DELETE` denied to the application role at the grant level, not just by convention). Applied to local DEV, UAT, and the test database. **Not yet applied to hosted Supabase PROD** — deliberately, pending explicit go-ahead per Phase 2's DEV/UAT/PROD safety instructions.
+**Migrations exist for the first time.** `574dc291c82c` (citext/pg_trgm extensions), `0242df1a3871` (`tenant.tenant` + self-referential RLS — a tenant can see/rename only its own row, never another's, proven with real Tenant A/B rows against the actual `lpg_app` role), `40065f2b4dc3` (`audit.audit_log` + RLS + database-enforced immutability — `UPDATE`/`DELETE` denied to the application role at the grant level, not just by convention). Applied to local DEV, UAT, and the test database, and **now also applied to hosted Supabase PROD** (2026-08-09, DW-19/DW-20 — see below).
 
 **Local database and Redis are fully verified** against real PostgreSQL 17 and Redis 7, with two per-environment application roles (`lpg_app`, `lpg_app_uat`) and the environment boundary enforced by revoking `PUBLIC`'s default `CONNECT`, not just documenting it.
 
-**Live Supabase connection is now verified** — password supplied, connection made via the application's real connection-composition code and independently via Alembic. Found: `postgres` on Supabase has `rolbypassrls=True` (DW-19, provisioning a safe role is the next step); `citext`/`pg_trgm` are not yet installed there (DW-20).
+**Live Supabase connection is now verified, and DW-19/DW-20 are resolved (2026-08-09).** `lpg_app` (`NOSUPERUSER`/`NOBYPASSRLS`) is provisioned directly on Supabase; the application connects as it, not `postgres`. `citext`/`pg_trgm` are installed. All three migrations applied via `alembic upgrade head` against the superuser migration URL; the migrations' own per-database grant-resolution logic applied `lpg_app`'s table privileges correctly with no changes needed. One incident along the way, self-corrected within the session: the local-dev pattern of revoking `PUBLIC`'s `CONNECT` (correct where dev/uat/test are separate databases) briefly broke Supabase's own Management API/MCP tooling, which shares the single `postgres` database without an explicit grant — caught immediately and reverted before any migration or application traffic was affected.
 
 ---
 
@@ -111,8 +111,8 @@ Phase 2 delivered: Unit of Work (`SqlAlchemyUnitOfWork`), one illustrative repos
 
 1. ~~Repository / Foundation~~ ✅ complete
 2. ~~Backend Foundation~~ ✅ complete — Unit of Work, illustrative repository/CQRS/domain events, first 3 migrations with RLS, tenant-isolation suite, ARQ worker, audit/idempotency/rate-limit/cache infrastructure
-3. **Shared Infrastructure remaining** — real-time publisher implementation (port already exists, ADR-015), file storage
-4. **Angular Web Foundation completion** — Storybook, Playwright execution, PrimeNG licence-tier confirmation (DW-22). PrimeNG dependency install + token-theme wiring is **done** (Phase 1 close-out, T-68, 2026-08-09) — brought forward from this list on explicit instruction.
+3. ~~Shared Infrastructure~~ ✅ complete (2026-08-09) — `RedisRealtimePublisher` (ADR-015's port, now implemented) and `S3CompatibleFileStorage` over MinIO (D-40, ADR-030). WebSocket connection/subscription-authorization deliberately excluded — needs real Authentication (Phase 6); production object-storage vendor deliberately deferred with hosting topology (ADR-022).
+4. ~~Angular Web Foundation completion~~ — ✅ **complete (Phase 4, 2026-08-09)**: brand palette refresh (ADR-031), collapsible-sidebar layout shell, Playwright e2e execution (T-34, closed after being blocked since Phase 1 — 27/27 tests passing), a WCAG 2.2 AA axe-core gate (found and fixed 3 real accessibility bugs), and the generated API client (ADR-032, `ng-openapi-gen`). Storybook is configured but its build is blocked on an Angular 22 / Storybook 10.5.x / Nx 23 ecosystem compatibility gap (DW-24, non-blocking). PrimeNG dependency install + token-theme wiring (T-68) and licence-tier eligibility (DW-22) were both closed earlier the same day, out of order, on explicit instruction.
 5. **Flutter Foundation completion** — `api_client`, `auth`, `sync_engine` packages
 6. **Authentication & Authorization** — replaces Phase 2's interim `HeaderTenantResolver` with a real `JwtTenantResolver` (same protocol, drop-in); closes DW-12 (mandatory tenant-scoped session)
 
@@ -157,11 +157,11 @@ Deliberately open, each with a trigger point:
 
 | Decision | Decide by |
 |---|---|
-| PrimeNG licence-tier eligibility confirmation (DW-22) | Angular Foundation |
 | AG Grid Enterprise licence procurement (only if a feature needs it) | As triggered, no longer a standing blocker |
 | PDF rendering library (WeasyPrint / ReportLab) | Printing phase |
 | Azure **application** hosting topology + IaC tool (Bicep / Terraform) | Before production |
 | Supabase production tier (lower tiers pause idle projects) | Before production |
+| Production object-storage vendor (Azure Blob if Azure is chosen; ADR-030) | Before production, tied to hosting topology |
 | KYC document types (pending business/legal) | Customer Management |
 | Statutory backup retention duration | Production Hardening |
 | Inventory counter granularity (D-04/D-14 residual) | Inventory Management |
@@ -172,14 +172,16 @@ Deliberately open, each with a trigger point:
 
 # Known Risks
 
-- **The Supabase application role is not provisioned** (DW-19) — the live connection currently verified uses `postgres`, which has `rolbypassrls=True`. Must not be the application's own connection. Role creation is administrative, not schema, so it cannot go through Alembic. Still open; Phase 2's migrations were deliberately **not** applied to Supabase PROD, only local DEV/UAT, pending this.
-- **`citext` and `pg_trgm` not installed on Supabase** (DW-20) — only `pgcrypto` is, confirmed live. Phase 2 wrote the Alembic migration that will install them (`574dc291c82c`); it has not been applied to Supabase yet, deliberately, pending explicit go-ahead.
-- **`backend/.env` currently on disk is configured for PROD** (real Supabase host, `postgres` superuser credential) but with `LPG_REDIS_URL`/`LPG_MIGRATION_DATABASE_URL` left empty — a half-configured leftover from Phase 1's live-connection verification. Importing `lpg.api.app` or `lpg.infrastructure.jobs.worker` directly (e.g. `uvicorn lpg.api.app:app`, `arq lpg.infrastructure.jobs.worker.WorkerSettings`) with this file as-is will crash at startup on a `pydantic` validation error, not silently misconfigure. Recommended: run `cp .env.dev.example .env` (or supply real production values) before starting either process locally. Not fixed automatically in Phase 2 — it is the user's own local file.
+- ~~The Supabase application role is not provisioned (DW-19)~~ — **resolved 2026-08-09.** `lpg_app` (`NOSUPERUSER`/`NOBYPASSRLS`) provisioned on Supabase; the application connects as it, not `postgres`.
+- ~~`citext` and `pg_trgm` not installed on Supabase (DW-20)~~ — **resolved 2026-08-09.** Both installed via `alembic upgrade head` against Supabase.
+- **`backend/.env` currently on disk is configured for PROD** (real Supabase host) — `LPG_DB_USER`/`LPG_DB_PASSWORD` now hold the `lpg_app` credential (not `postgres`), and `LPG_MIGRATION_DATABASE_URL` now holds the superuser DSN for Alembic. `LPG_REDIS_URL` is still empty. Importing `lpg.api.app` or `lpg.infrastructure.jobs.worker` directly (e.g. `uvicorn lpg.api.app:app`, `arq lpg.infrastructure.jobs.worker.WorkerSettings`) with this file as-is will crash at startup on a `pydantic` validation error over the missing Redis URL, not silently misconfigure.
 - Authentication not implemented — every module depends on it. Phase 2 added the extension point (`TenantResolver` protocol) it will plug into.
 - Unit of Work, one illustrative repository/CQRS use case, and the domain-event dispatcher are now implemented (Phase 2) — no business aggregate, repository, or router exists yet.
-- AG Grid runs on **Community** — this is now the confirmed platform default (ADR-028), not a discrepancy against ADR-020 as it was previously recorded. Enterprise remains available per feature; the wrapper (ADR-020) keeps enabling it a two-line change rather than a refactor. **PrimeNG is installed and token-wired** (T-68, 2026-08-09, brought forward from Phase 4 to Phase 1 close-out on explicit instruction); only its licence-tier eligibility (DW-22) remains open, a product-owner decision, not an engineering one.
+- AG Grid runs on **Community** — this is now the confirmed platform default (ADR-028), not a discrepancy against ADR-020 as it was previously recorded. Enterprise remains available per feature; the wrapper (ADR-020) keeps enabling it a two-line change rather than a refactor. **PrimeNG is installed, token-wired, and licence-eligible** (T-68 and DW-22, both 2026-08-09, both brought forward from Phase 4 to Phase 1 close-out on explicit instruction).
 - `mobile/packages/api_client`, `auth` and `sync_engine` are documented but not created; they have no content until Phase 6 and Phase 11.
 - `docs/modules/` per-module specifications referenced by several documents **do not exist**; equivalent content is distributed across `docs/srs/`, `docs/business/`, `docs/engineering/`, and `docs/data/` (see [`docs/README.md`](../docs/README.md)).
+- **DW-24 — Storybook's build fails** (`nx build-storybook shared-ui`, error `SB_BUILDER-WEBPACK5_0003`), a chain of Angular 22 / Storybook 10.5.x / Nx 23.1.1 ecosystem compatibility gaps, not yet fully root-caused. Configuration and stories (`libs/shared/ui/.storybook/`, `app-shell.component.stories.ts`, `data-grid.component.stories.ts`) are real and correct. **Explicitly deferred to post-MVP by product owner decision (2026-08-09)** — not revisited until after MVP. See `planning/features/04-angular-web-foundation/STATUS.md`.
+- The generated API client (`libs/shared/data-access/src/lib/generated/`, ADR-032) is now wired into `app.config.ts` via `provideApiConfiguration(environment.apiUrl)` (ADR-033, 2026-08-09), backed by a new `fileReplacements`-based frontend environment-config pattern (`apps/dashboard/src/environments/`). Still only has the two health endpoints to call until a real business API surface exists.
 
 No critical business risks identified.
 

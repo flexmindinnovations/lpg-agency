@@ -681,7 +681,7 @@ The product owner has since confirmed a **valid PrimeNG licence** exists and wan
 - **DW-08 is resolved, not merely deferred.** ADR-020 recorded AG Grid Enterprise licence procurement as an unconfirmed dependency blocking Phase 4. Since AG Grid Community — not Enterprise — is now the default, there is no standing licence-procurement blocker. Enterprise licence procurement becomes a **per-feature decision**, triggered only if a future feature's documented requirements genuinely need an Enterprise-only capability, evaluated at that time against the actual requirement rather than provisioned speculatively.
 - **A third component library returns, deliberately.** ADR-020's fragmentation concern is addressed structurally, not dismissed: the token-consumption requirement (Decision point 7) is what prevents PrimeNG and AG Grid from each carrying their own hardcoded visual language. If either library's theming API cannot express a given token faithfully, that is a real constraint to document per-component when it is hit — not a reason to hardcode around it.
 - **Accessibility enforcement is unaffected.** ADR-011's shared-library concentration strategy still applies: PrimeNG components used across features should be wrapped or configured centrally in `libs/shared/ui` where they carry accessibility-relevant behaviour, the same way the AG Grid wrapper already concentrates grid accessibility. `docs/architecture/11-accessibility-strategy.md` had already anticipated PrimeNG's possible return in its third-party component audit language — that anticipation is now realised rather than contradicted.
-- **PrimeNG licence eligibility remains an open item for the product owner, not engineering.** The Community-tier key found in source is dev-type and unverified against PrimeTek's actual eligibility criteria (Community-license thresholds are not publicly documented in a form this review could confirm — PrimeNG's own licensing pages did not yield machine-fetchable detail). Recorded as a new discovered-work item, **DW-22**: confirm Community-tier eligibility (or budget for Commercial) before Phase 4 wires PrimeNG into a production build.
+- ~~PrimeNG licence eligibility remains an open item for the product owner, not engineering.~~ **DW-22 resolved 2026-08-09.** The Community-tier key found in source is dev-type; PrimeTek's published criteria (`primeui.dev/licenses/community`) require **all** of: under $1M USD annual gross revenue, fewer than 5 developers (4-seat cap), fewer than 10 total employees, and never more than $3M USD in outside funding. The product owner confirmed fewer than 5 developers and $0 annual revenue — both comfortably within threshold, and the two figures most likely to disqualify a small team. Employee count and outside-funding history were not separately itemised but are not in tension with either confirmed figure. Community-tier is treated as eligible; licenses run 12 months, renewable at no cost by reconfirming eligibility, with a 30-day grace period after expiry — worth reconfirming at each renewal, not just once.
 - **Licence key handling mirrors AG Grid's existing rule exactly.** Whichever tier applies, the PrimeNG licence key is supplied as build-time environment configuration from the secret store and is **never committed** — the same constraint ADR-020 established for AG Grid, now applied consistently to both vendor licences. The exact PrimeNG API for supplying a licence key at bootstrap (a provider function vs. an environment-read at app init) was not confirmed against current PrimeNG docs during this review and must be verified before Phase 4 wiring, not assumed.
 - **No functional or test-affecting change to the existing frontend.** `frontend/libs/shared/ui/src/lib/data-grid/data-grid.component.ts` and its AG Grid Community usage are unchanged; this ADR is a documentation and direction change only. Phase 2 remains not started.
 
@@ -728,6 +728,112 @@ Concretely: ARQ jobs are plain `async def` functions receiving a context dict, r
 
 ---
 
+## ADR-030: S3-Compatible File Storage Port, MinIO for Every Environment That Exists Today
+
+**Status:** Accepted
+
+**Context:** D-40 requires cloud object storage for KYC documents, delivery photos, signatures, and invoices. `docs/architecture/13-deployment.md` had already sketched the shape — object storage sits behind a port, and "local development uses Docker Compose with PostgreSQL, Redis, and a MinIO-compatible object store, so local and deployed topologies stay structurally similar" — but nothing had been built. Phase 3 (`planning/features/03-shared-infrastructure/`) closes it.
+
+The complication: `13-deployment.md` also names **Azure Blob Storage** as the illustrative production target, but hosting topology itself is explicitly undecided (ADR-022, "Azure hosting topology + IaC tool... Before production"). Azure Blob does not speak the S3 protocol natively. Building an Azure-SDK-specific adapter now would mean committing engineering effort to a vendor nobody has actually chosen yet — the same speculative-commitment problem ADR-022 itself was written to avoid.
+
+**Decision:** A vendor-agnostic `FileStorage` protocol (`application/common/ports.py` — `upload`, `download`, `delete`, `exists`, presigned `url`), with **one concrete adapter today**: `S3CompatibleFileStorage` (`infrastructure/storage/client.py`), built on `aioboto3` against **MinIO**. MinIO runs in Docker Compose for local and UAT, exactly as `13-deployment.md` already anticipated. Bucket existence is ensured idempotently on connect (`head_bucket` → `create_bucket` on miss), mirroring the `CREATE EXTENSION IF NOT EXISTS` pattern the database migrations already use — a developer starting from a fresh MinIO volume needs no manual setup step.
+
+**No production adapter is built yet.** `.env.prod.example`'s storage section is deliberately empty with a comment explaining why — filling it in against a real bucket before the hosting-topology decision is made would be the same premature-commitment problem restated. Whatever gets chosen (Azure Blob via its own SDK, or an S3-compatible managed service that lets `S3CompatibleFileStorage` be reused as-is) is a second, later adapter behind the same port.
+
+**Consequences:**
+- **The port, not the vendor, is the actual deliverable.** Domain and application code that will eventually call `FileStorage` (Phase 8 KYC, Phase 11 delivery photos, Phase 13 invoices) depend only on the protocol — a future production adapter is additive, not a rewrite.
+- **`aioboto3` matches the codebase's async-everywhere posture** (ADR-029's reasoning applied here too) — no sync boto3 call wrapped in a thread pool, no second connection-pooling story.
+- **MinIO is a genuinely real backing service for tests, never a mock** — `tests/integration/test_file_storage.py` uploads, downloads, and fetches a real presigned URL over HTTP against a real container, the same "real PostgreSQL/Redis, never SQLite/a mock" discipline `docs/implementation/testing-strategy.md` already establishes for the rest of the backend.
+- **Presigned URLs, not proxied downloads, are the retrieval path** — the API process never streams object bytes for anything but small/cached content, keeping large files off its own bandwidth and memory.
+- **A new discovered-work item, not a silent gap:** production object storage remains unresolved until hosting topology is decided (added to the Deferred Decisions table below, alongside ADR-022 itself).
+
+**Alternatives Considered:**
+- **Build the Azure Blob adapter now, since `13-deployment.md` already named it** — rejected; hosting topology is explicitly still open, and Azure Blob's SDK is a different API surface than S3, meaning this work would be thrown away if a different vendor (or a different cloud entirely) is eventually chosen.
+- **A local filesystem adapter for dev/test instead of MinIO** — rejected; `13-deployment.md` had already committed to MinIO specifically so local and deployed topologies "stay structurally similar," and a filesystem adapter would test a code path (`open()`/`os.path`) the production adapter never uses, which is exactly the gap real-backing-service testing exists to close.
+- **Defer the port itself until a vendor is chosen** — rejected; the port is cheap to define and unblocks every future business module's design (KYC upload, delivery photo capture) from waiting on an infrastructure decision that is genuinely unrelated to their own logic.
+
+---
+
+## ADR-031: Brand Colour Moves from Blue to Deep Forest Green
+
+**Status:** Accepted
+
+**Context:** The platform's `color-action-primary` had been blue (`primitive.color.blue.600`/`.400`) since Phase 1, chosen as a conventional, accessible default rather than a deliberate brand choice — nothing in `docs/business/` or the SRS specifies a brand colour. Ahead of Phase 4 (Angular Web Foundation), the product owner shared design/colour-palette inspiration (a set of high-saturation pairings — Aureolin/Bistre, Cream Vanilla/Cherry Cola, Lime Green/Vibrant Red, Butter/Green) and asked for a refreshed direction appropriate to a B2B gas agency platform.
+
+Most of the supplied palettes were rejected on concrete, product-specific grounds, not taste:
+- **Vibrant Red / Cherry Cola as a brand colour** would collide with `color-status-danger`, which is already red — in a platform tracking flammable-gas cylinders, a primary "Create Order" button and a safety/leak alert reading as the same signal is a real defect, not a style question.
+- **Lime Green / Aureolin yellow** fail WCAG AA contrast as button fills or text without heavy darkening, and are fatiguing across an 8-hour dispatcher shift on a screen that is stared at all day, unlike a marketing hero banner.
+- **Butter cream + deep forest green** was the one pairing that is genuinely enterprise-usable as supplied — the green has real contrast headroom and reads as stable/trustworthy rather than loud.
+
+**Decision:** `color-action-primary` (and its hover/focus-ring derivatives) moves to a new primitive scale, `forest` — a deep, deliberately blue-shifted green, distinct from `primitive.color.green` (kept, unchanged, for `color-status-success`). A new `cream` primitive and a new semantic pairing, `color-highlight-background`/`color-highlight-color` (forest + cream), covers active/selected states such as the active sidebar item — the pairing the supplied inspiration actually showed, applied to a highlight role rather than as a default surface. Full values and contrast ratios: `docs/ui/10-color-system.md` §2–3.
+
+High-contrast mode's `color-action-primary` **stays pure blue** (`hcBlue`, unchanged) rather than switching to a high-contrast green. High-contrast mode exists specifically to serve low-vision and colour-vision-deficient users; pure blue is the better-tested, more universally distinguishable choice on the protanopia/deuteranopia (red-green) confusion axis, independent of whatever the brand hue is in light/dark mode.
+
+**Consequences:**
+- **Zero code changes outside `design-tokens/tokens.json`.** The PrimeNG preset (`primeng-preset.ts`) derives its entire palette from `var(--color-action-primary)` via `color-mix()`, and the AG Grid wrapper and every component style reference semantic/component tokens, never a hex value directly — this is the token architecture (ADR — see `04-frontend-architecture.md` §7) paying for itself exactly as intended. Verified live: light/dark/high-contrast themes, PrimeNG buttons/tabs/dialog, all correct with no component touched.
+- **Blue is no longer overloaded.** It previously meant both "brand" and "info" simultaneously; it now means `color-status-info` only, which is a clearer signal, not a loss.
+- **Tenant branding (D-31, `10-color-system.md` §5) is unaffected.** A tenant's own configured primary colour already overrides only `color-action-primary` and its derived states, never status/surface/text tokens — the platform default changing brand colour doesn't touch that mechanism.
+- **The blue-shift in `forest` is a deliberate colour-vision-deficiency mitigation, not just an aesthetic choice** — a green with a higher blue channel sits further from the pure red/green confusion line than a yellow-leaning "grass" green would, making it more distinguishable from `color-status-danger` (red) for red-green colour-blind users even though both are nominally "green-ish" and "reddish" respectively.
+
+**Alternatives Considered:**
+- **Adopt one of the high-saturation palettes as supplied** — rejected per the Context section above; each has a concrete accessibility or semantic-collision problem for this specific product, not a subjective taste objection.
+- **Use `primitive.color.green` (already existing, used for `color-status-success`) as the new brand colour too** — rejected; a brand button and a success toast in the identical hue is the same collision problem red-as-brand would have created, just with the other status colour.
+- **Keep blue** — rejected; the product owner explicitly asked for a refreshed direction, and blue was never a deliberate brand choice to begin with, just Phase 1's accessible default.
+
+---
+
+## ADR-032: `ng-openapi-gen` for the Generated Angular API Client
+
+**Status:** Accepted
+
+**Context:** ADR-026 established the contract discipline — Pydantic/FastAPI generate `openapi.json`, it is committed as a build artifact, and clients generate typed code from *that* artifact, never hand-written or generated from a live server — but never named a specific generator tool for the Angular client. Phase 4 (`docs/implementation/roadmap.md`'s "generated API client" line item) closes that gap. At the time of this decision, the committed spec (`backend/openapi/openapi.json`, OpenAPI 3.1.0) describes only the two health-check endpoints — no business API surface exists yet (Phase 6+).
+
+**Decision:** **`ng-openapi-gen`** (config: `frontend/ng-openapi-gen.json`, script: `npm run generate:api-client`), generating into `libs/shared/data-access/src/lib/generated/` (re-exported from the library's public `index.ts`, alongside the hand-written interceptors already there).
+
+The deciding factor: `ng-openapi-gen`'s generated functions accept an injected `HttpClient` and call `http.request(...)` directly — meaning every generated call flows through the *same* Angular `HttpClient` pipeline as everything else in the app, including `correlationIdInterceptor` and `problemDetailsInterceptor` (already registered in `app.config.ts`). A generator that ships its own `fetch`/`axios` instance (several popular ones do) would bypass both silently — a generated call would carry no correlation ID and would not translate RFC 7807 error responses the way every other call in this codebase does.
+
+**Not wired into `app.config.ts` yet.** `provideApiConfiguration(rootUrl)` needs a real backend base URL, and this codebase currently has no established pattern for supplying one from the Angular app (no `environment.ts` files, no dev-server proxy config) — inventing one now, for a client with no consumer, would be guessing at frontend deployment architecture that hasn't been decided. That wiring belongs with whichever phase makes the first real API call (Phase 6, most likely), when there is an actual base URL (and CORS/proxy story) to configure against.
+
+**Consequences:**
+- **Regeneration is a script, not automatic.** `npm run generate:api-client` must be re-run after a backend contract change, same manual step the token pipeline (`node scripts/generate-tokens.mjs`) already requires — deliberately not wired into a pre-build hook, so a spec change is a visible, reviewable diff rather than something that silently changes on every install.
+- **Generated code is committed**, matching the same philosophy ADR-026 applies to the spec itself: `libs/shared/data-access/src/lib/generated/**` is real, checked-in code (`/* DO NOT EDIT */`), excluded from ESLint and Prettier (it is not held to hand-written-code style rules) but still reviewed in diffs when it changes.
+- **Currently generates almost nothing** — 3 models and 1 service function, for the two health endpoints. That is expected, not a shortfall of this decision; the tool and the wiring are proven correct now, cheaply, against a real (if small) spec, rather than deferred until a large business API surface makes a wrong tool choice expensive to unwind.
+
+**Alternatives Considered:**
+- **`@hey-api/openapi-ts`** — actively maintained, generates a modern client, but defaults to its own `fetch`-based client rather than Angular's `HttpClient`; making it interceptor-compatible would mean writing and maintaining a custom Angular `HttpClient` adapter for it. Rejected in favour of a generator that is `HttpClient`-native by default.
+- **`openapi-typescript`** — generates types only, no request functions. Rejected; it would still require hand-writing every service method, which is most of the work a generator exists to remove.
+- **Generating from a live running server instead of the committed spec** — rejected outright; ADR-026 already settled this, and doing otherwise here would quietly reopen a decision this ADR depends on staying closed.
+
+---
+
+## ADR-033: Angular `fileReplacements` for Frontend Environment Configuration (resolves ADR-032's deferral)
+
+**Status:** Accepted
+
+**Context:** ADR-032 generated the API client but deliberately left it unwired, since no frontend environment-config pattern existed yet and inventing one for a client with no consumer would have meant guessing at deployment architecture. That gap is now being closed directly (ahead of the phase originally expected to need it), so the generated client can be exercised end-to-end as soon as a real endpoint exists.
+
+**Decision:** Use Angular's own `fileReplacements` mechanism (`@angular/build:application`'s `production` build configuration in `apps/dashboard/project.json`), not a runtime-fetched config file or a bespoke injection token.
+
+- `apps/dashboard/src/environments/environment.model.ts` — the shared `Environment` interface (`production: boolean`, `apiUrl: string`), kept in its own file. It cannot live inside `environment.ts` itself: `fileReplacements` swaps the *entire contents* of `environment.ts` for `environment.prod.ts` in production builds, so a type re-exported from `environment.ts` would vanish under that swap the moment the importing file and the defining file collapsed into the same file (this was caught by a real production build failure — `TS2724` — during implementation, not anticipated up front).
+- `apps/dashboard/src/environments/environment.ts` — dev default, `apiUrl: 'http://localhost:8000/api/v1'` (absolute, since the backend's local dev instance runs on its own port, not behind the Angular dev server; the backend's `LPG_CORS_ORIGINS` dev default already allows `http://localhost:4200` for this).
+- `apps/dashboard/src/environments/environment.prod.ts` — `apiUrl: '/api/v1'`, a same-origin **relative** path, not a real domain. ADR-022 leaves production hosting topology undecided; a relative path assumes the SPA and API share an origin (directly, or behind a reverse proxy routing `/api/*` to the backend) without committing to infrastructure nobody has chosen yet. Revisit when ADR-022 resolves.
+- `app.config.ts` — `provideApiConfiguration(environment.apiUrl)` added to the provider list, alongside the existing `provideHttpClient`/interceptor registration, so every generated client call is configured with the right root URL per build.
+
+**No separate frontend "uat" environment file.** The backend's DEV/UAT/PROD split (ADR-027 era work) is a *database and deployed-instance* split; it does not imply a distinct frontend build target. A frontend "uat" configuration would still point at whatever backend instance is running wherever it's deployed — there is no separate frontend artifact to build until frontend hosting per environment is actually decided. Two configurations (`development`, `production`) match what exists today; a third can be added trivially via the same `fileReplacements` mechanism if a real need appears.
+
+**Why `fileReplacements` over a runtime-loaded `config.json`:** a build-time swap keeps the API base URL known and typed at compile time, requires no extra network round-trip before the app can make its first real call, and is the mechanism Angular ships and documents for exactly this purpose — no bespoke loader to write or maintain. The tradeoff (a rebuild is required to change the URL) is acceptable: this codebase already rebuilds per environment for other reasons (this is a monorepo with backend/frontend versioned together, not a "build once, promote the same artifact" pipeline).
+
+**Consequences:**
+- Verified both ways: `nx build dashboard --configuration=development` embeds `http://localhost:8000/api/v1` in the output bundle; `nx build dashboard --configuration=production` embeds `/api/v1` with no trace of the dev URL. Production bundle size (647.67kb) stays under the 660kb budget set in ADR-028-era work.
+- `Environment`'s split into its own file is a small extra indirection future contributors need to know about — documented in the doc-comment on `environment.model.ts` itself, not just here.
+- The generated API client (ADR-032) is now live end-to-end (configured, injectable, interceptor-covered) even though it still only has health-check endpoints to call — same "prove it cheaply now" reasoning ADR-032 already applied to the generator choice itself.
+
+**Alternatives Considered:**
+- **Runtime-fetched `assets/config.json`** — would allow changing the API URL without a rebuild (useful for a "build once, deploy many" pipeline). Rejected for now: this monorepo doesn't have that pipeline, and it adds an async load gate before the app can be considered configured, for a benefit this project doesn't currently need. Revisit if ADR-022's eventual hosting story turns out to need it.
+- **A single environment file with runtime `window.location`-based branching** — rejected; it would make production behaviour depend on where the app happens to be loaded from rather than on an explicit, reviewable build configuration.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -761,6 +867,10 @@ Concretely: ARQ jobs are plain `async def` functions receiving a context dict, r
 | 027 | Supabase as managed PostgreSQL host **only** | Accepted (amends 013, 022) |
 | 028 | Hybrid UI strategy — PrimeNG primary, AG Grid Community default, Enterprise optional | Accepted (amends 020) |
 | 029 | ARQ as the background job library | Accepted (resolves 023's deferral) |
+| 030 | S3-compatible file storage port, MinIO for every environment that exists today | Accepted |
+| 031 | Brand colour moves from blue to deep forest green | Accepted |
+| 032 | `ng-openapi-gen` for the generated Angular API client | Accepted |
+| 033 | Angular `fileReplacements` for frontend environment configuration | Accepted (resolves 032's deferral) |
 
 ## Deferred Decisions
 
@@ -771,8 +881,8 @@ Decisions deliberately left open, each with a defined trigger point:
 | Azure hosting topology (Container Apps vs App Service vs other) and IaC tool (Bicep vs Terraform) | Before production deployment | ADR-022 · DW-05 |
 | PDF rendering library (WeasyPrint vs ReportLab) | Phase 17 — Printing | ADR-016 · DW-07 |
 | AG Grid Enterprise licence procurement (only if a future feature needs it) | As triggered — no longer a standing Phase 4 blocker | ADR-020 · ADR-028 · DW-08 |
-| PrimeNG licence-tier eligibility confirmation | Before Phase 4 — Angular Foundation | ADR-028 · DW-22 |
 | Supabase production tier (lower tiers pause idle projects) | Before production | ADR-027 · DW-05 |
+| Production object-storage vendor (Azure Blob if Azure is chosen; an S3-compatible managed service reuses the existing adapter as-is) | Before production, tied to the hosting-topology decision | ADR-030 · ADR-022 |
 
 ## Review Cadence
 ADRs are reviewed at each major phase gate and annually thereafter in production. Superseded decisions are marked **Superseded**, with a link to the new ADR, never deleted — preserving the historical reasoning trail this document exists to provide. The Phase 0 supersessions above are the first application of that policy; the superseded architecture documents themselves are preserved under [`superseded/`](./superseded/README.md).

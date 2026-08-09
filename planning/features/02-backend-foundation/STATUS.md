@@ -87,19 +87,23 @@ Full detail and verification notes per task: [TASKS.md](./TASKS.md). Summary by 
 
 | Revision | Purpose | DEV | UAT | Test | Supabase PROD |
 |---|---|---|---|---|---|
-| `574dc291c82c` | `citext`/`pg_trgm` extensions | ✅ | ✅ | ✅ | ❌ not applied — deliberate |
-| `0242df1a3871` | `tenant.tenant` + self-referential RLS | ✅ | ✅ | ✅ | ❌ not applied — deliberate |
-| `40065f2b4dc3` | `audit.audit_log` + RLS + immutability | ✅ | ✅ | ✅ | ❌ not applied — deliberate |
+| `574dc291c82c` | `citext`/`pg_trgm` extensions | ✅ | ✅ | ✅ | ✅ applied 2026-08-09 |
+| `0242df1a3871` | `tenant.tenant` + self-referential RLS | ✅ | ✅ | ✅ | ✅ applied 2026-08-09 |
+| `40065f2b4dc3` | `audit.audit_log` + RLS + immutability | ✅ | ✅ | ✅ | ✅ applied 2026-08-09 |
 
-Per-database role resolution (`lpg_app` vs `lpg_app_uat`) is handled inside each migration via `current_database()`, guarded to no-op where the target role doesn't exist yet — so these same three migrations are ready to apply to Supabase PROD once DW-19 (dedicated application role) is resolved there, with no changes needed.
+Per-database role resolution (`lpg_app` vs `lpg_app_uat`) is handled inside each migration via `current_database()`. On Supabase PROD, once `lpg_app` was provisioned (DW-19) and `alembic upgrade head` run against the superuser migration URL, both migrations' grant logic self-applied correctly with **no changes needed** — exactly as designed: `lpg_app` received `SELECT, UPDATE, DELETE` on `tenant.tenant` and `SELECT, INSERT` on `audit.audit_log`, verified via `information_schema.role_table_grants`.
+
+**Incident during DW-19, self-corrected within the same session:** the local-dev role-provisioning pattern (`REVOKE CONNECT ... FROM PUBLIC`, appropriate where `lpg_dev`/`lpg_uat`/`lpg_test` are separate databases) is wrong on Supabase, where `postgres` is the one shared database other Supabase-internal service roles also depend on without an explicit grant. Running it broke the Supabase Management API/MCP tool's own connectivity briefly; caught immediately by a failed verification call and reverted (`GRANT CONNECT ... TO PUBLIC`) before any migration or application traffic was affected — no tenant data existed yet at that point in the session.
+
+**A second finding, unrelated to DW-19/20, closed the same session:** Supabase's security linter flagged `public.alembic_version` (auto-exposed to the anon API by PostgREST, which this project does not use per ADR-027) as having RLS disabled. Enabled RLS with no policies — the correct deny-all posture for a table nobody should query over REST.
 
 ---
 
 ## Still Open (not blockers, not attempted this phase)
 
-- **DW-19** — Supabase application role not provisioned. Unchanged from Phase 1.
-- **DW-20** — `citext`/`pg_trgm` not installed on Supabase PROD. The migration exists; not applied there yet.
-- **DW-22** — PrimeNG licence-tier eligibility (frontend, prior session).
+- ~~DW-19~~ — **resolved 2026-08-09.** `lpg_app` provisioned on Supabase (`NOSUPERUSER`/`NOBYPASSRLS`), application connection switched to it.
+- ~~DW-20~~ — **resolved 2026-08-09.** `citext`/`pg_trgm` installed on Supabase PROD via `alembic upgrade head`.
+- ~~DW-22~~ — **resolved 2026-08-09.** PrimeNG licence-tier eligibility (frontend, prior session) — product owner confirmed fewer than 5 developers and $0 annual revenue, comfortably within PrimeTek's Community-tier thresholds. See `planning/current_phase.md`.
 - ~~DW-23~~ — resolved (see above).
 - **DW-12** — mandatory (non-optional) tenant-scoped session. Correctly still open: genuinely depends on Authentication (Phase 6) for a real JWT.
 - Real-time publisher (`RealtimePublisher` port, ADR-015) has no implementation yet — Phase 3+ scope, not attempted.
@@ -113,4 +117,4 @@ Await explicit instruction. Recommended: **Phase 6 — Authentication & Authoriz
 
 ## Last Updated
 
-2026-08-09 — phase complete.
+2026-08-09 — phase complete. Same-day follow-up: DW-19 and DW-20 resolved (Supabase `lpg_app` role provisioned, all three migrations applied to Supabase PROD) — see "Still Open" above and `planning/current_phase.md`.
