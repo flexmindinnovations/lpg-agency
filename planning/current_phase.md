@@ -84,7 +84,7 @@ Confirmed by the product owner on 2026-08-09. Recorded as ADR-012 … ADR-026.
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic v2 |
-| Database | PostgreSQL, with Row-Level Security tenant isolation |
+| Database | PostgreSQL on **Supabase** (managed host only, ADR-027), with Row-Level Security tenant isolation |
 | Cache / queue / real-time backplane | Redis |
 | Web dashboard | Angular 22, strict TypeScript, **Nx** workspace at `frontend/`, Signals + NgRx SignalStore, Angular Material + CDK, Tailwind CSS v4, **AG Grid Enterprise** (behind a wrapper), Storybook, Jest, Playwright |
 | Mobile | Flutter, Riverpod, Drift SQLite; Driver App offline-first |
@@ -200,7 +200,7 @@ Phase 1 built the backend *skeleton*: app factory, settings, logging, errors, he
 2. **Base repository** and the aggregate↔ORM mapping conventions.
 3. **Domain-event dispatcher**, in-process, with the transactional-outbox seam documented.
 4. **Tenant-scoped session dependency** — the version that *requires* a resolved tenant context, closing DW-12. Note this genuinely depends on Authentication for the JWT, so part of it may have to land in Phase 6; worth resolving early in Phase 2 planning.
-5. **First Alembic migration** — the `tenant` schema, with its RLS policies created in the same migration.
+5. **First Alembic migration** — the `tenant` schema, with its RLS policies created in the same migration. **Against Supabase** (ADR-027): Alembic is the sole owner of schema, and the application role must be `NOSUPERUSER`/`NOBYPASSRLS`, never `service_role`.
 6. **Tenant-isolation test suite** — two seeded tenants, every cross-tenant read returning nothing.
 7. **Background worker** skeleton and the ARQ/Dramatiq/Celery decision (ADR-023, DW-06).
 8. **Real-time publisher** implementation behind the existing port (ADR-015).
@@ -273,6 +273,7 @@ One item is worth flagging early rather than at its trigger point: **AG Grid Ent
 | 024 | `import-linter` + `mypy --strict` boundary enforcement |
 | 025 | Polyglot monorepo layout; `frontend/` not renamed (amends ADR-001) |
 | 026 | Code-first OpenAPI, generated spec committed as the frozen client contract |
+| 027 | **Supabase as the managed PostgreSQL host only** — amends 013 and 022. Auth, Storage, Realtime and Edge Functions not adopted; Alembic keeps sole ownership of schema |
 
 ### Decisions that survived the stack change
 

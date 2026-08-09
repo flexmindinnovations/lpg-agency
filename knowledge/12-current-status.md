@@ -21,7 +21,7 @@ This document is updated after every major milestone.
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.13+, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic v2 |
-| Database | PostgreSQL (Row-Level Security tenant isolation) |
+| Database | PostgreSQL on **Supabase** (managed host only, ADR-027); RLS tenant isolation |
 | Cache / Queue / Real-time | Redis |
 | Web Dashboard | Angular 22 in an Nx workspace (`frontend/`), Signals + NgRx SignalStore, Angular Material + CDK, Tailwind CSS v4, AG Grid Enterprise |
 | Mobile | Flutter, Riverpod, Drift SQLite (Driver App offline-first) |
@@ -137,6 +137,10 @@ All resolved. ADR-001 … ADR-026 in [`docs/architecture/15-architecture-decisio
 - Polyglot monorepo layout, `frontend/` not renamed (ADR-025)
 - Code-first OpenAPI, generated spec committed as the client contract (ADR-026)
 
+**Confirmed 2026-08-09 (post-Phase-1):**
+
+- **Supabase as the managed PostgreSQL host only** (ADR-027) — amends ADR-013 (host named) and ADR-022 (database no longer maps to Azure). Supabase Auth, Storage, Realtime and Edge Functions are **not** adopted. Alembic remains the sole owner of schema; the application never connects as `service_role`.
+
 The superseded .NET architecture documents are preserved at [`docs/architecture/superseded/`](../docs/architecture/superseded/README.md) — historical only.
 
 ---
@@ -150,7 +154,8 @@ Deliberately open, each with a trigger point:
 | Background job library (ARQ / Dramatiq / Celery) | Backend Foundation |
 | AG Grid Enterprise licence procurement | Angular Foundation |
 | PDF rendering library (WeasyPrint / ReportLab) | Printing phase |
-| Azure hosting topology + IaC tool (Bicep / Terraform) | Before production |
+| Azure **application** hosting topology + IaC tool (Bicep / Terraform) | Before production |
+| Supabase production tier (lower tiers pause idle projects) | Before production |
 | KYC document types (pending business/legal) | Customer Management |
 | Statutory backup retention duration | Production Hardening |
 | Inventory counter granularity (D-04/D-14 residual) | Inventory Management |

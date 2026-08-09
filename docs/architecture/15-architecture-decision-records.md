@@ -221,7 +221,9 @@ The following ADRs were recorded during Phase 0 — Documentation Reconciliation
 
 ## ADR-013: PostgreSQL as the Primary Relational Store (supersedes ADR-005)
 
-**Status:** Accepted · **Supersedes:** ADR-005
+**Status:** Accepted · **Supersedes:** ADR-005 · *amended by [ADR-027](#adr-027-supabase-as-the-managed-postgresql-host-amends-adr-013-adr-022) (host named)*
+
+> **Amendment note (2026-08-09):** The engine decision — PostgreSQL, via SQLAlchemy 2.x with Alembic migrations — is **unchanged**. ADR-027 names **Supabase** as the managed host and reaffirms that **Alembic remains the sole owner of schema**: Supabase's own migration tooling must not be used.
 
 **Context:** ADR-005 correctly established that the Cylinder Ledger and Inventory domains require multi-row, multi-table ACID transactions and strong relational integrity, and correctly rejected Cosmos DB on those grounds. That analysis is unaffected by the backend language. What it got wrong, relative to the confirmed stack, was the engine.
 
@@ -441,7 +443,9 @@ The architecture must remain replaceable if licensing or product requirements ch
 
 ## ADR-022: Azure as Target Cloud, Hosting Topology Deliberately Deferred
 
-**Status:** Accepted (direction) · **Topology and IaC tool: deferred by decision**
+**Status:** Accepted (direction) · **Topology and IaC tool: deferred** · *amended by [ADR-027](#adr-027-supabase-as-the-managed-postgresql-host-amends-adr-013-adr-022) (database host)*
+
+> **Amendment note (2026-08-09):** The **database no longer maps to Azure Database for PostgreSQL** — it is hosted on Supabase (ADR-027). Everything else in this ADR stands: Azure remains the target for application hosting, the topology and IaC tool remain deferred, and object storage, secrets and CI/CD map as described below.
 
 **Context:** The superseded deployment document committed to a full Azure topology — App Service Premium v3, Azure Functions, Azure SignalR, Azure SQL Elastic Pool, Bicep IaC — all of which followed from the .NET and SQL Server decisions. With those superseded, the equivalent choices reopen. Committing to a specific topology now, with no running code, no measured load, and no operational experience, would be guessing.
 
@@ -583,6 +587,67 @@ These are reconcilable, but the reconciliation was never written down, so an imp
 
 ---
 
+## ADR-027: Supabase as the Managed PostgreSQL Host (amends ADR-013, ADR-022)
+
+**Status:** Accepted · **Amends:** ADR-013 (engine unchanged, host named), ADR-022 (database no longer maps to Azure)
+
+**Context:** ADR-013 chose PostgreSQL and ADR-022 named Azure as the target cloud, expecting the database to map to Azure Database for PostgreSQL Flexible Server — while deliberately deferring the *application* hosting topology. A Supabase project has since been provisioned (`ayqphthelemlnbtnknkp`) and its MCP server added at project scope.
+
+Supabase is a platform, not only a database host: it bundles Auth, Storage, Realtime, Edge Functions and its own migration tooling, each of which overlaps a decision this project has already made. Adopting it wholesale would supersede ADR-012, ADR-015, D-37/D-38 and D-40 and would amount to a re-architecture.
+
+**Decision:** Supabase is adopted as the **managed PostgreSQL host, and nothing more**.
+
+| Concern | Owner | Unchanged ADR |
+|---|---|---|
+| Database engine and hosting | **Supabase** (managed PostgreSQL) | ADR-013 engine stands; host named here |
+| Schema and migrations | **Alembic** | ADR-013 |
+| Backend and API | **FastAPI** | ADR-012 |
+| Authentication and RBAC | **The platform's own Identity module** | D-37, D-38 |
+| Real-time | **FastAPI WebSockets + Redis Pub/Sub** | ADR-015 |
+| Object storage | **Azure Blob Storage** | D-40 |
+| Background jobs | **Separate worker process, Redis queue** | ADR-023 |
+| Application hosting | **Azure**, topology still deferred | ADR-022 |
+
+**Supabase Auth, Storage, Realtime, and Edge Functions are not adopted.** Using them later is a decision requiring its own ADR, because each supersedes a confirmed decision rather than complementing it.
+
+### Two constraints that must hold
+
+These are the failure modes this decision introduces. Both are cheap to respect now and expensive to unpick later.
+
+**1. Alembic is the sole owner of schema.**
+
+Supabase ships its own migration system, a SQL editor, and an MCP `apply_migration` tool. **None of them may be used to change schema.** Two migration systems on one database produce a schema that neither can reliably describe, and the damage surfaces as a failed deploy in an environment nobody was watching.
+
+Practically:
+- Every DDL change goes through an Alembic migration, reviewed and applied by the pipeline (ADR-013, `06-database-architecture.md` §10).
+- The Supabase SQL editor and the MCP's `apply_migration` are for **reading and diagnosis only**.
+- `supabase/migrations/` is not created and must stay absent.
+
+**2. `service_role` must never be the application's connection.**
+
+Supabase issues a `service_role` key that **bypasses Row-Level Security by design**. ADR-017 makes PostgreSQL RLS the backstop that holds when application code is wrong; a connection that bypasses RLS removes that backstop entirely and silently.
+
+Practically:
+- The application connects as a **dedicated role that is `NOSUPERUSER` and `NOBYPASSRLS`**, exactly as the local Docker environment already provisions `lpg_app`.
+- The `service_role` key and the `postgres` superuser are for migrations and administration only, never for request-path connections.
+- A CI check should assert the application's configured role cannot bypass RLS. Recorded as DW-18.
+
+**Consequences:**
+
+- **Verified compatible.** Every extension ADR-013 depends on is available: `pgcrypto` (already installed), `citext`, `pg_trgm`. Note they live in the `extensions` schema on Supabase, not `public`, so migrations must reference them accordingly.
+- **`SET LOCAL` was the right call.** Supabase pools connections through Supavisor; transaction-mode pooling is compatible with `SET LOCAL` but not with session-level state. ADR-017 chose `SET LOCAL` for exactly this reason and needs no change — a decision made for one reason paying off for another.
+- **Local development is unaffected.** Docker Compose PostgreSQL 17 remains the local environment (`infrastructure/`). Keeping a local database means tests do not depend on network access or a shared remote, and preserves the environment parity Phase 1 established.
+- **Vendor exposure is bounded to hosting.** Because only managed Postgres is used, migrating to another managed PostgreSQL is a connection-string change plus a data migration — not a rewrite. That is the entire point of declining the platform features.
+- **Options this opens, deliberately not taken now:** `pgmq` and `pg_cron` are available and are plausible alternatives to a Redis-backed job queue (ADR-023); `pg_partman` supports the partitioning path in `06-database-architecture.md` §11; `pgaudit` and `pgtap` are relevant to BR-28 auditing and tenant-isolation testing. Each would need its own decision.
+- **Cost:** Supabase's free and lower tiers pause or throttle idle projects, which is fine for development and unsuitable for production. Production tier selection is part of the deferred deployment decision (DW-05).
+
+**Alternatives Considered:**
+- **Azure Database for PostgreSQL Flexible Server** — the original ADR-022 expectation. Not rejected on merit; Supabase was provisioned and offers a faster path to a working hosted database. Remains the fallback, and the connection-string-level coupling keeps that fallback cheap.
+- **Supabase as a full platform** — explicitly declined. It would supersede five confirmed decisions and reshape Phases 2 and 6, for benefits the project has not established it needs.
+- **Supabase for Auth only, alongside the custom Identity module** — declined; two identity systems is worse than either one.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -599,7 +664,7 @@ These are reconcilable, but the reconciliation was never written down, so an imp
 | 010 | Server-rendered printing engine | Accepted — amended by 016 |
 | 011 | Shared-library accessibility enforcement | Accepted |
 | 012 | Python 3.13 + FastAPI backend | Accepted |
-| 013 | PostgreSQL primary relational store | Accepted (supersedes 005) |
+| 013 | PostgreSQL primary relational store | Accepted (supersedes 005) — amended by 027 |
 | 014 | Application services + explicit cross-cutting pipeline | Accepted (supersedes 004) |
 | 015 | FastAPI WebSockets + Redis Pub/Sub | Accepted (supersedes 007) |
 | 016 | Python rendering stack for printing | Accepted (amends 010); library deferred |
@@ -608,11 +673,12 @@ These are reconcilable, but the reconciliation was never written down, so an imp
 | 019 | Signals-first + NgRx SignalStore | Accepted |
 | 020 | AG Grid Enterprise behind an abstraction | Accepted; licence procurement open |
 | 021 | RFC 7807 error contract | Accepted |
-| 022 | Azure target cloud; topology deferred | Accepted (direction only) |
+| 022 | Azure target cloud; topology deferred | Accepted (direction only) — amended by 027 |
 | 023 | Background job architecture | Accepted; library deferred |
 | 024 | Python architecture-boundary enforcement | Accepted |
 | 025 | Polyglot monorepo layout | Accepted (amends 001) |
 | 026 | Code-first OpenAPI, generated spec as contract | Accepted |
+| 027 | Supabase as managed PostgreSQL host **only** | Accepted (amends 013, 022) |
 
 ## Deferred Decisions
 
@@ -624,6 +690,7 @@ Decisions deliberately left open, each with a defined trigger point:
 | Background job library (ARQ vs Dramatiq vs Celery) | Phase 2 — Backend Foundation | ADR-023 · DW-06 |
 | PDF rendering library (WeasyPrint vs ReportLab) | Phase 17 — Printing | ADR-016 · DW-07 |
 | AG Grid Enterprise licence procurement | Before Phase 4 — Angular Foundation | ADR-020 · DW-08 |
+| Supabase production tier (lower tiers pause idle projects) | Before production | ADR-027 · DW-05 |
 
 ## Review Cadence
 ADRs are reviewed at each major phase gate and annually thereafter in production. Superseded decisions are marked **Superseded**, with a link to the new ADR, never deleted — preserving the historical reasoning trail this document exists to provide. The Phase 0 supersessions above are the first application of that policy; the superseded architecture documents themselves are preserved under [`superseded/`](./superseded/README.md).

@@ -48,7 +48,7 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
   template: `
     <ag-grid-angular
       class="lpg-data-grid"
-      [rowData]="rows()"
+      [rowData]="rowData()"
       [columnDefs]="columnDefs()"
       [gridOptions]="gridOptions()"
       [attr.aria-label]="ariaLabel()"
@@ -86,6 +86,9 @@ export class DataGridComponent<TRow = unknown> {
   readonly ariaLabel = input.required<string>();
 
   readonly ready = output<void>();
+
+  /** Mutable copy for AG Grid which expects a non-readonly array. */
+  protected readonly rowData = computed(() => [...this.rows()]);
 
   protected readonly columnDefs = computed<ColDef[]>(() =>
     this.columns().map((column) => ({

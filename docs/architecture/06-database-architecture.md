@@ -14,6 +14,14 @@ Applies to the primary relational store (PostgreSQL). Object storage is covered 
 
 **PostgreSQL, one logical database per environment**, accessed asynchronously through SQLAlchemy 2.x with Alembic migrations.
 
+**Hosted on Supabase** (ADR-027) — as a managed PostgreSQL host and nothing more. Supabase Auth, Storage, Realtime and Edge Functions are not adopted; each would supersede a confirmed decision rather than complement it. Local development continues to use Docker Compose PostgreSQL 17 (`infrastructure/`).
+
+Two constraints follow from that hosting choice and are **not optional**:
+
+> **Alembic is the sole owner of schema.** Supabase ships its own migration system, a SQL editor, and an MCP `apply_migration` tool. None of them may be used to change schema. Two migration systems on one database produce a schema neither can reliably describe, and the damage surfaces as a failed deploy in an environment nobody was watching. Those tools are for reading and diagnosis only, and `supabase/migrations/` must stay absent.
+
+> **`service_role` must never be the application's connection.** Supabase issues a `service_role` key that **bypasses Row-Level Security by design**. §2 makes RLS the backstop that holds when application code is wrong; a connection that bypasses it removes that backstop silently. The application connects as a dedicated `NOSUPERUSER`, `NOBYPASSRLS` role — exactly as local Docker provisions `lpg_app`. `service_role` and the `postgres` superuser are for migrations and administration only.
+
 Chosen over a NoSQL store because the Cylinder Ledger and Inventory domains require strong relational consistency and multi-table transactional guarantees (BR-01–BR-15, BR-29) that a document store would require significant application-level compensation to achieve safely. That reasoning originated in ADR-005 and survived the engine change intact (ADR-013).
 
 PostgreSQL specifically brings four capabilities this design already depends on:
@@ -186,7 +194,8 @@ The `tenant_id` discriminator on every row is what makes this migration mechanic
 - ORM models are never exposed directly through the API — always via Pydantic response models.
 - **No cross-schema foreign keys that would couple bounded contexts.** Cross-context references are by ID only (e.g. `orders.order.customer_id` references the customer aggregate root, not its internals), consistent with DDD aggregate boundary rules.
 - Check constraints enforce invariants at the database level as a backstop — `ck_inventory_level_quantity_non_negative` and similar. The domain layer remains the specification; the constraint is the safety net.
-- Connection pooling is configured deliberately. An async application with many instances can exhaust PostgreSQL connections quickly; server-side pooling (e.g. PgBouncer in transaction mode) is expected at scale — noting that transaction-mode pooling is compatible with `SET LOCAL` but not with session-level state, which is one more reason §2 uses `SET LOCAL`.
+- Connection pooling is configured deliberately. An async application with many instances can exhaust PostgreSQL connections quickly; server-side pooling is expected at scale — on Supabase this is **Supavisor**. Transaction-mode pooling is compatible with `SET LOCAL` but **not** with session-level state, which is one more reason §2 uses `SET LOCAL`. A decision made for tenant-isolation reasons happens to be the one that also survives pooling.
+- **Extensions live in the `extensions` schema on Supabase, not `public`.** Migrations must reference them accordingly. Verified available: `pgcrypto` (pre-installed), `citext`, `pg_trgm` — the three §1 depends on. `gen_random_uuid()` is PostgreSQL core since 13 and needs no extension.
 
 ## 15. Risks
 

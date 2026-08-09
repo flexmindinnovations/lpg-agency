@@ -42,6 +42,31 @@ jobs:
           fi
           echo "Active architecture documentation is consistent."
 
+      - name: Alembic is the sole owner of schema
+        run: |
+          # ADR-027: the database is hosted on Supabase, but Supabase's own
+          # migration system must never be used. Two migration systems on one
+          # database produce a schema neither can reliably describe, and the
+          # damage surfaces as a failed deploy in an environment nobody was
+          # watching. Cheap to prevent; expensive to unpick.
+          if [ -d supabase/migrations ] || git ls-files | grep -q '^supabase/migrations/'; then
+            echo "::error::supabase/migrations/ exists. Alembic owns the schema (ADR-027)."
+            echo "Move any schema change into backend/migrations/ as an Alembic revision."
+            exit 1
+          fi
+          echo "Alembic remains the sole migration system."
+
+      - name: No Supabase service_role key committed
+        run: |
+          # service_role bypasses Row-Level Security by design, which removes
+          # the tenant-isolation backstop entirely (ADR-017, ADR-027).
+          # A leaked service_role key is a full cross-tenant data breach.
+          if git ls-files -z | xargs -0 grep -lE 'service_role.*ey[A-Za-z0-9_-]{20,}|SUPABASE_SERVICE_ROLE_KEY=[A-Za-z0-9]' 2>/dev/null; then
+            echo "::error::A Supabase service_role key appears to be committed. Remove it and rotate it immediately."
+            exit 1
+          fi
+          echo "No service_role key committed."
+
       - name: Planning system is present
         run: |
           test -f planning/current_phase.md \

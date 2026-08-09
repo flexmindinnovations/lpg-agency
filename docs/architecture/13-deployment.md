@@ -12,9 +12,10 @@ Covers backend API, background worker, Dashboard hosting, mobile app distributio
 
 ## ⚠️ 1. What Is Decided and What Is Not
 
-**Decided (ADR-022):**
+**Decided (ADR-022, amended by ADR-027):**
 
-- **Azure is the target cloud.**
+- **The database is hosted on Supabase** — managed PostgreSQL only. Supabase Auth, Storage, Realtime and Edge Functions are **not** adopted (ADR-027).
+- **Azure remains the target cloud for application hosting.**
 - The backend is a **containerized ASGI application**.
 - The application architecture binds to **capabilities**, not to specific Azure products.
 - Four environments, GitHub Actions CI/CD, manual-gated production promotion.
@@ -51,7 +52,7 @@ The architecture depends on these capabilities. Azure product names are the expe
 | Capability | Purpose | Expected Azure service |
 |---|---|---|
 | Container hosting | API + worker | *Open — see §1* |
-| Managed PostgreSQL | Primary datastore (`06-database-architecture.md`) | Azure Database for PostgreSQL Flexible Server |
+| Managed PostgreSQL | Primary datastore (`06-database-architecture.md`) | **Supabase** (ADR-027) — *not* Azure Database for PostgreSQL |
 | Managed Redis | Cache, sessions, rate limiting, job queue, real-time backplane | Azure Cache for Redis |
 | Object storage | KYC documents, delivery proofs, invoices, print cache (D-40) | Azure Blob Storage |
 | Secret management | Connection strings, API keys, licence keys | Azure Key Vault, accessed by managed identity |

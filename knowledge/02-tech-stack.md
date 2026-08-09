@@ -37,7 +37,7 @@ New technologies should only be introduced when they provide clear business or t
 | Web Dashboard | Angular 22 in an **Nx workspace** (rooted at `frontend/`) |
 | Mobile Applications | Flutter (Customer App + Driver App) |
 | Backend APIs | Python 3.13+ / FastAPI |
-| Database | PostgreSQL |
+| Database | PostgreSQL, hosted on **Supabase** (managed Postgres only — ADR-027) |
 | Cache / Queue / Real-time backplane | Redis |
 | Real-Time | FastAPI WebSockets + Redis Pub/Sub |
 | Authentication | JWT + Refresh Tokens |
@@ -348,7 +348,12 @@ These are not optional tooling preferences. Python has no compiler-enforced laye
 
 Purpose
 
-Primary relational database.
+Primary relational database. **Hosted on Supabase** (ADR-027) as a managed Postgres host and nothing more — Supabase Auth, Storage, Realtime and Edge Functions are **not** adopted. Local development uses Docker Compose PostgreSQL 17.
+
+Two non-negotiable rules follow:
+
+1. **Alembic owns the schema.** Never use Supabase's migration tooling, SQL editor, or the MCP `apply_migration` tool to change schema. Two migration systems on one database produce a schema neither can describe.
+2. **Never connect the application as `service_role`.** That key bypasses Row-Level Security by design, removing the tenant-isolation backstop. Use a dedicated `NOSUPERUSER`, `NOBYPASSRLS` role.
 
 Responsibilities
 
