@@ -69,7 +69,7 @@ Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Ale
 
 | Area | Status |
 |---|---|
-| `backend/` | FastAPI app, Clean Architecture layers, 49 tests passing |
+| `backend/` | FastAPI app, Clean Architecture layers, Supabase-aware config, 76 tests passing |
 | `frontend/` | Nx workspace, Angular 22.0.8 dashboard, 14 tests passing |
 | `mobile/` | Melos workspace, two app shells, three packages, 12 tests passing |
 | `design-tokens/` | One JSON source → 229 CSS vars + TypeScript + Dart |
@@ -79,9 +79,11 @@ Phase 2 scope: Unit of Work, base repository, domain-event dispatcher, first Ale
 | `.gitignore` | Present, verified behaviourally |
 | Git commits | `470436e` — 428 files, working tree clean |
 
-**75 tests pass.** Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass.
+**102 tests pass** (76 backend + 14 frontend + 12 Flutter). Lint, format, `mypy --strict`, and the five `import-linter` contracts all pass.
 
-**Five verifications are blocked, not complete:** Docker's daemon would not start in the Phase 1 environment, so live PostgreSQL/Redis connection and Playwright execution are unverified. Close out with `./scripts/dev-up.sh && ./scripts/check.sh`.
+**Local database and Redis are now fully verified** against real PostgreSQL 17 and Redis 7 — including that the application role cannot bypass RLS, and that `/health/ready` returns 200 with both dependencies healthy.
+
+**One verification remains blocked:** a live SQLAlchemy/Alembic connection to **Supabase**, pending credentials. Configuration is written and unit-tested; no connection has been attempted.
 
 ---
 
@@ -166,7 +168,8 @@ Deliberately open, each with a trigger point:
 
 # Known Risks
 
-- **Five Phase 1 verifications are unclosed** — Docker's daemon would not start in the Phase 1 environment, so live PostgreSQL/Redis connection and Playwright execution remain unverified. Close out with `./scripts/dev-up.sh && ./scripts/check.sh`.
+- **Live Supabase connectivity is unverified** — credentials not yet supplied. Local PostgreSQL and Redis are fully verified.
+- **The Supabase application role is not provisioned** (DW-19) — only Supabase's built-in roles exist. Role creation is administrative, not schema, so it cannot go through Alembic.
 - Authentication not implemented — every module depends on it.
 - No database migrations yet; the first arrives in Phase 2 with the `tenant` schema and its RLS policies.
 - Unit of Work, repositories and the domain-event dispatcher are designed but not implemented.
@@ -203,6 +206,7 @@ Never:
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2026-08-09 | 1.3 | Phase 1 closed out: Docker verifications completed, tenant-context bug found and fixed, Supabase config added, architecture-consistency checker introduced |
 | 2026-08-09 | 1.2 | Phase 1 complete: all three stacks scaffolded and verified; 75 tests passing; boundary enforcement live; first commit made |
 | 2026-08-09 | 1.1 | Phase 0 complete: .NET architecture superseded, Python/FastAPI architecture documented, ADR-012…026 added, status corrected to reflect an empty repository |
 | — | 1.0 | Initial knowledge base created |

@@ -384,7 +384,14 @@ Business rules should never rely solely on UI validation.
 
 # Database Principles
 
-The application uses PostgreSQL.
+The application uses **PostgreSQL, hosted on Supabase** (ADR-027) as a managed
+Postgres host and nothing more — Supabase Auth, Storage, Realtime and Edge
+Functions are not adopted. Local development uses Docker Compose PostgreSQL 17.
+
+Access is via **SQLAlchemy 2.x** with **Alembic** migrations. There is no
+Supabase-specific ORM, and Alembic is the sole owner of schema — Supabase's own
+migration tooling, its SQL editor, and the MCP `apply_migration` tool are for
+reading and diagnosis only.
 
 Guidelines:
 

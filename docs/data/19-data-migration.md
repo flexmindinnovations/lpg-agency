@@ -102,8 +102,8 @@ flowchart TB
 - **Right-to-erasure handling**: Customer records are never hard-deleted (FR-CM-07); erasure requests are handled via **anonymization** (scrubbing PII while retaining the transactional/financial skeleton for audit integrity), formalized with legal counsel given the confirmed India/DPDP-relevant jurisdiction.
 
 ## 8. Backup Strategy
-- **Azure Database for PostgreSQL** automated backups: full + continuous WAL archiving, enabling **Point-in-Time Restore (PITR)** within the retention window.
-- **Geo-redundant backups** to the paired Azure region for Disaster Recovery.
+- **Managed PostgreSQL platform backups** (Supabase, ADR-027): full plus continuous WAL archiving, enabling **Point-in-Time Restore (PITR)** within the plan's retention window. Retention and PITR depth vary by tier — confirming the production tier is part of the deferred deployment decision (DW-05).
+- **Geo-redundant backup storage** for Disaster Recovery, per the platform's regional replication options.
 - **Long-Term Retention** for statutory/GST record-keeping.
 - Redis is treated as **ephemeral/cache-tier** — no backup strategy needed for Redis itself (rate-limit counters, idempotency keys, OTP codes are all safely regenerable/re-derivable or short-lived by design); PostgreSQL remains the sole durable system of record.
 - Backup job failure is a **Critical** alert — never silently degraded.
@@ -125,4 +125,4 @@ flowchart TB
 
 ## Future Scalability
 - As onboarding volume grows, the manual Reconciliation Review is the natural next automation target — e.g., auto-approving low-risk imports while requiring human review for large/high-stakes onboardings.
-- Native PostgreSQL partitioning (§7) and Azure's managed elastic scaling together take the platform from launch state toward supporting thousands of agencies without a schema rewrite — only partition-boundary management and storage-tier changes.
+- Native PostgreSQL partitioning (§7) and the managed platform's elastic scaling together take the platform from launch state toward supporting thousands of agencies without a schema rewrite — only partition-boundary management and storage-tier changes.

@@ -9,10 +9,11 @@ soft-delete and concurrency columns rather than each re-declaring them
 (``docs/data/03-database-schema.md``).
 
 **The tenant seam is the important part of this module.** Every request
-transaction must issue ``SET LOCAL app.current_tenant_id`` before any query,
-because that is what the RLS policies predicate on. ``SET LOCAL`` scopes the
-value to the transaction, so it cannot leak across pooled connections — which
-also keeps this compatible with transaction-mode server-side pooling
+transaction sets ``app.current_tenant_id`` before any query, because that is
+what the RLS policies predicate on. It is set **transaction-scoped**, via
+``set_config(..., is_local => true)``, so it cannot leak across pooled
+connections — which also keeps this compatible with transaction-mode
+server-side pooling, Supavisor on Supabase included
 (``06-database-architecture.md`` §2, §14).
 """
 
@@ -85,6 +86,11 @@ class Database:
         happens on first use, which keeps startup fast and lets the readiness
         endpoint be the thing that reports database availability.
         """
+        # `statement_cache_size=0` disables asyncpg's prepared-statement cache,
+        # which is required behind a transaction-mode pooler (Supavisor,
+        # PgBouncer) and harmless-but-slower on a direct connection. Driven by
+        # configuration rather than hardcoded, because which one applies
+        # depends on the connection string, not the code.
         self._engine = create_async_engine(
             str(self._settings.database_url),
             echo=self._settings.database_echo,
@@ -92,6 +98,9 @@ class Database:
             max_overflow=self._settings.database_max_overflow,
             pool_timeout=self._settings.database_pool_timeout_seconds,
             pool_pre_ping=True,
+            connect_args={
+                "statement_cache_size": self._settings.database_statement_cache_size,
+            },
         )
         self._session_factory = async_sessionmaker(
             bind=self._engine,
@@ -111,8 +120,8 @@ class Database:
     async def session(self, *, tenant_id: uuid.UUID | None = None) -> AsyncIterator[AsyncSession]:
         """Yield a session bound to a transaction, optionally tenant-scoped.
 
-        When ``tenant_id`` is supplied, ``SET LOCAL app.current_tenant_id`` is
-        issued as the first statement of the transaction, which is what the RLS
+        When ``tenant_id`` is supplied, ``app.current_tenant_id`` is set
+        transaction-scoped as the first statement, which is what the RLS
         policies read.
 
         ``tenant_id`` is optional in Phase 1 only because authentication does
@@ -128,8 +137,21 @@ class Database:
 
         async with self._session_factory() as session:
             if tenant_id is not None:
+                # `set_config(..., is_local => true)` rather than the literal
+                # `SET LOCAL` statement. Both are transaction-scoped and
+                # equivalent in effect, but PostgreSQL's `SET` command does
+                # **not** accept bind parameters — `SET LOCAL x = :tenant_id`
+                # is a syntax error at the placeholder. `set_config` is a
+                # normal function call, so the value binds properly and can
+                # never be string-interpolated into SQL.
+                #
+                # Transaction-scoped is the important part: the value must not
+                # survive on a pooled connection and be inherited by the next
+                # request, which would be a cross-tenant leak through the pool.
+                # It is also what keeps this compatible with transaction-mode
+                # server-side pooling (Supavisor on Supabase, PgBouncer).
                 await session.execute(
-                    text("SET LOCAL app.current_tenant_id = :tenant_id"),
+                    text("SELECT set_config('app.current_tenant_id', :tenant_id, true)"),
                     {"tenant_id": str(tenant_id)},
                 )
             try:

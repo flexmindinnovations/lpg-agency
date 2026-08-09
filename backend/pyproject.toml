@@ -74,7 +74,11 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ARG001", "S105", "S106"]  # fixtures, and test credentials are fake
+# Fixtures, fake credentials, and generated temp-table names interpolated into
+# DDL. S608 is exempted for tests only: the interpolated value is always a
+# uuid4 hex generated in the test, never user input. Application code keeps the
+# rule.
+"tests/**/*.py" = ["ARG001", "S105", "S106", "S608"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["lpg"]

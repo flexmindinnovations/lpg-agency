@@ -268,9 +268,14 @@ Data in Transit
 
 Data at Rest
 
-- Database Encryption
+- Database encryption at rest, provided by the managed PostgreSQL platform (Supabase, ADR-027)
 - Storage Encryption
 - Backup Encryption
+
+**The application's database role must be `NOSUPERUSER` and `NOBYPASSRLS`.**
+Supabase issues a `service_role` key that bypasses Row-Level Security by
+design; using it for the application connection would silently remove the
+tenant-isolation backstop that RLS exists to provide (ADR-017, ADR-027).
 
 Secrets
 

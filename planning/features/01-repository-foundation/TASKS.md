@@ -28,8 +28,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` complete (verified) · `
   *Verify:* SQL file present and referenced by Compose; syntax reviewed.
 - [x] **T-07** Create `.env.example` files (root, backend). Placeholders only — no real secrets.
   *Verify:* `grep -rE '(password|secret|key)\s*=\s*\S{16,}' *.env.example` returns nothing meaningful; `.env` is git-ignored.
-- [!] **T-08** Bring the environment up and confirm both services are healthy.
-  *Verify:* `docker compose ps` shows both healthy; `docker compose exec postgres pg_isready`; `redis-cli ping` → PONG.
+- [x] **T-08** Bring the environment up and confirm both services are healthy.
+  *Verify:* ✅ **VERIFIED 2026-08-09.** Both containers healthy; `pg_isready` → accepting connections; `redis-cli ping` → PONG; `lpg_dev` + `lpg_test` created; `pgcrypto`/`citext`/`pg_trgm` installed; **`lpg_app` confirmed `super=false bypassrls=false`** (ADR-017); `app.current_tenant_id` defaults to empty (fail-closed).
 
 ## Group C — Backend Foundation (FastAPI)
 
@@ -45,16 +45,16 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` complete (verified) · `
   *Verify:* test asserts the response header is present and echoes a supplied ID.
 - [x] **T-14** RFC 7807 exception handling foundation (ADR-021) with `error_code` extension.
   *Verify:* test asserts `application/problem+json`, and presence of `type`/`title`/`status`/`error_code`.
-- [!] **T-15** Database connection foundation — async SQLAlchemy 2.x engine, session factory, tenant-context seam.
-  *Verify:* integration test connects to Compose PostgreSQL and executes `SELECT 1`.
-- [!] **T-16** Redis connection foundation — async client, lifecycle-managed.
-  *Verify:* integration test PINGs Compose Redis.
+- [x] **T-15** Database connection foundation — async SQLAlchemy 2.x engine, session factory, tenant-context seam.
+  *Verify:* ✅ **VERIFIED 2026-08-09** — 15 integration tests pass against real PostgreSQL 17: connection, `SELECT 1`, all three extensions, `gen_random_uuid()`, tenant-context seam, no cross-connection leak, role cannot bypass RLS, rollback discards, application role cannot issue DDL.
+- [x] **T-16** Redis connection foundation — async client, lifecycle-managed.
+  *Verify:* ✅ **VERIFIED 2026-08-09** — 6 integration tests pass against real Redis 7: PING, set/get round trip, TTL, lifecycle guard, idempotent disconnect, and `ping()` reporting `False` (never raising) when unreachable.
 - [x] **T-17** Health and readiness endpoints — `/health/live` (process) and `/health/ready` (dependencies).
   *Verify:* test asserts live returns 200 unconditionally; ready reports per-dependency status.
 - [x] **T-18** App factory: CORS, OpenAPI metadata, versioned `/api/v1` router, lifespan management.
   *Verify:* app starts; `/api/v1/openapi.json` is valid OpenAPI 3.1.
-- [!] **T-19** Alembic baseline — configured against the async engine, no migrations yet.
-  *Verify:* `uv run alembic current` runs without error against Compose PostgreSQL.
+- [x] **T-19** Alembic baseline — configured against the async engine, no migrations yet.
+  *Verify:* ✅ **VERIFIED 2026-08-09** — `alembic current`, `heads`, `history` and `upgrade head` all run against the live database; `alembic_version` table created. Offline `--sql` generation also works. No business migrations exist, by design.
 - [x] **T-20** pytest foundation — async support, fixtures, unit/integration split.
   *Verify:* `uv run pytest` passes.
 - [x] **T-21** Quality tooling — Ruff (lint + format), `mypy --strict`, `import-linter` contracts (ADR-024).
@@ -120,6 +120,31 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` complete (verified) · `
   *Verify:* every command listed has been executed successfully at least once.
 - [x] **T-47** Update `planning/current_phase.md` and `knowledge/12-current-status.md`.
   *Verify:* both reflect the actual post-Phase-1 state.
+
+## Group H — Phase 1 Close-Out (2026-08-09)
+
+Added when Docker became available and Supabase was named as the managed host.
+
+- [x] **T-54** Start the Docker environment and verify PostgreSQL + Redis health, roles, extensions and the fail-closed tenant default.
+  *Verify:* ✅ both containers healthy; `lpg_app` is `NOSUPERUSER`/`NOBYPASSRLS`.
+- [x] **T-55** Write real integration tests for the database foundation.
+  *Verify:* ✅ 15 tests against PostgreSQL 17.
+- [x] **T-56** Write real integration tests for the Redis foundation.
+  *Verify:* ✅ 6 tests against Redis 7.
+- [x] **T-57** **Fix the tenant-context bug the integration tests exposed.** `SET LOCAL app.current_tenant_id = :tenant_id` is a PostgreSQL syntax error — `SET` does not accept bind parameters. Replaced with `set_config('app.current_tenant_id', :tenant_id, true)`, which is transaction-scoped, parameter-safe, and pooler-compatible.
+  *Verify:* ✅ tenant-seam tests pass; no-leak test passes.
+- [x] **T-58** Add Supabase-aware database configuration: separate migration URL, and a statement-cache setting for transaction-mode pooling.
+  *Verify:* ✅ 6 settings tests; `uv run pytest` green.
+- [x] **T-59** Write `backend/.env.example` documenting Supabase connection modes, with no credentials.
+  *Verify:* ✅ file present, git-ignored `.env`, no secret committed.
+- [x] **T-60** Replace the fragile grep-based CI guard with `scripts/check_architecture_consistency.py`, which distinguishes superseded technology named as *current guidance* from the historical record that traceability depends on.
+  *Verify:* ✅ clean repo → exit 0; three planted violations → exit 1, all caught.
+- [x] **T-61** Correct the remaining stale Azure-database references in `docs/data/17`, `docs/data/19`, ADR-022's capability list, and the C#/Razor aside in `09-printing-architecture.md`.
+  *Verify:* ✅ architecture checker passes across 271 tracked files.
+- [x] **T-62** Verify internal documentation links across all 133 markdown files.
+  *Verify:* ✅ zero broken links; zero references to non-existent files.
+- [!] **T-63** Verify a live connection from SQLAlchemy/Alembic to **Supabase** PostgreSQL.
+  *Verify:* **BLOCKED** — Supabase database credentials were not supplied. Configuration is written and its loading is unit-tested, but no connection has been attempted. The MCP server confirms the project is reachable (`ayqphthelemlnbtnknkp`, zero tables, zero migrations); that is *not* the same as a verified SQLAlchemy connection and is not claimed as one.
 
 ## Group G — Verification & Closeout
 

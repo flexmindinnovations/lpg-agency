@@ -77,11 +77,11 @@ High-sensitivity actions **re-verify against PostgreSQL**, not JWT claims alone,
 | Layer | Mechanism |
 |---|---|
 | Transport | TLS 1.2+ everywhere |
-| Database at rest | PostgreSQL Transparent Data Encryption via Azure Database for PostgreSQL's encryption-at-rest, plus `pgcrypto` for column-level encryption of specific high-sensitivity fields |
+| Database at rest | Encryption at rest provided by the managed PostgreSQL platform (Supabase, ADR-027), plus `pgcrypto` for column-level encryption of specific high-sensitivity fields |
 | KYC documents | Application-layer envelope encryption (Key Vault-managed key) before Blob upload, in addition to Storage Service Encryption |
 | Payment data | Never stored directly — tokenized via PCI-DSS-compliant gateway |
 | JWT payload | No sensitive PII beyond operational claims — never embeds KYC/payment details |
-| Redis | TLS-enabled connection (Azure Cache for Redis), no PII stored beyond transient OTP hashes and idempotency keys (both short-TTL, non-reversible where possible — OTPs stored as a salted hash, not plaintext) |
+| Redis | TLS-enabled connection to the managed Redis instance, no PII stored beyond transient OTP hashes and idempotency keys (both short-TTL, non-reversible where possible — OTPs stored as a salted hash, not plaintext) |
 
 ## 10. PII Handling
 - KYC documents, addresses, phone numbers are PII — access restricted by permission (`kyc:read` distinct from general `customers:read`), logged on every access, never included in application logs (structured logging with a field-masking processor for known PII field names).
@@ -123,7 +123,7 @@ High-sensitivity actions **re-verify against PostgreSQL**, not JWT claims alone,
 ## Risks
 - **JWT claim staleness**: mitigated by short access-token lifetime + live re-check for high-sensitivity actions.
 - **Refresh token theft**: mitigated by rotation + reuse detection.
-- **Redis availability coupling**: rate limiting fails open (§8); idempotency-key checks failing during a Redis outage are a documented, accepted risk window (a retried request could theoretically double-apply if Redis is down at the exact retry moment) — mitigated by Redis being deployed as a managed, HA Azure Cache for Redis instance with automatic failover, making this a low-probability edge case, not an unaddressed gap.
+- **Redis availability coupling**: rate limiting fails open (§8); idempotency-key checks failing during a Redis outage are a documented, accepted risk window (a retried request could theoretically double-apply if Redis is down at the exact retry moment) — mitigated by Redis being deployed as a managed, highly-available instance with automatic failover, making this a low-probability edge case, not an unaddressed gap.
 
 ## Alternatives Considered
 - Session-based auth instead of JWT — rejected; JWT better supports the stateless, horizontally-scaled async FastAPI deployment and offline-first mobile requirement.

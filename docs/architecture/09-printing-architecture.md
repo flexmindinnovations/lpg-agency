@@ -40,7 +40,7 @@ The printing engine lives in the **Infrastructure layer** and is invoked by an a
 
 ## 3. Template Model
 
-- Templates are **tenant-scoped configuration** (BR-31, D-42), stored as structured layout definitions — not hardcoded per document type in Python, exactly as they were not to be hardcoded in C#/Razor.
+- Templates are **tenant-scoped configuration** (BR-31, D-42), stored as structured layout definitions — never hardcoded per document type in application code. A tenant changing its footer text must not require a deployment.
 - Templates are composed of reusable **blocks**: Header/Logo, Company Information, Customer Details, Line Items Table, Tax Breakdown, Totals, Footer/Terms, Barcode/QR Block, Signature Block.
 - A `DocumentType` enumeration — Invoice, DeliveryReceipt, PaymentReceipt, CashReceipt, CustomerLedger, DailySalesReport, InventoryReport, DriverReport, GstReport — maps to a default block composition per tenant, which tenant admins can customize (logo, terms, footer message) **without a code change or redeployment**.
 - Certain blocks are **mandatory and non-removable** — the tax breakdown and GST fields in particular. A tenant must not be able to configure themselves into a non-compliant invoice.

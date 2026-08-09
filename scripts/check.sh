@@ -10,6 +10,9 @@ cd "$(dirname "$0")/.."
 echo "======================================================================"
 echo " Repository checks"
 echo "======================================================================"
+echo "==> Superseded architecture stays superseded"
+python scripts/check_architecture_consistency.py
+
 echo "==> Design tokens are up to date"
 node scripts/generate-tokens.mjs --check
 

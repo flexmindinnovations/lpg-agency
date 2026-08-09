@@ -59,16 +59,42 @@ class Settings(BaseSettings):
     # -- Database ---------------------------------------------------------
     # The application connects as a non-superuser role without BYPASSRLS, so
     # PostgreSQL Row-Level Security remains an effective tenant-isolation
-    # backstop (ADR-017).
+    # backstop (ADR-017). Hosted on Supabase (ADR-027); local development uses
+    # the docker compose PostgreSQL.
+    #
+    # No credential is ever hardcoded. The default below points at the local
+    # docker compose stack whose password is worthless outside the container.
     database_url: PostgresDsn = Field(
         default=PostgresDsn(
             "postgresql+asyncpg://lpg_app:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
         )
     )
+
+    # Alembic connects separately, for two reasons: migrations run as the
+    # elevated role rather than the application role
+    # (`06-database-architecture.md` §10), and they need a *direct* connection
+    # rather than a transaction-mode pooler, which cannot support the
+    # session-level state some DDL requires.
+    #
+    # Falls back to `database_url` when unset, which is correct for local
+    # development where both are the same host.
+    migration_database_url: PostgresDsn | None = None
+
     database_echo: bool = False
     database_pool_size: int = Field(default=10, ge=1, le=100)
     database_max_overflow: int = Field(default=5, ge=0, le=100)
     database_pool_timeout_seconds: int = Field(default=30, ge=1)
+
+    # asyncpg caches prepared statements per connection. Behind a
+    # transaction-mode pooler (Supabase's Supavisor, or PgBouncer) a connection
+    # is handed to a different client between statements, so a cached prepared
+    # statement is looked up on a backend that never prepared it — surfacing as
+    # intermittent "prepared statement does not exist" errors under load, which
+    # are miserable to diagnose because they do not reproduce at low traffic.
+    #
+    # Set to 0 when connecting through a transaction pooler. Left at the
+    # default for direct connections, where caching is a genuine win.
+    database_statement_cache_size: int = Field(default=100, ge=0)
 
     # -- Redis ------------------------------------------------------------
     # Serves cache, sessions, rate limiting, the job queue, and the real-time
@@ -101,6 +127,15 @@ class Settings(BaseSettings):
                 return [str(origin).strip() for origin in parsed]
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return value
+
+    @property
+    def effective_migration_url(self) -> str:
+        """Connection string Alembic should use.
+
+        Falls back to the application URL when no separate migration URL is
+        configured — correct locally, where both are the same host.
+        """
+        return str(self.migration_database_url or self.database_url)
 
     @property
     def is_production(self) -> bool:

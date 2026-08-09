@@ -8,7 +8,7 @@ LPG Agency Management Platform
 
 ## Current Phase
 
-**Phase 1 — Repository / Development Foundation** ✅ **COMPLETE** (5 verifications environment-blocked)
+**Phase 1 — Repository / Development Foundation** ✅ **COMPLETE** — 58/60 actionable tasks (97%); 1 verification blocked on Supabase credentials
 
 **Next phase — Phase 2: Backend Foundation — NOT STARTED.** It requires an explicit go-ahead.
 
@@ -34,7 +34,7 @@ Verified 2026-08-09, post-Phase-1. Every figure below came from running a comman
 
 | Area | State |
 |---|---|
-| **Backend** (`backend/`) | FastAPI app on Python 3.13.5. Clean Architecture layers, Pydantic settings with production guard rails, structlog with central redaction, correlation IDs, RFC 7807 errors, async SQLAlchemy with the RLS tenant seam, Redis client, split liveness/readiness probes, Alembic harness, committed + drift-checked OpenAPI spec. **49 tests pass.** |
+| **Backend** (`backend/`) | FastAPI app on Python 3.13.5. Clean Architecture layers, Pydantic settings with production guard rails and Supabase-aware connection config, structlog with central redaction, correlation IDs, RFC 7807 errors, async SQLAlchemy with a working RLS tenant seam, Redis client, split liveness/readiness probes, Alembic verified against a live database, committed + drift-checked OpenAPI spec. **76 tests pass** (55 unit + 21 integration). |
 | **Frontend** (`frontend/`) | Nx 23.1.1 workspace, **Angular 22.0.8** dashboard. Design tokens, three themes, four shared libraries, AG Grid behind a wrapper, RFC 7807 + correlation interceptors, accessible app shell. **14 tests pass.** |
 | **Mobile** (`mobile/`) | Melos workspace: `customer_app`, `driver_app`, and `core`/`design_system`/`local_storage` packages. Riverpod, go_router, generated Dart tokens with three themes. **12 tests pass.** |
 | **Design tokens** (`design-tokens/`) | One JSON source generating 229 CSS variables, TypeScript constants and Dart constants. Drift-checked in CI. |
@@ -43,7 +43,7 @@ Verified 2026-08-09, post-Phase-1. Every figure below came from running a comman
 | **CI** (`.github/workflows/`) | Four path-filtered workflows; validation only, no deployment. |
 | **Git** | First commit `470436e`, 428 files, working tree clean. |
 
-**75 tests passing overall.** Lint, format, type check and boundary contracts pass on all three stacks.
+**102 tests passing overall** (76 backend + 14 frontend + 12 Flutter). Lint, format, type check and boundary contracts pass on all three stacks.
 
 ### Enforcement that is live
 
@@ -57,7 +57,9 @@ Not conventions — these fail the build:
 | Design tokens match their single source | Generator `--check` | ✅ |
 | OpenAPI spec matches implementation | Export `--check` | ✅ |
 | No environment file committed | Repository CI | ✅ |
-| Superseded .NET architecture stays superseded | Repository CI | ✅ |
+| Superseded architecture stays superseded | `scripts/check_architecture_consistency.py` in CI | ✅ 271 files, 0 findings |
+| Alembic is the sole owner of schema | Repository CI | ✅ |
+| No `service_role` key committed | Repository CI | ✅ |
 
 The boundary contracts earned their place on first run: they caught the API layer importing `Database` directly. Fixed properly by depending on the application-layer `HealthCheck` port, with the composition root carrying a declared exception.
 
@@ -65,15 +67,21 @@ The boundary contracts earned their place on first run: they caught the API laye
 
 Authentication · RBAC · every business module · background worker · real-time WebSocket implementation · printing engine · production infrastructure · deployment pipelines · offline sync.
 
-### Environment-blocked verifications
+### Verification closed out (2026-08-09)
 
-**Docker Desktop's daemon would not start here.** Five verifications could not be executed and are marked blocked, not complete: container startup (T-08), live database connection (T-15), live Redis connection (T-16), `alembic current` against a live database (T-19), and Playwright e2e execution (T-34, needs browser binaries).
+Docker became available, closing all five previously-blocked verifications:
 
-Configuration is authored and validated — `docker compose config` parses, and the readiness endpoint correctly reports both dependencies unreachable with per-dependency detail. One command closes these out on a machine with working Docker:
+| Was blocked | Now |
+|---|---|
+| Container startup (T-08) | ✅ Both healthy; roles, extensions and the fail-closed tenant default all confirmed |
+| Live database connection (T-15) | ✅ 15 integration tests against real PostgreSQL 17 |
+| Live Redis connection (T-16) | ✅ 6 integration tests against real Redis 7 |
+| Alembic against a live database (T-19) | ✅ `current` / `heads` / `history` / `upgrade head` all run |
+| `/health/ready` reporting ready | ✅ **200 `ready`**, both dependencies healthy — first time |
 
-```bash
-./scripts/dev-up.sh && ./scripts/check.sh
-```
+**The integration tests immediately found a real bug.** `SET LOCAL app.current_tenant_id = :tenant_id` is a PostgreSQL syntax error — `SET` does not accept bind parameters. That is the one line the entire RLS backstop depends on (ADR-017), and it would have failed at Phase 2's first tenant-scoped query, after the schema and repositories had been built on top of it. Replaced with `set_config('app.current_tenant_id', :tenant_id, true)`: same transaction scope, parameter-safe, and pooler-compatible.
+
+**Still blocked:** a live SQLAlchemy/Alembic connection to **Supabase** (T-63) — those credentials were not supplied. Configuration is written and unit-tested; no connection has been attempted, and none is claimed. Also unchanged: Playwright e2e execution (T-34), deferred to Phase 4.
 
 ---
 
@@ -200,7 +208,7 @@ Phase 1 built the backend *skeleton*: app factory, settings, logging, errors, he
 2. **Base repository** and the aggregate↔ORM mapping conventions.
 3. **Domain-event dispatcher**, in-process, with the transactional-outbox seam documented.
 4. **Tenant-scoped session dependency** — the version that *requires* a resolved tenant context, closing DW-12. Note this genuinely depends on Authentication for the JWT, so part of it may have to land in Phase 6; worth resolving early in Phase 2 planning.
-5. **First Alembic migration** — the `tenant` schema, with its RLS policies created in the same migration. **Against Supabase** (ADR-027): Alembic is the sole owner of schema, and the application role must be `NOSUPERUSER`/`NOBYPASSRLS`, never `service_role`.
+5. **First Alembic migration** — the `tenant` schema, with its RLS policies created in the same migration. **Against Supabase** (ADR-027): Alembic is the sole owner of schema, and the application role must be `NOSUPERUSER`/`NOBYPASSRLS`, never `service_role`. Provisioning that role on Supabase is DW-19 and cannot go through Alembic — role creation is administrative, not schema.
 6. **Tenant-isolation test suite** — two seeded tenants, every cross-tenant read returning nothing.
 7. **Background worker** skeleton and the ARQ/Dramatiq/Celery decision (ADR-023, DW-06).
 8. **Real-time publisher** implementation behind the existing port (ADR-015).
@@ -287,7 +295,9 @@ Multi-tenant SaaS from Phase 1 (D-01) · multi-branch/warehouse (D-02) · four c
 
 ## Status
 
-**COMPLETE** — for Phase 1, with 5 environment-blocked verifications recorded honestly as blocked rather than complete.
+**COMPLETE** — for Phase 1. 58 of 60 actionable tasks verified by running the command (97%).
+
+One verification remains **blocked**, recorded as blocked rather than complete: a live SQLAlchemy/Alembic connection to Supabase, pending credentials. Phase 1's foundation is fully verified against local PostgreSQL 17 and Redis 7.
 
 Phase 2 is **NOT STARTED**.
 

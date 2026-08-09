@@ -8,9 +8,8 @@ It is intended for developers and AI coding agents before reading the detailed O
 
 For detailed API contracts refer to:
 
-- docs/data/ (API design guidelines, contracts, OpenAPI, security, error catalog)
+- docs/data/ (API design guidelines, contracts, OpenAPI conventions, API security, error catalog)
 - docs/architecture/07-api-architecture.md
-- docs/data/
 
 ---
 
@@ -305,6 +304,40 @@ Future support:
 - Multi-factor Authentication
 
 All secured endpoints require authentication.
+
+---
+
+# Health & Observability Endpoints
+
+Two probes, deliberately distinct (`docs/architecture/12-observability.md` §5):
+
+| Endpoint | Checks | A failure means |
+|---|---|---|
+| `GET /health/live` | Nothing external — only that the process is running | Restart the container |
+| `GET /health/ready` | PostgreSQL and Redis reachability, per dependency | Remove this instance from rotation, do not restart |
+
+Conflating them is an expensive mistake: if liveness checked the database, a
+brief database blip would restart every instance simultaneously, turning a
+recoverable wobble into an outage.
+
+Both sit **outside** the `/api/v1` prefix — they serve the platform, not API
+clients, and their contract must not change when the API version does. Both are
+documented in the generated OpenAPI specification.
+
+---
+
+# Correlation IDs
+
+Every request carries a correlation ID, in the `X-Correlation-ID` header:
+
+- Supplied by the client, or generated at the edge when absent.
+- Bound to the logging context for the life of the request.
+- **Echoed on the response**, so a user-reported problem can be traced without
+  asking them to reproduce it.
+- Propagated onward into domain-event dispatch, enqueued background jobs, and
+  real-time messages — so one business transaction stays traceable across its
+  whole fan-out.
+- Returned as `trace_id` in every RFC 7807 error response.
 
 ---
 
@@ -628,8 +661,7 @@ Never:
 
 Refer to:
 
-- docs/data/ (API design guidelines, contracts, OpenAPI, security, error catalog)
+- docs/data/ (API design guidelines, contracts, OpenAPI conventions, API security, error catalog)
 - docs/architecture/07-api-architecture.md
-- docs/data/
 - docs/engineering/
 - docs/business/

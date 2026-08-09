@@ -80,14 +80,33 @@ async def lifespan_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 def _database_url() -> str:
+    """Connection string for integration tests.
+
+    Defaults to the docker compose test database, connecting as ``lpg_app`` —
+    the non-superuser, NOBYPASSRLS role the application uses. Testing as a
+    superuser would silently pass tenant-isolation checks that production
+    would fail.
+    """
     return os.environ.get(
-        "LPG_DATABASE_URL",
+        "LPG_TEST_DATABASE_URL",
         "postgresql+asyncpg://lpg_app:dev_only_not_a_real_secret@localhost:55432/lpg_test",
     )
 
 
 def _redis_url() -> str:
-    return os.environ.get("LPG_REDIS_URL", "redis://localhost:56379/1")
+    return os.environ.get("LPG_TEST_REDIS_URL", "redis://localhost:56379/1")
+
+
+@pytest.fixture
+def integration_settings() -> Settings:
+    """Settings pointed at the docker compose services."""
+    return Settings(
+        environment="local",
+        log_json=False,
+        database_url=_database_url(),
+        redis_url=_redis_url(),
+        health_check_timeout_seconds=5.0,
+    )
 
 
 @pytest.fixture

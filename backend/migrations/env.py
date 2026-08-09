@@ -43,11 +43,15 @@ target_metadata = Base.metadata
 def _database_url() -> str:
     """Resolve the migration connection string.
 
-    Environment first, alembic.ini second, local default last. The default is
-    the docker compose superuser, since that is the role migrations run as.
+    Prefers ``LPG_MIGRATION_DATABASE_URL`` — migrations run as the elevated
+    role over a *direct* connection, not as the application role through a
+    transaction pooler (`06-database-architecture.md` §10, ADR-027). Falls back
+    to ``LPG_DATABASE_URL``, then alembic.ini, then the local docker compose
+    superuser.
     """
     return (
-        os.environ.get("LPG_DATABASE_URL")
+        os.environ.get("LPG_MIGRATION_DATABASE_URL")
+        or os.environ.get("LPG_DATABASE_URL")
         or config.get_main_option("sqlalchemy.url")
         or "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
     )

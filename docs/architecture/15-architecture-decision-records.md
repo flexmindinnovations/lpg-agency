@@ -454,7 +454,7 @@ The architecture must remain replaceable if licensing or product requirements ch
 Phase 0 establishes only the **Azure-compatible architectural direction**:
 
 - The backend is a containerized ASGI application — deployable to any Azure container host, and identical locally under Docker.
-- PostgreSQL maps to Azure Database for PostgreSQL Flexible Server.
+- PostgreSQL is hosted on **Supabase** (amended by ADR-027 — originally expected to map to Azure Database for PostgreSQL Flexible Server).
 - Redis maps to Azure Cache for Redis, serving cache, sessions, rate limiting, and the real-time backplane (ADR-015).
 - Object storage maps to Azure Blob Storage (D-40), with per-category containers and short-lived signed URLs.
 - Secrets map to Azure Key Vault, accessed by managed identity — never in source control or pipeline variables.

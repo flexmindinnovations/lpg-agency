@@ -27,20 +27,17 @@ jobs:
           fi
           echo "No environment files committed."
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
       - name: Superseded architecture stays superseded
-        run: |
-          # Phase 0 superseded the .NET architecture but preserved it for
-          # traceability. A document instructing an agent to build with .NET
-          # must never reappear outside docs/architecture/superseded/.
-          matches=$(git ls-files 'docs/architecture/*.md' \
-            | grep -v 'superseded/' \
-            | xargs grep -lE 'ASP\.NET Core [0-9]|EF Core DbContext|MediatR IPipelineBehavior' 2>/dev/null || true)
-          if [ -n "$matches" ]; then
-            echo "::error::A superseded .NET instruction appeared on an active documentation path:"
-            echo "$matches"
-            exit 1
-          fi
-          echo "Active architecture documentation is consistent."
+        # The earlier stack was preserved rather than deleted, so its guidance
+        # remains readable in the repository. This scans every tracked file for
+        # obsolete technology named as *current guidance*, while allowing the
+        # historical record that traceability depends on. See the script's
+        # docstring for the distinction it draws.
+        run: python scripts/check_architecture_consistency.py
 
       - name: Alembic is the sole owner of schema
         run: |
