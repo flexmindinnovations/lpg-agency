@@ -94,6 +94,16 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ALTER DATABASE lpg_dev SET app.current_tenant_id = '';
 
 -- --------------------------------------------------------------------------
+-- UAT database
+-- --------------------------------------------------------------------------
+-- Local environments are separate DATABASES on the same instance rather than
+-- separate instances: same engine version, same extensions, same role
+-- privileges, a fraction of the resources. Production is Supabase (ADR-027).
+SELECT 'CREATE DATABASE lpg_uat OWNER lpg_admin'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'lpg_uat')
+\gexec
+
+-- --------------------------------------------------------------------------
 -- Test database
 -- --------------------------------------------------------------------------
 -- Integration tests run against a real PostgreSQL, never SQLite or a mock —
@@ -102,6 +112,23 @@ ALTER DATABASE lpg_dev SET app.current_tenant_id = '';
 SELECT 'CREATE DATABASE lpg_test OWNER lpg_admin'
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'lpg_test')
 \gexec
+
+\connect lpg_uat
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS citext;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+GRANT CONNECT ON DATABASE lpg_uat TO lpg_app;
+GRANT USAGE ON SCHEMA public TO lpg_app;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT SELECT, INSERT ON TABLES TO lpg_app;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT USAGE, SELECT ON SEQUENCES TO lpg_app;
+
+ALTER DATABASE lpg_uat SET app.current_tenant_id = '';
 
 \connect lpg_test
 

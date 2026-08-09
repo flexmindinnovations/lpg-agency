@@ -12,13 +12,19 @@ the first request is far harder to diagnose than one that refuses to start.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic import Field, PostgresDsn, RedisDsn, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-Environment = Literal["local", "dev", "qa", "staging", "production"]
+Environment = Literal["local", "dev", "uat", "qa", "staging", "production"]
+
+
+def _os_environ() -> dict[str, str]:
+    """Indirection so the precedence rule above stays testable."""
+    return dict(os.environ)
 
 
 class Settings(BaseSettings):
@@ -64,11 +70,31 @@ class Settings(BaseSettings):
     #
     # No credential is ever hardcoded. The default below points at the local
     # docker compose stack whose password is worthless outside the container.
+    # Two ways to configure the connection, in precedence order:
+    #
+    #   1. LPG_DATABASE_URL      — a complete DSN. Wins if set.
+    #   2. LPG_DB_HOST/PORT/NAME/USER/PASSWORD — discrete parts, composed below.
+    #
+    # The discrete form exists because it is what a hosting provider hands you,
+    # and because rotating a password should touch one variable rather than
+    # require rewriting a whole DSN. Composition URL-encodes the password, so
+    # characters Supabase happily issues — @ : / ? # — cannot silently corrupt
+    # the connection string. Hand-assembling a DSN with such a password
+    # produces a confusing "could not translate host name" rather than an
+    # authentication error.
     database_url: PostgresDsn = Field(
         default=PostgresDsn(
             "postgresql+asyncpg://lpg_app:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
         )
     )
+
+    db_host: str | None = None
+    db_port: int = Field(default=5432, ge=1, le=65535)
+    db_name: str = "postgres"
+    db_user: str | None = None
+    # SecretStr so the value never appears in a repr, a log line, or a
+    # validation error message.
+    db_password: SecretStr | None = None
 
     # Alembic connects separately, for two reasons: migrations run as the
     # elevated role rather than the application role
@@ -128,6 +154,35 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return value
 
+    @staticmethod
+    def _compose_dsn(*, host: str, port: int, name: str, user: str, password: str | None) -> str:
+        """Build an asyncpg DSN from discrete parts, encoding the credentials."""
+        from urllib.parse import quote
+
+        # `safe=""` so every reserved character is encoded. A password
+        # containing "@" would otherwise be read as the host separator.
+        credentials = quote(user, safe="")
+        if password:
+            credentials += f":{quote(password, safe='')}"
+        return f"postgresql+asyncpg://{credentials}@{host}:{port}/{name}"
+
+    @property
+    def effective_database_url(self) -> str:
+        """Connection string the application should use.
+
+        An explicit ``LPG_DATABASE_URL`` wins; otherwise the discrete
+        ``LPG_DB_*`` parts are composed. Falls back to the local default.
+        """
+        if self.db_host and self.db_user and "LPG_DATABASE_URL" not in _os_environ():
+            return self._compose_dsn(
+                host=self.db_host,
+                port=self.db_port,
+                name=self.db_name,
+                user=self.db_user,
+                password=self.db_password.get_secret_value() if self.db_password else None,
+            )
+        return str(self.database_url)
+
     @property
     def effective_migration_url(self) -> str:
         """Connection string Alembic should use.
@@ -135,7 +190,7 @@ class Settings(BaseSettings):
         Falls back to the application URL when no separate migration URL is
         configured — correct locally, where both are the same host.
         """
-        return str(self.migration_database_url or self.database_url)
+        return str(self.migration_database_url or self.effective_database_url)
 
     @property
     def is_production(self) -> bool:

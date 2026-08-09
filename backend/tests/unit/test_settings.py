@@ -139,3 +139,81 @@ class TestNoHardcodedCredentials:
         for url in (str(settings.database_url), str(settings.redis_url)):
             assert "localhost" in url or "127.0.0.1" in url
             assert "supabase" not in url
+
+
+class TestDiscreteConnectionParts:
+    """LPG_DB_* parts, composed into a DSN.
+
+    This is the shape a hosting provider hands you, and it means rotating a
+    password touches one variable rather than requiring a whole DSN rewrite.
+    """
+
+    def test_composes_a_dsn_from_parts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("LPG_DATABASE_URL", raising=False)
+        monkeypatch.setenv("LPG_DB_HOST", "db.example.supabase.co")
+        monkeypatch.setenv("LPG_DB_PORT", "5432")
+        monkeypatch.setenv("LPG_DB_NAME", "postgres")
+        monkeypatch.setenv("LPG_DB_USER", "postgres")
+        monkeypatch.setenv("LPG_DB_PASSWORD", "simplepass")
+
+        url = Settings().effective_database_url
+
+        assert url == (
+            "postgresql+asyncpg://postgres:simplepass@db.example.supabase.co:5432/postgres"
+        )
+
+    def test_url_encodes_special_characters_in_the_password(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The footgun this exists to remove.
+
+        An unencoded "@" is read as the host separator, so the driver reports
+        "could not translate host name" rather than an authentication failure —
+        sending you to debug DNS instead of the password.
+        """
+        monkeypatch.delenv("LPG_DATABASE_URL", raising=False)
+        monkeypatch.setenv("LPG_DB_HOST", "db.example.supabase.co")
+        monkeypatch.setenv("LPG_DB_USER", "postgres")
+        monkeypatch.setenv("LPG_DB_PASSWORD", "p@ss:w/rd?#1")
+
+        url = Settings().effective_database_url
+
+        assert "p%40ss%3Aw%2Frd%3F%231" in url
+        assert "@db.example.supabase.co" in url
+        # Exactly one "@" — the credential separator.
+        assert url.count("@") == 1
+
+    def test_explicit_url_wins_over_discrete_parts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(
+            "LPG_DATABASE_URL", "postgresql+asyncpg://u:p@explicit-host:5432/explicit"
+        )
+        monkeypatch.setenv("LPG_DB_HOST", "discrete-host")
+        monkeypatch.setenv("LPG_DB_USER", "discrete-user")
+
+        assert "explicit-host" in Settings().effective_database_url
+
+    def test_falls_back_to_the_local_default_when_nothing_is_set(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        for var in ("LPG_DATABASE_URL", "LPG_DB_HOST", "LPG_DB_USER"):
+            monkeypatch.delenv(var, raising=False)
+
+        assert "localhost" in Settings().effective_database_url
+
+    def test_password_is_not_exposed_in_repr(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """SecretStr keeps the value out of logs, tracebacks and error messages."""
+        monkeypatch.setenv("LPG_DB_PASSWORD", "super-secret-value")
+
+        settings = Settings()
+
+        assert "super-secret-value" not in repr(settings)
+        assert "super-secret-value" not in str(settings)
+        assert settings.db_password is not None
+        assert settings.db_password.get_secret_value() == "super-secret-value"
+
+    def test_uat_is_a_valid_environment(self) -> None:
+        assert Settings(environment="uat").environment == "uat"
+
+    def test_uat_is_held_to_non_local_guard_rails(self) -> None:
+        with pytest.raises(ValueError, match="Wildcard CORS origin"):
+            Settings(environment="uat", cors_origins=["*"])

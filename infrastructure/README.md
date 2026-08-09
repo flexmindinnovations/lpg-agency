@@ -12,8 +12,22 @@
 
 | Service | Host port | Notes |
 |---|---|---|
-| PostgreSQL 17 | `55432` | databases `lpg_dev`, `lpg_test` |
+| PostgreSQL 17 | `55432` | databases `lpg_dev`, `lpg_uat`, `lpg_test` |
 | Redis 7 | `56379` | cache, sessions, job queue, real-time backplane |
+
+### Environments
+
+| Environment | Database | Where | Template |
+|---|---|---|---|
+| **dev** | `lpg_dev` | local Docker | `backend/.env.dev.example` |
+| **uat** | `lpg_uat` | local Docker | `backend/.env.uat.example` |
+| **test** | `lpg_test` | local Docker | used by the integration suite |
+| **prod** | `postgres` | **Supabase cloud** (ADR-027) | `backend/.env.prod.example` |
+
+dev and uat are separate *databases* on one instance rather than separate
+instances: same engine version, same extensions, same role privileges, a
+fraction of the resources. Each has its own `app.current_tenant_id` default and
+its own `lpg_app` grants, so a mistake in one cannot reach the other.
 
 Ports are deliberately non-default so this stack does not collide with a
 PostgreSQL or Redis already running on your machine — a confusing failure mode
@@ -53,7 +67,31 @@ Two rules apply to the hosted database and are not optional:
 1. **Alembic owns the schema.** Never change schema through Supabase's migration tooling, its SQL editor, or the MCP `apply_migration` tool. Those are for reading and diagnosis. `supabase/migrations/` must stay absent.
 2. **Never connect the application as `service_role` or `postgres`.** The `service_role` key bypasses RLS by design, which removes the tenant-isolation backstop entirely. Provision a dedicated `NOSUPERUSER`, `NOBYPASSRLS` role, matching `lpg_app` locally.
 
-The Supabase MCP server is configured at project scope in `.mcp.json`. It is a development and diagnosis tool; it is not part of the runtime.
+### Supabase CLI
+
+Installed via `npm install -g supabase` — **not** Homebrew, which is
+macOS/Linux only and cannot run on this Windows development machine.
+
+The CLI is a **diagnosis and inspection tool here, not part of the workflow**.
+ADR-027 makes Alembic the sole owner of schema, which rules out a large part of
+what the CLI normally does:
+
+| Safe to use | Must not be used |
+|---|---|
+| `supabase projects list` | `supabase db push` — applies Supabase migrations |
+| `supabase db dump` (inspection, backups) | `supabase migration new` — creates a second migration system |
+| `supabase inspect db …` (query and index diagnosis) | `supabase db reset` — destroys schema Alembic owns |
+| `supabase status`, `supabase link` | `supabase start` — duplicates the Docker Compose stack above |
+
+`supabase/migrations/` must stay absent, and repository CI fails if it appears.
+Two migration systems on one database produce a schema neither can reliably
+describe.
+
+### Supabase MCP server
+
+Configured at project scope in `.mcp.json`. Also a development and diagnosis
+tool; not part of the runtime. Its `apply_migration` tool is subject to the
+same rule as `supabase db push` — do not use it for schema.
 
 ## Production infrastructure — not yet defined
 

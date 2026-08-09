@@ -143,8 +143,16 @@ Added when Docker became available and Supabase was named as the managed host.
   *Verify:* ✅ architecture checker passes across 271 tracked files.
 - [x] **T-62** Verify internal documentation links across all 133 markdown files.
   *Verify:* ✅ zero broken links; zero references to non-existent files.
+- [x] **T-64** Install the Supabase CLI. **Homebrew cannot run on Windows**; installed via `npm install -g supabase` (2.113.0). Scoped in `infrastructure/README.md` as a diagnosis tool only — `db push` / `migration new` / `db reset` are forbidden under ADR-027.
+  *Verify:* ✅ `supabase --version` → 2.113.0.
+- [x] **T-65** Add the `uat` environment: `lpg_uat` database in the Docker init script and on the running instance.
+  *Verify:* ✅ `lpg_dev` / `lpg_uat` / `lpg_test` all present; `lpg_app` connects to `lpg_uat` with `bypassrls=false` and a fail-closed tenant default.
+- [x] **T-66** Add discrete connection settings (`LPG_DB_HOST/PORT/NAME/USER/PASSWORD`) composed into a DSN, with the password URL-encoded and held as `SecretStr`.
+  *Verify:* ✅ 7 tests, including that `p@ss:w/rd?#1` encodes correctly and that the password never appears in `repr()`.
+- [x] **T-67** Create per-environment templates: `.env.dev.example`, `.env.uat.example`, `.env.prod.example`.
+  *Verify:* ✅ templates trackable, real `.env.*` git-ignored — confirmed behaviourally by writing a secret and observing git ignore it.
 - [!] **T-63** Verify a live connection from SQLAlchemy/Alembic to **Supabase** PostgreSQL.
-  *Verify:* **BLOCKED** — Supabase database credentials were not supplied. Configuration is written and its loading is unit-tested, but no connection has been attempted. The MCP server confirms the project is reachable (`ayqphthelemlnbtnknkp`, zero tables, zero migrations); that is *not* the same as a verified SQLAlchemy connection and is not claimed as one.
+  *Verify:* **BLOCKED** — host, port, database and user are now configured in `backend/.env.prod.example`; the **password has not been supplied** (left empty for the user to fill in), so no connection has been attempted. Configuration is written and its loading is unit-tested, but no connection has been attempted. The MCP server confirms the project is reachable (`ayqphthelemlnbtnknkp`, zero tables, zero migrations); that is *not* the same as a verified SQLAlchemy connection and is not claimed as one.
 
 ## Group G — Verification & Closeout
 

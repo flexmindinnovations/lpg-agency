@@ -92,7 +92,7 @@ class Database:
         # configuration rather than hardcoded, because which one applies
         # depends on the connection string, not the code.
         self._engine = create_async_engine(
-            str(self._settings.database_url),
+            self._settings.effective_database_url,
             echo=self._settings.database_echo,
             pool_size=self._settings.database_pool_size,
             max_overflow=self._settings.database_max_overflow,
