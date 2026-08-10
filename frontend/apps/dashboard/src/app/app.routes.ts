@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { authGuard } from '@lpg/shared/data-access';
+import { authGuard, permissionGuard } from '@lpg/shared/data-access';
 import { ShellLayout } from './shell/shell-layout';
 
 /**
@@ -29,6 +29,71 @@ export const appRoutes: Route[] = [
         path: '',
         loadComponent: () => import('./home/home').then((m) => m.Home),
         title: 'LPG Agency Management Platform',
+      },
+      // Phase 7 (Administration) — each admin area is its own route,
+      // gated by the exact permission code its endpoints require
+      // server-side (`docs/data/17-api-security.md` §6). The client-side
+      // check is a UI convenience only; the API re-enforces every one of
+      // these regardless (`permission.guard.ts`'s own docstring).
+      {
+        path: 'admin/branches',
+        canActivate: [permissionGuard('tenant:configure')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-tenant-settings').then(
+            (m) => m.adminFeatureTenantSettingsRoutes,
+          ),
+      },
+      {
+        path: 'admin/warehouses',
+        canActivate: [permissionGuard('tenant:configure')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeatureWarehousesRoutes),
+      },
+      {
+        path: 'admin/cylinder-types',
+        canActivate: [permissionGuard('tenant:configure')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-tenant-settings').then(
+            (m) => m.adminFeatureCylinderTypesRoutes,
+          ),
+      },
+      {
+        path: 'admin/tenant-config',
+        canActivate: [permissionGuard('tenant:configure')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-tenant-settings').then(
+            (m) => m.adminFeatureTenantConfigurationRoutes,
+          ),
+      },
+      {
+        path: 'admin/price-lists',
+        canActivate: [permissionGuard('tenant:configure')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeaturePriceListRoutes),
+      },
+      {
+        path: 'admin/feature-flags',
+        canActivate: [permissionGuard('feature_flags:manage_tenant')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
+      },
+      {
+        path: 'admin/feature-flags/platform',
+        canActivate: [permissionGuard('feature_flags:manage_platform')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-flags').then((m) => m.adminFeaturePlatformFlagsRoutes),
+      },
+      {
+        path: 'admin/users',
+        canActivate: [permissionGuard('users:manage')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-users').then((m) => m.adminFeatureUsersRoutes),
+      },
+      {
+        path: 'admin/audit-log',
+        canActivate: [permissionGuard('audit:read')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-audit-log').then((m) => m.adminFeatureAuditLogRoutes),
       },
       {
         path: '**',

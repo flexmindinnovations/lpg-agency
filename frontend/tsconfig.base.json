@@ -24,9 +24,14 @@
     "paths": {
       "@lpg/shared/design-tokens": ["./libs/shared/design-tokens/src/index.ts"],
       "@lpg/shared/ui": ["./libs/shared/ui/src/index.ts"],
+      "@lpg/shared/ui/app-shell": ["./libs/shared/ui/src/app-shell.ts"],
       "@lpg/shared/util": ["./libs/shared/util/src/index.ts"],
       "@lpg/shared/data-access": ["./libs/shared/data-access/src/index.ts"],
-      "@lpg/auth/feature-login": ["./libs/auth/feature-login/src/index.ts"]
+      "@lpg/auth/feature-login": ["./libs/auth/feature-login/src/index.ts"],
+      "@lpg/admin/feature-tenant-settings": ["./libs/admin/feature-tenant-settings/src/index.ts"],
+      "@lpg/admin/feature-users": ["./libs/admin/feature-users/src/index.ts"],
+      "@lpg/admin/feature-audit-log": ["./libs/admin/feature-audit-log/src/index.ts"],
+      "@lpg/admin/feature-flags": ["./libs/admin/feature-flags/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
