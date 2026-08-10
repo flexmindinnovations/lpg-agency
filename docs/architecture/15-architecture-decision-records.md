@@ -834,6 +834,46 @@ The deciding factor: `ng-openapi-gen`'s generated functions accept an injected `
 
 ---
 
+## ADR-034: SQLCipher-Encrypted Drift via `package:sqlite3`'s Build-Hook Source Selection (implements 05-mobile-architecture.md §7)
+
+**Status:** Accepted
+
+**Context:** Phase 5 (Flutter Application Foundations) closes the one concrete gap left in `mobile/packages/local_storage`: `05-mobile-architecture.md` §7 and ADR-006/ADR-008 already fixed the requirement — the Driver App's on-device database must be Drift/SQLite, encrypted at rest via SQLCipher — but no implementation existed, only a `LocalDatabase` interface and a `NoopLocalDatabase` placeholder with a doc comment saying, correctly, "a no-op implementation used until Drift is wired in." The sync queue and conflict resolution that also live in `05-mobile-architecture.md` §3 are explicitly **not** part of this: `local_storage`'s own doc comment scopes those to Phase 11, once the Driver App has real offline features to drive them, and this ADR does not build them — the schema added here is one foundation table, not business data.
+
+**A real ecosystem trap surfaced during implementation, not anticipated up front:** the obvious dependency, `sqlcipher_flutter_libs`, resolves today to version `0.7.0+eol` — its own README states plainly that "starting from version 0.7.0, this package no longer does anything," because `package:sqlite3` moved from bundling native libraries via Flutter asset bundling (the `0.6.x`-era mechanism `sqlcipher_flutter_libs` patched into) to Dart's newer build-hooks system for `sqlite3` v3.x, which `drift: ^2.34.3` now requires (`sqlite3: ^3.4.0`). Downgrading to the old `sqlite3` v2.x + `sqlcipher_flutter_libs` v0.6.x combination to dodge this was considered and rejected — it would mean pinning `drift` itself to a stale major version, trading one ecosystem risk for a worse one (an unmaintained core dependency).
+
+**Decision:** Use `package:sqlite3`'s build-hook `source: sqlcipher` selection instead — declared as a `hooks.user_defines` block in **both** `local_storage/pubspec.yaml` (so the package's own tests exercise it) and `driver_app/pubspec.yaml` (hooks resolve against the root package of whatever is actually being built, so the app declaring it is not optional):
+
+```yaml
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
+```
+
+`DriftLocalDatabase` (`local_storage/lib/src/drift_local_database.dart`) wraps a Drift `NativeDatabase.createInBackground`, setting `PRAGMA key = "x'<hex>'"` in the `setup` callback. The 256-bit key is generated once with `Random.secure()` and held in platform secure storage (Keychain/Keystore) via `flutter_secure_storage` — never written to disk in plaintext, never sent to the server. `loadEncryptionKey` and `resolveFile` are injectable constructor parameters (defaulting to secure storage and `path_provider`'s app-support directory respectively), specifically so unit tests exercise the real SQLCipher-encrypted file on a real temp directory without touching a platform channel.
+
+**Verified, not assumed** — four tests in `local_storage/test/drift_local_database_test.dart` prove the encryption is real, not just configured:
+1. Open/write/read/close with a key round-trips correctly.
+2. Data persists correctly across a close-and-reopen with the same key.
+3. **The file on disk does not start with SQLite's plaintext magic header** (`"SQLite format 3 "`) and does not contain the inserted plaintext value anywhere in its raw bytes — the actual proof of encryption at rest, not just that a passphrase was supplied somewhere.
+4. **Opening the same file with the wrong key fails** — surfaced a genuine SQLCipher HMAC page-decryption failure (`hmac check failed for pgno=1`), the real cryptographic signal, not a mocked one.
+
+**A real bug found and fixed along the way:** the first version of `open()` let a failed sanity-check query (`SELECT 1`, used to fail loudly on a bad key rather than lazily on some unrelated later call) leave the `NativeDatabase.createInBackground` background isolate running, orphaned, still holding its file handle open — the wrong-key test above kept failing its cleanup step until this was fixed by explicitly closing the executor on that failure path before rethrowing. Left unfixed, a wrong/corrupted key on a real device would have leaked an isolate and a file lock on every failed unlock attempt, not just in tests.
+
+**Consequences:**
+- **The generated Drift code (`app_database.g.dart`) is committed**, not gitignored — a `.gitignore` exception was added specifically for it. `.github/workflows/mobile-ci.yml` has no `build_runner` step; without committing the generated file, a fresh checkout wouldn't compile at all. This matches the same "generated code is committed" philosophy ADR-026/ADR-032 already apply on the backend (OpenAPI spec) and frontend (Angular API client) — not a new precedent, an extension of an existing one.
+- Verified locally (Windows, `flutter test`) for `local_storage` and `driver_app` (wired via a Riverpod provider, opened in `main()` before the first frame — see `driver_app/lib/main.dart`). **Not yet verified on the `ubuntu-latest` CI runner** (`.github/workflows/mobile-ci.yml`) — the hooks mechanism worked locally without any experimental flag being explicitly enabled, but Linux is a different platform for the underlying binary the hook downloads; the next CI run of this change is the actual confirmation, and this line should be removed once it goes green.
+- The Customer App does **not** get `DriftLocalDatabase` — per ADR-008, it uses simple cache-and-refresh, not offline-first, and has no `local_storage` dependency to begin with.
+- `SchemaMetadata`, the one table added, is a foundation table only (a key/value pair), not a preview of the real Phase 11 schema — deliberately, to keep this phase infrastructure-only, matching how Phase 2 built one illustrative repository rather than real business tables.
+
+**Alternatives Considered:**
+- **Pin `sqlite3` to v2.x + `sqlcipher_flutter_libs` v0.6.x** — rejected: forces pinning `drift` to a stale major version too, and the old Flutter-asset-bundling mechanism is exactly what the ecosystem has moved away from.
+- **`source: sqlite3mc`** (SQLite3MultipleCiphers) instead of `source: sqlcipher` — a real, more permissively-licensed alternative the same hook supports, and one that even offers an SQLCipher-compatible cipher mode. Rejected only to keep fidelity with `05-mobile-architecture.md` §7's explicit wording ("SQLCipher"); worth reconsidering if SQLCipher's licensing (BSD with a commercial option; the bundled build links OpenSSL) ever becomes a real constraint.
+- **Full Dart native-assets/hooks experimental flag path** (`flutter config --enable-native-assets`, custom source builds) — unnecessary; the pre-built `source: sqlcipher` binaries the hook downloads already cover this project's target platforms without any custom compilation.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -871,6 +911,7 @@ The deciding factor: `ng-openapi-gen`'s generated functions accept an injected `
 | 031 | Brand colour moves from blue to deep forest green | Accepted |
 | 032 | `ng-openapi-gen` for the generated Angular API client | Accepted |
 | 033 | Angular `fileReplacements` for frontend environment configuration | Accepted (resolves 032's deferral) |
+| 034 | SQLCipher-encrypted Drift via `package:sqlite3`'s build-hook source selection | Accepted (implements 05-mobile-architecture.md §7) |
 
 ## Deferred Decisions
 

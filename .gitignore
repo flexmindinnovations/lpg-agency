@@ -129,6 +129,12 @@ pubspec_overrides.yaml
 *.gr.dart
 *.mocks.dart
 
+# Exception: Drift's generated database code is committed, same "generated
+# code is committed" philosophy ADR-026/ADR-032 already apply on the backend
+# and frontend — mobile-ci.yml has no build_runner step, so a fresh checkout
+# needs this file present to compile at all (ADR-034).
+!mobile/packages/local_storage/lib/src/drift/*.g.dart
+
 # Platform build artifacts
 **/ios/Flutter/.last_build_id
 **/ios/Flutter/App.framework

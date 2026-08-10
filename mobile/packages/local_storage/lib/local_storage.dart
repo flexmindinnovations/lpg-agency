@@ -1,17 +1,16 @@
 /// Local storage foundation for offline-capable features.
 ///
-/// Phase 1 provides the seam only. The Drift schema, the sync queue and
-/// conflict resolution are Phase 5 and Phase 11 work (D-24, ADR-008) — this
-/// package exists now so the Driver App's structure is offline-ready from the
-/// start rather than being restructured later.
+/// Phase 5 adds the encrypted Drift/SQLite database itself
+/// (`DriftLocalDatabase`, ADR-034); the sync queue and conflict resolution
+/// remain Phase 11 work (D-24, ADR-008), landing once the Driver App has
+/// real offline features to drive them — the schema here is deliberately
+/// just a foundation table, not business data.
 ///
-/// Two decisions are already fixed by the architecture and must hold when the
-/// implementation lands:
-///
-///   * The database is encrypted at rest (SQLCipher), because it will hold
-///     KYC-adjacent and payment-adjacent data offline.
-///   * Every mutation is written locally first and queued for sync; the UI is
-///     optimistic.
+/// One decision is already fixed by the architecture and must keep holding
+/// as the schema grows: every mutation is written locally first and queued
+/// for sync; the UI is optimistic.
 library;
 
 export 'src/local_database.dart';
+export 'src/drift/app_database.dart';
+export 'src/drift_local_database.dart';

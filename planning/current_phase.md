@@ -14,9 +14,9 @@ LPG Agency Management Platform
 
 **Phase 4 — Angular 22 Web Foundation** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction. 17/18 tracked tasks complete and verified, 1 explicitly deferred to post-MVP by product owner decision (DW-24, Storybook's build — non-blocking). See [`planning/features/04-angular-web-foundation/STATUS.md`](./features/04-angular-web-foundation/STATUS.md). Brand palette refresh (ADR-031, deep forest green replacing blue), the collapsible-sidebar layout shell, T-34 (Playwright e2e execution, closed after being blocked since Phase 1), a WCAG 2.2 AA axe-core gate (found and fixed 3 real accessibility bugs), and the generated API client (ADR-032, `ng-openapi-gen`) are all done and verified. The API client's base URL was subsequently wired end-to-end same day, on explicit instruction, ahead of the phase originally expected to need it — see ADR-033.
 
-Phase 5 (Flutter Application Foundations) started 2026-08-09 on explicit instruction, immediately after ADR-033 closed out.
+**Phase 5 — Flutter Application Foundations** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction, immediately after ADR-033 closed out. 17/18 tracked tasks complete and verified, 1 residual (CI-runner confirmation of the SQLCipher build hook — verified locally, not yet observed on the actual `ubuntu-latest` runner). See [`planning/features/05-flutter-application-foundations/STATUS.md`](./features/05-flutter-application-foundations/STATUS.md). Closed the one gap Phase 1's mobile scaffolding had deliberately left open: `DriftLocalDatabase`, a genuinely SQLCipher-encrypted Drift/SQLite implementation wired into the Driver App (ADR-034), including a real ecosystem trap found and resolved (`sqlcipher_flutter_libs` is now an EOL no-op) and a real resource-leak bug found and fixed (a failed sanity-check query orphaning a background isolate's file lock). The sync queue, `api_client`, `auth`, and `sync_engine` packages remain out of scope, arriving with Phase 6/Phase 11 as already documented.
 
-**Still recommended for after Phase 5:** Phase 6 (Authentication) — Phase 2's `HeaderTenantResolver` (interim, header-based, not a security boundary), the not-yet-mandatory tenant-scoped session (DW-12), and Phase 3's excluded WebSocket-subscription-authorization remain **three** separate things waiting specifically on real Authentication existing.
+**Recommended next:** Phase 6 (Authentication) — Phase 2's `HeaderTenantResolver` (interim, header-based, not a security boundary), the not-yet-mandatory tenant-scoped session (DW-12), and Phase 3's excluded WebSocket-subscription-authorization remain **three** separate things waiting specifically on real Authentication existing.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).
 
@@ -198,7 +198,7 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 | 2 | **Backend Foundation** | ✅ **Complete** |
 | 3 | Shared Infrastructure (real-time publisher, file storage) | ✅ Complete |
 | 4 | Angular 22 Web Foundation | ✅ Complete |
-| 5 | Flutter Application Foundations | 🔄 In progress |
+| 5 | Flutter Application Foundations | ✅ Complete |
 | 6 | Authentication & Authorization | Not started |
 | 7 | Administration & Tenant/Master Data | Not started |
 | 8 | Customer Management | Not started |

@@ -1,15 +1,30 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_storage/local_storage.dart';
 
+import 'src/local_database_provider.dart';
 import 'src/router.dart';
 
 /// Driver App entry point.
 ///
 /// Shell only. Assigned deliveries, route, vehicle inventory, OTP verification, proof of
 /// delivery and payment collection each arrive in their own phase.
-void main() {
-  runApp(const ProviderScope(child: DriverApp()));
+///
+/// The on-device database is opened here, before the first frame, so the
+/// rest of the app can assume it is always ready (ADR-008 offline-first).
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final localDatabase = DriftLocalDatabase();
+  await localDatabase.open();
+
+  runApp(
+    ProviderScope(
+      overrides: [localDatabaseProvider.overrideWithValue(localDatabase)],
+      child: const DriverApp(),
+    ),
+  );
 }
 
 class DriverApp extends ConsumerWidget {

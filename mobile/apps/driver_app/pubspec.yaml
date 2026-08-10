@@ -95,3 +95,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# SQLCipher-encrypted SQLite for local_storage's DriftLocalDatabase
+# (docs/architecture/05-mobile-architecture.md §7, ADR-034). Must be
+# declared here too, not just in local_storage/pubspec.yaml — hooks resolve
+# against the root package of the build, which is this app when it runs.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
