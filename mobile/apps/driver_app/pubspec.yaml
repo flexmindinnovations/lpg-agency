@@ -38,6 +38,10 @@ dependencies:
     path: ../../packages/core
   local_storage:
     path: ../../packages/local_storage
+  api_client:
+    path: ../../packages/api_client
+  auth:
+    path: ../../packages/auth
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

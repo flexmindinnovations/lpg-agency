@@ -1,0 +1,33 @@
+name: auth
+description: "A new Flutter package project."
+version: 0.0.1
+homepage:
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_secure_storage: ^11.0.0
+  core:
+    path: ../core
+  api_client:
+    path: ../api_client
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Test-only: constructs a fake HttpClientAdapter to drive AuthApi (a
+  # `final class` in api_client, so it can't be faked via `implements`) the
+  # same way api_client's own tests do.
+  dio: ^5.9.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:

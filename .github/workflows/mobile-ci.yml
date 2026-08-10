@@ -21,6 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         package:
+          - mobile/packages/api_client
+          - mobile/packages/auth
           - mobile/packages/core
           - mobile/packages/design_system
           - mobile/packages/local_storage
