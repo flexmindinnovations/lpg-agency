@@ -242,6 +242,14 @@ ignore_imports = [
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.unit_of_work",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.repositories.identity",
+    # Area I (Phase 7): dependencies/admin.py wires every Phase 7 repository —
+    # same composition-root role as dependencies/identity.py above, scoped to
+    # the admin surface's own seams.
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.database",
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.audit",
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.identity",
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.platform",
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.tenant",
 ]
 
 [[tool.importlinter.contracts]]

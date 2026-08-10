@@ -15,6 +15,7 @@ from lpg.application.common.ports import TenantContext
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
 
     from lpg.domain.identity.password_reset_token import PasswordResetToken
     from lpg.domain.identity.refresh_token import RefreshToken
@@ -168,6 +169,34 @@ class IdentityUserRepository(Protocol):
     async def get_by_phone_number(
         self, tenant_id: uuid.UUID, phone_number: str
     ) -> IdentityUser | None: ...
+
+    async def save(self, user: IdentityUser) -> None: ...
+
+
+@runtime_checkable
+class StaffUserRepository(Protocol):
+    """Admin-side staff-management access to `identity.identity_user` —
+    deliberately distinct from `IdentityUserRepository`.
+
+    `IdentityUserRepository` exists for the pre-authentication
+    auth-bootstrap paths (login/OTP/refresh) and is built on `SECURITY
+    DEFINER` SQL functions, since no tenant context is resolved yet at that
+    point (Phase 6). Every use case here runs *after* authentication, with a
+    verified `TenantContext` already in hand — so the normal
+    repository-plus-RLS pattern every other Phase 7 aggregate uses applies
+    directly, no `SECURITY DEFINER` escape hatch needed. RLS naturally
+    restricts an admin to their own tenant's staff, which is exactly the
+    desired behavior here (unlike auth-bootstrap, which must look a user up
+    *before* any tenant is known).
+    """
+
+    async def get(self, user_id: uuid.UUID) -> IdentityUser | None: ...
+
+    async def list_for_tenant(
+        self, tenant_id: uuid.UUID, *, exclude_roles: frozenset[str]
+    ) -> Sequence[IdentityUser]: ...
+
+    async def add(self, user: IdentityUser) -> None: ...
 
     async def save(self, user: IdentityUser) -> None: ...
 

@@ -1,8 +1,10 @@
 """SQLAlchemy ORM model for `audit.audit_log`.
 
 Written to exclusively by `lpg.infrastructure.persistence.audit.AuditRecorder`
-— nothing else constructs this model. Never exposed through the API in
-Phase 2; there is no audit-read use case yet.
+— nothing else constructs this model. Read from by
+`lpg.infrastructure.persistence.repositories.audit.SqlAlchemyAuditLogRepository`
+(Phase 7's audit log viewer) — the first read path this table has had since
+Phase 2 created it write-only.
 """
 
 from __future__ import annotations

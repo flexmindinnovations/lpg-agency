@@ -1,6 +1,322 @@
 {
   "components": {
     "schemas": {
+      "AdjustCylinderTypeWeightRequest": {
+        "properties": {
+          "weight_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "weight_kg"
+        ],
+        "title": "AdjustCylinderTypeWeightRequest",
+        "type": "object"
+      },
+      "AuditLogEntryResponse": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "after_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After State"
+          },
+          "before_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before State"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_name": {
+            "title": "Entity Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "performed_at": {
+            "format": "date-time",
+            "title": "Performed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actor_id",
+          "entity_name",
+          "entity_id",
+          "action",
+          "performed_at",
+          "correlation_id",
+          "before_state",
+          "after_state"
+        ],
+        "title": "AuditLogEntryResponse",
+        "type": "object"
+      },
+      "AuditLogPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "AuditLogPageResponse",
+        "type": "object"
+      },
+      "BranchResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "region"
+        ],
+        "title": "BranchResponse",
+        "type": "object"
+      },
+      "CreateBranchRequest": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateBranchRequest",
+        "type": "object"
+      },
+      "CreateCylinderTypeRequest": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "name",
+          "weight_kg"
+        ],
+        "title": "CreateCylinderTypeRequest",
+        "type": "object"
+      },
+      "CreateFeatureFlagRequest": {
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "is_enabled_by_default": {
+            "default": false,
+            "title": "Is Enabled By Default",
+            "type": "boolean"
+          },
+          "key": {
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "rollout_percentage": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollout Percentage"
+          }
+        },
+        "required": [
+          "key",
+          "description"
+        ],
+        "title": "CreateFeatureFlagRequest",
+        "type": "object"
+      },
+      "CreateWarehouseRequest": {
+        "properties": {
+          "address_line": {
+            "minLength": 1,
+            "title": "Address Line",
+            "type": "string"
+          },
+          "branch_id": {
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "name",
+          "address_line"
+        ],
+        "title": "CreateWarehouseRequest",
+        "type": "object"
+      },
+      "CylinderTypeResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "weight_kg",
+          "is_active"
+        ],
+        "title": "CylinderTypeResponse",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -30,6 +346,103 @@
         "title": "DependencyStatus",
         "type": "object"
       },
+      "FeatureFlagEnabledResponse": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "enabled"
+        ],
+        "title": "FeatureFlagEnabledResponse",
+        "type": "object"
+      },
+      "FeatureFlagOverrideResponse": {
+        "properties": {
+          "flag_key": {
+            "title": "Flag Key",
+            "type": "string"
+          },
+          "is_enabled": {
+            "title": "Is Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "flag_key",
+          "is_enabled"
+        ],
+        "title": "FeatureFlagOverrideResponse",
+        "type": "object"
+      },
+      "FeatureFlagResponse": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "is_enabled_by_default": {
+            "title": "Is Enabled By Default",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "rollout_percentage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollout Percentage"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          }
+        },
+        "required": [
+          "key",
+          "description",
+          "is_enabled_by_default",
+          "rollout_percentage",
+          "starts_at",
+          "ends_at"
+        ],
+        "title": "FeatureFlagResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -41,6 +454,36 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InviteStaffUserRequest": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "InviteStaffUserRequest",
         "type": "object"
       },
       "LivenessResponse": {
@@ -179,6 +622,53 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PriceListEntryResponse": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "effective_from": {
+            "format": "date-time",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Price",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cylinder_type_id",
+          "customer_type",
+          "branch_id",
+          "price",
+          "effective_from"
+        ],
+        "title": "PriceListEntryResponse",
+        "type": "object"
+      },
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
@@ -242,6 +732,19 @@
         "title": "ReadinessResponse",
         "type": "object"
       },
+      "ReassignRoleRequest": {
+        "properties": {
+          "new_role": {
+            "title": "New Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_role"
+        ],
+        "title": "ReassignRoleRequest",
+        "type": "object"
+      },
       "RefreshRequest": {
         "description": "`refresh_token` is optional in the body — the Dashboard's browser\nclient relies on the `HttpOnly` cookie instead\n(`api/v1/routers/auth.py`'s module docstring). Mobile clients, which\ncan't rely on a cookie, supply it here.",
         "properties": {
@@ -258,6 +761,383 @@
           }
         },
         "title": "RefreshRequest",
+        "type": "object"
+      },
+      "RelocateWarehouseRequest": {
+        "properties": {
+          "address_line": {
+            "minLength": 1,
+            "title": "Address Line",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address_line"
+        ],
+        "title": "RelocateWarehouseRequest",
+        "type": "object"
+      },
+      "RenameBranchRequest": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameBranchRequest",
+        "type": "object"
+      },
+      "RenameCylinderTypeRequest": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameCylinderTypeRequest",
+        "type": "object"
+      },
+      "RenameTenantRequest": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameTenantRequest",
+        "type": "object"
+      },
+      "RenameWarehouseRequest": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameWarehouseRequest",
+        "type": "object"
+      },
+      "ScheduleFeatureFlagRequest": {
+        "properties": {
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          }
+        },
+        "title": "ScheduleFeatureFlagRequest",
+        "type": "object"
+      },
+      "SetBranchRegionRequest": {
+        "properties": {
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "title": "SetBranchRegionRequest",
+        "type": "object"
+      },
+      "SetCylinderTypeActiveRequest": {
+        "properties": {
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "SetCylinderTypeActiveRequest",
+        "type": "object"
+      },
+      "SetFeatureFlagEnabledByDefaultRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SetFeatureFlagEnabledByDefaultRequest",
+        "type": "object"
+      },
+      "SetFeatureFlagOverrideRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SetFeatureFlagOverrideRequest",
+        "type": "object"
+      },
+      "SetFeatureFlagRolloutPercentageRequest": {
+        "properties": {
+          "rollout_percentage": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rollout Percentage"
+          }
+        },
+        "title": "SetFeatureFlagRolloutPercentageRequest",
+        "type": "object"
+      },
+      "SetPriceRequest": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Price"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "customer_type",
+          "price"
+        ],
+        "title": "SetPriceRequest",
+        "type": "object"
+      },
+      "SetTenantConfigurationRequest": {
+        "properties": {
+          "config_key": {
+            "title": "Config Key",
+            "type": "string"
+          },
+          "config_value": {
+            "title": "Config Value"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          }
+        },
+        "required": [
+          "config_key",
+          "config_value"
+        ],
+        "title": "SetTenantConfigurationRequest",
+        "type": "object"
+      },
+      "StaffUserResponse": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "branch_id",
+          "is_active"
+        ],
+        "title": "StaffUserResponse",
+        "type": "object"
+      },
+      "TenantConfigurationResponse": {
+        "properties": {
+          "config_key": {
+            "title": "Config Key",
+            "type": "string"
+          },
+          "config_value": {
+            "title": "Config Value"
+          },
+          "effective_from": {
+            "format": "date-time",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "config_key",
+          "config_value",
+          "effective_from"
+        ],
+        "title": "TenantConfigurationResponse",
+        "type": "object"
+      },
+      "TenantResponse": {
+        "properties": {
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_contact_email": {
+            "title": "Primary Contact Email",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subscription_plan": {
+            "title": "Subscription Plan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "status",
+          "subscription_plan",
+          "primary_contact_email",
+          "country"
+        ],
+        "title": "TenantResponse",
         "type": "object"
       },
       "TokenResponse": {
@@ -328,6 +1208,34 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WarehouseResponse": {
+        "properties": {
+          "address_line": {
+            "title": "Address Line",
+            "type": "string"
+          },
+          "branch_id": {
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "branch_id",
+          "name",
+          "address_line"
+        ],
+        "title": "WarehouseResponse",
+        "type": "object"
       }
     }
   },
@@ -338,6 +1246,1369 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/audit-log": {
+      "get": {
+        "operationId": "list_audit_log_api_v1_admin_audit_log_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entity_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "View the audit log",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/branches": {
+      "get": {
+        "operationId": "list_branches_api_v1_admin_branches_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BranchResponse"
+                  },
+                  "title": "Response List Branches Api V1 Admin Branches Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List branches",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "create_branch_api_v1_admin_branches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBranchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a branch",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/branches/{branch_id}/region": {
+      "patch": {
+        "operationId": "set_branch_region_api_v1_admin_branches__branch_id__region_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "branch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Branch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBranchRegionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a branch's region",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/branches/{branch_id}/rename": {
+      "patch": {
+        "operationId": "rename_branch_api_v1_admin_branches__branch_id__rename_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "branch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Branch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameBranchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename a branch",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/cylinder-types": {
+      "get": {
+        "operationId": "list_cylinder_types_api_v1_admin_cylinder_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CylinderTypeResponse"
+                  },
+                  "title": "Response List Cylinder Types Api V1 Admin Cylinder Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List cylinder types",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "create_cylinder_type_api_v1_admin_cylinder_types_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCylinderTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a cylinder type",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}/active": {
+      "patch": {
+        "operationId": "set_cylinder_type_active_api_v1_admin_cylinder_types__cylinder_type_id__active_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCylinderTypeActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate or deactivate a cylinder type",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}/rename": {
+      "patch": {
+        "operationId": "rename_cylinder_type_api_v1_admin_cylinder_types__cylinder_type_id__rename_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameCylinderTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename a cylinder type",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}/weight": {
+      "patch": {
+        "operationId": "adjust_cylinder_type_weight_api_v1_admin_cylinder_types__cylinder_type_id__weight_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustCylinderTypeWeightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Adjust a cylinder type's weight",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/feature-flags": {
+      "get": {
+        "operationId": "list_feature_flags_api_v1_admin_feature_flags_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureFlagResponse"
+                  },
+                  "title": "Response List Feature Flags Api V1 Admin Feature Flags Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List platform flags",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "create_feature_flag_api_v1_admin_feature_flags_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeatureFlagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a platform flag",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/feature-flags/overrides/{key}": {
+      "put": {
+        "operationId": "set_feature_flag_override_api_v1_admin_feature_flags_overrides__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeatureFlagOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagOverrideResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set this tenant's override for a flag",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/feature-flags/{key}/enabled": {
+      "get": {
+        "description": "No special permission beyond authentication — any authenticated\nprincipal's client may need to know whether a flag is on for its own\ntenant, unlike managing the flag itself.",
+        "operationId": "is_feature_flag_enabled_api_v1_admin_feature_flags__key__enabled_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagEnabledResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Whether a flag is enabled for the current tenant",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/feature-flags/{key}/enabled-by-default": {
+      "patch": {
+        "operationId": "set_feature_flag_enabled_by_default_api_v1_admin_feature_flags__key__enabled_by_default_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeatureFlagEnabledByDefaultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle a platform flag's default",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/feature-flags/{key}/rollout": {
+      "patch": {
+        "operationId": "set_feature_flag_rollout_percentage_api_v1_admin_feature_flags__key__rollout_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeatureFlagRolloutPercentageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a platform flag's rollout %",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/feature-flags/{key}/schedule": {
+      "patch": {
+        "operationId": "schedule_feature_flag_api_v1_admin_feature_flags__key__schedule_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleFeatureFlagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Schedule a platform flag",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/price-list": {
+      "get": {
+        "operationId": "list_prices_api_v1_admin_price_list_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriceListEntryResponse"
+                  },
+                  "title": "Response List Prices Api V1 Admin Price List Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List prices",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "set_price_api_v1_admin_price_list_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPriceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceListEntryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a price",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/price-list/effective": {
+      "get": {
+        "operationId": "get_effective_price_api_v1_admin_price_list_effective_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "customer_type",
+            "required": true,
+            "schema": {
+              "title": "Customer Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PriceListEntryResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Effective Price Api V1 Admin Price List Effective Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The effective price for a cylinder type x customer type",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/tenant": {
+      "get": {
+        "operationId": "get_tenant_api_v1_admin_tenant_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The current tenant",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/tenant-configuration": {
+      "get": {
+        "operationId": "list_tenant_configuration_api_v1_admin_tenant_configuration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantConfigurationResponse"
+                  },
+                  "title": "Response List Tenant Configuration Api V1 Admin Tenant Configuration Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List tenant configuration history",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "set_tenant_configuration_api_v1_admin_tenant_configuration_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTenantConfigurationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantConfigurationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant configuration value",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/tenant-configuration/effective": {
+      "get": {
+        "operationId": "get_effective_tenant_configuration_api_v1_admin_tenant_configuration_effective_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "config_key",
+            "required": true,
+            "schema": {
+              "title": "Config Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantConfigurationResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Effective Tenant Configuration Api V1 Admin Tenant Configuration Effective Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The effective value for a config key",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/tenant/rename": {
+      "patch": {
+        "operationId": "rename_tenant_api_v1_admin_tenant_rename_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTenantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename the current tenant",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "operationId": "list_staff_users_api_v1_admin_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StaffUserResponse"
+                  },
+                  "title": "Response List Staff Users Api V1 Admin Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List staff users",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "invite_staff_user_api_v1_admin_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteStaffUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffUserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Invite a staff user",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/deactivate": {
+      "patch": {
+        "operationId": "deactivate_staff_user_api_v1_admin_users__user_id__deactivate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deactivate a staff user",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/role": {
+      "patch": {
+        "operationId": "reassign_role_api_v1_admin_users__user_id__role_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reassign a staff user's role",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/warehouses": {
+      "get": {
+        "operationId": "list_warehouses_api_v1_admin_warehouses_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WarehouseResponse"
+                  },
+                  "title": "Response List Warehouses Api V1 Admin Warehouses Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List warehouses",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "create_warehouse_api_v1_admin_warehouses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWarehouseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a warehouse",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/warehouses/{warehouse_id}/relocate": {
+      "patch": {
+        "operationId": "relocate_warehouse_api_v1_admin_warehouses__warehouse_id__relocate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelocateWarehouseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relocate a warehouse",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/warehouses/{warehouse_id}/rename": {
+      "patch": {
+        "operationId": "rename_warehouse_api_v1_admin_warehouses__warehouse_id__rename_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameWarehouseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename a warehouse",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",

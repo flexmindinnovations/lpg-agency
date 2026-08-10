@@ -14,6 +14,7 @@ from lpg.domain.identity.user import (
     IdentityUserLocked,
     IdentityUserLoggedIn,
     IdentityUserLoginFailed,
+    IdentityUserRoleChanged,
 )
 
 
@@ -125,6 +126,52 @@ class TestActivateDeactivate:
 
         user.activate()
         assert user.is_active is True
+
+
+class TestChangeRole:
+    def test_changes_the_role_and_records_an_event(self) -> None:
+        user = _make_user(role="manager")
+
+        user.change_role("agency_admin")
+
+        assert user.role == "agency_admin"
+        assert [type(e) for e in user.events] == [IdentityUserRoleChanged]
+
+    def test_rejects_an_unrecognized_role(self) -> None:
+        user = _make_user(role="manager")
+
+        with pytest.raises(InvariantViolation):
+            user.change_role("made_up_role")
+
+    def test_the_event_carries_the_old_and_new_role(self) -> None:
+        user = _make_user(role="manager")
+
+        user.change_role("dispatcher")
+
+        (event,) = user.events
+        assert isinstance(event, IdentityUserRoleChanged)
+        assert event.old_role == "manager"
+        assert event.new_role == "dispatcher"
+
+    @pytest.mark.parametrize(
+        "role",
+        [
+            "super_admin",
+            "agency_admin",
+            "manager",
+            "warehouse_staff",
+            "dispatcher",
+            "accountant",
+            "driver",
+            "customer",
+        ],
+    )
+    def test_accepts_every_role_in_the_platform_catalog(self, role: str) -> None:
+        user = _make_user(role="manager")
+
+        user.change_role(role)
+
+        assert user.role == role
 
 
 def _make_refresh_token(**overrides: object) -> RefreshToken:

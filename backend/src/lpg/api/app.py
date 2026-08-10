@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from lpg.api.middleware.correlation import CorrelationIdMiddleware
 from lpg.api.middleware.problem_details import register_exception_handlers
-from lpg.api.v1.routers import auth, health
+from lpg.api.v1.routers import admin, auth, health
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
@@ -231,6 +231,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # business router follows this same `prefix=settings.api_v1_prefix`
     # pattern (ADR-009: URL-segment API versioning).
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
+    app.include_router(admin.router, prefix=settings.api_v1_prefix)
 
     return app
 

@@ -45,6 +45,33 @@ class IdentityUserLocked(DomainEvent):
     locked_until: datetime | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class IdentityUserRoleChanged(DomainEvent):
+    """Recorded when an admin reassigns a staff user's role (Phase 7)."""
+
+    user_id: uuid.UUID | None = None
+    old_role: str = ""
+    new_role: str = ""
+
+
+#: The fixed 8-role platform catalog (D-38), matching the seed data in
+#: migration `fa52b77ec442`. Never tenant-customizable — see
+#: `planning/features/07-administration-tenant-master-data/PLAN.md`'s scope
+#: boundaries.
+VALID_ROLES = frozenset(
+    {
+        "super_admin",
+        "agency_admin",
+        "manager",
+        "warehouse_staff",
+        "dispatcher",
+        "accountant",
+        "driver",
+        "customer",
+    }
+)
+
+
 class IdentityUser(AggregateRoot):
     """A platform principal: Dashboard staff (password) or Customer/Driver (OTP).
 
@@ -172,3 +199,17 @@ class IdentityUser(AggregateRoot):
 
     def deactivate(self) -> None:
         self._is_active = False
+
+    def change_role(self, new_role: str) -> None:
+        """Reassign this user's role — one of the fixed 8-role catalog
+        (`VALID_ROLES`), never a tenant-defined custom role (D-38).
+        """
+        if new_role not in VALID_ROLES:
+            msg = f"'{new_role}' is not a recognized role."
+            raise InvariantViolation(msg, user_id=str(self.id))
+
+        old_role = self._role
+        self._role = new_role
+        self.record_event(
+            IdentityUserRoleChanged(user_id=self.id, old_role=old_role, new_role=new_role)
+        )

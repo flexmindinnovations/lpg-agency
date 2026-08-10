@@ -1,34 +1,40 @@
-"""Identity repositories — deliberately **not** built on `SqlAlchemyUnitOfWork`.
+"""Identity repositories.
 
-Every method here goes through the `SECURITY DEFINER` SQL functions defined
-in `migrations/versions/fa52b77ec442_*.py`/`10a62de534be_*.py`, not the ORM
-(`IdentityUserModel` etc. exist for future RLS-scoped business-feature
-access — e.g. a Phase 7 "list my tenant's users" endpoint — but the
-auth-bootstrap paths here never use them). Each method opens its own
-short-lived, auto-committing session (`Database.session()`) and calls
-exactly one narrowly-scoped function — see `application/identity/login.py`'s
-module docstring for why the identity module can't participate in the
-normal tenant-scoped `UnitOfWork` the rest of this codebase uses.
+`SqlAlchemyIdentityUserRepository`/`SqlAlchemyRefreshTokenRepository`/
+`SqlAlchemyPasswordResetTokenRepository` are deliberately **not** built on
+`SqlAlchemyUnitOfWork` — every method goes through the `SECURITY DEFINER`
+SQL functions defined in `migrations/versions/fa52b77ec442_*.py`/
+`10a62de534be_*.py`, not the ORM. Each method opens its own short-lived,
+auto-committing session (`Database.session()`) and calls exactly one
+narrowly-scoped function — see `application/identity/login.py`'s module
+docstring for why the identity module can't participate in the normal
+tenant-scoped `UnitOfWork` the rest of this codebase uses.
 
 A function call in a `FROM` clause always returns exactly one row, even for
 a `NULL` composite result (all columns `NULL`) — verified empirically
 against a real database, not assumed. Every `_row_to_*` helper below checks
 `row.id is not None` to distinguish "no match" from a real row.
+
+`SqlAlchemyStaffUserRepository` (Phase 7, bottom of this file) is different:
+plain RLS-scoped ORM access against `IdentityUserModel`, no `SECURITY
+DEFINER` — see its own docstring for why that's correct for admin-side
+staff management specifically.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from lpg.domain.identity.password_reset_token import PasswordResetToken
 from lpg.domain.identity.refresh_token import RefreshToken
 from lpg.domain.identity.user import IdentityUser
+from lpg.infrastructure.persistence.models.identity import IdentityUserModel
 
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
     from sqlalchemy.engine import Row
 
@@ -252,3 +258,89 @@ class SqlAlchemyPermissionRepository:
             )
             return frozenset(row.code for row in result)
         return frozenset()  # pragma: no cover
+
+
+class SqlAlchemyStaffUserRepository:
+    """Implements `StaffUserRepository` (`lpg.application.identity.ports`).
+
+    Unlike `SqlAlchemyIdentityUserRepository` above, this is plain
+    RLS-scoped ORM access via `Database.session()` — no `SECURITY DEFINER`
+    function, matching every other Phase 7 repository's shape. Every use
+    case that constructs this repository does so *after* authentication,
+    with a resolved tenant already known, so RLS naturally restricts an
+    admin to their own tenant's staff — exactly the desired behavior (see
+    `StaffUserRepository`'s own docstring for the full rationale).
+    """
+
+    def __init__(self, database: Database, tenant_id: uuid.UUID) -> None:
+        self._database = database
+        self._tenant_id = tenant_id
+
+    async def get(self, user_id: uuid.UUID) -> IdentityUser | None:
+        async for session in self._database.session(tenant_id=self._tenant_id):
+            row = await session.get(IdentityUserModel, user_id)
+            return self._to_domain(row) if row is not None else None
+        return None  # pragma: no cover - session() always yields exactly once
+
+    async def list_for_tenant(
+        self, tenant_id: uuid.UUID, *, exclude_roles: frozenset[str]
+    ) -> Sequence[IdentityUser]:
+        async for session in self._database.session(tenant_id=self._tenant_id):
+            result = await session.execute(
+                select(IdentityUserModel)
+                .where(
+                    IdentityUserModel.tenant_id == tenant_id,
+                    IdentityUserModel.role.not_in(exclude_roles),
+                    IdentityUserModel.is_deleted.is_(False),
+                )
+                .order_by(IdentityUserModel.email, IdentityUserModel.phone_number)
+            )
+            return [self._to_domain(row) for row in result.scalars()]
+        return []  # pragma: no cover
+
+    async def add(self, user: IdentityUser) -> None:
+        async for session in self._database.session(tenant_id=self._tenant_id):
+            session.add(
+                IdentityUserModel(
+                    id=user.id,
+                    tenant_id=user.tenant_id,
+                    branch_id=user.branch_id,
+                    email=user.email,
+                    phone_number=user.phone_number,
+                    password_hash=user.password_hash,
+                    role=user.role,
+                    is_active=user.is_active,
+                    failed_login_count=user.failed_login_count,
+                    locked_until=user.locked_until,
+                )
+            )
+
+    async def save(self, user: IdentityUser) -> None:
+        async for session in self._database.session(tenant_id=self._tenant_id):
+            row = await session.get(IdentityUserModel, user.id)
+            if row is None:
+                msg = f"Cannot save staff user {user.id} — no matching row was loaded."
+                raise LookupError(msg)
+
+            row.branch_id = user.branch_id
+            row.role = user.role
+            row.is_active = user.is_active
+            row.password_hash = user.password_hash
+            row.failed_login_count = user.failed_login_count
+            row.locked_until = user.locked_until
+
+    @staticmethod
+    def _to_domain(row: IdentityUserModel) -> IdentityUser:
+        return IdentityUser(
+            row.id,
+            tenant_id=row.tenant_id,
+            branch_id=row.branch_id,
+            email=row.email,
+            phone_number=row.phone_number,
+            password_hash=row.password_hash,
+            role=row.role,
+            is_active=row.is_active,
+            failed_login_count=row.failed_login_count,
+            locked_until=row.locked_until,
+            version=row.version,
+        )

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import event, inspect
@@ -39,11 +40,22 @@ _logger = get_logger(__name__)
 
 
 def _jsonable(value: object) -> object:
-    """Coerce a mapped-column value into something JSONB can store."""
+    """Coerce a mapped-column value into something JSONB can store.
+
+    ``Decimal`` (any ``numeric`` column — cylinder weights, prices, tax
+    rates) is stringified rather than converted to ``float``: an audit trail
+    exists precisely to be an exact historical record, and `float` would
+    silently introduce rounding a financial/measurement value should never
+    have. Found via a real `TypeError` the first time an aggregate with a
+    `Decimal` field (`CylinderType.weight_kg`, Phase 7) went through this
+    hook — no prior aggregate had one.
+    """
     if isinstance(value, uuid.UUID):
         return str(value)
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
     return value
 
 
