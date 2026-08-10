@@ -4,6 +4,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import {
+  authInterceptor,
   correlationIdInterceptor,
   problemDetailsInterceptor,
   provideApiConfiguration,
@@ -21,9 +22,11 @@ export const appConfig: ApplicationConfig = {
     // (`apps/dashboard/project.json`) — see `src/environments/environment.ts`.
     provideApiConfiguration(environment.apiUrl),
     provideHttpClient(
-      // Order matters: correlation ID is attached on the way out, Problem
-      // Details are translated on the way back.
-      withInterceptors([correlationIdInterceptor, problemDetailsInterceptor]),
+      // Order matters: correlation ID is attached on the way out, the
+      // bearer token is attached (and a 401 gets one silent
+      // refresh-and-retry) next, and Problem Details is translated on the
+      // way back — after auth has had its chance to recover a request.
+      withInterceptors([correlationIdInterceptor, authInterceptor, problemDetailsInterceptor]),
     ),
     // Overlay/transition animations (Dialog, Drawer, Toast, dropdowns) need
     // Angular's animation system. Loaded async so it is not in the initial

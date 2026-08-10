@@ -25,7 +25,8 @@
       "@lpg/shared/design-tokens": ["./libs/shared/design-tokens/src/index.ts"],
       "@lpg/shared/ui": ["./libs/shared/ui/src/index.ts"],
       "@lpg/shared/util": ["./libs/shared/util/src/index.ts"],
-      "@lpg/shared/data-access": ["./libs/shared/data-access/src/index.ts"]
+      "@lpg/shared/data-access": ["./libs/shared/data-access/src/index.ts"],
+      "@lpg/auth/feature-login": ["./libs/auth/feature-login/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

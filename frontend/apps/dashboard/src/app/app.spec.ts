@@ -3,55 +3,34 @@ import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { appRoutes } from './app.routes';
 
-describe('App shell', () => {
-  beforeEach(async () => {
+describe('App', () => {
+  it('renders a bare router outlet', async () => {
+    // The shell chrome moved to `ShellLayout` (see shell/shell-layout.spec.ts)
+    // — `App` itself no longer assumes every route wants it.
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(appRoutes)],
+      providers: [provideRouter([])],
     }).compileComponents();
-  });
 
-  it('renders', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     expect(fixture.componentInstance).toBeTruthy();
   });
-
-  it('exposes a skip link as the first focusable element', () => {
-    // WCAG 2.2 AA (D-35): keyboard users must be able to bypass navigation.
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    const skipLink: HTMLAnchorElement | null =
-      fixture.nativeElement.querySelector('.shell__skip-link');
-    expect(skipLink).toBeTruthy();
-    expect(skipLink?.getAttribute('href')).toBe('#shell-main-content');
-  });
-
-  it('marks navigation and main content as landmarks', () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('nav[aria-label="Main navigation"]')).toBeTruthy();
-    expect(el.querySelector('main#shell-main-content')).toBeTruthy();
-    expect(el.querySelector('header')).toBeTruthy();
-  });
-
-  it('exposes a theme trigger that opens a menu with all four theme options', () => {
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-    const trigger: HTMLButtonElement | null =
-      fixture.nativeElement.querySelector('.shell__theme-trigger');
-    expect(trigger).toBeTruthy();
-    trigger?.click();
-    fixture.detectChanges();
-
-    const items: NodeListOf<HTMLElement> = document.querySelectorAll('.p-menu-item-label');
-    const labels = Array.from(items).map((el) => el.textContent?.trim());
-    expect(labels).toEqual(['System', 'Light', 'Dark', 'High contrast']);
-  });
 });
 
 describe('Routing foundation', () => {
+  it('routes /login outside the authenticated shell', () => {
+    const loginRoute = appRoutes.find((route) => route.path === 'login');
+    expect(loginRoute).toBeTruthy();
+    expect(loginRoute?.canActivate).toBeUndefined();
+  });
+
+  it('gates every other route behind authGuard and ShellLayout', () => {
+    const shellRoute = appRoutes.find((route) => route.path === '');
+    expect(shellRoute?.canActivate).toBeTruthy();
+    expect(shellRoute?.component).toBeTruthy();
+  });
+
   it('contains no business routes', () => {
     // Phase 1 is foundation only. Customer/Inventory/Order/Delivery/Accounting
     // routes each arrive in their own phase behind their own plan.
@@ -65,9 +44,13 @@ describe('Routing foundation', () => {
       'complaints',
       'reports',
     ];
-    const declared = appRoutes.map((r) => r.path ?? '');
+    const declaredTopLevel = appRoutes.map((route) => route.path ?? '');
+    const declaredNested = appRoutes.flatMap(
+      (route) => route.children?.map((child) => child.path ?? '') ?? [],
+    );
     for (const path of businessPaths) {
-      expect(declared).not.toContain(path);
+      expect(declaredTopLevel).not.toContain(path);
+      expect(declaredNested).not.toContain(path);
     }
   });
 });

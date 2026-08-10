@@ -1,28 +1,20 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { AppShellComponent, type NavGroup } from '@lpg/shared/ui';
 
 /**
- * Application root: wires the shared `AppShellComponent` to this app's
- * navigation model.
+ * Application root — a bare router outlet.
  *
- * `navGroups` intentionally lists only "Home" — there are no business
- * modules yet (Customer, Inventory, Order, Delivery, Accounting each arrive
- * in their own phase, behind their own plan). The shell itself is fully
- * data-driven, so extending this list is the only change a future phase
- * needs to make here.
+ * The shell chrome (`AppShellComponent`, nav groups) moved to
+ * `shell/shell-layout.ts` in Phase 6 (ADR-036): `/login` needs to render
+ * without a sidebar/top-bar around it, so the root itself can no longer
+ * assume every route wants the shell. `app.routes.ts` decides that per
+ * route instead.
  */
 @Component({
   selector: 'lpg-root',
   standalone: true,
-  imports: [RouterOutlet, AppShellComponent],
+  imports: [RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
 })
-export class App {
-  protected readonly navGroups: readonly NavGroup[] = [
-    {
-      items: [{ label: 'Home', icon: 'pi pi-home', route: '/', exact: true }],
-    },
-  ];
-}
+export class App {}
