@@ -874,6 +874,69 @@ hooks:
 
 ---
 
+## ADR-035: JWT (RS256, `pyjwt[crypto]`) and Argon2id for Phase 6 Authentication, with SECURITY DEFINER Functions Resolving Tenant Before Auth
+
+**Status:** Accepted
+
+**Context:** Phase 6 replaces Phase 2's interim `HeaderTenantResolver` (never a security boundary, never wired to a reachable endpoint) with real authentication. `17-api-security.md` §1 had left the JWT library as an open "python-jose or PyJWT-equivalent" choice; password hashing wasn't named at all. A harder problem than picking libraries turned out to be architectural: this platform's tenant isolation is PostgreSQL RLS (ADR-017), enforced even against the table owner via `FORCE ROW LEVEL SECURITY`. Login has to look up a user **by email or phone, before any tenant context exists to scope the query by** — a chicken-and-egg problem RLS creates by design.
+
+**Decision — libraries:** `pyjwt[crypto]` (RS256, asymmetric — private key held only by the auth-issuing service) for JWT signing; `argon2-cffi` (Argon2id) for password hashing, cost parameters configurable via `Settings`, not hardcoded. `Sha256TokenHasher` (stdlib, not Argon2) hashes refresh/reset tokens specifically — they're already 256-bit random values, so a fast hash is correct and Argon2 there would only burn CPU with no security benefit.
+
+**Decision — the login lookup problem:** narrowly-scoped **`SECURITY DEFINER`** PostgreSQL functions, one per unique-key-based operation (`auth_find_user_by_email`, `auth_find_user_by_phone`, plus one each for the credential-mutation paths login/refresh/reset actually need — recording a login, rotating a password hash). Each function is owned by the migration/admin role, has `SET search_path` pinned (preventing search-path hijacking), and has `EXECUTE` **explicitly revoked from `PUBLIC`** before being granted only to `lpg_app`/`lpg_app_uat` — PostgreSQL grants `EXECUTE` to `PUBLIC` by default on a new function, which would otherwise let any future role bypass RLS through it. Application code never runs as a role with `BYPASSRLS`; the function itself is the one deliberate, narrowly-scoped seam, not a general escape hatch.
+
+**A non-obvious PostgreSQL behavior this decision depends on, verified directly (`docker exec psql`) before relying on it in code:** `SELECT * FROM function_returning_composite()` always returns exactly one row — an all-`NULL` row on no match, never zero rows. Every repository method built on these functions checks for `NULL`, not for an empty result set.
+
+**Consequences:**
+- **Identity use cases (`login.py`, `otp_verify.py`, `refresh_token.py`, `logout.py`, `password_reset.py`) deliberately do not use `UnitOfWork`** — each repository write self-commits via one `SECURITY DEFINER` call, and none of these flows have the multi-aggregate atomicity requirement BR-29's delivery-confirmation example describes. This is a documented divergence from Phase 2's `RenameTenantUseCase` precedent, not an oversight.
+- Refresh-token rotation follows the reuse-detection shape `IdempotencyService` already established: presenting an already-rotated token triggers `revoke_all_for_user` — full session revocation, not just rejection of the one reused token.
+- Live (non-claims) permission re-checks are reserved for four high-sensitivity actions (`reconciliation:approve`, `credit_notes:approve`, `orders:cancel_approve`, any `super_admin` cross-tenant action) — every other authorization decision trusts the JWT `scope` claim, matching `17-api-security.md` §4's stated "fast, no-database-round-trip" intent.
+- **A critical, previously-latent FastAPI bug was found and fixed while building this**, unrelated to auth specifically but discovered only because Phase 6 finally exercised the affected code path end-to-end: `from __future__ import annotations` combined with `TYPE_CHECKING`-only imports of a type referenced inside `Annotated[X, Depends(...)]` breaks `typing.get_type_hints()` for the **whole** function's signature — FastAPI silently falls back to treating every parameter as a required query field (a 422 "Field required" on every dependency, with nothing pointing at the actual cause). Found via a genuine end-to-end HTTP smoke test, not a mocked one. Fixed in every affected router/dependency module (`api/v1/routers/auth.py`, `api/v1/dependencies/identity.py`, `dependencies/tenant.py`) and proactively in `dependencies/unit_of_work.py`, which had the identical latent bug since Phase 2, just never triggered because no router had used it yet. A scoped `ruff` per-file-ignore for `TC001`/`TC002`/`TC003` in these two directories exists specifically so the linter's own "move this behind `TYPE_CHECKING`" suggestion can never silently reintroduce this.
+
+**Alternatives Considered:**
+- **`python-jose`** — rejected in favor of `pyjwt[crypto]`, already a transitive dependency via `redis`, actively maintained, and the simpler API for this project's single-issuer RS256 use case.
+- **A superuser or `BYPASSRLS` role for the login lookup** — rejected outright: defeats the entire RLS tenant-isolation model (ADR-017) for the sake of one query, and every future query run as that role would inherit the same blanket bypass.
+- **Resolving tenant from a subdomain/header before login, then scoping the lookup normally** — rejected for this phase: no subdomain/tenant-bootstrapping mechanism exists yet in either the Dashboard or the mobile apps (the OTP login screens' plain "Tenant ID" text field is the explicit placeholder for this), and email login is meant to work without the client already knowing its tenant.
+
+---
+
+## ADR-036: Shell-Bypass Routing for Unauthenticated Routes — Component-less Parent Route, Not a Route-Aware Shell
+
+**Status:** Accepted
+
+**Context:** `app.html` unconditionally wrapped every route in `<lpg-app-shell>` (`04-frontend-architecture.md`'s "app-agnostic, data-driven" shell design) — correct until Phase 6 needed a route, `/login`, that must render **without** the sidebar/top-bar chrome, and without requiring a session to reach it at all.
+
+**Decision:** `app.html` becomes a bare `<router-outlet />`. A new component-less parent route, `ShellLayout` (`apps/dashboard/src/app/shell/shell-layout.ts`), hosts what `app.html` used to — `<lpg-app-shell [navGroups]="navGroups"><router-outlet /></lpg-app-shell>` — and every existing route becomes its child, gated by a new `authGuard`. `/login` (and its `forgot-password`/`reset-password` siblings, `libs/auth/feature-login`) is declared as a **sibling** route outside `ShellLayout`, and declared **first** in `app.routes.ts`'s route array — Angular's router tries top-level routes in declaration order, and `ShellLayout`'s own catch-all child route (`**` → `NotFound`) would otherwise swallow `/login` before the dedicated sibling route ever got a chance to match, since `ShellLayout`'s parent path (`''`) consumes zero segments as a prefix match.
+
+**Consequences:**
+- `AppShellComponent` itself needed **zero changes** — it stays exactly as data-driven and route-agnostic as `04-frontend-architecture.md` already specified; the routing restructure is what changed, not the shell.
+- The four shell-chrome tests (skip link, landmarks, theme trigger) that used to target `App` directly now target `ShellLayout` in isolation (`shell/shell-layout.spec.ts`) — `App`'s own spec shrinks to a one-line "renders a bare router outlet" smoke test plus route-structure assertions.
+- `authGuard` (`libs/shared/data-access/src/lib/auth.guard.ts`) is the one new thing every existing (and future) route under `ShellLayout` picks up automatically, by virtue of being nested under it — no per-route `canActivate` needed beyond the one on `ShellLayout`'s own route config.
+
+**Alternatives Considered:**
+- **Make `AppShellComponent` itself route-aware** (e.g. an `@Input() showChrome` toggled by a route data flag) — rejected: breaks the shell's documented app-agnostic design goal (ADR-018's stated intent of the shell library eventually hosting a second Angular app), and pushes routing knowledge into a `type:ui` library that has no business knowing about routes at all.
+- **A `NoShellLayout` no-op wrapper component instead of a bare `app.html`** — considered for symmetry with `ShellLayout`, rejected as unnecessary indirection; a plain `<router-outlet />` at the root needs no wrapping component of its own.
+
+---
+
+## ADR-037: Hand-Written Flutter `api_client` for Phase 6, Deferring Spec-Generation
+
+**Status:** Accepted — explicit revisit trigger set
+
+**Context:** ADR-026/ADR-032 established "generated is the contract" for the Angular Dashboard (`ng-openapi-gen` against the committed OpenAPI spec). Phase 6 needs an equivalent HTTP client for the Flutter apps' ~8 `/auth/*` endpoints, and no Dart/Flutter OpenAPI-generator tooling was evaluated or selected — doing that evaluation for eight endpoints would be disproportionate effort against the actual surface area being covered.
+
+**Decision:** A hand-written, thin `dio`-based wrapper (`mobile/packages/api_client`) — `ApiClient` owns the configured `Dio` instance and a bearer-attach-plus-one-silent-refresh-and-retry interceptor (the mobile counterpart of the Dashboard's `authInterceptor`), and `AuthApi` hand-writes one method per `/auth/*` route, each returning `core`'s `Result<T>` rather than throwing. Request/response shapes (`TokenPair`, `Principal`) are plain hand-written classes mirroring the backend's Pydantic schemas field-for-field, not generated from the OpenAPI spec.
+
+**Consequences:**
+- **This ADR is its own revisit trigger**: once a business-domain phase (Customer, Order, Delivery) adds a comparably wide endpoint surface to what the mobile apps consume, re-evaluate Dart/Flutter OpenAPI-generator tooling the way `ng-openapi-gen` was evaluated for Angular — this is a temporary, phase-scoped divergence from ADR-026/032's philosophy, not a reversal of it.
+- `ApiClient`'s `getAccessToken`/`refreshAccessToken`/`onSessionExpired` are constructor-injected closures rather than a direct dependency on `auth`'s `TokenStorage`/`AuthRepository` — `auth` depends on `api_client`, never the reverse; `mobile/apps/*/lib/main.dart` is where the two are wired together.
+- A real Dio-specific behavior had to be designed around, not just discovered: `dio.fetch()` on retry re-runs the **entire** interceptor chain, including `onRequest` — unlike the Dashboard's RxJS interceptor, where `next()` continues only the remaining chain from the interceptor's own position. `refreshAccessToken`'s implementation must persist the new token to the same store `getAccessToken` reads from **before** returning it, or the retry silently reattaches the stale token. Documented inline in `ApiClient`'s `onError` handler and exercised directly in `api_client_test.dart`.
+
+**Alternatives Considered:**
+- **`openapi_generator` (Dart/Flutter OpenAPI generator)** — rejected for this phase only, not permanently: the tooling evaluation and generator-output review it would need isn't justified for eight endpoints; revisit per the trigger above.
+- **A single monolithic `AuthService` class combining HTTP calls, token storage, and Riverpod state** — rejected in favor of the three-package/three-layer split (`api_client` → `auth`'s `AuthRepository` → `auth`'s `AuthController`), matching this codebase's existing preference for testable layers over one convenient class (mirrors the backend's application/infrastructure separation).
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -912,6 +975,9 @@ hooks:
 | 032 | `ng-openapi-gen` for the generated Angular API client | Accepted |
 | 033 | Angular `fileReplacements` for frontend environment configuration | Accepted (resolves 032's deferral) |
 | 034 | SQLCipher-encrypted Drift via `package:sqlite3`'s build-hook source selection | Accepted (implements 05-mobile-architecture.md §7) |
+| 035 | JWT (RS256, `pyjwt[crypto]`) + Argon2id; `SECURITY DEFINER` functions resolve tenant before auth | Accepted |
+| 036 | Shell-bypass routing for unauthenticated routes — component-less parent route | Accepted |
+| 037 | Hand-written Flutter `api_client` for Phase 6, deferring spec-generation | Accepted (explicit revisit trigger) |
 
 ## Deferred Decisions
 
@@ -924,6 +990,9 @@ Decisions deliberately left open, each with a defined trigger point:
 | AG Grid Enterprise licence procurement (only if a future feature needs it) | As triggered — no longer a standing Phase 4 blocker | ADR-020 · ADR-028 · DW-08 |
 | Supabase production tier (lower tiers pause idle projects) | Before production | ADR-027 · DW-05 |
 | Production object-storage vendor (Azure Blob if Azure is chosen; an S3-compatible managed service reuses the existing adapter as-is) | Before production, tied to the hosting-topology decision | ADR-030 · ADR-022 |
+| WebSocket connection/subscription authorization (Phase 3's `RealtimePublisher` was built without it — needed real Authentication first) | Immediate fast-follow after Phase 6, not tied to a later numbered phase | ADR-015 · ADR-035 |
+| MFA for Super Admin | Post-MVP (SRS recommends, doesn't require, for this role only) | 08-security-architecture.md |
+| Entra ID SSO — schema seam exists (`identity_user.sso_subject`/`sso_provider`), no working OAuth flow | When an Azure AD app registration and hosting decision exist | ADR-022 |
 
 ## Review Cadence
 ADRs are reviewed at each major phase gate and annually thereafter in production. Superseded decisions are marked **Superseded**, with a link to the new ADR, never deleted — preserving the historical reasoning trail this document exists to provide. The Phase 0 supersessions above are the first application of that policy; the superseded architecture documents themselves are preserved under [`superseded/`](./superseded/README.md).

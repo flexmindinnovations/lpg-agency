@@ -7,7 +7,8 @@ Defines API-layer security: JWT authentication, refresh tokens, RBAC, permission
 Applies to every endpoint in `11-api-contracts.md`, for the FastAPI/PostgreSQL/Redis stack.
 
 ## Design Decisions
-- **python-jose or PyJWT-equivalent** for JWT signing (RS256, asymmetric — private key held only by the auth-issuing service, public key distributable for verification if the API is ever split into multiple services).
+- **`pyjwt[crypto]`** for JWT signing (RS256, asymmetric — private key held only by the auth-issuing service, public key distributable for verification if the API is ever split into multiple services). Confirmed in Phase 6 — **ADR-035**; resolves this section's earlier "python-jose or PyJWT-equivalent" open choice.
+- **Argon2id (`argon2-cffi`)** for password hashing, cost parameters configurable via `Settings` rather than hardcoded — **ADR-035**.
 - **Redis** is the token/session-adjacent store: OTP codes, rate-limit counters, refresh-token-rotation tracking, and idempotency keys all live in Redis with appropriate TTLs — PostgreSQL remains the durable system of record for `identity_user` and `audit_log` only.
 
 ## 1. JWT Structure

@@ -16,7 +16,9 @@ LPG Agency Management Platform
 
 **Phase 5 — Flutter Application Foundations** ✅ **COMPLETE** — started and finished 2026-08-09 on explicit instruction, immediately after ADR-033 closed out. 17/18 tracked tasks complete and verified, 1 residual (CI-runner confirmation of the SQLCipher build hook — verified locally, not yet observed on the actual `ubuntu-latest` runner). See [`planning/features/05-flutter-application-foundations/STATUS.md`](./features/05-flutter-application-foundations/STATUS.md). Closed the one gap Phase 1's mobile scaffolding had deliberately left open: `DriftLocalDatabase`, a genuinely SQLCipher-encrypted Drift/SQLite implementation wired into the Driver App (ADR-034), including a real ecosystem trap found and resolved (`sqlcipher_flutter_libs` is now an EOL no-op) and a real resource-leak bug found and fixed (a failed sanity-check query orphaning a background isolate's file lock). The sync queue, `api_client`, `auth`, and `sync_engine` packages remain out of scope, arriving with Phase 6/Phase 11 as already documented.
 
-**Recommended next:** Phase 6 (Authentication) — Phase 2's `HeaderTenantResolver` (interim, header-based, not a security boundary), the not-yet-mandatory tenant-scoped session (DW-12), and Phase 3's excluded WebSocket-subscription-authorization remain **three** separate things waiting specifically on real Authentication existing.
+**Phase 6 — Authentication & Authorization** ✅ **COMPLETE** — started and finished 2026-08-10 on explicit instruction, immediately after Phase 5 closed out. All 12 tracked areas (A–L) complete and verified across all three stacks. See [`planning/features/06-authentication-authorization/STATUS.md`](./features/06-authentication-authorization/STATUS.md). Replaces Phase 2's interim `HeaderTenantResolver` with a real, hand-built Identity module — JWT (RS256, `pyjwt[crypto]`) + Argon2id password auth, OTP login for Customer/Driver, RBAC (claims-based + live), password reset — under strict per-tenant RLS via narrowly-scoped `SECURITY DEFINER` PostgreSQL functions (ADR-035). Closes DW-12 (tenant-scoped sessions are now structurally mandatory, not conventional). Frontend: shell-bypass routing (ADR-036) so `/login` renders outside the authenticated shell, plus the first Reactive Forms feature library. Mobile: new `api_client` (ADR-037, hand-written, explicit revisit trigger) and `auth` packages, OTP sign-in wired into both apps with `go_router` guards. A critical, previously-latent FastAPI `Depends()`-resolution bug was found and fixed along the way (unrelated to auth specifically, caught only because this phase finally exercised the affected path end-to-end). 359 tests passing across all three stacks (259 backend + 56 frontend + 44 mobile).
+
+**Recommended next:** Phase 7 (Administration & Tenant/Master Data) — the next roadmap dependency now that real Authentication exists. WebSocket connection/subscription authorization (Phase 3's excluded item) is tracked as its own immediate fast-follow, not bundled into a later numbered phase — see `docs/architecture/15-architecture-decision-records.md`'s Deferred Decisions table.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).
 
@@ -199,7 +201,7 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 | 3 | Shared Infrastructure (real-time publisher, file storage) | ✅ Complete |
 | 4 | Angular 22 Web Foundation | ✅ Complete |
 | 5 | Flutter Application Foundations | ✅ Complete |
-| 6 | Authentication & Authorization | Not started |
+| 6 | Authentication & Authorization | ✅ Complete |
 | 7 | Administration & Tenant/Master Data | Not started |
 | 8 | Customer Management | Not started |
 | 9 | Inventory Management | Not started |
@@ -314,6 +316,15 @@ Community licenses are valid 12 months, renewable at no cost by reconfirming eli
 | 026 | Code-first OpenAPI, generated spec committed as the frozen client contract |
 | 027 | **Supabase as the managed PostgreSQL host only** — amends 013 and 022. Auth, Storage, Realtime and Edge Functions not adopted; Alembic keeps sole ownership of schema |
 | 028 | **Hybrid UI strategy** — PrimeNG primary, AG Grid Community default, AG Grid Enterprise optional per feature (amends 020) |
+| 029 | ARQ as the background job library (resolves 023's deferral) |
+| 030 | S3-compatible file storage port; MinIO for every environment that exists today |
+| 031 | Brand colour moves from blue to deep forest green |
+| 032 | `ng-openapi-gen` for the generated Angular API client |
+| 033 | Angular `fileReplacements` for frontend environment configuration (resolves 032's deferral) |
+| 034 | SQLCipher-encrypted Drift via `package:sqlite3`'s build-hook source selection |
+| 035 | JWT (RS256, `pyjwt[crypto]`) + Argon2id; `SECURITY DEFINER` functions resolve tenant before auth |
+| 036 | Shell-bypass routing for unauthenticated routes — component-less parent route |
+| 037 | Hand-written Flutter `api_client` for Phase 6, deferring spec-generation (explicit revisit trigger) |
 
 ### Decisions that survived the stack change
 
@@ -337,4 +348,4 @@ One verification remains **blocked**, recorded as blocked rather than complete: 
 
 ## Last Updated
 
-2026-08-09
+2026-08-10 — Phase 6 (Authentication & Authorization) complete. See the Current Phase section above and [`planning/features/06-authentication-authorization/STATUS.md`](./features/06-authentication-authorization/STATUS.md) for full detail.
