@@ -27,6 +27,36 @@ def _os_environ() -> dict[str, str]:
     return dict(os.environ)
 
 
+def _generate_ephemeral_rs256_keypair() -> tuple[str, str]:
+    """A throwaway RS256 keypair for local development only.
+
+    Never persisted, never logged, regenerated on every process start —
+    which is exactly why every other environment must supply its own
+    (`model_post_init` raises rather than doing this outside `is_local`).
+    2048 bits matches the minimum RS256 key size PyJWT's `cryptography`
+    backend expects; there is no production key-rotation story here since
+    this keypair is never meant to outlive the process.
+    """
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
+    public_pem = (
+        private_key.public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode("ascii")
+    )
+    return private_pem, public_pem
+
+
 class Settings(BaseSettings):
     """Runtime configuration, sourced from the environment."""
 
@@ -149,6 +179,53 @@ class Settings(BaseSettings):
     # -- Health -----------------------------------------------------------
     health_check_timeout_seconds: float = Field(default=3.0, gt=0)
 
+    # -- Identity / Authentication (Phase 6, ADR-035) ----------------------
+    # RS256 JWT signing. `jwt_private_key` is PEM, never logged (SecretStr).
+    # Left unset by default: `model_post_init` generates an ephemeral,
+    # process-lifetime keypair when `environment` is exactly `"local"`
+    # (tokens stop verifying across a restart — acceptable there, nowhere
+    # else). Every other environment (including `dev`/`uat`, which run
+    # against the same local docker Postgres but are *not* `is_local`) must
+    # supply real PEM values — `.env.dev.example`/`.env.uat.example` do,
+    # `.env.prod.example` deliberately leaves them empty, the same pattern
+    # `LPG_DB_PASSWORD` already uses. A PEM's embedded newlines don't survive
+    # a single-line env var, so both fields accept `\n`-escaped input and
+    # unescape it — see the validator below.
+    jwt_private_key: SecretStr | None = None
+    jwt_public_key: str | None = None
+    jwt_issuer: str = "lpg-agency-platform"
+    jwt_access_token_ttl_seconds: int = Field(default=900, gt=0)  # 15 minutes, §1
+    refresh_token_ttl_days: int = Field(default=30, gt=0)
+
+    # Argon2id cost parameters (`08-security-architecture.md` §1). Defaults
+    # follow OWASP's current baseline recommendation for Argon2id (m=19 MiB,
+    # t=2, p=1) — deliberately configurable per-environment rather than
+    # hardcoded, since the right cost is a function of the host's CPU
+    # budget, not a universal constant.
+    password_argon2_time_cost: int = Field(default=2, ge=1)
+    password_argon2_memory_cost_kib: int = Field(default=19_456, ge=8)
+    password_argon2_parallelism: int = Field(default=1, ge=1)
+
+    # NIST 800-63B-style policy: length-focused, no forced composition
+    # rules. Unspecified in the SRS (`docs/srs/security.md` §1/§9 flag this
+    # as "pending confirmation") — this is a reasonable, configurable
+    # default, not a business decision baked into code.
+    password_min_length: int = Field(default=12, ge=8)
+    login_lockout_threshold: int = Field(default=5, ge=1)
+    login_lockout_duration_minutes: int = Field(default=15, gt=0)
+
+    otp_length: int = Field(default=6, ge=4, le=10)
+    otp_ttl_seconds: int = Field(default=300, gt=0)  # 5 minutes, §1
+    otp_request_rate_limit_per_hour: int = Field(default=5, ge=1)
+
+    password_reset_token_ttl_seconds: int = Field(default=3600, gt=0)
+
+    # Dev-only: log the OTP code / reset link instead of sending it, since no
+    # SMS/email provider exists in this codebase yet (Phase 14). Guarded
+    # separately from `is_local` so it can never be flipped on by a
+    # misconfigured non-local `.env` — see `model_post_init`.
+    otp_delivery_dev_mode: bool = False
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: object) -> object:
@@ -166,6 +243,18 @@ class Settings(BaseSettings):
                 parsed = json.loads(stripped)
                 return [str(origin).strip() for origin in parsed]
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return value
+
+    @field_validator("jwt_private_key", "jwt_public_key", mode="before")
+    @classmethod
+    def _unescape_pem_newlines(cls, value: object) -> object:
+        """A PEM's real newlines don't survive a single-line env var — accept
+        the literal two-character sequence ``\\n`` and turn it back into an
+        actual newline, so `.env.dev.example`/`.env.uat.example` can carry a
+        working keypair as an ordinary `KEY=value` line.
+        """
+        if isinstance(value, str):
+            return value.replace("\\n", "\n")
         return value
 
     @staticmethod
@@ -223,6 +312,20 @@ class Settings(BaseSettings):
             if self.debug:
                 msg = f"debug must be disabled in environment {self.environment!r}"
                 raise ValueError(msg)
+            if self.otp_delivery_dev_mode:
+                msg = f"otp_delivery_dev_mode must be disabled in environment {self.environment!r}"
+                raise ValueError(msg)
+
+        # Matches `db_password`'s existing precedent: an unset secret isn't
+        # hard-validated at Settings-construction (that would make every
+        # narrow, non-JWT-related test in this suite need a real keypair) —
+        # it fails later, at actual use (`PyJwtSigner` raises if constructed
+        # with `None` keys), the same place a missing `db_password` fails at
+        # connection time rather than here.
+        if self.jwt_private_key is None and self.jwt_public_key is None and self.is_local:
+            private_pem, public_pem = _generate_ephemeral_rs256_keypair()
+            self.jwt_private_key = SecretStr(private_pem)
+            self.jwt_public_key = public_pem
 
 
 @lru_cache(maxsize=1)

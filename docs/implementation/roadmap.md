@@ -91,7 +91,6 @@ ADRs are reviewed at each major phase gate (`docs/architecture/15-architecture-d
 | Background job library (ARQ / Dramatiq / Celery) | Phase 2 |
 | Inventory counter granularity (D-04/D-14 residual) | Phase 9 |
 | Cancellation fee amount and configurability (D-19 residual) | Phase 10 |
-| Warehouse Staff vs Warehouse Manager role identity (D-38 residual) | Phase 6 |
 | KYC document types (A-20, pending business/legal) | Phase 8 |
 | PDF rendering library (WeasyPrint / ReportLab) | Phase 17 |
 | Statutory backup retention duration | Phase 18 |

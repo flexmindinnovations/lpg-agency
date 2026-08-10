@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from lpg.api.middleware.correlation import CorrelationIdMiddleware
 from lpg.api.middleware.problem_details import register_exception_handlers
-from lpg.api.v1.routers import health
+from lpg.api.v1.routers import auth, health
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
@@ -31,6 +31,8 @@ from lpg.infrastructure.health import (
     RedisHealthCheck,
     StorageHealthCheck,
 )
+from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
+from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.jobs.pool import JobQueue
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
@@ -41,6 +43,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from lpg.application.common.ports import HealthCheck
+    from lpg.application.identity.ports import JwtSigner, PasswordHasher
 
 _logger = get_logger(__name__)
 
@@ -56,6 +59,8 @@ class AppState:
     job_queue: JobQueue | None = None
     realtime_publisher: RedisRealtimePublisher | None = None
     storage: S3CompatibleFileStorage | None = None
+    jwt_signer: JwtSigner | None = None
+    password_hasher: PasswordHasher | None = None
 
 
 _state = AppState()
@@ -115,12 +120,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     except Exception as exc:  # noqa: BLE001 - degrade to not-ready, never crash startup
         _logger.warning("storage_connect_failed_at_startup", error=str(exc))
 
+    # Unlike Database/Redis/JobQueue/Storage above, a JWT signer with no
+    # configured key is not a transient dependency outage to degrade past —
+    # it is a configuration error that would affect every request for as
+    # long as the process runs. `PyJwtSigner.__init__` raises `RuntimeError`
+    # in that case (deliberately uncaught here), matching the same
+    # fail-loud-at-startup philosophy `Settings.model_post_init` already
+    # applies to a wildcard CORS origin or `debug=True` outside local dev.
+    jwt_signer = PyJwtSigner(settings)
+    password_hasher = Argon2PasswordHasher(settings)
+
     _state.database = database
     _state.redis = redis_client
     _state.event_dispatcher = DomainEventDispatcher()
     _state.job_queue = job_queue
     _state.realtime_publisher = RedisRealtimePublisher(redis_client)
     _state.storage = storage
+    _state.jwt_signer = jwt_signer
+    _state.password_hasher = password_hasher
     _state.health_checks = [
         DatabaseHealthCheck(database),
         RedisHealthCheck(redis_client),
@@ -148,6 +165,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
         _state.job_queue = None
         _state.storage = None
         _state.realtime_publisher = None
+        _state.jwt_signer = None
+        _state.password_hasher = None
         _state.health_checks = []
         _logger.info("application_stopped")
 
@@ -178,6 +197,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # typed clients from the committed artifact (ADR-026).
         openapi_tags=[
             {"name": "Health", "description": "Liveness and readiness probes."},
+            {
+                "name": "Authentication",
+                "description": "Login, OTP, refresh, logout, password reset (Phase 6).",
+            },
         ],
     )
 
@@ -203,6 +226,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # platform, not API clients, and their contract must not change when the
     # API version does.
     app.include_router(health.router)
+
+    # The first versioned router this codebase mounts — every future
+    # business router follows this same `prefix=settings.api_v1_prefix`
+    # pattern (ADR-009: URL-segment API versioning).
+    app.include_router(auth.router, prefix=settings.api_v1_prefix)
 
     return app
 

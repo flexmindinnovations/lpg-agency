@@ -2,31 +2,38 @@
 
 Wires a ``TenantResolver`` (infrastructure) into FastAPI's dependency system,
 producing a ``TenantContext`` every downstream dependency and use case depends
-on. Phase 2 binds the interim ``HeaderTenantResolver``; Phase 6 rebinds this
-one function to a ``JwtTenantResolver`` and nothing downstream changes.
+on. Phase 2 bound the interim ``HeaderTenantResolver``; Phase 6 rebinds this
+one function to ``JwtTenantResolver`` — the whole point of ADR-017's seam —
+and nothing downstream changes.
+
+``Request``/``TenantContext`` are real imports, not ``TYPE_CHECKING``
+-guarded — ``get_tenant_context`` is itself passed to ``Depends()`` at
+every call site, and with ``from __future__ import annotations``, FastAPI
+resolves its signature via ``typing.get_type_hints()`` at request time. See
+``api/v1/routers/auth.py``'s module docstring for the full failure mode
+this avoids (found the hard way, by a failing end-to-end test).
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import structlog
+from fastapi import Request
 
-from lpg.infrastructure.tenant.header_resolver import HeaderTenantResolver
-
-if TYPE_CHECKING:
-    from fastapi import Request
-
-    from lpg.application.common.ports import TenantContext, TenantResolver
-
-# Module-level: the resolver carries no per-request state, so there is
-# nothing to gain from reconstructing it on every call. Phase 6 replaces this
-# binding, not the dependency function's signature or callers.
-_resolver: TenantResolver = HeaderTenantResolver()
+from lpg.application.common.ports import TenantContext
 
 
 async def get_tenant_context(request: Request) -> TenantContext:
     """FastAPI dependency resolving the current request's tenant context.
+
+    ``JwtTenantResolver`` is constructed fresh per call rather than cached
+    as a module-level singleton (unlike Phase 2's ``HeaderTenantResolver``):
+    it wraps ``JwtSigner``, which isn't available until the application
+    lifespan has run, and construction itself is a cheap attribute lookup —
+    caching would only add lazy-initialization complexity for no real gain.
+    Imports are deferred to function scope for the same reason
+    ``dependencies/unit_of_work.py`` defers them: ``lpg.api.app`` has a
+    module-level ``app = create_app()`` side effect that must not run at
+    import time here.
 
     Binds ``tenant_id``/``user_id`` into structlog's contextvars once
     resolved — every log line for the rest of this request carries them
@@ -36,7 +43,11 @@ async def get_tenant_context(request: Request) -> TenantContext:
     not in the middleware, because the middleware runs before authentication
     resolves a tenant — there is nothing to bind yet at that point.
     """
-    context = await _resolver.resolve(request)
+    from lpg.api.v1.dependencies.identity import get_jwt_signer
+    from lpg.infrastructure.identity.jwt_tenant_resolver import JwtTenantResolver
+
+    resolver = JwtTenantResolver(get_jwt_signer())
+    context = await resolver.resolve(request)
     structlog.contextvars.bind_contextvars(
         tenant_id=str(context.tenant_id),
         user_id=str(context.user_id) if context.user_id else None,

@@ -52,6 +52,6 @@ These are **stakeholder-provided architectural recommendations**, not facts extr
 - **D-04 / D-14 (cylinder types × 7 statuses)**: The inventory data model now needs one counter per (cylinder type × status × location) combination — this is a meaningfully larger schema than originally scoped. Confirm this granularity doesn't need further collapsing for Phase 1 (e.g., is "Quarantine" truly distinct from "Damaged" for a first release, or can they be merged and split later?).
 - **D-19 (cancellation charge)**: "Possible cancellation charge" — the fee amount/percentage and whether it's tenant-configurable is not yet specified.
 - **D-24 (offline-first Driver App)**: Elevating this to Must-have is a significant engineering scope increase; recommend confirming this doesn't slip Phase 1 timeline before committing to it as a hard launch blocker.
-- **D-38 (RBAC role rename)**: "Warehouse Manager" (original) vs. "Warehouse Staff" (new) — confirm whether these are the same role renamed, or two distinct roles (staff + a supervisory manager tier), since the decision text uses "Warehouse Staff" in the role list but "Warehouse Manager" in D-16's approval authority.
+- ~~**D-38 (RBAC role rename)**~~ — **resolved 2026-08-10.** "Warehouse Manager" and "Warehouse Staff" are the same role, renamed, not two tiers. D-16's approval authority now reads "Warehouse Staff." See `business/decisions.md` D-38's resolution note.
 
 These follow-up items are minor and do not block proceeding to system design.

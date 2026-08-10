@@ -8,6 +8,11 @@ already proves ``Database.open_session(tenant_id=...)`` sets
 a router that declares ``Depends(get_unit_of_work)`` gets a Unit of Work whose
 session is already scoped to whatever the resolver decided, with no chance to
 forget.
+
+Tenant context is resolved from a real, signed JWT (Phase 6, ADR-035) rather
+than the debug header Phase 2 used — ``get_tenant_context`` now delegates to
+``JwtTenantResolver``, which this suite exercises through the same
+public dependency function, not by constructing the resolver directly.
 """
 
 from __future__ import annotations
@@ -21,20 +26,34 @@ from starlette.requests import Request
 
 from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
-from lpg.application.common.errors import TenantContextMissingError
+from lpg.application.common.errors import TokenInvalidError
+from lpg.config.settings import Settings
+from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
-from lpg.infrastructure.tenant.header_resolver import TENANT_HEADER
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lpg.config.settings import Settings
-
 pytestmark = pytest.mark.integration
 
+# Built lazily on first use, not at module level: a module-level `Settings()`
+# call runs at collection time, before the autouse `_no_real_dotenv` fixture
+# (`conftest.py`) has disabled `.env` loading for the test — and the `.env`
+# on a given machine may be pointed at a real environment (e.g. production,
+# per this project's earlier known-issue note) with fields this constructor
+# doesn't supply, like `LPG_REDIS_URL`.
+_signer_cache: PyJwtSigner | None = None
 
-def _request(headers: dict[str, str] | None = None) -> Request:
+
+def _signer() -> PyJwtSigner:
+    global _signer_cache
+    if _signer_cache is None:
+        _signer_cache = PyJwtSigner(Settings(environment="local"))
+    return _signer_cache
+
+
+def _bearer_request(token: str | None = None) -> Request:
     """A real (but connection-less) Starlette ``Request``.
 
     Constructed from a minimal ASGI scope rather than duck-typed, so this
@@ -42,8 +61,14 @@ def _request(headers: dict[str, str] | None = None) -> Request:
     ``mypy --strict`` — the same object shape FastAPI hands the dependency in
     production, just without a live ASGI server behind it.
     """
-    encoded = [(key.lower().encode(), value.encode()) for key, value in (headers or {}).items()]
-    return Request(scope={"type": "http", "headers": encoded})
+    headers = [(b"authorization", f"Bearer {token}".encode())] if token else []
+    return Request(scope={"type": "http", "headers": headers})
+
+
+def _issue_token(tenant_id: uuid.UUID) -> str:
+    return _signer().issue_access_token(
+        {"sub": str(uuid.uuid4()), "tenant_id": str(tenant_id), "role": "manager", "scope": ""}
+    )
 
 
 @pytest.fixture
@@ -60,6 +85,10 @@ async def app_database(
     consumer of ``get_app_state``/``get_health_checks`` in this codebase
     defers the import for the same reason (see
     ``lpg.api.v1.routers.health.readiness``).
+
+    Also populates ``AppState.jwt_signer`` — ``get_tenant_context`` now
+    needs it to construct ``JwtTenantResolver``, the same way this fixture
+    already populates ``AppState.database`` for ``get_unit_of_work``.
     """
     from lpg.api.app import get_app_state
 
@@ -70,24 +99,41 @@ async def app_database(
     db.connect()
     state = get_app_state()
     state.database = db
+    state.jwt_signer = _signer()
     try:
         yield db
     finally:
         state.database = None
+        state.jwt_signer = None
         await db.disconnect()
 
 
 class TestGetTenantContext:
-    async def test_resolves_from_the_debug_header(self) -> None:
+    async def test_resolves_from_a_verified_jwt(
+        self,
+        app_database: Database,  # noqa: ARG002 - side effect: populates app state
+    ) -> None:
         tenant_id = uuid.uuid4()
 
-        context = await get_tenant_context(_request({TENANT_HEADER: str(tenant_id)}))
+        context = await get_tenant_context(_bearer_request(_issue_token(tenant_id)))
 
         assert context.tenant_id == tenant_id
 
-    async def test_raises_a_translatable_error_without_a_header(self) -> None:
+    async def test_raises_a_translatable_error_without_a_bearer_token(
+        self,
+        app_database: Database,  # noqa: ARG002 - side effect: populates app state
+    ) -> None:
+        from lpg.application.common.errors import TenantContextMissingError
+
         with pytest.raises(TenantContextMissingError):
-            await get_tenant_context(_request())
+            await get_tenant_context(_bearer_request())
+
+    async def test_raises_for_an_invalid_token(
+        self,
+        app_database: Database,  # noqa: ARG002 - side effect: populates app state
+    ) -> None:
+        with pytest.raises(TokenInvalidError):
+            await get_tenant_context(_bearer_request("not-a-real-jwt"))
 
 
 class TestGetUnitOfWork:
@@ -96,7 +142,7 @@ class TestGetUnitOfWork:
         app_database: Database,  # noqa: ARG002 - side effect: populates app state
     ) -> None:
         tenant_id = uuid.uuid4()
-        context = await get_tenant_context(_request({TENANT_HEADER: str(tenant_id)}))
+        context = await get_tenant_context(_bearer_request(_issue_token(tenant_id)))
 
         async for uow in get_unit_of_work(context):
             # get_unit_of_work's declared return type is the UnitOfWork
@@ -116,8 +162,8 @@ class TestGetUnitOfWork:
         tenant_a = uuid.uuid4()
         tenant_b = uuid.uuid4()
 
-        context_a = await get_tenant_context(_request({TENANT_HEADER: str(tenant_a)}))
-        context_b = await get_tenant_context(_request({TENANT_HEADER: str(tenant_b)}))
+        context_a = await get_tenant_context(_bearer_request(_issue_token(tenant_a)))
+        context_b = await get_tenant_context(_bearer_request(_issue_token(tenant_b)))
 
         async for uow in get_unit_of_work(context_a):
             assert isinstance(uow, SqlAlchemyUnitOfWork)
@@ -136,14 +182,22 @@ class TestGetUnitOfWork:
         assert seen_a != seen_b
 
     async def test_raises_when_the_database_has_not_connected(self) -> None:
-        """`get_app_state().database` is `None` outside the lifespan."""
+        """`get_app_state().database` is `None` outside the lifespan.
+
+        Only `jwt_signer` is populated here (needed to resolve tenant
+        context at all) — `database` is deliberately left unset, to exercise
+        the "lifespan hasn't run" path `get_unit_of_work` guards against.
+        """
         from lpg.api.app import get_app_state
 
         state = get_app_state()
+        state.jwt_signer = _signer()
         assert state.database is None
+        try:
+            context = await get_tenant_context(_bearer_request(_issue_token(uuid.uuid4())))
 
-        context = await get_tenant_context(_request({TENANT_HEADER: str(uuid.uuid4())}))
-
-        with pytest.raises(RuntimeError, match="not connected"):
-            async for _uow in get_unit_of_work(context):
-                pass
+            with pytest.raises(RuntimeError, match="not connected"):
+                async for _uow in get_unit_of_work(context):
+                    pass
+        finally:
+            state.jwt_signer = None

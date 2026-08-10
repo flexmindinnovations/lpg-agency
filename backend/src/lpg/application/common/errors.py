@@ -137,3 +137,88 @@ class ServiceUnavailableError(ApplicationError):
     error_code = "SERVICE_UNAVAILABLE"
     http_status = 503
     title = "Service temporarily unavailable"
+
+
+class InvalidCredentialsError(ApplicationError):
+    """Login failed — wrong password, unknown email, or inactive account.
+
+    Distinct from `AuthenticationError` (no credentials supplied at all) and
+    deliberately reported identically for "wrong password" and "no such
+    user" — the same no-user-enumeration reasoning `NotFoundError` already
+    applies to cross-tenant resource lookups.
+    """
+
+    error_code = "INVALID_CREDENTIALS"
+    http_status = 401
+    title = "Invalid credentials"
+
+
+class AccountLockedError(ApplicationError):
+    """Too many consecutive failed logins — see `IdentityUser.record_failed_login`."""
+
+    error_code = "ACCOUNT_LOCKED"
+    http_status = 423
+    title = "Account temporarily locked"
+
+
+class RefreshTokenInvalidError(ApplicationError):
+    """The refresh token is missing, expired, already rotated, or revoked.
+
+    Also raised (after revoking the whole session) when reuse of an
+    already-rotated token is detected — the client cannot distinguish "this
+    token was never valid" from "this token was valid but reused," and
+    shouldn't be able to.
+    """
+
+    error_code = "REFRESH_TOKEN_INVALID"
+    http_status = 401
+    title = "Session expired or invalid"
+
+
+class TokenInvalidError(AuthenticationError):
+    """An access token failed signature verification, is expired, or is malformed.
+
+    Raised by `JwtSigner.decode_access_token` and, downstream, by
+    `JwtTenantResolver` when it cannot resolve a trustworthy principal.
+    """
+
+    error_code = "AUTHENTICATION_REQUIRED"
+    title = "Access token is invalid or expired"
+
+
+class ResetTokenExpiredError(ApplicationError):
+    """The password-reset link's token TTL has elapsed, or it was already used."""
+
+    error_code = "RESET_TOKEN_EXPIRED"
+    http_status = 410
+    title = "Password reset link has expired"
+
+
+class OtpMismatchError(ApplicationError):
+    """The OTP code entered does not match what was issued."""
+
+    error_code = "OTP_MISMATCH"
+    http_status = 409
+    title = "OTP does not match"
+
+
+class OtpExpiredError(ApplicationError):
+    """The OTP's TTL elapsed before it was verified."""
+
+    error_code = "OTP_EXPIRED"
+    http_status = 410
+    title = "OTP has expired"
+
+
+class WeakPasswordError(ApplicationError):
+    """A new password fails the complexity policy (`Settings`-configured).
+
+    The Pydantic request schema's `min_length` catches the common case
+    before a use case ever runs; this exists for checks that need a
+    lookup a request-shape validator can't perform (e.g. rejecting reuse of
+    the current password).
+    """
+
+    error_code = "WEAK_PASSWORD"
+    http_status = 400
+    title = "Password does not meet complexity requirements"

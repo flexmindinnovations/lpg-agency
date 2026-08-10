@@ -99,4 +99,4 @@ Mapping from this document's earlier inferred actors to the confirmed roles:
 | Customer | Customer (unchanged) |
 | Delivery Driver | Driver (unchanged) |
 
-**Residual, non-blocking question:** whether "Warehouse Staff" (confirmed role list) and "Warehouse Manager" (named as the sole approver for inventory adjustments in D-16) represent the same role or a staff/supervisor tier pair — see `questions/open-questions.md` notes.
+~~**Residual, non-blocking question:** whether "Warehouse Staff" (confirmed role list) and "Warehouse Manager" (named as the sole approver for inventory adjustments in D-16) represent the same role or a staff/supervisor tier pair~~ — **resolved 2026-08-10**: same role, renamed. See `business/decisions.md` D-38's resolution note.

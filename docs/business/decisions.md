@@ -95,8 +95,8 @@ Out For Delivery → Delivered → Failed Delivery → Cancelled → Closed
 - **Impact:** Confirms A-13. `workflows/inventory-flow.md` Stage 1 should be renamed/formalized around a GRN entity rather than a generic "manual/offline process."
 
 ### D-16 (resolves Q-21) — Inventory Adjustment Approval
-**Decision:** Only **Warehouse Manager** or **Agency Admin** may approve inventory adjustments; audit logging is mandatory.
-- **Impact:** Resolves the approver gap in `modules/inventory-management.md` §3.5 and ties directly to BR-28 (audit logging) and the RBAC role list (see D-additional-2 below).
+**Decision:** Only **Warehouse Staff** or **Agency Admin** may approve inventory adjustments; audit logging is mandatory.
+- **Impact:** Resolves the approver gap in `modules/inventory-management.md` §3.5 and ties directly to BR-28 (audit logging) and the RBAC role list (see D-additional-2 below). Originally written as "Warehouse Manager" before D-38 confirmed the role list; updated here for consistency — see D-38's resolution note.
 
 ### D-17 (resolves Q-09) — Refund Workflow
 **Decision:** Defined flow: Customer Request → Manager Approval → Credit Note → Refund → Ledger Update.
@@ -186,8 +186,9 @@ Out For Delivery → Delivered → Failed Delivery → Cancelled → Closed
 JWT with Refresh Tokens; OTP for customer login; optional Azure AD / Microsoft Entra ID SSO for agency staff.
 
 ### D-38 — Authorization / RBAC Roles (Confirmed Role List)
-**Super Admin, Agency Admin, Manager, Warehouse Staff, Dispatcher, Accountant, Driver, Customer.**
-- **Impact:** This is now the authoritative role list, superseding the provisional role list in `business/stakeholders.md` §3 and `requirements/security.md` §2. Note "Dispatcher" is a newly named role (previously implicit within "Agency Staff/Operator") and "Warehouse Staff" replaces the more general "Warehouse Manager" as the operational role (Warehouse Manager may now be understood as a supervisory tier over Warehouse Staff — needs no further clarification but naming should be used consistently in schema/UI).
+**Super Admin, Agency Admin, Manager, Warehouse Staff, Dispatcher, Accountant, Driver, Customer.** Exactly 8 roles.
+- **Impact:** This is now the authoritative role list, superseding the provisional role list in `business/stakeholders.md` §3 and `requirements/security.md` §2. Note "Dispatcher" is a newly named role (previously implicit within "Agency Staff/Operator") and "Warehouse Staff" replaces the more general "Warehouse Manager" as the operational role.
+- **Residual naming question — resolved 2026-08-10 (product owner decision, ahead of Phase 6 implementation):** "Warehouse Staff" and "Warehouse Manager" are **the same role, renamed** — not a staff/supervisor tier pair. D-16's approval authority for inventory adjustments belongs to Warehouse Staff (updated above). The `identity.role` seed data and the permission matrix (`docs/data/17-api-security.md` §6) use exactly 8 roles, "Warehouse Staff" only — no separate "Warehouse Manager" row.
 
 ### D-39 — Audit Logging Scope
 All financial transactions, inventory adjustments, login events, and administrative changes must be logged — confirms and slightly broadens BR-28 to explicitly include login events.

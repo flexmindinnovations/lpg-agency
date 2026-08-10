@@ -270,7 +270,6 @@ All seven questions from the initial assessment were answered by the product own
 | Deferred decision | Needed by |
 |---|---|
 | AG Grid Enterprise licence procurement (only if a feature needs it) | As triggered — no longer a standing Phase 4 blocker |
-| Warehouse Staff vs Warehouse Manager (D-38 residual) | Phase 6 |
 | KYC document types (pending business/legal) | Phase 8 |
 | Inventory counter granularity (D-04/D-14 residual) | Phase 9 |
 | Cancellation fee amount/configurability (D-19 residual) | Phase 10 |

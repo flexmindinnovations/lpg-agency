@@ -166,7 +166,6 @@ Deliberately open, each with a trigger point:
 | Statutory backup retention duration | Production Hardening |
 | Inventory counter granularity (D-04/D-14 residual) | Inventory Management |
 | Cancellation fee amount/configurability (D-19 residual) | Order Management |
-| Warehouse Staff vs Warehouse Manager (D-38 residual) | Authentication & Authorization |
 
 ---
 

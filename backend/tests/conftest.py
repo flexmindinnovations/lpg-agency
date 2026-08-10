@@ -94,9 +94,9 @@ async def lifespan_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     Opens the database and Redis connection pools, so readiness reports real
     dependency state.
     """
-    from asgi_lifespan import LifespanManager  # type: ignore[import-not-found]
+    from asgi_lifespan import LifespanManager
 
-    async with LifespanManager(app):  # pragma: no cover - optional dependency
+    async with LifespanManager(app):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as http_client:
             yield http_client

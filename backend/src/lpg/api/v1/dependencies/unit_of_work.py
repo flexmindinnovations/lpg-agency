@@ -13,20 +13,27 @@ database and Redis connections. Dependency-wiring modules under
 ``api/v1/dependencies/`` are where the API layer is allowed to know
 concrete infrastructure types exist, precisely so that routers and use cases
 never have to (see the ``ignore_imports`` entries in ``pyproject.toml``).
+
+``TenantContext``/``UnitOfWork``/``AsyncIterator`` are real imports, not
+``TYPE_CHECKING``-guarded — ``get_unit_of_work`` is itself passed to
+``Depends()`` at every call site, and with ``from __future__ import
+annotations``, FastAPI resolves its signature via
+``typing.get_type_hints()`` at request time. See
+``api/v1/routers/auth.py``'s module docstring for the full failure mode
+this avoids (found by a failing Phase 6 end-to-end test — this exact bug
+was latent here too, just never triggered, since no router had used this
+dependency yet).
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from collections.abc import AsyncIterator
+from typing import Annotated
 
 from fastapi import Depends
 
 from lpg.api.v1.dependencies.tenant import get_tenant_context
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from lpg.application.common.ports import TenantContext, UnitOfWork
+from lpg.application.common.ports import TenantContext, UnitOfWork
 
 
 async def get_unit_of_work(
