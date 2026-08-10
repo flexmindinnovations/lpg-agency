@@ -38,12 +38,13 @@ All tables across 9 PostgreSQL schemas (`tenant`, `customer`, `orders`, `deliver
 | Column | Type | Nullable | Default | Constraints |
 |---|---|---|---|---|
 | name | text | No | — | length 1–200 |
+| slug | text | No | — | unique, URL-safe (predates this doc — Phase 2's original migration, never previously documented here) |
 | status | text | No | `'trial'` | CHECK IN ('trial','active','suspended','closed') |
 | subscription_plan | text | No | `'standard'` | — |
 | primary_contact_email | text | No | — | valid email format (CHECK via regex) |
 | country | char(2) | No | `'IN'` | ISO 3166-1 alpha-2 |
 
-**PK:** `id`. **Unique:** none beyond id. **Indexes:** `idx_tenant_status`.
+**PK:** `id`. **Unique:** `slug`. **Indexes:** `idx_tenant_status`.
 **Relationships:** parent of branch, warehouse, tenant_configuration, cylinder_type, and (transitively) everything tenant-scoped.
 **Business Rules:** never hard-deleted; `closed` is terminal.
 **Example:** `{name: "Sunrise Gas Agency", status: "active", country: "IN"}`
@@ -90,6 +91,50 @@ All tables across 9 PostgreSQL schemas (`tenant`, `customer`, `orders`, `deliver
 | is_active | boolean | No | `true` | — |
 
 **Example:** `{name: "14.2kg Domestic", weight_kg: 14.20}`
+
+### `tenant.price_list` **[Append-Only]**
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| tenant_id | uuid | No | — | FK → tenant.tenant |
+| cylinder_type_id | uuid | No | — | FK → tenant.cylinder_type |
+| customer_type | text | No | — | CHECK IN ('domestic','commercial','industrial','government') |
+| branch_id | uuid | Yes | null | FK → tenant.branch; null = tenant-wide default |
+| price | numeric(10,2) | No | — | CHECK > 0 |
+| effective_from | timestamptz | No | — | — |
+
+**Unique:** `uq_price_list_dimension_effective (tenant_id, cylinder_type_id, customer_type, branch_id, effective_from)` — `UNIQUE NULLS NOT DISTINCT` (PostgreSQL 15+), so a plain `UNIQUE` constraint's "NULL is never equal to NULL" semantics can't silently admit duplicate tenant-wide (`branch_id IS NULL`) default rows for the same dimension.
+**Business Rules:** historized, same pattern as `tenant_configuration` — "changing" a price inserts a new row with a later `effective_from`, never an update. A branch-specific row overrides the tenant-wide default (`branch_id IS NULL`) for the same key at the same point in time; resolved by `EffectivePriceResolver` (`01-domain-model.md` §5). Chosen over folding price into `tenant_configuration`'s jsonb blob because it has a real lookup dimension (cylinder type x customer type x optional branch) that Order Management (Phase 10) will query directly.
+**Example:** `{cylinder_type_id: "...", customer_type: "domestic", branch_id: null, price: 950.00, effective_from: "2026-04-01"}`
+
+### `tenant.feature_flag_override`
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| tenant_id | uuid | No | — | FK → tenant.tenant |
+| flag_key | text | No | — | FK → platform.feature_flag.key |
+| is_enabled | boolean | No | — | — |
+
+**Unique:** `uq_feature_flag_override_tenant_flag (tenant_id, flag_key)`. **RLS:** standard tenant-isolation policy.
+**Business Rules:** an explicit override always wins over the platform default/rollout for that tenant. Lives in `tenant` (not `platform`) because it's tenant-owned data, even though it references a `platform.feature_flag` row — see `FeatureFlagService`, `01-domain-model.md` §5, for the full precedence order (schedule → override → default → rollout percentage).
+**Example:** `{flag_key: "sms_reminders_enabled", is_enabled: true}`
+
+---
+
+## Schema: `platform`
+**New in Phase 7** — holds genuinely cross-tenant reference data, following the same non-RLS-reference-data precedent `identity.role`/`identity.permission` already established. Write access is enforced at the application layer, not by database grants (see `feature_flag`'s Design Decision below).
+
+### `platform.feature_flag`
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| key | text | No | — | PK |
+| description | text | No | — | max length 500 |
+| is_enabled_by_default | boolean | No | `false` | — |
+| rollout_percentage | integer | Yes | null | CHECK BETWEEN 0 AND 100; null = 100 (no gradual rollout) |
+| starts_at | timestamptz | Yes | null | scheduling: flag inactive before this time |
+| ends_at | timestamptz | Yes | null | scheduling: flag inactive after this time |
+
+**PK:** `key`. **RLS:** none — see schema note above.
+**Design Decision:** SELECT is granted broadly (every request needs to evaluate flags); INSERT/UPDATE are granted to the application role too, but gated by a live permission check (`feature_flags:manage_platform`, `super_admin` only) in the use case layer — the same high-sensitivity live-recheck pattern `reconciliation:approve` uses, since the application always connects to Postgres as one role regardless of which user is authenticated.
+**Example:** `{key: "sms_reminders_enabled", is_enabled_by_default: false, rollout_percentage: 25}`
 
 ---
 
@@ -408,7 +453,7 @@ Standard child entities — see `06-data-dictionary.md`.
 | Column | Type | Nullable | Default | Constraints |
 |---|---|---|---|---|
 | tenant_id | uuid | Yes | null | null only for Super Admin |
-| branch_id | uuid | Yes | null | FK |
+| branch_id | uuid | Yes | null | FK → tenant.branch(id) — added Phase 7, once `tenant.branch` existed; deliberately left dangling (no FK) by Phase 6 |
 | email | text | Yes | null | unique partial index where not null |
 | phone_number | text | Yes | null | unique per tenant partial index |
 | password_hash | text | Yes | null | null for OTP-only accounts |

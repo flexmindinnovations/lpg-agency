@@ -18,7 +18,9 @@ LPG Agency Management Platform
 
 **Phase 6 — Authentication & Authorization** ✅ **COMPLETE** — started and finished 2026-08-10 on explicit instruction, immediately after Phase 5 closed out. All 12 tracked areas (A–L) complete and verified across all three stacks. See [`planning/features/06-authentication-authorization/STATUS.md`](./features/06-authentication-authorization/STATUS.md). Replaces Phase 2's interim `HeaderTenantResolver` with a real, hand-built Identity module — JWT (RS256, `pyjwt[crypto]`) + Argon2id password auth, OTP login for Customer/Driver, RBAC (claims-based + live), password reset — under strict per-tenant RLS via narrowly-scoped `SECURITY DEFINER` PostgreSQL functions (ADR-035). Closes DW-12 (tenant-scoped sessions are now structurally mandatory, not conventional). Frontend: shell-bypass routing (ADR-036) so `/login` renders outside the authenticated shell, plus the first Reactive Forms feature library. Mobile: new `api_client` (ADR-037, hand-written, explicit revisit trigger) and `auth` packages, OTP sign-in wired into both apps with `go_router` guards. A critical, previously-latent FastAPI `Depends()`-resolution bug was found and fixed along the way (unrelated to auth specifically, caught only because this phase finally exercised the affected path end-to-end). 359 tests passing across all three stacks (259 backend + 56 frontend + 44 mobile).
 
-**Recommended next:** Phase 7 (Administration & Tenant/Master Data) — the next roadmap dependency now that real Authentication exists. WebSocket connection/subscription authorization (Phase 3's excluded item) is tracked as its own immediate fast-follow, not bundled into a later numbered phase — see `docs/architecture/15-architecture-decision-records.md`'s Deferred Decisions table.
+**Phase 7 — Administration & Tenant/Master Data** ✅ **COMPLETE** — started and finished 2026-08-10 on explicit instruction, immediately after Phase 6 closed out. All 15 tracked areas (A–O) complete and verified. See [`planning/features/07-administration-tenant-master-data/STATUS.md`](./features/07-administration-tenant-master-data/STATUS.md). Delivers master data for tenants to configure — Branch, Warehouse, Cylinder Type, historized Tenant Configuration + Price List (each with its own point-in-time resolver domain service), a full platform+tenant feature-flag system (percentage rollout, scheduling — the larger, non-recommended option the user explicitly chose over a simple boolean table), staff user management (extends the existing Identity bounded context), and a cursor-paginated audit-log read API. A documented divergence from `01-domain-model.md` §4.1: Branch/Warehouse/TenantConfiguration/CylinderType/PriceListEntry became independent aggregate roots rather than entities nested inside `Tenant`. 369 backend tests passing (up from 259), 56 frontend tests (unchanged — new admin libs have no dedicated component tests). Seven genuine, previously-latent bugs found and fixed along the way, including a pre-existing double `/api/v1` URL prefix affecting the whole app's API calls and an AG Grid 0px-height rendering bug across all 8 new admin pages.
+
+**Recommended next:** Phase 8 (Customer Management) — the next roadmap dependency now that Administration's master data exists for it to foreign-key against. WebSocket connection/subscription authorization (Phase 3's excluded item) remains tracked as its own immediate fast-follow, not bundled into a later numbered phase — see `docs/architecture/15-architecture-decision-records.md`'s Deferred Decisions table.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).
 
@@ -202,7 +204,7 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 | 4 | Angular 22 Web Foundation | ✅ Complete |
 | 5 | Flutter Application Foundations | ✅ Complete |
 | 6 | Authentication & Authorization | ✅ Complete |
-| 7 | Administration & Tenant/Master Data | Not started |
+| 7 | Administration & Tenant/Master Data | ✅ Complete |
 | 8 | Customer Management | Not started |
 | 9 | Inventory Management | Not started |
 | 10 | Order Management | Not started |
@@ -348,4 +350,4 @@ One verification remains **blocked**, recorded as blocked rather than complete: 
 
 ## Last Updated
 
-2026-08-10 — Phase 6 (Authentication & Authorization) complete. See the Current Phase section above and [`planning/features/06-authentication-authorization/STATUS.md`](./features/06-authentication-authorization/STATUS.md) for full detail.
+2026-08-10 — Phase 7 (Administration & Tenant/Master Data) complete. See the Current Phase section above and [`planning/features/07-administration-tenant-master-data/STATUS.md`](./features/07-administration-tenant-master-data/STATUS.md) for full detail.
