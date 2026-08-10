@@ -6,6 +6,12 @@
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "cd frontend && npx nx serve dashboard"],
       "port": 4200
+    },
+    {
+      "name": "backend-dev",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", ".claude\\backend-dev.bat"],
+      "port": 8000
     }
   ]
 }
