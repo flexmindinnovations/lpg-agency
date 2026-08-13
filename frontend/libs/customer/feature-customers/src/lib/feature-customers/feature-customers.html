@@ -1,0 +1,416 @@
+<div class="customer-container">
+  <!-- Left Side: Customer List -->
+  <div class="customer-list-section">
+    <div class="page-header">
+      <div class="page-header__text">
+        <h1 class="page-title">Customers</h1>
+        <p class="page-subtitle">Manage customer registrations, addresses, and KYC documents.</p>
+      </div>
+      <div class="page-header__actions">
+        <button
+          #registerTriggerEl
+          pButton
+          type="button"
+          (click)="openRegisterModal()"
+        >
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Register Customer <kbd class="ml-1 text-xs opacity-70">Ctrl+N</kbd></span>
+        </button>
+      </div>
+    </div>
+
+    @if (customers().length > 0 || searchQuery().length > 0) {
+    <div class="data-toolbar">
+      <div class="data-toolbar__filters">
+        <p-iconfield styleClass="w-full md:w-64">
+          <p-inputicon styleClass="pi pi-search" />
+          <input
+            id="customer-search-input"
+            pInputText
+            type="text"
+            class="w-full"
+            placeholder="Search by name, phone or consumer number... (/)"
+            [value]="searchQuery()"
+            (input)="onSearch($event)"
+          />
+        </p-iconfield>
+      </div>
+      <div class="data-toolbar__actions">
+        <button pButton severity="secondary">
+          <i pButtonIcon class="pi pi-filter"></i>
+          <span pButtonLabel>Filter</span>
+        </button>
+      </div>
+    </div>
+    }
+
+    <div class="grid-wrapper">
+      <lpg-data-grid
+        [rows]="customers()"
+        [columns]="columns"
+        [loading]="loading()"
+        ariaLabel="Customers list"
+      />
+    </div>
+  </div>
+
+  <!-- Right Side: Customer Details Panel -->
+  <div class="customer-detail-section">
+    @if (selectedCustomer(); as customer) {
+    <div class="detail-card-header">
+      <div class="detail-card-title">
+        <h2>{{ customer.full_name }}</h2>
+        <p class="consumer-num">Consumer No: <strong>{{ customer.consumer_number }}</strong></p>
+      </div>
+      <div class="flex flex-col gap-2 align-end">
+        <p-tag
+          [severity]="customer.status === 'active' ? 'success' : 'warn'"
+          [value]="customer.status"
+        />
+        <p-tag
+          [severity]="customer.kyc_status === 'verified' ? 'success' : 'warn'"
+          [value]="'KYC: ' + customer.kyc_status"
+        />
+      </div>
+    </div>
+
+    <div class="detail-info-grid">
+      <div class="info-item">
+        <span class="info-label">Phone Number</span>
+        <span class="info-value">{{ customer.phone_number }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Customer Type</span>
+        <span class="info-value capitalize">{{ customer.customer_type }}</span>
+      </div>
+      @if (customer.lpg_subsidy_id) {
+      <div class="info-item">
+        <span class="info-label">LPG ID (17-digit)</span>
+        <span class="info-value">{{ customer.lpg_subsidy_id }}</span>
+      </div>
+      }
+    </div>
+
+    <p-tabs value="0">
+      <p-tablist>
+        <p-tab value="0">Delivery Addresses</p-tab>
+        <p-tab value="1">KYC Documents</p-tab>
+        <p-tab value="2">Cylinder Ledger</p-tab>
+      </p-tablist>
+      <p-tabpanels>
+        <p-tabpanel value="0">
+          <div class="addresses-section">
+            <div class="section-header">
+              <h3 class="section-heading">Delivery Addresses</h3>
+              <button
+                #addAddressTriggerEl
+                pButton
+                type="button"
+                severity="secondary"
+                size="small"
+                (click)="openAddAddressModal()"
+              >
+                <i pButtonIcon class="pi pi-plus"></i>
+                <span pButtonLabel>Add Address</span>
+              </button>
+            </div>
+            <div class="address-list">
+              @for (addr of customer.addresses; track addr.id) {
+              <div class="address-item">
+                <div>
+                  <span class="text-sm">{{ addr.address_line }}</span>
+                  @if (addr.is_primary) {
+                  <p-tag class="ml-2" severity="success" value="Primary" />
+                  }
+                </div>
+                @if (!addr.is_primary) {
+                <button
+                  pButton
+                  type="button"
+                  severity="secondary"
+                  size="small"
+                  (click)="makeAddressPrimary(addr.id)"
+                >
+                  Make Primary
+                </button>
+                }
+              </div>
+              } @empty {
+              <p class="empty-hint">No delivery addresses registered yet.</p>
+              }
+            </div>
+          </div>
+        </p-tabpanel>
+        <p-tabpanel value="1">
+          <div class="kyc-section">
+            <div class="section-header">
+              <h3 class="section-heading">KYC Documents</h3>
+              <button
+                #submitKycTriggerEl
+                pButton
+                type="button"
+                severity="secondary"
+                size="small"
+                (click)="openSubmitKycModal()"
+              >
+                <i pButtonIcon class="pi pi-upload"></i>
+                <span pButtonLabel>Submit KYC</span>
+              </button>
+            </div>
+            <div class="kyc-doc-list">
+              @for (doc of kycDocuments(); track doc.id) {
+              <div class="kyc-doc-item">
+                <div>
+                  <span class="text-sm capitalize"
+                    ><strong>{{ doc.doc_type }}</strong>: {{ doc.doc_reference }}</span
+                  >
+                  <p-tag
+                    class="ml-2"
+                    [severity]="doc.verification_status === 'verified' ? 'success' : 'warn'"
+                    [value]="doc.verification_status"
+                  />
+                </div>
+                @if (doc.verification_status === 'pending') {
+                <div class="flex gap-2">
+                  <button
+                    pButton
+                    type="button"
+                    severity="success"
+                    size="small"
+                    (click)="verifyKycDoc(doc.id, 'verified')"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    pButton
+                    type="button"
+                    severity="danger"
+                    size="small"
+                    (click)="verifyKycDoc(doc.id, 'rejected')"
+                  >
+                    Reject
+                  </button>
+                </div>
+                }
+              </div>
+              } @empty {
+              <p class="empty-hint">No KYC documents uploaded.</p>
+              }
+            </div>
+          </div>
+        </p-tabpanel>
+        <p-tabpanel value="2">
+          <lpg-feature-ledger [customerId]="customer.id" />
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
+
+    } @else {
+    <div class="empty-state">
+      <i class="pi pi-users empty-state__icon"></i>
+      <p class="empty-state__title">No customer selected</p>
+      <p class="empty-state__description">Select a customer from the list to view their profile, addresses, and KYC documents.</p>
+    </div>
+    }
+  </div>
+</div>
+
+<!-- Drawer: Register Customer -->
+<p-drawer
+  header="Register Customer"
+  [(visible)]="registerModalVisible"
+  position="right"
+  [modal]="true"
+  styleClass="w-full"
+  [style]="{ width: '100%', maxWidth: '36rem' }"
+  [closeOnEscape]="true"
+  closeAriaLabel="Close dialog"
+  (onHide)="registerTrigger()?.nativeElement?.focus()"
+>
+  <form id="registerCustomerForm" [formGroup]="registerForm" (ngSubmit)="submitRegister()" class="dialog-form" novalidate>
+    <div class="form-group">
+      <label for="reg-consumer">Consumer Number</label>
+      <input
+        pInputText
+        id="reg-consumer"
+        formControlName="consumer_number"
+        placeholder="e.g. CN-10001"
+        [invalid]="isInvalid(registerForm.controls.consumer_number)"
+        aria-describedby="reg-consumer-error"
+      />
+      @if (isInvalid(registerForm.controls.consumer_number)) {
+      <span id="reg-consumer-error" class="field-error">Consumer Number is required.</span>
+      }
+      <span class="field-hint"
+        >Auto-suggested — edit this if the customer already has an existing Consumer Number.</span
+      >
+    </div>
+    <div class="form-group">
+      <label for="reg-name">Full Name</label>
+      <input
+        pInputText
+        id="reg-name"
+        formControlName="full_name"
+        placeholder="e.g. Ramesh Patil"
+        [invalid]="isInvalid(registerForm.controls.full_name)"
+        aria-describedby="reg-name-error"
+      />
+      @if (isInvalid(registerForm.controls.full_name)) {
+      <span id="reg-name-error" class="field-error">Full Name is required.</span>
+      }
+    </div>
+    <div class="form-group">
+      <label for="reg-phone">Phone Number</label>
+      <input
+        pInputText
+        id="reg-phone"
+        formControlName="phone_number"
+        placeholder="e.g. +919876543210"
+        [invalid]="isInvalid(registerForm.controls.phone_number)"
+        aria-describedby="reg-phone-error"
+      />
+      @if (isInvalid(registerForm.controls.phone_number)) {
+      <span id="reg-phone-error" class="field-error"
+        >Enter a valid phone number in E.164 format (e.g. +919876543210).</span
+      >
+      }
+    </div>
+    <div class="form-group">
+      <label for="reg-type">Customer Type</label>
+      <p-select
+        id="reg-type"
+        formControlName="customer_type"
+        [options]="customerTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+      />
+    </div>
+    <div class="form-group">
+      <label for="reg-branch">Operating Branch</label>
+      <p-select
+        id="reg-branch"
+        formControlName="branch_id"
+        [options]="branches()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select Branch"
+        [invalid]="isInvalid(registerForm.controls.branch_id)"
+        aria-describedby="reg-branch-error"
+      />
+      @if (isInvalid(registerForm.controls.branch_id)) {
+      <span id="reg-branch-error" class="field-error">Select an operating branch.</span>
+      }
+    </div>
+    <div class="form-group">
+      <label for="reg-addr">Initial Delivery Address</label>
+      <input
+        pInputText
+        id="reg-addr"
+        formControlName="address_line"
+        placeholder="e.g. 123 Main Rd"
+        [invalid]="isInvalid(registerForm.controls.address_line)"
+        aria-describedby="reg-addr-error"
+      />
+      @if (isInvalid(registerForm.controls.address_line)) {
+      <span id="reg-addr-error" class="field-error">Delivery address is required.</span>
+      }
+    </div>
+    <div class="form-group">
+      <label for="reg-lpg-id">LPG ID (17-digit, optional)</label>
+      <input
+        pInputText
+        id="reg-lpg-id"
+        formControlName="lpg_subsidy_id"
+        placeholder="e.g. 12345678901234567"
+        maxlength="17"
+        [invalid]="isInvalid(registerForm.controls.lpg_subsidy_id)"
+        aria-describedby="reg-lpg-id-error"
+      />
+      @if (isInvalid(registerForm.controls.lpg_subsidy_id)) {
+      <span id="reg-lpg-id-error" class="field-error">Must be exactly 17 digits.</span>
+      }
+      <span class="field-hint"
+        >The nationally-standardized subsidy/KYC ID (Indane/Bharat Gas/HP Gas) — different from the
+        Consumer Number above.</span
+      >
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="closeRegisterModal()">
+        Cancel
+      </button>
+      <button pButton type="submit" [disabled]="registerForm.invalid">Register</button>
+    </div>
+  </form>
+</p-drawer>
+
+<!-- Modal 2: Add Address -->
+<p-drawer
+  header="Add Address"
+  [(visible)]="addAddressModalVisible"
+  position="right"
+  [modal]="true"
+  styleClass="w-full"
+  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [closeOnEscape]="true"
+  closeAriaLabel="Close dialog"
+  (onHide)="addAddressTrigger()?.nativeElement?.focus()"
+>
+  <form id="addAddressForm" [formGroup]="addressForm" (ngSubmit)="submitAddAddress()" class="dialog-form" novalidate>
+    <div class="form-group">
+      <label for="addr-line">Address Line</label>
+      <input
+        pInputText
+        id="addr-line"
+        formControlName="address_line"
+        placeholder="Street, Building, Area"
+      />
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="closeAddAddressModal()">
+        Cancel
+      </button>
+      <button pButton type="submit" [disabled]="addressForm.invalid">Add</button>
+    </div>
+  </form>
+</p-drawer>
+
+<!-- Modal 3: Submit KYC -->
+<p-drawer
+  header="Submit KYC Document"
+  [(visible)]="submitKycModalVisible"
+  position="right"
+  [modal]="true"
+  styleClass="w-full"
+  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [closeOnEscape]="true"
+  closeAriaLabel="Close dialog"
+  (onHide)="submitKycTrigger()?.nativeElement?.focus()"
+>
+  <form id="submitKycForm" [formGroup]="kycForm" (ngSubmit)="submitKyc()" class="dialog-form" novalidate>
+    <div class="form-group">
+      <label for="kyc-type">Document Type</label>
+      <p-select
+        id="kyc-type"
+        formControlName="doc_type"
+        [options]="kycDocTypeOptions"
+        optionLabel="label"
+        optionValue="value"
+      />
+    </div>
+    <div class="form-group">
+      <label for="kyc-ref">Document Reference No.</label>
+      <input
+        pInputText
+        id="kyc-ref"
+        formControlName="doc_reference"
+        placeholder="Enter reference ID"
+      />
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="closeSubmitKycModal()">
+        Cancel
+      </button>
+      <button pButton type="submit" [disabled]="kycForm.invalid">Submit</button>
+    </div>
+  </form>
+</p-drawer>
