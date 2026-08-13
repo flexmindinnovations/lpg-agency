@@ -1,0 +1,423 @@
+<div class="dispatch-container">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Dispatch Board</h1>
+      <p class="page-subtitle">Plan routes, load vehicles, and assign orders to drivers.</p>
+    </div>
+    <div class="page-header__actions">
+      <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Plan Route</span>
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage(); as msg) {
+    <p-message severity="error">{{ msg }}</p-message>
+  }
+  @if (infoMessage(); as msg) {
+    <p-message severity="success">{{ msg }}</p-message>
+  }
+
+  <div class="filters-row">
+    <div class="filters-row__field">
+      <label for="filter_branch">Branch</label>
+      <p-select
+        id="filter_branch"
+        [options]="branches()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="All branches"
+        [showClear]="true"
+        [ngModel]="filterBranchId()"
+        (ngModelChange)="onFilterBranchChange($event)"
+      />
+    </div>
+    <div class="filters-row__field">
+      <label for="filter_date">Date</label>
+      <p-datepicker
+        id="filter_date"
+        [showIcon]="true"
+        [showOnFocus]="false"
+        [showButtonBar]="true"
+        dateFormat="yy-mm-dd"
+        placeholder="All dates"
+        appendTo="body"
+        [ngModel]="filterDate()"
+        (ngModelChange)="onFilterDateChange($event)"
+      />
+    </div>
+  </div>
+
+  <div class="dispatch-layout">
+    <div class="route-board">
+      @for (status of statusColumns; track status) {
+        <div class="route-column">
+          <div class="route-column__header">
+            <span>{{ statusLabel(status) }}</span>
+            <span class="route-column__count">{{ (routesByStatus().get(status) ?? []).length }}</span>
+          </div>
+          <div class="route-column__cards">
+            @for (route of routesByStatus().get(status); track route.id) {
+              <button type="button" class="route-card" (click)="openRouteDetail(route)">
+                <div class="route-card__row">
+                  <span class="route-card__date">{{ route.date | date: 'mediumDate' }}</span>
+                  <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
+                </div>
+                <div class="route-card__row">
+                  <i class="pi pi-id-card"></i>
+                  <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+                </div>
+                <div class="route-card__row">
+                  <i class="pi pi-truck"></i>
+                  <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+                </div>
+                <div class="route-card__row">
+                  <i class="pi pi-map-marker"></i>
+                  <span>{{ route.stops?.length ?? 0 }} stop(s)</span>
+                </div>
+              </button>
+            } @empty {
+              <p class="empty-hint">No routes.</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <aside class="unassigned-panel">
+      <h2 class="section-title">Unassigned Orders</h2>
+      <div class="unassigned-list">
+        @for (order of unassignedOrders(); track order.id) {
+          <div class="unassigned-card">
+            <div class="unassigned-card__info">
+              <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top">{{ order.id.split('-')[0] }}…</span>
+              <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
+            </div>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              size="small"
+              [disabled]="assignableRoutes().length === 0"
+              (click)="openAssignOrderDrawer(order)"
+            >
+              Assign
+            </button>
+          </div>
+        } @empty {
+          <p class="empty-hint">All confirmed orders are assigned to a route.</p>
+        }
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Plan Route Drawer -->
+<p-drawer
+  [(visible)]="showPlanModal"
+  position="right"
+  [modal]="true"
+  [style]="{ width: '100%', maxWidth: '28rem' }"
+  header="Plan Delivery Route"
+  (onHide)="planTrigger()?.nativeElement?.focus()"
+>
+  <form [formGroup]="planForm" (ngSubmit)="onSubmitPlan()" class="dialog-form">
+    <div class="form-group">
+      <label for="plan_branch">Branch</label>
+      <p-select
+        id="plan_branch"
+        formControlName="branch_id"
+        [options]="branches()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select a branch"
+        [fluid]="true"
+        [appendTo]="'body'"
+      />
+      @if (planForm.get('branch_id')?.invalid && planForm.get('branch_id')?.touched) {
+        <small class="field-error">Branch is required.</small>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="date">Date</label>
+      <p-datepicker
+        id="date"
+        formControlName="date"
+        [showIcon]="true"
+        [showOnFocus]="false"
+        dateFormat="yy-mm-dd"
+        appendTo="body"
+        [fluid]="true"
+      />
+      @if (planForm.get('date')?.invalid && planForm.get('date')?.touched) {
+        <small class="field-error">Date is required.</small>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="driver_id">Driver</label>
+      <p-select
+        id="driver_id"
+        formControlName="driver_id"
+        [options]="drivers()"
+        optionLabel="employee_code"
+        optionValue="id"
+        placeholder="Select a driver"
+        [fluid]="true"
+        [appendTo]="'body'"
+      />
+      @if (planForm.get('driver_id')?.invalid && planForm.get('driver_id')?.touched) {
+        <small class="field-error">Driver is required.</small>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="vehicle_id">Vehicle</label>
+      <p-select
+        id="vehicle_id"
+        formControlName="vehicle_id"
+        [options]="vehicles()"
+        optionLabel="registration_number"
+        optionValue="id"
+        placeholder="Select a vehicle"
+        [fluid]="true"
+        [appendTo]="'body'"
+      />
+      @if (planForm.get('vehicle_id')?.invalid && planForm.get('vehicle_id')?.touched) {
+        <small class="field-error">Vehicle is required.</small>
+      }
+    </div>
+
+    <div class="modal-actions">
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        (click)="showPlanModal.set(false)"
+      >
+        Cancel
+      </button>
+      <button
+        pButton
+        type="submit"
+        [loading]="loading()"
+        [disabled]="planForm.invalid"
+      >
+        Plan Route
+      </button>
+    </div>
+  </form>
+</p-drawer>
+
+<!-- Route Detail Drawer -->
+<p-drawer
+  [(visible)]="showRouteDetail"
+  position="right"
+  [modal]="true"
+  styleClass="!w-full md:!w-[36rem]"
+  header="Route Detail"
+>
+  @if (selectedRoute(); as route) {
+    <div class="route-detail">
+      <div class="detail-grid">
+        <div class="detail-field">
+          <span class="detail-field__label">Status</span>
+          <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Date</span>
+          <span>{{ route.date | date: 'mediumDate' }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Driver</span>
+          <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Vehicle</span>
+          <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        @if (canLoadRoute()) {
+          <button pButton type="button" severity="secondary" (click)="openLoadForm()">
+            <i pButtonIcon class="pi pi-inbox"></i>
+            <span pButtonLabel>Load Vehicle</span>
+          </button>
+        }
+        @if (canStartRoute()) {
+          <button pButton type="button" [loading]="loading()" (click)="onStartRoute()">
+            <i pButtonIcon class="pi pi-play"></i>
+            <span pButtonLabel>Start Route</span>
+          </button>
+        }
+        @if (canCancelRoute()) {
+          <button
+            pButton
+            type="button"
+            severity="danger"
+            [loading]="loading()"
+            (click)="onCancelRoute()"
+          >
+            <i pButtonIcon class="pi pi-times"></i>
+            <span pButtonLabel>Cancel Route</span>
+          </button>
+        }
+        @if (canReconcileRoute()) {
+          <button
+            pButton
+            type="button"
+            [loading]="loading()"
+            (click)="onReconcileRoute()"
+          >
+            <i pButtonIcon class="pi pi-check-square"></i>
+            <span pButtonLabel>Reconcile</span>
+          </button>
+        }
+      </div>
+
+      @if (route.status === 'completed') {
+        <p-message severity="info">
+          <span>Reconciling requires an approved reconciliation record for this vehicle.</span>
+          <button pButton type="button" text (click)="goToInventoryReconciliation()">
+            Go to Inventory
+          </button>
+        </p-message>
+      }
+
+      @if (showLoadForm()) {
+        <div class="load-form">
+          <h3 class="section-title">Load Vehicle</h3>
+          <form [formGroup]="loadForm" (ngSubmit)="onSubmitLoad()" class="dialog-form">
+            <div class="form-group">
+              <label for="load_warehouse">Warehouse</label>
+              <p-select
+                id="load_warehouse"
+                formControlName="warehouse_id"
+                [options]="warehouses()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select a warehouse"
+                [fluid]="true"
+                [appendTo]="'body'"
+              />
+            </div>
+
+            <span class="load-form__section-label">Cylinder Lines</span>
+            <div formArrayName="lines" class="load-lines">
+              @for (line of loadLines.controls; track $index) {
+                <div [formGroupName]="$index" class="load-line">
+                  <p-select
+                    formControlName="cylinder_type_id"
+                    [options]="cylinderTypes()"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Cylinder type"
+                    [fluid]="true"
+                    [appendTo]="'body'"
+                  />
+                  <p-inputnumber formControlName="quantity" [min]="1" [fluid]="true" />
+                  <p-button
+                    [text]="true"
+                    severity="danger"
+                    icon="pi pi-trash"
+                    [disabled]="loadLines.length <= 1"
+                    (onClick)="removeLoadLine($index)"
+                  ></p-button>
+                </div>
+              }
+            </div>
+            <button pButton type="button" text (click)="addLoadLine()">
+              <i pButtonIcon class="pi pi-plus"></i>
+              <span pButtonLabel>Add Line</span>
+            </button>
+
+            <div class="modal-actions">
+              <button pButton type="button" severity="secondary" (click)="showLoadForm.set(false)">
+                Cancel
+              </button>
+              <button pButton type="submit" [disabled]="loadForm.invalid || loading()">
+                Load
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      <h3 class="section-title">Stops</h3>
+      <div class="stops-list">
+        @for (stop of route.stops ?? []; track stop.id) {
+          <div class="stop-card">
+            <div class="stop-card__row">
+              <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
+              <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top">Order {{ stop.order_id.split('-')[0] }}…</span>
+              <p-tag [severity]="statusSeverity(stop.status)" [value]="statusLabel(stop.status)" />
+            </div>
+            @if (stop.failure_reason) {
+              <span class="stop-card__failure">{{ stop.failure_reason }}</span>
+            }
+            @if (stop.proof_of_delivery; as pod) {
+              <div class="stop-card__pod">
+                <span>POD:</span>
+                <span>{{ pod.otp_verified ? 'OTP verified' : 'OTP not verified' }}</span>
+                @if (pod.signature_url) {
+                  <span>Signature captured</span>
+                }
+                @if (pod.photo_url) {
+                  <span>Photo captured</span>
+                }
+              </div>
+            }
+          </div>
+        } @empty {
+          <p class="empty-hint">No stops on this route yet.</p>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="empty-hint">Loading route…</p>
+  }
+</p-drawer>
+
+<!-- Assign Order to Route Drawer -->
+<p-drawer
+  [(visible)]="showAssignOrderDrawer"
+  position="right"
+  [modal]="true"
+  [style]="{ width: '100%', maxWidth: '28rem' }"
+  header="Assign Order to Route"
+>
+  @if (selectedOrderForAssign(); as order) {
+    <form [formGroup]="assignOrderForm" (ngSubmit)="onSubmitAssignOrder()" class="dialog-form">
+      <p class="assign-order-summary">
+        Order <strong [pTooltip]="order.id" tooltipPosition="top">{{ order.id.split('-')[0] }}…</strong> — {{ order.delivery_address.address_line }}
+      </p>
+      <div class="form-group">
+        <label for="assign_route">Target Route</label>
+        <p-select
+          id="assign_route"
+          formControlName="route_id"
+          [options]="assignableRouteOptions()"
+          optionLabel="label"
+          optionValue="id"
+          placeholder="Select a route"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+        @if (assignableRoutes().length === 0) {
+          <small class="field-error">No planned or loaded routes are available. Plan a route first.</small>
+        }
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showAssignOrderDrawer.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="assignOrderForm.invalid || loading()">
+          Assign
+        </button>
+      </div>
+    </form>
+  }
+</p-drawer>

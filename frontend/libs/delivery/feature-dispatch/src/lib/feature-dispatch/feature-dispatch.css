@@ -1,0 +1,199 @@
+:host {
+  display: block;
+  block-size: 100%;
+}
+
+.dispatch-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  block-size: 100%;
+}
+
+.filters-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filters-row__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-inline-size: 12rem;
+}
+
+.section-title {
+  font-size: var(--typography-heading3-font-size);
+  font-weight: var(--typography-heading3-font-weight);
+  margin: 0;
+}
+
+.empty-hint,
+.route-column__count,
+.filters-row__field label,
+.detail-field__label,
+.unassigned-card__id,
+.stop-card__order,
+.stop-card__failure,
+.stop-card__pod {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.dispatch-layout {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  gap: var(--spacing-md);
+  align-items: start;
+  flex: 1;
+  min-block-size: 0;
+}
+
+.route-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.route-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  min-inline-size: 0;
+  background: var(--color-surface-overlay);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+}
+
+.route-column__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: var(--typography-label-font-weight);
+}
+
+.route-column__cards,
+.unassigned-panel,
+.unassigned-list,
+.route-detail,
+.load-lines,
+.stops-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.route-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-base);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.route-card:hover {
+  border-color: var(--color-action-primary);
+}
+
+.route-card__row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--typography-body-small-font-size);
+  justify-content: space-between;
+}
+
+.route-card__date,
+.load-form__section-label,
+.stop-card__seq {
+  font-weight: var(--typography-label-font-weight);
+}
+
+.unassigned-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.unassigned-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-inline-size: 0;
+}
+
+.unassigned-card__addr,
+.assign-order-summary {
+  font-size: var(--typography-body-small-font-size);
+  margin: 0;
+}
+
+.unassigned-card__addr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--spacing-md);
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.detail-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.load-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-overlay);
+}
+
+.load-line {
+  display: grid;
+  grid-template-columns: 1fr 8rem auto;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.stop-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.stop-card__row,
+.stop-card__pod {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
