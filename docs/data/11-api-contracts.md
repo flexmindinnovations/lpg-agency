@@ -140,7 +140,7 @@ Base path `/api/v1`. Every endpoint requires `Authorization: Bearer <JWT>` unles
 
 ### `POST /api/v1/inventory-locations/{location_id}/adjustments`
 **Request:** `{ "cylinder_type_id", "from_status", "to_status", "quantity", "reason" }`
-**Permissions:** `inventory:adjust` (D-16 restricted, live-checked).
+**Permissions:** `inventory:adjust` (claims-based; not one of the four live-checked actions in `17-api-security.md` §7 — `reconciliation:approve` above is).
 **Errors:** `403`; `409 INSUFFICIENT_STOCK`; `409 INVALID_STATUS_TRANSITION`.
 
 ### `POST /api/v1/warehouses/{warehouse_id}/goods-receipt-notes`

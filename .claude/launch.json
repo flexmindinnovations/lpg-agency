@@ -5,7 +5,8 @@
       "name": "dashboard-dev",
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "cd frontend && npx nx serve dashboard"],
-      "port": 4200
+      "port": 4200,
+      "autoPort": false
     },
     {
       "name": "backend-dev",

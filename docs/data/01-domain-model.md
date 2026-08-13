@@ -131,9 +131,10 @@ flowchart LR
 - **Lifecycle:** 10-state machine, `08-state-machines.md` §2. "Booking" is the business term for an Order prior to `Confirmed` — no separate Booking entity.
 
 ### 4.4 Route
-- **Entities:** RouteStop, VehicleLoadEvent, VehicleShiftReconciliation
+- **Entities:** RouteStop
 - **Value Objects:** ProofOfDelivery, RouteStatus
-- **Lifecycle:** `Planned → Loaded → InProgress → Completed → Reconciled`.
+- **Lifecycle:** `Planned → Loaded → InProgress → Completed → Reconciled`, plus `Cancelled` (any pre-`InProgress` state) — `Completed` requires every `RouteStop` to have reached a terminal status (`Delivered`/`Failed`/`Cancelled`) and is entered automatically the instant the last stop does, not via a separate action.
+- **Divergence from the original design (Phase 12 implementation note):** `VehicleLoadEvent` and `VehicleShiftReconciliation`, listed above as entities in the original design, were never built as separate persisted entities. Both would have duplicated infrastructure Inventory Management (Phase 10) already owns: loading a vehicle is Inventory's own atomic warehouse→vehicle stock-transfer use case (`LoadTransferUseCase`), invoked by Route's `Loaded` transition rather than reimplemented under Delivery; reconciling a vehicle's stock is Inventory's own `ReconciliationRecord`/approval workflow, and Route's `Completed → Reconciled` transition is a thin check that an approved `ReconciliationRecord` already exists for that vehicle, not a second competing reconciliation mechanism. `VehicleLoaded`'s domain event remains the audit trail for a load; no new table was needed. Same class of divergence as §4.1's Branch/Warehouse/TenantConfiguration note above — implementation reused an existing consistency boundary rather than duplicating it.
 
 ### 4.5 CylinderLedger (Core)
 - **Entities:** LedgerTransaction (append-only, immutable)

@@ -33,6 +33,7 @@ Page Header, Section, Grid (12-column layout helper), Divider, Spacer.
 | SLA Countdown Badge | Complaint Queue, Complaint Detail |
 | Map | Route Planning Board, Stop Navigation (Driver App) |
 | Wizard Stepper | Tenant Onboarding flow (if surfaced in-product), multi-step forms |
+| Avatar, Popover, Toggle/Switch | Profile/Account Menu (App Shell sidebar footer, every authenticated page) |
 
 ## Platform Implementation Notes
 - Angular: every component in this catalog is a standalone component in the shared UI library, built primarily on **PrimeNG**, with Angular CDK primitives where a suitable low-level base exists (Overlay positioning, focus trap, key-manager) and Angular Material used selectively where it offers a superior primitive (per ADR-028), plus AG Grid — Community by default, Enterprise optional per feature — specifically for Data Grid (`14-data-grid-guidelines.md`).

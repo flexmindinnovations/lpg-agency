@@ -1,6 +1,50 @@
 {
   "components": {
     "schemas": {
+      "AddCustomerAddressRequest": {
+        "properties": {
+          "address_line": {
+            "minLength": 1,
+            "title": "Address Line",
+            "type": "string"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          }
+        },
+        "required": [
+          "address_line"
+        ],
+        "title": "AddCustomerAddressRequest",
+        "type": "object"
+      },
       "AdjustCylinderTypeWeightRequest": {
         "properties": {
           "weight_kg": {
@@ -23,11 +67,86 @@
         "title": "AdjustCylinderTypeWeightRequest",
         "type": "object"
       },
+      "AdjustInventoryRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "from_status": {
+            "title": "From Status",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "to_status": {
+            "title": "To Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "from_status",
+          "to_status",
+          "quantity",
+          "reason"
+        ],
+        "title": "AdjustInventoryRequest",
+        "type": "object"
+      },
+      "AdjustLedgerBalanceRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "description": "The ID of the cylinder type.",
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "delta": {
+            "description": "The positive or negative amount to adjust the balance by.",
+            "title": "Delta",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "The reason for this manual adjustment.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "delta",
+          "reason"
+        ],
+        "title": "AdjustLedgerBalanceRequest",
+        "type": "object"
+      },
       "AuditLogEntryResponse": {
         "properties": {
           "action": {
             "title": "Action",
             "type": "string"
+          },
+          "actor_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Display Name"
           },
           "actor_id": {
             "anyOf": [
@@ -75,6 +194,17 @@
             ],
             "title": "Correlation Id"
           },
+          "entity_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Display Name"
+          },
           "entity_id": {
             "anyOf": [
               {
@@ -103,8 +233,10 @@
         "required": [
           "id",
           "actor_id",
+          "actor_display_name",
           "entity_name",
           "entity_id",
+          "entity_display_name",
           "action",
           "performed_at",
           "correlation_id",
@@ -142,6 +274,20 @@
         "title": "AuditLogPageResponse",
         "type": "object"
       },
+      "Body_upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post",
+        "type": "object"
+      },
       "BranchResponse": {
         "properties": {
           "id": {
@@ -170,6 +316,158 @@
           "region"
         ],
         "title": "BranchResponse",
+        "type": "object"
+      },
+      "BulkCancelOrderResultItem": {
+        "properties": {
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "succeeded": {
+            "title": "Succeeded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "order_id",
+          "succeeded"
+        ],
+        "title": "BulkCancelOrderResultItem",
+        "type": "object"
+      },
+      "BulkCancelOrdersRequest": {
+        "properties": {
+          "order_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Order Ids",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_ids",
+          "reason"
+        ],
+        "title": "BulkCancelOrdersRequest",
+        "type": "object"
+      },
+      "BulkCancelOrdersResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BulkCancelOrderResultItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
+          }
+        },
+        "required": [
+          "job_id",
+          "results"
+        ],
+        "title": "BulkCancelOrdersResponse",
+        "type": "object"
+      },
+      "CancelOrderRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "CancelOrderRequest",
+        "type": "object"
+      },
+      "CancelOrderResponse": {
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/OrderResponse"
+          },
+          "pending_approval": {
+            "title": "Pending Approval",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "order",
+          "pending_approval"
+        ],
+        "title": "CancelOrderResponse",
+        "type": "object"
+      },
+      "ChangeCylinderStatusRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "from_status": {
+            "title": "From Status",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "to_status": {
+            "title": "To Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "from_status",
+          "to_status",
+          "quantity"
+        ],
+        "title": "ChangeCylinderStatusRequest",
         "type": "object"
       },
       "CreateBranchRequest": {
@@ -263,6 +561,102 @@
         "title": "CreateFeatureFlagRequest",
         "type": "object"
       },
+      "CreateOrderLineRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "CreateOrderLineRequest",
+        "type": "object"
+      },
+      "CreateOrderRequest": {
+        "properties": {
+          "address_id": {
+            "format": "uuid",
+            "title": "Address Id",
+            "type": "string"
+          },
+          "booking_source": {
+            "enum": [
+              "mobile_app",
+              "staff",
+              "phone",
+              "walk_in",
+              "whatsapp",
+              "api"
+            ],
+            "title": "Booking Source",
+            "type": "string"
+          },
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "delivery_address": {
+            "$ref": "#/components/schemas/DeliveryAddressPayload"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CreateOrderLineRequest"
+            },
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "payment_method_preference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cash",
+                  "upi",
+                  "card",
+                  "online_gateway",
+                  "credit"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Preference"
+          },
+          "requested_date": {
+            "format": "date-time",
+            "title": "Requested Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "customer_id",
+          "address_id",
+          "delivery_address",
+          "booking_source",
+          "requested_date",
+          "lines"
+        ],
+        "title": "CreateOrderRequest",
+        "type": "object"
+      },
       "CreateWarehouseRequest": {
         "properties": {
           "address_line": {
@@ -286,6 +680,238 @@
           "address_line"
         ],
         "title": "CreateWarehouseRequest",
+        "type": "object"
+      },
+      "CustomerAddressResponse": {
+        "properties": {
+          "address_line": {
+            "title": "Address Line",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_primary": {
+            "title": "Is Primary",
+            "type": "boolean"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          }
+        },
+        "required": [
+          "id",
+          "address_line",
+          "latitude",
+          "longitude",
+          "is_primary"
+        ],
+        "title": "CustomerAddressResponse",
+        "type": "object"
+      },
+      "CustomerPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CustomerPageResponse",
+        "type": "object"
+      },
+      "CustomerResponse": {
+        "description": "The general customer profile — deliberately excludes `kyc_documents`.\n\nKYC documents are more sensitive PII than the rest of this profile\n(`docs/data/17-api-security.md` §10) and are gated by their own\n`kyc:read` permission, distinct from `customers:read` — see\n`GET /customers/{id}/kyc`. `kyc_status` stays here: it is a coarse\naccount-status field on `customer.customer` itself, not a document.",
+        "properties": {
+          "addresses": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerAddressResponse"
+            },
+            "title": "Addresses",
+            "type": "array"
+          },
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "consumer_number": {
+            "title": "Consumer Number",
+            "type": "string"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kyc_status": {
+            "title": "Kyc Status",
+            "type": "string"
+          },
+          "lpg_subsidy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lpg Subsidy Id"
+          },
+          "phone_number": {
+            "title": "Phone Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "branch_id",
+          "consumer_number",
+          "full_name",
+          "phone_number",
+          "customer_type",
+          "kyc_status",
+          "status",
+          "lpg_subsidy_id",
+          "addresses"
+        ],
+        "title": "CustomerResponse",
+        "type": "object"
+      },
+      "CylinderLedgerBalanceItem": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "CylinderLedgerBalanceItem",
+        "type": "object"
+      },
+      "CylinderLedgerResponse": {
+        "properties": {
+          "balances": {
+            "items": {
+              "$ref": "#/components/schemas/CylinderLedgerBalanceItem"
+            },
+            "title": "Balances",
+            "type": "array"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "balances"
+        ],
+        "title": "CylinderLedgerResponse",
+        "type": "object"
+      },
+      "CylinderTypePriceCardResponse": {
+        "properties": {
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "name",
+          "weight_kg",
+          "customer_type",
+          "price"
+        ],
+        "title": "CylinderTypePriceCardResponse",
         "type": "object"
       },
       "CylinderTypeResponse": {
@@ -317,6 +943,246 @@
         "title": "CylinderTypeResponse",
         "type": "object"
       },
+      "DashboardActivityEntryResponse": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Display Name"
+          },
+          "entity_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Display Name"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_name": {
+            "title": "Entity Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "performed_at": {
+            "format": "date-time",
+            "title": "Performed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actor_display_name",
+          "entity_name",
+          "entity_id",
+          "entity_display_name",
+          "action",
+          "performed_at"
+        ],
+        "title": "DashboardActivityEntryResponse",
+        "type": "object"
+      },
+      "DashboardSummaryResponse": {
+        "properties": {
+          "customer_count": {
+            "title": "Customer Count",
+            "type": "integer"
+          },
+          "cylinder_type_count": {
+            "title": "Cylinder Type Count",
+            "type": "integer"
+          },
+          "driver_count": {
+            "title": "Driver Count",
+            "type": "integer"
+          },
+          "inventory_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Inventory By Status",
+            "type": "object"
+          },
+          "price_cards": {
+            "items": {
+              "$ref": "#/components/schemas/CylinderTypePriceCardResponse"
+            },
+            "title": "Price Cards",
+            "type": "array"
+          },
+          "recent_activity": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardActivityEntryResponse"
+            },
+            "title": "Recent Activity",
+            "type": "array"
+          },
+          "vehicle_count": {
+            "title": "Vehicle Count",
+            "type": "integer"
+          },
+          "vehicles_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Vehicles By Status",
+            "type": "object"
+          },
+          "warehouse_count": {
+            "title": "Warehouse Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customer_count",
+          "driver_count",
+          "vehicle_count",
+          "vehicles_by_status",
+          "warehouse_count",
+          "cylinder_type_count",
+          "inventory_by_status",
+          "price_cards",
+          "recent_activity"
+        ],
+        "title": "DashboardSummaryResponse",
+        "type": "object"
+      },
+      "DeliverOrderRequest": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveredLineRequest"
+            },
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "otp_code": {
+            "minLength": 1,
+            "title": "Otp Code",
+            "type": "string"
+          },
+          "proof_of_delivery": {
+            "$ref": "#/components/schemas/ProofOfDeliverySubmission"
+          }
+        },
+        "required": [
+          "lines",
+          "otp_code",
+          "proof_of_delivery"
+        ],
+        "title": "DeliverOrderRequest",
+        "type": "object"
+      },
+      "DeliverOrderResponse": {
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/OrderResponse"
+          },
+          "proof_of_delivery": {
+            "$ref": "#/components/schemas/ProofOfDeliveryResponse"
+          }
+        },
+        "required": [
+          "order",
+          "proof_of_delivery"
+        ],
+        "title": "DeliverOrderResponse",
+        "type": "object"
+      },
+      "DeliveredLineRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity_collected_empty": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Quantity Collected Empty",
+            "type": "integer"
+          },
+          "quantity_delivered": {
+            "minimum": 0.0,
+            "title": "Quantity Delivered",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity_delivered"
+        ],
+        "title": "DeliveredLineRequest",
+        "type": "object"
+      },
+      "DeliveryAddressPayload": {
+        "properties": {
+          "address_line": {
+            "minLength": 1,
+            "title": "Address Line",
+            "type": "string"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          }
+        },
+        "required": [
+          "address_line"
+        ],
+        "title": "DeliveryAddressPayload",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -344,6 +1210,109 @@
           "healthy"
         ],
         "title": "DependencyStatus",
+        "type": "object"
+      },
+      "DriverPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DriverResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "DriverPageResponse",
+        "type": "object"
+      },
+      "DriverResponse": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "employee_code": {
+            "title": "Employee Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "identity_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity User Id"
+          },
+          "license_expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Expiry Date"
+          },
+          "license_number": {
+            "title": "License Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "branch_id",
+          "identity_user_id",
+          "employee_code",
+          "license_number",
+          "license_expiry_date",
+          "status",
+          "version"
+        ],
+        "title": "DriverResponse",
         "type": "object"
       },
       "FeatureFlagEnabledResponse": {
@@ -443,6 +1412,98 @@
         "title": "FeatureFlagResponse",
         "type": "object"
       },
+      "GoodsReceiptRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity_received": {
+            "minimum": 1.0,
+            "title": "Quantity Received",
+            "type": "integer"
+          },
+          "source_omc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Omc"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity_received"
+        ],
+        "title": "GoodsReceiptRequest",
+        "type": "object"
+      },
+      "GoodsReceiptResponse": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "quantity_received": {
+            "title": "Quantity Received",
+            "type": "integer"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "received_by": {
+            "format": "uuid",
+            "title": "Received By",
+            "type": "string"
+          },
+          "source_omc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Omc"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "warehouse_id",
+          "cylinder_type_id",
+          "quantity_received",
+          "source_omc",
+          "received_by",
+          "received_at"
+        ],
+        "title": "GoodsReceiptResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -454,6 +1515,191 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InventoryBalanceLine": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "status",
+          "quantity"
+        ],
+        "title": "InventoryBalanceLine",
+        "type": "object"
+      },
+      "InventoryBalanceResponse": {
+        "properties": {
+          "balances": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryBalanceLine"
+            },
+            "title": "Balances",
+            "type": "array"
+          },
+          "location_ref_id": {
+            "format": "uuid",
+            "title": "Location Ref Id",
+            "type": "string"
+          },
+          "location_type": {
+            "enum": [
+              "warehouse",
+              "vehicle"
+            ],
+            "title": "Location Type",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_type",
+          "location_ref_id",
+          "tenant_id",
+          "balances"
+        ],
+        "title": "InventoryBalanceResponse",
+        "type": "object"
+      },
+      "InventoryTransactionPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryTransactionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "InventoryTransactionPageResponse",
+        "type": "object"
+      },
+      "InventoryTransactionResponse": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_location_id": {
+            "format": "uuid",
+            "title": "Inventory Location Id",
+            "type": "string"
+          },
+          "performed_at": {
+            "format": "date-time",
+            "title": "Performed At",
+            "type": "string"
+          },
+          "performed_by": {
+            "format": "uuid",
+            "title": "Performed By",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "reference_order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Order Id"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "to_status": {
+            "title": "To Status",
+            "type": "string"
+          },
+          "transaction_type": {
+            "title": "Transaction Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "inventory_location_id",
+          "cylinder_type_id",
+          "transaction_type",
+          "from_status",
+          "to_status",
+          "quantity",
+          "reference_order_id",
+          "reason",
+          "performed_by",
+          "performed_at"
+        ],
+        "title": "InventoryTransactionResponse",
         "type": "object"
       },
       "InviteStaffUserRequest": {
@@ -486,6 +1732,64 @@
         "title": "InviteStaffUserRequest",
         "type": "object"
       },
+      "KycDocumentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KycDocumentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "KycDocumentListResponse",
+        "type": "object"
+      },
+      "KycDocumentResponse": {
+        "properties": {
+          "doc_reference": {
+            "title": "Doc Reference",
+            "type": "string"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "verification_status": {
+            "title": "Verification Status",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "doc_type",
+          "doc_reference",
+          "verification_status",
+          "verified_at"
+        ],
+        "title": "KycDocumentResponse",
+        "type": "object"
+      },
       "LivenessResponse": {
         "description": "Process is up. Nothing external is consulted.",
         "properties": {
@@ -509,6 +1813,119 @@
           "version"
         ],
         "title": "LivenessResponse",
+        "type": "object"
+      },
+      "LoadTransferLineRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "status",
+          "quantity"
+        ],
+        "title": "LoadTransferLineRequest",
+        "type": "object"
+      },
+      "LoadTransferRequest": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LoadTransferLineRequest"
+            },
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "vehicle_id": {
+            "format": "uuid",
+            "title": "Vehicle Id",
+            "type": "string"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "vehicle_id",
+          "lines"
+        ],
+        "title": "LoadTransferRequest",
+        "type": "object"
+      },
+      "LoadTransferResponse": {
+        "properties": {
+          "vehicle_balance": {
+            "$ref": "#/components/schemas/InventoryBalanceResponse"
+          },
+          "warehouse_balance": {
+            "$ref": "#/components/schemas/InventoryBalanceResponse"
+          }
+        },
+        "required": [
+          "warehouse_balance",
+          "vehicle_balance"
+        ],
+        "title": "LoadTransferResponse",
+        "type": "object"
+      },
+      "LoadVehicleLineRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "LoadVehicleLineRequest",
+        "type": "object"
+      },
+      "LoadVehicleRequest": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LoadVehicleLineRequest"
+            },
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "lines"
+        ],
+        "title": "LoadVehicleRequest",
         "type": "object"
       },
       "LoginRequest": {
@@ -546,6 +1963,320 @@
           }
         },
         "title": "LogoutRequest",
+        "type": "object"
+      },
+      "NextConsumerNumberResponse": {
+        "properties": {
+          "consumer_number": {
+            "title": "Consumer Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "consumer_number"
+        ],
+        "title": "NextConsumerNumberResponse",
+        "type": "object"
+      },
+      "OrderLineResponse": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_backordered": {
+            "title": "Is Backordered",
+            "type": "boolean"
+          },
+          "quantity_collected_empty": {
+            "title": "Quantity Collected Empty",
+            "type": "integer"
+          },
+          "quantity_delivered": {
+            "title": "Quantity Delivered",
+            "type": "integer"
+          },
+          "quantity_ordered": {
+            "title": "Quantity Ordered",
+            "type": "integer"
+          },
+          "quantity_pending": {
+            "title": "Quantity Pending",
+            "type": "integer"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          }
+        },
+        "required": [
+          "id",
+          "cylinder_type_id",
+          "quantity_ordered",
+          "quantity_delivered",
+          "quantity_pending",
+          "quantity_collected_empty",
+          "is_backordered",
+          "unit_price"
+        ],
+        "title": "OrderLineResponse",
+        "type": "object"
+      },
+      "OrderPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrderResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "OrderPageResponse",
+        "type": "object"
+      },
+      "OrderResponse": {
+        "properties": {
+          "address_id": {
+            "format": "uuid",
+            "title": "Address Id",
+            "type": "string"
+          },
+          "booking_source": {
+            "enum": [
+              "mobile_app",
+              "staff",
+              "phone",
+              "walk_in",
+              "whatsapp",
+              "api"
+            ],
+            "title": "Booking Source",
+            "type": "string"
+          },
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "delivery_address": {
+            "$ref": "#/components/schemas/DeliveryAddressPayload"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLineResponse"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "payment_method_preference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cash",
+                  "upi",
+                  "card",
+                  "online_gateway",
+                  "credit"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Preference"
+          },
+          "requested_date": {
+            "format": "date-time",
+            "title": "Requested Date",
+            "type": "string"
+          },
+          "route_stop_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Stop Id"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "booked",
+              "confirmed",
+              "assigned",
+              "ready_for_dispatch",
+              "out_for_delivery",
+              "delivered",
+              "failed_delivery",
+              "cancelled",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "total_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Amount"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "branch_id",
+          "customer_id",
+          "address_id",
+          "delivery_address",
+          "status",
+          "booking_source",
+          "payment_method_preference",
+          "requested_date",
+          "metadata",
+          "route_stop_id",
+          "total_amount",
+          "lines"
+        ],
+        "title": "OrderResponse",
+        "type": "object"
+      },
+      "OrderStatusHistoryEntryResponse": {
+        "properties": {
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "changed_by": {
+            "format": "uuid",
+            "title": "Changed By",
+            "type": "string"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "booked",
+                  "confirmed",
+                  "assigned",
+                  "ready_for_dispatch",
+                  "out_for_delivery",
+                  "delivered",
+                  "failed_delivery",
+                  "cancelled",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "to_status": {
+            "enum": [
+              "draft",
+              "booked",
+              "confirmed",
+              "assigned",
+              "ready_for_dispatch",
+              "out_for_delivery",
+              "delivered",
+              "failed_delivery",
+              "cancelled",
+              "closed"
+            ],
+            "title": "To Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "order_id",
+          "from_status",
+          "to_status",
+          "changed_by",
+          "changed_at",
+          "reason"
+        ],
+        "title": "OrderStatusHistoryEntryResponse",
         "type": "object"
       },
       "OtpRequestRequest": {
@@ -622,6 +2353,57 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PlanRouteRequest": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "route_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Date"
+          },
+          "vehicle_id": {
+            "format": "uuid",
+            "title": "Vehicle Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "driver_id",
+          "vehicle_id"
+        ],
+        "title": "PlanRouteRequest",
+        "type": "object"
+      },
+      "PodAttachmentResponse": {
+        "properties": {
+          "blob_ref": {
+            "title": "Blob Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blob_ref"
+        ],
+        "title": "PodAttachmentResponse",
+        "type": "object"
+      },
       "PriceListEntryResponse": {
         "properties": {
           "branch_id": {
@@ -672,6 +2454,17 @@
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "permissions": {
             "items": {
               "type": "string"
@@ -706,6 +2499,220 @@
           "permissions"
         ],
         "title": "PrincipalResponse",
+        "type": "object"
+      },
+      "ProofOfDeliveryResponse": {
+        "properties": {
+          "amount_collected": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount Collected",
+            "type": "string"
+          },
+          "gps_lat": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Gps Lat",
+            "type": "string"
+          },
+          "gps_lng": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Gps Lng",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "otp_verified_at": {
+            "format": "date-time",
+            "title": "Otp Verified At",
+            "type": "string"
+          },
+          "payment_method": {
+            "enum": [
+              "cash",
+              "upi",
+              "card",
+              "online_gateway",
+              "credit"
+            ],
+            "title": "Payment Method",
+            "type": "string"
+          },
+          "photo_blob_ref": {
+            "title": "Photo Blob Ref",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "format": "uuid",
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "signature_blob_ref": {
+            "title": "Signature Blob Ref",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "order_id",
+          "otp_verified_at",
+          "signature_blob_ref",
+          "photo_blob_ref",
+          "gps_lat",
+          "gps_lng",
+          "payment_method",
+          "amount_collected",
+          "recorded_by",
+          "recorded_at"
+        ],
+        "title": "ProofOfDeliveryResponse",
+        "type": "object"
+      },
+      "ProofOfDeliverySchema": {
+        "properties": {
+          "gps_lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gps Lat"
+          },
+          "gps_lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gps Lon"
+          },
+          "otp_verified": {
+            "title": "Otp Verified",
+            "type": "boolean"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "signature_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Url"
+          }
+        },
+        "required": [
+          "otp_verified"
+        ],
+        "title": "ProofOfDeliverySchema",
+        "type": "object"
+      },
+      "ProofOfDeliverySubmission": {
+        "description": "All five fields are non-optional — a missing one is a 422 before the\nrequest ever reaches `DeliverOrderUseCase`.",
+        "properties": {
+          "amount_collected": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount Collected"
+          },
+          "gps_lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Gps Lat"
+          },
+          "gps_lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Gps Lng"
+          },
+          "payment_method": {
+            "enum": [
+              "cash",
+              "upi",
+              "card",
+              "online_gateway",
+              "credit"
+            ],
+            "title": "Payment Method",
+            "type": "string"
+          },
+          "photo_blob_ref": {
+            "minLength": 1,
+            "title": "Photo Blob Ref",
+            "type": "string"
+          },
+          "signature_blob_ref": {
+            "minLength": 1,
+            "title": "Signature Blob Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature_blob_ref",
+          "photo_blob_ref",
+          "gps_lat",
+          "gps_lng",
+          "payment_method",
+          "amount_collected"
+        ],
+        "title": "ProofOfDeliverySubmission",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -745,6 +2752,191 @@
         "title": "ReassignRoleRequest",
         "type": "object"
       },
+      "ReconciliationRecordCreateRequest": {
+        "properties": {
+          "actual_quantity": {
+            "minimum": 0.0,
+            "title": "Actual Quantity",
+            "type": "integer"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "status",
+          "actual_quantity"
+        ],
+        "title": "ReconciliationRecordCreateRequest",
+        "type": "object"
+      },
+      "ReconciliationRecordResponse": {
+        "properties": {
+          "actual_quantity": {
+            "title": "Actual Quantity",
+            "type": "integer"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "expected_quantity": {
+            "title": "Expected Quantity",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_location_id": {
+            "format": "uuid",
+            "title": "Inventory Location Id",
+            "type": "string"
+          },
+          "recorded_by": {
+            "format": "uuid",
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "variance": {
+            "title": "Variance",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "inventory_location_id",
+          "cylinder_type_id",
+          "status",
+          "expected_quantity",
+          "actual_quantity",
+          "variance",
+          "recorded_by",
+          "approved_by",
+          "approved_at"
+        ],
+        "title": "ReconciliationRecordResponse",
+        "type": "object"
+      },
+      "RecordCollectionRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "RecordCollectionRequest",
+        "type": "object"
+      },
+      "RecordDeliveryRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "RecordDeliveryRequest",
+        "type": "object"
+      },
+      "RecordFailedDeliveryRequest": {
+        "properties": {
+          "reason_code": {
+            "enum": [
+              "customer_unavailable",
+              "wrong_address",
+              "payment_refused",
+              "vehicle_issue",
+              "safety_issue"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "resolution_action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "reschedule",
+                  "cancel",
+                  "return_stock"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Action"
+          }
+        },
+        "required": [
+          "reason_code"
+        ],
+        "title": "RecordFailedDeliveryRequest",
+        "type": "object"
+      },
       "RefreshRequest": {
         "description": "`refresh_token` is optional in the body — the Dashboard's browser\nclient relies on the `HttpOnly` cookie instead\n(`api/v1/routers/auth.py`'s module docstring). Mobile clients, which\ncan't rely on a cookie, supply it here.",
         "properties": {
@@ -761,6 +2953,197 @@
           }
         },
         "title": "RefreshRequest",
+        "type": "object"
+      },
+      "RegisterCustomerRequest": {
+        "properties": {
+          "address_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line"
+          },
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "consumer_number": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Consumer Number",
+            "type": "string"
+          },
+          "customer_type": {
+            "default": "domestic",
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "lpg_subsidy_id": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{17}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lpg Subsidy Id"
+          },
+          "phone_number": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Phone Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "consumer_number",
+          "full_name",
+          "phone_number"
+        ],
+        "title": "RegisterCustomerRequest",
+        "type": "object"
+      },
+      "RegisterDriverRequest": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "employee_code": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Employee Code",
+            "type": "string"
+          },
+          "identity_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity User Id"
+          },
+          "license_expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Expiry Date"
+          },
+          "license_number": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "License Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "employee_code",
+          "license_number"
+        ],
+        "title": "RegisterDriverRequest",
+        "type": "object"
+      },
+      "RegisterVehicleRequest": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "capacity_units": {
+            "minimum": 1.0,
+            "title": "Capacity Units",
+            "type": "integer"
+          },
+          "make": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "ownership_type": {
+            "default": "owned",
+            "title": "Ownership Type",
+            "type": "string"
+          },
+          "registration_number": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Registration Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "registration_number",
+          "make",
+          "model",
+          "capacity_units"
+        ],
+        "title": "RegisterVehicleRequest",
         "type": "object"
       },
       "RelocateWarehouseRequest": {
@@ -831,6 +3214,155 @@
           "name"
         ],
         "title": "RenameWarehouseRequest",
+        "type": "object"
+      },
+      "RoutePageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RouteResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "RoutePageResponse",
+        "type": "object"
+      },
+      "RouteResponse": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "date": {
+            "format": "date-time",
+            "title": "Date",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/RouteStopResponse"
+            },
+            "title": "Stops",
+            "type": "array"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "vehicle_id": {
+            "format": "uuid",
+            "title": "Vehicle Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "branch_id",
+          "driver_id",
+          "vehicle_id",
+          "date",
+          "status",
+          "version"
+        ],
+        "title": "RouteResponse",
+        "type": "object"
+      },
+      "RouteStopResponse": {
+        "properties": {
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "proof_of_delivery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProofOfDeliverySchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          },
+          "sequence_number": {
+            "title": "Sequence Number",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "route_id",
+          "order_id",
+          "sequence_number",
+          "status"
+        ],
+        "title": "RouteStopResponse",
         "type": "object"
       },
       "ScheduleFeatureFlagRequest": {
@@ -1069,6 +3601,27 @@
         "title": "StaffUserResponse",
         "type": "object"
       },
+      "SubmitKycDocumentRequest": {
+        "properties": {
+          "doc_reference": {
+            "minLength": 1,
+            "title": "Doc Reference",
+            "type": "string"
+          },
+          "doc_type": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Doc Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_type",
+          "doc_reference"
+        ],
+        "title": "SubmitKycDocumentRequest",
+        "type": "object"
+      },
       "TenantConfigurationResponse": {
         "properties": {
           "config_key": {
@@ -1169,6 +3722,126 @@
         "title": "TokenResponse",
         "type": "object"
       },
+      "UpdateCustomerProfileRequest": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "lpg_subsidy_id": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{17}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lpg Subsidy Id"
+          },
+          "phone_number": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Phone Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "full_name",
+          "phone_number",
+          "customer_type",
+          "status"
+        ],
+        "title": "UpdateCustomerProfileRequest",
+        "type": "object"
+      },
+      "UpdateDriverLicenseRequest": {
+        "properties": {
+          "license_expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Expiry Date"
+          },
+          "license_number": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "License Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "license_number"
+        ],
+        "title": "UpdateDriverLicenseRequest",
+        "type": "object"
+      },
+      "UpdateDriverStatusRequest": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "UpdateDriverStatusRequest",
+        "type": "object"
+      },
+      "UpdateRouteStatusRequest": {
+        "properties": {
+          "status": {
+            "enum": [
+              "in_progress",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "UpdateRouteStatusRequest",
+        "type": "object"
+      },
+      "UpdateVehicleStatusRequest": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "UpdateVehicleStatusRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1209,6 +3882,112 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VehiclePageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VehicleResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "VehiclePageResponse",
+        "type": "object"
+      },
+      "VehicleResponse": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "capacity_units": {
+            "title": "Capacity Units",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "make": {
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "ownership_type": {
+            "title": "Ownership Type",
+            "type": "string"
+          },
+          "registration_number": {
+            "title": "Registration Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "branch_id",
+          "registration_number",
+          "make",
+          "model",
+          "ownership_type",
+          "capacity_units",
+          "status",
+          "version"
+        ],
+        "title": "VehicleResponse",
+        "type": "object"
+      },
+      "VerifyKycDocumentRequest": {
+        "properties": {
+          "status": {
+            "pattern": "^(verified|rejected)$",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "VerifyKycDocumentRequest",
+        "type": "object"
+      },
       "WarehouseResponse": {
         "properties": {
           "address_line": {
@@ -1235,6 +4014,40 @@
           "address_line"
         ],
         "title": "WarehouseResponse",
+        "type": "object"
+      },
+      "lpg__api__v1__schemas__order__AssignOrderRequest": {
+        "properties": {
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "vehicle_id": {
+            "format": "uuid",
+            "title": "Vehicle Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "driver_id",
+          "vehicle_id"
+        ],
+        "title": "AssignOrderRequest",
+        "type": "object"
+      },
+      "lpg__api__v1__schemas__route__AssignOrderRequest": {
+        "properties": {
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ],
+        "title": "AssignOrderRequest",
         "type": "object"
       }
     }
@@ -2886,6 +5699,2964 @@
         "summary": "Exchange a refresh token",
         "tags": [
           "Authentication"
+        ]
+      }
+    },
+    "/api/v1/customers": {
+      "get": {
+        "operationId": "list_customers_api_v1_customers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Customers",
+        "tags": [
+          "customers"
+        ]
+      },
+      "post": {
+        "operationId": "register_customer_api_v1_customers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Customer",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/next-consumer-number": {
+      "post": {
+        "operationId": "peek_next_consumer_number_api_v1_customers_next_consumer_number_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextConsumerNumberResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Peek Next Consumer Number",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}": {
+      "get": {
+        "operationId": "get_customer_api_v1_customers__customer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Customer",
+        "tags": [
+          "customers"
+        ]
+      },
+      "put": {
+        "operationId": "update_customer_profile_api_v1_customers__customer_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Customer Profile",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/addresses": {
+      "post": {
+        "operationId": "add_address_api_v1_customers__customer_id__addresses_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCustomerAddressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "uuid",
+                  "title": "Response Add Address Api V1 Customers  Customer Id  Addresses Post",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Address",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/addresses/{address_id}/primary": {
+      "put": {
+        "operationId": "set_primary_address_api_v1_customers__customer_id__addresses__address_id__primary_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "address_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Address Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Primary Address",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/kyc": {
+      "get": {
+        "operationId": "list_kyc_documents_api_v1_customers__customer_id__kyc_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycDocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Kyc Documents",
+        "tags": [
+          "customers"
+        ]
+      },
+      "post": {
+        "operationId": "submit_kyc_api_v1_customers__customer_id__kyc_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitKycDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "uuid",
+                  "title": "Response Submit Kyc Api V1 Customers  Customer Id  Kyc Post",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Kyc",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/kyc/{doc_id}/verify": {
+      "post": {
+        "operationId": "verify_kyc_api_v1_customers__customer_id__kyc__doc_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyKycDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Kyc",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/ledger": {
+      "get": {
+        "operationId": "get_ledger_api_v1_customers__customer_id__ledger_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderLedgerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Ledger",
+        "tags": [
+          "cylinder-ledger"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/ledger/adjust": {
+      "post": {
+        "operationId": "adjust_balance_api_v1_customers__customer_id__ledger_adjust_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustLedgerBalanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderLedgerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Adjust Balance",
+        "tags": [
+          "cylinder-ledger"
+        ]
+      }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "operationId": "get_dashboard_summary_api_v1_dashboard_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Consolidated platform-wide summary for the dashboard",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/drivers": {
+      "get": {
+        "description": "List drivers with optional search and filter.",
+        "operationId": "list_drivers_api_v1_drivers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Drivers",
+        "tags": [
+          "delivery"
+        ]
+      },
+      "post": {
+        "description": "Register a new driver profile.",
+        "operationId": "register_driver_api_v1_drivers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDriverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Driver",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/drivers/{driver_id}": {
+      "get": {
+        "description": "Retrieve a single driver by ID.",
+        "operationId": "get_driver_api_v1_drivers__driver_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Driver",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/drivers/{driver_id}/license": {
+      "patch": {
+        "description": "Update a driver's license information.",
+        "operationId": "update_driver_license_api_v1_drivers__driver_id__license_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverLicenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Driver License",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/drivers/{driver_id}/status": {
+      "patch": {
+        "description": "Transition a driver to a new status.",
+        "operationId": "update_driver_status_api_v1_drivers__driver_id__status_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Driver Status",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/adjustments": {
+      "post": {
+        "description": "Manual correction. 409 INSUFFICIENT_STOCK / INVALID_STATUS_TRANSITION as applicable.",
+        "operationId": "adjust_inventory_api_v1_inventory_locations__location_type___location_ref_id__adjustments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustInventoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryBalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Adjust Inventory",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/balance": {
+      "get": {
+        "description": "Current balance for a warehouse or vehicle. All-zero, not 404, if never touched.",
+        "operationId": "get_inventory_balance_api_v1_inventory_locations__location_type___location_ref_id__balance_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryBalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Inventory Balance",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/reconciliation-records": {
+      "post": {
+        "description": "Record a physical count against the tracked balance.\n\nRecording is routine; approval is the gated step.",
+        "operationId": "create_reconciliation_record_api_v1_inventory_locations__location_type___location_ref_id__reconciliation_records_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRecordCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Reconciliation Record",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/status-changes": {
+      "post": {
+        "description": "Move stock between statuses at one location (e.g. filled -> leakage).\n\n409 INVALID_STATUS_TRANSITION if the from/to pair is not permitted.",
+        "operationId": "change_cylinder_status_api_v1_inventory_locations__location_type___location_ref_id__status_changes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeCylinderStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryBalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Cylinder Status",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/transactions": {
+      "get": {
+        "description": "Most-recent-first, cursor-paginated transaction history.",
+        "operationId": "list_inventory_transactions_api_v1_inventory_locations__location_type___location_ref_id__transactions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryTransactionPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Inventory Transactions",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/load-transfers": {
+      "post": {
+        "description": "Move stock from a warehouse onto a vehicle — one transaction, or none.",
+        "operationId": "create_load_transfer_api_v1_inventory_load_transfers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadTransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadTransferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Load Transfer",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "description": "Order Queue — the dominant query pattern, status/branch/date filterable.",
+        "operationId": "list_orders_api_v1_orders_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Orders",
+        "tags": [
+          "orders"
+        ]
+      },
+      "post": {
+        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.",
+        "operationId": "create_order_api_v1_orders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/bulk-cancel": {
+      "post": {
+        "description": "<=50 order ids cancel synchronously (each its own transaction — see\n`get_cancel_order_use_case_factory`'s docstring for why one shared\ntransaction can't process more than the first order); more enqueues\n`bulk_cancel_orders`.",
+        "operationId": "bulk_cancel_orders_api_v1_orders_bulk_cancel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCancelOrdersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkCancelOrdersResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Cancel Orders",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}": {
+      "get": {
+        "operationId": "get_order_api_v1_orders__order_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/assign": {
+      "post": {
+        "description": "`confirmed -> assigned`. Reserves stock on the vehicle atomically with\nthe Order's own transition (BR-09/D-08 backorder split) and attaches a\n`delivery.route_stop` (Phase 12) — see `AssignOrderUseCase`'s docstring\nfor how the underlying `Route` is found or planned.",
+        "operationId": "assign_order_api_v1_orders__order_id__assign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/lpg__api__v1__schemas__order__AssignOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/cancel": {
+      "post": {
+        "description": "200 (pre-dispatch, immediately `cancelled`) or 202 (post-dispatch,\nstatus unchanged, pending Manager approval — D-19).",
+        "operationId": "cancel_order_api_v1_orders__order_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelOrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/cancel/approve": {
+      "post": {
+        "description": "Approve a pending post-dispatch cancellation. Live-checked (D-19).",
+        "operationId": "approve_order_cancellation_api_v1_orders__order_id__cancel_approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Order Cancellation",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/close": {
+      "post": {
+        "description": "`delivered -> closed` — manual interim action pending Phase 13's\nautomatic invoice-settlement trigger.",
+        "operationId": "close_order_api_v1_orders__order_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/confirm": {
+      "post": {
+        "description": "`booked -> confirmed`. Resolves and snapshots unit prices; runs the\nBR-04/BR-19 stub policy checks (see `infrastructure/order/policies.py`).",
+        "operationId": "confirm_order_api_v1_orders__order_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/deliver": {
+      "post": {
+        "description": "`out_for_delivery -> delivered`. Idempotency-Key required (offline-\nsync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);\npresent-but-invalid ones (blank ref, out-of-range GPS) are a 400\n`IncompletePodError`; wrong/expired OTP is a 409.",
+        "operationId": "deliver_order_api_v1_orders__order_id__deliver_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverOrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deliver Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/depart": {
+      "post": {
+        "description": "`ready_for_dispatch -> out_for_delivery` (\"driver departs\"). Issues\nthe delivery OTP to the customer's phone post-commit.",
+        "operationId": "depart_order_api_v1_orders__order_id__depart_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Depart Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/dispatch": {
+      "post": {
+        "description": "`assigned -> ready_for_dispatch` (\"vehicle loaded\").",
+        "operationId": "dispatch_order_api_v1_orders__order_id__dispatch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dispatch Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/failed-delivery": {
+      "post": {
+        "description": "`out_for_delivery -> failed_delivery` (D-12).",
+        "operationId": "record_failed_delivery_api_v1_orders__order_id__failed_delivery_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordFailedDeliveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Failed Delivery",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/history": {
+      "get": {
+        "description": "The order detail view's timeline — same row-scoping as `GET /orders/{order_id}`.",
+        "operationId": "list_order_status_history_api_v1_orders__order_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrderStatusHistoryEntryResponse"
+                  },
+                  "title": "Response List Order Status History Api V1 Orders  Order Id  History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Order Status History",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/pod-attachments": {
+      "post": {
+        "description": "Pre-upload a delivery photo/signature blob before `POST .../deliver`.",
+        "operationId": "upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PodAttachmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Pod Attachment",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/reschedule": {
+      "post": {
+        "description": "`failed_delivery -> ready_for_dispatch`. Also resets the paired\n`RouteStop` back to `pending` so the retry can reach `delivered` (see\n`RescheduleOrderUseCase`'s docstring).",
+        "operationId": "reschedule_order_api_v1_orders__order_id__reschedule_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reschedule Order",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/v1/reconciliation-records/{record_id}/approve": {
+      "post": {
+        "description": "Approve a reconciliation record. Live-checked (`docs/data/17-api-security.md` §7).",
+        "operationId": "approve_reconciliation_record_api_v1_reconciliation_records__record_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Reconciliation Record",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/routes": {
+      "get": {
+        "operationId": "list_routes_api_v1_routes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List routes",
+        "tags": [
+          "Routes"
+        ]
+      },
+      "post": {
+        "operationId": "plan_route_api_v1_routes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan a new route",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/active-for-driver/{driver_id}": {
+      "get": {
+        "operationId": "get_active_route_for_driver_api_v1_routes_active_for_driver__driver_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get active route for driver",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}": {
+      "get": {
+        "operationId": "get_route_api_v1_routes__route_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a specific route",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/assign-order": {
+      "post": {
+        "description": "The Dispatch Board's own multi-order grouping action — the Order\nQueue/Detail single-order \"Assign\" flow instead calls\n`POST /orders/{id}/assign`, which finds-or-creates a route and\ndelegates to this same use case internally (see `AssignOrderUseCase`'s\ndocstring in `application/order/use_cases.py`).",
+        "operationId": "assign_order_api_v1_routes__route_id__assign_order_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/lpg__api__v1__schemas__route__AssignOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign an unassigned order onto this route",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/load": {
+      "post": {
+        "description": "`planned -> loaded` (BR-12): atomic warehouse -> vehicle transfer.",
+        "operationId": "load_vehicle_for_route_api_v1_routes__route_id__load_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadVehicleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Load the vehicle and mark the route loaded",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/reconcile": {
+      "post": {
+        "description": "`completed -> reconciled` (BR-14) — `409 ROUTE_RECONCILIATION_PENDING`\nif the vehicle's `InventoryLocation` has no approved `ReconciliationRecord`\nyet (create/approve one via Inventory's own reconciliation endpoints\nfirst).",
+        "operationId": "complete_route_reconciliation_api_v1_routes__route_id__reconcile_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close out a route once its vehicle has been reconciled",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/status": {
+      "patch": {
+        "operationId": "update_route_status_api_v1_routes__route_id__status_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRouteStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update route status",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/vehicles": {
+      "get": {
+        "description": "List vehicles with optional search and filter.",
+        "operationId": "list_vehicles_api_v1_vehicles_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehiclePageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Vehicles",
+        "tags": [
+          "delivery"
+        ]
+      },
+      "post": {
+        "description": "Register a new vehicle.",
+        "operationId": "register_vehicle_api_v1_vehicles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterVehicleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Vehicle",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}": {
+      "get": {
+        "description": "Retrieve a single vehicle by ID.",
+        "operationId": "get_vehicle_api_v1_vehicles__vehicle_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Vehicle",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}/collections": {
+      "post": {
+        "description": "Empty cylinders are collected from a customer onto the vehicle.",
+        "operationId": "record_collection_api_v1_vehicles__vehicle_id__collections_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCollectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryBalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Collection",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}/deliveries": {
+      "post": {
+        "description": "Filled cylinders leave the vehicle to a customer.",
+        "operationId": "record_delivery_api_v1_vehicles__vehicle_id__deliveries_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordDeliveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryBalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Delivery",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}/status": {
+      "patch": {
+        "description": "Transition a vehicle to a new status.",
+        "operationId": "update_vehicle_status_api_v1_vehicles__vehicle_id__status_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Vehicle Status",
+        "tags": [
+          "delivery"
+        ]
+      }
+    },
+    "/api/v1/warehouses/{warehouse_id}/goods-receipt-notes": {
+      "post": {
+        "description": "Record a Goods Receipt Note — credits the warehouse's Filled balance.",
+        "operationId": "record_goods_receipt_api_v1_warehouses__warehouse_id__goods_receipt_notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodsReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodsReceiptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Goods Receipt",
+        "tags": [
+          "inventory"
         ]
       }
     },

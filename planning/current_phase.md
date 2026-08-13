@@ -20,7 +20,13 @@ LPG Agency Management Platform
 
 **Phase 7 — Administration & Tenant/Master Data** ✅ **COMPLETE** — started and finished 2026-08-10 on explicit instruction, immediately after Phase 6 closed out. All 15 tracked areas (A–O) complete and verified. See [`planning/features/07-administration-tenant-master-data/STATUS.md`](./features/07-administration-tenant-master-data/STATUS.md). Delivers master data for tenants to configure — Branch, Warehouse, Cylinder Type, historized Tenant Configuration + Price List (each with its own point-in-time resolver domain service), a full platform+tenant feature-flag system (percentage rollout, scheduling — the larger, non-recommended option the user explicitly chose over a simple boolean table), staff user management (extends the existing Identity bounded context), and a cursor-paginated audit-log read API. A documented divergence from `01-domain-model.md` §4.1: Branch/Warehouse/TenantConfiguration/CylinderType/PriceListEntry became independent aggregate roots rather than entities nested inside `Tenant`. 369 backend tests passing (up from 259), 56 frontend tests (unchanged — new admin libs have no dedicated component tests). Seven genuine, previously-latent bugs found and fixed along the way, including a pre-existing double `/api/v1` URL prefix affecting the whole app's API calls and an AG Grid 0px-height rendering bug across all 8 new admin pages.
 
-**Recommended next:** Phase 8 (Customer Management) — the next roadmap dependency now that Administration's master data exists for it to foreign-key against. WebSocket connection/subscription authorization (Phase 3's excluded item) remains tracked as its own immediate fast-follow, not bundled into a later numbered phase — see `docs/architecture/15-architecture-decision-records.md`'s Deferred Decisions table.
+**Phase 8 — Customer Management** ✅ **COMPLETE** — started 2026-08-10, closed out after a review-and-fix pass the same day. Implemented backend customer domain, clean architecture use cases, tenant-isolated repositories, RBAC-protected REST API, and a lazy-loaded Angular UI (search filters, AG Grid, detail view, PrimeNG `p-dialog` overlays). The review pass found and fixed a build-breaking `TYPE_CHECKING` bug (backend tests couldn't collect), two security gaps (KYC reference now encrypted at rest; `kyc:read`/`kyc:manage` split from general `customers:read`/`update`), missing RBAC-boundary tests, and a pre-existing AG Grid module-registration bug that had silently broken row selection/filtering since Phase 4. Full detail: [`planning/features/08-customer-management/STATUS.md`](./features/08-customer-management/STATUS.md). 447 backend tests passing repo-wide, `mypy`/`ruff`/`import-linter` clean; frontend lint/test/build clean, no CSS budget warnings.
+
+**Phase 9 — Driver Management** ✅ **COMPLETE** — started 2026-08-10, closed out after a review-and-fix pass on 2026-08-11. Implemented backend delivery bounded context (`delivery.driver` and `delivery.vehicle` aggregates, RLS-isolated repositories, use cases, RBAC permissions `drivers:read`, `drivers:manage`, `vehicles:read`, `vehicles:manage`, REST API endpoints), exported OpenAPI client, built lazy-loaded Angular UI libraries (`@lpg/delivery/feature-drivers` and `@lpg/delivery/feature-vehicles`), wired routes and navigation links. The original implementation self-reported `ruff check` as passing; it wasn't (4 real E501 errors). The review pass found and fixed that plus five more real defects: a missing FK/unique constraint on `driver.identity_user_id`, fabricated `created_at`/`updated_at` timestamps in the driver/vehicle API responses, an unreachable "Update Status" modal (no selection binding wired to the grid), every button on both pages rendering with an invisible/near-unclickable ~17×9px hitbox (wrong PrimeNG `pButton` API usage), and CSS referencing non-existent design tokens that silently broke dark/high-contrast theming on both pages (the same class of bug was also found and fixed in Phase 8's `feature-customers.css` while investigating). Full detail: [`planning/features/09-driver-management/STATUS.md`](./features/09-driver-management/STATUS.md). 455 backend tests passing repo-wide, `mypy --strict`/`ruff check`/`ruff format --check`/`import-linter` all clean; frontend lint/test/build clean; live-verified in the browser (registered a driver and a vehicle, confirmed status updates now reachable and correct for both).
+
+**Phase 10 — Inventory Management** ✅ **COMPLETE** — started and finished 2026-08-11 on explicit instruction, immediately after Phase 9 closed out. Implemented the `inventory` bounded context: `InventoryLocation` aggregate (warehouse/vehicle cylinder balances by type × status), goods receipt (GRN), atomic warehouse→vehicle load transfers, delivery/collection, status changes, manual adjustments, and reconciliation (create + live-checked approve), RBAC permissions `inventory:read`/`inventory:load`/`inventory:adjust`/`reconciliation:approve`, 10 REST endpoints, exported OpenAPI client, and a lazy-loaded Angular `@lpg/inventory/feature-inventory` library (location picker, balance grid, transaction history, 6 action drawers). See [`planning/features/10-inventory-management/STATUS.md`](./features/10-inventory-management/STATUS.md). Every mutating use case resolves its aggregate by `(location_type, location_ref_id)` rather than an opaque id — a never-touched warehouse/vehicle has no persisted row and returns an all-zero balance, not 404. Three real defects were found and fixed via independent verification against a real database before the automated test suite existed to catch them: a migration that would have double-seeded already-existing permission grants from Phase 6, a repository bug producing duplicate rows/FK-ordering failures when two mutations in one `save()` touched the same balance key, and a missing `Computed()` marker on a DB-generated column that crashed the reconciliation-approval path. 511 backend tests passing (56 new), `mypy --strict`/`import-linter`/`ruff` all clean; live-verified in the browser end to end (GRN → load transfer → delivery/collection independence → valid and invalid status transitions). Pre-existing, unrelated frontend failures were found in `customer-feature-customers`, two admin feature libraries, and `shell-layout.spec.ts` — confirmed via `git diff` to predate this phase — and flagged as a separate follow-up rather than fixed here.
+
+**Recommended next:** Phase 11 (Order Management) — it depends on both Customer Management and Inventory Management, both now complete.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).
 
@@ -205,23 +211,30 @@ Unchanged from the assessment, with Phase 0 now complete. Full version with rati
 | 5 | Flutter Application Foundations | ✅ Complete |
 | 6 | Authentication & Authorization | ✅ Complete |
 | 7 | Administration & Tenant/Master Data | ✅ Complete |
-| 8 | Customer Management | Not started |
-| 9 | Inventory Management | Not started |
-| 10 | Order Management | Not started |
-| 11 | Delivery Management | Not started |
-| 12 | Cylinder Ledger | Not started |
-| 13 | Accounting & Billing | Not started |
-| 14 | Notifications | Not started |
-| 15 | Complaint Management | Not started |
-| 16 | Reporting & Analytics | Not started |
-| 17 | Printing | Not started |
-| 18 | Production Hardening | Not started |
-| 19 | CI/CD and Deployment | Incremental from phase 1 |
-| 20 | Phase 2 / AI capabilities | Deferred per A-21 |
+| 8 | Customer Management | ✅ Complete |
+| 9 | Driver Management | ✅ Complete |
+| 10 | Inventory Management | ✅ Complete |
+| 11 | Order Management | ✅ Complete |
+| 12 | Delivery & Dispatch | ✅ Complete |
+| 13 | Cylinder Ledger | Not started |
+| 14 | Accounting & Billing | Not started |
+| 15 | Notifications | Not started |
+| 16 | Complaint Management | Not started |
+| 17 | Reporting & Analytics | Not started |
+| 18 | Printing | Not started |
+| 19 | Production Hardening | Not started |
+| 20 | CI/CD and Deployment | Incremental from phase 1 |
+| 21 | Phase 2 / AI capabilities | Deferred per A-21 |
 
 Two sequencing notes carried forward: **real-time and printing cross-cut** rather than being built once at the end, and **Administration precedes Customer Management** because master data is a hard prerequisite.
 
 ---
+
+## Current Phase
+
+**Phase 12 — Delivery & Dispatch** ✅ **COMPLETE** — started 2026-08-12, briefly (and incorrectly) marked COMPLETE the same day, corrected to "in progress" after an independent audit found the claim unsupported, then genuinely finished 2026-08-13. See [`planning/features/12-delivery-dispatch/STATUS.md`](./features/12-delivery-dispatch/STATUS.md) for the full audit findings and completion record. `Route`/`RouteStop` is now the real dispatcher-facing grouping construct: Order Management's interim `driver_id`/`vehicle_id` columns are gone, replaced by `route_stop_id`. Every gap the audit found is closed — backend tests exist (486 unit, Phase-12-scope integration 39/39), the `import-linter`/Nx-tag/lint breaks are fixed, and the Dispatch Board (status-column route board, Load/Start/Cancel/Reconcile actions, an unassigned-orders panel with click-to-assign) replaced the list+create stub. `VehicleLoadEvent`/`VehicleShiftReconciliation` were deliberately descoped — a documented divergence (`docs/data/01-domain-model.md` §4.4) reusing Inventory Management's existing load-transfer/reconciliation infrastructure instead of duplicating it. Two more real bugs were found and fixed along the way: Route's domain events were silently never dispatched (repository wrote them to a place `UnitOfWork.commit()` never read), and nothing ever transitioned a route to `completed` once all its stops resolved — fixed with an auto-complete-on-terminal-stops rule, confirmed live by cancelling an order and watching its route complete with zero manual action. Live-verified end to end in the browser (order → confirm → plan route across 2 real branches, proving the hardcoded-branch bug is fixed → assign → load vehicle → start → cancel → auto-complete → reconcile correctly gated with a 409 until an approved reconciliation exists); the one step not driven live (the actual driver-facing POD photo/signature upload) has no seeded driver login in this environment and is instead covered by the backend's own full-lifecycle integration test.
+
+**Recommended next:** Phase 13 (Cylinder Ledger) — it now has a trustworthy Delivery bounded context under it.
 
 ## Current Priority
 
@@ -275,8 +288,7 @@ All seven questions from the initial assessment were answered by the product own
 |---|---|
 | AG Grid Enterprise licence procurement (only if a feature needs it) | As triggered — no longer a standing Phase 4 blocker |
 | KYC document types (pending business/legal) | Phase 8 |
-| Inventory counter granularity (D-04/D-14 residual) | Phase 9 |
-| Cancellation fee amount/configurability (D-19 residual) | Phase 10 |
+| Cancellation fee amount/configurability (D-19 residual) | Phase 11 |
 | PDF rendering library (WeasyPrint / ReportLab) | Phase 17 |
 | Statutory backup retention duration | Phase 18 |
 | Azure hosting topology + IaC tool (Bicep / Terraform) | Before production |
@@ -350,4 +362,19 @@ One verification remains **blocked**, recorded as blocked rather than complete: 
 
 ## Last Updated
 
-2026-08-10 — Phase 7 (Administration & Tenant/Master Data) complete. See the Current Phase section above and [`planning/features/07-administration-tenant-master-data/STATUS.md`](./features/07-administration-tenant-master-data/STATUS.md) for full detail.
+2026-08-12 — Phase 11 (Order Management) verified as fully implemented end to end. The previous roadmap incorrectly stated it was not started. See the Current Phase section above.
+
+2026-08-12 — Phase 12 (Delivery & Dispatch) corrected from a false "COMPLETE" claim to "in progress." An independent audit (triggered by an unrelated Nx-lint failure surfaced while wiring the dashboard for Order Management) found zero backend tests, a broken `import-linter` contract, an empty-tags Nx config failing `dashboard:lint`, a hardcoded-first-branch bug, and most of the planned frontend scope (dispatch board, order-to-route assignment, POD recording, failed-delivery handling) never built. `TASKS.md`'s own checklist was 0% checked — it directly contradicted the STATUS.md completion claim. See [`planning/features/12-delivery-dispatch/STATUS.md`](./features/12-delivery-dispatch/STATUS.md) for full findings.
+
+2026-08-13 — Phase 12 (Delivery & Dispatch) genuinely completed, this time verified independently at every stage rather than self-reported: static gates re-run by hand, the full backend test suite re-run by hand (486 unit + Phase-12-scope integration 39/39), and a live-browser pass driving the real Dispatch Board against the real dev stack (plan → assign → load → start → cancel → auto-complete → reconcile-gated-409), not just a code review. See [`planning/features/12-delivery-dispatch/STATUS.md`](./features/12-delivery-dispatch/STATUS.md) for the full completion record, and `docs/data/01-domain-model.md` §4.4 for the `VehicleLoadEvent`/`VehicleShiftReconciliation` descope decision.
+
+2026-08-13 — **Post-completion, cross-cutting UI fix pass** (same day, user-reported from live use of the shipped Order Management/Dispatch frontend), spanning multiple already-complete phases' UI rather than belonging to any one phase. Fixed and independently verified (build + lint + live browser, not code-review-only):
+- Order Detail's header layout (ID/status-badge overlap, ID now truncated with a proper `pTooltip` instead of a raw title attribute).
+- The Deliver drawer's "Amount Collected" field — was a masked PrimeNG currency input with a real editing bug (typing over the mask inserted digits rather than replacing them); replaced with a plain numeric input + static ₹ prefix addon.
+- Checkbox-driven row selection on the Orders/Customers/Drivers/Vehicles grids replaced with a new, reusable, keyboard-accessible link-cell capability on the shared `DataGridComponent` (`libs/shared/ui`) — each grid keeps its existing per-row action, now triggered by a real link instead of an implicit checkbox click. Orders' "Order ID" column also moved to the first position.
+- Shell/page-header responsiveness (`flex-wrap` on the shared page-header pattern; a real flexbox bug in the app shell where the main content area had no `min-inline-size: 0` and could push the whole page into horizontal scroll instead of scrolling its own content).
+- **A genuine, previously-undiscovered, app-wide bug — now fully closed**: this project's installed PrimeNG v22 silently dropped the `icon`/`label` inputs from the `[pButton]` *directive* (confirmed by reading the installed package's compiled source) — every `<button pButton icon="...">` anywhere in the app, across every phase that ever used this pattern, was rendering with no icon. `<p-button>` (the separate component) is unaffected. Fixed and live-verified directly in `order-detail`, `feature-dispatch`, and `order-queue`; a background sweep then fixed the remaining 36 instances across 15 files spanning Inventory, Drivers, Vehicles, Customers, Admin (audit log, tenant settings, users), and the dashboard home page. Independently re-verified afterward (fresh uncached build, fresh lint on all 9 touched projects, direct source-code spot-checks) — zero TypeScript errors, 8/9 projects lint-clean. The one lint failure (`customer-feature-customers`) is a pre-existing, unrelated `@nx/enforce-module-boundaries` violation, not caused by this fix — see the note below.
+
+**Unrelated discovery made while verifying the above**: a new, untracked library `frontend/libs/ledger/feature-ledger/` appeared mid-session (timestamps ~12:50-12:56 on 2026-08-13, concurrent with this work) — evidence of a separate, parallel session actively starting Phase 13 (Cylinder Ledger) work outside this conversation. That session has already wired a `FeatureLedger` import into `feature-customers.ts`, which trips the Nx module-boundary lint rule (a `type:feature` lib importing another `type:feature` lib directly). This was not touched or fixed here — it belongs to whatever session is building it, and reverting or fixing it here risks clobbering in-progress work. Flagging so it isn't mistaken for a regression from this UI fix pass, and so Phase 13 (if genuinely underway) gets folded into this file properly once that work identifies itself.
+
+Full detail on the UI fixes above: [`planning/features/12-delivery-dispatch/STATUS.md`](./features/12-delivery-dispatch/STATUS.md)'s "Post-completion UI fixes" section (filed there since Dispatch Board was the most directly affected feature, even though the fixes span Customer/Driver/Vehicle/Order Management too).

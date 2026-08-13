@@ -55,8 +55,8 @@ None of the rows below have a corresponding exception class yet — **no busines
 
 | Error Code | HTTP Status | Message | Business Meaning | Recovery Suggestion | Reserved For |
 |---|---|---|---|---|---|
-| `DUPLICATE_PHONE` | 409 | "A customer with this phone number already exists." | Phone uniqueness (tenant-scoped) | Search for the existing customer instead | Customer |
-| `DUPLICATE_CONSUMER_NUMBER` | 409 | "This Consumer Number is already assigned." | BR-22 | Verify the Consumer Number or contact support | Customer |
+| `DUPLICATE_PHONE` **[Implemented, Phase 8]** | 409 | "A customer with this phone number already exists." | Phone uniqueness (tenant-scoped) | Search for the existing customer instead | Customer |
+| `DUPLICATE_CONSUMER_NUMBER` **[Implemented, Phase 8]** | 409 | "This Consumer Number is already assigned." | BR-22 | Verify the Consumer Number or contact support | Customer |
 | `LEDGER_NOT_SETTLED` | 409 | "Customer's cylinder ledger balance must be settled before closure." | BR-34 | Complete cylinder return / deposit refund first | Cylinder Ledger |
 | `CREDIT_LIMIT_EXCEEDED` | 409 | "This booking would exceed the customer's credit limit." | BR-19 | Collect outstanding payment or request a credit limit override | Accounting |
 | `CYLINDER_CAP_EXCEEDED` | 409 | "This booking would exceed the customer's cylinder holding cap." | BR-04 | Confirm an empty-cylinder return alongside this booking | Order Management |

@@ -242,7 +242,8 @@ All tables across 9 PostgreSQL schemas (`tenant`, `customer`, `orders`, `deliver
 | Column | Type | Nullable | Default | Constraints |
 |---|---|---|---|---|
 | tenant_id, branch_id | uuid | No | — | FKs |
-| identity_user_id | uuid | No | — | FK, unique |
+| identity_user_id | uuid | Yes | null | FK, unique — optional at registration, required before Driver App login (`01-domain-model.md` §4.9) |
+| employee_code | text | No | — | unique per tenant |
 | license_number | text | No | — | — |
 | status | text | No | `'active'` | CHECK IN ('active','on_leave','inactive') |
 
