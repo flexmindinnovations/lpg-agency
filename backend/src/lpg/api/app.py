@@ -35,6 +35,9 @@ from lpg.api.v1.routers import (
 )
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
+from lpg.infrastructure.events.cylinder_ledger_handlers import (
+    register_cylinder_ledger_handlers,
+)
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.health import (
     DatabaseHealthCheck,
@@ -144,11 +147,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     _state.database = database
     _state.redis = redis_client
     _state.event_dispatcher = DomainEventDispatcher()
-    
-    # Register event handlers
-    from lpg.application.cylinder_ledger.event_handlers import register_handlers as register_ledger_handlers
-    register_ledger_handlers(_state.event_dispatcher)
-    
+    register_cylinder_ledger_handlers(_state.event_dispatcher, database)
     _state.job_queue = job_queue
     _state.realtime_publisher = RedisRealtimePublisher(redis_client)
     _state.storage = storage

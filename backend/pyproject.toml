@@ -234,6 +234,10 @@ forbidden_modules = ["sqlalchemy", "asyncpg"]
 # infrastructure only through application-layer ports.
 ignore_imports = [
     "lpg.api.app -> lpg.infrastructure.persistence.database",
+    # Domain-event handlers are infrastructure adapters (they open their own
+    # session and build concrete repositories), so the composition root is
+    # what registers them and hands them the Database.
+    "lpg.api.app -> lpg.infrastructure.events.cylinder_ledger_handlers",
     "lpg.api.app -> lpg.infrastructure.redis.client",
     "lpg.api.app -> lpg.infrastructure.health",
     "lpg.api.app -> lpg.infrastructure.realtime.publisher",
@@ -271,6 +275,9 @@ ignore_imports = [
     # get_cancel_order_use_case_factory (Phase 12) also needs a fresh route
     # repository per order, same reasoning as the inventory one above.
     "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.route",
+    # Cylinder Ledger (Phase 13): dependencies/cylinder_ledger.py wires the
+    # ledger repository, same composition-root seam as the modules above.
+    "lpg.api.v1.dependencies.cylinder_ledger -> lpg.infrastructure.persistence.repositories.cylinder_ledger",
 ]
 
 [[tool.importlinter.contracts]]

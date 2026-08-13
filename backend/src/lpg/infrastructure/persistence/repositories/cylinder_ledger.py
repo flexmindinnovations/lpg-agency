@@ -33,18 +33,17 @@ class SqlAlchemyCylinderLedgerRepository:
     # Reads
     # ------------------------------------------------------------------
 
-    async def get_by_customer_id(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> CylinderLedger:
+    async def get_by_customer_id(
+        self, tenant_id: uuid.UUID, customer_id: uuid.UUID
+    ) -> CylinderLedger:
         """Find the ledger for a specific customer.
-        
+
         Returns a new empty ledger if one does not exist for this customer yet.
         """
-        stmt = (
-            select(CylinderLedgerModel)
-            .where(
-                CylinderLedgerModel.tenant_id == tenant_id,
-                CylinderLedgerModel.customer_id == customer_id,
-                CylinderLedgerModel.is_deleted.is_(False)
-            )
+        stmt = select(CylinderLedgerModel).where(
+            CylinderLedgerModel.tenant_id == tenant_id,
+            CylinderLedgerModel.customer_id == customer_id,
+            CylinderLedgerModel.is_deleted.is_(False),
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()
 
@@ -84,9 +83,9 @@ class SqlAlchemyCylinderLedgerRepository:
 
     async def add(self, ledger: CylinderLedger) -> None:
         """Save a new ledger or update an existing one to the repository."""
-        # Note: In our current architecture, this method is typically called `save()` 
+        # Note: In our current architecture, this method is typically called `save()`
         # but the port named it `add()`. We stick with `add`.
-        
+
         stmt = select(CylinderLedgerModel).where(CylinderLedgerModel.id == ledger.id)
         row = (await self._uow.session.execute(stmt)).scalars().first()
 
@@ -101,10 +100,14 @@ class SqlAlchemyCylinderLedgerRepository:
         else:
             row.updated_at = datetime.now(UTC)
 
-        balance_cache: dict[uuid.UUID, CylinderBalanceModel] = {}
-
-        for txn in ledger.pending_transactions:
-            txn_id = uuid.uuid4()
+        # Insert every transaction row and flush *before* touching the balance
+        # projection. `cylinder_balance.last_transaction_id` is a plain UUID
+        # column rather than a mapped relationship, so SQLAlchemy cannot infer
+        # that the balance INSERT depends on the transaction INSERT and is free
+        # to order them the other way round — which fails
+        # `fk_cylinder_balance_ledger_transaction`.
+        pending = [(txn, uuid.uuid4()) for txn in ledger.pending_transactions]
+        for txn, txn_id in pending:
             self._uow.session.add(
                 LedgerTransactionModel(
                     id=txn_id,
@@ -118,7 +121,12 @@ class SqlAlchemyCylinderLedgerRepository:
                     performed_by=txn.performed_by,
                 )
             )
+        if pending:
+            await self._uow.session.flush()
 
+        balance_cache: dict[uuid.UUID, CylinderBalanceModel] = {}
+
+        for txn, txn_id in pending:
             # Update the balance row that corresponds to this cylinder_type
             if txn.cylinder_type_id not in balance_cache:
                 b_stmt = select(CylinderBalanceModel).where(

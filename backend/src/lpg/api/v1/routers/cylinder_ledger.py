@@ -1,7 +1,7 @@
-from typing import Annotated
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.cylinder_ledger import (
     get_adjust_ledger_balance_use_case,
@@ -61,6 +61,11 @@ async def adjust_balance(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> CylinderLedgerResponse:
+    # A manual adjustment is always attributable to a real staff member --
+    # a principal without a user_id (e.g. a machine token) cannot make one.
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+
     async with unit_of_work:
         ledger = await use_case.execute(
             tenant_id=principal.tenant_id,

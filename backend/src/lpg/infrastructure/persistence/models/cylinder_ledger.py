@@ -40,6 +40,7 @@ class CylinderLedgerModel(Base):
 
 class LedgerTransactionModel(Base):
     """Append-only transaction ledger row."""
+
     __tablename__ = "ledger_transaction"
     __table_args__ = {"schema": "cylinder_ledger"}  # noqa: RUF012
 
@@ -65,6 +66,7 @@ class LedgerTransactionModel(Base):
 
 class CylinderBalanceModel(Base):
     """Materialized projection of a customer's balance for a specific cylinder type."""
+
     __tablename__ = "cylinder_balance"
     __table_args__ = {"schema": "cylinder_ledger"}  # noqa: RUF012
 

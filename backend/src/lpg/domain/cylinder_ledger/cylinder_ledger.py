@@ -9,11 +9,10 @@ A customer returns an empty cylinder (collection), which decreases their balance
 
 from __future__ import annotations
 
-import uuid
+import uuid  # noqa: TC003
 from dataclasses import dataclass
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
-
 
 # ---------------------------------------------------------------------------
 # Domain Events
@@ -38,11 +37,13 @@ class LedgerTransactionAppended(DomainEvent):
 
 class InvalidTransactionTypeError(InvariantViolation):
     """The requested transaction type is not permitted."""
+
     error_code = "INVALID_TRANSACTION_TYPE"
 
 
 class NegativeBalanceError(InvariantViolation):
     """The attempted transaction would result in a negative customer balance."""
+
     error_code = "NEGATIVE_BALANCE"
 
 
@@ -69,6 +70,7 @@ TRANSACTION_TYPES: frozenset[str] = frozenset(
 @dataclass(frozen=True, slots=True)
 class LedgerTransaction:
     """One append-only ``ledger_transaction`` row produced by a mutation."""
+
     transaction_type: str
     cylinder_type_id: uuid.UUID
     quantity: int  # Signed delta. Positive = customer receives, Negative = customer returns
@@ -84,7 +86,7 @@ class LedgerTransaction:
 
 class CylinderLedger(AggregateRoot):
     """Tracks a customer's cylinder holdings by type.
-    
+
     Business invariants:
     - Customer balances cannot go negative (cannot return more than they hold).
     - Transaction quantity cannot be zero.
@@ -188,10 +190,8 @@ class CylinderLedger(AggregateRoot):
             raise InvariantViolation("Adjustment delta cannot be zero.")
         if not reason:
             raise InvariantViolation("Adjustment requires a reason.")
-            
-        self._append_transaction(
-            "adjustment", cylinder_type_id, delta, performed_by, reason=reason
-        )
+
+        self._append_transaction("adjustment", cylinder_type_id, delta, performed_by, reason=reason)
 
     def set_initial_balance(
         self,
@@ -207,7 +207,7 @@ class CylinderLedger(AggregateRoot):
         # Only allow setting initial balance if the current balance is exactly 0
         if self.balance_of(cylinder_type_id) != 0:
             raise InvariantViolation("Initial balance can only be set when current balance is 0.")
-            
+
         self._append_transaction(
             "initial_balance", cylinder_type_id, quantity, performed_by, reference_id=reference_id
         )
