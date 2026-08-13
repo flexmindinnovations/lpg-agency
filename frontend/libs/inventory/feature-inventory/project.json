@@ -1,0 +1,21 @@
+{
+  "name": "inventory-feature-inventory",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/inventory/feature-inventory/src",
+  "prefix": "lpg",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:inventory"],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/inventory/feature-inventory/jest.config.cts",
+        "tsConfig": "libs/inventory/feature-inventory/tsconfig.spec.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

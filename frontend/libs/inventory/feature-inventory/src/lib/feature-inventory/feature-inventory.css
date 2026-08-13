@@ -1,0 +1,63 @@
+:host {
+  display: block;
+  block-size: 100%;
+}
+
+.inventory-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  block-size: 100%;
+}
+
+.location-picker {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.location-picker__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-inline-size: 12rem;
+}
+
+.location-picker__field label {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
+
+.section-title {
+  font-size: var(--typography-heading3-font-size);
+  font-weight: var(--typography-heading3-font-weight);
+  margin: 0;
+}
+
+.grid-wrapper {
+  min-block-size: 260px;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.grid-wrapper--transactions {
+  min-block-size: 320px;
+}
+
+.empty-hint {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.load-more {
+  align-self: flex-start;
+}
+
+.reconcile-approve-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}

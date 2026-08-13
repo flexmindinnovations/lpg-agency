@@ -1,0 +1,496 @@
+<div class="inventory-container">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Inventory</h1>
+      <p class="page-subtitle">View and manage cylinder stock for a warehouse or vehicle.</p>
+    </div>
+    <div class="page-header__actions">
+      @if (locationType() === 'warehouse') {
+      <button
+        #grnTriggerEl
+        pButton
+        type="button"
+        [disabled]="!locationRefId()"
+        (click)="openGrnModal()"
+      >
+        <i pButtonIcon class="pi pi-inbox"></i>
+        <span pButtonLabel>Receive Goods</span>
+      </button>
+      }
+      <button
+        #transferTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        (click)="openTransferModal()"
+      >
+        <i pButtonIcon class="pi pi-arrow-right-arrow-left"></i>
+        <span pButtonLabel>Load Transfer</span>
+      </button>
+      @if (locationType() === 'vehicle') {
+      <button
+        #deliveryCollectionTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="!locationRefId()"
+        (click)="openDeliveryCollectionModal()"
+      >
+        <i pButtonIcon class="pi pi-truck"></i>
+        <span pButtonLabel>Delivery / Collection</span>
+      </button>
+      }
+      <button
+        #statusChangeTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="!locationRefId()"
+        (click)="openStatusChangeModal()"
+      >
+        <i pButtonIcon class="pi pi-sync"></i>
+        <span pButtonLabel>Change Status</span>
+      </button>
+      <button
+        #adjustTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="!locationRefId()"
+        (click)="openAdjustModal()"
+      >
+        <i pButtonIcon class="pi pi-pencil"></i>
+        <span pButtonLabel>Adjust</span>
+      </button>
+      <button
+        #reconcileTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="!locationRefId()"
+        (click)="openReconcileModal()"
+      >
+        <i pButtonIcon class="pi pi-check-square"></i>
+        <span pButtonLabel>Reconcile</span>
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage(); as msg) {
+  <p-message severity="error">{{ msg }}</p-message>
+  } @if (successMessage(); as msg) {
+  <p-message severity="success">{{ msg }}</p-message>
+  }
+
+  <div class="location-picker">
+    <div class="location-picker__field">
+      <label for="location_type">Location Type</label>
+      <p-select
+        id="location_type"
+        [options]="[
+          { label: 'Warehouse', value: 'warehouse' },
+          { label: 'Vehicle', value: 'vehicle' }
+        ]"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="locationType()"
+        (ngModelChange)="onLocationTypeChange($event)"
+      ></p-select>
+    </div>
+    <div class="location-picker__field">
+      <label for="location_ref"
+        >{{ locationType() === 'warehouse' ? 'Warehouse' : 'Vehicle' }}</label
+      >
+      <p-select
+        id="location_ref"
+        [options]="locationOptions()"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Select a location"
+        [ngModel]="locationRefId()"
+        (ngModelChange)="onLocationRefChange($event)"
+      ></p-select>
+    </div>
+  </div>
+
+  @if (locationRefId()) {
+  <h2 class="section-title">Balance</h2>
+  <div class="grid-wrapper">
+    <lpg-data-grid
+      [rows]="balance()?.balances ?? []"
+      [columns]="balanceColumns"
+      [loading]="loading()"
+      ariaLabel="Inventory balance"
+    />
+  </div>
+
+  <h2 class="section-title">Transaction History</h2>
+  <div class="grid-wrapper grid-wrapper--transactions">
+    <lpg-data-grid
+      [rows]="transactions()"
+      [columns]="transactionColumns"
+      [loading]="loading()"
+      ariaLabel="Inventory transaction history"
+    />
+  </div>
+  @if (transactionsCursor()) {
+  <button
+    pButton
+    type="button"
+    severity="secondary"
+    class="load-more"
+    (click)="loadMoreTransactions()"
+  >
+    Load more
+  </button>
+  } } @else {
+  <p class="empty-hint">Select a warehouse or vehicle to view its inventory.</p>
+  }
+
+  <!-- Goods Receipt Modal -->
+  <p-drawer
+    header="Receive Goods"
+    [(visible)]="showGrnModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="grnTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="grnForm" (ngSubmit)="onSubmitGrn()" class="dialog-form">
+      <div class="form-group">
+        <label for="grn_cylinder_type">Cylinder Type</label>
+        <p-select
+          id="grn_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select cylinder type"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="grn_quantity">Quantity Received</label>
+        <p-inputnumber id="grn_quantity" formControlName="quantity_received" [min]="1" />
+      </div>
+      <div class="form-group">
+        <label for="grn_source_omc">Source OMC (optional)</label>
+        <input
+          pInputText
+          id="grn_source_omc"
+          formControlName="source_omc"
+          placeholder="e.g. iocl"
+        />
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showGrnModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="grnForm.invalid || loading()">Receive</button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Load Transfer Modal -->
+  <p-drawer
+    header="Load Transfer"
+    [(visible)]="showTransferModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="transferTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="transferForm" (ngSubmit)="onSubmitTransfer()" class="dialog-form">
+      <div class="form-group">
+        <label for="transfer_warehouse">Warehouse</label>
+        <p-select
+          id="transfer_warehouse"
+          formControlName="warehouse_id"
+          [options]="warehouses()"
+          optionLabel="name"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="transfer_vehicle">Vehicle</label>
+        <p-select
+          id="transfer_vehicle"
+          formControlName="vehicle_id"
+          [options]="vehicles()"
+          optionLabel="registration_number"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="transfer_cylinder_type">Cylinder Type</label>
+        <p-select
+          id="transfer_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="transfer_status">Status</label>
+        <p-select
+          id="transfer_status"
+          formControlName="status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="transfer_quantity">Quantity</label>
+        <p-inputnumber id="transfer_quantity" formControlName="quantity" [min]="1" />
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showTransferModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="transferForm.invalid || loading()">
+          Transfer
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Delivery / Collection Modal -->
+  <p-drawer
+    header="Delivery / Collection"
+    [(visible)]="showDeliveryCollectionModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="deliveryCollectionTrigger()?.nativeElement?.focus()"
+  >
+    <form
+      [formGroup]="deliveryCollectionForm"
+      (ngSubmit)="onSubmitDeliveryCollection()"
+      class="dialog-form"
+    >
+      <div class="form-group">
+        <label for="dc_mode">Action</label>
+        <p-select
+          id="dc_mode"
+          formControlName="mode"
+          [options]="[
+            { label: 'Delivery (Filled leaves the vehicle)', value: 'delivery' },
+            { label: 'Collection (Empty collected onto the vehicle)', value: 'collection' }
+          ]"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="dc_cylinder_type">Cylinder Type</label>
+        <p-select
+          id="dc_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="dc_quantity">Quantity</label>
+        <p-inputnumber id="dc_quantity" formControlName="quantity" [min]="1" />
+      </div>
+      <div class="modal-actions">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="showDeliveryCollectionModal.set(false)"
+        >
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="deliveryCollectionForm.invalid || loading()">
+          Save
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Status Change Modal -->
+  <p-drawer
+    header="Change Cylinder Status"
+    [(visible)]="showStatusChangeModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="statusChangeTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="statusChangeForm" (ngSubmit)="onSubmitStatusChange()" class="dialog-form">
+      <div class="form-group">
+        <label for="sc_cylinder_type">Cylinder Type</label>
+        <p-select
+          id="sc_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="sc_from_status">From Status</label>
+        <p-select
+          id="sc_from_status"
+          formControlName="from_status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="sc_to_status">To Status</label>
+        <p-select
+          id="sc_to_status"
+          formControlName="to_status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="sc_quantity">Quantity</label>
+        <p-inputnumber id="sc_quantity" formControlName="quantity" [min]="1" />
+      </div>
+      <div class="modal-actions">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="showStatusChangeModal.set(false)"
+        >
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="statusChangeForm.invalid || loading()">
+          Save
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Adjust Modal -->
+  <p-drawer
+    header="Adjust Inventory"
+    [(visible)]="showAdjustModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="adjustTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="adjustForm" (ngSubmit)="onSubmitAdjust()" class="dialog-form">
+      <div class="form-group">
+        <label for="adj_cylinder_type">Cylinder Type</label>
+        <p-select
+          id="adj_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="adj_from_status">From Status</label>
+        <p-select
+          id="adj_from_status"
+          formControlName="from_status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="adj_to_status">To Status</label>
+        <p-select
+          id="adj_to_status"
+          formControlName="to_status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="adj_quantity">Quantity</label>
+        <p-inputnumber id="adj_quantity" formControlName="quantity" [min]="1" />
+      </div>
+      <div class="form-group">
+        <label for="adj_reason">Reason</label>
+        <textarea pTextarea id="adj_reason" formControlName="reason" rows="3"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showAdjustModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="adjustForm.invalid || loading()">Save</button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Reconcile Modal -->
+  <p-drawer
+    header="Reconcile"
+    [(visible)]="showReconcileModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="reconcileTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="reconcileForm" (ngSubmit)="onSubmitReconcile()" class="dialog-form">
+      <div class="form-group">
+        <label for="rec_cylinder_type">Cylinder Type</label>
+        <p-select
+          id="rec_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="rec_status">Status</label>
+        <p-select
+          id="rec_status"
+          formControlName="status"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="rec_actual_quantity">Actual (Physically Counted) Quantity</label>
+        <p-inputnumber id="rec_actual_quantity" formControlName="actual_quantity" [min]="0" />
+      </div>
+      @if (!lastReconciliationRecordId()) {
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showReconcileModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="reconcileForm.invalid || loading()">
+          Record Count
+        </button>
+      </div>
+      } @else {
+      <div class="reconcile-approve-hint">
+        <p-message severity="info">Count recorded. Approve to finalize the correction.</p-message>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showReconcileModal.set(false)">
+          Close
+        </button>
+        <button pButton type="button" (click)="onApproveReconciliation()" [disabled]="loading()">
+          Approve
+        </button>
+      </div>
+      }
+    </form>
+  </p-drawer>
+</div>
