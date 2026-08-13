@@ -1,0 +1,21 @@
+{
+  "name": "feature-ledger",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ledger/feature-ledger/src",
+  "prefix": "lpg",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:ledger"],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/ledger/feature-ledger/jest.config.cts",
+        "tsConfig": "libs/ledger/feature-ledger/tsconfig.spec.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

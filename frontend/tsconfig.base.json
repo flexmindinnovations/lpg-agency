@@ -31,7 +31,14 @@
       "@lpg/admin/feature-tenant-settings": ["./libs/admin/feature-tenant-settings/src/index.ts"],
       "@lpg/admin/feature-users": ["./libs/admin/feature-users/src/index.ts"],
       "@lpg/admin/feature-audit-log": ["./libs/admin/feature-audit-log/src/index.ts"],
-      "@lpg/admin/feature-flags": ["./libs/admin/feature-flags/src/index.ts"]
+      "@lpg/admin/feature-flags": ["./libs/admin/feature-flags/src/index.ts"],
+      "@lpg/customer/feature-customers": ["./libs/customer/feature-customers/src/index.ts"],
+      "@lpg/delivery/feature-drivers": ["./libs/delivery/feature-drivers/src/index.ts"],
+      "@lpg/delivery/feature-vehicles": ["./libs/delivery/feature-vehicles/src/index.ts"],
+      "@lpg/inventory/feature-inventory": ["./libs/inventory/feature-inventory/src/index.ts"],
+      "@lpg/order/feature-orders": ["./libs/order/feature-orders/src/index.ts"],
+      "@lpg/delivery/feature-dispatch": ["./libs/delivery/feature-dispatch/src/index.ts"],
+      "@lpg/ledger/feature-ledger": ["./libs/ledger/feature-ledger/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

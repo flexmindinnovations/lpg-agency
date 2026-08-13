@@ -1,0 +1,93 @@
+<div class="ledger-section">
+  <div class="section-header">
+    <h3 class="section-heading">Cylinder Balances</h3>
+    <button
+      pButton
+      type="button"
+      severity="secondary"
+      size="small"
+      (click)="openAdjustModal()"
+    >
+      <i pButtonIcon class="pi pi-sliders-h"></i>
+      <span pButtonLabel>Adjust Balance <kbd class="ml-1 text-xs opacity-70">Alt+A</kbd></span>
+    </button>
+  </div>
+
+  @if (loading()) {
+    <p class="empty-hint">Loading ledger...</p>
+  } @else {
+    <div class="balance-list">
+      @for (balance of enrichedBalances(); track balance.cylinder_type_id) {
+        <div class="balance-item">
+          <div>
+            <span class="text-sm font-medium">{{ balance.name }}</span>
+          </div>
+          <div class="balance-quantity">
+            <span [class.negative]="balance.quantity < 0" [class.positive]="balance.quantity > 0">
+              {{ balance.quantity }}
+            </span>
+          </div>
+        </div>
+      } @empty {
+        <p class="empty-hint">No cylinder balances recorded yet.</p>
+      }
+    </div>
+  }
+</div>
+
+<!-- Adjust Balance Modal -->
+<p-dialog
+  header="Adjust Balance"
+  [visible]="adjustModalVisible()"
+  (visibleChange)="closeAdjustModal()"
+  [modal]="true"
+  [draggable]="false"
+  styleClass="modal-sm"
+>
+  <form [formGroup]="adjustForm" (ngSubmit)="submitAdjustment()" class="dialog-form">
+    <div class="form-group">
+      <label for="cylinder_type_id">Cylinder Type</label>
+      <p-select
+        id="cylinder_type_id"
+        formControlName="cylinder_type_id"
+        [options]="cylinderTypes()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select a cylinder type"
+        appendTo="body"
+        [autofocus]="true"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="delta">Delta (Quantity)</label>
+      <input
+        pInputText
+        id="delta"
+        type="number"
+        formControlName="delta"
+      />
+      <small class="field-hint">
+        Use negative numbers for cylinders the customer owes the agency.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="reason">Reason for Adjustment</label>
+      <input
+        pInputText
+        id="reason"
+        type="text"
+        formControlName="reason"
+        placeholder="e.g. Lost cylinder, manual correction"
+      />
+    </div>
+
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="closeAdjustModal()">
+        Cancel
+      </button>
+      <button pButton type="submit" [loading]="isSubmitting()">Apply Adjustment</button>
+    </div>
+  </form>
+</p-dialog>
