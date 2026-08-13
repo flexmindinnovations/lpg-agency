@@ -1,0 +1,154 @@
+<div class="order-queue">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Orders</h1>
+      <p class="page-subtitle">{{ total() }} order{{ total() === 1 ? '' : 's' }}</p>
+    </div>
+    <div class="page-header__actions">
+      <button #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>New Booking</span>
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage(); as msg) {
+  <p-message severity="error">{{ msg }}</p-message>
+  }
+
+  <div class="filters">
+    <div class="filters__field">
+      <label for="status_filter">Status</label>
+      <p-select
+        id="status_filter"
+        [options]="statusOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All statuses"
+        [showClear]="true"
+        [ngModel]="statusFilter()"
+        (ngModelChange)="onStatusFilterChange($event)"
+      ></p-select>
+    </div>
+  </div>
+
+  <div class="grid-wrapper">
+    <lpg-data-grid
+      [rows]="orders()"
+      [columns]="orderColumns"
+      [loading]="loading()"
+      ariaLabel="Order queue"
+    />
+  </div>
+
+  <!-- Create Order Drawer -->
+  <p-drawer
+    [(visible)]="showCreateDrawer"
+    position="right"
+    styleClass="!w-full md:!w-[30rem]"
+    (onHide)="closeCreateDrawer(); createTrigger()?.nativeElement?.focus()"
+  >
+    <ng-template #header>
+      <div class="drawer-header">
+        <h2>Create Booking</h2>
+        <p class="subtitle">Book a new cylinder delivery order</p>
+      </div>
+    </ng-template>
+
+    <form [formGroup]="createForm" (ngSubmit)="onSubmitCreate()" class="dialog-form">
+      <div class="form-group">
+        <label for="create_customer">Customer</label>
+        <lpg-customer-autocomplete
+          inputId="create_customer"
+          [ngModel]="selectedCustomer()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="onCustomerSelected($event)"
+          placeholder="Search by name or phone..."
+        ></lpg-customer-autocomplete>
+      </div>
+
+      @if (selectedCustomer(); as customer) {
+      <div class="form-group">
+        <label for="create_address">Delivery Address</label>
+        <p-select
+          id="create_address"
+          formControlName="address_id"
+          [options]="customer.addresses"
+          optionLabel="address_line"
+          optionValue="id"
+          placeholder="Select an address"
+          (onChange)="onAddressChange($event.value)"
+          [fluid]="true"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="create_booking_source">Booking Source</label>
+        <p-select
+          id="create_booking_source"
+          formControlName="booking_source"
+          [options]="bookingSourceOptions"
+          optionLabel="label"
+          optionValue="value"
+          [fluid]="true"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="create_requested_date">Requested Delivery Date</label>
+        <p-datepicker
+          id="create_requested_date"
+          formControlName="requested_date"
+          [showIcon]="true"
+          [showTime]="true"
+          iconDisplay="input"
+          dateFormat="dd-mm-yy"
+          appendTo="body"
+          [fluid]="true"
+        ></p-datepicker>
+      </div>
+
+      <div class="lines-header">
+        <label>Cylinders</label>
+        <p-button [text]="true" size="small" severity="secondary" icon="pi pi-plus" label="Add line" (onClick)="addLine()"></p-button>
+      </div>
+      <div class="lines" formArrayName="lines">
+        @for (line of lines.controls; track $index) {
+        <div [formGroupName]="$index" class="line-row">
+          <p-select
+            formControlName="cylinder_type_id"
+            [options]="cylinderTypes()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Cylinder type"
+            class="line-row__type"
+            [fluid]="true"
+          ></p-select>
+          <p-inputnumber formControlName="quantity" [min]="1" class="line-row__qty" [fluid]="true" />
+          <p-button
+            [text]="true"
+            severity="danger"
+            icon="pi pi-trash"
+            [disabled]="lines.length <= 1"
+            (onClick)="removeLine($index)"
+          ></p-button>
+        </div>
+        }
+      </div>
+      }
+    </form>
+
+    <ng-template #footer>
+      <div class="modal-actions">
+        <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="closeCreateDrawer()"></p-button>
+        <p-button
+          type="button"
+          label="Create Booking"
+          [loading]="loading()"
+          [disabled]="createForm.invalid || !selectedCustomer() || !selectedAddress() || loading()"
+          (onClick)="onSubmitCreate()"
+        ></p-button>
+      </div>
+    </ng-template>
+  </p-drawer>
+</div>

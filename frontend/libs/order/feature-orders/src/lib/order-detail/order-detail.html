@@ -1,0 +1,416 @@
+<div class="order-detail">
+  <div class="page-header">
+    <div class="page-header__text">
+      <button pButton type="button" text severity="secondary" (click)="backToQueue()">
+        <i pButtonIcon class="pi pi-arrow-left"></i>
+        <span pButtonLabel>Back to Orders</span>
+      </button>
+      @if (order(); as o) {
+      <h1 class="page-title">Order</h1>
+      <div class="order-title-row">
+        <span class="order-id" [pTooltip]="o.id" tooltipPosition="bottom">{{ o.id.split('-')[0] }}…</span>
+        <p-tag [severity]="statusSeverity(o.status)" [value]="statusLabel(o.status)" />
+      </div>
+      }
+    </div>
+    @if (order(); as o) {
+    <div class="page-header__actions">
+      @if (canConfirm()) {
+      <button pButton type="button" [loading]="loading()" (click)="onConfirm()">
+        <i pButtonIcon class="pi pi-check"></i>
+        <span pButtonLabel>Confirm</span>
+      </button>
+      } @if (canAssign()) {
+      <button #assignTriggerEl pButton type="button" (click)="openAssignDrawer()">
+        <i pButtonIcon class="pi pi-user-plus"></i>
+        <span pButtonLabel>Assign</span>
+      </button>
+      } @if (canDispatch()) {
+      <button pButton type="button" [loading]="loading()" (click)="onDispatch()">
+        <i pButtonIcon class="pi pi-box"></i>
+        <span pButtonLabel>Dispatch</span>
+      </button>
+      } @if (canDepart()) {
+      <button pButton type="button" [loading]="loading()" (click)="onDepart()">
+        <i pButtonIcon class="pi pi-send"></i>
+        <span pButtonLabel>Depart</span>
+      </button>
+      } @if (canDeliverOrFail()) {
+      <button #deliverTriggerEl pButton type="button" (click)="openDeliverDrawer()">
+        <i pButtonIcon class="pi pi-verified"></i>
+        <span pButtonLabel>Deliver</span>
+      </button>
+      <button
+        #failedDeliveryTriggerEl
+        pButton
+        type="button"
+        severity="warn"
+        (click)="openFailedDeliveryDrawer()"
+      >
+        <i pButtonIcon class="pi pi-exclamation-triangle"></i>
+        <span pButtonLabel>Failed Delivery</span>
+      </button>
+      } @if (canReschedule()) {
+      <button pButton type="button" [loading]="loading()" (click)="onReschedule()">
+        <i pButtonIcon class="pi pi-refresh"></i>
+        <span pButtonLabel>Reschedule</span>
+      </button>
+      } @if (canClose()) {
+      <button pButton type="button" [loading]="loading()" (click)="onClose()">
+        <i pButtonIcon class="pi pi-lock"></i>
+        <span pButtonLabel>Close Order</span>
+      </button>
+      } @if (canCancelFree() || requiresCancelApproval()) {
+      <button pButton type="button" severity="danger" (click)="openCancelDialog()">
+        <i pButtonIcon class="pi pi-times"></i>
+        <span pButtonLabel>Cancel Order</span>
+      </button>
+      } @if (requiresCancelApproval()) {
+      <button pButton type="button" (click)="onApproveCancellation()">
+        <i pButtonIcon class="pi pi-check"></i>
+        <span pButtonLabel>Approve Cancellation</span>
+      </button>
+      }
+    </div>
+    }
+  </div>
+
+  @if (errorMessage(); as msg) {
+  <p-message severity="error">{{ msg }}</p-message>
+  } @if (infoMessage(); as msg) {
+  <p-message severity="info">{{ msg }}</p-message>
+  }
+
+  @if (order(); as o) {
+  <div class="detail-grid">
+    <div class="detail-field">
+      <span class="detail-field__label">Booking Source</span>
+      <span>{{ statusLabel(o.booking_source) }}</span>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field__label">Requested Date</span>
+      <span>{{ o.requested_date | date: 'medium' }}</span>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field__label">Delivery Address</span>
+      <span>{{ o.delivery_address.address_line }}</span>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field__label">Total Amount</span>
+      <span>{{ o.total_amount ? ('₹' + o.total_amount) : 'Not confirmed yet' }}</span>
+    </div>
+    @if (o.payment_method_preference) {
+    <div class="detail-field">
+      <span class="detail-field__label">Payment Method</span>
+      <span>{{ statusLabel(o.payment_method_preference) }}</span>
+    </div>
+    }
+  </div>
+
+  <h2 class="section-title">Lines</h2>
+  <table class="lines-table">
+    <thead>
+      <tr>
+        <th>Cylinder Type</th>
+        <th>Ordered</th>
+        <th>Delivered</th>
+        <th>Pending</th>
+        <th>Empties Collected</th>
+        <th>Backordered</th>
+        <th>Unit Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (line of o.lines; track line.id) {
+      <tr>
+        <td>{{ cylinderTypeNameById().get(line.cylinder_type_id) ?? line.cylinder_type_id }}</td>
+        <td>{{ line.quantity_ordered }}</td>
+        <td>{{ line.quantity_delivered }}</td>
+        <td>{{ line.quantity_pending }}</td>
+        <td>{{ line.quantity_collected_empty }}</td>
+        <td>{{ line.is_backordered ? 'Yes' : 'No' }}</td>
+        <td>{{ line.unit_price ? ('₹' + line.unit_price) : '—' }}</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+
+  <h2 class="section-title">Timeline</h2>
+  <ol class="timeline">
+    @for (entry of history(); track entry.id) {
+    <li class="timeline__entry">
+      <span class="timeline__transition">
+        {{ entry.from_status ? statusLabel(entry.from_status) : 'Created' }}
+        <i class="pi pi-arrow-right"></i>
+        {{ statusLabel(entry.to_status) }}
+      </span>
+      <span class="timeline__when">{{ entry.changed_at | date: 'medium' }}</span>
+      @if (entry.reason) {
+      <span class="timeline__reason">{{ entry.reason }}</span>
+      }
+    </li>
+    } @empty {
+    <p class="empty-hint">No history yet.</p>
+    }
+  </ol>
+  }
+
+  <!-- Cancel Order Drawer -->
+  <p-drawer
+    header="Cancel Order"
+    [(visible)]="showCancelDialog"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '28rem' }"
+  >
+    <form [formGroup]="cancelForm" (ngSubmit)="onSubmitCancel()" class="dialog-form">
+      @if (requiresCancelApproval()) {
+      <p-message severity="warn">
+        This order has already been dispatched — cancellation requires Manager approval and may
+        incur a cancellation charge.
+      </p-message>
+      }
+      <div class="form-group">
+        <label for="cancel_reason">Reason</label>
+        <textarea pTextarea id="cancel_reason" formControlName="reason" rows="3"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showCancelDialog.set(false)">
+          Close
+        </button>
+        <button pButton type="submit" severity="danger" [disabled]="cancelForm.invalid || loading()">
+          Confirm Cancellation
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Assign Drawer -->
+  <p-drawer
+    header="Assign Driver & Vehicle"
+    [(visible)]="showAssignDrawer"
+    position="right"
+    [modal]="true"
+    [style]="{ width: '100%', maxWidth: '28rem' }"
+    (onHide)="assignTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="assignForm" (ngSubmit)="onSubmitAssign()" class="dialog-form">
+      <div class="form-group">
+        <label for="assign_driver">Driver</label>
+        <p-select
+          id="assign_driver"
+          formControlName="driver_id"
+          [options]="drivers()"
+          optionLabel="employee_code"
+          optionValue="id"
+          placeholder="Select a driver"
+          [fluid]="true"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="assign_vehicle">Vehicle</label>
+        <p-select
+          id="assign_vehicle"
+          formControlName="vehicle_id"
+          [options]="vehicles()"
+          optionLabel="registration_number"
+          optionValue="id"
+          placeholder="Select a vehicle"
+          [fluid]="true"
+        ></p-select>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showAssignDrawer.set(false)">
+          Close
+        </button>
+        <button pButton type="submit" [disabled]="assignForm.invalid || loading()">Assign</button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Failed Delivery Drawer -->
+  <p-drawer
+    header="Record Failed Delivery"
+    [(visible)]="showFailedDeliveryDrawer"
+    position="right"
+    [modal]="true"
+    [style]="{ width: '100%', maxWidth: '28rem' }"
+    (onHide)="failedDeliveryTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="failedDeliveryForm" (ngSubmit)="onSubmitFailedDelivery()" class="dialog-form">
+      <div class="form-group">
+        <label for="failed_reason">Reason</label>
+        <p-select
+          id="failed_reason"
+          formControlName="reason_code"
+          [options]="failedDeliveryReasons"
+          optionLabel="label"
+          optionValue="value"
+          [fluid]="true"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="failed_resolution">Resolution</label>
+        <p-select
+          id="failed_resolution"
+          formControlName="resolution_action"
+          [options]="resolutionActions"
+          optionLabel="label"
+          optionValue="value"
+          [fluid]="true"
+        ></p-select>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showFailedDeliveryDrawer.set(false)">
+          Close
+        </button>
+        <button pButton type="submit" severity="warn" [disabled]="failedDeliveryForm.invalid || loading()">
+          Record
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Deliver Drawer -->
+  <p-drawer
+    header="Record Delivery"
+    [(visible)]="showDeliverDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="!w-full md:!w-[32rem]"
+    (onHide)="deliverTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="deliverForm" (ngSubmit)="onSubmitDeliver()" class="dialog-form">
+      <div class="form-group">
+        <label for="deliver_otp">Delivery OTP</label>
+        <input pInputText id="deliver_otp" formControlName="otp_code" autocomplete="one-time-code" />
+      </div>
+
+      <label class="deliver__section-label">Quantities</label>
+      <div formArrayName="lines" class="deliver-lines">
+        @for (line of deliverLines.controls; track $index) {
+        <div [formGroupName]="$index" class="deliver-line">
+          <span class="deliver-line__type">
+            {{ cylinderTypeNameById().get(line.controls.cylinder_type_id.value) ?? line.controls.cylinder_type_id.value }}
+          </span>
+          <label [for]="'deliver_qty_delivered_' + $index">Delivered</label>
+          <p-inputnumber
+            [inputId]="'deliver_qty_delivered_' + $index"
+            formControlName="quantity_delivered"
+            [min]="0"
+            [fluid]="true"
+          />
+          <label [for]="'deliver_qty_empty_' + $index">Empties collected</label>
+          <p-inputnumber
+            [inputId]="'deliver_qty_empty_' + $index"
+            formControlName="quantity_collected_empty"
+            [min]="0"
+            [fluid]="true"
+          />
+        </div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="deliver_payment_method">Payment Method</label>
+        <p-select
+          id="deliver_payment_method"
+          formControlName="payment_method"
+          [options]="paymentMethods"
+          optionLabel="label"
+          optionValue="value"
+          [fluid]="true"
+        ></p-select>
+      </div>
+      <div class="form-group">
+        <label for="deliver_amount_collected">Amount Collected</label>
+        <p-inputgroup>
+          <p-inputgroup-addon>₹</p-inputgroup-addon>
+          <p-inputnumber
+            inputId="deliver_amount_collected"
+            formControlName="amount_collected"
+            mode="decimal"
+            [minFractionDigits]="2"
+            [maxFractionDigits]="2"
+            [min]="0"
+            [fluid]="true"
+          />
+        </p-inputgroup>
+      </div>
+
+      <label class="deliver__section-label">Proof of Delivery</label>
+
+      <div class="form-group">
+        <span>Signature</span>
+        <canvas
+          #signatureCanvas
+          class="signature-pad"
+          width="400"
+          height="140"
+          (pointerdown)="onSignatureDown($event)"
+          (pointermove)="onSignatureMove($event)"
+          (pointerup)="onSignatureUp()"
+          (pointerleave)="onSignatureUp()"
+        ></canvas>
+        <div class="signature-pad__actions">
+          <button pButton type="button" text severity="secondary" (click)="clearSignature()">Clear</button>
+          <button
+            pButton
+            type="button"
+            text
+            [loading]="uploadingSignature()"
+            (click)="uploadSignature()"
+          >
+            Save Signature
+          </button>
+          @if (signatureBlobRef()) {
+          <span class="pod-status pod-status--ok"><i class="pi pi-check"></i> Saved</span>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="deliver_photo">Delivery Photo</label>
+        <input
+          id="deliver_photo"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          (change)="onPhotoSelected($event)"
+        />
+        @if (uploadingPhoto()) {
+        <span class="pod-status">Uploading…</span>
+        } @if (photoBlobRef()) {
+        <span class="pod-status pod-status--ok"><i class="pi pi-check"></i> Uploaded</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <button pButton type="button" text (click)="captureLocation()">
+          <i pButtonIcon class="pi pi-map-marker"></i>
+          <span pButtonLabel>Use Current Location</span>
+        </button>
+        @if (gpsCaptured()) {
+        <span class="pod-status pod-status--ok">
+          <i class="pi pi-check"></i>
+          {{ deliverForm.controls.gps_lat.value | number: '1.4-4' }}, {{ deliverForm.controls.gps_lng.value | number: '1.4-4' }}
+        </span>
+        }
+      </div>
+
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showDeliverDrawer.set(false)">
+          Close
+        </button>
+        <button
+          pButton
+          type="submit"
+          [disabled]="deliverForm.invalid || !deliverReady() || loading()"
+        >
+          Confirm Delivery
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+</div>
