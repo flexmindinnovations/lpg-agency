@@ -226,6 +226,16 @@ class Settings(BaseSettings):
     # misconfigured non-local `.env` — see `model_post_init`.
     otp_delivery_dev_mode: bool = False
 
+    # -- Field-level encryption at rest (Phase 8) ---------------------------
+    # `customer.kyc_document.doc_reference` is documented as "app-layer
+    # encrypted" (`03-database-schema.md`) — a Fernet key (32 url-safe-base64
+    # bytes), used by `FernetFieldEncryptor`. Same unset-by-default pattern
+    # as `jwt_private_key`: `model_post_init` generates an ephemeral,
+    # process-lifetime key only when `environment` is exactly `"local"`
+    # (encrypted values stop decrypting across a restart — acceptable there,
+    # nowhere else). Every other environment must supply a real key.
+    kyc_encryption_key: SecretStr | None = None
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: object) -> object:
@@ -326,6 +336,11 @@ class Settings(BaseSettings):
             private_pem, public_pem = _generate_ephemeral_rs256_keypair()
             self.jwt_private_key = SecretStr(private_pem)
             self.jwt_public_key = public_pem
+
+        if self.kyc_encryption_key is None and self.is_local:
+            from cryptography.fernet import Fernet
+
+            self.kyc_encryption_key = SecretStr(Fernet.generate_key().decode("ascii"))
 
 
 @lru_cache(maxsize=1)

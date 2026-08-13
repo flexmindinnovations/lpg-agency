@@ -151,6 +151,7 @@ class TestLoginEndToEnd:
         principal = me_response.json()
         assert principal["tenant_id"] == str(tenant_id)
         assert principal["role"] == "manager"
+        assert principal["email"] == email
 
     async def test_wrong_password_returns_401_with_stable_error_code(
         self,

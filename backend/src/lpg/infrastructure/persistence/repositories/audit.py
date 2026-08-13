@@ -104,4 +104,6 @@ class SqlAlchemyAuditLogRepository:
             row.correlation_id,
             row.before_state,
             row.after_state,
+            row.actor_display_name,
+            row.entity_display_name,
         )

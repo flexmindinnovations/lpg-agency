@@ -59,6 +59,83 @@ async def ping(ctx: dict[str, Any]) -> str:  # noqa: ARG001 - ARQ's job-function
     return "pong"
 
 
+async def bulk_cancel_orders(
+    ctx: dict[str, Any],
+    *,
+    tenant_id: str,
+    order_ids: list[str],
+    reason: str,
+    cancelled_by: str,
+) -> dict[str, int]:
+    """Cancels each order in `order_ids` one at a time, tenant-scoped.
+
+    The first real business job (Order Management) — enqueued by
+    `BulkCancelOrdersUseCase` when a bulk-cancel request exceeds
+    `BULK_CANCEL_SYNC_THRESHOLD` (50) orders. Idempotent: `CancelOrderUseCase`
+    itself is idempotent per order — `cancel_free()`/`request_cancellation_
+    approval()` both raise `INVALID_STATE_TRANSITION` on an order that's
+    already `cancelled`, so a retried job re-running this function only
+    re-attempts orders that didn't already succeed, and double-firing on an
+    already-cancelled order is a caught, logged failure, not a corruption.
+    """
+    structlog.contextvars.bind_contextvars(
+        correlation_id=str(uuid.uuid4()), job_name="bulk_cancel_orders", tenant_id=tenant_id
+    )
+    database: Database = ctx["database"]
+
+    from lpg.application.common.errors import NotFoundError
+    from lpg.application.common.tenant import RequestTenantContext
+    from lpg.application.order.use_cases import CancelOrderCommand, CancelOrderUseCase
+    from lpg.infrastructure.persistence.repositories.inventory import (
+        SqlAlchemyInventoryLocationRepository,
+    )
+    from lpg.infrastructure.persistence.repositories.order import (
+        SqlAlchemyCancellationRecordRepository,
+        SqlAlchemyOrderRepository,
+    )
+    from lpg.infrastructure.persistence.repositories.route import SqlAlchemyRouteRepository
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    tenant_uuid = uuid.UUID(tenant_id)
+    cancelled_by_uuid = uuid.UUID(cancelled_by)
+    succeeded = 0
+    failed = 0
+
+    for order_id in order_ids:
+        async for session in database.open_session(tenant_id=tenant_uuid):
+            tenant_context = RequestTenantContext(tenant_id=tenant_uuid)
+            async with SqlAlchemyUnitOfWork(session, tenant_context) as uow:
+                order_repository = SqlAlchemyOrderRepository(uow)
+                route_repository = SqlAlchemyRouteRepository(uow)
+                inventory_repository = SqlAlchemyInventoryLocationRepository(uow)
+                cancellation_repository = SqlAlchemyCancellationRecordRepository(uow)
+                use_case = CancelOrderUseCase(
+                    order_repository,
+                    route_repository,
+                    inventory_repository,
+                    cancellation_repository,
+                    uow,
+                )
+                try:
+                    await use_case.execute(
+                        CancelOrderCommand(
+                            order_id=uuid.UUID(order_id),
+                            reason=reason,
+                            cancelled_by=cancelled_by_uuid,
+                        )
+                    )
+                except NotFoundError:
+                    failed += 1
+                except Exception:
+                    failed += 1
+                    _logger.warning("bulk_cancel_order_failed", order_id=order_id, exc_info=True)
+                else:
+                    succeeded += 1
+
+    _logger.info("job_bulk_cancel_orders_executed", succeeded=succeeded, failed=failed)
+    return {"succeeded": succeeded, "failed": failed}
+
+
 async def startup(ctx: dict[str, Any]) -> None:
     settings = get_settings()
     configure_logging(level=settings.log_level, json_output=settings.log_json)
@@ -80,7 +157,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 class WorkerSettings:
     """ARQ reads these as class attributes — see module docstring."""
 
-    functions = (ping,)
+    functions = (ping, bulk_cancel_orders)
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(str(get_settings().redis_url))

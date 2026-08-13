@@ -214,8 +214,10 @@ class ReassignRoleRequest(BaseModel):
 class AuditLogEntryResponse(BaseModel):
     id: str
     actor_id: str | None
+    actor_display_name: str | None
     entity_name: str
     entity_id: str | None
+    entity_display_name: str | None
     action: str
     performed_at: datetime
     correlation_id: str | None

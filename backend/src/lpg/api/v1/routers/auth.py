@@ -297,10 +297,16 @@ async def password_reset(
 @router.get("/me", response_model=PrincipalResponse, summary="The current authenticated principal")
 async def me(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
 ) -> PrincipalResponse:
+    email = None
+    if principal.user_id is not None:
+        user = await user_repository.get(principal.user_id)
+        email = user.email if user else None
     return PrincipalResponse(
         user_id=str(principal.user_id) if principal.user_id else "",
         tenant_id=str(principal.tenant_id),
         role=principal.role,
         permissions=sorted(principal.permission_codes),
+        email=email,
     )

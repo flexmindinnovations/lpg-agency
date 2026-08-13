@@ -88,6 +88,29 @@ class ConcurrencyConflictError(ConflictError):
     title = "Resource was modified concurrently"
 
 
+class DuplicateRouteAssignmentError(ConflictError):
+    """The order is already assigned to a different active route.
+
+    `Route.assign_order()` only rejects a *duplicate* stop on the *same*
+    route; this catches the cross-route case, which needs a repository
+    query (`RouteRepository.count_active_routes_for_order`) the aggregate
+    itself can't perform.
+    """
+
+    error_code = "DUPLICATE_ROUTE_ASSIGNMENT"
+    title = "Order already assigned to another active route"
+
+
+class RouteReconciliationPendingError(ConflictError):
+    """A route cannot move `completed -> reconciled` until its vehicle's
+    `InventoryLocation` has an *approved* `ReconciliationRecord` (BR-14) —
+    Route doesn't reimplement reconciliation, it references Inventory's.
+    """
+
+    error_code = "ROUTE_RECONCILIATION_PENDING"
+    title = "Vehicle reconciliation has not been approved yet"
+
+
 class IdempotencyConflictError(ConflictError):
     """The same Idempotency-Key was reused with a different request payload.
 
@@ -210,6 +233,32 @@ class OtpExpiredError(ApplicationError):
     title = "OTP has expired"
 
 
+class DuplicatePhoneError(ConflictError):
+    """A customer with this phone number already exists for the tenant."""
+
+    error_code = "DUPLICATE_PHONE"
+    title = "A customer with this phone number already exists."
+
+
+class DuplicateConsumerNumberError(ConflictError):
+    """This Consumer Number is already assigned to another customer (BR-22)."""
+
+    error_code = "DUPLICATE_CONSUMER_NUMBER"
+    title = "This Consumer Number is already assigned."
+
+
+class DuplicateLpgSubsidyIdError(ConflictError):
+    """This 17-digit LPG ID is already linked to another customer.
+
+    Distinct from `DuplicateConsumerNumberError` — the LPG ID is the
+    nationally-standardized OMC/subsidy identifier, not the agency's own
+    locally-assigned Consumer Number.
+    """
+
+    error_code = "DUPLICATE_LPG_SUBSIDY_ID"
+    title = "This LPG ID is already linked to another customer."
+
+
 class WeakPasswordError(ApplicationError):
     """A new password fails the complexity policy (`Settings`-configured).
 
@@ -222,3 +271,43 @@ class WeakPasswordError(ApplicationError):
     error_code = "WEAK_PASSWORD"
     http_status = 400
     title = "Password does not meet complexity requirements"
+
+
+class DuplicateEmployeeCodeError(ConflictError):
+    """A driver with this employee code already exists for the tenant."""
+
+    error_code = "DUPLICATE_EMPLOYEE_CODE"
+    title = "A driver with this employee code already exists."
+
+
+class DuplicateRegistrationNumberError(ConflictError):
+    """A vehicle with this registration number already exists for the tenant."""
+
+    error_code = "DUPLICATE_REGISTRATION_NUMBER"
+    title = "A vehicle with this registration number already exists."
+
+
+class CylinderCapExceededError(ConflictError):
+    """BR-04: this booking would exceed the customer's cylinder holding cap."""
+
+    error_code = "CYLINDER_CAP_EXCEEDED"
+    title = "This booking would exceed the customer's cylinder holding cap."
+
+
+class CreditLimitExceededError(ConflictError):
+    """BR-19: outstanding balance plus this order would exceed the customer's credit limit."""
+
+    error_code = "CREDIT_LIMIT_EXCEEDED"
+    title = "This order would exceed the customer's credit limit."
+
+
+class IncompletePodError(ApplicationError):
+    """A delivery's Proof of Delivery is present but semantically invalid
+    (a blank blob reference, out-of-range GPS) — distinct from a missing
+    field entirely, which Pydantic already rejects with 422 before a use
+    case ever runs (BR-08).
+    """
+
+    error_code = "INCOMPLETE_PROOF_OF_DELIVERY"
+    http_status = 400
+    title = "Proof of delivery is incomplete."

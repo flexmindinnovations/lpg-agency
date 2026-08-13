@@ -21,7 +21,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from lpg.api.middleware.correlation import CorrelationIdMiddleware
 from lpg.api.middleware.problem_details import register_exception_handlers
-from lpg.api.v1.routers import admin, auth, health
+from lpg.api.v1.routers import (
+    admin,
+    auth,
+    customer,
+    cylinder_ledger,
+    dashboard,
+    delivery,
+    health,
+    inventory,
+    order,
+    route,
+)
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
@@ -133,6 +144,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     _state.database = database
     _state.redis = redis_client
     _state.event_dispatcher = DomainEventDispatcher()
+    
+    # Register event handlers
+    from lpg.application.cylinder_ledger.event_handlers import register_handlers as register_ledger_handlers
+    register_ledger_handlers(_state.event_dispatcher)
+    
     _state.job_queue = job_queue
     _state.realtime_publisher = RedisRealtimePublisher(redis_client)
     _state.storage = storage
@@ -227,11 +243,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # API version does.
     app.include_router(health.router)
 
-    # The first versioned router this codebase mounts — every future
-    # business router follows this same `prefix=settings.api_v1_prefix`
-    # pattern (ADR-009: URL-segment API versioning).
+    # API v1
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
+    app.include_router(customer.router, prefix=settings.api_v1_prefix)
+    app.include_router(cylinder_ledger.router, prefix=settings.api_v1_prefix)
+    app.include_router(delivery.router, prefix=settings.api_v1_prefix)
+    app.include_router(inventory.router, prefix=settings.api_v1_prefix)
+    app.include_router(order.router, prefix=settings.api_v1_prefix)
+    app.include_router(route.router, prefix=settings.api_v1_prefix)
+    app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
 
     return app
 

@@ -51,6 +51,7 @@ async def issue_tokens(
     access_token = jwt_signer.issue_access_token(
         {
             "sub": str(user.id),
+            "name": user.email or user.phone_number or "Unknown User",
             "tenant_id": str(user.tenant_id) if user.tenant_id else None,
             "branch_id": str(user.branch_id) if user.branch_id else None,
             "role": user.role,

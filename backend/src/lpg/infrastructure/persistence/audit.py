@@ -134,11 +134,21 @@ class AuditRecorder:
         before: dict[str, Any] | None,
         after: dict[str, Any] | None,
     ) -> None:
+        entity_display_name = None
+        if hasattr(obj, "name"):
+            entity_display_name = obj.name
+        elif hasattr(obj, "full_name"):
+            entity_display_name = obj.full_name
+        elif hasattr(obj, "consumer_number"):
+            entity_display_name = obj.consumer_number
+
         row = AuditLogModel(
             tenant_id=self._tenant_context.tenant_id,
             actor_id=self._tenant_context.user_id,
+            actor_display_name=getattr(self._tenant_context, "user_display_name", None),
             entity_name=type(obj).__tablename__,
             entity_id=_entity_id(obj),
+            entity_display_name=str(entity_display_name) if entity_display_name else None,
             action=action,
             performed_at=datetime.now(UTC),
             correlation_id=self._correlation_id,

@@ -15,7 +15,8 @@ async def main():
     dsn = settings.migration_database_url
     if not dsn:
         print(
-            "LPG_MIGRATION_DATABASE_URL not set in environment or .env. Trying default dev admin DSN..."
+            "LPG_MIGRATION_DATABASE_URL not set in environment or .env. "
+            "Trying default dev admin DSN..."
         )
         dsn = "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
 
@@ -24,7 +25,7 @@ async def main():
     hasher = Argon2PasswordHasher(settings)
 
     default_email = "admin@example.com"
-    default_password = "correct-horse-battery"
+    default_password = "correct-horse-battery"  # noqa: S105 - dev-seed-only, not a real secret
 
     async with engine.begin() as conn:
         # 1. Ensure tenant exists
@@ -70,7 +71,8 @@ async def main():
                 text(
                     "INSERT INTO identity.identity_user "
                     "(id, tenant_id, email, password_hash, role) "
-                    "VALUES (gen_random_uuid(), :tenant_id, :email, :password_hash, 'agency_admin') "
+                    "VALUES "
+                    "(gen_random_uuid(), :tenant_id, :email, :password_hash, 'agency_admin') "
                     "RETURNING id"
                 ),
                 {"tenant_id": tenant_id, "email": default_email, "password_hash": pw_hash},

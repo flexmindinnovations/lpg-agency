@@ -27,4 +27,6 @@ class JwtAuthenticatedPrincipal:
     user_id: uuid.UUID | None
     role: str
     permission_codes: frozenset[str]
+    user_display_name: str | None = None
     token_id: uuid.UUID | None = None
+    branch_id: uuid.UUID | None = None

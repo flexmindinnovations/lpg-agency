@@ -72,3 +72,4 @@ class PrincipalResponse(BaseModel):
     tenant_id: str | None
     role: str
     permissions: list[str]
+    email: str | None = None

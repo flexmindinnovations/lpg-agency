@@ -19,7 +19,8 @@ async def main():
         row = (
             await conn.execute(
                 text(
-                    "SELECT password_hash FROM identity.identity_user WHERE email='admin@example.com'"
+                    "SELECT password_hash FROM identity.identity_user "
+                    "WHERE email='admin@example.com'"
                 )
             )
         ).one()

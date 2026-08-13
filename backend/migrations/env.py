@@ -25,6 +25,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import lpg.infrastructure.persistence.models  # noqa: F401
 from lpg.infrastructure.persistence.database import Base
 
 if TYPE_CHECKING:

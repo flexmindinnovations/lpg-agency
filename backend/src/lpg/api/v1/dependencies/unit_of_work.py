@@ -27,7 +27,8 @@ dependency yet).
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends
@@ -60,3 +61,44 @@ async def get_unit_of_work(
         uow = SqlAlchemyUnitOfWork(session, tenant_context, event_dispatcher=state.event_dispatcher)
         async with uow:
             yield uow
+
+
+def get_unit_of_work_factory(
+    tenant_context: Annotated[TenantContext, Depends(get_tenant_context)],
+) -> Callable[[], AbstractAsyncContextManager[UnitOfWork]]:
+    """A factory minting a **fresh** ``UnitOfWork`` — its own session, its
+    own transaction — on every call, for the rare endpoint that must commit
+    more than once in a single request (e.g. bulk-cancel processing N
+    orders one at a time).
+
+    Reusing a single ``UnitOfWork`` across multiple ``.commit()`` calls is
+    broken two ways: ``Database._apply_tenant_context()`` sets the RLS
+    tenant GUC via ``set_config(..., is_local => true)``
+    (``SET LOCAL`` semantics), which resets the moment the first commit ends
+    that transaction — every read after that silently sees zero rows, not
+    an error. And ``SqlAlchemyUnitOfWork`` marks itself finished after its
+    first commit, so every later ``.commit()`` on the same instance is a
+    silent no-op — nothing after the first order would ever actually
+    persist. ``get_unit_of_work`` (singular, request-scoped) remains correct
+    for every ordinary endpoint and should stay the default; reach for this
+    only when a request's own logic needs several independent transactions.
+    """
+    from lpg.api.app import get_app_state
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    state = get_app_state()
+    database = state.database
+    if database is None:
+        msg = "Database is not connected — the application lifespan has not run."
+        raise RuntimeError(msg)
+
+    @asynccontextmanager
+    async def _factory() -> AsyncIterator[UnitOfWork]:
+        async for session in database.open_session(tenant_id=tenant_context.tenant_id):
+            uow = SqlAlchemyUnitOfWork(
+                session, tenant_context, event_dispatcher=state.event_dispatcher
+            )
+            async with uow:
+                yield uow
+
+    return _factory

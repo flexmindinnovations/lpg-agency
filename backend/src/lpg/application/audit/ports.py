@@ -34,6 +34,8 @@ class AuditLogEntry:
     correlation_id: str | None
     before_state: dict[str, Any] | None
     after_state: dict[str, Any] | None
+    actor_display_name: str | None = None
+    entity_display_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

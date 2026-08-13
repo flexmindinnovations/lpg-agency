@@ -26,3 +26,4 @@ class RequestTenantContext:
 
     tenant_id: uuid.UUID
     user_id: uuid.UUID | None = None
+    user_display_name: str | None = None

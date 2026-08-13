@@ -40,6 +40,9 @@ class AuthenticatedPrincipal(TenantContext, Protocol):
     def permission_codes(self) -> frozenset[str]: ...
 
     @property
+    def branch_id(self) -> uuid.UUID | None: ...
+
+    @property
     def token_id(self) -> uuid.UUID | None: ...
 
 

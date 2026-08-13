@@ -895,8 +895,10 @@ async def list_audit_log(
             AuditLogEntryResponse(
                 id=str(entry.id),
                 actor_id=str(entry.actor_id) if entry.actor_id else None,
+                actor_display_name=entry.actor_display_name,
                 entity_name=entry.entity_name,
                 entity_id=entry.entity_id,
+                entity_display_name=entry.entity_display_name,
                 action=entry.action,
                 performed_at=entry.performed_at,
                 correlation_id=entry.correlation_id,

@@ -57,9 +57,13 @@ class JwtTenantResolver:
             )
             raise TenantContextMissingError(msg)
 
+        raw_branch_id = claims.get("branch_id")
+
         return JwtAuthenticatedPrincipal(
             tenant_id=uuid.UUID(raw_tenant_id),
             user_id=uuid.UUID(claims["sub"]),
+            user_display_name=claims.get("name"),
             role=claims["role"],
             permission_codes=frozenset(claims.get("scope", "").split()),
+            branch_id=uuid.UUID(raw_branch_id) if raw_branch_id else None,
         )

@@ -60,6 +60,9 @@ class TenantContext(Protocol):
     @property
     def user_id(self) -> uuid.UUID | None: ...
 
+    @property
+    def user_display_name(self) -> str | None: ...
+
 
 @runtime_checkable
 class TenantResolver(Protocol):
@@ -157,3 +160,19 @@ class HealthCheck(Protocol):
     def name(self) -> str: ...
 
     async def check(self) -> bool: ...
+
+
+@runtime_checkable
+class JobQueuePort(Protocol):
+    """Enqueues background work — the application-layer-safe face of
+    ``infrastructure.jobs.pool.JobQueue``, whose own ``enqueue()`` returns an
+    ``arq``-typed ``Job`` object that must not leak past the infrastructure
+    boundary. The concrete adapter (``infrastructure/order/job_queue_adapter.py``)
+    unwraps that into a plain job id string.
+    """
+
+    async def enqueue(self, function_name: str, *args: Any, **kwargs: Any) -> str | None:
+        """Returns the enqueued job's id, or ``None`` if a job with the same
+        ``_job_id`` keyword is already queued (ARQ's own dedup primitive).
+        """
+        ...

@@ -12,6 +12,9 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
+    # multipart/form-data parsing (Order Management's POD-attachment upload —
+    # the first `UploadFile`/`File()` endpoint in this codebase)
+    "python-multipart>=0.0.20",
     # Persistence
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
@@ -250,6 +253,24 @@ ignore_imports = [
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.identity",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.tenant",
+    # Area J (Phase 8): dependencies/customer.py wires customer repository
+    "lpg.api.v1.dependencies.customer -> lpg.infrastructure.persistence.repositories.customer",
+    "lpg.api.v1.dependencies.customer -> lpg.infrastructure.security.field_encryption",
+    # Area K (Phase 9): dependencies/delivery.py wires driver and vehicle repositories
+    "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.driver",
+    "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.vehicle",
+    "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.route",
+    # Inventory Management: dependencies/inventory.py wires the location, GRN
+    # and reconciliation-record repositories.
+    "lpg.api.v1.dependencies.inventory -> lpg.infrastructure.persistence.repositories.inventory",
+    # Order Management: dependencies/order.py wires the order, cancellation-
+    # record and proof-of-delivery repositories, plus (for bulk-cancel's
+    # fresh-transaction-per-order factory) the inventory location repository.
+    "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.order",
+    "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.inventory",
+    # get_cancel_order_use_case_factory (Phase 12) also needs a fresh route
+    # repository per order, same reasoning as the inventory one above.
+    "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.route",
 ]
 
 [[tool.importlinter.contracts]]
