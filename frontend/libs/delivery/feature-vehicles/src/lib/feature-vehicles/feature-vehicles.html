@@ -1,0 +1,173 @@
+<div class="vehicle-container">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Fleet Vehicles</h1>
+      <p class="page-subtitle">Manage the vehicle fleet, registration, and maintenance status.</p>
+    </div>
+    <div class="page-header__actions">
+      <button
+        #registerTriggerEl
+        pButton
+        type="button"
+        (click)="openRegisterModal()"
+      >
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Register Vehicle <kbd class="ml-1 text-xs opacity-70">Ctrl+N</kbd></span>
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage(); as msg) {
+  <p-message severity="error">{{ msg }}</p-message>
+  }
+
+  @if (vehicles().length > 0 || searchQuery().length > 0) {
+  <div class="search-bar">
+    <p-iconfield styleClass="w-full">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        id="vehicle-search-input"
+        class="search-input"
+        pInputText
+        type="text"
+        placeholder="Search by registration, make or model... (/)"
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </p-iconfield>
+  </div>
+  }
+
+  <p class="grid-hint">Click a vehicle's registration number to update its status.</p>
+
+  <div class="grid-wrapper">
+    <lpg-data-grid
+      [rows]="vehicles()"
+      [columns]="columns"
+      [loading]="loading()"
+      ariaLabel="Vehicles list"
+    />
+  </div>
+
+  <!-- Register Vehicle Modal -->
+  <p-drawer
+    header="Register Vehicle"
+    [(visible)]="registerModalVisible"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '36rem' }"
+    (onHide)="registerTrigger()?.nativeElement?.focus()"
+  >
+    <form id="registerVehicleForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="form-group">
+        <label for="branch_id">Branch</label>
+        <p-select
+          id="branch_id"
+          formControlName="branch_id"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select Branch"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="registration_number">Registration Number</label>
+        <input
+          pInputText
+          id="registration_number"
+          formControlName="registration_number"
+          placeholder="e.g. MH12AB1234"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="make">Make</label>
+        <input pInputText id="make" formControlName="make" placeholder="e.g. Tata" />
+      </div>
+
+      <div class="form-group">
+        <label for="model">Model</label>
+        <input pInputText id="model" formControlName="model" placeholder="e.g. Ace" />
+      </div>
+
+      <div class="form-group">
+        <label for="ownership_type">Ownership Type</label>
+        <p-select
+          id="ownership_type"
+          formControlName="ownership_type"
+          [options]="[
+            { label: 'Owned', value: 'owned' },
+            { label: 'Third Party', value: 'third_party' },
+            { label: 'Rental', value: 'rental' },
+            { label: 'Gig', value: 'gig' }
+          ]"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="capacity_units">Capacity (Cylinder Units)</label>
+        <input
+          pInputText
+          type="number"
+          id="capacity_units"
+          formControlName="capacity_units"
+          min="1"
+        />
+      </div>
+
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
+          Register
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Update Status Modal -->
+  <p-drawer
+    header="Update Vehicle Status"
+    [(visible)]="updateStatusModalVisible"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+  >
+    <form id="updateVehicleStatusForm" [formGroup]="statusForm" (ngSubmit)="onSubmitStatus()" class="dialog-form">
+      <div class="form-group">
+        <label for="vehicle_status">Status</label>
+        <p-select
+          id="vehicle_status"
+          formControlName="status"
+          [options]="[
+            { label: 'Active', value: 'active' },
+            { label: 'Maintenance', value: 'maintenance' },
+            { label: 'Inactive', value: 'inactive' }
+          ]"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+
+      <div class="modal-actions">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="showUpdateStatusModal.set(false)"
+        >
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="statusForm.invalid || loading()">
+          Save Status
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+</div>

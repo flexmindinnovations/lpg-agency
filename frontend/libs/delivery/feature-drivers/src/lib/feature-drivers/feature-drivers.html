@@ -1,0 +1,160 @@
+<div class="driver-container">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Drivers</h1>
+      <p class="page-subtitle">Manage driver registrations and license information.</p>
+    </div>
+    <div class="page-header__actions">
+      <button
+        #registerTriggerEl
+        pButton
+        type="button"
+        (click)="openRegisterModal()"
+      >
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Register Driver <kbd class="ml-1 text-xs opacity-70">Ctrl+N</kbd></span>
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage(); as msg) {
+  <p-message severity="error">{{ msg }}</p-message>
+  }
+
+  @if (drivers().length > 0 || searchQuery().length > 0) {
+  <div class="search-bar">
+    <p-iconfield styleClass="w-full">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        id="driver-search-input"
+        class="search-input"
+        pInputText
+        type="text"
+        placeholder="Search by employee code or license... (/)"
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </p-iconfield>
+  </div>
+  }
+
+  <p class="grid-hint">Click a driver's employee code to update their duty status.</p>
+
+  <div class="grid-wrapper">
+    <lpg-data-grid
+      [rows]="drivers()"
+      [columns]="columns"
+      [loading]="loading()"
+      ariaLabel="Drivers list"
+    />
+  </div>
+
+  <!-- Register Driver Modal -->
+  <p-drawer
+    header="Register Driver"
+    [(visible)]="registerModalVisible"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '36rem' }"
+    (onHide)="registerTrigger()?.nativeElement?.focus()"
+  >
+    <form id="registerDriverForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="form-group">
+        <label for="branch_id">Branch</label>
+        <p-select
+          id="branch_id"
+          formControlName="branch_id"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select Branch"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="employee_code">Employee Code</label>
+        <input
+          pInputText
+          id="employee_code"
+          formControlName="employee_code"
+          placeholder="e.g. DRV-001"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="license_number">License Number</label>
+        <input
+          pInputText
+          id="license_number"
+          formControlName="license_number"
+          placeholder="e.g. DL-12345"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="license_expiry_date">License Expiry Date (Optional)</label>
+        <p-datepicker
+          id="license_expiry_date"
+          formControlName="license_expiry_date"
+          [showIcon]="true"
+          iconDisplay="input"
+          dateFormat="dd-mm-yy"
+          placeholder="dd-mm-yyyy"
+          appendTo="body"
+          [fluid]="true"
+        ></p-datepicker>
+      </div>
+
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
+          Register
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Update Status Modal -->
+  <p-drawer
+    header="Update Driver Status"
+    [(visible)]="updateStatusModalVisible"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+  >
+    <form id="updateDriverStatusForm" [formGroup]="statusForm" (ngSubmit)="onSubmitStatus()" class="dialog-form">
+      <div class="form-group">
+        <label for="status">Duty Status</label>
+        <p-select
+          id="status"
+          formControlName="status"
+          [options]="[
+            { label: 'Active', value: 'active' },
+            { label: 'On Leave', value: 'on_leave' },
+            { label: 'Inactive', value: 'inactive' }
+          ]"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+
+      <div class="modal-actions">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="showUpdateStatusModal.set(false)"
+        >
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="statusForm.invalid || loading()">
+          Save Status
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+</div>
