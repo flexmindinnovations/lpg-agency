@@ -1,8 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective } from 'primeng/button';
+import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
-import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { Drawer } from 'primeng/drawer';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
+import { MessageService } from 'primeng/api';
 import {
   AdminTenantConfigurationService,
   type AppError,
@@ -28,7 +32,7 @@ function errorMessageFor(error: unknown): string {
 }
 
 /**
- * Tenant configuration history + set-new-value form — `tenant:configure`.
+ * Tenant configuration history + set-new-value drawer — `tenant:configure`.
  *
  * Historized (BR-31): "setting" a value always adds a new row with a later
  * `effective_from`, it never edits an existing one — the grid below shows
@@ -37,70 +41,133 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-tenant-configuration-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, InputText, Message, DataGridComponent],
+  imports: [ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
-      <h1>Tenant Configuration</h1>
-      <p>Values are historized — setting a new value never overwrites the previous one.</p>
-
-      <div class="admin-page__grid">
-        <lpg-data-grid
-          [rows]="entries()"
-          [columns]="columns"
-          [loading]="loading()"
-          ariaLabel="Tenant configuration history"
-        />
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Tenant Configuration</h1>
+          <p class="page-subtitle">Manage tenant-wide settings like GST rates and credit limits.</p>
+        </div>
+        <div class="page-header__actions">
+          <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Value</span></button>
+        </div>
       </div>
+      <p class="page-note">Values are historized — setting a new value never overwrites the previous one.</p>
 
-      <form class="admin-page__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h2>Set a configuration value</h2>
-        @if (errorMessage(); as message) {
-          <p-message severity="error">{{ message }}</p-message>
-        }
-        <div class="admin-page__field">
-          <label for="config-key">Key</label>
-          <select id="config-key" formControlName="configKey">
-            <option value="" disabled>Select a key</option>
-            @for (key of recognizedKeys; track key) {
-              <option [value]="key">{{ key }}</option>
+      @if (entries().length > 0) {
+        <div class="data-toolbar">
+          <div class="data-toolbar__filters">
+            <p-iconfield styleClass="w-full md:w-64">
+              <p-inputicon styleClass="pi pi-search" />
+              <input pInputText type="text" placeholder="Search configuration..." class="w-full" />
+            </p-iconfield>
+          </div>
+          <div class="data-toolbar__actions">
+            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
+          </div>
+        </div>
+      }
+
+      @if (!loading() && entries().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-sliders-h empty-state__icon"></i>
+          <p class="empty-state__title">No configuration values</p>
+          <p class="empty-state__description">Set the first configuration value to get started.</p>
+          <button pButton class="mt-4" (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Value</span></button>
+        </div>
+      } @else {
+        <section class="grid-section">
+          <div class="grid-wrapper">
+            <lpg-data-grid
+              [rows]="entries()"
+              [columns]="columns"
+              [loading]="loading()"
+              ariaLabel="Tenant configuration history"
+            />
+          </div>
+        </section>
+      }
+
+      <!-- Set Configuration Value Drawer -->
+      <p-drawer
+        [(visible)]="createDrawerVisible"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        header="Set a configuration value"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        <form id="setConfigForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <p class="page-lede">This creates a new historized entry — the previous value is preserved.</p>
+
+          <div class="form-group">
+            <label for="config-key">Key</label>
+            <p-select
+              id="config-key"
+              formControlName="configKey"
+              [options]="recognizedKeys"
+              placeholder="Select a key"
+              styleClass="w-full"
+              appendTo="body">
+            </p-select>
+            @if (form.controls.configKey.touched && form.controls.configKey.invalid) {
+              <small class="field-error">Configuration key is required.</small>
             }
-          </select>
-        </div>
-        <div class="admin-page__field">
-          <label for="config-value">Value</label>
-          <input pInputText id="config-value" type="text" formControlName="configValue" />
-        </div>
-        <button pButton type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Saving…' : 'Set value' }}
-        </button>
-      </form>
+          </div>
+
+          <div class="form-group">
+            <label for="config-value">Value</label>
+            <input pInputText id="config-value" type="text" formControlName="configValue" placeholder="e.g. 18" />
+            @if (form.controls.configValue.touched && form.controls.configValue.invalid) {
+              <small class="field-error">Value is required.</small>
+            }
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
+              Save value
+            </button>
+          </div>
+        </form>
+      </p-drawer>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        block-size: 100%;
+      }
+
       .admin-page {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-        padding: var(--spacing-lg);
+        block-size: 100%;
       }
 
-      .admin-page__grid {
-        block-size: 400px;
+      .page-note {
+        margin: 0 0 var(--spacing-sm) 0;
+        color: var(--color-text-secondary);
+        font-size: var(--typography-caption-font-size);
       }
 
-      .admin-page__form {
+      .grid-section {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-sm);
-        max-inline-size: 24rem;
+        min-block-size: 0;
       }
 
-      .admin-page__field {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
+      .grid-wrapper {
+        flex: 1;
+        min-block-size: 400px;
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
     `,
   ],
@@ -108,12 +175,13 @@ function errorMessageFor(error: unknown): string {
 export class TenantConfigurationPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly configService = inject(AdminTenantConfigurationService);
+  private readonly messageService = inject(MessageService);
 
   protected readonly entries = signal<TenantConfigurationResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
-  protected readonly errorMessage = signal<string | null>(null);
-  protected readonly recognizedKeys = RECOGNIZED_CONFIG_KEYS;
+  protected readonly createDrawerVisible = signal(false);
+  protected readonly recognizedKeys = [...RECOGNIZED_CONFIG_KEYS];
 
   protected readonly columns: DataGridColumn<TenantConfigurationResponse>[] = [
     { field: 'config_key', header: 'Key', sortable: true, filterable: true },
@@ -145,6 +213,11 @@ export class TenantConfigurationPage implements OnInit {
     });
   }
 
+  protected openCreateDrawer(): void {
+    this.form.reset();
+    this.createDrawerVisible.set(true);
+  }
+
   protected submit(): void {
     if (this.submitting()) {
       return;
@@ -155,18 +228,19 @@ export class TenantConfigurationPage implements OnInit {
     }
 
     this.submitting.set(true);
-    this.errorMessage.set(null);
     const { configKey, configValue } = this.form.getRawValue();
 
     this.configService.setConfiguration(configKey, configValue).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: `"${configKey}" saved.` });
+        this.createDrawerVisible.set(false);
         this.form.reset();
         this.reload();
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        this.errorMessage.set(errorMessageFor(error));
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }

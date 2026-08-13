@@ -1,8 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective } from 'primeng/button';
+import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
-import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { Drawer } from 'primeng/drawer';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
+import { MessageService } from 'primeng/api';
 import {
   AdminStaffUserService,
   type AppError,
@@ -31,7 +35,7 @@ function errorMessageFor(error: unknown): string {
 }
 
 /**
- * Staff list + invite form + deactivate/reassign-role actions —
+ * Staff list + invite drawer + manage-user drawer —
  * `users:manage`. Customer/Driver accounts are excluded server-side
  * (`ListStaffUsersUseCase`'s own docstring) — this screen is Dashboard
  * staff only.
@@ -39,104 +43,169 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-staff-users-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, InputText, Message, DataGridComponent],
+  imports: [ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
-      <h1>Staff Users</h1>
-
-      <div class="admin-page__grid">
-        <lpg-data-grid
-          [rows]="users()"
-          [columns]="columns"
-          [loading]="loading()"
-          ariaLabel="Staff users"
-        />
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Staff Users</h1>
+          <p class="page-subtitle">Manage user accounts and role assignments.</p>
+        </div>
+        <div class="page-header__actions">
+          <button pButton severity="secondary" (click)="openManageDrawer()"><i pButtonIcon class="pi pi-user-edit"></i><span pButtonLabel>Manage User</span></button>
+          <button pButton (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
+        </div>
       </div>
 
-      <form class="admin-page__form" [formGroup]="manageForm" novalidate>
-        <h2>Manage a user</h2>
-        <p class="admin-page__hint">Copy a user's id from the grid above.</p>
-        <div class="admin-page__field">
-          <label for="manage-user-id">User id</label>
-          <input pInputText id="manage-user-id" type="text" formControlName="userId" />
+      @if (users().length > 0) {
+        <div class="data-toolbar">
+          <div class="data-toolbar__filters">
+            <p-iconfield styleClass="w-full md:w-64">
+              <p-inputicon styleClass="pi pi-search" />
+              <input pInputText type="text" placeholder="Search users..." class="w-full" />
+            </p-iconfield>
+          </div>
+          <div class="data-toolbar__actions">
+            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
+          </div>
         </div>
-        <div class="admin-page__field">
-          <label for="manage-role">New role (for reassignment)</label>
-          <select id="manage-role" formControlName="newRole">
-            <option value="">— select to reassign —</option>
-            @for (role of roles; track role) {
-              <option [value]="role">{{ role }}</option>
-            }
-          </select>
-        </div>
-        <div class="admin-page__actions">
-          <button pButton type="button" severity="secondary" (click)="reassignRole()">
-            Reassign role
-          </button>
-          <button pButton type="button" severity="danger" (click)="deactivate()">Deactivate</button>
-        </div>
-      </form>
+      }
 
-      <form class="admin-page__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h2>Invite a staff user</h2>
-        @if (errorMessage(); as message) {
-          <p-message severity="error">{{ message }}</p-message>
-        }
-        <div class="admin-page__field">
-          <label for="invite-email">Email</label>
-          <input pInputText id="invite-email" type="email" formControlName="email" />
+      @if (!loading() && users().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-users empty-state__icon"></i>
+          <p class="empty-state__title">No staff users found</p>
+          <p class="empty-state__description">Invite the first staff member to get started.</p>
+          <button pButton class="mt-4" (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
         </div>
-        <div class="admin-page__field">
-          <label for="invite-role">Role</label>
-          <select id="invite-role" formControlName="role">
-            <option value="" disabled>Select a role</option>
-            @for (role of roles; track role) {
-              <option [value]="role">{{ role }}</option>
+      } @else {
+        <section class="grid-section">
+          <div class="grid-wrapper">
+            <lpg-data-grid
+              [rows]="users()"
+              [columns]="columns"
+              [loading]="loading()"
+              ariaLabel="Staff users"
+            />
+          </div>
+        </section>
+      }
+
+      <!-- Invite User Drawer -->
+      <p-drawer
+        [(visible)]="inviteDrawerVisible"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        header="Invite a staff user"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        <form id="inviteUserForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <p class="page-lede">Send an invitation email to a new staff member and assign their role.</p>
+
+          <div class="form-group">
+            <label for="invite-email">Email</label>
+            <input pInputText id="invite-email" type="email" formControlName="email" placeholder="staff@example.com" />
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <small class="field-error">A valid email address is required.</small>
             }
-          </select>
-        </div>
-        <button pButton type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Inviting…' : 'Send invite' }}
-        </button>
-      </form>
+          </div>
+
+          <div class="form-group">
+            <label for="invite-role">Role</label>
+            <p-select
+              id="invite-role"
+              formControlName="role"
+              [options]="roles"
+              placeholder="Select a role"
+              styleClass="w-full"
+              appendTo="body">
+            </p-select>
+            @if (form.controls.role.touched && form.controls.role.invalid) {
+              <small class="field-error">Role is required.</small>
+            }
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="inviteDrawerVisible.set(false)">Cancel</button>
+            <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
+              Send invite
+            </button>
+          </div>
+        </form>
+      </p-drawer>
+
+      <!-- Manage User Drawer -->
+      <p-drawer
+        [(visible)]="manageDrawerVisible"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        header="Manage a user"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
+          <p class="page-lede">Copy a user's ID from the grid to reassign their role or deactivate their account.</p>
+
+          <div class="form-group">
+            <label for="manage-user-id">User ID</label>
+            <input pInputText id="manage-user-id" type="text" formControlName="userId" placeholder="Paste user ID here" />
+            @if (manageForm.controls.userId.touched && manageForm.controls.userId.invalid) {
+              <small class="field-error">User ID is required.</small>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="manage-role">New role (for reassignment)</label>
+            <p-select
+              id="manage-role"
+              formControlName="newRole"
+              [options]="roles"
+              placeholder="— select to reassign —"
+              styleClass="w-full"
+              appendTo="body">
+            </p-select>
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="danger" (click)="deactivate()">Deactivate</button>
+            <button pButton type="button" (click)="reassignRole()" [disabled]="!manageForm.controls.newRole.value">
+              Reassign role
+            </button>
+          </div>
+        </form>
+      </p-drawer>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        block-size: 100%;
+      }
+
       .admin-page {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-        padding: var(--spacing-lg);
+        block-size: 100%;
       }
 
-      .admin-page__grid {
-        block-size: 400px;
-      }
-
-      .admin-page__form {
+      .grid-section {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-sm);
-        max-inline-size: 24rem;
+        min-block-size: 0;
       }
 
-      .admin-page__field {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-      }
-
-      .admin-page__hint {
-        margin: 0;
-        color: var(--color-text-secondary);
-        font-size: var(--typography-caption-font-size);
-      }
-
-      .admin-page__actions {
-        display: flex;
-        gap: var(--spacing-sm);
+      .grid-wrapper {
+        flex: 1;
+        min-block-size: 400px;
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
     `,
   ],
@@ -144,12 +213,14 @@ function errorMessageFor(error: unknown): string {
 export class StaffUsersPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly staffUserService = inject(AdminStaffUserService);
+  private readonly messageService = inject(MessageService);
 
   protected readonly users = signal<StaffUserResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
-  protected readonly errorMessage = signal<string | null>(null);
-  protected readonly roles = STAFF_ROLES;
+  protected readonly inviteDrawerVisible = signal(false);
+  protected readonly manageDrawerVisible = signal(false);
+  protected readonly roles = [...STAFF_ROLES];
 
   protected readonly columns: DataGridColumn<StaffUserResponse>[] = [
     { field: 'email', header: 'Email', sortable: true, filterable: true },
@@ -182,13 +253,31 @@ export class StaffUsersPage implements OnInit {
     });
   }
 
+  protected openInviteDrawer(): void {
+    this.form.reset();
+    this.inviteDrawerVisible.set(true);
+  }
+
+  protected openManageDrawer(): void {
+    this.manageForm.reset();
+    this.manageDrawerVisible.set(true);
+  }
+
   protected deactivate(): void {
     const { userId } = this.manageForm.getRawValue();
     if (!userId) {
       this.manageForm.markAllAsTouched();
       return;
     }
-    this.staffUserService.deactivateStaffUser(userId).subscribe(() => this.reload());
+    this.staffUserService.deactivateStaffUser(userId).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'User deactivated.' });
+        this.manageDrawerVisible.set(false);
+        this.reload();
+      },
+      error: (error: unknown) =>
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) }),
+    });
   }
 
   protected reassignRole(): void {
@@ -197,7 +286,15 @@ export class StaffUsersPage implements OnInit {
       this.manageForm.markAllAsTouched();
       return;
     }
-    this.staffUserService.reassignRole(userId, newRole).subscribe(() => this.reload());
+    this.staffUserService.reassignRole(userId, newRole).subscribe({
+      next: () => {
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Role reassigned.' });
+        this.manageDrawerVisible.set(false);
+        this.reload();
+      },
+      error: (error: unknown) =>
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) }),
+    });
   }
 
   protected submit(): void {
@@ -210,18 +307,19 @@ export class StaffUsersPage implements OnInit {
     }
 
     this.submitting.set(true);
-    this.errorMessage.set(null);
     const { email, role } = this.form.getRawValue();
 
     this.staffUserService.inviteStaffUser(email, role).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: `Invite sent to ${email}.` });
+        this.inviteDrawerVisible.set(false);
         this.form.reset();
         this.reload();
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        this.errorMessage.set(errorMessageFor(error));
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }

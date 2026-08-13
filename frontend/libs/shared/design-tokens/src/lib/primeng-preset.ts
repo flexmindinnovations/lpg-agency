@@ -183,4 +183,16 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       focusColor: 'var(--color-action-primary)',
     },
   },
+  components: {
+    drawer: {
+      // Aura's default gives the header uniform overlay.modal.padding (our
+      // --spacing-lg) on all four sides. That creates a large dead gap between
+      // the drawer title bar and the first line of content in the form.
+      // Reducing just the bottom padding closes that gap while keeping the
+      // left/right/top chrome consistent with other modal overlays.
+      header: {
+        padding: 'var(--spacing-lg) var(--spacing-lg) var(--spacing-sm) var(--spacing-lg)',
+      },
+    },
+  },
 });

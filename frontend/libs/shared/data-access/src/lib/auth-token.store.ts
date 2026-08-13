@@ -6,6 +6,7 @@ export interface AuthPrincipal {
   readonly tenantId: string | null;
   readonly role: string;
   readonly permissions: ReadonlySet<string>;
+  readonly email: string | null;
 }
 
 /**

@@ -22,8 +22,8 @@ test('sidebar collapse toggle collapses and expands the sidebar', async ({ page 
 test('theme menu switches to dark mode and applies data-theme', async ({ page }) => {
   await page.goto('/');
 
-  await page.locator('.shell__theme-trigger').click();
-  await page.getByRole('menuitem', { name: 'Dark' }).click();
+  await page.getByRole('button', { name: /Account menu/i }).click();
+  await page.getByRole('menuitemradio', { name: 'Dark' }).click();
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });

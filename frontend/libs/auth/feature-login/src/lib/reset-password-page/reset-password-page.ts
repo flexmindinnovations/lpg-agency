@@ -47,51 +47,63 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
     <div class="login-page">
       <div class="login-card">
         @if (!resetToken()) {
-          <h1 class="login-card__title">Invalid link</h1>
-          <p class="login-card__lede">
-            This password reset link is missing its token. Request a new one.
-          </p>
+          <div class="login-card__header">
+            <h1 class="login-card__title">Invalid link</h1>
+            <p class="login-card__lede">
+              This password reset link is missing its token. Request a new one.
+            </p>
+          </div>
         } @else if (succeeded()) {
-          <h1 class="login-card__title">Password updated</h1>
-          <p class="login-card__lede">Your password has been reset.</p>
-          <a class="login-card__submit-link" routerLink="/login">Continue to sign in</a>
+          <div class="login-card__header">
+            <h1 class="login-card__title">Password updated</h1>
+            <p class="login-card__lede">Your password has been reset.</p>
+          </div>
+          <div class="login-card__footer">
+            <a class="login-card__submit-link" routerLink="/login">Continue to sign in</a>
+          </div>
         } @else {
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-            <h1 class="login-card__title">Choose a new password</h1>
+            <div class="login-card__header">
+              <h1 class="login-card__title">Choose a new password</h1>
+            </div>
 
             @if (errorMessage(); as message) {
               <p-message severity="error">{{ message }}</p-message>
             }
 
-            <div class="login-field">
-              <label for="reset-new-password">New password</label>
-              <p-password
-                inputId="reset-new-password"
-                formControlName="newPassword"
-                [toggleMask]="true"
-                autocomplete="new-password"
-                [inputStyle]="{ width: '100%' }"
-              />
+            <div class="login-card__body">
+              <div class="form-group">
+                <label for="reset-new-password">New password</label>
+                <p-password
+                  inputId="reset-new-password"
+                  formControlName="newPassword"
+                  [toggleMask]="true"
+                  autocomplete="new-password"
+                  [inputStyle]="{ width: '100%' }"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="reset-confirm-password">Confirm new password</label>
+                <p-password
+                  inputId="reset-confirm-password"
+                  formControlName="confirmPassword"
+                  [toggleMask]="true"
+                  [feedback]="false"
+                  autocomplete="new-password"
+                  [inputStyle]="{ width: '100%' }"
+                />
+                @if (mismatch()) {
+                  <span class="field-error">Passwords do not match.</span>
+                }
+              </div>
             </div>
 
-            <div class="login-field">
-              <label for="reset-confirm-password">Confirm new password</label>
-              <p-password
-                inputId="reset-confirm-password"
-                formControlName="confirmPassword"
-                [toggleMask]="true"
-                [feedback]="false"
-                autocomplete="new-password"
-                [inputStyle]="{ width: '100%' }"
-              />
-              @if (mismatch()) {
-                <span class="login-field__error">Passwords do not match.</span>
-              }
+            <div class="login-card__footer">
+              <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
+                {{ submitting() ? 'Saving…' : 'Save new password' }}
+              </button>
             </div>
-
-            <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
-              {{ submitting() ? 'Saving…' : 'Save new password' }}
-            </button>
           </form>
         }
       </div>
@@ -105,55 +117,76 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
         justify-content: center;
         min-block-size: 100vh;
         padding: var(--spacing-lg);
-        background: var(--color-surface-base);
+        background: var(--color-surface-sunken);
       }
 
       .login-card {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-md);
+        gap: var(--spacing-lg);
         inline-size: 100%;
-        max-inline-size: 24rem;
+        max-inline-size: 26rem;
         padding: var(--spacing-xl);
-        background: var(--color-surface-raised);
+        background: var(--color-surface-base);
         border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-xl);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      }
+
+      .login-card__header {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        text-align: center;
       }
 
       .login-card__title {
         margin: 0;
         font-size: var(--typography-heading1-font-size);
         font-weight: var(--typography-heading1-font-weight);
+        letter-spacing: -0.025em;
       }
 
       .login-card__lede {
         margin: 0;
         color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
       }
 
-      .login-field {
+      .login-card__body {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-xs);
-        margin-bottom: var(--spacing-md);
+        gap: var(--spacing-md);
+        margin-block-start: var(--spacing-md);
       }
 
-      .login-field label {
-        font-weight: var(--typography-label-font-weight);
-      }
-
-      .login-field__error {
-        color: var(--color-status-danger-text, var(--color-text-danger, #b91c1c));
-        font-size: var(--typography-caption-font-size);
+      .login-card__footer {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        margin-block-start: var(--spacing-lg);
       }
 
       .login-card__submit {
-        margin-top: var(--spacing-sm);
+        width: 100%;
       }
 
       .login-card__submit-link {
-        align-self: center;
-        color: var(--color-action-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        background: var(--color-action-primary);
+        color: var(--color-action-primary-text);
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-size: var(--typography-body-small-font-size);
+        font-weight: var(--typography-label-font-weight);
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard);
+      }
+      .login-card__submit-link:hover {
+        background: var(--color-action-primary-hover);
       }
     `,
   ],

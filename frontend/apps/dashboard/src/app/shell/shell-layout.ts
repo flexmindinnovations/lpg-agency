@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+﻿import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
+import { AuthService, AuthTokenStore } from '@lpg/shared/data-access';
+import { Toast } from 'primeng/toast';
 
 /**
  * Hosts the shared `AppShellComponent` for every authenticated route.
@@ -22,31 +24,81 @@ import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
 @Component({
   selector: 'lpg-shell-layout',
   standalone: true,
-  imports: [RouterOutlet, AppShellComponent],
+  imports: [RouterOutlet, AppShellComponent, Toast],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <lpg-app-shell brandName="LPG Agency" [navGroups]="navGroups">
+    <lpg-app-shell
+      brandName="LPG Agency"
+      [navGroups]="navGroups()"
+      [email]="email()"
+      [role]="role()"
+      (signOut)="onSignOut()"
+    >
       <router-outlet />
     </lpg-app-shell>
+    <p-toast position="bottom-right" />
   `,
 })
 export class ShellLayout {
-  protected readonly navGroups: readonly NavGroup[] = [
-    {
-      items: [{ label: 'Home', icon: 'pi pi-home', route: '/', exact: true }],
-    },
-    {
-      label: 'Administration',
-      items: [
-        { label: 'Branches', icon: 'pi pi-building', route: '/admin/branches' },
-        { label: 'Warehouses', icon: 'pi pi-warehouse', route: '/admin/warehouses' },
-        { label: 'Cylinder Types', icon: 'pi pi-box', route: '/admin/cylinder-types' },
-        { label: 'Tenant Config', icon: 'pi pi-cog', route: '/admin/tenant-config' },
-        { label: 'Pricing', icon: 'pi pi-tag', route: '/admin/price-lists' },
-        { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags' },
-        { label: 'Users', icon: 'pi pi-users', route: '/admin/users' },
-        { label: 'Audit Log', icon: 'pi pi-history', route: '/admin/audit-log' },
-      ],
-    },
-  ];
+  private readonly authService = inject(AuthService);
+  private readonly tokenStore = inject(AuthTokenStore);
+  private readonly router = inject(Router);
+
+  protected readonly email = computed(() => this.authService.principal()?.email ?? null);
+  protected readonly role = computed(() => this.authService.principal()?.role ?? '');
+
+  protected onSignOut(): void {
+    this.authService.logout().subscribe(() => {
+      void this.router.navigateByUrl('/login');
+    });
+  }
+
+  /** Nav tree filtered to routes the current user can actually access. */
+  protected readonly navGroups = computed<readonly NavGroup[]>(() => {
+    const permissions = this.tokenStore.principal()?.permissions;
+    const can = (code: string) => permissions?.has(code) ?? false;
+
+    return [
+      {
+        label: 'Overview',
+        items: [{ label: 'Dashboard', icon: 'pi pi-home', route: '/', exact: true }],
+      },
+      {
+        label: 'Operations',
+        items: [
+          { label: 'Customers', icon: 'pi pi-users', route: '/customers' },
+          { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders' },
+          { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch' },
+        ],
+      },
+      {
+        label: 'Logistics',
+        items: [
+          { label: 'Drivers', icon: 'pi pi-id-card', route: '/drivers' },
+          { label: 'Vehicles', icon: 'pi pi-truck', route: '/vehicles' },
+          { label: 'Inventory', icon: 'pi pi-database', route: '/inventory' },
+          { label: 'Warehouses', icon: 'pi pi-warehouse', route: '/admin/warehouses' },
+        ],
+      },
+      {
+        label: 'Administration',
+        items: [
+          { label: 'Branches', icon: 'pi pi-building', route: '/admin/branches' },
+          { label: 'Cylinder Types', icon: 'pi pi-box', route: '/admin/cylinder-types' },
+          { label: 'Pricing', icon: 'pi pi-tag', route: '/admin/price-lists' },
+          { label: 'Users & Roles', icon: 'pi pi-user', route: '/admin/users' },
+          { label: 'Tenant Config', icon: 'pi pi-cog', route: '/admin/tenant-config' },
+          { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags' },
+          // Platform Flags is a superadmin-only tool — only shown when the
+          // token carries feature_flags:manage_platform (matches the route's
+          // own permissionGuard so the link is never shown to users who would
+          // just be redirected away on click).
+          ...(can('feature_flags:manage_platform')
+            ? [{ label: 'Platform Flags', icon: 'pi pi-globe', route: '/admin/feature-flags/platform' }]
+            : []),
+          { label: 'Audit Log', icon: 'pi pi-history', route: '/admin/audit-log' },
+        ],
+      },
+    ];
+  });
 }

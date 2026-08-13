@@ -1,57 +1,61 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, model, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { Menu } from 'primeng/menu';
-import type { MenuItem } from 'primeng/api';
 import { Badge } from 'primeng/badge';
 import { Tooltip } from 'primeng/tooltip';
-import { ThemeService, type ThemePreference } from '@lpg/shared/design-tokens';
 import type { NavGroup } from './nav-item';
+import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
 
 /**
- * Application shell: collapsible sidebar navigation, top bar, routed content.
+ * Application shell: collapsible sidebar navigation with integrated brand,
+ * and a full-height routed content area.
+ *
+ * The top-bar was removed during the Premium UI redesign — the brand now lives
+ * in the sidebar header (matching Linear, Notion, Arc's pattern), and the
+ * sidebar/main-content split uses the full viewport height. The sidebar
+ * collapse toggle moved into the sidebar header alongside the brand.
  *
  * Data-driven and app-agnostic — `navGroups` is supplied by the consuming
  * app, never hardcoded here, so this component carries no assumption about
  * which business modules exist or what order they ship in (ADR-018's stated
- * goal of hosting a future second Angular app depends on that). The theme
- * switcher lives inside the shell itself (not the consuming app) because
- * every app that uses this shell needs one, in the same place, every time.
+ * goal of hosting a future second Angular app depends on that).
  */
 @Component({
   selector: 'lpg-app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, Menu, Badge, Tooltip],
+  imports: [RouterLink, RouterLinkActive, Badge, Tooltip, ProfileMenuComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="shell__skip-link" href="#shell-main-content">Skip to main content</a>
 
     <div class="shell" [class.shell--collapsed]="collapsed()">
-      <header class="shell__top-bar">
-        <button
-          type="button"
-          class="shell__collapse-toggle"
-          [attr.aria-expanded]="!collapsed()"
-          [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
-          pTooltip="{{ collapsed() ? 'Expand' : 'Collapse' }} sidebar"
-          tooltipPosition="bottom"
-          (click)="collapsed.set(!collapsed())"
-        >
-          <i class="pi pi-bars" aria-hidden="true"></i>
-        </button>
-
-        <div class="shell__brand">
-          <span class="shell__brand-mark" aria-hidden="true">{{ brandIcon() }}</span>
-          @if (!collapsed()) {
-            <span class="shell__brand-name">{{ brandName() }}</span>
-          }
-        </div>
-
-        <div class="shell__top-bar-spacer"></div>
-        <ng-content select="[shellActions]" />
-      </header>
-
-      <div class="shell__body">
+      <div class="shell__sidebar-wrapper">
         <nav class="shell__sidebar" aria-label="Main navigation">
+          <!-- Brand -->
+          <div class="shell__sidebar-header">
+            <div class="shell__brand">
+              <svg
+                class="shell__brand-mark"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <!-- Outer Flame -->
+                <path
+                  d="M12 2C15 5 19 9 19 14.5C19 18.64 15.86 22 12 22C8.14 22 5 18.64 5 14.5C5 9 9 5 12 2Z"
+                  fill="currentColor"
+                />
+                <!-- Inner Flame -->
+                <path
+                  d="M12 10C13.5 12 15 13.5 15 15.5C15 17.43 13.66 19 12 19C10.34 19 9 17.43 9 15.5C9 13.5 10.5 12 12 10Z"
+                  fill="var(--primitive-color-flame-orange-500, #ff6f12)"
+                />
+              </svg>
+              @if (!collapsed()) {
+                <span class="shell__brand-name">{{ brandName() }}</span>
+              }
+            </div>
+          </div>
+
+          <!-- Navigation Groups -->
           <ul class="shell__nav-groups">
             @for (group of navGroups(); track group.label ?? $index) {
               <li>
@@ -87,24 +91,36 @@ import type { NavGroup } from './nav-item';
             }
           </ul>
 
-          <button
-            type="button"
-            class="shell__theme-trigger"
-            [attr.aria-label]="'Theme: ' + themeLabel(themePreference())"
-            (click)="themeMenu.toggle($event)"
-          >
-            <i [class]="themeIcon()" aria-hidden="true"></i>
-            @if (!collapsed()) {
-              <span class="shell__nav-label">{{ themeLabel(themePreference()) }}</span>
-            }
-          </button>
-          <p-menu #themeMenu [model]="themeMenuItems()" [popup]="true" appendTo="body" />
+          <!-- Profile Menu in Sidebar Footer -->
+          <lpg-profile-menu
+            [email]="email()"
+            [role]="role()"
+            [collapsed]="collapsed()"
+            (signOut)="signOut.emit()"
+          />
         </nav>
 
-        <main id="shell-main-content" class="shell__main" tabindex="-1">
-          <ng-content />
-        </main>
+        <button
+          type="button"
+          class="shell__collapse-toggle"
+          [attr.aria-expanded]="!collapsed()"
+          [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
+          pTooltip="{{ collapsed() ? 'Expand' : 'Collapse' }} sidebar"
+          [tooltipPosition]="collapsed() ? 'right' : 'bottom'"
+          (click)="collapsed.set(!collapsed())"
+        >
+          <i
+            class="pi"
+            [class.pi-chevron-left]="!collapsed()"
+            [class.pi-chevron-right]="collapsed()"
+            aria-hidden="true"
+          ></i>
+        </button>
       </div>
+
+      <main id="shell-main-content" class="shell__main" tabindex="-1">
+        <ng-content />
+      </main>
     </div>
   `,
   styles: [
@@ -122,44 +138,61 @@ import type { NavGroup } from './nav-item';
         background: var(--color-action-primary);
         color: var(--color-action-primary-text);
         border-radius: var(--radius-md);
+        text-decoration: none;
+        font-weight: var(--typography-label-font-weight);
+        font-size: var(--typography-body-small-font-size);
       }
       .shell__skip-link:focus {
         inset-inline-start: var(--spacing-sm);
         inset-block-start: var(--spacing-sm);
       }
 
+      /* ---- Layout ---- */
+
       .shell {
         display: flex;
-        flex-direction: column;
         block-size: 100vh;
       }
 
-      .shell__top-bar {
+      /* ---- Sidebar Wrapper & Sidebar ---- */
+
+      .shell__sidebar-wrapper {
+        position: relative;
         display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        block-size: var(--component-app-shell-top-bar-height);
-        padding-inline: var(--spacing-md);
-        background: var(--color-surface-raised);
-        border-block-end: var(--border-width) solid var(--color-border-default);
+        flex-direction: column;
+        inline-size: var(--component-app-shell-sidebar-width);
         flex-shrink: 0;
+        background: var(--color-surface-base);
+        border-inline-end: var(--border-width) solid var(--color-border-default);
+        transition: inline-size var(--motion-duration-medium) var(--motion-easing-standard);
+        z-index: 10;
       }
 
-      .shell__collapse-toggle {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        inline-size: 2rem;
-        block-size: 2rem;
-        border: none;
-        background: transparent;
-        color: var(--color-text-secondary);
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        font-size: var(--typography-body-font-size);
+      .shell--collapsed .shell__sidebar-wrapper {
+        inline-size: var(--component-app-shell-sidebar-collapsed-width);
       }
-      .shell__collapse-toggle:hover {
-        background: var(--color-surface-overlay);
+
+      .shell__sidebar {
+        display: flex;
+        flex-direction: column;
+        block-size: 100%;
+        overflow: hidden;
+      }
+
+      /* ---- Sidebar Header (brand only) ---- */
+
+      .shell__sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding: var(--spacing-md);
+        padding-block-end: var(--spacing-md);
+        flex-shrink: 0;
+        block-size: 64px;
+      }
+
+      .shell--collapsed .shell__sidebar-header {
+        justify-content: center;
       }
 
       .shell__brand {
@@ -167,165 +200,219 @@ import type { NavGroup } from './nav-item';
         align-items: center;
         gap: var(--spacing-sm);
         overflow: hidden;
+        min-inline-size: 0;
       }
+
       .shell__brand-mark {
+        inline-size: 1.5rem;
+        block-size: 1.5rem;
+        flex-shrink: 0;
         color: var(--color-action-primary);
-        font-size: var(--typography-heading2-font-size);
-        flex-shrink: 0;
       }
+
       .shell__brand-name {
-        font-size: var(--typography-heading2-font-size);
-        font-weight: var(--typography-heading2-font-weight);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--color-text-primary);
       }
 
-      .shell__top-bar-spacer {
-        flex: 1;
+      /* ---- Floating Collapse Toggle ---- */
+
+      .shell__collapse-toggle {
+        position: absolute;
+        inset-inline-end: -12px;
+        inset-block-start: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        inline-size: 24px;
+        block-size: 24px;
+        border: var(--border-width) solid var(--color-border-default);
+        background: var(--color-surface-base);
+        color: var(--color-text-secondary);
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 20;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard),
+          color var(--motion-duration-small) var(--motion-easing-standard),
+          border-color var(--motion-duration-small) var(--motion-easing-standard);
       }
 
-      .shell__body {
-        display: flex;
-        flex: 1;
-        min-block-size: 0;
+      .shell__collapse-toggle:hover {
+        background: var(--color-surface-overlay);
+        color: var(--color-text-primary);
+        border-color: var(--color-text-secondary);
       }
 
-      .shell__sidebar {
-        display: flex;
-        flex-direction: column;
-        inline-size: var(--component-app-shell-sidebar-width);
-        flex-shrink: 0;
-        padding: var(--spacing-md);
-        background: var(--color-surface-raised);
-        border-inline-end: var(--border-width) solid var(--color-border-default);
-        overflow-y: auto;
-        overflow-x: hidden;
-        transition: inline-size var(--motion-duration-small) var(--motion-easing-standard);
+      .shell__collapse-toggle i {
+        font-size: 10px;
       }
-      .shell--collapsed .shell__sidebar {
-        inline-size: var(--component-app-shell-sidebar-collapsed-width);
-      }
+
+      /* ---- Navigation ---- */
 
       .shell__nav-groups {
         list-style: none;
         margin: 0;
-        padding: 0;
+        padding: 0 var(--spacing-sm) var(--spacing-md);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
         flex: 1;
+        /* Without this, a flex:1 column item won't shrink below its content
+           size, so overflow-y:auto below would never actually kick in —
+           the item would just grow and push the sidebar itself to overflow
+           instead of scrolling internally. */
+        min-block-size: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
       }
+
+      .shell--collapsed .shell__nav-groups {
+        padding: 0 var(--spacing-xs) var(--spacing-xs);
+        align-items: center;
+      }
+
       .shell__nav-group-label {
         margin: 0 0 var(--spacing-xs);
         padding-inline: var(--spacing-sm);
-        font-size: var(--typography-caption-font-size);
+        font-size: 11px;
         font-weight: var(--typography-label-font-weight);
         color: var(--color-text-secondary);
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.06em;
+        opacity: 0.7;
       }
+
       .shell__nav-list {
         list-style: none;
         margin: 0;
         padding: 0;
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-xs);
+        gap: 1px;
       }
+
       .shell__nav-link {
         display: flex;
         align-items: center;
         gap: var(--spacing-sm);
-        padding: var(--spacing-sm) var(--spacing-sm);
-        border-radius: var(--radius-sm);
-        color: var(--color-text-primary);
+        padding: 8px 12px;
+        border-radius: var(--radius-md);
+        color: var(--color-text-secondary);
         text-decoration: none;
         white-space: nowrap;
         overflow: hidden;
+        font-size: var(--typography-body-small-font-size);
+        font-weight: 400;
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard),
+          color var(--motion-duration-small) var(--motion-easing-standard);
+        position: relative;
       }
+
       .shell__nav-link i {
-        font-size: var(--typography-body-font-size);
+        font-size: 15px;
         flex-shrink: 0;
         inline-size: 1.25rem;
         text-align: center;
+        opacity: 0.7;
+        transition: opacity var(--motion-duration-small) var(--motion-easing-standard);
       }
+
       .shell__nav-link:hover {
         background: var(--color-surface-overlay);
+        color: var(--color-text-primary);
       }
+
+      .shell__nav-link:hover i {
+        opacity: 1;
+      }
+
       .shell__nav-link.is-active {
         background: var(--color-highlight-background);
         color: var(--color-highlight-color);
-        font-weight: var(--typography-label-font-weight);
+        font-weight: 700;
       }
+
+      .shell__nav-link.is-active i {
+        opacity: 1;
+        font-weight: 700;
+      }
+
       .shell__nav-label {
         overflow: hidden;
         text-overflow: ellipsis;
       }
 
-      .shell__theme-trigger {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        inline-size: 100%;
-        margin-block-start: var(--spacing-md);
-        padding: var(--spacing-sm);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-sm);
-        background: var(--color-surface-base);
-        color: var(--color-text-primary);
-        cursor: pointer;
-        font-size: var(--typography-body-small-font-size);
-        white-space: nowrap;
-        overflow: hidden;
+      /* ---- Collapsed nav ---- */
+
+      .shell--collapsed .shell__nav-link {
+        justify-content: center;
+        padding: 10px;
       }
-      .shell__theme-trigger:hover {
-        background: var(--color-surface-overlay);
+
+      .shell--collapsed .shell__nav-link i {
+        inline-size: auto;
       }
+
+      /* ---- Main Content ---- */
 
       .shell__main {
         flex: 1;
-        padding: var(--spacing-xl);
+        /* Without this, a flex child never shrinks below its content's
+           intrinsic width — wide content (grids, tables) would push the
+           whole shell into horizontal scroll instead of scrolling itself. */
+        min-inline-size: 0;
+        padding: var(--spacing-lg) var(--spacing-xl);
+        overflow-x: hidden;
         overflow-y: auto;
+        background: var(--color-surface-base);
       }
+
       .shell__main:focus {
         outline: none;
+      }
+
+      /* ---- Responsive ---- */
+
+      @media (max-width: 768px) {
+        .shell__sidebar-wrapper {
+          inline-size: var(--component-app-shell-sidebar-collapsed-width);
+        }
+
+        .shell__sidebar-header {
+          justify-content: center;
+        }
+
+        .shell__nav-groups {
+          padding: 0 var(--spacing-xs) var(--spacing-xs);
+          align-items: center;
+        }
+
+        .shell__nav-link {
+          justify-content: center;
+          padding: 10px;
+        }
+
+        .shell__main {
+          padding: var(--spacing-md);
+        }
       }
     `,
   ],
 })
 export class AppShellComponent {
   readonly brandName = input('');
-  readonly brandIcon = input('◆');
+  /** Overrides the default brand mark with a PrimeIcon class or literal glyph. */
+  readonly brandIcon = input<string | null>(null);
   readonly navGroups = input.required<readonly NavGroup[]>();
   readonly collapsed = model(false);
 
-  private readonly themeService = inject(ThemeService);
-  protected readonly themePreference = this.themeService.preference;
-
-  private static readonly THEME_ICONS: Record<ThemePreference, string> = {
-    system: 'pi pi-desktop',
-    light: 'pi pi-sun',
-    dark: 'pi pi-moon',
-    'high-contrast': 'pi pi-eye',
-  };
-
-  protected readonly themeIcon = computed(
-    () => AppShellComponent.THEME_ICONS[this.themePreference()],
-  );
-
-  protected readonly themeMenuItems = computed<MenuItem[]>(() => {
-    const current = this.themePreference();
-    const options: readonly ThemePreference[] = ['system', ...this.themeService.availableThemes];
-    return options.map((option) => ({
-      label: this.themeLabel(option),
-      icon: AppShellComponent.THEME_ICONS[option],
-      styleClass: option === current ? 'is-selected-theme' : undefined,
-      command: () => this.themeService.setPreference(option),
-    }));
-  });
-
-  protected themeLabel(preference: ThemePreference): string {
-    return preference === 'high-contrast'
-      ? 'High contrast'
-      : preference.charAt(0).toUpperCase() + preference.slice(1);
-  }
+  readonly email = input<string | null>(null);
+  readonly role = input('');
+  readonly signOut = output<void>();
 }

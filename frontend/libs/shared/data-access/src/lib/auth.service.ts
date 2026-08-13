@@ -19,6 +19,7 @@ function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
     tenantId: response.tenant_id,
     role: response.role,
     permissions: new Set(response.permissions),
+    email: response.email ?? null,
   };
 }
 

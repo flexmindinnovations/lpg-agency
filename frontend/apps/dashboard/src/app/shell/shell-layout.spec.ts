@@ -35,17 +35,17 @@ describe('ShellLayout', () => {
     expect(el.querySelector('header')).toBeTruthy();
   });
 
-  it('exposes a theme trigger that opens a menu with all four theme options', () => {
+  it('exposes a profile menu whose theme section offers all four theme options', () => {
     const fixture = TestBed.createComponent(ShellLayout);
     fixture.detectChanges();
     const trigger: HTMLButtonElement | null =
-      fixture.nativeElement.querySelector('.shell__theme-trigger');
+      fixture.nativeElement.querySelector('.profile-menu__trigger');
     expect(trigger).toBeTruthy();
     trigger?.click();
     fixture.detectChanges();
 
-    const items: NodeListOf<HTMLElement> = document.querySelectorAll('.p-menu-item-label');
-    const labels = Array.from(items).map((el) => el.textContent?.trim());
+    const items: NodeListOf<HTMLElement> = document.querySelectorAll('[role="menuitemradio"]');
+    const labels = Array.from(items).map((el) => el.querySelector('span')?.textContent?.trim());
     expect(labels).toEqual(['System', 'Light', 'Dark', 'High contrast']);
   });
 });

@@ -1,5 +1,5 @@
-// Secondary entry point — `AppShellComponent`/`NavGroup` only, deliberately
-// excluding `DataGridComponent`.
+// Secondary entry point — `AppShellComponent`/`NavGroup`/`ProfileMenuComponent`
+// only, deliberately excluding `DataGridComponent`.
 //
 // `apps/dashboard/src/app/shell/shell-layout.ts` is eagerly loaded (it's the
 // parent shell `component:`, not a lazy route), so anything it imports from
@@ -11,6 +11,10 @@
 // before that, tree-shaking correctly proved the whole AG Grid dependency
 // graph was unused and dropped it everywhere). Importing from this narrower
 // entry point instead keeps AG Grid confined to the lazy-loaded feature
-// chunks that actually render a grid.
+// chunks that actually render a grid. `ProfileMenuComponent` lives here too,
+// not its own entry point — today it has exactly one consumer
+// (`AppShellComponent`, which renders it in the sidebar footer), so it's
+// shell-scoped infrastructure rather than a general-purpose export.
 export * from './lib/app-shell/app-shell.component';
 export * from './lib/app-shell/nav-item';
+export * from './lib/profile-menu/profile-menu.component';

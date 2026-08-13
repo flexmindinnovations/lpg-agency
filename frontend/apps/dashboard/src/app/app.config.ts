@@ -13,9 +13,11 @@ import { LpgPrimeNgPreset } from '@lpg/shared/design-tokens';
 import { appRoutes } from './app.routes';
 import { PRIME_NG_LICENSE_KEY } from './prime-license';
 import { environment } from '../environments/environment';
+import { MessageService } from 'primeng/api';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    MessageService,
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
     // Backend root URL, swapped per build configuration via `fileReplacements`

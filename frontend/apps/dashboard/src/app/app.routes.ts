@@ -30,11 +30,51 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./home/home').then((m) => m.Home),
         title: 'LPG Agency Management Platform',
       },
+      {
+        path: 'profile',
+        loadComponent: () => import('./profile/profile').then((m) => m.Profile),
+        title: 'My Profile',
+      },
       // Phase 7 (Administration) — each admin area is its own route,
       // gated by the exact permission code its endpoints require
       // server-side (`docs/data/17-api-security.md` §6). The client-side
       // check is a UI convenience only; the API re-enforces every one of
       // these regardless (`permission.guard.ts`'s own docstring).
+      {
+        path: 'customers',
+        canActivate: [permissionGuard('customers:read')],
+        loadChildren: () =>
+          import('@lpg/customer/feature-customers').then((m) => m.featureCustomersRoutes),
+      },
+      {
+        path: 'drivers',
+        canActivate: [permissionGuard('drivers:read')],
+        loadChildren: () =>
+          import('@lpg/delivery/feature-drivers').then((m) => m.deliveryDriversRoutes),
+      },
+      {
+        path: 'vehicles',
+        canActivate: [permissionGuard('vehicles:read')],
+        loadChildren: () =>
+          import('@lpg/delivery/feature-vehicles').then((m) => m.deliveryVehiclesRoutes),
+      },
+      {
+        path: 'dispatch',
+        canActivate: [permissionGuard('routes:read')],
+        loadChildren: () =>
+          import('@lpg/delivery/feature-dispatch').then((m) => m.deliveryDispatchRoutes),
+      },
+      {
+        path: 'inventory',
+        canActivate: [permissionGuard('inventory:read')],
+        loadChildren: () =>
+          import('@lpg/inventory/feature-inventory').then((m) => m.inventoryFeatureRoutes),
+      },
+      {
+        path: 'orders',
+        canActivate: [permissionGuard('orders:read')],
+        loadChildren: () => import('@lpg/order/feature-orders').then((m) => m.ordersFeatureRoutes),
+      },
       {
         path: 'admin/branches',
         canActivate: [permissionGuard('tenant:configure')],
@@ -72,16 +112,16 @@ export const appRoutes: Route[] = [
           import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeaturePriceListRoutes),
       },
       {
-        path: 'admin/feature-flags',
-        canActivate: [permissionGuard('feature_flags:manage_tenant')],
-        loadChildren: () =>
-          import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
-      },
-      {
         path: 'admin/feature-flags/platform',
         canActivate: [permissionGuard('feature_flags:manage_platform')],
         loadChildren: () =>
           import('@lpg/admin/feature-flags').then((m) => m.adminFeaturePlatformFlagsRoutes),
+      },
+      {
+        path: 'admin/feature-flags',
+        canActivate: [permissionGuard('feature_flags:manage_tenant')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
       },
       {
         path: 'admin/users',

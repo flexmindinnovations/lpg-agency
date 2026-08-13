@@ -32,18 +32,10 @@ describe('Routing foundation', () => {
   });
 
   it('contains no business routes', () => {
-    // Phase 1 is foundation only. Customer/Inventory/Order/Delivery/Accounting
-    // routes each arrive in their own phase behind their own plan.
-    const businessPaths = [
-      'customers',
-      'orders',
-      'inventory',
-      'delivery',
-      'accounting',
-      'ledger',
-      'complaints',
-      'reports',
-    ];
+    // Phase 1 is foundation only. Remaining business routes each arrive in
+    // their own phase behind their own plan. `orders` shipped with Order
+    // Management and is deliberately no longer in this list.
+    const businessPaths = ['delivery', 'accounting', 'ledger', 'complaints', 'reports'];
     const declaredTopLevel = appRoutes.map((route) => route.path ?? '');
     const declaredNested = appRoutes.flatMap(
       (route) => route.children?.map((child) => child.path ?? '') ?? [],

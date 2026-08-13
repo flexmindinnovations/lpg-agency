@@ -1,8 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective } from 'primeng/button';
+import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
-import { Message } from 'primeng/message';
+import { Select } from 'primeng/select';
+import { Drawer } from 'primeng/drawer';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
+import { MessageService } from 'primeng/api';
 import {
   AdminBranchService,
   AdminCylinderTypeService,
@@ -28,7 +32,7 @@ function errorMessageFor(error: unknown): string {
 }
 
 /**
- * Price list history + set-price form — `tenant:configure`.
+ * Price list history + set-price drawer — `tenant:configure`.
  *
  * Historized, same as tenant configuration — an empty branch means a
  * tenant-wide default; a specific branch overrides it for that branch only.
@@ -36,87 +40,158 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-price-list-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, InputText, Message, DataGridComponent],
+  imports: [ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
-      <h1>Price List</h1>
-
-      <div class="admin-page__grid">
-        <lpg-data-grid
-          [rows]="prices()"
-          [columns]="columns"
-          [loading]="loading()"
-          ariaLabel="Prices"
-        />
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Pricing</h1>
+          <p class="page-subtitle">Set and track cylinder prices by type, customer category, and branch.</p>
+        </div>
+        <div class="page-header__actions">
+          <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Price</span></button>
+        </div>
       </div>
 
-      <form class="admin-page__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h2>Set a price</h2>
-        @if (errorMessage(); as message) {
-          <p-message severity="error">{{ message }}</p-message>
-        }
-        <div class="admin-page__field">
-          <label for="price-cylinder-type">Cylinder type</label>
-          <select id="price-cylinder-type" formControlName="cylinderTypeId">
-            <option value="" disabled>Select a cylinder type</option>
-            @for (cylinderType of cylinderTypes(); track cylinderType.id) {
-              <option [value]="cylinderType.id">{{ cylinderType.name }}</option>
+      @if (prices().length > 0) {
+        <div class="data-toolbar">
+          <div class="data-toolbar__filters">
+            <p-iconfield styleClass="w-full md:w-64">
+              <p-inputicon styleClass="pi pi-search" />
+              <input pInputText type="text" placeholder="Search prices..." class="w-full" />
+            </p-iconfield>
+          </div>
+          <div class="data-toolbar__actions">
+            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
+          </div>
+        </div>
+      }
+
+      @if (!loading() && prices().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-tag empty-state__icon"></i>
+          <p class="empty-state__title">No prices set</p>
+          <p class="empty-state__description">Set the first price to get started.</p>
+          <button pButton class="mt-4" (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Price</span></button>
+        </div>
+      } @else {
+        <section class="grid-section">
+          <div class="grid-wrapper">
+            <lpg-data-grid
+              [rows]="prices()"
+              [columns]="columns"
+              [loading]="loading()"
+              ariaLabel="Prices"
+            />
+          </div>
+        </section>
+      }
+
+      <!-- Set Price Drawer -->
+      <p-drawer
+        [(visible)]="createDrawerVisible"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        header="Set a price"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        <form id="setPriceForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <p class="page-lede">Set a price for a cylinder type and customer category. Leave branch empty for a tenant-wide default.</p>
+
+          <div class="form-group">
+            <label for="price-cylinder-type">Cylinder type</label>
+            <p-select
+              id="price-cylinder-type"
+              formControlName="cylinderTypeId"
+              [options]="cylinderTypes()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select a cylinder type"
+              styleClass="w-full"
+              appendTo="body">
+            </p-select>
+            @if (form.controls.cylinderTypeId.touched && form.controls.cylinderTypeId.invalid) {
+              <small class="field-error">Cylinder type is required.</small>
             }
-          </select>
-        </div>
-        <div class="admin-page__field">
-          <label for="price-customer-type">Customer type</label>
-          <select id="price-customer-type" formControlName="customerType">
-            <option value="" disabled>Select a customer type</option>
-            @for (customerType of customerTypes; track customerType) {
-              <option [value]="customerType">{{ customerType }}</option>
+          </div>
+
+          <div class="form-group">
+            <label for="price-customer-type">Customer type</label>
+            <p-select
+              id="price-customer-type"
+              formControlName="customerType"
+              [options]="customerTypes"
+              placeholder="Select a customer type"
+              styleClass="w-full"
+              appendTo="body">
+            </p-select>
+            @if (form.controls.customerType.touched && form.controls.customerType.invalid) {
+              <small class="field-error">Customer type is required.</small>
             }
-          </select>
-        </div>
-        <div class="admin-page__field">
-          <label for="price-branch">Branch (optional — blank = tenant-wide default)</label>
-          <select id="price-branch" formControlName="branchId">
-            <option value="">Tenant-wide default</option>
-            @for (branch of branches(); track branch.id) {
-              <option [value]="branch.id">{{ branch.name }}</option>
+          </div>
+
+          <div class="form-group">
+            <label for="price-branch">Branch (optional)</label>
+            <p-select
+              id="price-branch"
+              formControlName="branchId"
+              [options]="branches()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Tenant-wide default"
+              [showClear]="true"
+              styleClass="w-full"
+              appendTo="body">
+            </p-select>
+          </div>
+
+          <div class="form-group">
+            <label for="price-value">Price</label>
+            <input pInputText id="price-value" type="number" step="0.01" formControlName="price" placeholder="0.00" />
+            @if (form.controls.price.touched && form.controls.price.invalid) {
+              <small class="field-error">Price must be greater than 0.</small>
             }
-          </select>
-        </div>
-        <div class="admin-page__field">
-          <label for="price-value">Price</label>
-          <input pInputText id="price-value" type="number" step="0.01" formControlName="price" />
-        </div>
-        <button pButton type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Saving…' : 'Set price' }}
-        </button>
-      </form>
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
+              Save price
+            </button>
+          </div>
+        </form>
+      </p-drawer>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        block-size: 100%;
+      }
+
       .admin-page {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-        padding: var(--spacing-lg);
+        block-size: 100%;
       }
 
-      .admin-page__grid {
-        block-size: 400px;
-      }
-
-      .admin-page__form {
+      .grid-section {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-sm);
-        max-inline-size: 24rem;
+        min-block-size: 0;
       }
 
-      .admin-page__field {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
+      .grid-wrapper {
+        flex: 1;
+        min-block-size: 400px;
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
     `,
   ],
@@ -126,14 +201,15 @@ export class PriceListPage implements OnInit {
   private readonly priceListService = inject(AdminPriceListService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly branchService = inject(AdminBranchService);
+  private readonly messageService = inject(MessageService);
 
   protected readonly prices = signal<PriceListEntryResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
-  protected readonly errorMessage = signal<string | null>(null);
-  protected readonly customerTypes = CUSTOMER_TYPES;
+  protected readonly createDrawerVisible = signal(false);
+  protected readonly customerTypes = [...CUSTOMER_TYPES];
 
   protected readonly columns: DataGridColumn<PriceListEntryResponse>[] = [
     { field: 'customer_type', header: 'Customer Type', sortable: true, filterable: true },
@@ -168,6 +244,11 @@ export class PriceListPage implements OnInit {
     });
   }
 
+  protected openCreateDrawer(): void {
+    this.form.reset({ price: 0 });
+    this.createDrawerVisible.set(true);
+  }
+
   protected submit(): void {
     if (this.submitting()) {
       return;
@@ -178,7 +259,6 @@ export class PriceListPage implements OnInit {
     }
 
     this.submitting.set(true);
-    this.errorMessage.set(null);
     const { cylinderTypeId, customerType, branchId, price } = this.form.getRawValue();
 
     this.priceListService
@@ -186,12 +266,14 @@ export class PriceListPage implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
+          this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Price saved.' });
+          this.createDrawerVisible.set(false);
           this.form.reset({ price: 0 });
           this.reload();
         },
         error: (error: unknown) => {
           this.submitting.set(false);
-          this.errorMessage.set(errorMessageFor(error));
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
         },
       });
   }

@@ -28,7 +28,12 @@ function errorMessageFor(error: unknown): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
-      <h1>Feature Flag Overrides</h1>
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Feature Flags</h1>
+          <p class="page-subtitle">Enable or disable feature flags for this tenant.</p>
+        </div>
+      </div>
       <p>Override a platform flag for this tenant only. Blank the key to check a flag's status.</p>
 
       @if (checkedStatus(); as status) {
@@ -38,49 +43,69 @@ function errorMessageFor(error: unknown): string {
         <p-message severity="error">{{ message }}</p-message>
       }
 
-      <form class="admin-page__form" [formGroup]="form" novalidate>
-        <div class="admin-page__field">
-          <label for="flag-key">Flag key</label>
-          <input pInputText id="flag-key" type="text" formControlName="key" />
-        </div>
-        <div class="admin-page__actions">
-          <button pButton type="button" (click)="checkStatus()">Check status</button>
-          <button pButton type="button" severity="success" (click)="setOverride(true)">
-            Enable for this tenant
-          </button>
-          <button pButton type="button" severity="danger" (click)="setOverride(false)">
-            Disable for this tenant
-          </button>
-        </div>
-      </form>
+      <section class="admin-form-section">
+        <form [formGroup]="form" novalidate>
+          <div class="form-group">
+            <label for="flag-key">Flag key</label>
+            <input pInputText id="flag-key" type="text" formControlName="key" />
+          </div>
+          <div class="admin-form-actions">
+            <button pButton type="button" (click)="checkStatus()">Check status</button>
+            <button pButton type="button" severity="success" (click)="setOverride(true)">
+              Enable for this tenant
+            </button>
+            <button pButton type="button" severity="danger" (click)="setOverride(false)">
+              Disable for this tenant
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   `,
   styles: [
     `
-      .admin-page {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-lg);
-        padding: var(--spacing-lg);
+      :host {
+        display: block;
       }
 
-      .admin-page__form {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-        max-inline-size: 24rem;
+      .admin-form-section {
+        max-inline-size: 480px;
+        margin-block-start: var(--spacing-lg);
       }
 
-      .admin-page__field {
+      .admin-form-section form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+      }
+
+      .admin-form-section .form-group {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
       }
 
-      .admin-page__actions {
+      .admin-form-section .form-group label {
+        font-weight: var(--typography-label-font-weight);
+        font-size: var(--typography-body-small-font-size);
+      }
+
+      .admin-form-actions {
         display: flex;
         gap: var(--spacing-sm);
+        margin-block-start: var(--spacing-sm);
         flex-wrap: wrap;
+      }
+
+      .grid-section {
+        margin-block-start: var(--spacing-lg);
+      }
+
+      .grid-wrapper {
+        block-size: 400px;
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
     `,
   ],

@@ -1,8 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+﻿import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective } from 'primeng/button';
+import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
-import { Message } from 'primeng/message';
+import { Drawer } from 'primeng/drawer';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
+import { MessageService } from 'primeng/api';
 import {
   AdminCylinderTypeService,
   type AppError,
@@ -21,74 +24,130 @@ function errorMessageFor(error: unknown): string {
   }
 }
 
-/** Cylinder type list + create form — `tenant:configure`. */
+/** Cylinder type list + create drawer â€” `tenant:configure`. */
 @Component({
   selector: 'lpg-cylinder-types-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, InputText, Message, DataGridComponent],
+  imports: [ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
-      <h1>Cylinder Types</h1>
-
-      <div class="admin-page__grid">
-        <lpg-data-grid
-          [rows]="cylinderTypes()"
-          [columns]="columns"
-          [loading]="loading()"
-          ariaLabel="Cylinder Types"
-        />
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Cylinder Types</h1>
+          <p class="page-subtitle">Define LPG cylinder sizes and weights.</p>
+        </div>
+        <div class="page-header__actions">
+          <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add Cylinder Type</span></button>
+        </div>
       </div>
 
-      <form class="admin-page__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h2>Add a cylinder type</h2>
-        @if (errorMessage(); as message) {
-          <p-message severity="error">{{ message }}</p-message>
-        }
-        <div class="admin-page__field">
-          <label for="cylinder-name">Name</label>
-          <input pInputText id="cylinder-name" type="text" formControlName="name" />
+      @if (cylinderTypes().length > 0) {
+        <div class="data-toolbar">
+          <div class="data-toolbar__filters">
+            <p-iconfield styleClass="w-full md:w-64">
+              <p-inputicon styleClass="pi pi-search" />
+              <input pInputText type="text" placeholder="Search cylinder types..." class="w-full" />
+            </p-iconfield>
+          </div>
+          <div class="data-toolbar__actions">
+            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
+          </div>
         </div>
-        <div class="admin-page__field">
-          <label for="cylinder-weight">Weight (kg)</label>
-          <input
-            pInputText
-            id="cylinder-weight"
-            type="number"
-            step="0.01"
-            formControlName="weightKg"
-          />
+      }
+
+      @if (!loading() && cylinderTypes().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-box empty-state__icon"></i>
+          <p class="empty-state__title">No cylinder types found</p>
+          <p class="empty-state__description">Get started by defining your first cylinder size.</p>
+          <button pButton class="mt-4" (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add Cylinder Type</span></button>
         </div>
-        <button pButton type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Saving…' : 'Add cylinder type' }}
-        </button>
-      </form>
+      } @else {
+        <section class="grid-section">
+          <div class="grid-wrapper">
+            <lpg-data-grid
+              [rows]="cylinderTypes()"
+              [columns]="columns"
+              [loading]="loading()"
+              ariaLabel="Cylinder Types"
+            />
+          </div>
+        </section>
+      }
+
+      <!-- Create Cylinder Type Drawer -->
+      <p-drawer
+        [(visible)]="createDrawerVisible"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        header="Add a cylinder type"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        <form id="addCylinderTypeForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <p class="page-lede">Define a new LPG cylinder type by name and weight.</p>
+
+          <div class="form-group">
+            <label for="cylinder-name">Name</label>
+            <input pInputText id="cylinder-name" type="text" formControlName="name" placeholder="e.g. 14.2 kg Domestic" />
+            @if (form.controls.name.touched && form.controls.name.invalid) {
+              <small class="field-error">Cylinder type name is required.</small>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="cylinder-weight">Weight (kg)</label>
+            <input
+              pInputText
+              id="cylinder-weight"
+              type="number"
+              step="0.01"
+              formControlName="weightKg"
+              placeholder="e.g. 14.2"
+            />
+            @if (form.controls.weightKg.touched && form.controls.weightKg.invalid) {
+              <small class="field-error">Weight must be greater than 0.</small>
+            }
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
+              Save cylinder type
+            </button>
+          </div>
+        </form>
+      </p-drawer>
     </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+        block-size: 100%;
+      }
+
       .admin-page {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-        padding: var(--spacing-lg);
+        block-size: 100%;
       }
 
-      .admin-page__grid {
-        block-size: 400px;
-      }
-
-      .admin-page__form {
+      .grid-section {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-sm);
-        max-inline-size: 24rem;
+        min-block-size: 0;
       }
 
-      .admin-page__field {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
+      .grid-wrapper {
+        flex: 1;
+        min-block-size: 400px;
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
     `,
   ],
@@ -96,11 +155,12 @@ function errorMessageFor(error: unknown): string {
 export class CylinderTypesPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
+  private readonly messageService = inject(MessageService);
 
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
-  protected readonly errorMessage = signal<string | null>(null);
+  protected readonly createDrawerVisible = signal(false);
 
   protected readonly columns: DataGridColumn<CylinderTypeResponse>[] = [
     { field: 'name', header: 'Name', sortable: true, filterable: true },
@@ -128,6 +188,11 @@ export class CylinderTypesPage implements OnInit {
     });
   }
 
+  protected openCreateDrawer(): void {
+    this.form.reset({ weightKg: 0 });
+    this.createDrawerVisible.set(true);
+  }
+
   protected submit(): void {
     if (this.submitting()) {
       return;
@@ -138,18 +203,19 @@ export class CylinderTypesPage implements OnInit {
     }
 
     this.submitting.set(true);
-    this.errorMessage.set(null);
     const { name, weightKg } = this.form.getRawValue();
 
     this.cylinderTypeService.createCylinderType(name, weightKg).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: `Cylinder type "${name}" added.` });
+        this.createDrawerVisible.set(false);
         this.form.reset({ weightKg: 0 });
         this.reload();
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        this.errorMessage.set(errorMessageFor(error));
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }

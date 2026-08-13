@@ -17,6 +17,12 @@ export * from './lib/admin-price-list.service';
 export * from './lib/admin-feature-flag.service';
 export * from './lib/admin-staff-user.service';
 export * from './lib/admin-audit-log.service';
+export * from './lib/customer.service';
+export * from './lib/delivery.service';
+export * from './lib/inventory.service';
+export * from './lib/dashboard.service';
+export * from './lib/order.service';
+export * from './lib/cylinder-ledger.service';
 
 // ng-openapi-gen output (ADR-032) — regenerated, never hand-edited.
 export * from './lib/generated/api-configuration';

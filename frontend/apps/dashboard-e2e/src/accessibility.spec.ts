@@ -21,13 +21,13 @@ test.describe('Accessibility', () => {
 
   test('home page has no WCAG 2.1/2.2 AA violations (dark theme)', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.shell__theme-trigger').click();
-    await page.getByRole('menuitem', { name: 'Dark' }).click();
+    // Theme switching now lives in the profile menu (the old standalone
+    // `.shell__theme-trigger` was removed as a visual duplicate of it).
+    await page.getByRole('button', { name: /Account menu/i }).click();
+    await page.getByRole('menuitemradio', { name: 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    // The theme menu's own close transition must finish before scanning —
-    // axe caught it mid-fade once, evaluating genuinely transient
-    // (transition-blended) colours that never appear in the settled DOM.
-    await expect(page.locator('.p-menu-item-label').first()).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toBeHidden();
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
@@ -38,10 +38,11 @@ test.describe('Accessibility', () => {
 
   test('home page has no WCAG 2.1/2.2 AA violations (high contrast theme)', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.shell__theme-trigger').click();
-    await page.getByRole('menuitem', { name: 'High contrast' }).click();
+    await page.getByRole('button', { name: /Account menu/i }).click();
+    await page.getByRole('menuitemradio', { name: 'High contrast' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'high-contrast');
-    await expect(page.locator('.p-menu-item-label').first()).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toBeHidden();
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
@@ -65,6 +66,35 @@ test.describe('Accessibility', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Open dialog' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+
+    expect(results.violations).toEqual([]);
+  });
+
+  test('the open profile menu has no WCAG 2.1/2.2 AA violations (light theme)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /Account menu/i }).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+
+    expect(results.violations).toEqual([]);
+  });
+
+  test('the open profile menu has no WCAG 2.1/2.2 AA violations (dark theme)', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /Account menu/i }).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+
+    await page.getByRole('menuitemradio', { name: 'Dark' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])

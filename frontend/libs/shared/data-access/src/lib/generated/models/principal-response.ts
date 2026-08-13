@@ -9,6 +9,7 @@
  * point regardless).
  */
 export interface PrincipalResponse {
+  email?: (string | null);
   permissions: Array<string>;
   role: string;
   tenant_id: (string | null);

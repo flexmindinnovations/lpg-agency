@@ -33,71 +33,104 @@ function errorMessageFor(error: unknown): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
-      <h1>Platform Feature Flags</h1>
-
-      <div class="admin-page__grid">
-        <lpg-data-grid
-          [rows]="flags()"
-          [columns]="columns"
-          [loading]="loading()"
-          ariaLabel="Feature flags"
-        />
+      <div class="page-header">
+        <div class="page-header__text">
+          <h1 class="page-title">Platform Feature Flags</h1>
+          <p class="page-subtitle">Manage platform-wide feature flags and rollout percentages.</p>
+        </div>
       </div>
 
-      <form class="admin-page__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h2>Create a flag</h2>
-        @if (errorMessage(); as message) {
-          <p-message severity="error">{{ message }}</p-message>
-        }
-        <div class="admin-page__field">
-          <label for="flag-key">Key</label>
-          <input pInputText id="flag-key" type="text" formControlName="key" />
-        </div>
-        <div class="admin-page__field">
-          <label for="flag-description">Description</label>
-          <input pInputText id="flag-description" type="text" formControlName="description" />
-        </div>
-        <div class="admin-page__field">
-          <label for="flag-rollout">Rollout % (optional)</label>
-          <input
-            pInputText
-            id="flag-rollout"
-            type="number"
-            min="0"
-            max="100"
-            formControlName="rolloutPercentage"
+      <section class="grid-section">
+        <div class="grid-wrapper">
+          <lpg-data-grid
+            [rows]="flags()"
+            [columns]="columns"
+            [loading]="loading()"
+            ariaLabel="Feature flags"
           />
         </div>
-        <button pButton type="submit" [disabled]="submitting()">
-          {{ submitting() ? 'Creating…' : 'Create flag' }}
-        </button>
-      </form>
+      </section>
+
+      <section class="admin-form-section">
+        <h2 class="section-heading">Create a flag</h2>
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          @if (successMessage(); as message) {
+            <p-message severity="success">{{ message }}</p-message>
+          }
+          @if (errorMessage(); as message) {
+            <p-message severity="error">{{ message }}</p-message>
+          }
+          <div class="form-group">
+            <label for="flag-key">Key</label>
+            <input pInputText id="flag-key" type="text" formControlName="key" />
+          </div>
+          <div class="form-group">
+            <label for="flag-description">Description</label>
+            <input pInputText id="flag-description" type="text" formControlName="description" />
+          </div>
+          <div class="form-group">
+            <label for="flag-rollout">Rollout % (optional)</label>
+            <input
+              pInputText
+              id="flag-rollout"
+              type="number"
+              min="0"
+              max="100"
+              formControlName="rolloutPercentage"
+            />
+          </div>
+          <div class="admin-form-actions">
+            <button pButton type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'Creating…' : 'Create flag' }}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   `,
   styles: [
     `
-      .admin-page {
+      :host {
+        display: block;
+      }
+
+      .admin-form-section {
+        max-inline-size: 480px;
+        margin-block-start: var(--spacing-lg);
+      }
+
+      .admin-form-section form {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-        padding: var(--spacing-lg);
+        gap: var(--spacing-md);
       }
 
-      .admin-page__grid {
-        block-size: 400px;
-      }
-
-      .admin-page__form {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-        max-inline-size: 24rem;
-      }
-
-      .admin-page__field {
+      .admin-form-section .form-group {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
+      }
+
+      .admin-form-section .form-group label {
+        font-weight: var(--typography-label-font-weight);
+        font-size: var(--typography-body-small-font-size);
+      }
+
+      .admin-form-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-block-start: var(--spacing-sm);
+      }
+
+      .grid-section {
+        margin-block-start: var(--spacing-lg);
+      }
+
+      .grid-wrapper {
+        block-size: 400px;
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+        overflow: hidden;
       }
     `,
   ],
@@ -110,6 +143,7 @@ export class PlatformFlagsPage implements OnInit {
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly successMessage = signal<string | null>(null);
 
   protected readonly columns: DataGridColumn<FeatureFlagResponse>[] = [
     { field: 'key', header: 'Key', sortable: true, filterable: true },
@@ -150,11 +184,13 @@ export class PlatformFlagsPage implements OnInit {
 
     this.submitting.set(true);
     this.errorMessage.set(null);
+    this.successMessage.set(null);
     const { key, description, rolloutPercentage } = this.form.getRawValue();
 
     this.featureFlagService.createFlag(key, description, false, rolloutPercentage).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.successMessage.set(`Flag "${key}" created.`);
         this.form.reset();
         this.reload();
       },

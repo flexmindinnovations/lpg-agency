@@ -43,6 +43,16 @@
   --radius-lg: var(--radius-lg);
 }
 
+/* ========================================================================
+   FOUNDATION
+   ======================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   block-size: 100%;
@@ -52,14 +62,12 @@ body {
 body {
   background-color: var(--color-surface-base);
   color: var(--color-text-primary);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  font-size: var(--typography-body-font-size);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--typography-body-small-font-size); /* 14px — data-dense admin convention */
   line-height: var(--typography-body-line-height);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Inter OpenType features */
 }
 
 /* A visible focus indicator is a WCAG 2.2 AA requirement (D-35), and must not
@@ -70,133 +78,136 @@ body {
   outline-offset: var(--component-focus-ring-offset);
 }
 
-/* --- Application shell ---------------------------------------------------
- * Shell layout lives in global styles because it is the document frame, not a
- * reusable component. Every value is a token.
- */
-.skip-link {
-  position: absolute;
-  inset-inline-start: -9999px;
-  z-index: var(--z-index-tooltip);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-action-primary);
-  color: var(--color-action-primary-text);
-  border-radius: var(--radius-md);
-}
-.skip-link:focus {
-  inset-inline-start: var(--spacing-sm);
-  inset-block-start: var(--spacing-sm);
+/* ========================================================================
+   SCROLLBAR — subtle, non-intrusive
+   ======================================================================== */
+
+::-webkit-scrollbar {
+  inline-size: 6px;
+  block-size: 6px;
 }
 
-.shell {
-  display: flex;
-  flex-direction: column;
-  block-size: 100vh;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.shell__top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  block-size: var(--component-app-shell-top-bar-height);
-  padding-inline: var(--spacing-lg);
-  background: var(--color-surface-raised);
-  border-block-end: var(--border-width) solid var(--color-border-default);
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-full);
 }
 
-.shell__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-.shell__brand-mark {
-  color: var(--color-action-primary);
-}
-.shell__brand-name {
-  font-size: var(--typography-heading2-font-size);
-  font-weight: var(--typography-heading2-font-weight);
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
 }
 
-.shell__top-bar-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-.shell__theme-label {
-  font-size: var(--typography-label-font-size);
-  font-weight: var(--typography-label-font-weight);
-}
-.shell__theme-select {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-base);
-  color: var(--color-text-primary);
-  font-size: var(--typography-body-small-font-size);
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-default) transparent;
 }
 
-.shell__body {
-  display: flex;
-  flex: 1;
-  min-block-size: 0;
-}
-
-.shell__sidebar {
-  inline-size: var(--component-app-shell-sidebar-width);
-  flex-shrink: 0;
-  padding: var(--spacing-md);
-  background: var(--color-surface-raised);
-  border-inline-end: var(--border-width) solid var(--color-border-default);
-  overflow-y: auto;
-}
-
-.shell__nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-.shell__nav-link {
-  display: block;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-primary);
-  text-decoration: none;
-}
-.shell__nav-link:hover {
-  background: var(--color-surface-overlay);
-}
-.shell__nav-link.is-active {
-  background: var(--color-action-primary);
-  color: var(--color-action-primary-text);
-}
-.shell__nav-note {
-  margin-block-start: var(--spacing-lg);
-  color: var(--color-text-secondary);
-  font-size: var(--typography-caption-font-size);
-}
-
-.shell__main {
-  flex: 1;
-  padding: var(--spacing-xl);
-  overflow-y: auto;
-}
-.shell__main:focus {
-  outline: none;
-}
+/* ========================================================================
+   TYPOGRAPHY UTILITIES
+   ======================================================================== */
 
 .page-title {
   font-size: var(--typography-heading1-font-size);
   font-weight: var(--typography-heading1-font-weight);
-  margin: 0 0 var(--spacing-sm);
+  line-height: var(--typography-heading1-line-height);
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--color-text-primary);
 }
+
+.page-subtitle {
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-secondary);
+  margin: var(--spacing-xs) 0 0 0;
+  max-inline-size: 60ch;
+  line-height: var(--typography-body-line-height);
+}
+
 .page-lede {
   color: var(--color-text-secondary);
   margin: 0 0 var(--spacing-xl);
   max-inline-size: 60ch;
 }
+
+.section-heading {
+  font-size: var(--typography-body-small-font-size);
+  font-weight: var(--typography-heading3-font-weight);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm);
+  letter-spacing: -0.01em;
+}
+
+.section-label {
+  font-size: var(--typography-caption-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--spacing-sm);
+}
+
+/* ========================================================================
+   PAGE HEADER — consistent across all feature pages
+   ======================================================================== */
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  padding-block-end: var(--spacing-lg);
+  margin-block-end: var(--spacing-lg);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+}
+
+.page-header__text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+/* ========================================================================
+   DATA TOOLBAR — consistent toolbar above data grids
+   ======================================================================== */
+
+.data-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-block-end: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.data-toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+}
+
+.data-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* ========================================================================
+   CARD — used sparingly, not the default container
+   ======================================================================== */
 
 .card {
   padding: var(--component-card-padding);
@@ -206,16 +217,300 @@ body {
   box-shadow: var(--elevation-1);
   max-inline-size: 60ch;
 }
+
 .card__title {
   font-size: var(--typography-heading3-font-size);
   font-weight: var(--typography-heading3-font-weight);
   margin: 0 0 var(--spacing-sm);
 }
+
 .card__list {
   margin: 0;
   padding-inline-start: var(--spacing-lg);
   color: var(--color-text-secondary);
 }
+
 .link {
   color: var(--color-action-primary);
+  text-decoration: none;
 }
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* ========================================================================
+   EMPTY STATE — designed, not just "No data found."
+   ======================================================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.empty-state__icon {
+  font-size: 8rem !important;
+  opacity: 0.3;
+  color: var(--color-text-secondary);
+}
+
+.empty-state__title {
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.empty-state__description {
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-secondary);
+  max-inline-size: 32ch;
+  margin: 0;
+}
+
+/* ========================================================================
+   FORM UTILITIES — consistent field layout across all dialogs/pages
+   ======================================================================== */
+
+.p-drawer-content:has(.dialog-form) {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  flex: 1;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-group label {
+  font-weight: var(--typography-label-font-weight);
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-primary);
+}
+
+.field-hint {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+  line-height: var(--typography-caption-line-height);
+}
+
+.field-error {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-status-danger);
+  line-height: var(--typography-caption-line-height);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  /* auto, not a fixed value: pins the actions to the bottom of the drawer
+     (`.dialog-form` is a `flex:1` column, so this margin absorbs whatever
+     space the form fields don't use) while still sitting directly under
+     short forms rather than leaving a fixed gap either way. */
+  margin-block-start: auto;
+  padding-block-start: var(--spacing-md);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+/* ========================================================================
+   INFO GRID — label/value pairs in detail panels
+   ======================================================================== */
+
+.info-label {
+  font-size: var(--typography-caption-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-block-end: 2px;
+}
+
+/* ========================================================================
+   GLOBAL INTERACTIVE TRANSITIONS
+   ======================================================================== */
+
+button,
+a,
+input,
+select,
+textarea {
+  transition-property: background-color, color, border-color, box-shadow, opacity;
+  transition-duration: var(--motion-duration-small);
+  transition-timing-function: var(--motion-easing-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-duration: 0ms;
+  }
+}
+
+/* ========================================================================
+   PRIMENG GLOBAL OVERRIDES — polish default appearance
+   ======================================================================== */
+
+/* Dialog backdrop */
+.p-dialog-mask {
+  backdrop-filter: blur(2px);
+}
+
+/* Dialog panel */
+.p-dialog {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--elevation-3) !important;
+  border: var(--border-width) solid var(--color-border-default) !important;
+}
+
+.p-dialog .p-dialog-header {
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm) !important;
+  border-bottom: none !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-title {
+  font-size: var(--typography-heading2-font-size) !important;
+  font-weight: var(--typography-heading2-font-weight) !important;
+  letter-spacing: -0.01em;
+}
+
+.p-dialog .p-dialog-content {
+  padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+/* Drawer panel */
+.p-drawer .p-drawer-header {
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xs) !important;
+  border-bottom: none !important;
+}
+
+.p-drawer .p-drawer-header .p-drawer-title {
+  font-size: var(--typography-heading2-font-size) !important;
+  font-weight: var(--typography-heading2-font-weight) !important;
+  letter-spacing: -0.01em;
+}
+
+.p-drawer .p-drawer-content {
+  padding: var(--spacing-xs) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+/* Button refinements */
+.p-button {
+  font-weight: var(--typography-label-font-weight) !important;
+  font-size: var(--typography-body-small-font-size) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all var(--motion-duration-small) var(--motion-easing-standard) !important;
+}
+
+.p-button:not(:disabled):hover {
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.p-button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* Input refinements */
+.p-inputtext {
+  font-size: var(--typography-body-small-font-size) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+.p-select {
+  border-radius: var(--radius-md) !important;
+}
+
+.p-select .p-select-label {
+  font-size: var(--typography-body-small-font-size) !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Tag refinements — smaller, tighter */
+.p-tag {
+  font-size: 11px !important;
+  font-weight: var(--typography-label-font-weight) !important;
+  padding: 2px 8px !important;
+  border-radius: var(--radius-sm) !important;
+  letter-spacing: 0.01em;
+}
+
+/* Message refinements */
+.p-message {
+  border-radius: var(--radius-md) !important;
+  font-size: var(--typography-body-small-font-size) !important;
+}
+
+/* Toast refinements */
+.p-toast-message {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--elevation-2) !important;
+}
+
+/* Tooltip refinements */
+.p-tooltip .p-tooltip-text {
+  background-color: var(--color-surface-overlay) !important;
+  color: var(--color-text-primary) !important;
+  border: var(--border-width) solid var(--color-border-default) !important;
+  box-shadow: var(--elevation-2) !important;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.p-tooltip .p-tooltip-arrow {
+  display: none !important;
+}
+
+/* ========================================================================
+   LEGACY — kept for backward compatibility with shell styles defined
+   in global scope (styles.css predates the component-scoped shell)
+   ======================================================================== */
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  z-index: var(--z-index-tooltip);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+  border-radius: var(--radius-md);
+}
+
+.skip-link:focus {
+  inset-inline-start: var(--spacing-sm);
+  inset-block-start: var(--spacing-sm);
+}
+
+/* ========================================================================
+   AG GRID CELL UTILITIES — global because AG Grid renders outside component
+   view encapsulation; these cannot be scoped to a component stylesheet.
+   ======================================================================== */
+
+/* Monospace font for ID/UUID columns so characters line up cleanly. */
+.ag-cell.cell-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: calc(var(--typography-body-small-font-size) * 0.9);
+  color: var(--color-text-secondary);
+  letter-spacing: -0.01em;
+}
+

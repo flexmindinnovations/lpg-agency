@@ -39,50 +39,54 @@ function errorMessageFor(error: unknown): string {
   template: `
     <div class="login-page">
       <form class="login-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-        <h1 class="login-card__title">Sign in</h1>
-        <p class="login-card__lede">LPG Agency Management Platform</p>
+        <div class="login-card__header">
+          <h1 class="login-card__title">Sign in</h1>
+          <p class="login-card__lede">LPG Agency Management Platform</p>
+        </div>
 
         @if (errorMessage(); as message) {
           <p-message severity="error">{{ message }}</p-message>
         }
 
-        <div class="login-field">
-          <label for="login-email">Email</label>
-          <input
-            pInputText
-            id="login-email"
-            type="email"
-            formControlName="email"
-            autocomplete="username"
-            [attr.aria-invalid]="emailInvalid()"
-          />
-          @if (emailInvalid()) {
-            <span class="login-field__error">Enter a valid email address.</span>
-          }
+        <div class="login-card__body">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input
+              pInputText
+              id="login-email"
+              type="email"
+              formControlName="email"
+              autocomplete="username"
+              [attr.aria-invalid]="emailInvalid()"
+            />
+            @if (emailInvalid()) {
+              <span class="field-error">Enter a valid email address.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <p-password
+              inputId="login-password"
+              formControlName="password"
+              [toggleMask]="true"
+              [feedback]="false"
+              autocomplete="current-password"
+              [inputStyle]="{ width: '100%' }"
+              [attr.aria-invalid]="passwordInvalid()"
+            />
+            @if (passwordInvalid()) {
+              <span class="field-error">Password is required.</span>
+            }
+          </div>
         </div>
 
-        <div class="login-field">
-          <label for="login-password">Password</label>
-          <p-password
-            inputId="login-password"
-            formControlName="password"
-            [toggleMask]="true"
-            [feedback]="false"
-            autocomplete="current-password"
-            styleClass="login-field__password"
-            [inputStyle]="{ width: '100%' }"
-            [attr.aria-invalid]="passwordInvalid()"
-          />
-          @if (passwordInvalid()) {
-            <span class="login-field__error">Password is required.</span>
-          }
+        <div class="login-card__footer">
+          <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
+            {{ submitting() ? 'Signing in…' : 'Sign in' }}
+          </button>
+          <a class="login-card__forgot" routerLink="/login/forgot-password">Forgot your password?</a>
         </div>
-
-        <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
-          {{ submitting() ? 'Signing in…' : 'Sign in' }}
-        </button>
-
-        <a class="login-card__forgot" routerLink="/login/forgot-password">Forgot your password?</a>
       </form>
     </div>
   `,
@@ -94,55 +98,69 @@ function errorMessageFor(error: unknown): string {
         justify-content: center;
         min-block-size: 100vh;
         padding: var(--spacing-lg);
-        background: var(--color-surface-base);
+        background: var(--color-surface-sunken);
       }
 
       .login-card {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-md);
+        gap: var(--spacing-lg);
         inline-size: 100%;
-        max-inline-size: 24rem;
+        max-inline-size: 26rem;
         padding: var(--spacing-xl);
-        background: var(--color-surface-raised);
+        background: var(--color-surface-base);
         border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-xl);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      }
+
+      .login-card__header {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        text-align: center;
       }
 
       .login-card__title {
         margin: 0;
         font-size: var(--typography-heading1-font-size);
         font-weight: var(--typography-heading1-font-weight);
+        letter-spacing: -0.025em;
       }
 
       .login-card__lede {
         margin: 0;
         color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
       }
 
-      .login-field {
+      .login-card__body {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-xs);
+        gap: var(--spacing-md);
       }
 
-      .login-field label {
-        font-weight: var(--typography-label-font-weight);
-      }
-
-      .login-field__error {
-        color: var(--color-status-danger-text, var(--color-text-danger, #b91c1c));
-        font-size: var(--typography-caption-font-size);
+      .login-card__footer {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        margin-block-start: var(--spacing-sm);
       }
 
       .login-card__submit {
-        margin-top: var(--spacing-sm);
+        width: 100%;
       }
 
       .login-card__forgot {
         align-self: center;
         color: var(--color-action-primary);
         font-size: var(--typography-body-small-font-size);
+        text-decoration: none;
+        font-weight: var(--typography-label-font-weight);
+      }
+
+      .login-card__forgot:hover {
+        text-decoration: underline;
       }
     `,
   ],

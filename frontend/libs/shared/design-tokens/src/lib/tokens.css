@@ -32,17 +32,19 @@ Regenerate: node scripts/generate-tokens.mjs
   --primitive-color-amber-400: #fbbf24;
   --primitive-color-amber-600: #d97706;
   --primitive-color-amber-700: #b45309;
-  --primitive-color-forest-50: #eaf5f2;
-  --primitive-color-forest-100: #cde7df;
-  --primitive-color-forest-300: #7fd0b9;
-  --primitive-color-forest-400: #4fb89c;
-  --primitive-color-forest-500: #1c8570;
-  --primitive-color-forest-700: #0f5a4e;
-  --primitive-color-forest-800: #0a4a41;
-  --primitive-color-forest-900: #013e37;
-  --primitive-color-cream-50: #fffbe8;
-  --primitive-color-cream-100: #fff3c4;
-  --primitive-color-cream-200: #ffefb3;
+  --primitive-color-gas-blue-50: #eef2fb;
+  --primitive-color-gas-blue-100: #dce4f7;
+  --primitive-color-gas-blue-300: #96aee8;
+  --primitive-color-gas-blue-400: #6c8ddb;
+  --primitive-color-gas-blue-500: #4068c8;
+  --primitive-color-gas-blue-700: #223f8b;
+  --primitive-color-gas-blue-800: #162b66;
+  --primitive-color-gas-blue-900: #0b173c;
+  --primitive-color-flame-orange-50: #fff4ec;
+  --primitive-color-flame-orange-100: #ffe6d3;
+  --primitive-color-flame-orange-200: #ffcda5;
+  --primitive-color-flame-orange-400: #ff9346;
+  --primitive-color-flame-orange-500: #ff6f12;
   --primitive-color-white: #ffffff;
   --primitive-color-black: #000000;
   --primitive-color-hc-blue: #0000ee;
@@ -143,6 +145,14 @@ Regenerate: node scripts/generate-tokens.mjs
   --component-app-shell-sidebar-width: 260px;
   --component-app-shell-sidebar-collapsed-width: 64px;
   --component-app-shell-top-bar-height: 56px;
+  --component-avatar-size-md: 2rem;
+  --component-avatar-size-lg: 2.5rem;
+  --component-avatar-radius: 9999px;
+  --component-profile-menu-width: 18rem;
+  --component-profile-menu-padding: 8px;
+  --component-profile-menu-item-padding-y: 8px;
+  --component-profile-menu-item-padding-x: 8px;
+  --component-profile-menu-item-radius: 4px;
   --component-focus-ring-width: 2px;
   --component-focus-ring-offset: 4px;
 
@@ -156,29 +166,33 @@ Regenerate: node scripts/generate-tokens.mjs
   --color-surface-overlay: #f3f4f6;
   --color-border-default: #e5e7eb;
   --color-border-strong: #d1d5db;
-  --color-border-focus: #0a4a41;
-  --color-action-primary: #0a4a41;
-  --color-action-primary-hover: #013e37;
+  --color-border-focus: #162b66;
+  --color-action-primary: #162b66;
+  --color-action-primary-hover: #0b173c;
   --color-action-primary-text: #ffffff;
   --color-status-success: #16a34a;
   --color-status-warning: #d97706;
   --color-status-danger: #dc2626;
   --color-status-info: #2563eb;
-  --color-highlight-background: #ffefb3;
-  --color-highlight-color: #013e37;
+  --color-highlight-background: #162b66;
+  --color-highlight-color: #ffffff;
   --border-width: 1px;
   --elevation-0: none;
   --elevation-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
-  --component-button-primary-background: #0a4a41;
-  --component-button-primary-background-hover: #013e37;
+  --component-button-primary-background: #162b66;
+  --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
   --component-card-background: #f9fafb;
   --component-card-border: #e5e7eb;
   --component-data-grid-border-color: #e5e7eb;
   --component-data-grid-header-background: #f9fafb;
-  --component-focus-ring-color: #0a4a41;
+  --component-avatar-background: #162b66;
+  --component-avatar-color: #ffffff;
+  --component-profile-menu-item-hover-background: #f3f4f6;
+  --component-profile-menu-divider-color: #e5e7eb;
+  --component-focus-ring-color: #162b66;
 }
 
 [data-theme='dark'] {
@@ -191,29 +205,33 @@ Regenerate: node scripts/generate-tokens.mjs
   --color-surface-overlay: #1f2937;
   --color-border-default: #374151;
   --color-border-strong: #4b5563;
-  --color-border-focus: #4fb89c;
-  --color-action-primary: #4fb89c;
-  --color-action-primary-hover: #1c8570;
-  --color-action-primary-text: #0b0f16;
+  --color-border-focus: #6c8ddb;
+  --color-action-primary: #6c8ddb;
+  --color-action-primary-hover: #4068c8;
+  --color-action-primary-text: #ffffff;
   --color-status-success: #4ade80;
   --color-status-warning: #fbbf24;
   --color-status-danger: #f87171;
   --color-status-info: #60a5fa;
-  --color-highlight-background: #0f5a4e;
-  --color-highlight-color: #fff3c4;
+  --color-highlight-background: #223f8b;
+  --color-highlight-color: #ffffff;
   --border-width: 1px;
   --elevation-0: none;
   --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
-  --component-button-primary-background: #4fb89c;
-  --component-button-primary-background-hover: #1c8570;
-  --component-button-primary-text: #0b0f16;
+  --component-button-primary-background: #6c8ddb;
+  --component-button-primary-background-hover: #4068c8;
+  --component-button-primary-text: #ffffff;
   --component-card-background: #111827;
   --component-card-border: #374151;
   --component-data-grid-border-color: #374151;
   --component-data-grid-header-background: #111827;
-  --component-focus-ring-color: #4fb89c;
+  --component-avatar-background: #6c8ddb;
+  --component-avatar-color: #ffffff;
+  --component-profile-menu-item-hover-background: #1f2937;
+  --component-profile-menu-divider-color: #374151;
+  --component-focus-ring-color: #6c8ddb;
 }
 
 [data-theme='high-contrast'] {
@@ -248,6 +266,10 @@ Regenerate: node scripts/generate-tokens.mjs
   --component-card-border: #000000;
   --component-data-grid-border-color: #000000;
   --component-data-grid-header-background: #ffffff;
+  --component-avatar-background: #0000ee;
+  --component-avatar-color: #ffffff;
+  --component-profile-menu-item-hover-background: #ffffff;
+  --component-profile-menu-divider-color: #000000;
   --component-focus-ring-color: #0000ee;
 }
 
@@ -262,29 +284,33 @@ Regenerate: node scripts/generate-tokens.mjs
     --color-surface-overlay: #1f2937;
     --color-border-default: #374151;
     --color-border-strong: #4b5563;
-    --color-border-focus: #4fb89c;
-    --color-action-primary: #4fb89c;
-    --color-action-primary-hover: #1c8570;
-    --color-action-primary-text: #0b0f16;
+    --color-border-focus: #6c8ddb;
+    --color-action-primary: #6c8ddb;
+    --color-action-primary-hover: #4068c8;
+    --color-action-primary-text: #ffffff;
     --color-status-success: #4ade80;
     --color-status-warning: #fbbf24;
     --color-status-danger: #f87171;
     --color-status-info: #60a5fa;
-    --color-highlight-background: #0f5a4e;
-    --color-highlight-color: #fff3c4;
+    --color-highlight-background: #223f8b;
+    --color-highlight-color: #ffffff;
     --border-width: 1px;
     --elevation-0: none;
     --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
     --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
     --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
-    --component-button-primary-background: #4fb89c;
-    --component-button-primary-background-hover: #1c8570;
-    --component-button-primary-text: #0b0f16;
+    --component-button-primary-background: #6c8ddb;
+    --component-button-primary-background-hover: #4068c8;
+    --component-button-primary-text: #ffffff;
     --component-card-background: #111827;
     --component-card-border: #374151;
     --component-data-grid-border-color: #374151;
     --component-data-grid-header-background: #111827;
-    --component-focus-ring-color: #4fb89c;
+    --component-avatar-background: #6c8ddb;
+    --component-avatar-color: #ffffff;
+    --component-profile-menu-item-hover-background: #1f2937;
+    --component-profile-menu-divider-color: #374151;
+    --component-focus-ring-color: #6c8ddb;
   }
 }
 
