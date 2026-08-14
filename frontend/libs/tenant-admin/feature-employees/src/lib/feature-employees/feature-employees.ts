@@ -112,7 +112,7 @@ export class FeatureEmployees implements OnInit {
     this.loadEmployees();
 
     const unregisterNew = this.keyboardShortcuts.register({
-      key: 'r',
+      key: 'n',
       alt: true,
       description: 'Register new employee',
       handler: () => {

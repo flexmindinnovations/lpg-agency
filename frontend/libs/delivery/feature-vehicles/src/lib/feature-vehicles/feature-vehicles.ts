@@ -136,7 +136,7 @@ export class FeatureVehicles implements OnInit {
     this.loadVehicles();
 
     const unregisterNew = this.keyboardShortcuts.register({
-      key: 'r',
+      key: 'n',
       alt: true,
       description: 'Register new vehicle',
       handler: () => {

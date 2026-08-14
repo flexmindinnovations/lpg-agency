@@ -138,7 +138,7 @@ export class FeatureDrivers implements OnInit {
     this.loadDrivers();
 
     const unregisterNew = this.keyboardShortcuts.register({
-      key: 'r',
+      key: 'n',
       alt: true,
       description: 'Register new driver',
       handler: () => {
