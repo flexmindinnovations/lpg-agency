@@ -25,7 +25,7 @@ import {
   type BranchResponse,
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { BreadcrumbService, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -67,6 +67,7 @@ export class FeatureEmployees implements OnInit {
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
+  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly employees = signal<EmployeeResponse[]>([]);
@@ -111,6 +112,8 @@ export class FeatureEmployees implements OnInit {
     this.loadBranches();
     this.loadEmployees();
 
+    this.breadcrumbService.setItems([{ label: 'Employees' }]);
+
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'n',
       alt: true,
@@ -136,6 +139,7 @@ export class FeatureEmployees implements OnInit {
     this.destroyRef.onDestroy(() => {
       unregisterNew();
       unregisterSearch();
+      this.breadcrumbService.clear();
     });
   }
 

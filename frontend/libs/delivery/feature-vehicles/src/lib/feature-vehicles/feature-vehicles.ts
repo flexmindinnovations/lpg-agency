@@ -10,6 +10,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { BreadcrumbService, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -17,6 +18,7 @@ import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
+import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import {
   DeliveryService,
@@ -25,7 +27,6 @@ import {
   type BranchResponse,
   type VehicleResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -61,12 +62,14 @@ function errorMessageFor(error: unknown): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-vehicles.html',
   styleUrl: './feature-vehicles.css',
+  providers: [MessageService],
 })
 export class FeatureVehicles implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
+  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly vehicles = signal<VehicleResponse[]>([]);
@@ -135,6 +138,8 @@ export class FeatureVehicles implements OnInit {
     this.loadBranches();
     this.loadVehicles();
 
+    this.breadcrumbService.setItems([{ label: 'Vehicles' }]);
+
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'n',
       alt: true,
@@ -160,6 +165,7 @@ export class FeatureVehicles implements OnInit {
     this.destroyRef.onDestroy(() => {
       unregisterNew();
       unregisterSearch();
+      this.breadcrumbService.clear();
     });
   }
 

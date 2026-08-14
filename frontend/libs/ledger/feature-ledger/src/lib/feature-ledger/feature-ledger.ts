@@ -15,6 +15,7 @@ import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
+import { BreadcrumbService } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 
 import {
@@ -53,7 +54,7 @@ interface EnrichedBalance {
 })
 export class FeatureLedger implements OnInit {
   // Input from the parent (e.g. customer details panel)
-  customerId = input.required<string>();
+  readonly customerId = input.required<string>();
 
   private readonly ledgerService = inject(CylinderLedgerService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
@@ -61,6 +62,7 @@ export class FeatureLedger implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly breadcrumbService = inject(BreadcrumbService);
 
   ledger = signal<CylinderLedgerResponse | null>(null);
   cylinderTypes = signal<CylinderTypeResponse[]>([]);
@@ -110,6 +112,11 @@ export class FeatureLedger implements OnInit {
   ngOnInit(): void {
     this.loadData();
     
+    this.breadcrumbService.setItems([
+      { label: 'Customers', routerLink: '/customers' },
+      { label: 'Ledger' }
+    ]);
+    
     const unregisterAdjust = this.keyboardShortcuts.register({
       key: 'j',
       alt: true,
@@ -121,7 +128,10 @@ export class FeatureLedger implements OnInit {
         }
       }
     });
-    this.destroyRef.onDestroy(unregisterAdjust);
+    this.destroyRef.onDestroy(() => {
+      unregisterAdjust();
+      this.breadcrumbService.clear();
+    });
   }
 
   loadData() {

@@ -10,6 +10,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { BreadcrumbService } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -85,6 +86,7 @@ export class FeatureCustomers implements OnInit {
   private readonly branchService = inject(AdminBranchService);
   private readonly messageService = inject(MessageService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
+  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly customers = signal<CustomerResponse[]>([]);
@@ -191,6 +193,8 @@ export class FeatureCustomers implements OnInit {
     this.reloadList();
     this.loadBranches();
     
+    this.breadcrumbService.setItems([{ label: 'Customers' }]);
+    
     // Register global shortcuts for this view
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'c',
@@ -217,6 +221,7 @@ export class FeatureCustomers implements OnInit {
     this.destroyRef.onDestroy(() => {
       unregisterNew();
       unregisterSearch();
+      this.breadcrumbService.clear();
     });
   }
 

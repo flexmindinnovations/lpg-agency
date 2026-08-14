@@ -72,7 +72,7 @@ export class ShellLayout {
       {
         label: 'Operations',
         items: [
-          { label: 'Customers', icon: 'pi pi-users', route: '/customers' },
+          { label: 'Customers', icon: 'pi pi-users', route: '/customers', aliases: ['/ledger'] },
           { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders' },
           { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch' },
         ],

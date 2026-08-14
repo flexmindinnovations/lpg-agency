@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, inject, input, model, output } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Badge } from 'primeng/badge';
 import { Tooltip } from 'primeng/tooltip';
-import type { NavGroup } from './nav-item';
+import { Breadcrumb } from 'primeng/breadcrumb';
+import type { NavGroup, NavItem } from './nav-item';
 import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
 import { PortalModule } from '@angular/cdk/portal';
 import { HeaderPortalService } from './header-portal.service';
+import { BreadcrumbService } from './breadcrumb.service';
 /**
  * Application shell: collapsible sidebar navigation with integrated brand,
  * and a full-height routed content area.
@@ -23,7 +25,7 @@ import { HeaderPortalService } from './header-portal.service';
 @Component({
   selector: 'lpg-app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, Badge, Tooltip, ProfileMenuComponent, PortalModule],
+  imports: [RouterLink, RouterLinkActive, Badge, Tooltip, ProfileMenuComponent, PortalModule, Breadcrumb],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="shell__skip-link" href="#shell-main-content">Skip to main content</a>
@@ -70,9 +72,10 @@ import { HeaderPortalService } from './header-portal.service';
                         [routerLink]="item.route"
                         routerLinkActive="is-active"
                         #rla="routerLinkActive"
-                        [attr.aria-current]="rla.isActive ? 'page' : null"
+                        [attr.aria-current]="(rla.isActive || isAliasActive(item, router.url)) ? 'page' : null"
                         [routerLinkActiveOptions]="{ exact: !!item.exact }"
                         class="shell__nav-link"
+                        [class.is-active]="rla.isActive || isAliasActive(item, router.url)"
                         pTooltip="{{ collapsed() ? item.label : '' }}"
                         tooltipPosition="right"
                         [attr.aria-label]="collapsed() ? item.label : null"
@@ -124,6 +127,13 @@ import { HeaderPortalService } from './header-portal.service';
 
       <div class="shell__content">
         <header class="shell__header">
+          @if (breadcrumbService.items().length > 0) {
+            <p-breadcrumb
+              [model]="breadcrumbService.items()"
+              [home]="breadcrumbService.home()"
+              styleClass="shell__breadcrumb"
+            />
+          }
           <div class="shell__header-spacer">
             <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
           </div>
@@ -403,6 +413,7 @@ import { HeaderPortalService } from './header-portal.service';
         min-inline-size: 0;
       }
 
+      /* ---- Global Header ---- */
       .shell__header {
         display: flex;
         align-items: center;
@@ -412,6 +423,24 @@ import { HeaderPortalService } from './header-portal.service';
         border-block-end: var(--border-width) solid var(--color-border-default);
         background: var(--color-surface-base);
         flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+      
+      :host ::ng-deep .shell__breadcrumb {
+        width: 100%;
+        padding: 0;
+        background: transparent;
+        border: none;
+        margin-block-end: var(--spacing-xs);
+        font-size: var(--typography-body-small-font-size);
+      }
+      :host ::ng-deep .shell__breadcrumb .p-breadcrumb-list li a {
+        text-decoration: none;
+      }
+      :host ::ng-deep .shell__breadcrumb .p-breadcrumb-list li a:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
       }
 
       .shell__header-spacer {
@@ -468,7 +497,9 @@ import { HeaderPortalService } from './header-portal.service';
   ],
 })
 export class AppShellComponent {
+  protected readonly router = inject(Router);
   protected readonly headerPortalService = inject(HeaderPortalService);
+  protected readonly breadcrumbService = inject(BreadcrumbService);
 
   readonly brandName = input('');
   /** Overrides the default brand mark with a PrimeIcon class or literal glyph. */
@@ -481,4 +512,9 @@ export class AppShellComponent {
 
   readonly signOut = output<void>();
   readonly notificationToggle = output<void>();
+
+  protected isAliasActive(item: NavItem, currentUrl: string): boolean {
+    if (!item.aliases) return false;
+    return item.aliases.some(alias => currentUrl.startsWith(alias));
+  }
 }

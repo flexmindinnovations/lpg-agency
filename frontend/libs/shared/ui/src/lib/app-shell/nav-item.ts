@@ -6,6 +6,8 @@ export interface NavItem {
   readonly route: string;
   /** Passed through to `routerLinkActiveOptions`. Defaults to `false`. */
   readonly exact?: boolean;
+  /** Alternative path prefixes that should also cause this item to be marked active. */
+  readonly aliases?: string[];
   readonly badge?: string | number;
 }
 
