@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
-import { BreadcrumbService, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
@@ -72,7 +72,6 @@ export class FeatureDrivers implements OnInit {
   private readonly branchService = inject(AdminBranchService);
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
-  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly drivers = signal<DriverResponse[]>([]);
@@ -138,7 +137,6 @@ export class FeatureDrivers implements OnInit {
     this.loadBranches();
     this.loadDrivers();
 
-    this.breadcrumbService.setItems([{ label: 'Drivers' }]);
 
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'n',
@@ -165,7 +163,6 @@ export class FeatureDrivers implements OnInit {
     this.destroyRef.onDestroy(() => {
       unregisterNew();
       unregisterSearch();
-      this.breadcrumbService.clear();
     });
   }
 

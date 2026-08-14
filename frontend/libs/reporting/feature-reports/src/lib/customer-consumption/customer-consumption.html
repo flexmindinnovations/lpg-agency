@@ -1,0 +1,27 @@
+<h2 class="section-heading">Customer Consumption Report</h2>
+
+@if (store.loading()) {
+  <div class="loading-state">Loading report...</div>
+} @else if (store.error()) {
+  <div class="error-state">{{ store.error() }}</div>
+} @else {
+  <p-table [value]="store.customerConsumption()" [tableStyle]="{ 'min-width': '50rem' }" styleClass="p-datatable-striped">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Customer ID</th>
+        <th>Avg Refill Interval (Days)</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-record>
+      <tr>
+        <td>{{ record.customer_id }}</td>
+        <td>{{ record.avg_refill_interval_days | number:'1.0-1' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="2" class="empty-message">No customer consumption data available.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+}

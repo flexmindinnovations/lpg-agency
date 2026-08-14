@@ -91,7 +91,9 @@ export class ActionChipCell {
       @if (idValue()) {
         <i
           class="pi pi-copy"
-          style="cursor: pointer; color: var(--color-text-secondary); font-size: 0.875rem;"
+          style="cursor: pointer; opacity: 0.6; font-size: 0.875rem; transition: opacity 0.2s;"
+          onmouseover="this.style.opacity='1'"
+          onmouseout="this.style.opacity='0.6'"
           [cdkCopyToClipboard]="idValue()"
           pTooltip="Copy ID"
           tooltipPosition="top"

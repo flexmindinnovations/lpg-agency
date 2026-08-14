@@ -27,7 +27,9 @@ import {
   type CylinderTypePriceCardResponse,
   type DashboardActivityEntryResponse,
   type DashboardSummaryResponse,
+  WebSocketService,
 } from '@lpg/shared/data-access';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 interface KpiData {
   title: string;
@@ -410,6 +412,7 @@ export class Home implements OnDestroy {
   private readonly el = inject(ElementRef);
   private readonly dashboardService = inject(DashboardService);
   private readonly router = inject(Router);
+  private readonly wsService = inject(WebSocketService);
 
   protected readonly loading = signal(true);
 
@@ -463,6 +466,13 @@ export class Home implements OnDestroy {
       }
     });
     this.loadDashboardData();
+
+    this.wsService.subscribeTo('dashboard');
+    this.wsService.on('dashboard.metrics_stale')
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        this.loadDashboardData();
+      });
   }
 
   ngOnDestroy() {

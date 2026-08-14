@@ -1,0 +1,19 @@
+<ng-template lpgHeaderTitlePortal>
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Reporting & Analytics</h1>
+      <p class="page-subtitle">View and analyze your agency's performance metrics.</p>
+    </div>
+  </div>
+</ng-template>
+
+<nav class="tabs-nav">
+  <a routerLink="daily-sales" routerLinkActive="active" class="tab-link">Daily Sales</a>
+  <a routerLink="driver-performance" routerLinkActive="active" class="tab-link">Driver Performance</a>
+  <a routerLink="customer-consumption" routerLinkActive="active" class="tab-link">Customer Consumption</a>
+  <a routerLink="gst-filing" routerLinkActive="active" class="tab-link">GST Filing</a>
+</nav>
+
+<div class="reports-content">
+  <router-outlet></router-outlet>
+</div>

@@ -32,6 +32,12 @@ dependencies = [
     "argon2-cffi>=25.1.0",
     "pyjwt[crypto]>=2.13.0",
     "email-validator>=2.3.0",
+    # Printing engine (ADR-010, ADR-016, Phase 18) — server-rendered,
+    # template-based document generation for invoices, receipts, reports.
+    "jinja2>=3.1.0",
+    "xhtml2pdf>=0.2.16",
+    "qrcode[pil]>=8.0",
+    "python-barcode>=0.15.1",
 ]
 
 [dependency-groups]
@@ -144,6 +150,10 @@ disallow_untyped_defs = false
 # every S3Client call this codebase actually makes). Narrowly scoped to
 # this one genuinely-unstubbed third-party import, not a blanket relaxation.
 module = ["aioboto3", "aioboto3.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["barcode", "qrcode", "qrcode.*", "xhtml2pdf"]
 ignore_missing_imports = true
 
 # ==========================================================================
@@ -275,9 +285,8 @@ ignore_imports = [
     # get_cancel_order_use_case_factory (Phase 12) also needs a fresh route
     # repository per order, same reasoning as the inventory one above.
     "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.route",
-    # Cylinder Ledger (Phase 13): dependencies/cylinder_ledger.py wires the
-    # ledger repository, same composition-root seam as the modules above.
     "lpg.api.v1.dependencies.cylinder_ledger -> lpg.infrastructure.persistence.repositories.cylinder_ledger",
+    "lpg.api.v1.dependencies.printing -> lpg.infrastructure.printing.engine",
 ]
 
 [[tool.importlinter.contracts]]

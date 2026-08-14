@@ -31,4 +31,6 @@ export * from './lib/generated/api';
 export * from './lib/generated/models';
 export * from './lib/generated/functions';
 export * from './lib/invoice.service';
+export * from './lib/printing.service';
 export * from './lib/services/notification';
+export * from './lib/websocket.service';

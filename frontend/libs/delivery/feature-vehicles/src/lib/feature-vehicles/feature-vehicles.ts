@@ -10,7 +10,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { BreadcrumbService, DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -69,7 +69,6 @@ export class FeatureVehicles implements OnInit {
   private readonly deliveryService = inject(DeliveryService);
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
-  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly vehicles = signal<VehicleResponse[]>([]);
@@ -138,7 +137,6 @@ export class FeatureVehicles implements OnInit {
     this.loadBranches();
     this.loadVehicles();
 
-    this.breadcrumbService.setItems([{ label: 'Vehicles' }]);
 
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'n',
@@ -165,7 +163,6 @@ export class FeatureVehicles implements OnInit {
     this.destroyRef.onDestroy(() => {
       unregisterNew();
       unregisterSearch();
-      this.breadcrumbService.clear();
     });
   }
 

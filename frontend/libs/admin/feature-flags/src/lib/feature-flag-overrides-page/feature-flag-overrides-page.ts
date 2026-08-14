@@ -1,5 +1,6 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+
+import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -113,9 +114,12 @@ function errorMessageFor(error: unknown): string {
     `,
   ],
 })
-export class FeatureFlagOverridesPage {
+export class FeatureFlagOverridesPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly featureFlagService = inject(AdminFeatureFlagService);
+
+  ngOnInit(): void {
+  }
 
   protected readonly checkedStatus = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);

@@ -1,0 +1,2145 @@
+{
+  "graph": {
+    "nodes": {
+      "notification-feature-notifications": {
+        "name": "notification-feature-notifications",
+        "type": "lib",
+        "data": {
+          "root": "libs/notification/feature-notifications",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/notification/feature-notifications/jest.config.cts",
+                "tsConfig": "libs/notification/feature-notifications/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "notification-feature-notifications",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/notification/feature-notifications/src",
+          "prefix": "lib",
+          "projectType": "library",
+          "tags": [
+            "scope:notification",
+            "type:feature"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "feature-employees": {
+        "name": "feature-employees",
+        "type": "lib",
+        "data": {
+          "root": "libs/tenant-admin/feature-employees",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/tenant-admin/feature-employees/jest.config.cts",
+                "tsConfig": "libs/tenant-admin/feature-employees/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "feature-employees",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/tenant-admin/feature-employees/src",
+          "prefix": "lib",
+          "projectType": "library",
+          "tags": [
+            "type:feature"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "admin-feature-tenant-settings": {
+        "name": "admin-feature-tenant-settings",
+        "type": "lib",
+        "data": {
+          "root": "libs/admin/feature-tenant-settings",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/admin/feature-tenant-settings/jest.config.cts",
+                "tsConfig": "libs/admin/feature-tenant-settings/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "admin-feature-tenant-settings",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/admin/feature-tenant-settings/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:admin"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "feature-complaints": {
+        "name": "feature-complaints",
+        "type": "lib",
+        "data": {
+          "root": "libs/complaint/feature-complaints",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/complaint/feature-complaints/jest.config.cts",
+                "tsConfig": "libs/complaint/feature-complaints/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "feature-complaints",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/complaint/feature-complaints/src",
+          "prefix": "lib",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:complaint"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "feature-invoices": {
+        "name": "feature-invoices",
+        "type": "lib",
+        "data": {
+          "root": "libs/accounting/feature-invoices",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/accounting/feature-invoices/jest.config.cts",
+                "tsConfig": "libs/accounting/feature-invoices/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "feature-invoices",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/accounting/feature-invoices/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:accounting"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "inventory-feature-inventory": {
+        "name": "inventory-feature-inventory",
+        "type": "lib",
+        "data": {
+          "root": "libs/inventory/feature-inventory",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/inventory/feature-inventory/jest.config.cts",
+                "tsConfig": "libs/inventory/feature-inventory/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "inventory-feature-inventory",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/inventory/feature-inventory/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:inventory"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "customer-feature-customers": {
+        "name": "customer-feature-customers",
+        "type": "lib",
+        "data": {
+          "root": "libs/customer/feature-customers",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/customer/feature-customers/jest.config.cts",
+                "tsConfig": "libs/customer/feature-customers/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "customer-feature-customers",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/customer/feature-customers/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:customer"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "delivery-feature-vehicles": {
+        "name": "delivery-feature-vehicles",
+        "type": "lib",
+        "data": {
+          "root": "libs/delivery/feature-vehicles",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/delivery/feature-vehicles/jest.config.cts",
+                "tsConfig": "libs/delivery/feature-vehicles/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "delivery-feature-vehicles",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/delivery/feature-vehicles/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:delivery"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "feature-dispatch": {
+        "name": "feature-dispatch",
+        "type": "lib",
+        "data": {
+          "root": "libs/delivery/feature-dispatch",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/delivery/feature-dispatch/jest.config.cts",
+                "tsConfig": "libs/delivery/feature-dispatch/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "feature-dispatch",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/delivery/feature-dispatch/src",
+          "prefix": "lib",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:delivery"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "reporting-feature-reports": {
+        "name": "reporting-feature-reports",
+        "type": "lib",
+        "data": {
+          "root": "libs/reporting/feature-reports",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/reporting/feature-reports/jest.config.cts",
+                "tsConfig": "libs/reporting/feature-reports/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "reporting-feature-reports",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/reporting/feature-reports/src",
+          "prefix": "lib",
+          "projectType": "library",
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "delivery-feature-drivers": {
+        "name": "delivery-feature-drivers",
+        "type": "lib",
+        "data": {
+          "root": "libs/delivery/feature-drivers",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/delivery/feature-drivers/jest.config.cts",
+                "tsConfig": "libs/delivery/feature-drivers/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "delivery-feature-drivers",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/delivery/feature-drivers/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:delivery"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "admin-feature-audit-log": {
+        "name": "admin-feature-audit-log",
+        "type": "lib",
+        "data": {
+          "root": "libs/admin/feature-audit-log",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/admin/feature-audit-log/jest.config.cts",
+                "tsConfig": "libs/admin/feature-audit-log/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "admin-feature-audit-log",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/admin/feature-audit-log/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:admin"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "feature-ledger": {
+        "name": "feature-ledger",
+        "type": "lib",
+        "data": {
+          "root": "libs/ledger/feature-ledger",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/ledger/feature-ledger/jest.config.cts",
+                "tsConfig": "libs/ledger/feature-ledger/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "feature-ledger",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/ledger/feature-ledger/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:ledger"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "order-feature-orders": {
+        "name": "order-feature-orders",
+        "type": "lib",
+        "data": {
+          "root": "libs/order/feature-orders",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/order/feature-orders/jest.config.cts",
+                "tsConfig": "libs/order/feature-orders/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "order-feature-orders",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/order/feature-orders/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:order"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "shared-design-tokens": {
+        "name": "shared-design-tokens",
+        "type": "lib",
+        "data": {
+          "root": "libs/shared/design-tokens",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/shared/design-tokens/jest.config.cts",
+                "tsConfig": "libs/shared/design-tokens/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "shared-design-tokens",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/shared/design-tokens/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:design-tokens",
+            "scope:shared"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "admin-feature-flags": {
+        "name": "admin-feature-flags",
+        "type": "lib",
+        "data": {
+          "root": "libs/admin/feature-flags",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/admin/feature-flags/jest.config.cts",
+                "tsConfig": "libs/admin/feature-flags/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "admin-feature-flags",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/admin/feature-flags/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:admin"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "admin-feature-users": {
+        "name": "admin-feature-users",
+        "type": "lib",
+        "data": {
+          "root": "libs/admin/feature-users",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/admin/feature-users/jest.config.cts",
+                "tsConfig": "libs/admin/feature-users/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "admin-feature-users",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/admin/feature-users/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:admin"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "auth-feature-login": {
+        "name": "auth-feature-login",
+        "type": "lib",
+        "data": {
+          "root": "libs/auth/feature-login",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/auth/feature-login/jest.config.cts",
+                "tsConfig": "libs/auth/feature-login/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "auth-feature-login",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/auth/feature-login/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:feature",
+            "scope:auth"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "shared-data-access": {
+        "name": "shared-data-access",
+        "type": "lib",
+        "data": {
+          "root": "libs/shared/data-access",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/shared/data-access/jest.config.cts",
+                "tsConfig": "libs/shared/data-access/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "shared-data-access",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/shared/data-access/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:data-access",
+            "scope:shared"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "dashboard-e2e": {
+        "name": "dashboard-e2e",
+        "type": "e2e",
+        "data": {
+          "root": "apps/dashboard-e2e",
+          "metadata": {
+            "targetGroups": {
+              "E2E (CI)": [
+                "e2e-ci--src/accessibility.spec.ts",
+                "e2e-ci--src/example.spec.ts",
+                "e2e-ci--src/profile-menu.spec.ts",
+                "e2e-ci",
+                "e2e-ci--merge-reports"
+              ]
+            }
+          },
+          "targets": {
+            "e2e": {
+              "metadata": {
+                "technologies": [
+                  "playwright"
+                ],
+                "description": "Runs Playwright Tests",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                {
+                  "projects": [
+                    "dashboard"
+                  ],
+                  "target": "serve"
+                }
+              ],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "^{projectRoot}/tsconfig*.json",
+                {
+                  "json": "{workspaceRoot}/tsconfig.json",
+                  "fields": [
+                    "compilerOptions",
+                    "extends",
+                    "files",
+                    "include"
+                  ]
+                },
+                {
+                  "externalDependencies": [
+                    "@playwright/test"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/test-output",
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/playwright-report"
+              ],
+              "executor": "nx:run-commands",
+              "options": {
+                "cwd": "apps/dashboard-e2e",
+                "command": "playwright test"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "e2e-ci--src/accessibility.spec.ts": {
+              "metadata": {
+                "technologies": [
+                  "playwright"
+                ],
+                "description": "Runs Playwright Tests in src/accessibility.spec.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                {
+                  "projects": [
+                    "dashboard"
+                  ],
+                  "target": "serve"
+                }
+              ],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "^{projectRoot}/tsconfig*.json",
+                {
+                  "json": "{workspaceRoot}/tsconfig.json",
+                  "fields": [
+                    "compilerOptions",
+                    "extends",
+                    "files",
+                    "include"
+                  ]
+                },
+                {
+                  "externalDependencies": [
+                    "@playwright/test"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/test-output/src-accessibility-spec-ts",
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/playwright-report/src-accessibility-spec-ts"
+              ],
+              "executor": "nx:run-commands",
+              "options": {
+                "cwd": "apps/dashboard-e2e",
+                "env": {
+                  "PLAYWRIGHT_HTML_OUTPUT_DIR": "../../dist/.playwright/apps/dashboard-e2e/playwright-report/src-accessibility-spec-ts",
+                  "PLAYWRIGHT_HTML_REPORT": "../../dist/.playwright/apps/dashboard-e2e/playwright-report/src-accessibility-spec-ts"
+                },
+                "command": "playwright test src/accessibility.spec.ts --output=../../dist/.playwright/apps/dashboard-e2e/test-output/src-accessibility-spec-ts"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "e2e-ci--src/example.spec.ts": {
+              "metadata": {
+                "technologies": [
+                  "playwright"
+                ],
+                "description": "Runs Playwright Tests in src/example.spec.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                {
+                  "projects": [
+                    "dashboard"
+                  ],
+                  "target": "serve"
+                }
+              ],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "^{projectRoot}/tsconfig*.json",
+                {
+                  "json": "{workspaceRoot}/tsconfig.json",
+                  "fields": [
+                    "compilerOptions",
+                    "extends",
+                    "files",
+                    "include"
+                  ]
+                },
+                {
+                  "externalDependencies": [
+                    "@playwright/test"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/test-output/src-example-spec-ts",
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/playwright-report/src-example-spec-ts"
+              ],
+              "executor": "nx:run-commands",
+              "options": {
+                "cwd": "apps/dashboard-e2e",
+                "env": {
+                  "PLAYWRIGHT_HTML_OUTPUT_DIR": "../../dist/.playwright/apps/dashboard-e2e/playwright-report/src-example-spec-ts",
+                  "PLAYWRIGHT_HTML_REPORT": "../../dist/.playwright/apps/dashboard-e2e/playwright-report/src-example-spec-ts"
+                },
+                "command": "playwright test src/example.spec.ts --output=../../dist/.playwright/apps/dashboard-e2e/test-output/src-example-spec-ts"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "e2e-ci--src/profile-menu.spec.ts": {
+              "metadata": {
+                "technologies": [
+                  "playwright"
+                ],
+                "description": "Runs Playwright Tests in src/profile-menu.spec.ts in CI",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                {
+                  "projects": [
+                    "dashboard"
+                  ],
+                  "target": "serve"
+                }
+              ],
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "^{projectRoot}/tsconfig*.json",
+                {
+                  "json": "{workspaceRoot}/tsconfig.json",
+                  "fields": [
+                    "compilerOptions",
+                    "extends",
+                    "files",
+                    "include"
+                  ]
+                },
+                {
+                  "externalDependencies": [
+                    "@playwright/test"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/test-output/src-profile-menu-spec-ts",
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/playwright-report/src-profile-menu-spec-ts"
+              ],
+              "executor": "nx:run-commands",
+              "options": {
+                "cwd": "apps/dashboard-e2e",
+                "env": {
+                  "PLAYWRIGHT_HTML_OUTPUT_DIR": "../../dist/.playwright/apps/dashboard-e2e/playwright-report/src-profile-menu-spec-ts",
+                  "PLAYWRIGHT_HTML_REPORT": "../../dist/.playwright/apps/dashboard-e2e/playwright-report/src-profile-menu-spec-ts"
+                },
+                "command": "playwright test src/profile-menu.spec.ts --output=../../dist/.playwright/apps/dashboard-e2e/test-output/src-profile-menu-spec-ts"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "e2e-ci": {
+              "executor": "nx:noop",
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "^{projectRoot}/tsconfig*.json",
+                {
+                  "json": "{workspaceRoot}/tsconfig.json",
+                  "fields": [
+                    "compilerOptions",
+                    "extends",
+                    "files",
+                    "include"
+                  ]
+                },
+                {
+                  "externalDependencies": [
+                    "@playwright/test"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/test-output",
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/playwright-report"
+              ],
+              "dependsOn": [
+                {
+                  "target": "e2e-ci--src/accessibility.spec.ts",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--src/example.spec.ts",
+                  "params": "forward",
+                  "options": "forward"
+                },
+                {
+                  "target": "e2e-ci--src/profile-menu.spec.ts",
+                  "params": "forward",
+                  "options": "forward"
+                }
+              ],
+              "metadata": {
+                "technologies": [
+                  "playwright"
+                ],
+                "description": "Runs Playwright Tests in CI",
+                "nonAtomizedTarget": "e2e",
+                "help": {
+                  "command": "npx playwright test --help",
+                  "example": {
+                    "options": {
+                      "workers": 1
+                    }
+                  }
+                }
+              },
+              "configurations": {},
+              "options": {},
+              "parallelism": true
+            },
+            "e2e-ci--merge-reports": {
+              "executor": "@nx/playwright:merge-reports",
+              "continuous": false,
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "^{projectRoot}/tsconfig*.json",
+                {
+                  "json": "{workspaceRoot}/tsconfig.json",
+                  "fields": [
+                    "compilerOptions",
+                    "extends",
+                    "files",
+                    "include"
+                  ]
+                },
+                {
+                  "externalDependencies": [
+                    "@playwright/test"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/.playwright/apps/dashboard-e2e/playwright-report"
+              ],
+              "metadata": {
+                "technologies": [
+                  "playwright"
+                ],
+                "description": "Merges Playwright blob reports from atomized tasks to produce unified reports for the configured reporters."
+              },
+              "options": {
+                "config": "playwright.config.mts",
+                "expectedSuites": 3
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/apps/dashboard-e2e/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*",
+                {
+                  "externalDependencies": [
+                    "eslint"
+                  ]
+                }
+              ],
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "metadata": {
+                "technologies": [
+                  "eslint"
+                ],
+                "description": "Runs ESLint on project",
+                "help": {
+                  "command": "npx eslint --help",
+                  "example": {
+                    "options": {
+                      "max-warnings": 0
+                    }
+                  }
+                }
+              },
+              "executor": "nx:run-commands",
+              "options": {
+                "cwd": "apps/dashboard-e2e",
+                "command": "eslint ."
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "dashboard-e2e",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "sourceRoot": "apps/dashboard-e2e/src",
+          "implicitDependencies": [
+            "dashboard"
+          ],
+          "tags": []
+        }
+      },
+      "shared-util": {
+        "name": "shared-util",
+        "type": "lib",
+        "data": {
+          "root": "libs/shared/util",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/shared/util/jest.config.cts",
+                "tsConfig": "libs/shared/util/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "shared-util",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/shared/util/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:util",
+            "scope:shared"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "dashboard": {
+        "name": "dashboard",
+        "type": "app",
+        "data": {
+          "root": "apps/dashboard",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "build": {
+              "cache": true,
+              "dependsOn": [
+                "^build"
+              ],
+              "inputs": [
+                "production",
+                "^production"
+              ],
+              "executor": "@angular/build:application",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "defaultConfiguration": "production",
+              "options": {
+                "outputPath": "dist/apps/dashboard",
+                "browser": "apps/dashboard/src/main.ts",
+                "tsConfig": "apps/dashboard/tsconfig.app.json",
+                "assets": [
+                  {
+                    "glob": "**/*",
+                    "input": "apps/dashboard/public"
+                  }
+                ],
+                "styles": [
+                  "apps/dashboard/src/styles.css"
+                ]
+              },
+              "configurations": {
+                "production": {
+                  "budgets": [
+                    {
+                      "type": "initial",
+                      "maximumWarning": "700kb",
+                      "maximumError": "1mb"
+                    },
+                    {
+                      "type": "anyComponentStyle",
+                      "maximumWarning": "4kb",
+                      "maximumError": "8kb"
+                    }
+                  ],
+                  "outputHashing": "all",
+                  "fileReplacements": [
+                    {
+                      "replace": "apps/dashboard/src/environments/environment.ts",
+                      "with": "apps/dashboard/src/environments/environment.prod.ts"
+                    }
+                  ]
+                },
+                "development": {
+                  "optimization": false,
+                  "extractLicenses": false,
+                  "sourceMap": true
+                }
+              },
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "apps/dashboard/jest.config.cts",
+                "tsConfig": "apps/dashboard/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            },
+            "serve": {
+              "continuous": true,
+              "executor": "@angular/build:dev-server",
+              "defaultConfiguration": "development",
+              "configurations": {
+                "production": {
+                  "buildTarget": "dashboard:build:production"
+                },
+                "development": {
+                  "buildTarget": "dashboard:build:development"
+                }
+              },
+              "options": {},
+              "parallelism": true
+            },
+            "serve-static": {
+              "continuous": true,
+              "executor": "@nx/web:file-server",
+              "options": {
+                "buildTarget": "dashboard:build",
+                "port": 4200,
+                "staticFilePath": "dist/apps/dashboard/browser",
+                "spa": true
+              },
+              "configurations": {},
+              "parallelism": true
+            }
+          },
+          "name": "dashboard",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "prefix": "lpg",
+          "sourceRoot": "apps/dashboard/src",
+          "tags": [
+            "type:app",
+            "scope:dashboard"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "shared-ui": {
+        "name": "shared-ui",
+        "type": "lib",
+        "data": {
+          "root": "libs/shared/ui",
+          "targets": {
+            "lint": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/.eslintrc.json",
+                "{workspaceRoot}/.eslintignore",
+                "{workspaceRoot}/eslint.config.mjs",
+                "{workspaceRoot}/tools/eslint-rules/**/*"
+              ],
+              "executor": "@nx/eslint:lint",
+              "options": {},
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-storybook": {
+              "executor": "@storybook/angular:build-storybook",
+              "outputs": [
+                "{options.outputDir}"
+              ],
+              "options": {
+                "configDir": "libs/shared/ui/.storybook",
+                "browserTarget": "dashboard:build:development",
+                "compodoc": false,
+                "outputDir": "dist/storybook/shared-ui"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "storybook": {
+              "executor": "@storybook/angular:start-storybook",
+              "options": {
+                "configDir": "libs/shared/ui/.storybook",
+                "browserTarget": "dashboard:build:development",
+                "compodoc": false,
+                "port": 4400
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "static-storybook": {
+              "dependsOn": [
+                "build-storybook"
+              ],
+              "continuous": true,
+              "executor": "@nx/web:file-server",
+              "options": {
+                "buildTarget": "build-storybook",
+                "staticFilePath": "libs/shared/ui/storybook-static"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "build-deps": {
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {},
+              "options": {},
+              "parallelism": true,
+              "executor": "nx:noop"
+            },
+            "watch-deps": {
+              "continuous": true,
+              "dependsOn": [
+                "build-deps"
+              ],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "npx nx watch --projects shared-ui --includeDependencies -- npx nx build-deps shared-ui"
+              },
+              "configurations": {},
+              "parallelism": true
+            },
+            "test": {
+              "cache": true,
+              "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "jestConfig": "libs/shared/ui/jest.config.cts",
+                "tsConfig": "libs/shared/ui/tsconfig.spec.json"
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              },
+              "parallelism": true
+            }
+          },
+          "name": "shared-ui",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "libs/shared/ui/src",
+          "prefix": "lpg",
+          "projectType": "library",
+          "tags": [
+            "type:ui",
+            "scope:shared"
+          ],
+          "implicitDependencies": []
+        }
+      }
+    },
+    "dependencies": {
+      "notification-feature-notifications": [
+        {
+          "source": "notification-feature-notifications",
+          "target": "shared-data-access",
+          "type": "static"
+        },
+        {
+          "source": "notification-feature-notifications",
+          "target": "shared-ui",
+          "type": "static"
+        }
+      ],
+      "feature-employees": [
+        {
+          "source": "feature-employees",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "feature-employees",
+          "target": "shared-util",
+          "type": "static"
+        },
+        {
+          "source": "feature-employees",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "admin-feature-tenant-settings": [
+        {
+          "source": "admin-feature-tenant-settings",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "admin-feature-tenant-settings",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "feature-complaints": [],
+      "feature-invoices": [
+        {
+          "source": "feature-invoices",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "feature-invoices",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "inventory-feature-inventory": [
+        {
+          "source": "inventory-feature-inventory",
+          "target": "shared-data-access",
+          "type": "static"
+        },
+        {
+          "source": "inventory-feature-inventory",
+          "target": "shared-ui",
+          "type": "static"
+        }
+      ],
+      "customer-feature-customers": [
+        {
+          "source": "customer-feature-customers",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "customer-feature-customers",
+          "target": "shared-util",
+          "type": "static"
+        },
+        {
+          "source": "customer-feature-customers",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "delivery-feature-vehicles": [
+        {
+          "source": "delivery-feature-vehicles",
+          "target": "shared-data-access",
+          "type": "static"
+        },
+        {
+          "source": "delivery-feature-vehicles",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "delivery-feature-vehicles",
+          "target": "shared-util",
+          "type": "static"
+        }
+      ],
+      "feature-dispatch": [
+        {
+          "source": "feature-dispatch",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "feature-dispatch",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "reporting-feature-reports": [],
+      "delivery-feature-drivers": [
+        {
+          "source": "delivery-feature-drivers",
+          "target": "shared-data-access",
+          "type": "static"
+        },
+        {
+          "source": "delivery-feature-drivers",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "delivery-feature-drivers",
+          "target": "shared-util",
+          "type": "static"
+        }
+      ],
+      "admin-feature-audit-log": [
+        {
+          "source": "admin-feature-audit-log",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "admin-feature-audit-log",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "feature-ledger": [
+        {
+          "source": "feature-ledger",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "feature-ledger",
+          "target": "shared-util",
+          "type": "static"
+        },
+        {
+          "source": "feature-ledger",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "order-feature-orders": [
+        {
+          "source": "order-feature-orders",
+          "target": "shared-data-access",
+          "type": "static"
+        },
+        {
+          "source": "order-feature-orders",
+          "target": "shared-ui",
+          "type": "static"
+        }
+      ],
+      "shared-design-tokens": [],
+      "admin-feature-flags": [
+        {
+          "source": "admin-feature-flags",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "admin-feature-flags",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "admin-feature-users": [
+        {
+          "source": "admin-feature-users",
+          "target": "shared-ui",
+          "type": "static"
+        },
+        {
+          "source": "admin-feature-users",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "auth-feature-login": [
+        {
+          "source": "auth-feature-login",
+          "target": "shared-data-access",
+          "type": "static"
+        }
+      ],
+      "shared-data-access": [],
+      "dashboard-e2e": [
+        {
+          "source": "dashboard-e2e",
+          "target": "dashboard",
+          "type": "implicit"
+        }
+      ],
+      "shared-util": [],
+      "dashboard": [
+        {
+          "source": "dashboard",
+          "target": "shared-data-access",
+          "type": "static"
+        },
+        {
+          "source": "dashboard",
+          "target": "shared-design-tokens",
+          "type": "static"
+        },
+        {
+          "source": "dashboard",
+          "target": "auth-feature-login",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "customer-feature-customers",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "feature-ledger",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "delivery-feature-drivers",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "delivery-feature-vehicles",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "feature-dispatch",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "inventory-feature-inventory",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "order-feature-orders",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "feature-invoices",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "feature-complaints",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "admin-feature-tenant-settings",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "admin-feature-flags",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "admin-feature-users",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "admin-feature-audit-log",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "feature-employees",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "notification-feature-notifications",
+          "type": "dynamic"
+        },
+        {
+          "source": "dashboard",
+          "target": "notification-feature-notifications",
+          "type": "static"
+        },
+        {
+          "source": "dashboard",
+          "target": "shared-ui",
+          "type": "static"
+        }
+      ],
+      "shared-ui": [
+        {
+          "source": "shared-ui",
+          "target": "shared-design-tokens",
+          "type": "static"
+        }
+      ]
+    }
+  }
+}

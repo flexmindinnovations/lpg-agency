@@ -66,9 +66,13 @@ This document is updated after every major milestone.
 
 # Current Phase
 
-**Completed:** Phase 15 — Notifications (started and finished 2026-08-13).
+**Completed:** Phase 17 — Complaint Management (finished 2026-08-14) and Phase 16 — UI & Navigation Refinements (finished 2026-08-14).
 
 **Next:** Mobile Application Development.
+
+Phase 17 delivered the Complaint Management domain (`Complaint` aggregate, raising, assigning, resolving), REST endpoints (`complaints.manage` RBAC), and `@lpg/complaint/feature-complaints` Angular UI library with grid and detail drawers.
+
+Phase 16 delivered UI & Navigation refinements across the dashboard, including centralizing the `BreadcrumbService` into the `app-shell` header leveraging Angular Router state, dynamic sidebar highlighting, and resolving shortcut conflicts.
 
 Phase 15 delivered the Notification system: `Notification` aggregate, `arq` task queues for background delivery, REST endpoints, and decoupled `@lpg/notification/feature-notifications` Angular UI. 
 

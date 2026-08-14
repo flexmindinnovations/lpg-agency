@@ -34,6 +34,8 @@ LPG Agency Management Platform
 
 **Phase 16 — UI & Navigation Refinements** ✅ **COMPLETE** — finished 2026-08-14. Global `BreadcrumbService` integrated into the `app-shell` header, dynamic sidebar nested-route highlighting using aliases, and shortcut conflicts resolved across Customer, Driver, Vehicle, and Employee forms.
 
+**Phase 17 — Complaint Management** ✅ **COMPLETE** — finished 2026-08-14. Full backend domain (`Complaint` aggregate, use cases for raising, assigning, resolving), REST endpoints with `complaints.manage` RBAC, and `@lpg/complaint/feature-complaints` Angular UI library with grid and detail drawers.
+
 **Recommended next:** Mobile Application Development.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).

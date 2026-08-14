@@ -5,11 +5,6 @@ happens **after** a successful commit — never before, so a subscriber can
 never observe state a rollback then erases. `SqlAlchemyUnitOfWork.commit()`
 is the only caller in this phase.
 
-**No handler is registered anywhere in Phase 2.** This is infrastructure for
-future modules — the first real handler registration arrives with the first
-real cross-cutting reaction to a domain event (a notification, a read-model
-projection), not before.
-
 Documented seam, unchanged from Phase 1's architecture: if cross-module
 messaging later needs durability (retry, ordering across restarts), this
 dispatcher is replaced by a transactional outbox relayed by the background

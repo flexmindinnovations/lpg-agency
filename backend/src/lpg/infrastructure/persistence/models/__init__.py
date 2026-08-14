@@ -59,11 +59,19 @@ from lpg.infrastructure.persistence.models.tenant import (
     TenantModel,
     WarehouseModel,
 )
+from lpg.infrastructure.persistence.models.complaint import (
+    ComplaintModel,
+    ComplaintAssignmentModel,
+    ComplaintResolutionModel,
+)
 
 __all__ = [
     "AuditLogModel",
     "BranchModel",
     "CancellationRecordModel",
+    "ComplaintModel",
+    "ComplaintAssignmentModel",
+    "ComplaintResolutionModel",
     "CustomerAddressModel",
     "CustomerModel",
     "CylinderBalanceModel",

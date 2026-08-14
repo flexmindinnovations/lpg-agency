@@ -109,6 +109,26 @@
           <span class="total-value">{{ inv.total_amount | currency:'INR' }}</span>
         </div>
       </div>
+
+      <div class="print-actions">
+        <button
+          pButton
+          type="button"
+          icon="pi pi-file-pdf"
+          label="Print PDF"
+          [loading]="isPrinting()"
+          (click)="printPdf()"
+        ></button>
+        <button
+          pButton
+          type="button"
+          icon="pi pi-print"
+          label="Print Thermal"
+          severity="secondary"
+          [loading]="isPrinting()"
+          (click)="printThermal()"
+        ></button>
+      </div>
     </div>
   }
 </p-drawer>

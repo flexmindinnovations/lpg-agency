@@ -12,6 +12,7 @@ import { passwordResetApiV1AuthPasswordResetPost } from './generated/fn/authenti
 import { refreshApiV1AuthRefreshPost } from './generated/fn/authentication/refresh-api-v-1-auth-refresh-post';
 import type { PrincipalResponse } from './generated/models/principal-response';
 import { AuthPrincipal, AuthTokenStore } from './auth-token.store';
+import { WebSocketService } from './websocket.service';
 
 function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
   return {
@@ -37,6 +38,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly config = inject(ApiConfiguration);
   private readonly tokenStore = inject(AuthTokenStore);
+  private readonly wsService = inject(WebSocketService);
 
   readonly accessToken = this.tokenStore.accessToken;
   readonly principal = this.tokenStore.principal;
@@ -94,7 +96,10 @@ export class AuthService {
         body: {},
       }).pipe(
         map((response) => response.body.access_token),
-        tap((accessToken) => this.tokenStore.setAccessToken(accessToken)),
+        tap((accessToken) => {
+          this.tokenStore.setAccessToken(accessToken);
+          this.wsService.refreshToken(accessToken);
+        }),
         shareReplay(1),
         finalize(() => {
           this.refreshInFlight$ = null;
@@ -115,6 +120,7 @@ export class AuthService {
       map(() => true),
       catchError(() => {
         this.tokenStore.clear();
+        this.wsService.disconnect();
         return of(false);
       }),
     );
@@ -127,7 +133,10 @@ export class AuthService {
       // docstring) — clear the local session regardless of whether the
       // request itself succeeded.
       catchError(() => of(undefined)),
-      tap(() => this.tokenStore.clear()),
+      tap(() => {
+        this.tokenStore.clear();
+        this.wsService.disconnect();
+      }),
     );
   }
 
@@ -135,7 +144,10 @@ export class AuthService {
     this.tokenStore.setAccessToken(accessToken);
     return meApiV1AuthMeGet(this.http, this.config.rootUrl).pipe(
       map((response) => response.body),
-      tap((principal) => this.tokenStore.setSession(accessToken, toAuthPrincipal(principal))),
+      tap((principal) => {
+        this.tokenStore.setSession(accessToken, toAuthPrincipal(principal));
+        this.wsService.connect(accessToken);
+      }),
       map(() => undefined),
     );
   }

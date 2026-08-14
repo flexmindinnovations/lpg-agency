@@ -1,0 +1,319 @@
+<ng-template lpgHeaderTitlePortal>
+  <div class="page-header__text">
+    <h1 class="page-title">Complaints</h1>
+    <p class="page-subtitle">Manage customer complaints, assignments, and resolutions.</p>
+  </div>
+</ng-template>
+
+<ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+    <button
+      #registerTriggerEl
+      pButton
+      type="button"
+      (click)="openRaiseModal()"
+    >
+      <i pButtonIcon class="pi pi-plus"></i>
+      <span pButtonLabel>Raise Complaint</span>
+    </button>
+  </div>
+</ng-template>
+
+<div class="complaint-container">
+  <!-- Grid -->
+  <div class="grid-wrapper">
+    <lpg-data-grid
+      ariaLabel="Complaints grid"
+      [rows]="complaints()"
+      [columns]="columns"
+      [loading]="loading()"
+    />
+  </div>
+</div>
+
+<!-- Details Drawer -->
+<p-drawer
+  [(visible)]="detailVisible"
+  position="right"
+  styleClass="!w-full md:!w-[35rem]"
+  [modal]="true"
+
+>
+  <ng-template #header>
+    <div class="drawer-header">
+      <h2 class="drawer-title">Complaint Details</h2>
+      @if (selectedComplaint(); as complaint) {
+        <p-tag [value]="complaint.status" [severity]="getSeverity(complaint.status)" />
+      }
+    </div>
+  </ng-template>
+  
+  @if (selectedComplaint(); as complaint) {
+    <div class="drawer-content">
+      <div class="info-section">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Complaint ID</span>
+            <span class="info-value font-mono">{{ complaint.id }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Customer ID</span>
+            <span class="info-value font-mono">{{ complaint.customer_id }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Category</span>
+            <span class="info-value">{{ complaint.category }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Priority</span>
+            <span class="info-value">{{ complaint.priority }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Raised On</span>
+            <span class="info-value">{{ complaint.created_at | date:'medium' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">SLA Due By</span>
+            <span class="info-value">{{ complaint.sla_due_at ? (complaint.sla_due_at | date:'medium') : 'N/A' }}</span>
+          </div>
+          @if (complaint.order_id) {
+            <div class="info-item col-span-2">
+              <span class="info-label">Order ID</span>
+              <span class="info-value font-mono">{{ complaint.order_id }}</span>
+            </div>
+          }
+          <div class="info-item col-span-2">
+            <span class="info-label">Description</span>
+            <span class="info-value whitespace-pre-wrap">{{ complaint.description }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Assignment History -->
+      <div class="history-section">
+        <h3 class="section-title">Assignment History</h3>
+        @if (complaint.assignments && complaint.assignments.length > 0) {
+          <div class="history-list">
+            @for (assignment of complaint.assignments; track assignment.id) {
+              <div class="history-item">
+                <i class="pi pi-user text-primary"></i>
+                <div class="history-content">
+                  <span class="history-main">Assigned to {{ assignment.assigned_to }}</span>
+                  <span class="history-sub">{{ assignment.assigned_at | date:'short' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-hint">Not assigned yet.</p>
+        }
+      </div>
+
+      <!-- Resolution -->
+      <div class="history-section">
+        <h3 class="section-title">Resolution</h3>
+        @if (complaint.resolution) {
+          <div class="resolution-card">
+            <div class="resolution-header">
+              <span class="font-medium">{{ complaint.resolution.outcome }}</span>
+              <span class="text-sm text-surface-500">{{ complaint.resolution.resolved_at | date:'short' }}</span>
+            </div>
+            <p class="mt-2 text-sm">{{ complaint.resolution.resolution_notes }}</p>
+            <p class="mt-2 text-xs text-surface-500">Resolved by: {{ complaint.resolution.resolved_by }}</p>
+          </div>
+        } @else {
+          <p class="empty-hint">Not resolved yet.</p>
+        }
+      </div>
+    </div>
+  }
+
+  <ng-template #footer>
+    @if (selectedComplaint(); as complaint) {
+      <div class="drawer-actions">
+        <button
+          pButton
+          class="p-button-outlined"
+          icon="pi pi-user-plus"
+          [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
+          (click)="openAssignModal()"
+        >Assign</button>
+        <button
+          pButton
+          icon="pi pi-check"
+          [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
+          (click)="openResolveModal()"
+        >Resolve</button>
+      </div>
+    }
+  </ng-template>
+</p-drawer>
+
+<!-- Raise Complaint Modal -->
+<p-drawer
+  [(visible)]="registerModalVisible"
+  position="right"
+  styleClass="!w-full md:!w-[30rem]"
+  [modal]="true"
+
+>
+  <ng-template #header>
+    <div class="drawer-header">
+      <h2 class="drawer-title">Raise Complaint</h2>
+    </div>
+  </ng-template>
+
+  <form [formGroup]="raiseForm" (ngSubmit)="submitRaise()" class="dialog-form">
+    <div class="form-group">
+      <label for="customer_id">Customer ID *</label>
+      <input pInputText id="customer_id" formControlName="customer_id" placeholder="e.g. CUST-123" />
+    </div>
+
+    <div class="form-group">
+      <label for="order_id">Order ID (Optional)</label>
+      <input pInputText id="order_id" formControlName="order_id" placeholder="e.g. ORD-456" />
+    </div>
+
+    <div class="form-group">
+      <label for="category">Category *</label>
+      <p-select 
+        id="category" 
+        formControlName="category" 
+        [options]="categoryOptions" 
+        optionLabel="label" 
+        optionValue="value" 
+        placeholder="Select a category" 
+        appendTo="body"
+        styleClass="w-full"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="priority">Priority *</label>
+      <p-select 
+        id="priority" 
+        formControlName="priority" 
+        [options]="priorityOptions" 
+        optionLabel="label" 
+        optionValue="value" 
+        placeholder="Select a priority" 
+        appendTo="body"
+        styleClass="w-full"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="description">Description *</label>
+      <textarea 
+        pTextarea 
+        id="description" 
+        formControlName="description" 
+        rows="4" 
+        placeholder="Enter complaint details..."
+        class="w-full"
+      ></textarea>
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <div class="modal-actions">
+      <button
+        pButton
+        type="button"
+        class="p-button-text p-button-secondary"
+        (click)="closeRaiseModal()"
+        [disabled]="registerLoading()"
+      >
+        Cancel
+      </button>
+      <button
+        pButton
+        type="button"
+        (click)="submitRaise()"
+        [loading]="registerLoading()"
+        [disabled]="raiseForm.invalid"
+      >
+        Raise Complaint
+      </button>
+    </div>
+  </ng-template>
+</p-drawer>
+
+<!-- Assign Modal -->
+<p-drawer
+  [(visible)]="assignModalVisible"
+  position="right"
+  styleClass="!w-full md:!w-[30rem]"
+  [modal]="true"
+
+>
+  <ng-template #header>
+    <div class="drawer-header">
+      <h2 class="drawer-title">Assign Complaint</h2>
+    </div>
+  </ng-template>
+
+  <form [formGroup]="assignForm" (ngSubmit)="submitAssign()" class="dialog-form">
+    <div class="form-group">
+      <label for="assigned_to">Assign To *</label>
+      <input pInputText id="assigned_to" formControlName="assigned_to" placeholder="e.g. Manager ID or Name" />
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <div class="modal-actions">
+      <button pButton type="button" class="p-button-text p-button-secondary" (click)="closeAssignModal()">Cancel</button>
+      <button pButton type="button" (click)="submitAssign()" [loading]="assignLoading()" [disabled]="assignForm.invalid">Assign</button>
+    </div>
+  </ng-template>
+</p-drawer>
+
+<!-- Resolve Modal -->
+<p-drawer
+  [(visible)]="resolveModalVisible"
+  position="right"
+  styleClass="!w-full md:!w-[30rem]"
+  [modal]="true"
+
+>
+  <ng-template #header>
+    <div class="drawer-header">
+      <h2 class="drawer-title">Resolve Complaint</h2>
+    </div>
+  </ng-template>
+
+  <form [formGroup]="resolveForm" (ngSubmit)="submitResolve()" class="dialog-form">
+    <div class="form-group">
+      <label for="outcome">Outcome *</label>
+      <p-select 
+        id="outcome" 
+        formControlName="outcome" 
+        [options]="outcomeOptions" 
+        optionLabel="label" 
+        optionValue="value" 
+        placeholder="Select outcome" 
+        appendTo="body"
+        styleClass="w-full"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="resolution_notes">Resolution Notes *</label>
+      <textarea 
+        pTextarea 
+        id="resolution_notes" 
+        formControlName="resolution_notes" 
+        rows="4" 
+        placeholder="Enter resolution details..."
+        class="w-full"
+      ></textarea>
+    </div>
+  </form>
+
+  <ng-template #footer>
+    <div class="modal-actions">
+      <button pButton type="button" class="p-button-text p-button-secondary" (click)="closeResolveModal()">Cancel</button>
+      <button pButton type="button" (click)="submitResolve()" [loading]="resolveLoading()" [disabled]="resolveForm.invalid">Resolve</button>
+    </div>
+  </ng-template>
+</p-drawer>

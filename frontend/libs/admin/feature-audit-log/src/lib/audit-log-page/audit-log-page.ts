@@ -16,14 +16,7 @@ import { Drawer } from 'primeng/drawer';
 import { Tag } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { AdminAuditLogService, type AuditLogEntryResponse } from '@lpg/shared/data-access';
-import {
-  ActionChipCell,
-  CopyableIdCell,
-  DataGridComponent,
-  formatEntityName,
-  formatTimestamp,
-  type DataGridColumn,
-} from '@lpg/shared/ui';
+import { ActionChipCell, CopyableIdCell, DataGridComponent, formatEntityName, formatTimestamp, type DataGridColumn } from '@lpg/shared/ui';
 
 const ACTION_SEVERITY: Record<string, string> = {
   create: 'success',

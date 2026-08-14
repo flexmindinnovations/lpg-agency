@@ -216,6 +216,7 @@ export class FeatureInventory implements OnInit {
 
   protected readonly lastReconciliationRecordId = signal<string | null>(null);
 
+
   ngOnInit(): void {
     this.warehouseService.listWarehouses().subscribe({ next: (w) => this.warehouses.set(w) });
     this.deliveryService.listVehicles(0, 200).subscribe({

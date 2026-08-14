@@ -67,7 +67,10 @@ export class ShellLayout {
     return [
       {
         label: 'Overview',
-        items: [{ label: 'Dashboard', icon: 'pi pi-home', route: '/', exact: true }],
+        items: [
+          { label: 'Dashboard', icon: 'pi pi-home', route: '/', exact: true },
+          { label: 'Reports', icon: 'pi pi-chart-bar', route: '/reports' }
+        ],
       },
       {
         label: 'Operations',
@@ -75,6 +78,7 @@ export class ShellLayout {
           { label: 'Customers', icon: 'pi pi-users', route: '/customers', aliases: ['/ledger'] },
           { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders' },
           { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch' },
+          { label: 'Complaints', icon: 'pi pi-exclamation-circle', route: '/complaints' },
         ],
       },
       {

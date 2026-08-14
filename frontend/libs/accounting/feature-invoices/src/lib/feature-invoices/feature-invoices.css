@@ -186,3 +186,11 @@
 .numeric-value {
   font-variant-numeric: tabular-nums;
 }
+
+.print-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding-block-start: var(--spacing-lg);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+  margin-block-start: var(--spacing-md);
+}

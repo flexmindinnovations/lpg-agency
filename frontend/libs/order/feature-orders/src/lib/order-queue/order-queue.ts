@@ -135,7 +135,9 @@ export class OrderQueue implements OnInit {
     return this.createForm.controls.lines;
   }
 
+
   ngOnInit(): void {
+
     this.loadOrders();
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (ct) => this.cylinderTypes.set(ct),

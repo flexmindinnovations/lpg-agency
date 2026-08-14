@@ -11,9 +11,10 @@ import { InputText } from 'primeng/inputtext';
 import { IconField } from 'primeng/iconfield';
 import { Tag } from 'primeng/tag';
 import { Drawer } from 'primeng/drawer';
+import { ButtonDirective } from 'primeng/button';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { InvoiceService, type InvoiceResponse } from '@lpg/shared/data-access';
+import { InvoiceService, PrintingService, type InvoiceResponse } from '@lpg/shared/data-access';
 
 @Component({
   selector: 'lpg-feature-invoices',
@@ -25,6 +26,7 @@ import { InvoiceService, type InvoiceResponse } from '@lpg/shared/data-access';
     InputText,
     IconField,
     Tag,
+    ButtonDirective,
     DataGridComponent,
     DatePipe,
     CurrencyPipe,
@@ -35,8 +37,10 @@ import { InvoiceService, type InvoiceResponse } from '@lpg/shared/data-access';
 })
 export class FeatureInvoices implements OnInit {
   private readonly invoiceService = inject(InvoiceService);
+  private readonly printingService = inject(PrintingService);
 
   readonly isLoading = signal(false);
+  readonly isPrinting = signal(false);
   readonly invoices = signal<InvoiceResponse[]>([]);
   readonly selectedInvoice = signal<InvoiceResponse | null>(null);
 
@@ -71,5 +75,25 @@ export class FeatureInvoices implements OnInit {
 
   clearSelection(): void {
     this.selectedInvoice.set(null);
+  }
+
+  printPdf(): void {
+    const inv = this.selectedInvoice();
+    if (!inv) return;
+    this.isPrinting.set(true);
+    this.printingService.printInvoicePdf(inv.invoice_id).subscribe({
+      next: () => this.isPrinting.set(false),
+      error: () => this.isPrinting.set(false),
+    });
+  }
+
+  printThermal(): void {
+    const inv = this.selectedInvoice();
+    if (!inv) return;
+    this.isPrinting.set(true);
+    this.printingService.printInvoiceThermal(inv.invoice_id).subscribe({
+      next: () => this.isPrinting.set(false),
+      error: () => this.isPrinting.set(false),
+    });
   }
 }

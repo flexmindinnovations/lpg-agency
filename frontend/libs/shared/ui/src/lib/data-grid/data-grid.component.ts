@@ -78,7 +78,7 @@ export interface DataGridColumn<TRow = unknown> {
         padding: 0;
         margin: 0;
         font: inherit;
-        color: var(--color-action-primary);
+        color: var(--lpg-link-color, var(--color-action-primary));
         text-decoration: underline;
         text-underline-offset: 2px;
         cursor: pointer;
@@ -89,10 +89,10 @@ export interface DataGridColumn<TRow = unknown> {
       }
       .lpg-data-grid-link:hover,
       .lpg-data-grid-link:focus-visible {
-        color: var(--color-action-primary-hover, var(--color-action-primary));
+        color: var(--lpg-link-hover-color, var(--color-action-primary-hover, var(--color-action-primary)));
       }
       .lpg-data-grid-link:focus-visible {
-        outline: 2px solid var(--color-action-primary);
+        outline: 2px solid var(--lpg-link-color, var(--color-action-primary));
         outline-offset: 2px;
       }
     `,
@@ -183,6 +183,15 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         --ag-row-border-color: var(--color-border-default);
         --ag-border-radius: 0;
         --ag-wrapper-border-radius: 0;
+      }
+      
+      /* Force selected rows to use the highlight text colour so they are readable
+         against the dark highlight background. Penetrate encapsulation with ::ng-deep
+         because AG Grid generates the row elements. */
+      ::ng-deep .lpg-data-grid .ag-row-selected {
+        color: var(--color-highlight-color) !important;
+        --lpg-link-color: var(--color-highlight-color);
+        --lpg-link-hover-color: var(--color-highlight-color);
       }
     `,
   ],

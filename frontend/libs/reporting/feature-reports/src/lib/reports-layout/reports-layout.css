@@ -1,0 +1,35 @@
+:host {
+  display: block;
+}
+
+.tabs-nav {
+  display: flex;
+  gap: var(--spacing-lg);
+  border-bottom: var(--border-width) solid var(--color-border-default);
+  margin-bottom: var(--spacing-xl);
+}
+
+.tab-link {
+  padding-bottom: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--typography-label-font-weight);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-link:hover {
+  color: var(--color-text-primary);
+}
+
+.tab-link.active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-primary-base);
+}
+
+.reports-content {
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-lg);
+  border: var(--border-width) solid var(--color-border-default);
+  padding: var(--spacing-lg);
+}

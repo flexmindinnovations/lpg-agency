@@ -24,6 +24,7 @@ from lpg.api.middleware.problem_details import register_exception_handlers
 from lpg.api.v1.routers import (
     admin,
     auth,
+    complaint,
     customer,
     cylinder_ledger,
     dashboard,
@@ -34,7 +35,10 @@ from lpg.api.v1.routers import (
     invoice,
     notifications,
     order,
+    printing,
+    reporting,
     route,
+    ws,
 )
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
@@ -48,6 +52,7 @@ from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.events.notification_handlers import (
     register_notification_handlers,
 )
+from lpg.infrastructure.events.realtime_handlers import register_realtime_handlers
 from lpg.infrastructure.events.tenant_admin_handlers import (
     register_tenant_admin_handlers,
 )
@@ -61,7 +66,9 @@ from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.jobs.pool import JobQueue
 from lpg.infrastructure.persistence.database import Database
+from lpg.infrastructure.realtime.connection_manager import ConnectionManager
 from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
+from lpg.infrastructure.realtime.subscriber import RedisSubscriber
 from lpg.infrastructure.redis.client import RedisClient
 from lpg.infrastructure.storage.client import S3CompatibleFileStorage
 
@@ -83,6 +90,8 @@ class AppState:
     health_checks: list[HealthCheck] = field(default_factory=list)
     event_dispatcher: DomainEventDispatcher | None = None
     job_queue: JobQueue | None = None
+    connection_manager: ConnectionManager | None = None
+    realtime_subscriber: RedisSubscriber | None = None
     realtime_publisher: RedisRealtimePublisher | None = None
     storage: S3CompatibleFileStorage | None = None
     jwt_signer: JwtSigner | None = None
@@ -164,7 +173,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     register_accounting_handlers(_state.event_dispatcher, database)
     register_notification_handlers(_state.event_dispatcher, job_queue)
     _state.job_queue = job_queue
-    _state.realtime_publisher = RedisRealtimePublisher(redis_client)
+
+    connection_manager = ConnectionManager()
+    realtime_subscriber = RedisSubscriber(redis_client, connection_manager)
+    await realtime_subscriber.start()
+
+    _state.connection_manager = connection_manager
+    _state.realtime_subscriber = realtime_subscriber
+    
+    realtime_publisher = RedisRealtimePublisher(redis_client)
+    _state.realtime_publisher = realtime_publisher
+    register_realtime_handlers(_state.event_dispatcher, realtime_publisher)
+
     _state.storage = storage
     _state.jwt_signer = jwt_signer
     _state.password_hasher = password_hasher
@@ -189,11 +209,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
         await redis_client.disconnect()
         await job_queue.disconnect()
         await storage.disconnect()
+        if _state.realtime_subscriber:
+            await _state.realtime_subscriber.stop()
         _state.database = None
         _state.redis = None
         _state.event_dispatcher = None
         _state.job_queue = None
         _state.storage = None
+        _state.connection_manager = None
+        _state.realtime_subscriber = None
         _state.realtime_publisher = None
         _state.jwt_signer = None
         _state.password_hasher = None
@@ -270,6 +294,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(route.router, prefix=settings.api_v1_prefix)
     app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
     app.include_router(invoice.router, prefix=settings.api_v1_prefix)
+    app.include_router(complaint.router, prefix=settings.api_v1_prefix)
+    app.include_router(printing.router, prefix=settings.api_v1_prefix)
+    app.include_router(ws.router, prefix=settings.api_v1_prefix)
 
     return app
 

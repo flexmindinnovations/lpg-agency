@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Invoice {{ payload.invoice_number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            color: #1a1a2e;
+            line-height: 1.5;
+        }
+        .header {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .company-info {
+            width: 60%;
+        }
+        .invoice-meta {
+            width: 40%;
+            text-align: right;
+        }
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a3c34;
+            margin-bottom: 4px;
+        }
+        .company-detail {
+            font-size: 10px;
+            color: #555;
+        }
+        .invoice-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1a3c34;
+            margin-bottom: 8px;
+        }
+        .meta-label {
+            font-size: 9px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .meta-value {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .divider {
+            border-top: 2px solid #1a3c34;
+            margin: 12px 0;
+        }
+        .bill-to {
+            margin-bottom: 16px;
+        }
+        .section-label {
+            font-size: 9px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .customer-name {
+            font-size: 13px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        thead th {
+            background-color: #1a3c34;
+            color: white;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        thead th.right {
+            text-align: right;
+        }
+        tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 11px;
+        }
+        tbody td.right {
+            text-align: right;
+        }
+        .totals-section {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .totals-table {
+            width: 300px;
+            float: right;
+        }
+        .totals-table td {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+        .totals-table td.label {
+            text-align: left;
+            color: #555;
+        }
+        .totals-table td.value {
+            text-align: right;
+            font-weight: bold;
+        }
+        .totals-table tr.grand-total td {
+            border-top: 2px solid #1a3c34;
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a3c34;
+            padding-top: 8px;
+        }
+        .footer {
+            clear: both;
+            margin-top: 30px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .qr-section {
+            text-align: center;
+            margin-top: 16px;
+        }
+        .qr-section img {
+            width: 120px;
+            height: 120px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-issued { background: #fff3cd; color: #856404; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <table class="header" style="width:100%; border:none;">
+        <tr>
+            <td style="width:60%; vertical-align:top; border:none;">
+                <div class="company-name">{{ payload.tenant_header.agency_name }}</div>
+                {% if payload.tenant_header.address_line_1 %}
+                <div class="company-detail">{{ payload.tenant_header.address_line_1 }}</div>
+                {% endif %}
+                {% if payload.tenant_header.address_line_2 %}
+                <div class="company-detail">{{ payload.tenant_header.address_line_2 }}</div>
+                {% endif %}
+                {% if payload.tenant_header.city or payload.tenant_header.state %}
+                <div class="company-detail">{{ payload.tenant_header.city }}{% if payload.tenant_header.state %}, {{ payload.tenant_header.state }}{% endif %} {{ payload.tenant_header.pincode }}</div>
+                {% endif %}
+                {% if payload.tenant_header.gstin %}
+                <div class="company-detail"><strong>GSTIN:</strong> {{ payload.tenant_header.gstin }}</div>
+                {% endif %}
+                {% if payload.tenant_header.phone %}
+                <div class="company-detail"><strong>Phone:</strong> {{ payload.tenant_header.phone }}</div>
+                {% endif %}
+            </td>
+            <td style="width:40%; text-align:right; vertical-align:top; border:none;">
+                <div class="invoice-title">INVOICE</div>
+                <div class="meta-label">Invoice Number</div>
+                <div class="meta-value">{{ payload.invoice_number }}</div>
+                <br />
+                <div class="meta-label">Date</div>
+                <div class="meta-value">{{ payload.issued_at.strftime('%d %b %Y') }}</div>
+                <br />
+                <div class="meta-label">Status</div>
+                <span class="status-badge status-{{ payload.payment_status }}">{{ payload.payment_status }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <div class="bill-to">
+        <div class="section-label">Bill To</div>
+        <div class="customer-name">{{ payload.customer.name }}</div>
+        {% if payload.customer.consumer_number %}
+        <div class="company-detail">Consumer No: {{ payload.customer.consumer_number }}</div>
+        {% endif %}
+        {% if payload.customer.address %}
+        <div class="company-detail">{{ payload.customer.address }}</div>
+        {% endif %}
+        {% if payload.customer.phone %}
+        <div class="company-detail">Phone: {{ payload.customer.phone }}</div>
+        {% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:35%;">Description</th>
+                <th class="right" style="width:10%;">Qty</th>
+                <th class="right" style="width:15%;">Unit Price</th>
+                <th class="right" style="width:15%;">Tax</th>
+                <th class="right" style="width:20%;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in payload.line_items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.description }}</td>
+                <td class="right">{{ item.quantity }}</td>
+                <td class="right">₹{{ "{:,.2f}".format(item.unit_price) }}</td>
+                <td class="right">₹{{ "{:,.2f}".format(item.tax_amount) }}</td>
+                <td class="right">₹{{ "{:,.2f}".format(item.total_amount) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals-section">
+        <table class="totals-table">
+            <tr>
+                <td class="label">Subtotal</td>
+                <td class="value">₹{{ "{:,.2f}".format(payload.subtotal) }}</td>
+            </tr>
+            <tr>
+                <td class="label">GST ({{ payload.tax_rate_percent }}%)</td>
+                <td class="value">₹{{ "{:,.2f}".format(payload.tax_amount) }}</td>
+            </tr>
+            <tr class="grand-total">
+                <td class="label">Total</td>
+                <td class="value">₹{{ "{:,.2f}".format(payload.total_amount) }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if qr_code_b64 %}
+    <div class="qr-section">
+        <img src="data:image/png;base64,{{ qr_code_b64 }}" />
+        <div class="company-detail">Scan to verify invoice</div>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <div class="company-detail">This is a computer-generated invoice. No signature required.</div>
+        <div class="company-detail">Terms: Payment due upon receipt. All disputes subject to local jurisdiction.</div>
+    </div>
+</body>
+</html>

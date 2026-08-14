@@ -1,27 +1,17 @@
 import { ChangeDetectionStrategy, Component, inject, input, model, output } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { Badge } from 'primeng/badge';
 import { Tooltip } from 'primeng/tooltip';
 import { Breadcrumb } from 'primeng/breadcrumb';
+import type { MenuItem } from 'primeng/api';
 import type { NavGroup, NavItem } from './nav-item';
 import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
 import { PortalModule } from '@angular/cdk/portal';
 import { HeaderPortalService } from './header-portal.service';
 import { BreadcrumbService } from './breadcrumb.service';
-/**
- * Application shell: collapsible sidebar navigation with integrated brand,
- * and a full-height routed content area.
- *
- * The top-bar was removed during the Premium UI redesign — the brand now lives
- * in the sidebar header (matching Linear, Notion, Arc's pattern), and the
- * sidebar/main-content split uses the full viewport height. The sidebar
- * collapse toggle moved into the sidebar header alongside the brand.
- *
- * Data-driven and app-agnostic — `navGroups` is supplied by the consuming
- * app, never hardcoded here, so this component carries no assumption about
- * which business modules exist or what order they ship in (ADR-018's stated
- * goal of hosting a future second Angular app depends on that).
- */
+import { filter } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 @Component({
   selector: 'lpg-app-shell',
   standalone: true,
@@ -127,13 +117,6 @@ import { BreadcrumbService } from './breadcrumb.service';
 
       <div class="shell__content">
         <header class="shell__header">
-          @if (breadcrumbService.items().length > 0) {
-            <p-breadcrumb
-              [model]="breadcrumbService.items()"
-              [home]="breadcrumbService.home()"
-              styleClass="shell__breadcrumb"
-            />
-          }
           <div class="shell__header-spacer">
             <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
           </div>
@@ -142,6 +125,16 @@ import { BreadcrumbService } from './breadcrumb.service';
             <ng-template [cdkPortalOutlet]="headerPortalService.portal()"></ng-template>
           </div>
         </header>
+
+        @if (breadcrumbService.items().length > 0) {
+          <div class="shell__breadcrumb-wrapper">
+            <p-breadcrumb
+              [model]="breadcrumbService.items()"
+              [home]="breadcrumbService.home()"
+              styleClass="shell__breadcrumb"
+            />
+          </div>
+        }
 
         <main id="shell-main-content" class="shell__main" tabindex="-1">
           <ng-content />
@@ -426,12 +419,17 @@ import { BreadcrumbService } from './breadcrumb.service';
         flex-wrap: wrap;
       }
       
+      .shell__breadcrumb-wrapper {
+        padding: var(--spacing-md) var(--spacing-xl) 0;
+        background: var(--color-surface-base);
+      }
+
       :host ::ng-deep .shell__breadcrumb {
         width: 100%;
         padding: 0;
         background: transparent;
         border: none;
-        margin-block-end: var(--spacing-xs);
+        margin-block-end: 0;
         font-size: var(--typography-body-small-font-size);
       }
       :host ::ng-deep .shell__breadcrumb .p-breadcrumb-list li a {
@@ -500,6 +498,7 @@ export class AppShellComponent {
   protected readonly router = inject(Router);
   protected readonly headerPortalService = inject(HeaderPortalService);
   protected readonly breadcrumbService = inject(BreadcrumbService);
+  private readonly activatedRoute = inject(ActivatedRoute);
 
   readonly brandName = input('');
   /** Overrides the default brand mark with a PrimeIcon class or literal glyph. */
@@ -512,6 +511,32 @@ export class AppShellComponent {
 
   readonly signOut = output<void>();
   readonly notificationToggle = output<void>();
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed()
+      )
+      .subscribe(() => {
+        let route = this.activatedRoute.root;
+        let breadcrumbs: MenuItem[] = [];
+
+        // Traverse the active route tree to collect breadcrumbs from data
+        while (route.firstChild) {
+          route = route.firstChild;
+          if (route.snapshot.data['breadcrumbs']) {
+            breadcrumbs = route.snapshot.data['breadcrumbs'];
+          }
+        }
+
+        if (breadcrumbs.length > 0) {
+          this.breadcrumbService.setItems(breadcrumbs);
+        } else {
+          this.breadcrumbService.clear();
+        }
+      });
+  }
 
   protected isAliasActive(item: NavItem, currentUrl: string): boolean {
     if (!item.aliases) return false;

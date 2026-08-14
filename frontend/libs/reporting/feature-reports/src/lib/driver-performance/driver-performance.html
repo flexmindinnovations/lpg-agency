@@ -1,0 +1,31 @@
+<h2 class="section-heading">Driver Performance (Last 30 Days)</h2>
+
+@if (store.loading()) {
+  <div class="loading-state">Loading report...</div>
+} @else if (store.error()) {
+  <div class="error-state">{{ store.error() }}</div>
+} @else {
+  <p-table [value]="store.driverPerformance()" [tableStyle]="{ 'min-width': '50rem' }" styleClass="p-datatable-striped">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Date</th>
+        <th>Total Stops</th>
+        <th>Delivered Stops</th>
+        <th>Cash Accuracy</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-record>
+      <tr>
+        <td>{{ record.date | date }}</td>
+        <td>{{ record.total_stops }}</td>
+        <td>{{ record.delivered_stops }}</td>
+        <td>{{ record.cash_accuracy | percent:'1.2-2' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="4" class="empty-message">No driver performance data available.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+}
