@@ -1,20 +1,24 @@
 <div class="vehicle-container">
   <div class="page-header">
-    <div class="page-header__text">
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
       <h1 class="page-title">Fleet Vehicles</h1>
       <p class="page-subtitle">Manage the vehicle fleet, registration, and maintenance status.</p>
     </div>
-    <div class="page-header__actions">
-      <button
-        #registerTriggerEl
-        pButton
-        type="button"
-        (click)="openRegisterModal()"
-      >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Register Vehicle <kbd class="ml-1 text-xs opacity-70">Ctrl+N</kbd></span>
-      </button>
-    </div>
+    </ng-template>
+    <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+        <button
+          #registerTriggerEl
+          pButton
+          type="button"
+          (click)="openRegisterModal()"
+        >
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Register Vehicle <kbd class="ml-1 text-xs opacity-70">Alt+R</kbd></span>
+        </button>
+      </div>
+</ng-template>
   </div>
 
   @if (errorMessage(); as msg) {

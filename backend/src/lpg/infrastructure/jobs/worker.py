@@ -45,6 +45,7 @@ from arq.connections import RedisSettings
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import get_settings
 from lpg.infrastructure.persistence.database import build_database
+from lpg.infrastructure.jobs.notification_jobs import send_notification
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.database import Database
@@ -157,7 +158,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 class WorkerSettings:
     """ARQ reads these as class attributes — see module docstring."""
 
-    functions = (ping, bulk_cancel_orders)
+    functions = (ping, bulk_cancel_orders, send_notification)
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(str(get_settings().redis_url))

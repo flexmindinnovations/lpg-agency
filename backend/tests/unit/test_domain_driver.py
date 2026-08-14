@@ -25,7 +25,7 @@ def _make_driver(**kwargs: object) -> Driver:
         "driver_id": uuid.uuid4(),
         "tenant_id": uuid.uuid4(),
         "branch_id": uuid.uuid4(),
-        "employee_code": "EMP-001",
+        "employee_id": uuid.uuid4(),
         "license_number": "DL-12345",
     }
     defaults.update(kwargs)
@@ -35,7 +35,7 @@ def _make_driver(**kwargs: object) -> Driver:
 class TestDriverCreation:
     def test_creates_with_valid_data(self) -> None:
         driver = _make_driver()
-        assert driver.employee_code == "EMP-001"
+        assert isinstance(driver.employee_id, uuid.UUID)
         assert driver.status == "active"
         assert driver.license_expiry_date is None
 
@@ -45,13 +45,17 @@ class TestDriverCreation:
         assert len(events) == 1
         assert isinstance(events[0], DriverRegistered)
 
-    def test_raises_on_empty_employee_code(self) -> None:
-        with pytest.raises(InvariantViolation, match="employee code"):
-            _make_driver(employee_code="")
+    def test_employee_id_is_stored_correctly(self) -> None:
+        employee_id = uuid.uuid4()
+        driver = _make_driver(employee_id=employee_id)
+        assert driver.employee_id == employee_id
 
-    def test_raises_on_whitespace_employee_code(self) -> None:
-        with pytest.raises(InvariantViolation, match="employee code"):
-            _make_driver(employee_code="   ")
+    def test_employee_id_roundtrip(self) -> None:
+        """The UUID passed in is exactly the UUID stored — no mutation,
+        no re-generation. mypy --strict enforces the type at call sites."""
+        employee_id = uuid.uuid4()
+        driver = _make_driver(employee_id=employee_id)
+        assert driver.employee_id is employee_id
 
     def test_raises_on_empty_license_number(self) -> None:
         with pytest.raises(InvariantViolation, match="license number"):

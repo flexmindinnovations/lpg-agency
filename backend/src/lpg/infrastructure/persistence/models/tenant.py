@@ -219,3 +219,33 @@ class FeatureFlagOverrideModel(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
     version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
+class EmployeeModel(Base):
+    """Maps `tenant.employee`."""
+
+    __tablename__ = "employee"
+    __table_args__ = {"schema": "tenant"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    branch_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    employee_code: Mapped[str] = mapped_column(String(50))
+    first_name: Mapped[str] = mapped_column(String(100))
+    last_name: Mapped[str] = mapped_column(String(100))
+    phone_number: Mapped[str] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(320))
+    role: Mapped[str] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    is_deleted: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))

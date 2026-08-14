@@ -31,7 +31,7 @@ class DriverResponse(BaseModel):
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
     identity_user_id: uuid.UUID | None
-    employee_code: str
+    employee_id: uuid.UUID
     license_number: str
     license_expiry_date: date | None
     status: str
@@ -47,7 +47,7 @@ class DriverPageResponse(BaseModel):
 
 class RegisterDriverRequest(BaseModel):
     branch_id: uuid.UUID
-    employee_code: str = Field(min_length=1, max_length=50)
+    employee_id: uuid.UUID
     license_number: str = Field(min_length=1, max_length=100)
     license_expiry_date: date | None = None
     identity_user_id: uuid.UUID | None = None

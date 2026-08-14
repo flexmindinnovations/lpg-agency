@@ -28,17 +28,29 @@ from lpg.api.v1.routers import (
     cylinder_ledger,
     dashboard,
     delivery,
+    employee,
     health,
     inventory,
+    invoice,
+    notifications,
     order,
     route,
 )
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
+from lpg.infrastructure.events.accounting_handlers import (
+    register_accounting_handlers,
+)
 from lpg.infrastructure.events.cylinder_ledger_handlers import (
     register_cylinder_ledger_handlers,
 )
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
+from lpg.infrastructure.events.notification_handlers import (
+    register_notification_handlers,
+)
+from lpg.infrastructure.events.tenant_admin_handlers import (
+    register_tenant_admin_handlers,
+)
 from lpg.infrastructure.health import (
     DatabaseHealthCheck,
     JobQueueHealthCheck,
@@ -148,6 +160,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastA
     _state.redis = redis_client
     _state.event_dispatcher = DomainEventDispatcher()
     register_cylinder_ledger_handlers(_state.event_dispatcher, database)
+    register_tenant_admin_handlers(_state.event_dispatcher, database)
+    register_accounting_handlers(_state.event_dispatcher, database)
+    register_notification_handlers(_state.event_dispatcher, job_queue)
     _state.job_queue = job_queue
     _state.realtime_publisher = RedisRealtimePublisher(redis_client)
     _state.storage = storage
@@ -246,12 +261,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
     app.include_router(customer.router, prefix=settings.api_v1_prefix)
+    app.include_router(employee.router, prefix=settings.api_v1_prefix)
     app.include_router(cylinder_ledger.router, prefix=settings.api_v1_prefix)
     app.include_router(delivery.router, prefix=settings.api_v1_prefix)
+    app.include_router(notifications.router, prefix=settings.api_v1_prefix)
     app.include_router(inventory.router, prefix=settings.api_v1_prefix)
     app.include_router(order.router, prefix=settings.api_v1_prefix)
     app.include_router(route.router, prefix=settings.api_v1_prefix)
     app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
+    app.include_router(invoice.router, prefix=settings.api_v1_prefix)
 
     return app
 

@@ -1,8 +1,10 @@
-﻿import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
 import { AuthService, AuthTokenStore } from '@lpg/shared/data-access';
 import { Toast } from 'primeng/toast';
+import { NotificationBell } from '@lpg/notification/ui-bell';
+import { NotificationDrawer } from '@lpg/notification/ui-drawer';
 
 /**
  * Hosts the shared `AppShellComponent` for every authenticated route.
@@ -24,7 +26,7 @@ import { Toast } from 'primeng/toast';
 @Component({
   selector: 'lpg-shell-layout',
   standalone: true,
-  imports: [RouterOutlet, AppShellComponent, Toast],
+  imports: [RouterOutlet, AppShellComponent, Toast, NotificationBell, NotificationDrawer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-app-shell
@@ -34,12 +36,16 @@ import { Toast } from 'primeng/toast';
       [role]="role()"
       (signOut)="onSignOut()"
     >
+      <lpg-notification-bell shell-top-right-actions (toggle)="isDrawerVisible.set(!isDrawerVisible())" />
       <router-outlet />
     </lpg-app-shell>
+    <lpg-notification-drawer [(visible)]="isDrawerVisible" />
     <p-toast position="bottom-right" />
   `,
 })
 export class ShellLayout {
+  protected readonly isDrawerVisible = signal(false);
+
   private readonly authService = inject(AuthService);
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly router = inject(Router);
@@ -69,6 +75,12 @@ export class ShellLayout {
           { label: 'Customers', icon: 'pi pi-users', route: '/customers' },
           { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders' },
           { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch' },
+        ],
+      },
+      {
+        label: 'Accounting',
+        items: [
+          { label: 'Invoices', icon: 'pi pi-receipt', route: '/invoices' },
         ],
       },
       {

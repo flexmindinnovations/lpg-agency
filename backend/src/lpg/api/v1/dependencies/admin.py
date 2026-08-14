@@ -30,6 +30,7 @@ from lpg.application.tenant.ports import (
     TenantRepository,
     WarehouseRepository,
 )
+from lpg.application.tenant_admin.ports import EmployeeRepository
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.database import Database
@@ -135,3 +136,11 @@ def get_audit_log_repository() -> AuditLogRepository:
     from lpg.infrastructure.persistence.repositories.audit import SqlAlchemyAuditLogRepository
 
     return SqlAlchemyAuditLogRepository(_get_database())
+
+
+def get_employee_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> EmployeeRepository:
+    from lpg.infrastructure.persistence.repositories.employee import SqlAlchemyEmployeeRepository
+
+    return SqlAlchemyEmployeeRepository(unit_of_work)  # type: ignore[arg-type]

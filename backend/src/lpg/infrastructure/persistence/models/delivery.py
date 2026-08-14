@@ -37,7 +37,9 @@ class DriverModel(Base):
         Uuid(), ForeignKey("tenant.branch.id", ondelete="CASCADE")
     )
     identity_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
-    employee_code: Mapped[str] = mapped_column(String())
+    employee_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.employee.id", ondelete="CASCADE")
+    )
     license_number: Mapped[str] = mapped_column(String())
     license_expiry_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     status: Mapped[str] = mapped_column(String(20), server_default="active")

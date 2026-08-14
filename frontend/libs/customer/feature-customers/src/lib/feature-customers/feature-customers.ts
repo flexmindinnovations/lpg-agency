@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,7 +29,6 @@ import {
   type KycDocumentResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
-import { FeatureLedger } from '@lpg/ledger/feature-ledger';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -49,10 +49,13 @@ function errorMessageFor(error: unknown): string {
   }
 }
 
+import { RouterLink } from '@angular/router';
+import { TitleCasePipe } from '@angular/common';
+
 @Component({
   selector: 'lpg-feature-customers',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -69,7 +72,8 @@ function errorMessageFor(error: unknown): string {
     TabPanels,
     TabPanel,
     DataGridComponent,
-    FeatureLedger,
+    RouterLink,
+    TitleCasePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-customers.html',
@@ -91,6 +95,7 @@ export class FeatureCustomers implements OnInit {
   protected readonly searchQuery = signal('');
 
   // Modals Visibility Signals
+  protected readonly showDetailDrawer = signal(false);
   protected readonly showRegisterModal = signal(false);
   protected readonly showAddAddressModal = signal(false);
   protected readonly showSubmitKycModal = signal(false);
@@ -188,8 +193,8 @@ export class FeatureCustomers implements OnInit {
     
     // Register global shortcuts for this view
     const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      ctrl: true,
+      key: 'c',
+      alt: true,
       description: 'Register new customer',
       handler: () => {
         if (!this.showRegisterModal()) {
@@ -260,9 +265,10 @@ export class FeatureCustomers implements OnInit {
     this.reloadList();
   }
 
-  protected viewCustomer(customer: CustomerResponse): void {
+  protected async viewCustomer(customer: CustomerResponse) {
     this.selectedCustomer.set(customer);
     this.loadKycDocuments(customer.id);
+    this.showDetailDrawer.set(true);
   }
 
   // Register Customer Actions

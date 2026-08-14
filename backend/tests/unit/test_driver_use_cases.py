@@ -47,7 +47,7 @@ def mock_driver_repo() -> MagicMock:
     repo = MagicMock()
     repo.next_id = MagicMock(return_value=uuid.uuid4())
     repo.save = AsyncMock()
-    repo.get_by_employee_code = AsyncMock(return_value=None)
+    repo.get_by_employee_id = AsyncMock(return_value=None)
     repo.get_by_id = AsyncMock(return_value=None)
     repo.list_drivers = AsyncMock(return_value=[])
     repo.count_drivers = AsyncMock(return_value=0)
@@ -76,26 +76,26 @@ async def test_register_driver_success(mock_driver_repo: MagicMock, mock_uow: Ma
     command = RegisterDriverCommand(
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
-        employee_code="EMP-001",
+        employee_id=uuid.uuid4(),
         license_number="DL-12345",
     )
     driver = await use_case.execute(command)
 
-    assert driver.employee_code == "EMP-001"
+    assert driver.employee_id == command.employee_id
     assert driver.status == "active"
     mock_driver_repo.save.assert_called_once_with(driver)
     mock_uow.commit.assert_called_once()
 
 
-async def test_register_driver_duplicate_employee_code(
+async def test_register_driver_duplicate_employee_id(
     mock_driver_repo: MagicMock, mock_uow: MagicMock
 ) -> None:
-    mock_driver_repo.get_by_employee_code.return_value = MagicMock(spec=Driver)
+    mock_driver_repo.get_by_employee_id.return_value = MagicMock(spec=Driver)
     use_case = RegisterDriverUseCase(mock_driver_repo, mock_uow)
     command = RegisterDriverCommand(
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
-        employee_code="EMP-001",
+        employee_id=uuid.uuid4(),
         license_number="DL-12345",
     )
     with pytest.raises(DuplicateEmployeeCodeError):
@@ -109,7 +109,7 @@ async def test_update_driver_status_success(
         driver_id=uuid.uuid4(),
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
-        employee_code="EMP-001",
+        employee_id=uuid.uuid4(),
         license_number="DL-12345",
         status="active",
     )
@@ -143,7 +143,7 @@ async def test_update_driver_status_invalid_transition(
         driver_id=uuid.uuid4(),
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
-        employee_code="EMP-001",
+        employee_id=uuid.uuid4(),
         license_number="DL-12345",
         status="inactive",
     )

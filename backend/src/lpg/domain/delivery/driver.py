@@ -28,7 +28,7 @@ class DriverRegistered(DomainEvent):
     driver_id: uuid.UUID
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
-    employee_code: str
+    employee_id: uuid.UUID
     license_number: str
 
 
@@ -68,8 +68,6 @@ class Driver(AggregateRoot):
     """Driver aggregate root.
 
     Business invariants:
-    - ``employee_code`` must be a non-empty string (uniqueness is
-      application-layer: checked in ``RegisterDriverUseCase``).
     - ``license_number`` must be non-empty.
     - ``license_expiry_date``, when provided, must be today or in the future.
     - Status transitions must follow the documented lifecycle.
@@ -77,7 +75,7 @@ class Driver(AggregateRoot):
 
     __slots__ = (
         "_branch_id",
-        "_employee_code",
+        "_employee_id",
         "_identity_user_id",
         "_license_expiry_date",
         "_license_number",
@@ -91,7 +89,7 @@ class Driver(AggregateRoot):
         driver_id: uuid.UUID,
         tenant_id: uuid.UUID,
         branch_id: uuid.UUID,
-        employee_code: str,
+        employee_id: uuid.UUID,
         license_number: str,
         license_expiry_date: date | None = None,
         status: str = "active",
@@ -103,10 +101,7 @@ class Driver(AggregateRoot):
         self._branch_id = branch_id
         self._identity_user_id = identity_user_id
         self._status = status
-
-        # Validate via setters so invariants are checked at construction too
-        self._validate_employee_code(employee_code)
-        self._employee_code = employee_code
+        self._employee_id = employee_id
 
         self._validate_license_number(license_number)
         self._license_number = license_number
@@ -120,7 +115,7 @@ class Driver(AggregateRoot):
                 driver_id=driver_id,
                 tenant_id=tenant_id,
                 branch_id=branch_id,
-                employee_code=employee_code,
+                employee_id=employee_id,
                 license_number=license_number,
             )
         )
@@ -142,8 +137,8 @@ class Driver(AggregateRoot):
         return self._identity_user_id
 
     @property
-    def employee_code(self) -> str:
-        return self._employee_code
+    def employee_id(self) -> uuid.UUID:
+        return self._employee_id
 
     @property
     def license_number(self) -> str:
@@ -215,11 +210,7 @@ class Driver(AggregateRoot):
     # Private validators
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _validate_employee_code(code: str) -> None:
-        if not code or not code.strip():
-            msg = "Driver employee code must not be empty."
-            raise InvariantViolation(msg)
+
 
     @staticmethod
     def _validate_license_number(number: str) -> None:

@@ -1,20 +1,25 @@
 <div class="driver-container">
   <div class="page-header">
-    <div class="page-header__text">
-      <h1 class="page-title">Drivers</h1>
-      <p class="page-subtitle">Manage driver registrations and license information.</p>
-    </div>
-    <div class="page-header__actions">
-      <button
-        #registerTriggerEl
-        pButton
-        type="button"
-        (click)="openRegisterModal()"
-      >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Register Driver <kbd class="ml-1 text-xs opacity-70">Ctrl+N</kbd></span>
-      </button>
-    </div>
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
+        <h1 class="page-title">Drivers</h1>
+        <p class="page-subtitle">Manage driver registrations and license information.</p>
+      </div>
+    </ng-template>
+    
+    <ng-template lpgHeaderPortal>
+      <div class="page-header__actions">
+        <button
+          #registerTriggerEl
+          pButton
+          type="button"
+          (click)="openRegisterModal()"
+        >
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Register Driver <kbd class="ml-1 text-xs opacity-70">Alt+R</kbd></span>
+        </button>
+      </div>
+    </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
@@ -38,7 +43,7 @@
   </div>
   }
 
-  <p class="grid-hint">Click a driver's employee code to update their duty status.</p>
+
 
   <div class="grid-wrapper">
     <lpg-data-grid

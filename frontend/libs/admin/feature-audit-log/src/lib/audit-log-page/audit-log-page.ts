@@ -1,3 +1,4 @@
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -33,7 +34,7 @@ const ACTION_SEVERITY: Record<string, string> = {
 @Component({
   selector: 'lpg-audit-log-page',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, 
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -52,10 +53,12 @@ const ACTION_SEVERITY: Record<string, string> = {
   template: `
     <div class="audit-log-container">
       <div class="page-header">
-        <div class="page-header__text">
+        <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
           <h1 class="page-title">Audit Log</h1>
           <p class="page-subtitle">View a chronological record of all system actions.</p>
         </div>
+    </ng-template>
       </div>
 
       <div class="data-toolbar">

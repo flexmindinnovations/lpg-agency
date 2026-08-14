@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,7 +14,7 @@ import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { InputText } from 'primeng/inputtext';
-import { Dialog } from 'primeng/dialog';
+import { Drawer } from 'primeng/drawer';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 
 import {
@@ -37,14 +38,14 @@ interface EnrichedBalance {
 @Component({
   selector: 'lpg-feature-ledger',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
     ButtonLabel,
     Select,
     InputText,
-    Dialog,
+    Drawer,
   ],
   templateUrl: './feature-ledger.html',
   styleUrl: './feature-ledger.css',
@@ -104,11 +105,13 @@ export class FeatureLedger implements OnInit {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
 
+
+
   ngOnInit(): void {
     this.loadData();
     
-    const unregister = this.keyboardShortcuts.register({
-      key: 'a',
+    const unregisterAdjust = this.keyboardShortcuts.register({
+      key: 'j',
       alt: true,
       description: 'Adjust ledger balance',
       handler: () => {
@@ -118,7 +121,7 @@ export class FeatureLedger implements OnInit {
         }
       }
     });
-    this.destroyRef.onDestroy(unregister);
+    this.destroyRef.onDestroy(unregisterAdjust);
   }
 
   loadData() {
@@ -154,6 +157,10 @@ export class FeatureLedger implements OnInit {
 
   closeAdjustModal() {
     this.adjustModalVisible.set(false);
+  }
+
+  onDrawerHide() {
+    document.getElementById('adjust-balance-btn')?.focus();
   }
 
   submitAdjustment() {

@@ -1,3 +1,4 @@
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -29,15 +30,17 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-platform-flags-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, InputText, Message, DataGridComponent],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, Message, DataGridComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
-        <div class="page-header__text">
+        <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
           <h1 class="page-title">Platform Feature Flags</h1>
           <p class="page-subtitle">Manage platform-wide feature flags and rollout percentages.</p>
         </div>
+    </ng-template>
       </div>
 
       <section class="grid-section">

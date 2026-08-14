@@ -1,3 +1,4 @@
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -55,7 +56,7 @@ const PAYMENT_METHODS = [
 @Component({
   selector: 'lpg-order-detail',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, 
     DatePipe,
     DecimalPipe,
     FormsModule,

@@ -49,6 +49,16 @@ class BookingCreated(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class BookingConfirmed(DomainEvent):
+    order_id: uuid.UUID
+    tenant_id: uuid.UUID
+    customer_id: uuid.UUID
+    branch_id: uuid.UUID
+    confirmed_by: uuid.UUID
+    confirmed_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class BookingCancelled(DomainEvent):
     order_id: uuid.UUID
     cancelled_by: uuid.UUID
@@ -85,6 +95,7 @@ class DeliveryFailed(DomainEvent):
     """
 
     order_id: uuid.UUID
+    tenant_id: uuid.UUID
     route_stop_id: uuid.UUID | None
     reason_code: str
     recorded_by: uuid.UUID
@@ -561,6 +572,16 @@ class Order(AggregateRoot):
         self._total_amount = total
 
         self._apply_transition("confirmed", changed_by=changed_by)
+        self.record_event(
+            BookingConfirmed(
+                order_id=self.id,
+                tenant_id=self._tenant_id,
+                customer_id=self._customer_id,
+                branch_id=self._branch_id,
+                confirmed_by=changed_by,
+                confirmed_at=datetime.now(UTC),
+            )
+        )
 
     def assign(
         self,
@@ -646,6 +667,7 @@ class Order(AggregateRoot):
         self.record_event(
             DeliveryFailed(
                 order_id=self.id,
+                tenant_id=self._tenant_id,
                 route_stop_id=self._route_stop_id,
                 reason_code=reason_code,
                 recorded_by=recorded_by,

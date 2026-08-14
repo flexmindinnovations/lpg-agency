@@ -1,18 +1,20 @@
 <div class="order-detail">
   <div class="page-header">
-    <div class="page-header__text">
-      <button pButton type="button" text severity="secondary" (click)="backToQueue()">
-        <i pButtonIcon class="pi pi-arrow-left"></i>
-        <span pButtonLabel>Back to Orders</span>
-      </button>
-      @if (order(); as o) {
-      <h1 class="page-title">Order</h1>
-      <div class="order-title-row">
-        <span class="order-id" [pTooltip]="o.id" tooltipPosition="bottom">{{ o.id.split('-')[0] }}…</span>
-        <p-tag [severity]="statusSeverity(o.status)" [value]="statusLabel(o.status)" />
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
+        <button pButton type="button" text severity="secondary" (click)="backToQueue()">
+          <i pButtonIcon class="pi pi-arrow-left"></i>
+          <span pButtonLabel>Back to Orders</span>
+        </button>
+        @if (order(); as o) {
+        <h1 class="page-title">Order</h1>
+        <div class="order-title-row">
+          <span class="order-id" [pTooltip]="o.id" tooltipPosition="bottom">{{ o.id.split('-')[0] }}…</span>
+          <p-tag [severity]="statusSeverity(o.status)" [value]="statusLabel(o.status)" />
+        </div>
+        }
       </div>
-      }
-    </div>
+    </ng-template>
     @if (order(); as o) {
     <div class="page-header__actions">
       @if (canConfirm()) {

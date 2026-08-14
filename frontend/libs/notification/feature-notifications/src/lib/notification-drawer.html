@@ -1,0 +1,51 @@
+<p-drawer 
+  [visible]="visible" 
+  (visibleChange)="visibleChange.emit($event)" 
+  (onHide)="onHide()"
+  position="right"
+  [modal]="true"
+  header="Notifications"
+  styleClass="lpg-notification-drawer"
+>
+  <div class="drawer-content">
+    <div *ngIf="notifications().length === 0" class="empty-state">
+      No recent notifications.
+    </div>
+    
+    <div *ngFor="let notification of notifications()" 
+         class="notification-item"
+         [class.notification-item--unread]="!notification.is_read">
+         
+      <div class="notification-header">
+        <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
+          {{ notification.title }}
+        </h4>
+        <div class="notification-actions">
+          <p-button *ngIf="!notification.is_read" 
+                    icon="pi pi-check" 
+                    [text]="true" 
+                    [rounded]="true" 
+                    severity="secondary" 
+                    size="small"
+                    pTooltip="Mark as read"
+                    (onClick)="markAsRead(notification.id)">
+          </p-button>
+        </div>
+      </div>
+      
+      <p class="notification-body">
+        {{ notification.body }}
+      </p>
+      
+      <span class="notification-time">
+        {{ notification.created_at | date:'short' }}
+      </span>
+    </div>
+    
+    <div class="drawer-footer">
+      <a routerLink="/notifications" class="view-all-link" (click)="onHide()">
+        View All Notifications
+      </a>
+    </div>
+  </div>
+</p-drawer>

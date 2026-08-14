@@ -14,7 +14,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 
 from lpg.domain.delivery.driver import Driver
 from lpg.infrastructure.persistence.models.delivery import DriverModel
@@ -40,7 +40,7 @@ class SqlAlchemyDriverRepository:
             tenant_id=row.tenant_id,
             branch_id=row.branch_id,
             identity_user_id=row.identity_user_id,
-            employee_code=row.employee_code,
+            employee_id=row.employee_id,
             license_number=row.license_number,
             license_expiry_date=row.license_expiry_date,
             status=row.status,
@@ -55,7 +55,7 @@ class SqlAlchemyDriverRepository:
     def _sync_row(self, row: DriverModel, driver: Driver) -> None:
         """Apply domain state to an existing ORM row (update path)."""
         row.identity_user_id = driver.identity_user_id
-        row.employee_code = driver.employee_code
+        row.employee_id = driver.employee_id
         row.license_number = driver.license_number
         row.license_expiry_date = driver.license_expiry_date
         row.status = driver.status
@@ -75,9 +75,9 @@ class SqlAlchemyDriverRepository:
         row = result.scalars().first()
         return self._to_domain(row) if row is not None else None
 
-    async def get_by_employee_code(self, employee_code: str) -> Driver | None:
+    async def get_by_employee_id(self, employee_id: uuid.UUID) -> Driver | None:
         stmt = select(DriverModel).where(
-            DriverModel.employee_code == employee_code,
+            DriverModel.employee_id == employee_id,
             DriverModel.is_deleted.is_(False),
         )
         result = await self._uow.session.execute(stmt)
@@ -103,7 +103,7 @@ class SqlAlchemyDriverRepository:
                 tenant_id=driver.tenant_id,
                 branch_id=driver.branch_id,
                 identity_user_id=driver.identity_user_id,
-                employee_code=driver.employee_code,
+                employee_id=driver.employee_id,
                 license_number=driver.license_number,
                 license_expiry_date=driver.license_expiry_date,
                 status=driver.status,
@@ -124,18 +124,13 @@ class SqlAlchemyDriverRepository:
 
         if search:
             pattern = f"%{search}%"
-            stmt = stmt.where(
-                or_(
-                    DriverModel.employee_code.ilike(pattern),
-                    DriverModel.license_number.ilike(pattern),
-                )
-            )
+            stmt = stmt.where(DriverModel.license_number.ilike(pattern))
         if status:
             stmt = stmt.where(DriverModel.status == status)
         if branch_id:
             stmt = stmt.where(DriverModel.branch_id == branch_id)
 
-        stmt = stmt.order_by(DriverModel.employee_code).offset(skip).limit(limit)
+        stmt = stmt.order_by(DriverModel.created_at.desc()).offset(skip).limit(limit)
         result = await self._uow.session.execute(stmt)
         return [self._to_domain(row) for row in result.scalars().all()]
 
@@ -150,12 +145,7 @@ class SqlAlchemyDriverRepository:
         )
         if search:
             pattern = f"%{search}%"
-            stmt = stmt.where(
-                or_(
-                    DriverModel.employee_code.ilike(pattern),
-                    DriverModel.license_number.ilike(pattern),
-                )
-            )
+            stmt = stmt.where(DriverModel.license_number.ilike(pattern))
         if status:
             stmt = stmt.where(DriverModel.status == status)
         if branch_id:

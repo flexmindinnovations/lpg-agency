@@ -71,7 +71,7 @@ def _driver_to_response(driver: object) -> DriverResponse:
         tenant_id=driver.tenant_id,
         branch_id=driver.branch_id,
         identity_user_id=driver.identity_user_id,
-        employee_code=driver.employee_code,
+        employee_id=driver.employee_id,
         license_number=driver.license_number,
         license_expiry_date=driver.license_expiry_date,
         status=driver.status,
@@ -122,7 +122,7 @@ async def register_driver(
             RegisterDriverCommand(
                 tenant_id=principal.tenant_id,
                 branch_id=request.branch_id,
-                employee_code=request.employee_code,
+                employee_id=request.employee_id,
                 license_number=request.license_number,
                 license_expiry_date=request.license_expiry_date,
                 identity_user_id=request.identity_user_id,

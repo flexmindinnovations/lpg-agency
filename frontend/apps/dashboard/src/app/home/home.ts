@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -62,32 +63,36 @@ function escapeCsvCell(value: string): string {
 @Component({
   selector: 'lpg-home',
   standalone: true,
-  imports: [ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, DataGridComponent],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, DataGridComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
       <div class="page-header">
-        <div class="page-header__text">
+        <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
           <h1 class="page-title">Agency Overview</h1>
           <p class="page-subtitle">
             Live summary of your agency's operational data across every module.
           </p>
         </div>
-        <div class="page-header__actions">
-          <button
-            pButton
-            severity="secondary"
-            [disabled]="loading()"
-            (click)="exportReport()"
-          >
-            <i pButtonIcon class="pi pi-download"></i>
-            <span pButtonLabel>Export Report</span>
-          </button>
-          <button pButton type="button" (click)="onNewBooking()">
-            <i pButtonIcon class="pi pi-plus"></i>
-            <span pButtonLabel>New Booking</span>
-          </button>
-        </div>
+    </ng-template>
+        <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+            <button
+              pButton
+              severity="secondary"
+              [disabled]="loading()"
+              (click)="exportReport()"
+            >
+              <i pButtonIcon class="pi pi-download"></i>
+              <span pButtonLabel>Export Report</span>
+            </button>
+            <button pButton type="button" (click)="onNewBooking()">
+              <i pButtonIcon class="pi pi-plus"></i>
+              <span pButtonLabel>New Booking</span>
+            </button>
+          </div>
+</ng-template>
       </div>
 
       <!-- KPI Section -->

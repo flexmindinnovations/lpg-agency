@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, input, model, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, model, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Badge } from 'primeng/badge';
 import { Tooltip } from 'primeng/tooltip';
 import type { NavGroup } from './nav-item';
 import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
-
+import { PortalModule } from '@angular/cdk/portal';
+import { HeaderPortalService } from './header-portal.service';
 /**
  * Application shell: collapsible sidebar navigation with integrated brand,
  * and a full-height routed content area.
@@ -22,7 +23,7 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
 @Component({
   selector: 'lpg-app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, Badge, Tooltip, ProfileMenuComponent],
+  imports: [RouterLink, RouterLinkActive, Badge, Tooltip, ProfileMenuComponent, PortalModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="shell__skip-link" href="#shell-main-content">Skip to main content</a>
@@ -92,12 +93,15 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
           </ul>
 
           <!-- Profile Menu in Sidebar Footer -->
-          <lpg-profile-menu
-            [email]="email()"
-            [role]="role()"
-            [collapsed]="collapsed()"
-            (signOut)="signOut.emit()"
-          />
+          <div class="shell__sidebar-footer">
+            <lpg-profile-menu
+              class="shell__sidebar-profile"
+              [email]="email()"
+              [role]="role()"
+              [collapsed]="collapsed()"
+              (signOut)="signOut.emit()"
+            />
+          </div>
         </nav>
 
         <button
@@ -118,9 +122,21 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
         </button>
       </div>
 
-      <main id="shell-main-content" class="shell__main" tabindex="-1">
-        <ng-content />
-      </main>
+      <div class="shell__content">
+        <header class="shell__header">
+          <div class="shell__header-spacer">
+            <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
+          </div>
+          <div class="shell__header-actions">
+            <ng-content select="[shell-top-right-actions]" />
+            <ng-template [cdkPortalOutlet]="headerPortalService.portal()"></ng-template>
+          </div>
+        </header>
+
+        <main id="shell-main-content" class="shell__main" tabindex="-1">
+          <ng-content />
+        </main>
+      </div>
     </div>
   `,
   styles: [
@@ -246,7 +262,26 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
       .shell__collapse-toggle:hover {
         background: var(--color-surface-overlay);
         color: var(--color-text-primary);
-        border-color: var(--color-text-secondary);
+        border-color: var(--color-border-strong);
+      }
+
+      /* ---- Sidebar Footer ---- */
+
+      .shell__sidebar-footer {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm);
+        border-block-start: var(--border-width) solid var(--color-border-default);
+      }
+
+      .shell--collapsed .shell__sidebar-footer {
+        flex-direction: column;
+      }
+
+      .shell__sidebar-profile {
+        flex: 1;
+        min-inline-size: 0;
       }
 
       .shell__collapse-toggle i {
@@ -315,9 +350,9 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
       }
 
       .shell__nav-link i {
-        font-size: 15px;
+        font-size: 18px; /* Increased nav icon size */
         flex-shrink: 0;
-        inline-size: 1.25rem;
+        inline-size: 1.5rem;
         text-align: center;
         opacity: 0.7;
         transition: opacity var(--motion-duration-small) var(--motion-easing-standard);
@@ -361,11 +396,37 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
 
       /* ---- Main Content ---- */
 
-      .shell__main {
+      .shell__content {
+        display: flex;
+        flex-direction: column;
         flex: 1;
-        /* Without this, a flex child never shrinks below its content's
-           intrinsic width — wide content (grids, tables) would push the
-           whole shell into horizontal scroll instead of scrolling itself. */
+        min-inline-size: 0;
+      }
+
+      .shell__header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-block-size: 72px;
+        padding: 8px var(--spacing-xl);
+        border-block-end: var(--border-width) solid var(--color-border-default);
+        background: var(--color-surface-base);
+        flex-shrink: 0;
+      }
+
+      .shell__header-spacer {
+        flex: 1;
+      }
+
+      .shell__header-actions {
+        display: flex;
+        gap: var(--spacing-sm);
+        align-items: center;
+      }
+
+      .shell__main {
+        position: relative;
+        flex: 1;
         min-inline-size: 0;
         padding: var(--spacing-lg) var(--spacing-xl);
         overflow-x: hidden;
@@ -373,7 +434,8 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
         background: var(--color-surface-base);
       }
 
-      .shell__main:focus {
+      .shell__main:focus,
+      .shell__main:focus-visible {
         outline: none;
       }
 
@@ -406,13 +468,17 @@ import { ProfileMenuComponent } from '../profile-menu/profile-menu.component';
   ],
 })
 export class AppShellComponent {
+  protected readonly headerPortalService = inject(HeaderPortalService);
+
   readonly brandName = input('');
   /** Overrides the default brand mark with a PrimeIcon class or literal glyph. */
   readonly brandIcon = input<string | null>(null);
   readonly navGroups = input.required<readonly NavGroup[]>();
+  readonly email = input<string | null>(null);
+  readonly role = input<string>('');
+
   readonly collapsed = model(false);
 
-  readonly email = input<string | null>(null);
-  readonly role = input('');
   readonly signOut = output<void>();
+  readonly notificationToggle = output<void>();
 }

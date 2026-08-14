@@ -3,7 +3,7 @@
 
 export interface RegisterDriverRequest {
   branch_id: string;
-  employee_code: string;
+  employee_id: string;
   identity_user_id?: (string | null);
   license_expiry_date?: (string | null);
   license_number: string;

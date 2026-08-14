@@ -4,6 +4,10 @@ Import all ORM models here so that SQLAlchemy's `DeclarativeBase` registry
 registers all tables and foreign key relationships at startup.
 """
 
+from lpg.infrastructure.persistence.models.accounting import (
+    InvoiceLineModel,
+    InvoiceModel,
+)
 from lpg.infrastructure.persistence.models.audit_log import AuditLogModel
 from lpg.infrastructure.persistence.models.customer import (
     CustomerAddressModel,
@@ -41,7 +45,20 @@ from lpg.infrastructure.persistence.models.order import (
     OrderStatusHistoryModel,
     ProofOfDeliveryModel,
 )
-from lpg.infrastructure.persistence.models.tenant import BranchModel, TenantModel
+from lpg.infrastructure.persistence.models.notification import (
+    InAppNotificationModel,
+    NotificationLogModel,
+)
+from lpg.infrastructure.persistence.models.tenant import (
+    BranchModel,
+    CylinderTypeModel,
+    EmployeeModel,
+    FeatureFlagOverrideModel,
+    PriceListModel,
+    TenantConfigurationModel,
+    TenantModel,
+    WarehouseModel,
+)
 
 __all__ = [
     "AuditLogModel",
@@ -51,24 +68,34 @@ __all__ = [
     "CustomerModel",
     "CylinderBalanceModel",
     "CylinderLedgerModel",
+    "CylinderTypeModel",
     "DriverModel",
+    "EmployeeModel",
     "FailedDeliveryRecordModel",
+    "FeatureFlagOverrideModel",
     "GoodsReceiptNoteModel",
     "IdentityUserModel",
+    "InAppNotificationModel",
     "InventoryBalanceModel",
     "InventoryLocationModel",
     "InventoryTransactionModel",
+    "InvoiceLineModel",
+    "InvoiceModel",
     "KycDocumentModel",
     "LedgerTransactionModel",
+    "NotificationLogModel",
     "OrderLineModel",
     "OrderModel",
     "OrderStatusHistoryModel",
     "PasswordResetTokenModel",
+    "PriceListModel",
     "ProofOfDeliveryModel",
     "ReconciliationRecordModel",
     "RefreshTokenModel",
     "RouteModel",
     "RouteStopModel",
+    "TenantConfigurationModel",
     "TenantModel",
     "VehicleModel",
+    "WarehouseModel",
 ]

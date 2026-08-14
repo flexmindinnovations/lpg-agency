@@ -18,3 +18,6 @@
 export * from './lib/app-shell/app-shell.component';
 export * from './lib/app-shell/nav-item';
 export * from './lib/profile-menu/profile-menu.component';
+export * from './lib/app-shell/header-portal.service';
+export * from './lib/app-shell/header-portal.directive';
+export * from './lib/app-shell/header-title-portal.directive';

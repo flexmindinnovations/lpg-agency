@@ -47,6 +47,12 @@ export const appRoutes: Route[] = [
           import('@lpg/customer/feature-customers').then((m) => m.featureCustomersRoutes),
       },
       {
+        path: 'ledger/:customerId',
+        canActivate: [permissionGuard('customers:read')],
+        loadComponent: () =>
+          import('@lpg/ledger/feature-ledger').then((m) => m.FeatureLedger),
+      },
+      {
         path: 'drivers',
         canActivate: [permissionGuard('drivers:read')],
         loadChildren: () =>
@@ -74,6 +80,11 @@ export const appRoutes: Route[] = [
         path: 'orders',
         canActivate: [permissionGuard('orders:read')],
         loadChildren: () => import('@lpg/order/feature-orders').then((m) => m.ordersFeatureRoutes),
+      },
+      {
+        path: 'invoices',
+        canActivate: [permissionGuard('invoices:read')],
+        loadChildren: () => import('@lpg/accounting/feature-invoices').then((m) => m.featureInvoicesRoutes),
       },
       {
         path: 'admin/branches',
@@ -134,6 +145,19 @@ export const appRoutes: Route[] = [
         canActivate: [permissionGuard('audit:read')],
         loadChildren: () =>
           import('@lpg/admin/feature-audit-log').then((m) => m.adminFeatureAuditLogRoutes),
+      },
+      {
+        path: 'admin/employees',
+        canActivate: [permissionGuard('users:manage')],
+        loadChildren: () =>
+          import('@lpg/tenant-admin/feature-employees').then((m) => m.tenantAdminFeatureEmployeesRoutes),
+      },
+      {
+        path: 'notifications',
+        loadChildren: () =>
+          import('@lpg/notification/feature-notifications').then(
+            (m) => m.notificationFeatureNotificationsRoutes,
+          ),
       },
       {
         path: '**',

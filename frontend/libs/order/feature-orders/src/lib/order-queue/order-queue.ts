@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -44,7 +45,7 @@ const BOOKING_SOURCE_OPTIONS = [
 @Component({
   selector: 'lpg-order-queue',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,

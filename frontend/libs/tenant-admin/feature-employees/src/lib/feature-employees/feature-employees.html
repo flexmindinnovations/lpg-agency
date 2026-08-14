@@ -1,0 +1,140 @@
+<div class="employee-container">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Employees</h1>
+      <p class="page-subtitle">Manage employee registrations and profiles.</p>
+    </div>
+    <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+        <button
+          #registerTriggerEl
+          pButton
+          type="button"
+          (click)="openRegisterModal()"
+        >
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Register Employee <kbd class="ml-1 text-xs opacity-70">Alt+R</kbd></span>
+        </button>
+      </div>
+</ng-template>
+  </div>
+
+  @if (errorMessage(); as msg) {
+  <p-message severity="error">{{ msg }}</p-message>
+  }
+
+  @if (employees().length > 0 || searchQuery().length > 0) {
+  <div class="search-bar">
+    <p-iconfield styleClass="w-full">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        id="employee-search-input"
+        class="search-input"
+        pInputText
+        type="text"
+        placeholder="Search by name or code... (/)"
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </p-iconfield>
+  </div>
+  }
+
+  <div class="grid-wrapper">
+    <lpg-data-grid
+      [rows]="employees()"
+      [columns]="columns"
+      [loading]="loading()"
+      ariaLabel="Employees list"
+    />
+  </div>
+
+  <!-- Register Employee Modal -->
+  <p-drawer
+    header="Register Employee"
+    [(visible)]="registerModalVisible"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '36rem' }"
+    (onHide)="registerTrigger()?.nativeElement?.focus()"
+  >
+    <form id="registerEmployeeForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="form-group">
+        <label for="branch_id">Branch</label>
+        <p-select
+          id="branch_id"
+          formControlName="branch_id"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select Branch"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input
+          pInputText
+          id="first_name"
+          formControlName="first_name"
+          placeholder="e.g. Jane"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input
+          pInputText
+          id="last_name"
+          formControlName="last_name"
+          placeholder="e.g. Doe"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="phone_number">Phone Number</label>
+        <input
+          pInputText
+          id="phone_number"
+          formControlName="phone_number"
+          placeholder="e.g. +91 9876543210"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email (Optional)</label>
+        <input
+          pInputText
+          id="email"
+          formControlName="email"
+          placeholder="e.g. jane.doe@example.com"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="role">Role</label>
+        <p-select
+          id="role"
+          formControlName="role"
+          [options]="[
+            { label: 'Employee', value: 'employee' },
+            { label: 'Driver', value: 'driver' },
+            { label: 'Manager', value: 'manager' }
+          ]"
+          optionLabel="label"
+          optionValue="value"
+        ></p-select>
+      </div>
+
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
+          Register
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+</div>

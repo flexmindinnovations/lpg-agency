@@ -1,15 +1,19 @@
 <div class="order-queue">
   <div class="page-header">
-    <div class="page-header__text">
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
       <h1 class="page-title">Orders</h1>
       <p class="page-subtitle">{{ total() }} order{{ total() === 1 ? '' : 's' }}</p>
     </div>
-    <div class="page-header__actions">
-      <button #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>New Booking</span>
-      </button>
-    </div>
+    </ng-template>
+    <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+        <button #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>New Booking</span>
+        </button>
+      </div>
+</ng-template>
   </div>
 
   @if (errorMessage(); as msg) {

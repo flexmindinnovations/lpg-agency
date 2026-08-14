@@ -1,16 +1,24 @@
-<div class="ledger-section">
-  <div class="section-header">
-    <h3 class="section-heading">Cylinder Balances</h3>
-    <button
-      pButton
-      type="button"
-      severity="secondary"
-      size="small"
-      (click)="openAdjustModal()"
-    >
-      <i pButtonIcon class="pi pi-sliders-h"></i>
-      <span pButtonLabel>Adjust Balance <kbd class="ml-1 text-xs opacity-70">Alt+A</kbd></span>
-    </button>
+<div class="ledger-container">
+  <div class="page-header">
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
+      <h1 class="page-title">Cylinder Balances</h1>
+      <p class="page-subtitle">Manage customer cylinder balances and adjustments.</p>
+    </div>
+    </ng-template>
+    <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+        <button
+          id="adjust-balance-btn"
+          pButton
+          type="button"
+          (click)="openAdjustModal()"
+        >
+          <i pButtonIcon class="pi pi-sliders-h"></i>
+          <span pButtonLabel>Adjust Balance <kbd class="ml-1 text-xs opacity-70">Alt+J</kbd></span>
+        </button>
+      </div>
+</ng-template>
   </div>
 
   @if (loading()) {
@@ -35,14 +43,17 @@
   }
 </div>
 
-<!-- Adjust Balance Modal -->
-<p-dialog
+<!-- Adjust Balance Drawer -->
+<p-drawer
   header="Adjust Balance"
   [visible]="adjustModalVisible()"
   (visibleChange)="closeAdjustModal()"
+  position="right"
   [modal]="true"
-  [draggable]="false"
-  styleClass="modal-sm"
+  styleClass="w-full md:w-[30rem]"
+  [closeOnEscape]="true"
+  closeAriaLabel="Close dialog"
+  (onHide)="onDrawerHide()"
 >
   <form [formGroup]="adjustForm" (ngSubmit)="submitAdjustment()" class="dialog-form">
     <div class="form-group">
@@ -90,4 +101,4 @@
       <button pButton type="submit" [loading]="isSubmitting()">Apply Adjustment</button>
     </div>
   </form>
-</p-dialog>
+</p-drawer>

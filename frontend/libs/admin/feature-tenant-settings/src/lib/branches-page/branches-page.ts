@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -24,18 +25,22 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-branches-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
-        <div class="page-header__text">
+        <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
           <h1 class="page-title">Branches</h1>
           <p class="page-subtitle">Manage branch locations and regional assignments.</p>
         </div>
-        <div class="page-header__actions">
-          <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add Branch</span></button>
-        </div>
+    </ng-template>
+        <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+            <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add Branch</span></button>
+          </div>
+</ng-template>
       </div>
 
       @if (branches().length > 0) {

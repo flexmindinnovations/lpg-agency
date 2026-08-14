@@ -1,0 +1,24 @@
+<div class="admin-page">
+  <div class="page-header">
+    <div class="page-header__text">
+      <h1 class="page-title">Notifications</h1>
+      <p class="page-subtitle">View and manage your recent notifications.</p>
+    </div>
+    <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+        <button pButton severity="secondary" (click)="markAllAsRead()"><i pButtonIcon class="pi pi-check-circle"></i><span pButtonLabel>Mark All as Read</span></button>
+      </div>
+</ng-template>
+  </div>
+
+  <section class="grid-section">
+    <div class="grid-wrapper">
+      <lpg-data-grid
+        [rows]="notifications()"
+        [columns]="columns"
+        [loading]="loading()"
+        ariaLabel="Notifications"
+      />
+    </div>
+  </section>
+</div>

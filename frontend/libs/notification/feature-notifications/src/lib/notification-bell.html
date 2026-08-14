@@ -1,0 +1,9 @@
+<p-button 
+  icon="pi pi-bell" 
+  [text]="true" 
+  [rounded]="true" 
+  severity="secondary" 
+  (onClick)="toggle.emit()"
+  [badge]="unreadCount() > 0 ? unreadCount().toString() : ''" 
+  badgeClass="p-badge-danger">
+</p-button>

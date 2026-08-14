@@ -10,7 +10,10 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "es2022",
-    "lib": ["es2022", "dom"],
+    "lib": [
+      "es2022",
+      "dom"
+    ],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "strict": true,
@@ -22,24 +25,76 @@
     "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@lpg/shared/design-tokens": ["./libs/shared/design-tokens/src/index.ts"],
-      "@lpg/shared/ui": ["./libs/shared/ui/src/index.ts"],
-      "@lpg/shared/ui/app-shell": ["./libs/shared/ui/src/app-shell.ts"],
-      "@lpg/shared/util": ["./libs/shared/util/src/index.ts"],
-      "@lpg/shared/data-access": ["./libs/shared/data-access/src/index.ts"],
-      "@lpg/auth/feature-login": ["./libs/auth/feature-login/src/index.ts"],
-      "@lpg/admin/feature-tenant-settings": ["./libs/admin/feature-tenant-settings/src/index.ts"],
-      "@lpg/admin/feature-users": ["./libs/admin/feature-users/src/index.ts"],
-      "@lpg/admin/feature-audit-log": ["./libs/admin/feature-audit-log/src/index.ts"],
-      "@lpg/admin/feature-flags": ["./libs/admin/feature-flags/src/index.ts"],
-      "@lpg/customer/feature-customers": ["./libs/customer/feature-customers/src/index.ts"],
-      "@lpg/delivery/feature-drivers": ["./libs/delivery/feature-drivers/src/index.ts"],
-      "@lpg/delivery/feature-vehicles": ["./libs/delivery/feature-vehicles/src/index.ts"],
-      "@lpg/inventory/feature-inventory": ["./libs/inventory/feature-inventory/src/index.ts"],
-      "@lpg/order/feature-orders": ["./libs/order/feature-orders/src/index.ts"],
-      "@lpg/delivery/feature-dispatch": ["./libs/delivery/feature-dispatch/src/index.ts"],
-      "@lpg/ledger/feature-ledger": ["./libs/ledger/feature-ledger/src/index.ts"]
+      "@lpg/shared/design-tokens": [
+        "./libs/shared/design-tokens/src/index.ts"
+      ],
+      "@lpg/shared/ui": [
+        "./libs/shared/ui/src/index.ts"
+      ],
+      "@lpg/shared/ui/app-shell": [
+        "./libs/shared/ui/src/app-shell.ts"
+      ],
+      "@lpg/shared/util": [
+        "./libs/shared/util/src/index.ts"
+      ],
+      "@lpg/shared/data-access": [
+        "./libs/shared/data-access/src/index.ts"
+      ],
+      "@lpg/auth/feature-login": [
+        "./libs/auth/feature-login/src/index.ts"
+      ],
+      "@lpg/admin/feature-tenant-settings": [
+        "./libs/admin/feature-tenant-settings/src/index.ts"
+      ],
+      "@lpg/admin/feature-users": [
+        "./libs/admin/feature-users/src/index.ts"
+      ],
+      "@lpg/admin/feature-audit-log": [
+        "./libs/admin/feature-audit-log/src/index.ts"
+      ],
+      "@lpg/admin/feature-flags": [
+        "./libs/admin/feature-flags/src/index.ts"
+      ],
+      "@lpg/customer/feature-customers": [
+        "./libs/customer/feature-customers/src/index.ts"
+      ],
+      "@lpg/delivery/feature-drivers": [
+        "./libs/delivery/feature-drivers/src/index.ts"
+      ],
+      "@lpg/delivery/feature-vehicles": [
+        "./libs/delivery/feature-vehicles/src/index.ts"
+      ],
+      "@lpg/inventory/feature-inventory": [
+        "./libs/inventory/feature-inventory/src/index.ts"
+      ],
+      "@lpg/order/feature-orders": [
+        "./libs/order/feature-orders/src/index.ts"
+      ],
+      "@lpg/delivery/feature-dispatch": [
+        "./libs/delivery/feature-dispatch/src/index.ts"
+      ],
+      "@lpg/ledger/feature-ledger": [
+        "./libs/ledger/feature-ledger/src/index.ts"
+      ],
+      "@lpg/tenant-admin/feature-employees": [
+        "./libs/tenant-admin/feature-employees/src/index.ts"
+      ],
+      "@lpg/accounting/feature-invoices": [
+        "./libs/accounting/feature-invoices/src/index.ts"
+      ],
+      "@lpg/notification/feature-notifications": [
+        "./libs/notification/feature-notifications/src/index.ts"
+      ],
+      "@lpg/notification/ui-bell": [
+        "./libs/notification/feature-notifications/src/lib/notification-bell.ts"
+      ],
+      "@lpg/notification/ui-drawer": [
+        "./libs/notification/feature-notifications/src/lib/notification-drawer.ts"
+      ]
     }
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": [
+    "node_modules",
+    "tmp"
+  ]
 }

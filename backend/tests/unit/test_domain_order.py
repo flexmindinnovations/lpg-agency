@@ -245,6 +245,25 @@ class TestOrderConfirm:
         assert order.total_amount == Decimal("2850.00")
         assert order.status == "confirmed"
 
+    def test_records_booking_confirmed_event(self) -> None:
+        order = _make_order(lines=[_make_line(quantity_ordered=3)])
+        order.submit(changed_by=uuid.uuid4())
+        order.clear_events()
+        
+        changed_by = uuid.uuid4()
+        order.confirm(
+            unit_prices={order.lines[0].cylinder_type_id: Decimal("950.00")}, changed_by=changed_by
+        )
+        
+        events = order.events
+        assert len(events) == 1
+        assert events[0].__class__.__name__ == "BookingConfirmed"
+        assert events[0].order_id == order.id
+        assert events[0].tenant_id == order._tenant_id
+        assert events[0].customer_id == order._customer_id
+        assert events[0].branch_id == order._branch_id
+        assert events[0].confirmed_by == changed_by
+
     def test_rejects_missing_price_for_a_line(self) -> None:
         order = _make_order()
         order.submit(changed_by=uuid.uuid4())

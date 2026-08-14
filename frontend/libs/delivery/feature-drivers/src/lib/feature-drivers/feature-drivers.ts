@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -21,9 +22,11 @@ import { DatePicker } from 'primeng/datepicker';
 import {
   DeliveryService,
   AdminBranchService,
+  AdminEmployeeService,
   type AppError,
   type BranchResponse,
   type DriverResponse,
+  type EmployeeResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 
@@ -45,7 +48,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-drivers',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -67,11 +70,13 @@ export class FeatureDrivers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
   private readonly branchService = inject(AdminBranchService);
+  private readonly employeeService = inject(AdminEmployeeService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly drivers = signal<DriverResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
+  protected readonly employees = signal<EmployeeResponse[]>([]);
   protected readonly selectedDriver = signal<DriverResponse | null>(null);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
@@ -91,8 +96,8 @@ export class FeatureDrivers implements OnInit {
   // Column definitions for drivers data grid
   protected readonly columns: DataGridColumn<DriverResponse>[] = [
     {
-      field: 'employee_code',
-      header: 'Employee Code',
+      field: 'employee_id',
+      header: 'Employee ID',
       sortable: true,
       filterable: true,
       onLinkClick: (row) => this.openStatusModal(row),
@@ -105,7 +110,7 @@ export class FeatureDrivers implements OnInit {
   // Forms
   protected readonly registerForm = this.fb.group({
     branch_id: ['', [Validators.required]],
-    employee_code: ['', [Validators.required]],
+    employee_id: ['', [Validators.required]],
     license_number: ['', [Validators.required]],
     license_expiry_date: [''],
   });
@@ -133,8 +138,8 @@ export class FeatureDrivers implements OnInit {
     this.loadDrivers();
 
     const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      ctrl: true,
+      key: 'r',
+      alt: true,
       description: 'Register new driver',
       handler: () => {
         if (!this.showRegisterModal()) {
@@ -167,6 +172,13 @@ export class FeatureDrivers implements OnInit {
     });
   }
 
+  protected loadEmployees(branchId?: string): void {
+    this.employeeService.listEmployees({ branch_id: branchId }).subscribe({
+      next: (page) => this.employees.set(page.items),
+      error: () => this.errorMessage.set('Failed to load employees.'),
+    });
+  }
+
   protected loadDrivers(): void {
     this.loading.set(true);
     this.deliveryService.listDrivers(0, 100, this.searchQuery() || undefined).subscribe({
@@ -188,12 +200,25 @@ export class FeatureDrivers implements OnInit {
   }
 
   protected openRegisterModal(): void {
+    const initialBranchId = this.branches().length > 0 ? this.branches()[0].id : '';
     this.registerForm.reset({
-      branch_id: this.branches().length > 0 ? this.branches()[0].id : '',
-      employee_code: '',
+      branch_id: initialBranchId,
+      employee_id: '',
       license_number: '',
       license_expiry_date: '',
     });
+    
+    if (initialBranchId) {
+      this.loadEmployees(initialBranchId);
+    } else {
+      this.loadEmployees();
+    }
+    
+    // Refresh employees when branch changes
+    this.registerForm.controls.branch_id.valueChanges.subscribe(val => {
+      if (val) this.loadEmployees(val);
+    });
+
     this.showRegisterModal.set(true);
   }
 
@@ -205,7 +230,7 @@ export class FeatureDrivers implements OnInit {
     this.deliveryService
       .registerDriver({
         branch_id: val.branch_id,
-        employee_code: val.employee_code,
+        employee_id: val.employee_id,
         license_number: val.license_number,
         license_expiry_date: val.license_expiry_date || undefined,
       })
@@ -245,3 +270,4 @@ export class FeatureDrivers implements OnInit {
     });
   }
 }
+

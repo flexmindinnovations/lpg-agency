@@ -1,79 +1,83 @@
 <div class="inventory-container">
   <div class="page-header">
-    <div class="page-header__text">
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
       <h1 class="page-title">Inventory</h1>
       <p class="page-subtitle">View and manage cylinder stock for a warehouse or vehicle.</p>
     </div>
-    <div class="page-header__actions">
-      @if (locationType() === 'warehouse') {
-      <button
-        #grnTriggerEl
-        pButton
-        type="button"
-        [disabled]="!locationRefId()"
-        (click)="openGrnModal()"
-      >
-        <i pButtonIcon class="pi pi-inbox"></i>
-        <span pButtonLabel>Receive Goods</span>
-      </button>
-      }
-      <button
-        #transferTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        (click)="openTransferModal()"
-      >
-        <i pButtonIcon class="pi pi-arrow-right-arrow-left"></i>
-        <span pButtonLabel>Load Transfer</span>
-      </button>
-      @if (locationType() === 'vehicle') {
-      <button
-        #deliveryCollectionTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openDeliveryCollectionModal()"
-      >
-        <i pButtonIcon class="pi pi-truck"></i>
-        <span pButtonLabel>Delivery / Collection</span>
-      </button>
-      }
-      <button
-        #statusChangeTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openStatusChangeModal()"
-      >
-        <i pButtonIcon class="pi pi-sync"></i>
-        <span pButtonLabel>Change Status</span>
-      </button>
-      <button
-        #adjustTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openAdjustModal()"
-      >
-        <i pButtonIcon class="pi pi-pencil"></i>
-        <span pButtonLabel>Adjust</span>
-      </button>
-      <button
-        #reconcileTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openReconcileModal()"
-      >
-        <i pButtonIcon class="pi pi-check-square"></i>
-        <span pButtonLabel>Reconcile</span>
-      </button>
-    </div>
+    </ng-template>
+    <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+        @if (locationType() === 'warehouse') {
+        <button
+          #grnTriggerEl
+          pButton
+          type="button"
+          [disabled]="!locationRefId()"
+          (click)="openGrnModal()"
+        >
+          <i pButtonIcon class="pi pi-inbox"></i>
+          <span pButtonLabel>Receive Goods</span>
+        </button>
+        }
+        <button
+          #transferTriggerEl
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openTransferModal()"
+        >
+          <i pButtonIcon class="pi pi-arrow-right-arrow-left"></i>
+          <span pButtonLabel>Load Transfer</span>
+        </button>
+        @if (locationType() === 'vehicle') {
+        <button
+          #deliveryCollectionTriggerEl
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="!locationRefId()"
+          (click)="openDeliveryCollectionModal()"
+        >
+          <i pButtonIcon class="pi pi-truck"></i>
+          <span pButtonLabel>Delivery / Collection</span>
+        </button>
+        }
+        <button
+          #statusChangeTriggerEl
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="!locationRefId()"
+          (click)="openStatusChangeModal()"
+        >
+          <i pButtonIcon class="pi pi-sync"></i>
+          <span pButtonLabel>Change Status</span>
+        </button>
+        <button
+          #adjustTriggerEl
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="!locationRefId()"
+          (click)="openAdjustModal()"
+        >
+          <i pButtonIcon class="pi pi-pencil"></i>
+          <span pButtonLabel>Adjust</span>
+        </button>
+        <button
+          #reconcileTriggerEl
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="!locationRefId()"
+          (click)="openReconcileModal()"
+        >
+          <i pButtonIcon class="pi pi-check-square"></i>
+          <span pButtonLabel>Reconcile</span>
+        </button>
+      </div>
+</ng-template>
   </div>
 
   @if (errorMessage(); as msg) {

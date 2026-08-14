@@ -1,22 +1,25 @@
 <div class="customer-container">
-  <!-- Left Side: Customer List -->
   <div class="customer-list-section">
     <div class="page-header">
+      <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Customers</h1>
         <p class="page-subtitle">Manage customer registrations, addresses, and KYC documents.</p>
       </div>
-      <div class="page-header__actions">
-        <button
-          #registerTriggerEl
-          pButton
-          type="button"
-          (click)="openRegisterModal()"
-        >
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>Register Customer <kbd class="ml-1 text-xs opacity-70">Ctrl+N</kbd></span>
-        </button>
-      </div>
+    </ng-template>
+      <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+          <button
+            #registerTriggerEl
+            pButton
+            type="button"
+            (click)="openRegisterModal()"
+          >
+            <i pButtonIcon class="pi pi-plus"></i>
+            <span pButtonLabel>Register Customer <kbd class="ml-1 text-xs opacity-70">Alt+C</kbd></span>
+          </button>
+        </div>
+</ng-template>
     </div>
 
     @if (customers().length > 0 || searchQuery().length > 0) {
@@ -53,24 +56,48 @@
       />
     </div>
   </div>
+</div>
 
-  <!-- Right Side: Customer Details Panel -->
-  <div class="customer-detail-section">
+<!-- Drawer: Customer Details -->
+<p-drawer
+  [(visible)]="showDetailDrawer"
+  position="right"
+  [modal]="true"
+  styleClass="!w-full md:!w-[45vw]"
+  [closeOnEscape]="true"
+  closeAriaLabel="Close dialog"
+  (onHide)="selectedCustomer.set(null)"
+>
+  <ng-template #header>
+    <div class="font-bold text-lg">Customer Profile</div>
+  </ng-template>
+  <div class="customer-detail-content">
     @if (selectedCustomer(); as customer) {
     <div class="detail-card-header">
-      <div class="detail-card-title">
-        <h2>{{ customer.full_name }}</h2>
-        <p class="consumer-num">Consumer No: <strong>{{ customer.consumer_number }}</strong></p>
+      <div class="detail-card-title flex flex-col gap-1">
+        <h2 class="mb-1">{{ customer.full_name }}</h2>
+        <p class="consumer-num mb-2">Consumer No: <strong>{{ customer.consumer_number }}</strong></p>
+        <div class="flex gap-2 mt-1">
+          <p-tag
+            [severity]="customer.status === 'active' ? 'success' : 'warn'"
+            [value]="customer.status | titlecase"
+          />
+          <p-tag
+            [severity]="customer.kyc_status === 'verified' ? 'success' : 'warn'"
+            [value]="'KYC: ' + (customer.kyc_status | titlecase)"
+          />
+        </div>
       </div>
-      <div class="flex flex-col gap-2 align-end">
-        <p-tag
-          [severity]="customer.status === 'active' ? 'success' : 'warn'"
-          [value]="customer.status"
-        />
-        <p-tag
-          [severity]="customer.kyc_status === 'verified' ? 'success' : 'warn'"
-          [value]="'KYC: ' + customer.kyc_status"
-        />
+      <div>
+        <a 
+          pButton 
+          type="button" 
+          severity="info" 
+          size="small" 
+          [routerLink]="['/ledger', customer.id]">
+          <i pButtonIcon class="pi pi-book"></i>
+          <span pButtonLabel>View Ledger</span>
+        </a>
       </div>
     </div>
 
@@ -95,7 +122,6 @@
       <p-tablist>
         <p-tab value="0">Delivery Addresses</p-tab>
         <p-tab value="1">KYC Documents</p-tab>
-        <p-tab value="2">Cylinder Ledger</p-tab>
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="0">
@@ -167,7 +193,7 @@
                   <p-tag
                     class="ml-2"
                     [severity]="doc.verification_status === 'verified' ? 'success' : 'warn'"
-                    [value]="doc.verification_status"
+                    [value]="doc.verification_status | titlecase"
                   />
                 </div>
                 @if (doc.verification_status === 'pending') {
@@ -199,21 +225,11 @@
             </div>
           </div>
         </p-tabpanel>
-        <p-tabpanel value="2">
-          <lpg-feature-ledger [customerId]="customer.id" />
-        </p-tabpanel>
       </p-tabpanels>
     </p-tabs>
-
-    } @else {
-    <div class="empty-state">
-      <i class="pi pi-users empty-state__icon"></i>
-      <p class="empty-state__title">No customer selected</p>
-      <p class="empty-state__description">Select a customer from the list to view their profile, addresses, and KYC documents.</p>
-    </div>
     }
   </div>
-</div>
+</p-drawer>
 
 <!-- Drawer: Register Customer -->
 <p-drawer

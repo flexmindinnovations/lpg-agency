@@ -1,0 +1,114 @@
+<div class="page-header">
+  <ng-template lpgHeaderTitlePortal>
+    <div class="page-header__text">
+      <h1 class="page-title">Invoices</h1>
+      <p class="page-subtitle">View and manage customer invoices.</p>
+    </div>
+  </ng-template>
+</div>
+
+<div class="invoice-container">
+  <section class="invoice-list-section">
+    <div class="search-bar">
+      <p-iconfield class="search-input">
+        <p-inputicon styleClass="pi pi-search"></p-inputicon>
+        <input pInputText type="text" class="w-full" placeholder="Search invoices..." />
+      </p-iconfield>
+    </div>
+
+    <div class="grid-wrapper">
+      <lpg-data-grid
+        [rows]="invoices()"
+        [columns]="columns"
+        [loading]="isLoading()"
+        ariaLabel="Invoices list"
+      ></lpg-data-grid>
+    </div>
+  </section>
+</div>
+
+<p-drawer
+  [visible]="!!selectedInvoice()"
+  (onHide)="clearSelection()"
+  position="right"
+  styleClass="w-full md:w-[45vw]"
+>
+  <ng-template pTemplate="header">
+    <div class="detail-card-title">
+      <h2>Invoice Details</h2>
+      <p class="invoice-num">{{ selectedInvoice()?.invoice_id }}</p>
+    </div>
+  </ng-template>
+
+  @if (selectedInvoice(); as inv) {
+    <div class="invoice-detail-content">
+      <div class="detail-card-header">
+        <p-tag
+          [value]="inv.status"
+          [severity]="
+            inv.status === 'finalized'
+              ? 'success'
+              : inv.status === 'cancelled'
+                ? 'danger'
+                : 'info'
+          "
+        />
+      </div>
+
+      <div class="detail-info-grid">
+        <div class="info-item">
+          <span class="info-label">Date</span>
+          <span class="info-value">{{ inv.issued_at | date:'mediumDate' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Order ID</span>
+          <span class="info-value">{{ inv.order_id }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Customer</span>
+          <span class="info-value">{{ inv.customer_id }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Amount</span>
+          <span class="info-value">{{ inv.total_amount | currency:'INR' }}</span>
+        </div>
+      </div>
+
+      <div class="lines-section">
+        <div class="section-header">
+          <h3 class="section-heading">Line Items</h3>
+        </div>
+        @if (inv.lines.length > 0) {
+          <div class="line-list">
+            @for (line of inv.lines; track line.line_id) {
+              <div class="line-item">
+                <div class="line-info">
+                  <span class="line-name">Cylinder Type {{ line.cylinder_type_id }}</span>
+                  <span class="line-qty">{{ line.quantity }} &times; {{ line.unit_price | currency:'INR' }}</span>
+                </div>
+                <span class="line-total">{{ line.total_amount | currency:'INR' }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-hint">No line items.</p>
+        }
+      </div>
+
+      <div class="totals-section">
+        <div class="total-row">
+          <span class="total-label">Subtotal</span>
+          <span class="total-value">{{ inv.subtotal | currency:'INR' }}</span>
+        </div>
+        <div class="total-row">
+          <span class="total-label">Tax Amount</span>
+          <span class="total-value">{{ inv.tax_amount | currency:'INR' }}</span>
+        </div>
+        <div class="total-row grand-total">
+          <span class="total-label">Total Amount</span>
+          <span class="total-value">{{ inv.total_amount | currency:'INR' }}</span>
+        </div>
+      </div>
+    </div>
+  }
+</p-drawer>

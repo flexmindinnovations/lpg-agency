@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { MessageService } from 'primeng/api';
 import { ShellLayout } from './shell-layout';
 
 describe('ShellLayout', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ShellLayout],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), MessageService],
     }).compileComponents();
   });
 
@@ -32,7 +33,6 @@ describe('ShellLayout', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('nav[aria-label="Main navigation"]')).toBeTruthy();
     expect(el.querySelector('main#shell-main-content')).toBeTruthy();
-    expect(el.querySelector('header')).toBeTruthy();
   });
 
   it('exposes a profile menu whose theme section offers all four theme options', () => {

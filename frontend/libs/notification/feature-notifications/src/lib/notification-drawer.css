@@ -1,0 +1,91 @@
+.drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 1rem);
+}
+
+.empty-state {
+  color: var(--color-text-secondary);
+  font-size: var(--typography-body-small-font-size, 0.875rem);
+  font-style: italic;
+  padding: var(--spacing-md, 1rem) 0;
+  text-align: center;
+}
+
+.notification-item {
+  padding: var(--spacing-md, 1rem);
+  border: var(--border-width, 1px) solid var(--color-border-default);
+  border-radius: var(--radius-md, 8px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs, 0.5rem);
+  transition: background-color 200ms ease, border-color 200ms ease;
+  background-color: var(--color-surface-base);
+}
+
+.notification-item--unread {
+  background-color: var(--color-surface-overlay);
+  border-left: 3px solid var(--color-action-primary);
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-sm, 0.5rem);
+}
+
+.notification-title {
+  margin: 0;
+  font-size: var(--typography-body-small-font-size, 0.875rem);
+  font-weight: var(--typography-body-font-weight, 400);
+  color: var(--color-text-primary);
+}
+
+.notification-title--unread {
+  font-weight: var(--typography-label-font-weight, 600);
+}
+
+.notification-actions {
+  flex-shrink: 0;
+}
+
+.notification-body {
+  margin: 0;
+  font-size: var(--typography-body-small-font-size, 0.875rem);
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-time {
+  font-size: var(--typography-caption-font-size, 0.75rem);
+  color: var(--color-text-tertiary, #64748b);
+}
+
+.drawer-footer {
+  padding-top: var(--spacing-md, 1rem);
+  margin-top: var(--spacing-sm, 0.5rem);
+  border-top: var(--border-width, 1px) solid var(--color-border-default);
+  display: flex;
+  justify-content: center;
+}
+
+.view-all-link {
+  color: var(--color-action-primary);
+  font-size: var(--typography-body-small-font-size, 0.875rem);
+  font-weight: var(--typography-label-font-weight, 500);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.view-all-link:hover,
+.view-all-link:focus-visible {
+  color: var(--color-action-primary-hover, var(--color-action-primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

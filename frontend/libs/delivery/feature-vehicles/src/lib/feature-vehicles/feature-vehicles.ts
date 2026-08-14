@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -44,7 +45,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-vehicles',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -135,8 +136,8 @@ export class FeatureVehicles implements OnInit {
     this.loadVehicles();
 
     const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      ctrl: true,
+      key: 'r',
+      alt: true,
       description: 'Register new vehicle',
       handler: () => {
         if (!this.showRegisterModal()) {

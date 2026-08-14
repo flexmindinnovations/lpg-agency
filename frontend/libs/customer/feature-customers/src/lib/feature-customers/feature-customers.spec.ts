@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FeatureCustomers } from './feature-customers';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { MessageService } from 'primeng/api';
 
 describe('FeatureCustomers', () => {
   let component: FeatureCustomers;
@@ -8,6 +11,11 @@ describe('FeatureCustomers', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeatureCustomers],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        MessageService,
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FeatureCustomers);

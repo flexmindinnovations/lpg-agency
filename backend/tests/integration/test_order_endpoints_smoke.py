@@ -141,6 +141,21 @@ async def _seed_tenant_and_branch(
     return uuid.UUID(str(tenant_id)), uuid.UUID(str(branch_id))
 
 
+
+async def _seed_employee(engine: AsyncEngine, *, tenant_id: uuid.UUID, branch_id: uuid.UUID) -> uuid.UUID:
+    async with engine.begin() as conn:
+        employee_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.employee (id, tenant_id, branch_id, employee_code, first_name, last_name, phone_number, role, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, 'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id), "branch_id": str(branch_id), "employee_code": f"DRV-{uuid.uuid4().hex[:6]}"},
+            )
+        ).scalar_one()
+    return uuid.UUID(str(employee_id))
+
+
 async def _seed_staff_user(
     engine: AsyncEngine,
     *,
@@ -176,6 +191,15 @@ async def _seed_customer(
     password_hash: str,
 ) -> tuple[uuid.UUID, uuid.UUID]:
     async with engine.begin() as conn:
+        employee_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.employee (id, tenant_id, branch_id, employee_code, first_name, last_name, phone_number, role, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, 'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id), "branch_id": str(branch_id), "employee_code": f"DRV-{uuid.uuid4().hex[:6]}"},
+            )
+        ).scalar_one()
         identity_user_id = (
             await conn.execute(
                 text(
@@ -233,6 +257,15 @@ async def _seed_driver(
     password_hash: str,
 ) -> uuid.UUID:
     async with engine.begin() as conn:
+        employee_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.employee (id, tenant_id, branch_id, employee_code, first_name, last_name, phone_number, role, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, 'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id), "branch_id": str(branch_id), "employee_code": f"DRV-{uuid.uuid4().hex[:6]}"},
+            )
+        ).scalar_one()
         identity_user_id = (
             await conn.execute(
                 text(
@@ -253,15 +286,15 @@ async def _seed_driver(
             await conn.execute(
                 text(
                     "INSERT INTO delivery.driver "
-                    "(id, tenant_id, branch_id, identity_user_id, employee_code, license_number) "
+                    "(id, tenant_id, branch_id, identity_user_id, employee_id, license_number) "
                     "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :identity_user_id, "
-                    ":employee_code, 'DL123456') RETURNING id"
+                    ":employee_id, 'DL123456') RETURNING id"
                 ),
                 {
                     "tenant_id": str(tenant_id),
                     "branch_id": str(branch_id),
                     "identity_user_id": str(identity_user_id),
-                    "employee_code": f"EMP{uuid.uuid4().hex[:8]}",
+                    "employee_id": str(employee_id),
                 },
             )
         ).scalar_one()

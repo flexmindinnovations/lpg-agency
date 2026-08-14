@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -99,7 +100,7 @@ function toDateOnlyString(date: Date): string {
 @Component({
   selector: 'lpg-feature-dispatch',
   standalone: true,
-  imports: [
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
     DatePipe,
     FormsModule,
     ReactiveFormsModule,
@@ -154,7 +155,7 @@ export class FeatureDispatch implements OnInit {
 
   protected readonly driverNameById = computed(() => {
     const map = new Map<string, string>();
-    for (const d of this.drivers()) map.set(d.id, d.employee_code);
+    for (const d of this.drivers()) map.set(d.id, d.employee_id);
     return map;
   });
 

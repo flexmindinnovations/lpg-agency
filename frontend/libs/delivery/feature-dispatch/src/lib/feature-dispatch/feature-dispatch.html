@@ -1,15 +1,19 @@
 <div class="dispatch-container">
   <div class="page-header">
-    <div class="page-header__text">
-      <h1 class="page-title">Dispatch Board</h1>
-      <p class="page-subtitle">Plan routes, load vehicles, and assign orders to drivers.</p>
-    </div>
-    <div class="page-header__actions">
-      <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Plan Route</span>
-      </button>
-    </div>
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
+        <h1 class="page-title">Dispatch Board</h1>
+        <p class="page-subtitle">Plan routes, load vehicles, and assign orders to drivers.</p>
+      </div>
+    </ng-template>
+    <ng-template lpgHeaderPortal>
+      <div class="page-header__actions">
+        <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Plan Route</span>
+        </button>
+      </div>
+    </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
@@ -37,6 +41,7 @@
       <label for="filter_date">Date</label>
       <p-datepicker
         id="filter_date"
+        iconDisplay="input"
         [showIcon]="true"
         [showOnFocus]="false"
         [showButtonBar]="true"

@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, NgZone, inject, signal } from '@angular/core';
 
 export interface ShortcutBinding {
   /** Lower-case `KeyboardEvent.key`, e.g. `k`, `n`, `escape`. */
@@ -19,19 +19,12 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
 
 /**
  * Central registry for global keyboard shortcuts.
- *
- * One service rather than per-component listeners, per
- * `knowledge/09-engineering-standards.md`. Scattered listeners produce
- * conflicting bindings that nobody can audit, and there is no single place to
- * render a "keyboard shortcuts" help dialog from.
- *
- * The catalogue of bindings is `docs/ui/16-keyboard-shortcuts.md`. Nothing is
- * registered in Phase 1 — the shortcuts are for features that do not exist yet.
  */
 @Injectable({ providedIn: 'root' })
 export class KeyboardShortcutsService {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly zone = inject(NgZone);
   private readonly bindings = signal<readonly ShortcutBinding[]>([]);
 
   /** Registered bindings, for rendering a shortcuts help dialog. */
@@ -55,16 +48,21 @@ export class KeyboardShortcutsService {
     if (isEditableTarget(event.target) && event.key.toLowerCase() !== 'escape') return;
 
     const match = this.bindings().find(
-      (binding) =>
-        binding.key === event.key.toLowerCase() &&
-        !!binding.ctrl === (event.ctrlKey || event.metaKey) &&
-        !!binding.shift === event.shiftKey &&
-        !!binding.alt === event.altKey,
+      (binding) => {
+        // Handle Alt+Key on Mac producing special characters (e.g. Alt+c -> 'ç') by checking event.code fallback
+        const isKeyMatch = binding.key === event.key.toLowerCase() || 
+                           event.code.toLowerCase() === `key${binding.key}`;
+                           
+        return isKeyMatch &&
+               !!binding.ctrl === (event.ctrlKey || event.metaKey) &&
+               !!binding.shift === event.shiftKey &&
+               !!binding.alt === event.altKey;
+      }
     );
 
     if (match) {
       event.preventDefault();
-      match.handler();
+      this.zone.run(() => match.handler());
     }
   }
 }

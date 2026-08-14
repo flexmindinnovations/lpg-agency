@@ -1,3 +1,4 @@
+import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 ﻿import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -43,19 +44,23 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-staff-users-page',
   standalone: true,
-  imports: [ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
-        <div class="page-header__text">
+        <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
           <h1 class="page-title">Staff Users</h1>
           <p class="page-subtitle">Manage user accounts and role assignments.</p>
         </div>
-        <div class="page-header__actions">
-          <button pButton severity="secondary" (click)="openManageDrawer()"><i pButtonIcon class="pi pi-user-edit"></i><span pButtonLabel>Manage User</span></button>
-          <button pButton (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
-        </div>
+    </ng-template>
+        <ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+            <button pButton severity="secondary" (click)="openManageDrawer()"><i pButtonIcon class="pi pi-user-edit"></i><span pButtonLabel>Manage User</span></button>
+            <button pButton (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
+          </div>
+</ng-template>
       </div>
 
       @if (users().length > 0) {

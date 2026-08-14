@@ -66,9 +66,13 @@ This document is updated after every major milestone.
 
 # Current Phase
 
-**Completed:** Phase 12 — Delivery & Dispatch (started 2026-08-12, genuinely finished 2026-08-13 after a false "complete" claim was caught and corrected by an independent audit)
+**Completed:** Phase 15 — Notifications (started and finished 2026-08-13).
 
-**Next:** Phase 13 — Cylinder Ledger.
+**Next:** Mobile Application Development.
+
+Phase 15 delivered the Notification system: `Notification` aggregate, `arq` task queues for background delivery, REST endpoints, and decoupled `@lpg/notification/feature-notifications` Angular UI. 
+
+Phase 14 (Accounting & Billing, 2026-08-13) delivered the accounting bounded context: `Invoice`/`InvoiceLine` aggregates, event-driven invoice generation, REST endpoints, and `@lpg/accounting/feature-invoices` Angular UI. 766 backend tests passing.
 
 Phase 12 made `Route`/`RouteStop` the real dispatcher-facing grouping construct, replacing Order Management's interim `driver_id`/`vehicle_id` columns on `Order` with a `route_stop_id` FK. Ships: a hardened `Route` aggregate (empty-route guard, `cancel_stop`/`reschedule_stop`, an auto-complete rule that transitions a route to `Completed` the instant every stop reaches a terminal status, no manual action needed), a rewritten migration (RLS, CHECK constraints, audit columns, real permission codes replacing two that were never seeded), `AssignOrderToRouteUseCase`/`LoadVehicleForRouteUseCase`/`CompleteRouteReconciliationUseCase` (the latter two deliberately reuse Inventory Management's existing load-transfer and reconciliation infrastructure rather than duplicating it — `VehicleLoadEvent`/`VehicleShiftReconciliation`, named in the original design, were never built; see `docs/data/01-domain-model.md` §4.4's divergence note), the full `/routes` REST surface with role-scoped RBAC, and a Dispatch Board rebuilt from a list+create stub into a real operational screen (status-column route board, a Route Detail drawer with Load/Start/Cancel/Reconcile actions, an unassigned-orders panel with click-to-assign). An independent audit on 2026-08-12 had caught the phase's first "COMPLETE" claim as false — zero tests, a broken `import-linter` contract, most of the frontend missing — and every one of those gaps is now closed and independently re-verified, not self-reported: static gates re-run by hand, 486 unit + 39 Phase-12-scope integration tests re-run by hand, and a live-browser pass through the real Dispatch Board (plan a route across two real branches to prove a hardcoded-first-branch bug is actually fixed, assign an order, load a vehicle, start the route, cancel the order and watch the route auto-complete with zero manual action, then confirm reconciliation is correctly blocked with a 409 until an approved reconciliation record exists). Full detail: [`planning/features/12-delivery-dispatch/STATUS.md`](../planning/features/12-delivery-dispatch/STATUS.md).
 

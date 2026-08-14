@@ -47,7 +47,14 @@ export const ACTION_SEVERITY: Record<string, string> = {
   standalone: true,
   imports: [Tag],
   template: `<p-tag [severity]="severity()" [value]="value()" />`,
-  styles: [`:host { display: flex; align-items: center; height: 100%; }`],
+  styles: [
+    `
+      :host {
+        display: inline-flex;
+        vertical-align: middle;
+      }
+    `,
+  ],
 })
 export class ActionChipCell {
   value = signal('');

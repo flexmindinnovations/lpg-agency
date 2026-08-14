@@ -1,3 +1,4 @@
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { AuthService } from '@lpg/shared/data-access';
 
@@ -12,14 +13,17 @@ import { AuthService } from '@lpg/shared/data-access';
 @Component({
   selector: 'lpg-profile',
   standalone: true,
+  imports: [HeaderTitlePortalDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="profile-page">
       <div class="page-header">
-        <div class="page-header__text">
+        <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
           <h1 class="page-title">My Profile</h1>
           <p class="page-subtitle">Your account information. Contact an administrator to update your role or email.</p>
         </div>
+    </ng-template>
       </div>
 
       <dl class="profile-page__list">

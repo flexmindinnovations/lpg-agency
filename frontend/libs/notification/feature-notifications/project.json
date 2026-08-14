@@ -1,0 +1,26 @@
+{
+  "name": "notification-feature-notifications",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/notification/feature-notifications/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": [
+    "scope:notification",
+    "type:feature"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "jestConfig": "libs/notification/feature-notifications/jest.config.cts",
+        "tsConfig": "libs/notification/feature-notifications/tsconfig.spec.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

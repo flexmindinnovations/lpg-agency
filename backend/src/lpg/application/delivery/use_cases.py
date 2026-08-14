@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
+    ApplicationError,
     DuplicateEmployeeCodeError,
     DuplicateRegistrationNumberError,
     DuplicateRouteAssignmentError,
@@ -57,7 +58,7 @@ if TYPE_CHECKING:
 class RegisterDriverCommand(Command):
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
-    employee_code: str
+    employee_id: uuid.UUID
     license_number: str
     license_expiry_date: date | None = None
     identity_user_id: uuid.UUID | None = None
@@ -105,19 +106,19 @@ class RegisterDriverUseCase:
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: RegisterDriverCommand) -> Driver:
-        existing = await self._repository.get_by_employee_code(command.employee_code)
+        existing = await self._repository.get_by_employee_id(command.employee_id)
         if existing is not None:
             msg = (
-                f"Driver with employee code '{command.employee_code}' "
+                f"Driver with employee ID '{command.employee_id}' "
                 "already exists for this tenant."
             )
-            raise DuplicateEmployeeCodeError(msg, employee_code=command.employee_code)
+            raise DuplicateEmployeeCodeError(msg)
 
         driver = Driver(
             driver_id=self._repository.next_id(),
             tenant_id=command.tenant_id,
             branch_id=command.branch_id,
-            employee_code=command.employee_code,
+            employee_id=command.employee_id,
             license_number=command.license_number,
             license_expiry_date=command.license_expiry_date,
             identity_user_id=command.identity_user_id,
