@@ -36,6 +36,8 @@ LPG Agency Management Platform
 
 **Phase 17 — Complaint Management** ✅ **COMPLETE** — finished 2026-08-14. Full backend domain (`Complaint` aggregate, use cases for raising, assigning, resolving), REST endpoints with `complaints.manage` RBAC, and `@lpg/complaint/feature-complaints` Angular UI library with grid and detail drawers.
 
+**Phase 18 — Production Hardening** ✅ **COMPLETE** — finished 2026-08-14. Configured FastAPI backend to run with `gunicorn` and `uvicorn.workers.UvicornWorker` for high-concurrency production deployments. Created a robust load testing suite using Locust to simulate 100,000+ concurrent users with standard REST and WebSocket traffic. Integrated `@axe-core/playwright` and wrote tests validating WCAG 2.2 accessibility on all authenticated routes (0 violations found). Analyzed the Angular bundle with `source-map-explorer` and reduced the initial chunk size by lazy-loading the `AppShell` component, bringing it below the 700kB budget constraint.
+
 **Recommended next:** Mobile Application Development.
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).

@@ -1,6 +1,5 @@
 import { Route } from '@angular/router';
 import { authGuard, permissionGuard } from '@lpg/shared/data-access';
-import { ShellLayout } from './shell/shell-layout';
 
 /**
  * Routing foundation.
@@ -22,7 +21,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: '',
-    component: ShellLayout,
+    loadComponent: () => import('./shell/shell-layout').then((m) => m.ShellLayout),
     canActivate: [authGuard],
     children: [
       {

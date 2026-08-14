@@ -66,9 +66,11 @@ This document is updated after every major milestone.
 
 # Current Phase
 
-**Completed:** Phase 17 — Complaint Management (finished 2026-08-14) and Phase 16 — UI & Navigation Refinements (finished 2026-08-14).
+**Completed:** Phase 18 — Production Hardening (finished 2026-08-14), Phase 17 — Complaint Management (finished 2026-08-14) and Phase 16 — UI & Navigation Refinements (finished 2026-08-14).
 
 **Next:** Mobile Application Development.
+
+Phase 18 (Production Hardening) delivered high-concurrency configurations for the FastAPI backend, a comprehensive Locust load testing suite, WCAG 2.2 accessibility tests for the Angular dashboard (zero violations found), and bundle size optimization (lazy-loading `AppShell`) that reduced the initial Javascript payload below the 700kB budget.
 
 Phase 17 delivered the Complaint Management domain (`Complaint` aggregate, raising, assigning, resolving), REST endpoints (`complaints.manage` RBAC), and `@lpg/complaint/feature-complaints` Angular UI library with grid and detail drawers.
 

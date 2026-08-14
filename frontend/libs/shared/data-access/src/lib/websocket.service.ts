@@ -1,6 +1,6 @@
 import { Injectable, inject, OnDestroy } from '@angular/core';
 import { filter, map, Observable, Subject } from 'rxjs';
-import { ApiConfiguration } from '../generated/api-configuration';
+import { ApiConfiguration } from './generated/api-configuration';
 
 export interface RealtimeMessage {
   type: string;

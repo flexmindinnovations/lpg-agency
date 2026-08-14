@@ -38,6 +38,7 @@ dependencies = [
     "xhtml2pdf>=0.2.16",
     "qrcode[pil]>=8.0",
     "python-barcode>=0.15.1",
+    "gunicorn>=26.0.0",
 ]
 
 [dependency-groups]
@@ -55,6 +56,8 @@ dev = [
     # no runtime effect.
     "types-aiobotocore[s3]",
     "asgi-lifespan>=2.1.0",
+    "locust>=2.46.3",
+    "websocket-client>=1.9.0",
 ]
 
 [build-system]
