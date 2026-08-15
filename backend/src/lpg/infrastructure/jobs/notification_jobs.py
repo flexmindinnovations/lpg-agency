@@ -65,9 +65,13 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             from lpg.infrastructure.channels.email_channel import StubEmailChannel
             from lpg.infrastructure.channels.sms_channel import StubSmsChannel
             
+            from lpg.infrastructure.persistence.encryption import AESGCMFieldEncryptor  # type: ignore[import-untyped]
+            from lpg.core.config import settings  # type: ignore[import-untyped]
+            field_encryptor = AESGCMFieldEncryptor(settings.encryption_key.get_secret_value())
+            
             in_app_repo = SqlAlchemyInAppNotificationRepository(session)
             log_repo = SqlAlchemyNotificationLogRepository(session)
-            identity_repo = SqlAlchemyIdentityUserRepository(session)
+            identity_repo = SqlAlchemyIdentityUserRepository(database)
             
             # Resolve recipients
             recipient_user_ids: list[uuid.UUID] = []
@@ -83,7 +87,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 )
             else:
                 customer_id = uuid.UUID(payload["customer_id"])
-                customer_repo = SqlAlchemyCustomerRepository(uow)
+                customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
                 customer = await customer_repo.get_by_id(customer_id)
                 if customer and customer.identity_user_id:
                     recipient_user_ids = [customer.identity_user_id]
@@ -115,7 +119,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 await in_app_repo.add(in_app)
                 
                 # Retrieve IdentityUser for external channels
-                user = await identity_repo.get_by_id(tenant_id, user_id)
+                user = await identity_repo.get(user_id)
                 if not user:
                     continue
                 

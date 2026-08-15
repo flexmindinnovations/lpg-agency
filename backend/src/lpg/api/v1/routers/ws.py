@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from lpg.api.app import get_app_state
+
 from lpg.application.common.errors import TokenInvalidError
 from lpg.config.logging import get_logger
 
@@ -82,6 +82,7 @@ async def websocket_endpoint(
     websocket: WebSocket, token: str = Query(...)
 ) -> None:
     """Accept a WebSocket connection and handle real-time subscriptions."""
+    from lpg.api.app import get_app_state
     state = get_app_state()
     signer = state.jwt_signer
     manager = state.connection_manager

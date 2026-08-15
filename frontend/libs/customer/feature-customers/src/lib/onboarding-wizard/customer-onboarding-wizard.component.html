@@ -1,0 +1,261 @@
+<div class="wizard-container">
+  <div class="page-header">
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
+        <h1 class="page-title">Customer Onboarding</h1>
+        <p class="page-subtitle">Register a new customer, add their primary delivery address, and submit KYC documents in a few easy steps.</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <div class="wizard-card">
+    <p-stepper [value]="currentStep()">
+      <p-step-list>
+        <p-step [value]="1">Registration</p-step>
+        <p-step [value]="2">Address</p-step>
+        <p-step [value]="3">KYC Upload</p-step>
+        <p-step [value]="4">Review</p-step>
+      </p-step-list>
+
+      <p-step-panels>
+        <!-- Step 1: Registration Details -->
+        <p-step-panel [value]="1">
+          <ng-template #content let-activateCallback="activateCallback">
+            <div class="step-content">
+              <div class="step-header">
+                <h2>Registration Details</h2>
+                <p>We need some basic details to identify the customer and create their profile.</p>
+              </div>
+
+              <form [formGroup]="registrationForm" class="wizard-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="first_name">First Name <span class="required">*</span></label>
+                    <input pInputText id="first_name" formControlName="first_name" placeholder="First Name" />
+                    @if (isInvalid(registrationForm, 'first_name')) {<span class="field-error">First Name is required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="last_name">Last Name <span class="required">*</span></label>
+                    <input pInputText id="last_name" formControlName="last_name" placeholder="Last Name" />
+                    @if (isInvalid(registrationForm, 'last_name')) {<span class="field-error">Last Name is required.</span>}
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="phone_number">Primary Phone Number <span class="required">*</span></label>
+                    <input pInputText id="phone_number" formControlName="phone_number" placeholder="e.g. +919876543210" />
+                    @if (isInvalid(registrationForm, 'phone_number')) {<span class="field-error">Valid E.164 phone number required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="alternate_mobile">Alternate Mobile</label>
+                    <input pInputText id="alternate_mobile" formControlName="alternate_mobile" placeholder="Optional" />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="date_of_birth">Date of Birth <span class="required">*</span></label>
+                    <p-datepicker formControlName="date_of_birth" [showIcon]="true" placeholder="Select DOB"></p-datepicker>
+                    @if (isInvalid(registrationForm, 'date_of_birth')) {<span class="field-error">Date of birth is required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="branch_id">Operating Branch <span class="required">*</span></label>
+                    <p-select id="branch_id" formControlName="branch_id" [options]="branches()" optionLabel="name" optionValue="id" placeholder="Select Branch"></p-select>
+                    @if (isInvalid(registrationForm, 'branch_id')) {<span class="field-error">Branch is required.</span>}
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="consumer_category">Consumer Category <span class="required">*</span></label>
+                    <p-select id="consumer_category" formControlName="consumer_category" [options]="customerCategoryOptions" optionLabel="label" optionValue="value"></p-select>
+                  </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                  <p-checkbox formControlName="is_commercial" [binary]="true" inputId="is_commercial"></p-checkbox>
+                  <label for="is_commercial">Is this a commercial entity?</label>
+                </div>
+
+                @if (registrationForm.get('is_commercial')?.value) {
+<div class="form-group">
+                  <label for="contact_person">Contact Person <span class="required">*</span></label>
+                  <input pInputText id="contact_person" formControlName="contact_person" placeholder="Name of contact person" />
+                  @if (isInvalid(registrationForm, 'contact_person')) {<span class="field-error">Contact person is required for commercial entities.</span>}
+                </div>
+}
+              </form>
+            </div>
+            
+            <div class="step-actions">
+              <p-button label="Next" (onClick)="nextStep(registrationForm, 2)"></p-button>
+            </div>
+          </ng-template>
+        </p-step-panel>
+
+        <!-- Step 2: Address -->
+        <p-step-panel [value]="2">
+          <ng-template #content let-activateCallback="activateCallback">
+            <div class="step-content">
+              <div class="step-header">
+                <h2>Delivery Address</h2>
+                <p>Provide the primary address where LPG cylinders will be delivered.</p>
+              </div>
+
+              <form [formGroup]="addressForm" class="wizard-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="address_type">Address Type <span class="required">*</span></label>
+                    <p-select id="address_type" formControlName="address_type" [options]="addressTypeOptions" optionLabel="label" optionValue="value"></p-select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="line_1">Address Line 1 <span class="required">*</span></label>
+                    <input pInputText id="line_1" formControlName="line_1" placeholder="Flat, House no., Building" />
+                    @if (isInvalid(addressForm, 'line_1')) {<span class="field-error">Line 1 is required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="line_2">Address Line 2</label>
+                    <input pInputText id="line_2" formControlName="line_2" placeholder="Street, Sector, Village" />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="landmark">Landmark</label>
+                    <input pInputText id="landmark" formControlName="landmark" placeholder="Near Apollo Hospital" />
+                  </div>
+                  <div class="form-group">
+                    <label for="area">Area/Locality <span class="required">*</span></label>
+                    <input pInputText id="area" formControlName="area" placeholder="Locality name" />
+                    @if (isInvalid(addressForm, 'area')) {<span class="field-error">Area is required.</span>}
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="city">City <span class="required">*</span></label>
+                    <input pInputText id="city" formControlName="city" placeholder="City" />
+                    @if (isInvalid(addressForm, 'city')) {<span class="field-error">City is required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="district">District <span class="required">*</span></label>
+                    <input pInputText id="district" formControlName="district" placeholder="District" />
+                    @if (isInvalid(addressForm, 'district')) {<span class="field-error">District is required.</span>}
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="state">State <span class="required">*</span></label>
+                    <input pInputText id="state" formControlName="state" placeholder="State" />
+                    @if (isInvalid(addressForm, 'state')) {<span class="field-error">State is required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="pincode">Pincode <span class="required">*</span></label>
+                    <input pInputText id="pincode" formControlName="pincode" placeholder="6-digit pincode" />
+                    @if (isInvalid(addressForm, 'pincode')) {<span class="field-error">Valid 6-digit pincode is required.</span>}
+                  </div>
+                </div>
+              </form>
+            </div>
+            
+            <div class="step-actions">
+              <p-button label="Back" severity="secondary" (onClick)="prevStep(1)"></p-button>
+              <p-button label="Next" (onClick)="nextStep(addressForm, 3)"></p-button>
+            </div>
+          </ng-template>
+        </p-step-panel>
+
+        <!-- Step 3: KYC Upload -->
+        <p-step-panel [value]="3">
+          <ng-template #content let-activateCallback="activateCallback">
+            <div class="step-content">
+              <div class="step-header">
+                <h2>KYC Documentation</h2>
+                <p>KYC (Know Your Customer) data is mandatory for regulatory compliance and safety auditing.</p>
+              </div>
+
+              <form [formGroup]="kycForm" class="wizard-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="doc_type">Document Type <span class="required">*</span></label>
+                    <p-select id="doc_type" formControlName="doc_type" [options]="kycDocTypeOptions" optionLabel="label" optionValue="value"></p-select>
+                  </div>
+                  <div class="form-group">
+                    <label for="document_number">Document Number <span class="required">*</span></label>
+                    <input pInputText id="document_number" formControlName="document_number" placeholder="Enter doc ID" />
+                    @if (isInvalid(kycForm, 'document_number')) {<span class="field-error">Document number is required.</span>}
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="issue_date">Issue Date <span class="required">*</span></label>
+                    <p-datepicker formControlName="issue_date" [showIcon]="true" placeholder="Select Issue Date"></p-datepicker>
+                    @if (isInvalid(kycForm, 'issue_date')) {<span class="field-error">Issue date is required.</span>}
+                  </div>
+                  <div class="form-group">
+                    <label for="expiry_date">Expiry Date <span class="required">*</span></label>
+                    <p-datepicker formControlName="expiry_date" [showIcon]="true" placeholder="Select Expiry Date"></p-datepicker>
+                    @if (isInvalid(kycForm, 'expiry_date')) {<span class="field-error">Expiry date is required.</span>}
+                  </div>
+                </div>
+                
+                <div class="info-callout">
+                  <i class="pi pi-info-circle"></i>
+                  <span>Ensure the document ID and dates strictly match the physical document. The backend service will run a pre-verification check against these inputs.</span>
+                </div>
+              </form>
+            </div>
+            
+            <div class="step-actions">
+              <p-button label="Back" severity="secondary" (onClick)="prevStep(2)"></p-button>
+              <p-button label="Review" (onClick)="nextStep(kycForm, 4)"></p-button>
+            </div>
+          </ng-template>
+        </p-step-panel>
+
+        <!-- Step 4: Review -->
+        <p-step-panel [value]="4">
+          <ng-template #content let-activateCallback="activateCallback">
+            <div class="step-content">
+              <div class="step-header">
+                <h2>Review & Approve</h2>
+                <p>Please confirm all the provided details before finalizing the onboarding process.</p>
+              </div>
+
+              <div class="review-section">
+                <h3>Personal Information</h3>
+                <div class="review-grid">
+                  <div class="review-item"><span>Name:</span> {{ registrationForm.value.first_name }} {{ registrationForm.value.last_name }}</div>
+                  <div class="review-item"><span>Phone:</span> {{ registrationForm.value.phone_number }}</div>
+                  <div class="review-item"><span>Category:</span> {{ registrationForm.value.consumer_category }}</div>
+                </div>
+
+                <h3>Delivery Address</h3>
+                <div class="review-grid">
+                  <div class="review-item full-width"><span>Address:</span> {{ addressForm.value.line_1 }}, {{ addressForm.value.area }}, {{ addressForm.value.city }}, {{ addressForm.value.state }} - {{ addressForm.value.pincode }}</div>
+                </div>
+
+                <h3>KYC Details</h3>
+                <div class="review-grid">
+                  <div class="review-item"><span>Document:</span> {{ kycForm.value.doc_type }}</div>
+                  <div class="review-item"><span>ID Number:</span> {{ kycForm.value.document_number }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="step-actions">
+              <p-button label="Back" severity="secondary" (onClick)="prevStep(3)"></p-button>
+              <p-button label="Submit & Approve" severity="success" (onClick)="submitWizard()" [loading]="isSubmitting()"></p-button>
+            </div>
+          </ng-template>
+        </p-step-panel>
+      </p-step-panels>
+    </p-stepper>
+  </div>
+</div>

@@ -122,7 +122,7 @@ class SqlAlchemyInAppNotificationRepository:
             WHERE recipient_user_id = :user_id AND is_read = false
         """)
         result = await self._session.execute(stmt, {"user_id": user_id})
-        return result.scalar_one()
+        return int(result.scalar_one())
 
     async def save(self, notification: InAppNotification) -> None:
         """Save modifications to an existing notification."""

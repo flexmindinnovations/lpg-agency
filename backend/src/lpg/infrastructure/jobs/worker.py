@@ -1,3 +1,5 @@
+from arq import cron
+from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 """ARQ worker entry point (ADR-029).
 
 Run with::
@@ -157,9 +159,6 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 class WorkerSettings:
     """ARQ reads these as class attributes — see module docstring."""
-
-    from arq import cron
-    from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 
     cron_jobs = [
         cron(refresh_materialized_views, hour=2, minute=0)  # Run nightly at 2:00 AM

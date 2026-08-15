@@ -27,25 +27,25 @@ def register_notification_handlers(
 
     async def _on_booking_confirmed(event: DomainEvent) -> None:
         assert isinstance(event, BookingConfirmed)
-        await job_queue.enqueue_job(
+        await job_queue.enqueue(
             "send_notification",
             {
                 "type": "booking_confirmed",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                "customer_id": str(event.customer_id),
+                # no customer_id on OrderAssignedToRoute
             },
         )
 
     async def _on_order_assigned(event: DomainEvent) -> None:
         assert isinstance(event, OrderAssignedToRoute)
-        await job_queue.enqueue_job(
+        await job_queue.enqueue(
             "send_notification",
             {
                 "type": "driver_assigned",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                "customer_id": str(event.customer_id),
+                # no customer_id on OrderAssignedToRoute
             },
         )
 
@@ -72,25 +72,25 @@ def register_notification_handlers(
 
     async def _on_cylinder_delivered(event: DomainEvent) -> None:
         assert isinstance(event, CylinderDelivered)
-        await job_queue.enqueue_job(
+        await job_queue.enqueue(
             "send_notification",
             {
                 "type": "delivery_confirmed",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                "customer_id": str(event.customer_id),
+                # no customer_id on OrderAssignedToRoute
             },
         )
 
     async def _on_invoice_generated(event: DomainEvent) -> None:
         assert isinstance(event, InvoiceGenerated)
-        await job_queue.enqueue_job(
+        await job_queue.enqueue(
             "send_notification",
             {
                 "type": "invoice_generated",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                "customer_id": str(event.customer_id),
+                # no customer_id on OrderAssignedToRoute
             },
         )
 
@@ -99,7 +99,7 @@ def register_notification_handlers(
         # We need branch_id for staff resolution, which isn't on DeliveryFailed.
         # send_notification job will have to fetch the order to get the branch_id.
         # We'll pass order_id and the job will fetch it.
-        await job_queue.enqueue_job(
+        await job_queue.enqueue(
             "send_notification",
             {
                 "type": "delivery_failed_staff",

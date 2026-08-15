@@ -6,9 +6,9 @@ from lpg.domain.complaint.complaint import Complaint
 
 class ComplaintRepository(ABC):
     @abstractmethod
-    def save(self, complaint: Complaint) -> None:
+    async def save(self, complaint: Complaint) -> None:
         """Save a new or updated complaint."""
 
     @abstractmethod
-    def get_by_id(self, tenant_id: uuid.UUID, complaint_id: uuid.UUID) -> Optional[Complaint]:
+    async def get_by_id(self, tenant_id: uuid.UUID, complaint_id: uuid.UUID) -> Optional[Complaint]:
         """Get a complaint by its ID and Tenant ID."""

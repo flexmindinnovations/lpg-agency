@@ -6,10 +6,10 @@ from __future__ import annotations
 # in this module's runtime namespace — hiding them behind `if TYPE_CHECKING:`
 # breaks the mapping (see `models/tenant.py`'s identical note).
 import uuid  # noqa: TC003
-from datetime import datetime  # noqa: TC003
+from datetime import date, datetime  # noqa: TC003
 from decimal import Decimal  # noqa: TC003
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lpg.infrastructure.persistence.database import Base
@@ -26,12 +26,16 @@ class CustomerModel(Base):
     branch_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.branch.id", ondelete="CASCADE")
     )
-    consumer_number: Mapped[str] = mapped_column(String(50))
+    consumer_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     full_name: Mapped[str] = mapped_column(String(200))
     phone_number: Mapped[str] = mapped_column(String(20))
+    contact_person: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    alternate_mobile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date(), nullable=True)
     customer_type: Mapped[str] = mapped_column(String(50), server_default="domestic")
     kyc_status: Mapped[str] = mapped_column(String(50), server_default="pending")
-    status: Mapped[str] = mapped_column(String(50), server_default="active")
+    status: Mapped[str] = mapped_column(String(50), server_default="onboarding")
     lpg_subsidy_id: Mapped[str | None] = mapped_column(String(17))
     identity_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
 
@@ -75,7 +79,15 @@ class CustomerAddressModel(Base):
     customer_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("customer.customer.id", ondelete="CASCADE")
     )
-    address_line: Mapped[str] = mapped_column(Text())
+    line_1: Mapped[str] = mapped_column(Text())
+    line_2: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    landmark: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    area: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    district: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    pincode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    address_type: Mapped[str] = mapped_column(String(50), server_default="delivery")
     latitude: Mapped[Decimal | None] = mapped_column(Numeric(precision=9, scale=6))
     longitude: Mapped[Decimal | None] = mapped_column(Numeric(precision=9, scale=6))
     is_primary: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
@@ -110,8 +122,12 @@ class KycDocumentModel(Base):
         Uuid(), ForeignKey("customer.customer.id", ondelete="CASCADE")
     )
     doc_type: Mapped[str] = mapped_column(String(50))
-    doc_reference: Mapped[str] = mapped_column(Text())
+    document_number: Mapped[str] = mapped_column(String(100))
+    file_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    issue_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    expiry_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     verification_status: Mapped[str] = mapped_column(String(50), server_default="pending")
+    rejection_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
     verified_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(), ForeignKey("identity.identity_user.id", ondelete="SET NULL")
     )

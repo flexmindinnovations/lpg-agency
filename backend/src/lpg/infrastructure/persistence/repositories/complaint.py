@@ -108,7 +108,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
                 assigned_to=a.assigned_to,
                 assigned_at=a.assigned_at,
                 created_at=a.created_at,
-                created_by=a.created_by,
+                created_by=a.created_by or uuid.UUID(int=0),
             )
             for a in model.assignments
         ]

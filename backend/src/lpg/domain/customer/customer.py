@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
@@ -64,21 +64,49 @@ class KycDocumentVerified(DomainEvent):
     status: str
 
 
+
+@dataclass(frozen=True, slots=True)
+class CustomerApproved(DomainEvent):
+    customer_id: uuid.UUID
+    approved_by: uuid.UUID
+    consumer_number: str
+
+
 class CustomerAddress:
+    __slots__ = ("id", "address_type", "line_1", "line_2", "landmark", "area", "city", "district", "state", "pincode", "latitude", "longitude", "is_primary")
     def __init__(
         self,
         address_id: uuid.UUID,
-        address_line: str,
+        line_1: str,
+        address_type: str = "delivery",
+        line_2: str | None = None,
+        landmark: str | None = None,
+        area: str | None = None,
+        city: str | None = None,
+        district: str | None = None,
+        state: str | None = None,
+        pincode: str | None = None,
         latitude: float | None = None,
         longitude: float | None = None,
         is_primary: bool = False,
     ) -> None:
-        if not address_line.strip():
-            msg = "Address line cannot be empty."
+        if not line_1.strip():
+            msg = "Address line 1 cannot be empty."
+            raise InvariantViolation(msg)
+        if address_type not in ("delivery", "billing", "both"):
+            msg = f"Invalid address type: {address_type}"
             raise InvariantViolation(msg)
 
         self.id = address_id
-        self.address_line = address_line.strip()
+        self.address_type = address_type
+        self.line_1 = line_1.strip()
+        self.line_2 = line_2.strip() if line_2 else None
+        self.landmark = landmark.strip() if landmark else None
+        self.area = area.strip() if area else None
+        self.city = city.strip() if city else None
+        self.district = district.strip() if district else None
+        self.state = state.strip() if state else None
+        self.pincode = pincode.strip() if pincode else None
         self.latitude = latitude
         self.longitude = longitude
         self.is_primary = is_primary
@@ -88,20 +116,25 @@ class CustomerAddress:
 
 
 class KycDocument:
+    __slots__ = ("id", "doc_type", "document_number", "file_url", "issue_date", "expiry_date", "verification_status", "verified_by", "verified_at", "rejection_reason")
     def __init__(
         self,
         document_id: uuid.UUID,
         doc_type: str,
-        doc_reference: str,
+        document_number: str,
+        file_url: str | None = None,
+        issue_date: date | None = None,
+        expiry_date: date | None = None,
         verification_status: str = "pending",
         verified_by: uuid.UUID | None = None,
         verified_at: datetime | None = None,
+        rejection_reason: str | None = None,
     ) -> None:
         if not doc_type.strip():
             msg = "KYC document type cannot be empty."
             raise InvariantViolation(msg)
-        if not doc_reference.strip():
-            msg = "KYC document reference cannot be empty."
+        if not document_number.strip():
+            msg = "KYC document number cannot be empty."
             raise InvariantViolation(msg)
         if verification_status not in ("pending", "verified", "rejected"):
             msg = f"Invalid KYC verification status: {verification_status}"
@@ -109,16 +142,25 @@ class KycDocument:
 
         self.id = document_id
         self.doc_type = doc_type.strip().lower()
-        self.doc_reference = doc_reference.strip()
+        self.document_number = document_number.strip()
+        self.file_url = file_url
+        self.issue_date = issue_date
+        self.expiry_date = expiry_date
         self.verification_status = verification_status
         self.verified_by = verified_by
         self.verified_at = verified_at
+        self.rejection_reason = rejection_reason
 
-    def verify(self, verified_by: uuid.UUID, status: str) -> None:
+    def verify(self, verified_by: uuid.UUID, status: str, rejection_reason: str | None = None) -> None:
         if status not in ("verified", "rejected"):
             msg = f"KYC can only be verified or rejected, got: {status}"
             raise InvariantViolation(msg)
+        if status == "rejected" and not rejection_reason:
+            msg = "Rejection reason is required when rejecting KYC."
+            raise InvariantViolation(msg)
+            
         self.verification_status = status
+        self.rejection_reason = rejection_reason if status == "rejected" else None
         self.verified_by = verified_by
         self.verified_at = datetime.now(UTC)
 
@@ -137,6 +179,10 @@ class Customer(AggregateRoot):
         "_phone_number",
         "_status",
         "_tenant_id",
+        "_contact_person",
+        "_alternate_mobile",
+        "_email",
+        "_date_of_birth",
     )
 
     def __init__(
@@ -144,16 +190,20 @@ class Customer(AggregateRoot):
         customer_id: uuid.UUID,
         tenant_id: uuid.UUID,
         branch_id: uuid.UUID,
-        consumer_number: str,
         full_name: str,
         phone_number: str,
+        consumer_number: str | None = None,
         customer_type: str = "domestic",
         kyc_status: str = "pending",
-        status: str = "active",
+        status: str = "onboarding",
         lpg_subsidy_id: str | None = None,
         addresses: Sequence[CustomerAddress] = (),
         kyc_documents: Sequence[KycDocument] = (),
         identity_user_id: uuid.UUID | None = None,
+        contact_person: str | None = None,
+        alternate_mobile: str | None = None,
+        email: str | None = None,
+        date_of_birth: date | None = None,
         *,
         version: int = 1,
     ) -> None:
@@ -162,14 +212,14 @@ class Customer(AggregateRoot):
         self._branch_id = branch_id
 
         # Invariants validation
-        if not consumer_number.strip():
-            msg = "Consumer number cannot be empty."
-            raise InvariantViolation(msg, customer_id=str(customer_id))
         if not full_name.strip() or len(full_name) > 200:
             msg = "Full name must be between 1 and 200 characters."
             raise InvariantViolation(msg, customer_id=str(customer_id))
         if not _E164_PHONE_REGEX.match(phone_number):
             msg = f"Phone number must be in E.164 format: {phone_number}"
+            raise InvariantViolation(msg, customer_id=str(customer_id))
+        if alternate_mobile and not _E164_PHONE_REGEX.match(alternate_mobile):
+            msg = f"Alternate phone number must be in E.164 format: {alternate_mobile}"
             raise InvariantViolation(msg, customer_id=str(customer_id))
         if customer_type not in ("domestic", "commercial", "industrial", "government"):
             msg = f"Invalid customer type: {customer_type}"
@@ -177,14 +227,20 @@ class Customer(AggregateRoot):
         if kyc_status not in ("pending", "verified", "rejected", "expired"):
             msg = f"Invalid KYC status: {kyc_status}"
             raise InvariantViolation(msg, customer_id=str(customer_id))
-        if status not in ("active", "inactive", "blocked", "closed"):
+        if status not in ("onboarding", "pending_approval", "active", "inactive", "blocked", "closed"):
             msg = f"Invalid customer status: {status}"
+            raise InvariantViolation(msg, customer_id=str(customer_id))
+        if status not in ("onboarding", "pending_approval") and not consumer_number:
+            msg = "Consumer number is required for active/inactive/blocked/closed customers."
             raise InvariantViolation(msg, customer_id=str(customer_id))
         if lpg_subsidy_id is not None and not _LPG_SUBSIDY_ID_REGEX.match(lpg_subsidy_id):
             msg = f"LPG subsidy ID must be exactly 17 digits: {lpg_subsidy_id}"
             raise InvariantViolation(msg, customer_id=str(customer_id))
+        if customer_type == "commercial" and not contact_person:
+            msg = "Contact person is required for commercial customers."
+            raise InvariantViolation(msg, customer_id=str(customer_id))
 
-        self._consumer_number = consumer_number.strip()
+        self._consumer_number = consumer_number.strip() if consumer_number else None
         self._full_name = full_name.strip()
         self._phone_number = phone_number
         self._customer_type = customer_type
@@ -194,6 +250,10 @@ class Customer(AggregateRoot):
         self._addresses = list(addresses)
         self._kyc_documents = list(kyc_documents)
         self._identity_user_id = identity_user_id
+        self._contact_person = contact_person.strip() if contact_person else None
+        self._alternate_mobile = alternate_mobile
+        self._email = email.strip() if email else None
+        self._date_of_birth = date_of_birth
 
     @property
     def tenant_id(self) -> uuid.UUID:
@@ -204,7 +264,7 @@ class Customer(AggregateRoot):
         return self._branch_id
 
     @property
-    def consumer_number(self) -> str:
+    def consumer_number(self) -> str | None:
         return self._consumer_number
 
     @property
@@ -243,12 +303,30 @@ class Customer(AggregateRoot):
     def identity_user_id(self) -> uuid.UUID | None:
         return self._identity_user_id
 
+
+    @property
+    def contact_person(self) -> str | None:
+        return self._contact_person
+
+    @property
+    def alternate_mobile(self) -> str | None:
+        return self._alternate_mobile
+
+    @property
+    def email(self) -> str | None:
+        return self._email
+
+    @property
+    def date_of_birth(self) -> date | None:
+        return self._date_of_birth
+
+
     def link_identity_user(self, identity_user_id: uuid.UUID) -> None:
         """Associate this customer profile with an identity user account."""
         self._identity_user_id = identity_user_id
 
     def change_status(self, new_status: str) -> None:
-        if new_status not in ("active", "inactive", "blocked", "closed"):
+        if new_status not in ("onboarding", "pending_approval", "active", "inactive", "blocked", "closed"):
             msg = f"Invalid status: {new_status}"
             raise InvariantViolation(msg, customer_id=str(self.id))
 
@@ -268,7 +346,15 @@ class Customer(AggregateRoot):
 
     def add_address(
         self,
-        address_line: str,
+        line_1: str,
+        address_type: str = "delivery",
+        line_2: str | None = None,
+        landmark: str | None = None,
+        area: str | None = None,
+        city: str | None = None,
+        district: str | None = None,
+        state: str | None = None,
+        pincode: str | None = None,
         latitude: float | None = None,
         longitude: float | None = None,
     ) -> uuid.UUID:
@@ -276,14 +362,22 @@ class Customer(AggregateRoot):
         is_first = len(self._addresses) == 0
         addr = CustomerAddress(
             address_id=address_id,
-            address_line=address_line,
+            line_1=line_1,
+            address_type=address_type,
+            line_2=line_2,
+            landmark=landmark,
+            area=area,
+            city=city,
+            district=district,
+            state=state,
+            pincode=pincode,
             latitude=latitude,
             longitude=longitude,
             is_primary=is_first,
         )
         self._addresses.append(addr)
         self.record_event(
-            AddressAdded(customer_id=self.id, address_id=address_id, address_line=address_line)
+            AddressAdded(customer_id=self.id, address_id=address_id, address_line=line_1)
         )
         return address_id
 
@@ -298,12 +392,22 @@ class Customer(AggregateRoot):
 
         self.record_event(PrimaryAddressSet(customer_id=self.id, address_id=address_id))
 
-    def submit_kyc(self, doc_type: str, doc_reference: str) -> uuid.UUID:
+    def submit_kyc(
+        self,
+        doc_type: str,
+        document_number: str,
+        file_url: str | None = None,
+        issue_date: date | None = None,
+        expiry_date: date | None = None,
+    ) -> uuid.UUID:
         doc_id = uuid.uuid4()
         doc = KycDocument(
             document_id=doc_id,
             doc_type=doc_type,
-            doc_reference=doc_reference,
+            document_number=document_number,
+            file_url=file_url,
+            issue_date=issue_date,
+            expiry_date=expiry_date,
             verification_status="pending",
         )
         self._kyc_documents.append(doc)
@@ -313,16 +417,19 @@ class Customer(AggregateRoot):
         )
         return doc_id
 
-    def verify_kyc(self, doc_id: uuid.UUID, verified_by: uuid.UUID, status: str) -> None:
+    def verify_kyc(self, doc_id: uuid.UUID, verified_by: uuid.UUID, status: str, rejection_reason: str | None = None) -> None:
         target = next((d for d in self._kyc_documents if d.id == doc_id), None)
         if not target:
             msg = f"KYC document {doc_id} not found."
             raise InvariantViolation(msg, customer_id=str(self.id))
 
-        target.verify(verified_by, status)
+        target.verify(verified_by, status, rejection_reason)
 
         # Recalculate aggregate KYC status based on current documents status
         if status == "verified":
+            # Check if all required docs are verified? For now just set verified if this one is,
+            # but ideally we check if *all* are verified. Let's keep existing logic.
+            # (Approval use-case will do the thorough check).
             self._kyc_status = "verified"
         else:
             self._kyc_status = "rejected"
@@ -335,3 +442,24 @@ class Customer(AggregateRoot):
                 status=status,
             )
         )
+
+    def approve(self, approved_by: uuid.UUID, consumer_number: str) -> None:
+        if self._status not in ("onboarding", "pending_approval"):
+            msg = f"Cannot approve customer in status {self._status}"
+            raise InvariantViolation(msg, customer_id=str(self.id))
+            
+        if not consumer_number.strip():
+            msg = "Consumer number must be provided on approval."
+            raise InvariantViolation(msg, customer_id=str(self.id))
+            
+        self._consumer_number = consumer_number.strip()
+        self._status = "active"
+        
+        self.record_event(
+            CustomerApproved(
+                customer_id=self.id,
+                approved_by=approved_by,
+                consumer_number=self._consumer_number
+            )
+        )
+

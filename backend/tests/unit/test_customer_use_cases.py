@@ -49,7 +49,8 @@ async def test_register_customer_success(mock_repo, mock_uow):
         full_name="Jane Doe",
         phone_number="+1234567890",
         customer_type="commercial",
-        address_line="123 Road",
+            contact_person="Manager",
+        line_1="123 Road",
     )
 
     customer = await use_case.execute(command)
@@ -57,7 +58,7 @@ async def test_register_customer_success(mock_repo, mock_uow):
     assert customer.full_name == "Jane Doe"
     assert customer.customer_type == "commercial"
     assert len(customer.addresses) == 1
-    assert customer.addresses[0].address_line == "123 Road"
+    assert customer.addresses[0].line_1 == "123 Road"
     mock_repo.save.assert_called_once_with(customer)
     mock_uow.commit.assert_called_once()
 
@@ -92,13 +93,13 @@ async def test_add_address(mock_repo, mock_uow):
 
     command = AddCustomerAddressCommand(
         customer_id=customer.id,
-        address_line="New Address St",
+        line_1="New Address St",
     )
 
     await use_case.execute(command)
 
     assert len(customer.addresses) == 1
-    assert customer.addresses[0].address_line == "New Address St"
+    assert customer.addresses[0].line_1 == "New Address St"
     mock_repo.save.assert_called_once_with(customer)
     mock_uow.commit.assert_called_once()
 
@@ -118,7 +119,7 @@ async def test_submit_kyc(mock_repo, mock_uow):
     command = SubmitKycDocumentCommand(
         customer_id=customer.id,
         doc_type="voter_id",
-        doc_reference="VOTER-REF",
+        document_number="VOTER-REF",
     )
 
     doc_id = await use_case.execute(command)
@@ -137,7 +138,7 @@ async def test_verify_kyc(mock_repo, mock_uow):
         full_name="Jane Doe",
         phone_number="+1234567890",
     )
-    doc_id = customer.submit_kyc("pan", "PAN-REF")
+    doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
     mock_repo.get_by_id.return_value = customer
     use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow)
 

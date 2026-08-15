@@ -97,14 +97,12 @@ export class FeatureCustomers implements OnInit {
 
   // Modals Visibility Signals
   protected readonly showDetailDrawer = signal(false);
-  protected readonly showRegisterModal = signal(false);
   protected readonly showAddAddressModal = signal(false);
   protected readonly showSubmitKycModal = signal(false);
 
   // PrimeNG's Dialog has no built-in "return focus to trigger" behaviour —
   // matches `apps/dashboard/src/app/home/home.ts`'s documented pattern.
-  protected readonly registerTrigger =
-    viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
+  // matches `apps/dashboard/src/app/home/home.ts`'s documented pattern.
   protected readonly addAddressTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('addAddressTriggerEl');
   protected readonly submitKycTrigger =
@@ -143,17 +141,6 @@ export class FeatureCustomers implements OnInit {
   ];
 
   // Forms
-  protected readonly registerForm = this.fb.group({
-    consumer_number: ['', [Validators.required]],
-    full_name: ['', [Validators.required]],
-    phone_number: ['', [Validators.required, Validators.pattern(/^\+[1-9]\d{9,14}$/)]],
-    customer_type: ['domestic', [Validators.required]],
-    branch_id: ['', [Validators.required]],
-    address_line: ['', [Validators.required]],
-    // The nationally-standardized 17-digit LPG ID (Indane/Bharat Gas/HP Gas
-    // subsidy/KYC identifier) — optional, distinct from consumer_number.
-    lpg_subsidy_id: ['', [Validators.pattern(/^\d{17}$/)]],
-  });
 
   protected readonly addressForm = this.fb.group({
     address_line: ['', [Validators.required]],
@@ -167,12 +154,6 @@ export class FeatureCustomers implements OnInit {
   // p-dialog/p-drawer's [(visible)] two-way-binds to a plain property, not a signal
   // directly — thin getter/setter bridges keep the rest of the component
   // signal-first (ADR-019), matching `apps/dashboard/src/app/home/home.ts`.
-  protected get registerModalVisible(): boolean {
-    return this.showRegisterModal();
-  }
-  protected set registerModalVisible(value: boolean) {
-    this.showRegisterModal.set(value);
-  }
 
   protected get addAddressModalVisible(): boolean {
     return this.showAddAddressModal();
@@ -193,15 +174,12 @@ export class FeatureCustomers implements OnInit {
     this.loadBranches();
     
     
-    // Register global shortcuts for this view
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'c',
       alt: true,
       description: 'Register new customer',
       handler: () => {
-        if (!this.showRegisterModal()) {
-          this.openRegisterModal();
-        }
+        // Navigate or do nothing
       }
     });
     
@@ -273,51 +251,7 @@ export class FeatureCustomers implements OnInit {
     this.showDetailDrawer.set(true);
   }
 
-  // Register Customer Actions
-  protected openRegisterModal(): void {
-    this.registerForm.reset({
-      customer_type: 'domestic',
-    });
-    this.showRegisterModal.set(true);
 
-    // Pre-fill a suggested Consumer Number — the field stays editable, since
-    // onboarding an existing customer may need their pre-existing/legacy
-    // number instead (`docs/data/06-data-dictionary.md`'s "tenant-defined
-    // format" note).
-    this.customerService.peekNextConsumerNumber().subscribe({
-      next: (res) => this.registerForm.patchValue({ consumer_number: res.consumer_number }),
-      // No suggestion available (e.g. permission edge case) — the field is
-      // still a plain, freely-editable text input, so staff can just type one.
-      error: () => undefined,
-    });
-  }
-
-  protected closeRegisterModal(): void {
-    this.showRegisterModal.set(false);
-  }
-
-  /** Field-level invalid state for the `[invalid]`/error-text convention. */
-  protected isInvalid(control: { invalid: boolean; touched: boolean }): boolean {
-    return control.invalid && control.touched;
-  }
-
-  protected submitRegister(): void {
-    if (this.registerForm.invalid) {
-      this.registerForm.markAllAsTouched();
-      return;
-    }
-    const { lpg_subsidy_id, ...rest } = this.registerForm.getRawValue();
-    this.customerService.register({ ...rest, lpg_subsidy_id: lpg_subsidy_id || null }).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Customer registered successfully.' });
-        this.closeRegisterModal();
-        this.reloadList();
-      },
-      error: (error: unknown) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
-    });
-  }
 
   // Address Actions
   protected openAddAddressModal(): void {

@@ -70,7 +70,7 @@ class RedisSubscriber:
             except Exception:
                 _logger.exception("redis_subscriber_error")
                 if not self._running:
-                    return
+                    return  # type: ignore[unreachable]
                 _logger.info("redis_subscriber_reconnecting", backoff_seconds=backoff)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * _BACKOFF_FACTOR, _MAX_BACKOFF_S)
@@ -79,11 +79,11 @@ class RedisSubscriber:
         """Subscribe to tenant:* pattern and process incoming messages."""
         pubsub = self._redis.client.pubsub()
         try:
-            await pubsub.psubscribe("tenant:*")  # type: ignore[no-untyped-call]
+            await pubsub.psubscribe("tenant:*")  
             _logger.info("redis_subscribed", pattern="tenant:*")
 
             while self._running:
-                message = await pubsub.get_message(  # type: ignore[no-untyped-call]
+                message = await pubsub.get_message(  
                     ignore_subscribe_messages=True,
                     timeout=1.0,
                 )
@@ -100,5 +100,5 @@ class RedisSubscriber:
 
                     await self._manager.broadcast(channel, data)
         finally:
-            await pubsub.punsubscribe("tenant:*")  # type: ignore[no-untyped-call]
-            await pubsub.aclose()
+            await pubsub.punsubscribe("tenant:*")  
+            await pubsub.aclose()  # type: ignore[no-untyped-call]

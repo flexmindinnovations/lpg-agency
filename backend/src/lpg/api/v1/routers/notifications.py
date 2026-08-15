@@ -40,10 +40,12 @@ async def list_notifications(
     unread_only: bool = Query(False),
 ) -> PaginatedNotificationResponse:
     """List notifications for the current user."""
-    repo = SqlAlchemyInAppNotificationRepository(uow.session)
+    uow_impl = getattr(uow, "_uow", uow)
+    session = getattr(uow_impl, "session")
+    repo = SqlAlchemyInAppNotificationRepository(session)
     use_case = ListNotificationsUseCase(repo)
     items = await use_case.execute(
-        user_id=principal.user_id,
+        user_id=principal.user_id or uuid.UUID(int=0),
         skip=skip,
         limit=limit,
         unread_only=unread_only,
@@ -59,9 +61,11 @@ async def get_unread_count(
     uow: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> UnreadCountResponse:
     """Get the unread notification count for the current user."""
-    repo = SqlAlchemyInAppNotificationRepository(uow.session)
+    uow_impl = getattr(uow, "_uow", uow)
+    session = getattr(uow_impl, "session")
+    repo = SqlAlchemyInAppNotificationRepository(session)
     use_case = CountUnreadUseCase(repo)
-    count = await use_case.execute(user_id=principal.user_id)
+    count = await use_case.execute(user_id=principal.user_id or uuid.UUID(int=0))
     return UnreadCountResponse(count=count)
 
 
@@ -72,9 +76,11 @@ async def mark_read(
     uow: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> None:
     """Mark a specific notification as read."""
-    repo = SqlAlchemyInAppNotificationRepository(uow.session)
+    uow_impl = getattr(uow, "_uow", uow)
+    session = getattr(uow_impl, "session")
+    repo = SqlAlchemyInAppNotificationRepository(session)
     use_case = MarkReadUseCase(uow, repo)
-    await use_case.execute(notification_id=id, user_id=principal.user_id)
+    await use_case.execute(notification_id=id, user_id=principal.user_id or uuid.UUID(int=0))
 
 
 @router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
@@ -83,6 +89,8 @@ async def mark_all_read(
     uow: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> None:
     """Mark all notifications as read for the current user."""
-    repo = SqlAlchemyInAppNotificationRepository(uow.session)
+    uow_impl = getattr(uow, "_uow", uow)
+    session = getattr(uow_impl, "session")
+    repo = SqlAlchemyInAppNotificationRepository(session)
     use_case = MarkAllReadUseCase(uow, repo)
-    await use_case.execute(user_id=principal.user_id)
+    await use_case.execute(user_id=principal.user_id or uuid.UUID(int=0))

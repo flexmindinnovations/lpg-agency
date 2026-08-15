@@ -9,15 +9,13 @@
     </ng-template>
       <ng-template lpgHeaderPortal>
   <div class="page-header__actions">
-          <button
-            #registerTriggerEl
+          <a
             pButton
-            type="button"
-            (click)="openRegisterModal()"
+            routerLink="new"
           >
             <i pButtonIcon class="pi pi-plus"></i>
             <span pButtonLabel>Register Customer <kbd class="ml-1 text-xs opacity-70">Alt+C</kbd></span>
-          </button>
+          </a>
         </div>
 </ng-template>
     </div>
@@ -231,133 +229,7 @@
   </div>
 </p-drawer>
 
-<!-- Drawer: Register Customer -->
-<p-drawer
-  header="Register Customer"
-  [(visible)]="registerModalVisible"
-  position="right"
-  [modal]="true"
-  styleClass="w-full"
-  [style]="{ width: '100%', maxWidth: '36rem' }"
-  [closeOnEscape]="true"
-  closeAriaLabel="Close dialog"
-  (onHide)="registerTrigger()?.nativeElement?.focus()"
->
-  <form id="registerCustomerForm" [formGroup]="registerForm" (ngSubmit)="submitRegister()" class="dialog-form" novalidate>
-    <div class="form-group">
-      <label for="reg-consumer">Consumer Number</label>
-      <input
-        pInputText
-        id="reg-consumer"
-        formControlName="consumer_number"
-        placeholder="e.g. CN-10001"
-        [invalid]="isInvalid(registerForm.controls.consumer_number)"
-        aria-describedby="reg-consumer-error"
-      />
-      @if (isInvalid(registerForm.controls.consumer_number)) {
-      <span id="reg-consumer-error" class="field-error">Consumer Number is required.</span>
-      }
-      <span class="field-hint"
-        >Auto-suggested — edit this if the customer already has an existing Consumer Number.</span
-      >
-    </div>
-    <div class="form-group">
-      <label for="reg-name">Full Name</label>
-      <input
-        pInputText
-        id="reg-name"
-        formControlName="full_name"
-        placeholder="e.g. Ramesh Patil"
-        [invalid]="isInvalid(registerForm.controls.full_name)"
-        aria-describedby="reg-name-error"
-      />
-      @if (isInvalid(registerForm.controls.full_name)) {
-      <span id="reg-name-error" class="field-error">Full Name is required.</span>
-      }
-    </div>
-    <div class="form-group">
-      <label for="reg-phone">Phone Number</label>
-      <input
-        pInputText
-        id="reg-phone"
-        formControlName="phone_number"
-        placeholder="e.g. +919876543210"
-        [invalid]="isInvalid(registerForm.controls.phone_number)"
-        aria-describedby="reg-phone-error"
-      />
-      @if (isInvalid(registerForm.controls.phone_number)) {
-      <span id="reg-phone-error" class="field-error"
-        >Enter a valid phone number in E.164 format (e.g. +919876543210).</span
-      >
-      }
-    </div>
-    <div class="form-group">
-      <label for="reg-type">Customer Type</label>
-      <p-select
-        id="reg-type"
-        formControlName="customer_type"
-        [options]="customerTypeOptions"
-        optionLabel="label"
-        optionValue="value"
-      />
-    </div>
-    <div class="form-group">
-      <label for="reg-branch">Operating Branch</label>
-      <p-select
-        id="reg-branch"
-        formControlName="branch_id"
-        [options]="branches()"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="Select Branch"
-        [invalid]="isInvalid(registerForm.controls.branch_id)"
-        aria-describedby="reg-branch-error"
-      />
-      @if (isInvalid(registerForm.controls.branch_id)) {
-      <span id="reg-branch-error" class="field-error">Select an operating branch.</span>
-      }
-    </div>
-    <div class="form-group">
-      <label for="reg-addr">Initial Delivery Address</label>
-      <input
-        pInputText
-        id="reg-addr"
-        formControlName="address_line"
-        placeholder="e.g. 123 Main Rd"
-        [invalid]="isInvalid(registerForm.controls.address_line)"
-        aria-describedby="reg-addr-error"
-      />
-      @if (isInvalid(registerForm.controls.address_line)) {
-      <span id="reg-addr-error" class="field-error">Delivery address is required.</span>
-      }
-    </div>
-    <div class="form-group">
-      <label for="reg-lpg-id">LPG ID (17-digit, optional)</label>
-      <input
-        pInputText
-        id="reg-lpg-id"
-        formControlName="lpg_subsidy_id"
-        placeholder="e.g. 12345678901234567"
-        maxlength="17"
-        [invalid]="isInvalid(registerForm.controls.lpg_subsidy_id)"
-        aria-describedby="reg-lpg-id-error"
-      />
-      @if (isInvalid(registerForm.controls.lpg_subsidy_id)) {
-      <span id="reg-lpg-id-error" class="field-error">Must be exactly 17 digits.</span>
-      }
-      <span class="field-hint"
-        >The nationally-standardized subsidy/KYC ID (Indane/Bharat Gas/HP Gas) — different from the
-        Consumer Number above.</span
-      >
-    </div>
-    <div class="modal-actions">
-      <button pButton type="button" severity="secondary" (click)="closeRegisterModal()">
-        Cancel
-      </button>
-      <button pButton type="submit" [disabled]="registerForm.invalid">Register</button>
-    </div>
-  </form>
-</p-drawer>
+
 
 <!-- Modal 2: Add Address -->
 <p-drawer

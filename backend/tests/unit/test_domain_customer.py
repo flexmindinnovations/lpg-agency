@@ -29,7 +29,7 @@ def test_customer_creation_valid():
     assert customer.phone_number == "+1234567890"
     assert customer.customer_type == "domestic"
     assert customer.kyc_status == "pending"
-    assert customer.status == "active"
+    assert customer.status == "onboarding"
 
 
 def test_customer_creation_invalid_phone():
@@ -68,10 +68,10 @@ def test_customer_add_address():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    addr_id = customer.add_address("123 Main St", 12.34, 56.78)
+    addr_id = customer.add_address("123 Main St", latitude=12.34, longitude=56.78)
     assert len(customer.addresses) == 1
     assert customer.addresses[0].id == addr_id
-    assert customer.addresses[0].address_line == "123 Main St"
+    assert customer.addresses[0].line_1 == "123 Main St"
     assert customer.addresses[0].is_primary is True  # first address is automatically primary
 
     addr_id_2 = customer.add_address("456 Oak Ave")

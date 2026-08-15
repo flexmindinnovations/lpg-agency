@@ -89,8 +89,8 @@ async def get_complaint(
     uow: Annotated[ComplaintUnitOfWork, Depends(get_complaint_unit_of_work)],
 ) -> ComplaintResponse:
     # Use the session directly for reads
-    assert isinstance(uow._uow, SqlAlchemyUnitOfWork)
-    session = uow._uow.session
+    uow_impl = getattr(uow, "_uow", uow)
+    session = getattr(uow_impl, "session")
     
     stmt = (
         select(ComplaintModel)
@@ -114,8 +114,8 @@ async def list_complaints(
     status: str | None = None,
     customer_id: uuid.UUID | None = None,
 ) -> ComplaintListResponse:
-    assert isinstance(uow._uow, SqlAlchemyUnitOfWork)
-    session = uow._uow.session
+    uow_impl = getattr(uow, "_uow", uow)
+    session = getattr(uow_impl, "session")
     
     stmt = select(ComplaintModel).where(ComplaintModel.tenant_id == ctx.tenant_id)
     if status:

@@ -13,6 +13,7 @@ from lpg.domain.complaint.value_objects import (
 
 @dataclass
 class ComplaintAssignment(Entity):
+    entity_id: uuid.UUID
     tenant_id: uuid.UUID
     complaint_id: uuid.UUID
     assigned_to: uuid.UUID
@@ -22,6 +23,7 @@ class ComplaintAssignment(Entity):
 
 @dataclass
 class ComplaintResolution(Entity):
+    entity_id: uuid.UUID
     tenant_id: uuid.UUID
     complaint_id: uuid.UUID
     outcome: ResolutionOutcome

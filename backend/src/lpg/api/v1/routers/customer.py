@@ -22,6 +22,7 @@ from lpg.api.v1.schemas.customer import (
     SubmitKycDocumentRequest,
     UpdateCustomerProfileRequest,
     VerifyKycDocumentRequest,
+    ApproveCustomerRequest,
 )
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
@@ -44,6 +45,8 @@ from lpg.application.customer.use_cases import (
     UpdateCustomerProfileUseCase,
     VerifyKycDocumentCommand,
     VerifyKycDocumentUseCase,
+    ApproveCustomerCommand,
+    ApproveCustomerUseCase,
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
 
@@ -82,9 +85,21 @@ async def register_customer(
             consumer_number=request.consumer_number,
             full_name=request.full_name,
             phone_number=request.phone_number,
+            contact_person=request.contact_person,
+            alternate_mobile=request.alternate_mobile,
+            email=request.email,
+            date_of_birth=request.date_of_birth,
             customer_type=request.customer_type,
             lpg_subsidy_id=request.lpg_subsidy_id,
-            address_line=request.address_line,
+            line_1=request.line_1,
+            line_2=request.line_2,
+            landmark=request.landmark,
+            area=request.area,
+            city=request.city,
+            district=request.district,
+            state=request.state,
+            pincode=request.pincode,
+            address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
             longitude=float(request.longitude) if request.longitude is not None else None,
         )
@@ -146,6 +161,10 @@ async def update_customer_profile(
             branch_id=request.branch_id,
             full_name=request.full_name,
             phone_number=request.phone_number,
+            contact_person=request.contact_person,
+            alternate_mobile=request.alternate_mobile,
+            email=request.email,
+            date_of_birth=request.date_of_birth,
             customer_type=request.customer_type,
             status=request.status,
             lpg_subsidy_id=request.lpg_subsidy_id,
@@ -169,7 +188,15 @@ async def add_address(
     return await use_case.execute(
         AddCustomerAddressCommand(
             customer_id=customer_id,
-            address_line=request.address_line,
+            line_1=request.line_1,
+            line_2=request.line_2,
+            landmark=request.landmark,
+            area=request.area,
+            city=request.city,
+            district=request.district,
+            state=request.state,
+            pincode=request.pincode,
+            address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
             longitude=float(request.longitude) if request.longitude is not None else None,
         )
@@ -225,7 +252,10 @@ async def submit_kyc(
         SubmitKycDocumentCommand(
             customer_id=customer_id,
             doc_type=request.doc_type,
-            doc_reference=request.doc_reference,
+            document_number=request.document_number,
+            file_url=request.file_url,
+            issue_date=request.issue_date,
+            expiry_date=request.expiry_date,
         )
     )
 
@@ -251,5 +281,30 @@ async def verify_kyc(
             doc_id=doc_id,
             verified_by=principal.user_id,
             status=request.status,
+            rejection_reason=request.rejection_reason,
+        )
+    )
+
+
+@router.post(
+    "/{customer_id}/approve",
+    dependencies=[Depends(require_permission("customers:manage"))],
+)
+async def approve_customer(
+    customer_id: uuid.UUID,
+    request: ApproveCustomerRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    sequence: Annotated[ConsumerNumberSequence, Depends(get_consumer_number_sequence)],
+    repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    use_case = ApproveCustomerUseCase(repository, sequence, unit_of_work)
+    await use_case.execute(
+        ApproveCustomerCommand(
+            customer_id=customer_id,
+            approved_by=principal.user_id,
+            consumer_number=request.consumer_number,
         )
     )

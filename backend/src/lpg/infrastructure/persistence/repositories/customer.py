@@ -33,7 +33,15 @@ class SqlAlchemyCustomerRepository:
         addresses = [
             CustomerAddress(
                 address_id=addr.id,
-                address_line=addr.address_line,
+                line_1=addr.line_1,
+                line_2=addr.line_2,
+                landmark=addr.landmark,
+                area=addr.area,
+                city=addr.city,
+                district=addr.district,
+                state=addr.state,
+                pincode=addr.pincode,
+                address_type=addr.address_type,
                 latitude=float(addr.latitude) if addr.latitude is not None else None,
                 longitude=float(addr.longitude) if addr.longitude is not None else None,
                 is_primary=addr.is_primary,
@@ -46,8 +54,12 @@ class SqlAlchemyCustomerRepository:
             KycDocument(
                 document_id=doc.id,
                 doc_type=doc.doc_type,
-                doc_reference=self._field_encryptor.decrypt(doc.doc_reference),
+                document_number=self._field_encryptor.decrypt(doc.document_number),
+                file_url=doc.file_url,
+                issue_date=doc.issue_date,
+                expiry_date=doc.expiry_date,
                 verification_status=doc.verification_status,
+                rejection_reason=doc.rejection_reason,
                 verified_by=doc.verified_by,
                 verified_at=doc.verified_at,
             )
@@ -205,7 +217,15 @@ class SqlAlchemyCustomerRepository:
         for addr_id, domain_addr in domain_addrs.items():
             if addr_id in existing_addrs:
                 existing_addr = existing_addrs[addr_id]
-                existing_addr.address_line = domain_addr.address_line
+                existing_addr.line_1 = domain_addr.line_1
+                existing_addr.line_2 = domain_addr.line_2
+                existing_addr.landmark = domain_addr.landmark
+                existing_addr.area = domain_addr.area
+                existing_addr.city = domain_addr.city
+                existing_addr.district = domain_addr.district
+                existing_addr.state = domain_addr.state
+                existing_addr.pincode = domain_addr.pincode
+                existing_addr.address_type = domain_addr.address_type
                 existing_addr.latitude = (
                     Decimal(str(domain_addr.latitude)) if domain_addr.latitude is not None else None
                 )
@@ -221,7 +241,15 @@ class SqlAlchemyCustomerRepository:
                     id=domain_addr.id,
                     tenant_id=customer.tenant_id,
                     customer_id=customer.id,
-                    address_line=domain_addr.address_line,
+                    line_1=domain_addr.line_1,
+                    line_2=domain_addr.line_2,
+                    landmark=domain_addr.landmark,
+                    area=domain_addr.area,
+                    city=domain_addr.city,
+                    district=domain_addr.district,
+                    state=domain_addr.state,
+                    pincode=domain_addr.pincode,
+                    address_type=domain_addr.address_type,
                     latitude=(
                         Decimal(str(domain_addr.latitude))
                         if domain_addr.latitude is not None
@@ -249,8 +277,12 @@ class SqlAlchemyCustomerRepository:
             if doc_id in existing_docs:
                 existing_doc = existing_docs[doc_id]
                 existing_doc.doc_type = domain_doc.doc_type
-                existing_doc.doc_reference = self._field_encryptor.encrypt(domain_doc.doc_reference)
+                existing_doc.document_number = self._field_encryptor.encrypt(domain_doc.document_number)
+                existing_doc.file_url = domain_doc.file_url
+                existing_doc.issue_date = domain_doc.issue_date
+                existing_doc.expiry_date = domain_doc.expiry_date
                 existing_doc.verification_status = domain_doc.verification_status
+                existing_doc.rejection_reason = domain_doc.rejection_reason
                 existing_doc.verified_by = domain_doc.verified_by
                 existing_doc.verified_at = domain_doc.verified_at
                 existing_doc.is_deleted = False
@@ -260,8 +292,12 @@ class SqlAlchemyCustomerRepository:
                     tenant_id=customer.tenant_id,
                     customer_id=customer.id,
                     doc_type=domain_doc.doc_type,
-                    doc_reference=self._field_encryptor.encrypt(domain_doc.doc_reference),
+                    document_number=self._field_encryptor.encrypt(domain_doc.document_number),
+                    file_url=domain_doc.file_url,
+                    issue_date=domain_doc.issue_date,
+                    expiry_date=domain_doc.expiry_date,
                     verification_status=domain_doc.verification_status,
+                    rejection_reason=domain_doc.rejection_reason,
                     verified_by=domain_doc.verified_by,
                     verified_at=domain_doc.verified_at,
                 )

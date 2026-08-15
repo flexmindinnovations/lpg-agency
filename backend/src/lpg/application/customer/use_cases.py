@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -23,12 +24,25 @@ if TYPE_CHECKING:
 class RegisterCustomerCommand(Command):
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
-    consumer_number: str
     full_name: str
     phone_number: str
+    consumer_number: str | None = None
+    contact_person: str | None = None
+    alternate_mobile: str | None = None
+    email: str | None = None
+    date_of_birth: datetime.date | None = None
     customer_type: str = "domestic"
     lpg_subsidy_id: str | None = None
-    address_line: str | None = None
+    
+    line_1: str | None = None
+    line_2: str | None = None
+    landmark: str | None = None
+    area: str | None = None
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    address_type: str | None = None
     latitude: float | None = None
     longitude: float | None = None
 
@@ -46,10 +60,11 @@ class RegisterCustomerUseCase:
             raise DuplicatePhoneError(msg, phone_number=command.phone_number)
 
         # Check uniqueness of consumer number (BR-22)
-        existing_cn = await self._repository.get_by_consumer_number(command.consumer_number)
-        if existing_cn is not None:
-            msg = f"Customer with consumer number {command.consumer_number} already exists."
-            raise DuplicateConsumerNumberError(msg, consumer_number=command.consumer_number)
+        if command.consumer_number:
+            existing_cn = await self._repository.get_by_consumer_number(command.consumer_number)
+            if existing_cn is not None:
+                msg = f"Customer with consumer number {command.consumer_number} already exists."
+                raise DuplicateConsumerNumberError(msg, consumer_number=command.consumer_number)
 
         # Check uniqueness of the LPG subsidy ID, if supplied
         if command.lpg_subsidy_id is not None:
@@ -65,13 +80,25 @@ class RegisterCustomerUseCase:
             consumer_number=command.consumer_number,
             full_name=command.full_name,
             phone_number=command.phone_number,
+            contact_person=command.contact_person,
+            alternate_mobile=command.alternate_mobile,
+            email=command.email,
+            date_of_birth=command.date_of_birth,
             customer_type=command.customer_type,
             lpg_subsidy_id=command.lpg_subsidy_id,
         )
 
-        if command.address_line:
+        if command.line_1:
             customer.add_address(
-                address_line=command.address_line,
+                line_1=command.line_1,
+                line_2=command.line_2,
+                landmark=command.landmark,
+                area=command.area,
+                city=command.city,
+                district=command.district,
+                state=command.state,
+                pincode=command.pincode,
+                address_type=command.address_type or "delivery",
                 latitude=command.latitude,
                 longitude=command.longitude,
             )
@@ -89,6 +116,10 @@ class UpdateCustomerProfileCommand(Command):
     phone_number: str
     customer_type: str
     status: str
+    contact_person: str | None = None
+    alternate_mobile: str | None = None
+    email: str | None = None
+    date_of_birth: datetime.date | None = None
     lpg_subsidy_id: str | None = None
 
 
@@ -125,6 +156,10 @@ class UpdateCustomerProfileUseCase:
             consumer_number=customer.consumer_number,
             full_name=command.full_name,
             phone_number=command.phone_number,
+            contact_person=command.contact_person,
+            alternate_mobile=command.alternate_mobile,
+            email=command.email,
+            date_of_birth=command.date_of_birth,
             customer_type=command.customer_type,
             kyc_status=customer.kyc_status,
             status=command.status,
@@ -143,7 +178,15 @@ class UpdateCustomerProfileUseCase:
 @dataclass(frozen=True, slots=True)
 class AddCustomerAddressCommand(Command):
     customer_id: uuid.UUID
-    address_line: str
+    line_1: str
+    line_2: str | None = None
+    landmark: str | None = None
+    area: str | None = None
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    address_type: str = "delivery"
     latitude: float | None = None
     longitude: float | None = None
 
@@ -160,7 +203,15 @@ class AddCustomerAddressUseCase:
             raise NotFoundError(msg, customer_id=str(command.customer_id))
 
         addr_id = customer.add_address(
-            address_line=command.address_line,
+            line_1=command.line_1,
+            line_2=command.line_2,
+            landmark=command.landmark,
+            area=command.area,
+            city=command.city,
+            district=command.district,
+            state=command.state,
+            pincode=command.pincode,
+            address_type=command.address_type,
             latitude=command.latitude,
             longitude=command.longitude,
         )
@@ -197,7 +248,10 @@ class SetPrimaryAddressUseCase:
 class SubmitKycDocumentCommand(Command):
     customer_id: uuid.UUID
     doc_type: str
-    doc_reference: str
+    document_number: str
+    file_url: str | None = None
+    issue_date: datetime.date | None = None
+    expiry_date: datetime.date | None = None
 
 
 class SubmitKycDocumentUseCase:
@@ -213,7 +267,10 @@ class SubmitKycDocumentUseCase:
 
         doc_id = customer.submit_kyc(
             doc_type=command.doc_type,
-            doc_reference=command.doc_reference,
+            document_number=command.document_number,
+            file_url=command.file_url,
+            issue_date=command.issue_date,
+            expiry_date=command.expiry_date,
         )
 
         await self._repository.save(customer)
@@ -227,6 +284,7 @@ class VerifyKycDocumentCommand(Command):
     doc_id: uuid.UUID
     verified_by: uuid.UUID
     status: str
+    rejection_reason: str | None = None
 
 
 class VerifyKycDocumentUseCase:
@@ -244,7 +302,43 @@ class VerifyKycDocumentUseCase:
             doc_id=command.doc_id,
             verified_by=command.verified_by,
             status=command.status,
+            rejection_reason=command.rejection_reason,
         )
+
+        await self._repository.save(customer)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class ApproveCustomerCommand(Command):
+    customer_id: uuid.UUID
+    approved_by: uuid.UUID
+    consumer_number: str | None = None
+
+
+class ApproveCustomerUseCase:
+    def __init__(self, repository: CustomerRepository, sequence: ConsumerNumberSequence, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._sequence = sequence
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ApproveCustomerCommand) -> None:
+        customer = await self._repository.get_by_id(command.customer_id)
+        if customer is None:
+            msg = f"No customer visible with id {command.customer_id}."
+            raise NotFoundError(msg, customer_id=str(command.customer_id))
+        
+        consumer_number = command.consumer_number
+        if not consumer_number:
+            consumer_number = await self._sequence.next()
+
+        # Check uniqueness of consumer number (BR-22)
+        existing_cn = await self._repository.get_by_consumer_number(consumer_number)
+        if existing_cn is not None and existing_cn.id != customer.id:
+            msg = f"Customer with consumer number {consumer_number} already exists."
+            raise DuplicateConsumerNumberError(msg, consumer_number=consumer_number)
+
+        customer.approve(approved_by=command.approved_by, consumer_number=consumer_number)
 
         await self._repository.save(customer)
         await self._unit_of_work.commit()

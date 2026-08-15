@@ -18,17 +18,17 @@ class _ComplaintUnitOfWorkWrapper:
         assert isinstance(self._uow, SqlAlchemyUnitOfWork)
         return SqlAlchemyComplaintRepository(self._uow.session)
         
-    async def __aenter__(self):
+    async def __aenter__(self) -> "_ComplaintUnitOfWorkWrapper":
         await self._uow.__aenter__()
         return self
         
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         await self._uow.__aexit__(exc_type, exc_val, exc_tb)
         
-    async def commit(self):
+    async def commit(self) -> None:
         await self._uow.commit()
         
-    async def rollback(self):
+    async def rollback(self) -> None:
         await self._uow.rollback()
 
 def get_complaint_unit_of_work(
