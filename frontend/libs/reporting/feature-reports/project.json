@@ -2,9 +2,9 @@
   "name": "reporting-feature-reports",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/reporting/feature-reports/src",
-  "prefix": "lib",
+  "prefix": "lpg",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:feature", "scope:reporting"],
   "targets": {
     "test": {
       "executor": "@nx/jest:jest",

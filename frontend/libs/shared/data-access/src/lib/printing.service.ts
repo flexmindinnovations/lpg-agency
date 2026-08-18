@@ -3,17 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 
-export interface PrintJobRequest {
-  document_type: string;
-  document_id: string;
-  format: 'pdf' | 'thermal';
-}
-
-export interface PrintJobResponse {
-  download_url: string;
-  format: string;
-  content_type: string;
-}
+import { PrintJobRequest, PrintJobResponse } from './generated/models';
 
 @Injectable({ providedIn: 'root' })
 export class PrintingService {

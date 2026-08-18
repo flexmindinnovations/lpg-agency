@@ -128,7 +128,7 @@ export class OrderService {
       // The generated model types `file` as `string` — ng-openapi-gen's
       // known quirk for `binary`-format multipart fields; `RequestBuilder.
       // formDataValue()` passes a `Blob`/`File` through untouched at runtime.
-      body: { file: file as unknown as string },
+      body: { file: file as unknown as Blob },
     }).pipe(map((res) => res.body));
   }
 

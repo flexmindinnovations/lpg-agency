@@ -6,6 +6,9 @@ import { deactivateStaffUserApiV1AdminUsersUserIdDeactivatePatch } from './gener
 import { inviteStaffUserApiV1AdminUsersPost } from './generated/fn/administration/invite-staff-user-api-v-1-admin-users-post';
 import { listStaffUsersApiV1AdminUsersGet } from './generated/fn/administration/list-staff-users-api-v-1-admin-users-get';
 import { reassignRoleApiV1AdminUsersUserIdRolePatch } from './generated/fn/administration/reassign-role-api-v-1-admin-users-user-id-role-patch';
+import { getUserPermissionsApiV1AdminUsersUserIdPermissionsGet } from './generated/fn/administration/get-user-permissions-api-v-1-admin-users-user-id-permissions-get';
+import { updateUserPermissionsApiV1AdminUsersUserIdPermissionsPut } from './generated/fn/administration/update-user-permissions-api-v-1-admin-users-user-id-permissions-put';
+import { listPermissionsApiV1AdminPermissionsGet } from './generated/fn/administration/list-permissions-api-v-1-admin-permissions-get';
 import type { StaffUserResponse } from './generated/models/staff-user-response';
 
 /** Thin wrapper over the generated `/admin/users` client functions. */
@@ -40,6 +43,25 @@ export class AdminStaffUserService {
     return reassignRoleApiV1AdminUsersUserIdRolePatch(this.http, this.config.rootUrl, {
       user_id: userId,
       body: { new_role: newRole },
+    }).pipe(map(() => undefined));
+  }
+
+  listPermissions(): Observable<string[]> {
+    return listPermissionsApiV1AdminPermissionsGet(this.http, this.config.rootUrl).pipe(
+      map((response) => response.body),
+    );
+  }
+
+  getUserPermissions(userId: string): Observable<string[]> {
+    return getUserPermissionsApiV1AdminUsersUserIdPermissionsGet(this.http, this.config.rootUrl, {
+      user_id: userId,
+    }).pipe(map((response) => response.body));
+  }
+
+  updateUserPermissions(userId: string, permissionCodes: string[]): Observable<void> {
+    return updateUserPermissionsApiV1AdminUsersUserIdPermissionsPut(this.http, this.config.rootUrl, {
+      user_id: userId,
+      body: { permission_codes: permissionCodes },
     }).pipe(map(() => undefined));
   }
 }

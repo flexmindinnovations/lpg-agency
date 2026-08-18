@@ -7,7 +7,7 @@
 
 <ng-template lpgHeaderPortal>
   <div class="page-header__actions">
-    <button
+    <button *lpgHasPermission="'complaints:create'"
       #registerTriggerEl
       pButton
       type="button"
@@ -132,6 +132,7 @@
     @if (selectedComplaint(); as complaint) {
       <div class="drawer-actions">
         <button
+          *lpgHasPermission="'complaints:assign'"
           pButton
           class="p-button-outlined"
           icon="pi pi-user-plus"
@@ -139,6 +140,7 @@
           (click)="openAssignModal()"
         >Assign</button>
         <button
+          *lpgHasPermission="'complaints:resolve'"
           pButton
           icon="pi pi-check"
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"

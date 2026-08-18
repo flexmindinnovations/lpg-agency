@@ -6,10 +6,8 @@ export interface AuditLogEntryResponse {
   actor_display_name: (string | null);
   actor_id: (string | null);
   after_state: ({
-[key: string]: any;
 } | null);
   before_state: ({
-[key: string]: any;
 } | null);
   correlation_id: (string | null);
   entity_display_name: (string | null);

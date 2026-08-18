@@ -10,6 +10,7 @@
   <div class="page-header__actions">
         @if (locationType() === 'warehouse') {
         <button
+          *lpgHasPermission="'inventory:adjust'"
           #grnTriggerEl
           pButton
           type="button"
@@ -21,6 +22,7 @@
         </button>
         }
         <button
+          *lpgHasPermission="'inventory:load'"
           #transferTriggerEl
           pButton
           type="button"
@@ -32,6 +34,7 @@
         </button>
         @if (locationType() === 'vehicle') {
         <button
+          *lpgHasPermission="'inventory:load'"
           #deliveryCollectionTriggerEl
           pButton
           type="button"
@@ -44,6 +47,7 @@
         </button>
         }
         <button
+          *lpgHasPermission="'inventory:adjust'"
           #statusChangeTriggerEl
           pButton
           type="button"
@@ -55,6 +59,7 @@
           <span pButtonLabel>Change Status</span>
         </button>
         <button
+          *lpgHasPermission="'inventory:adjust'"
           #adjustTriggerEl
           pButton
           type="button"
@@ -65,6 +70,7 @@
           <i pButtonIcon class="pi pi-pencil"></i>
           <span pButtonLabel>Adjust</span>
         </button>
+        @if (hasReconcileOrAdjust()) {
         <button
           #reconcileTriggerEl
           pButton
@@ -76,6 +82,7 @@
           <i pButtonIcon class="pi pi-check-square"></i>
           <span pButtonLabel>Reconcile</span>
         </button>
+        }
       </div>
 </ng-template>
   </div>

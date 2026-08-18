@@ -10,7 +10,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -21,8 +21,8 @@ import { Message } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import {
-  DeliveryService,
   AdminBranchService,
+  DeliveryService,
   type AppError,
   type BranchResponse,
   type VehicleResponse,
@@ -58,6 +58,7 @@ function errorMessageFor(error: unknown): string {
     Message,
     Select,
     DataGridComponent,
+    HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-vehicles.html',

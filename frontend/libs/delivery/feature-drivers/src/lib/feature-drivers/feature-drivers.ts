@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
@@ -61,6 +61,7 @@ function errorMessageFor(error: unknown): string {
     Select,
     DatePicker,
     DataGridComponent,
+    HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-drivers.html',

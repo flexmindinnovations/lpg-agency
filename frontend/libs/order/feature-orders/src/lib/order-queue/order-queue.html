@@ -7,13 +7,13 @@
     </div>
     </ng-template>
     <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-        <button #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
+      <div class="page-header__actions">
+        <button *lpgHasPermission="'orders:create'" #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
           <i pButtonIcon class="pi pi-plus"></i>
           <span pButtonLabel>New Booking</span>
         </button>
       </div>
-</ng-template>
+    </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {

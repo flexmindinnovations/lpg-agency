@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router, RouterOutlet } from '@angular/router';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
 import { AuthService, AuthTokenStore } from '@lpg/shared/data-access';
-import { Toast } from 'primeng/toast';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { NotificationBell } from '@lpg/notification/ui-bell';
 import { NotificationDrawer } from '@lpg/notification/ui-drawer';
 
@@ -26,7 +27,7 @@ import { NotificationDrawer } from '@lpg/notification/ui-drawer';
 @Component({
   selector: 'lpg-shell-layout',
   standalone: true,
-  imports: [RouterOutlet, AppShellComponent, Toast, NotificationBell, NotificationDrawer],
+  imports: [RouterOutlet, AppShellComponent, ToastModule, ConfirmDialogModule, NotificationBell, NotificationDrawer],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-app-shell
@@ -41,6 +42,7 @@ import { NotificationDrawer } from '@lpg/notification/ui-drawer';
     </lpg-app-shell>
     <lpg-notification-drawer [(visible)]="isDrawerVisible" />
     <p-toast position="bottom-right" />
+    <p-confirmdialog />
   `,
 })
 export class ShellLayout {
@@ -64,57 +66,43 @@ export class ShellLayout {
     const permissions = this.tokenStore.principal()?.permissions;
     const can = (code: string) => permissions?.has(code) ?? false;
 
+    const buildGroup = (label: string, items: (any & { condition?: boolean })[]) => {
+      const filtered = items.filter((i) => i.condition !== false);
+      return filtered.length > 0
+        ? [{ label, items: filtered.map(({ condition, ...rest }) => rest) }]
+        : [];
+    };
+
     return [
-      {
-        label: 'Overview',
-        items: [
-          { label: 'Dashboard', icon: 'pi pi-home', route: '/', exact: true },
-          { label: 'Reports', icon: 'pi pi-chart-bar', route: '/reports' }
-        ],
-      },
-      {
-        label: 'Operations',
-        items: [
-          { label: 'Customers', icon: 'pi pi-users', route: '/customers', aliases: ['/ledger'] },
-          { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders' },
-          { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch' },
-          { label: 'Complaints', icon: 'pi pi-exclamation-circle', route: '/complaints' },
-        ],
-      },
-      {
-        label: 'Accounting',
-        items: [
-          { label: 'Invoices', icon: 'pi pi-receipt', route: '/invoices' },
-        ],
-      },
-      {
-        label: 'Logistics',
-        items: [
-          { label: 'Drivers', icon: 'pi pi-id-card', route: '/drivers' },
-          { label: 'Vehicles', icon: 'pi pi-truck', route: '/vehicles' },
-          { label: 'Inventory', icon: 'pi pi-database', route: '/inventory' },
-          { label: 'Warehouses', icon: 'pi pi-warehouse', route: '/admin/warehouses' },
-        ],
-      },
-      {
-        label: 'Administration',
-        items: [
-          { label: 'Branches', icon: 'pi pi-building', route: '/admin/branches' },
-          { label: 'Cylinder Types', icon: 'pi pi-box', route: '/admin/cylinder-types' },
-          { label: 'Pricing', icon: 'pi pi-tag', route: '/admin/price-lists' },
-          { label: 'Users & Roles', icon: 'pi pi-user', route: '/admin/users' },
-          { label: 'Tenant Config', icon: 'pi pi-cog', route: '/admin/tenant-config' },
-          { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags' },
-          // Platform Flags is a superadmin-only tool — only shown when the
-          // token carries feature_flags:manage_platform (matches the route's
-          // own permissionGuard so the link is never shown to users who would
-          // just be redirected away on click).
-          ...(can('feature_flags:manage_platform')
-            ? [{ label: 'Platform Flags', icon: 'pi pi-globe', route: '/admin/feature-flags/platform' }]
-            : []),
-          { label: 'Audit Log', icon: 'pi pi-history', route: '/admin/audit-log' },
-        ],
-      },
+      ...buildGroup('Overview', [
+        { label: 'Dashboard', icon: 'pi pi-home', route: '/', exact: true },
+        { label: 'Reports', icon: 'pi pi-chart-bar', route: '/reports', condition: can('reports:read') },
+      ]),
+      ...buildGroup('Operations', [
+        { label: 'Customers', icon: 'pi pi-users', route: '/customers', aliases: ['/ledger'], condition: can('customers:read') },
+        { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders', condition: can('orders:read') },
+        { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch', condition: can('routes:read') },
+        { label: 'Complaints', icon: 'pi pi-exclamation-circle', route: '/complaints', condition: can('complaints.manage') },
+      ]),
+      ...buildGroup('Accounting', [
+        { label: 'Invoices', icon: 'pi pi-receipt', route: '/invoices', condition: can('invoices:read') },
+      ]),
+      ...buildGroup('Logistics', [
+        { label: 'Drivers', icon: 'pi pi-id-card', route: '/drivers', condition: can('drivers:read') },
+        { label: 'Vehicles', icon: 'pi pi-truck', route: '/vehicles', condition: can('vehicles:read') },
+        { label: 'Inventory', icon: 'pi pi-database', route: '/inventory', condition: can('inventory:read') },
+        { label: 'Warehouses', icon: 'pi pi-warehouse', route: '/admin/warehouses', condition: can('tenant:configure') },
+      ]),
+      ...buildGroup('Administration', [
+        { label: 'Branches', icon: 'pi pi-building', route: '/admin/branches', condition: can('tenant:configure') },
+        { label: 'Cylinder Types', icon: 'pi pi-box', route: '/admin/cylinder-types', condition: can('tenant:configure') },
+        { label: 'Pricing', icon: 'pi pi-tag', route: '/admin/price-lists', condition: can('tenant:configure') },
+        { label: 'Users & Roles', icon: 'pi pi-user', route: '/admin/users', condition: can('users:manage') },
+        { label: 'Tenant Config', icon: 'pi pi-cog', route: '/admin/tenant-config', condition: can('tenant:configure') },
+        { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags', condition: can('feature_flags:manage_tenant') },
+        { label: 'Platform Flags', icon: 'pi pi-globe', route: '/admin/feature-flags/platform', condition: can('feature_flags:manage_platform') },
+        { label: 'Audit Log', icon: 'pi pi-history', route: '/admin/audit-log', condition: can('audit:read') },
+      ]),
     ];
   });
 }

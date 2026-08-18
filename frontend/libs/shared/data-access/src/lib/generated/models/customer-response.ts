@@ -14,9 +14,13 @@ import { CustomerAddressResponse } from '../models/customer-address-response';
  */
 export interface CustomerResponse {
   addresses: Array<CustomerAddressResponse>;
+  alternate_mobile: (string | null);
   branch_id: string;
-  consumer_number: string;
+  consumer_number: (string | null);
+  contact_person: (string | null);
   customer_type: string;
+  date_of_birth: (string | null);
+  email: (string | null);
   full_name: string;
   id: string;
   kyc_status: string;

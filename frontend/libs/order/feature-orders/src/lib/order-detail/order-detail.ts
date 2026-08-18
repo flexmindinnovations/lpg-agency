@@ -1,4 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HasPermissionDirective } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -16,6 +17,7 @@ import { Textarea } from 'primeng/textarea';
 import { Tooltip } from 'primeng/tooltip';
 import {
   AdminCylinderTypeService,
+  AuthService,
   DeliveryService,
   OrderService,
   type CylinderTypeResponse,
@@ -57,6 +59,7 @@ const PAYMENT_METHODS = [
   selector: 'lpg-order-detail',
   standalone: true,
   imports: [HeaderTitlePortalDirective, 
+    HasPermissionDirective,
     DatePipe,
     DecimalPipe,
     FormsModule,
@@ -86,6 +89,7 @@ export class OrderDetail implements OnInit {
   private readonly deliveryService = inject(DeliveryService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly auth = inject(AuthService);
 
   protected readonly order = signal<OrderResponse | null>(null);
   protected readonly history = signal<OrderStatusHistoryEntryResponse[]>([]);
@@ -123,13 +127,33 @@ export class OrderDetail implements OnInit {
     return !!status && APPROVAL_CANCEL_STATUSES.has(status);
   });
 
-  protected readonly canConfirm = computed(() => this.order()?.status === 'booked');
-  protected readonly canAssign = computed(() => this.order()?.status === 'confirmed');
-  protected readonly canDispatch = computed(() => this.order()?.status === 'assigned');
-  protected readonly canDepart = computed(() => this.order()?.status === 'ready_for_dispatch');
-  protected readonly canDeliverOrFail = computed(() => this.order()?.status === 'out_for_delivery');
-  protected readonly canReschedule = computed(() => this.order()?.status === 'failed_delivery');
-  protected readonly canClose = computed(() => this.order()?.status === 'delivered');
+  protected readonly canApproveCancellation = computed(() => {
+    const status = this.order()?.status;
+    // Approving cancellation is typically done by managers for orders in these statuses
+    return !!status && APPROVAL_CANCEL_STATUSES.has(status);
+  });
+
+  protected readonly canConfirm = computed(() => 
+    this.order()?.status === 'booked'
+  );
+  protected readonly canAssign = computed(() => 
+    this.order()?.status === 'confirmed'
+  );
+  protected readonly canDispatch = computed(() => 
+    this.order()?.status === 'assigned'
+  );
+  protected readonly canDepart = computed(() => 
+    this.order()?.status === 'ready_for_dispatch'
+  );
+  protected readonly canDeliverOrFail = computed(() => 
+    this.order()?.status === 'out_for_delivery'
+  );
+  protected readonly canReschedule = computed(() => 
+    this.order()?.status === 'failed_delivery'
+  );
+  protected readonly canClose = computed(() => 
+    this.order()?.status === 'delivered'
+  );
 
   protected readonly cancelForm = this.fb.group({
     reason: ['', [Validators.required, Validators.minLength(3)]],

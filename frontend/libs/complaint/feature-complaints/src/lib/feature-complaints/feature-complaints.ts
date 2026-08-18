@@ -25,7 +25,7 @@ import {
   type AssignComplaintRequest,
   type ResolveComplaintRequest,
 } from '../services/complaint.service';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
 
 function errorMessageFor(_error: unknown): string {
   // Add specific error handling if backend returns AppError structures
@@ -50,6 +50,7 @@ function errorMessageFor(_error: unknown): string {
     Tag,
     Textarea,
     DataGridComponent,
+    HasPermissionDirective,
   ],
   templateUrl: './feature-complaints.html',
   styleUrl: './feature-complaints.css',

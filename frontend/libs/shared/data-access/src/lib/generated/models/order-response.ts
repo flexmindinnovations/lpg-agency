@@ -12,7 +12,6 @@ export interface OrderResponse {
   id: string;
   lines: Array<OrderLineResponse>;
   metadata: {
-[key: string]: any;
 };
   payment_method_preference: ('cash' | 'upi' | 'card' | 'online_gateway' | 'credit' | null);
   requested_date: string;

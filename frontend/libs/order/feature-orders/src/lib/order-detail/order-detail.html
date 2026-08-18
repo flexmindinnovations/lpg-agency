@@ -18,31 +18,32 @@
     @if (order(); as o) {
     <div class="page-header__actions">
       @if (canConfirm()) {
-      <button pButton type="button" [loading]="loading()" (click)="onConfirm()">
+      <button *lpgHasPermission="'orders:confirm'" pButton type="button" [loading]="loading()" (click)="onConfirm()">
         <i pButtonIcon class="pi pi-check"></i>
         <span pButtonLabel>Confirm</span>
       </button>
       } @if (canAssign()) {
-      <button #assignTriggerEl pButton type="button" (click)="openAssignDrawer()">
+      <button *lpgHasPermission="'orders:assign'" #assignTriggerEl pButton type="button" (click)="openAssignDrawer()">
         <i pButtonIcon class="pi pi-user-plus"></i>
         <span pButtonLabel>Assign</span>
       </button>
       } @if (canDispatch()) {
-      <button pButton type="button" [loading]="loading()" (click)="onDispatch()">
+      <button *lpgHasPermission="'orders:dispatch'" pButton type="button" [loading]="loading()" (click)="onDispatch()">
         <i pButtonIcon class="pi pi-box"></i>
         <span pButtonLabel>Dispatch</span>
       </button>
       } @if (canDepart()) {
-      <button pButton type="button" [loading]="loading()" (click)="onDepart()">
+      <button *lpgHasPermission="'orders:deliver'" pButton type="button" [loading]="loading()" (click)="onDepart()">
         <i pButtonIcon class="pi pi-send"></i>
         <span pButtonLabel>Depart</span>
       </button>
       } @if (canDeliverOrFail()) {
-      <button #deliverTriggerEl pButton type="button" (click)="openDeliverDrawer()">
+      <button *lpgHasPermission="'orders:deliver'" #deliverTriggerEl pButton type="button" (click)="openDeliverDrawer()">
         <i pButtonIcon class="pi pi-verified"></i>
         <span pButtonLabel>Deliver</span>
       </button>
       <button
+        *lpgHasPermission="'orders:deliver'"
         #failedDeliveryTriggerEl
         pButton
         type="button"
@@ -53,22 +54,22 @@
         <span pButtonLabel>Failed Delivery</span>
       </button>
       } @if (canReschedule()) {
-      <button pButton type="button" [loading]="loading()" (click)="onReschedule()">
+      <button *lpgHasPermission="'orders:assign'" pButton type="button" [loading]="loading()" (click)="onReschedule()">
         <i pButtonIcon class="pi pi-refresh"></i>
         <span pButtonLabel>Reschedule</span>
       </button>
       } @if (canClose()) {
-      <button pButton type="button" [loading]="loading()" (click)="onClose()">
+      <button *lpgHasPermission="'orders:close'" pButton type="button" [loading]="loading()" (click)="onClose()">
         <i pButtonIcon class="pi pi-lock"></i>
         <span pButtonLabel>Close Order</span>
       </button>
       } @if (canCancelFree() || requiresCancelApproval()) {
-      <button pButton type="button" severity="danger" (click)="openCancelDialog()">
+      <button *lpgHasPermission="'orders:cancel'" pButton type="button" severity="danger" (click)="openCancelDialog()">
         <i pButtonIcon class="pi pi-times"></i>
         <span pButtonLabel>Cancel Order</span>
       </button>
-      } @if (requiresCancelApproval()) {
-      <button pButton type="button" (click)="onApproveCancellation()">
+      } @if (canApproveCancellation()) {
+      <button *lpgHasPermission="'orders:cancel_approve'" pButton type="button" (click)="onApproveCancellation()">
         <i pButtonIcon class="pi pi-check"></i>
         <span pButtonLabel>Approve Cancellation</span>
       </button>

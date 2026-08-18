@@ -29,7 +29,7 @@ import {
   type CustomerResponse,
   type KycDocumentResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -75,6 +75,7 @@ import { TitleCasePipe } from '@angular/common';
     DataGridComponent,
     RouterLink,
     TitleCasePipe,
+    HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-customers.html',

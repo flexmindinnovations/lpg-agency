@@ -10,6 +10,7 @@
     <ng-template lpgHeaderPortal>
       <div class="page-header__actions">
         <button
+          *lpgHasPermission="'drivers:manage'"
           #registerTriggerEl
           pButton
           type="button"
@@ -78,13 +79,17 @@
       </div>
 
       <div class="form-group">
-        <label for="employee_code">Employee Code</label>
-        <input
-          pInputText
-          id="employee_code"
-          formControlName="employee_code"
-          placeholder="e.g. DRV-001"
-        />
+        <label for="employee_id">Employee</label>
+        <p-select
+          [options]="employees()"
+          id="employee_id"
+          formControlName="employee_id"
+          optionLabel="employee_code"
+          optionValue="id"
+          placeholder="Select an employee"
+          styleClass="w-full"
+          appendTo="body"
+        ></p-select>
       </div>
 
       <div class="form-group">

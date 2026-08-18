@@ -13,11 +13,20 @@ import { LpgPrimeNgPreset } from '@lpg/shared/design-tokens';
 import { appRoutes } from './app.routes';
 import { PRIME_NG_LICENSE_KEY } from './prime-license';
 import { environment } from '../environments/environment';
-import { MessageService } from 'primeng/api';
+import { MessageService, ConfirmationService } from 'primeng/api';
+import { PERMISSION_CHECKER } from '@lpg/shared/util';
+import { inject } from '@angular/core';
+import { AuthService } from '@lpg/shared/data-access';
+
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    {
+      provide: PERMISSION_CHECKER,
+      useFactory: () => inject(AuthService).principal,
+    },
     MessageService,
+    ConfirmationService,
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes, withComponentInputBinding()),
     // Backend root URL, swapped per build configuration via `fileReplacements`

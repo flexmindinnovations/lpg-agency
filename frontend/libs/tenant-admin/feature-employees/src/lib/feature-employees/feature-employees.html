@@ -7,6 +7,7 @@
     <ng-template lpgHeaderPortal>
   <div class="page-header__actions">
         <button
+          *lpgHasPermission="'users:manage'"
           #registerTriggerEl
           pButton
           type="button"

@@ -67,7 +67,7 @@ export class CustomerService {
     return addAddressApiV1CustomersCustomerIdAddressesPost(this.http, this.config.rootUrl, {
       customer_id: customerId,
       body: {
-        address_line: addressLine,
+        line_1: addressLine,
         latitude,
         longitude,
       },
@@ -96,7 +96,7 @@ export class CustomerService {
       customer_id: customerId,
       body: {
         doc_type: docType,
-        doc_reference: docReference,
+        document_number: docReference,
       },
     }).pipe(map((res) => res.body));
   }

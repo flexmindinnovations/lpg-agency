@@ -16,7 +16,7 @@ import {
   type CylinderTypeResponse,
   type OrderResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
 import { CustomerAutocomplete } from '../customer-autocomplete/customer-autocomplete';
 import { errorMessageFor, statusLabel } from '../order-status.util';
 
@@ -59,6 +59,7 @@ const BOOKING_SOURCE_OPTIONS = [
     DatePicker,
     DataGridComponent,
     CustomerAutocomplete,
+    HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './order-queue.html',
@@ -227,7 +228,7 @@ export class OrderQueue implements OnInit {
         customer_id: customer.id,
         address_id: val.address_id,
         delivery_address: {
-          address_line: address.address_line,
+          address_line: address.line_1,
           latitude: address.latitude ? Number(address.latitude) : null,
           longitude: address.longitude ? Number(address.longitude) : null,
         },

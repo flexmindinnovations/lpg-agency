@@ -56,7 +56,7 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label for="date_of_birth">Date of Birth <span class="required">*</span></label>
-                    <p-datepicker formControlName="date_of_birth" [showIcon]="true" placeholder="Select DOB"></p-datepicker>
+                    <p-datepicker formControlName="date_of_birth" [showIcon]="true" iconDisplay="input" placeholder="Select DOB"></p-datepicker>
                     @if (isInvalid(registrationForm, 'date_of_birth')) {<span class="field-error">Date of birth is required.</span>}
                   </div>
                   <div class="form-group">

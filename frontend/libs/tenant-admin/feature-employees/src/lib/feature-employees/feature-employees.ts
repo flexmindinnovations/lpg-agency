@@ -25,7 +25,7 @@ import {
   type BranchResponse,
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -52,11 +52,12 @@ function errorMessageFor(error: unknown): string {
     ButtonLabel,
     InputText,
     Drawer,
-    IconField,
-    InputIcon,
     Message,
     Select,
     DataGridComponent,
+    HasPermissionDirective,
+    IconField,
+    InputIcon,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-employees.html',

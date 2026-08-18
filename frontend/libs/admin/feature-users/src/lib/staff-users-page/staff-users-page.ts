@@ -1,5 +1,5 @@
 import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-﻿import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -14,15 +14,16 @@ import {
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
 const STAFF_ROLES = [
-  'super_admin',
-  'agency_admin',
-  'manager',
-  'warehouse_staff',
-  'dispatcher',
-  'accountant',
-] as const;
+  { label: 'Super Admin (super_admin)', value: 'super_admin' },
+  { label: 'Agency Admin (agency_admin)', value: 'agency_admin' },
+  { label: 'Manager (manager)', value: 'manager' },
+  { label: 'Warehouse Staff (warehouse_staff)', value: 'warehouse_staff' },
+  { label: 'Dispatcher (dispatcher)', value: 'dispatcher' },
+  { label: 'Accountant (accountant)', value: 'accountant' },
+];
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -44,23 +45,22 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-staff-users-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon, ManagePermissionsDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Staff Users</h1>
-          <p class="page-subtitle">Manage user accounts and role assignments.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Staff Users</h1>
+            <p class="page-subtitle">Manage user accounts and role assignments.</p>
+          </div>
+        </ng-template>
         <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-            <button pButton severity="secondary" (click)="openManageDrawer()"><i pButtonIcon class="pi pi-user-edit"></i><span pButtonLabel>Manage User</span></button>
+          <div class="page-header__actions">
             <button pButton (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
           </div>
-</ng-template>
+        </ng-template>
       </div>
 
       @if (users().length > 0) {
@@ -124,6 +124,8 @@ function errorMessageFor(error: unknown): string {
               id="invite-role"
               formControlName="role"
               [options]="roles"
+              optionLabel="label"
+              optionValue="value"
               placeholder="Select a role"
               styleClass="w-full"
               appendTo="body">
@@ -148,20 +150,12 @@ function errorMessageFor(error: unknown): string {
         position="right"
         [modal]="true"
         [closeOnEscape]="true"
-        header="Manage a user"
+        [header]="'Manage ' + selectedUserEmail()"
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
-          <p class="page-lede">Copy a user's ID from the grid to reassign their role or deactivate their account.</p>
-
-          <div class="form-group">
-            <label for="manage-user-id">User ID</label>
-            <input pInputText id="manage-user-id" type="text" formControlName="userId" placeholder="Paste user ID here" />
-            @if (manageForm.controls.userId.touched && manageForm.controls.userId.invalid) {
-              <small class="field-error">User ID is required.</small>
-            }
-          </div>
+          <p class="page-lede">Reassign the role, manage specific permissions, or deactivate the account.</p>
 
           <div class="form-group">
             <label for="manage-role">New role (for reassignment)</label>
@@ -169,20 +163,46 @@ function errorMessageFor(error: unknown): string {
               id="manage-role"
               formControlName="newRole"
               [options]="roles"
-              placeholder="— select to reassign —"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="- select to reassign -"
               styleClass="w-full"
               appendTo="body">
             </p-select>
           </div>
 
-          <div class="modal-actions">
-            <button pButton type="button" severity="danger" (click)="deactivate()">Deactivate</button>
+          <div class="flex flex-col gap-4 mt-6">
+            <div class="flex items-center justify-between border border-gray-200 rounded p-4">
+               <div>
+                 <h4 class="font-medium text-gray-900 m-0">Permissions</h4>
+                 <p class="text-sm text-gray-500 m-0">Assign fine-grained permissions.</p>
+               </div>
+               <button pButton type="button" severity="secondary" (click)="openPermissionsDialog()">Manage</button>
+            </div>
+            
+            <div class="flex items-center justify-between border border-red-200 rounded p-4 bg-red-50">
+               <div>
+                 <h4 class="font-medium text-red-900 m-0">Danger Zone</h4>
+                 <p class="text-sm text-red-700 m-0">Deactivate this account.</p>
+               </div>
+               <button pButton type="button" severity="danger" (click)="deactivate()">Deactivate</button>
+            </div>
+          </div>
+
+          <div class="modal-actions mt-6">
+            <button pButton type="button" severity="secondary" (click)="manageDrawerVisible.set(false)">Cancel</button>
             <button pButton type="button" (click)="reassignRole()" [disabled]="!manageForm.controls.newRole.value">
               Reassign role
             </button>
           </div>
         </form>
       </p-drawer>
+
+      <lpg-manage-permissions-dialog 
+        [(visible)]="managePermissionsVisible"
+        [userId]="selectedUserId()"
+        [userEmail]="selectedUserEmail()"
+      />
     </div>
   `,
   styles: [
@@ -225,10 +245,21 @@ export class StaffUsersPage implements OnInit {
   protected readonly submitting = signal(false);
   protected readonly inviteDrawerVisible = signal(false);
   protected readonly manageDrawerVisible = signal(false);
+  protected readonly managePermissionsVisible = signal(false);
+  
+  protected readonly selectedUserId = signal('');
+  protected readonly selectedUserEmail = signal('');
+
   protected readonly roles = [...STAFF_ROLES];
 
   protected readonly columns: DataGridColumn<StaffUserResponse>[] = [
-    { field: 'email', header: 'Email', sortable: true, filterable: true },
+    { 
+      field: 'email', 
+      header: 'Email', 
+      sortable: true, 
+      filterable: true, 
+      onLinkClick: (row) => this.openManageDrawer(row) 
+    },
     { field: 'role', header: 'Role', sortable: true, filterable: true },
     { field: 'is_active', header: 'Active', sortable: true },
   ];
@@ -263,9 +294,16 @@ export class StaffUsersPage implements OnInit {
     this.inviteDrawerVisible.set(true);
   }
 
-  protected openManageDrawer(): void {
+  protected openManageDrawer(user: StaffUserResponse): void {
     this.manageForm.reset();
+    this.selectedUserId.set(user.id);
+    this.selectedUserEmail.set(user.email ?? '');
+    this.manageForm.patchValue({ userId: user.id });
     this.manageDrawerVisible.set(true);
+  }
+
+  protected openPermissionsDialog(): void {
+    this.managePermissionsVisible.set(true);
   }
 
   protected deactivate(): void {

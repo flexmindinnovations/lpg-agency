@@ -21,12 +21,13 @@ import {
   DataGridColumn,
   formatEntityName,
   formatTimestamp,
+  HasPermissionDirective,
 } from '@lpg/shared/ui';
 import {
   DashboardService,
   type CylinderTypePriceCardResponse,
   type DashboardActivityEntryResponse,
-  type DashboardSummaryResponse,
+  DashboardSummaryResponse,
   WebSocketService,
 } from '@lpg/shared/data-access';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -36,6 +37,7 @@ interface KpiData {
   value: string;
   icon: string;
   colorClass: string;
+  permission?: string;
 }
 
 interface InventoryStatusCard {
@@ -65,7 +67,7 @@ function escapeCsvCell(value: string): string {
 @Component({
   selector: 'lpg-home',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, DataGridComponent],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, DataGridComponent, HasPermissionDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
@@ -81,6 +83,7 @@ function escapeCsvCell(value: string): string {
         <ng-template lpgHeaderPortal>
   <div class="page-header__actions">
             <button
+              *lpgHasPermission="'reports:read'"
               pButton
               severity="secondary"
               [disabled]="loading()"
@@ -89,7 +92,7 @@ function escapeCsvCell(value: string): string {
               <i pButtonIcon class="pi pi-download"></i>
               <span pButtonLabel>Export Report</span>
             </button>
-            <button pButton type="button" (click)="onNewBooking()">
+            <button *lpgHasPermission="'orders:create'" pButton type="button" (click)="onNewBooking()">
               <i pButtonIcon class="pi pi-plus"></i>
               <span pButtonLabel>New Booking</span>
             </button>
@@ -100,7 +103,7 @@ function escapeCsvCell(value: string): string {
       <!-- KPI Section -->
       <section class="dashboard__kpis">
         @for (kpi of kpis(); track kpi.title) {
-          <div class="kpi-card">
+          <div *lpgHasPermission="kpi.permission" class="kpi-card">
             <div class="kpi-card__header">
               <span class="kpi-card__title">{{ kpi.title }}</span>
               <div class="kpi-card__icon" [class]="kpi.colorClass">
@@ -114,7 +117,7 @@ function escapeCsvCell(value: string): string {
 
       <!-- Charts Section -->
       <section class="dashboard__charts">
-        <div class="panel">
+        <div *lpgHasPermission="'vehicles:read'" class="panel">
           <div class="panel-header">
             <h2 class="section-heading">Fleet Status</h2>
           </div>
@@ -124,7 +127,7 @@ function escapeCsvCell(value: string): string {
             }
           </div>
         </div>
-        <div class="panel">
+        <div *lpgHasPermission="'inventory:read'" class="panel">
           <div class="panel-header">
             <h2 class="section-heading">Cylinder Inventory (All Locations)</h2>
           </div>
@@ -137,7 +140,7 @@ function escapeCsvCell(value: string): string {
       </section>
 
       <!-- Inventory Detail Cards -->
-      <section class="dashboard__section">
+      <section *lpgHasPermission="'inventory:read'" class="dashboard__section">
         <h2 class="section-heading">Inventory by Status</h2>
         @if (inventoryCards().length > 0) {
           <div class="inventory-cards">
@@ -154,7 +157,7 @@ function escapeCsvCell(value: string): string {
       </section>
 
       <!-- Price Cards -->
-      <section class="dashboard__section">
+      <section *lpgHasPermission="'tenant:configure'" class="dashboard__section">
         <h2 class="section-heading">Cylinder Pricing (Domestic)</h2>
         @if (priceCards().length > 0) {
           <div class="price-cards">
@@ -174,7 +177,7 @@ function escapeCsvCell(value: string): string {
       </section>
 
       <!-- Data Grid Section -->
-      <section class="dashboard__grid-section">
+      <section *lpgHasPermission="'audit:read'" class="dashboard__grid-section">
         <div class="panel">
           <div class="panel-header">
             <h2 class="section-heading">Recent Activity</h2>
@@ -532,36 +535,42 @@ export class Home implements OnDestroy {
         value: (summary?.customer_count ?? 0).toLocaleString(),
         icon: 'pi pi-users',
         colorClass: 'bg-blue',
+        permission: 'customers:read'
       },
       {
         title: 'Drivers',
         value: (summary?.driver_count ?? 0).toLocaleString(),
         icon: 'pi pi-id-card',
         colorClass: 'bg-purple',
+        permission: 'drivers:read'
       },
       {
         title: 'Fleet Vehicles',
         value: (summary?.vehicle_count ?? 0).toLocaleString(),
         icon: 'pi pi-truck',
         colorClass: 'bg-yellow',
+        permission: 'vehicles:read'
       },
       {
         title: 'Warehouses',
         value: (summary?.warehouse_count ?? 0).toLocaleString(),
         icon: 'pi pi-warehouse',
         colorClass: 'bg-blue',
+        permission: 'tenant:configure'
       },
       {
         title: 'Filled Cylinders',
         value: filled.toLocaleString(),
         icon: 'pi pi-box',
         colorClass: 'bg-green',
+        permission: 'inventory:read'
       },
       {
         title: 'Cylinders Needing Attention',
         value: needingAttention.toLocaleString(),
         icon: 'pi pi-exclamation-triangle',
         colorClass: 'bg-red',
+        permission: 'inventory:read'
       },
     ]);
   }

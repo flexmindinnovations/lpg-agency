@@ -1,4 +1,5 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HasPermissionDirective } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -25,6 +26,7 @@ import { Textarea } from 'primeng/textarea';
 import {
   AdminCylinderTypeService,
   AdminWarehouseService,
+  AuthService,
   DeliveryService,
   InventoryService,
   type AppError,
@@ -81,6 +83,7 @@ function errorMessageFor(error: unknown): string {
     Message,
     Select,
     DataGridComponent,
+    HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-inventory.html',
@@ -91,11 +94,17 @@ export class FeatureInventory implements OnInit {
   private readonly inventoryService = inject(InventoryService);
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly deliveryService = inject(DeliveryService);
+  protected readonly auth = inject(AuthService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
+
+  protected readonly hasReconcileOrAdjust = computed(() => {
+    const permissions = this.auth.principal()?.permissions;
+    return (permissions?.has('reconciliation:approve') || permissions?.has('inventory:adjust')) ?? false;
+  });
   protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({ label: s, value: s }));
 
   protected readonly locationType = signal<InventoryLocationType>('warehouse');

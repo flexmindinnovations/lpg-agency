@@ -1,6 +1,8 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { Router } from '@angular/router';
+import { ConfirmationService } from 'primeng/api';
+import { catchError, switchMap, throwError, EMPTY } from 'rxjs';
 import { AuthService } from './auth.service';
 import { AuthTokenStore } from './auth-token.store';
 
@@ -26,6 +28,8 @@ function isAuthEndpoint(url: string): boolean {
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authService = inject(AuthService);
   const tokenStore = inject(AuthTokenStore);
+  const router = inject(Router);
+  const confirmationService = inject(ConfirmationService);
 
   const token = tokenStore.accessToken();
   const withAuth = request.clone({
@@ -46,7 +50,17 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           ),
           catchError(() => {
             tokenStore.clear();
-            return throwError(() => error);
+            confirmationService.confirm({
+              header: 'Session Expired',
+              message: 'Your session has expired. Please log in again to continue.',
+              icon: 'pi pi-exclamation-circle',
+              acceptLabel: 'Log In',
+              rejectVisible: false,
+              accept: () => {
+                void router.navigate(['/login']);
+              }
+            });
+            return EMPTY; // Suppress further error handling so problemDetails doesn't show a generic toast
           }),
         );
       }

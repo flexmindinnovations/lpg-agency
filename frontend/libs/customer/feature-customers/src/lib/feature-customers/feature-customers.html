@@ -10,6 +10,7 @@
       <ng-template lpgHeaderPortal>
   <div class="page-header__actions">
           <a
+            *lpgHasPermission="'customers:create'"
             pButton
             routerLink="new"
           >
@@ -142,7 +143,7 @@
               @for (addr of customer.addresses; track addr.id) {
               <div class="address-item">
                 <div>
-                  <span class="text-sm">{{ addr.address_line }}</span>
+                  <span class="text-sm">{{ addr.line_1 }}</span>
                   @if (addr.is_primary) {
                   <p-tag class="ml-2" severity="success" value="Primary" />
                   }
@@ -170,6 +171,7 @@
             <div class="section-header">
               <h3 class="section-heading">KYC Documents</h3>
               <button
+                *lpgHasPermission="'kyc:manage'"
                 #submitKycTriggerEl
                 pButton
                 type="button"
@@ -186,7 +188,7 @@
               <div class="kyc-doc-item">
                 <div>
                   <span class="text-sm capitalize"
-                    ><strong>{{ doc.doc_type }}</strong>: {{ doc.doc_reference }}</span
+                    ><strong>{{ doc.doc_type }}</strong>: {{ doc.document_number }}</span
                   >
                   <p-tag
                     class="ml-2"
@@ -197,6 +199,7 @@
                 @if (doc.verification_status === 'pending') {
                 <div class="flex gap-2">
                   <button
+                    *lpgHasPermission="'kyc:manage'"
                     pButton
                     type="button"
                     severity="success"
@@ -206,6 +209,7 @@
                     Approve
                   </button>
                   <button
+                    *lpgHasPermission="'kyc:manage'"
                     pButton
                     type="button"
                     severity="danger"
