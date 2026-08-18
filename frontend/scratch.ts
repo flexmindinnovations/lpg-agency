@@ -1,1 +1,0 @@
-import { signal } from '@angular/core'; import { form, required, min } from '@angular/forms/signals'; const model = signal({ lines: [{ id: 1 }] }); const f = form(model, (schema) => { required(schema.lines[0].id) }); console.log(f.lines[0].id().value());

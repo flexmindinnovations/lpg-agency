@@ -201,3 +201,6 @@ desktop.ini
 *.log
 logs/
 .scratch/
+
+# One-off debug/fix scripts, not part of the build
+backend/scratch/
