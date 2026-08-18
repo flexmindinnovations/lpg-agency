@@ -137,6 +137,29 @@ contract doc would not have matched even once mounted. Corrected there.
 exposes four previously unreachable endpoints to RBAC and RLS for the first
 time. Tracked as R7a.
 
+### C8 — Seven designed domain events were never implemented
+
+Found by the documentation baseline audit (2026-08-18), verifying
+`docs/data/09-domain-events.md` against `class X(DomainEvent)` declarations.
+
+Of 18 events in the design catalog, 10 exist. One is a rename
+(`OrderAssigned` → `OrderAssignedToRoute`, Phase 12). The other **seven are
+genuine gaps** — the state change happens and publishes nothing, so nothing
+downstream can react:
+
+| Missing event | Domain | Consequence |
+|---|---|---|
+| `ComplaintRaised`, `ComplaintResolved` | `complaint` | **The complaint domain defines no events whatsoever.** Complaint handling carries SLA obligations, and there is nothing for a notification, escalation or audit projection to subscribe to. Delayed handling of a leakage complaint is a Major MDG irregularity. |
+| `PaymentCollected`, `RefundApproved`, `CashShortfallDeclared` | `accounting` | Only `InvoiceGenerated` exists. Cash reconciliation and refund audit have no event trail. |
+| `ConnectionClosed` | `customer` | Closure settlement (D-21) has no trigger. |
+| `NotificationSent` | `notification` | Only `InAppNotificationCreated`; no delivery-confirmation event. |
+
+Conversely 31 implemented events were undocumented; the catalog now lists all
+of them by domain.
+
+Tracked as **R10**. Not urgent in the way a red gate is, but it is the reason
+several downstream features cannot be built without first adding the event.
+
 ### C5 — Lint / type debt
 
 634 ruff errors (~190 auto-fixable), 23 mypy errors. Hotspots: `api/v1` 72,
@@ -163,6 +186,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass
+- [ ] **R10** — C8 add the 7 missing domain events, starting with the complaint pair
 
 ## Rules for updating this file
 

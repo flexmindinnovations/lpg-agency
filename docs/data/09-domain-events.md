@@ -22,6 +22,66 @@ flowchart TB
     Retry3 -->|fail| DLQ["Dead-letter: logged + staff alert<br/>(never silently dropped)"]
 ```
 
+## Reconciliation with the implementation (2026-08-18)
+
+The catalog below is the **design** catalog and predates most of the build. It
+was verified against the code on 2026-08-18 and had drifted in both directions:
+of the 18 events it names, **10 exist**; the code defines **41** events in
+total, so **31 are undocumented**.
+
+**Documented here but not implemented — 8:**
+
+| Event | Owning domain | Status |
+|---|---|---|
+| `ComplaintRaised` | `complaint` | ❌ **the complaint domain defines no events at all** |
+| `ComplaintResolved` | `complaint` | ❌ same |
+| `PaymentCollected` | `accounting` | ❌ only `InvoiceGenerated` exists |
+| `RefundApproved` | `accounting` | ❌ |
+| `CashShortfallDeclared` | `accounting` | ❌ |
+| `ConnectionClosed` | `customer` | ❌ |
+| `NotificationSent` | `notification` | ❌ only `InAppNotificationCreated` exists |
+| `OrderAssigned` (a.k.a. `DriverAssigned`) | `order` / `delivery` | ⚠️ **renamed** to `OrderAssignedToRoute` in Phase 12 when routes replaced direct driver assignment — the behaviour exists, the name here does not |
+
+Only the last is a naming drift. The other seven are genuine gaps: those state
+changes happen and publish nothing, so nothing downstream can react to them.
+The complaint one is the most consequential — complaint handling is subject to
+SLA obligations, and there is currently no event for a notification, an
+escalation, or an audit projection to subscribe to.
+
+These are recorded as implementation gaps against their modules in
+[`planning/MODULE_STATUS.md`](../../planning/MODULE_STATUS.md), not fixed here.
+
+### Implemented event catalog, by domain
+
+Authoritative as of 2026-08-18 — generated from
+`class X(DomainEvent)` declarations under `backend/src/lpg/domain/`.
+
+| Domain | Events |
+|---|---|
+| `accounting` | `InvoiceGenerated` |
+| `customer` | `AddressAdded`, `CustomerApproved`, `CustomerRegistered`, `CustomerStatusChanged`, `KycDocumentSubmitted`, `KycDocumentVerified`, `PrimaryAddressSet` |
+| `cylinder_ledger` | `LedgerTransactionAppended` |
+| `delivery` | `DriverLicenseUpdated`, `DriverRegistered`, `DriverStatusChanged`, `OrderAssignedToRoute`, `OrderDelivered`, `OrderDeliveryFailed`, `RoutePlanned`, `RouteStatusChanged`, `VehicleLoaded`, `VehicleRegistered`, `VehicleStatusChanged` |
+| `identity` | `IdentityUserLocked`, `IdentityUserLoggedIn`, `IdentityUserLoginFailed`, `IdentityUserRoleChanged` |
+| `inventory` | `GoodsReceived`, `InventoryAdjusted` |
+| `notification` | `InAppNotificationCreated` |
+| `order` | `BookingCancelled`, `BookingConfirmed`, `BookingCreated`, `CylinderDelivered`, `DeliveryFailed`, `InventoryReserved`, `OrderClosed` |
+| `tenant` | `BranchRenamed`, `CylinderTypeRenamed`, `TenantRenamed`, `TenantStatusChanged`, `WarehouseRenamed` |
+| `tenant_admin` | `EmployeeRegistered`, `EmployeeStatusChanged` |
+| `complaint` | **none** |
+| `platform` | **none** |
+
+> **A trap this catalog has already caused.** `order` emits `CylinderDelivered`
+> and `delivery` emits `OrderDelivered`, and a single delivery fires **both** —
+> `DeliverOrderUseCase` mutates the Order and the Route in one unit of work.
+> Phase 13's ledger handler originally subscribed to both and would have
+> double-counted every cylinder on every customer's ledger. A handler must
+> subscribe to exactly one of them; the Order aggregate's own
+> `CylinderDelivered` is the right choice, because it fires whether or not a
+> route is involved.
+
+---
+
 ## Event Catalog
 
 ### `CustomerRegistered`

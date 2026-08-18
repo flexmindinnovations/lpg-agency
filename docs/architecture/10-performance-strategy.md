@@ -45,7 +45,7 @@ flowchart TB
 - Route-level lazy loading (`04-frontend-architecture.md` §7) minimizes initial bundle size toward the < 2s dashboard-load target.
 - Virtual scrolling on all large lists/tables (Angular CDK).
 - `NgOptimizedImage` for KYC thumbnails, delivery photos.
-- Signal-based change detection (Angular 20 default) reduces unnecessary re-renders versus Zone.js-driven change detection in older Angular versions.
+- Signal-based change detection (Angular 22 default) reduces unnecessary re-renders versus Zone.js-driven change detection in older Angular versions.
 
 ## 5. Mobile Performance
 - Offline-first local reads (`05-mobile-architecture.md`) mean most Driver App interactions never wait on network latency at all.
