@@ -52,6 +52,52 @@ flowchart LR
 - High-sensitivity actions (inventory adjustment approval — D-16; refund approval — D-17; cancellation-after-dispatch approval — D-19) require a **second, live permission check against the database** rather than relying solely on JWT claims, since these are infrequent, high-value actions where claim staleness risk is unacceptable.
 - **Super Admin** operates above tenant scope (tenant onboarding/configuration, D-01) — its actions are logged with extra scrutiny (§6) since it's the one role capable of crossing tenant boundaries by design.
 
+## 3.1 Three authorization layers, routinely confused
+
+A request must clear **three independent checks**, enforced in different places
+by different mechanisms. All three must be right; satisfying one says nothing
+about the others.
+
+| Layer | Question it answers | Where enforced | Failure looks like |
+|---|---|---|---|
+| **Application RBAC** | Is this principal allowed to perform this action? | `Depends(requires("users:read"))` in the router, from JWT claims (§3) | `403 Forbidden` |
+| **Database privilege** | May the connecting Postgres role touch this table at all? | `GRANT` on the table, to `lpg_app` / `lpg_app_uat` | `500` — `InsufficientPrivilegeError: permission denied for table …` |
+| **Row Level Security** | Which *rows* may this tenant see or write? | `ENABLE` + `FORCE ROW LEVEL SECURITY` and a `tenant_id` policy | No error — simply **zero rows** |
+
+### Why this deserves its own section
+
+`GET /api/v1/employees` returned 500 for every caller until `b4d19e7c3a52`.
+`tenant.employee` had been created with RLS enabled but **no `GRANT`** to the
+application role. Every request passed its `users:read` RBAC check and then
+died at the database. The reported symptom was "I gave the user every
+permission and still get a permission error" — accurate, and pointing at the
+wrong layer entirely, because the word *permission* means something different
+in each row of that table.
+
+The same defect class has now been found **six times**, always a tenant-scoped
+table shipped with its isolation wiring incomplete. Four distinct variants:
+
+1. **No `GRANT`** — the app role cannot read the table (a 500, not a 403).
+2. **RLS enabled but not `FORCE`d** — the table *owner* bypasses isolation. Migrations run as a superuser, so this is invisible in testing.
+3. **Non-null-safe predicate** — `(current_setting('app.current_tenant_id', true))::uuid` yields `''::uuid` when unset, which *raises*. Worse, omitting `missing_ok` makes `current_setting` itself raise. The correct form degrades to "no rows": `tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid`.
+4. **Hardcoded role name** — `GRANT … TO lpg_app` succeeds on `lpg_uat` (the role is cluster-wide) while granting the wrong role. Resolve it: `CASE current_database() WHEN 'lpg_uat' THEN 'lpg_app_uat' ELSE 'lpg_app' END`.
+
+### Verifying it
+
+Run [`backend/scripts/verify_env_parity.sql`](../../backend/scripts/verify_env_parity.sql)
+against every environment after `alembic upgrade head`; every count must be 0.
+It finds all four variants mechanically, across any table carrying a
+`tenant_id`, so new schemas are covered without editing it.
+
+**Test isolation as the application role, never as `lpg_admin`.** That role is
+a superuser with `rolbypassrls` and ignores RLS entirely — an isolation test
+run as `lpg_admin` comes back green no matter how broken the policy is.
+
+One thing that looks like a hole and is not: a `FOR ALL` policy with `USING`
+but no `WITH CHECK`. Postgres reuses the `USING` expression as the write-side
+check when `WITH CHECK` is omitted, so cross-tenant writes are already
+rejected. Verified directly as `lpg_app` rather than assumed.
+
 ## 4. Encryption
 
 | Data | At Rest | In Transit |
