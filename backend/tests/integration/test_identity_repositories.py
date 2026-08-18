@@ -86,6 +86,16 @@ async def _seed_user(
                 {"tenant_id": str(tenant_id), "email": email, "phone": phone_number, "role": role},
             )
         ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": user_id, "role": role},
+        )
     return uuid.UUID(str(user_id))
 
 
@@ -284,17 +294,32 @@ class TestSqlAlchemyPasswordResetTokenRepository:
 
 
 class TestSqlAlchemyPermissionRepository:
-    async def test_has_permission_true_for_a_seeded_grant(self, database: Database) -> None:
+    async def test_has_permission_true_for_a_granted_permission(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        user_id = await _seed_user(admin_engine, tenant_id, "granted@example.com")
+        
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO identity.identity_user_permission (id, user_id, permission_id) "
+                    "SELECT gen_random_uuid(), :user_id, id FROM identity.permission WHERE code = 'tenant:configure'"
+                ),
+                {"user_id": user_id},
+            )
+
         repo = SqlAlchemyPermissionRepository(database)
+        assert await repo.has_permission(user_id=user_id, permission_code="tenant:configure")
 
-        # Seeded in fa52b77ec442: agency_admin gets tenant:configure.
-        assert await repo.has_permission(role="agency_admin", permission_code="tenant:configure")
-
-    async def test_has_permission_false_for_an_ungranted_pair(self, database: Database) -> None:
+    async def test_has_permission_false_for_an_ungranted_permission(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        user_id = await _seed_user(admin_engine, tenant_id, "ungranted@example.com")
+        
         repo = SqlAlchemyPermissionRepository(database)
-
-        # driver is never granted tenant:configure in the seeded matrix.
-        assert not await repo.has_permission(role="driver", permission_code="tenant:configure")
+        assert not await repo.has_permission(user_id=user_id, permission_code="tenant:configure")
 
 
 class TestNoRlsBypassForDirectTableAccess:

@@ -109,7 +109,7 @@ class TestCustomerRepository:
                 assert len(reloaded.kyc_documents) == 1
                 assert reloaded.kyc_documents[0].doc_type == "aadhaar"
                 # Decrypted back to the original plaintext reference.
-                assert reloaded.kyc_documents[0].doc_reference == "REF-A123"
+                assert reloaded.kyc_documents[0].document_number == "REF-A123"
 
     async def test_kyc_doc_reference_is_encrypted_at_rest(
         self,
@@ -141,7 +141,7 @@ class TestCustomerRepository:
             raw_reference = (
                 await conn.execute(
                     text(
-                        "SELECT doc_reference FROM customer.kyc_document "
+                        "SELECT document_number FROM customer.kyc_document "
                         "WHERE customer_id = :customer_id"
                     ),
                     {"customer_id": str(customer_id)},
@@ -169,9 +169,9 @@ class TestCustomerRepository:
         assert field_encryptor.decrypt(raw_reference) == "PLAINTEXT-AADHAAR-REF"
 
         for state in audit_rows:
-            if state and "doc_reference" in state:
-                assert state["doc_reference"] != "PLAINTEXT-AADHAAR-REF"
-                assert field_encryptor.decrypt(state["doc_reference"]) == "PLAINTEXT-AADHAAR-REF"
+            if state and "document_number" in state:
+                assert state["document_number"] != "PLAINTEXT-AADHAAR-REF"
+                assert field_encryptor.decrypt(state["document_number"]) == "PLAINTEXT-AADHAAR-REF"
 
     async def test_get_by_lpg_subsidy_id_round_trips(
         self, database: Database, admin_engine: AsyncEngine, integration_settings: Settings

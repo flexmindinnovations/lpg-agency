@@ -82,18 +82,31 @@ async def _seed_staff_user(
                 {"slug": f"dash-smoke-{uuid.uuid4().hex[:10]}"},
             )
         ).scalar_one()
+        user_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO identity.identity_user "
+                    "(id, tenant_id, email, password_hash, role) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :email, :password_hash, :role) "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "email": email,
+                    "password_hash": password_hash,
+                    "role": role,
+                },
+            )
+        ).scalar_one()
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user "
-                "(id, tenant_id, email, password_hash, role) "
-                "VALUES (gen_random_uuid(), :tenant_id, :email, :password_hash, :role)"
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
             ),
-            {
-                "tenant_id": str(tenant_id),
-                "email": email,
-                "password_hash": password_hash,
-                "role": role,
-            },
+            {"user_id": user_id, "role": role},
         )
     return uuid.UUID(str(tenant_id))
 

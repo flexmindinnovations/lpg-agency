@@ -134,6 +134,16 @@ async def _seed_user(
                 },
             )
         ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": user_id, "role": role},
+        )
     return uuid.UUID(str(user_id))
 
 
@@ -161,6 +171,16 @@ async def _seed_otp_user(
                 {"tenant_id": str(tenant_id), "phone_number": phone_number, "role": role},
             )
         ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": user_id, "role": role},
+        )
     return uuid.UUID(str(tenant_id)), uuid.UUID(str(user_id))
 
 

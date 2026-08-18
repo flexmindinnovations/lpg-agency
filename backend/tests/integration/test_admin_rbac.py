@@ -127,10 +127,39 @@ class TestLivePermissionCheckForPlatformFlags:
         with pytest.raises(PermissionDeniedError):
             await dependency(principal, checker)
 
-    async def test_allows_a_real_super_admin(self, database: Database) -> None:
+    async def test_allows_a_real_super_admin(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        from sqlalchemy import text
+        tenant_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+        
+        async with admin_engine_lpg_test.begin() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO tenant.tenant (id, name, slug, primary_contact_email) "
+                    "VALUES (:tenant_id, 'Super Admin Tenant', :slug, 'super@example.com')"
+                ),
+                {"tenant_id": tenant_id, "slug": f"TS{uuid.uuid4().hex[:6]}"},
+            )
+            await session.execute(
+                text(
+                    "INSERT INTO identity.identity_user (id, tenant_id, email, password_hash, role) "
+                    "VALUES (:user_id, :tenant_id, 'super@example.com', 'hash', 'super_admin')"
+                ),
+                {"user_id": user_id, "tenant_id": tenant_id},
+            )
+            await session.execute(
+                text(
+                    "INSERT INTO identity.identity_user_permission (user_id, permission_id) "
+                    "SELECT :user_id, id FROM identity.permission WHERE code = 'feature_flags:manage_platform'"
+                ),
+                {"user_id": user_id},
+            )
+
         principal = JwtAuthenticatedPrincipal(
-            tenant_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            user_id=user_id,
             role="super_admin",
             permission_codes=frozenset({"feature_flags:manage_platform"}),
         )

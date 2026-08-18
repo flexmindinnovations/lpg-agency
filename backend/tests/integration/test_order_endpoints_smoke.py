@@ -166,11 +166,13 @@ async def _seed_staff_user(
     role: str,
 ) -> None:
     async with engine.begin() as conn:
-        await conn.execute(
+        user_id = (
+            await conn.execute(
             text(
                 "INSERT INTO identity.identity_user "
                 "(id, tenant_id, branch_id, email, password_hash, role) "
-                "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :email, :password_hash, :role)"
+                "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :email, :password_hash, :role) "
+                    "RETURNING id"
             ),
             {
                 "tenant_id": str(tenant_id),
@@ -179,6 +181,17 @@ async def _seed_staff_user(
                 "password_hash": password_hash,
                 "role": role,
             },
+        )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": user_id, "role": role},
         )
 
 
@@ -216,6 +229,16 @@ async def _seed_customer(
                 },
             )
         ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": identity_user_id, "role": 'customer'},
+        )
         customer_id = (
             await conn.execute(
                 text(
@@ -282,6 +305,16 @@ async def _seed_driver(
                 },
             )
         ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": identity_user_id, "role": 'driver'},
+        )
         driver_id = (
             await conn.execute(
                 text(

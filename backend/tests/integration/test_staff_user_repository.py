@@ -217,12 +217,25 @@ class TestListStaffUsers:
             )
         )
         async with admin_engine.begin() as conn:
-            await conn.execute(
+            user_id = (
+                await conn.execute(
                 text(
                     "INSERT INTO identity.identity_user (id, tenant_id, phone_number, role) "
-                    "VALUES (gen_random_uuid(), :tenant_id, :phone, 'customer')"
+                    "VALUES (gen_random_uuid(), :tenant_id, :phone, 'customer') "
+                        "RETURNING id"
                 ),
                 {"tenant_id": str(tenant_id), "phone": f"+1555{uuid.uuid4().int % 10_000_000:07d}"},
+            )
+            ).scalar_one()
+            await conn.execute(
+                text(
+                    "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                    "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                    "FROM identity.role_permission rp "
+                    "JOIN identity.role r ON r.id = rp.role_id "
+                    "WHERE r.code = :role"
+                ),
+                {"user_id": user_id, "role": role},
             )
 
         list_use_case = ListStaffUsersUseCase(repository)
