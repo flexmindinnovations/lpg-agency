@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R4 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+**Generated:** 2026-08-18 · **Last updated:** after R5 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
 
 ## How this was produced
 
@@ -10,9 +10,9 @@ result disagree, the measured result wins and the disagreement is recorded.
 
 | CI command | Result |
 |---|---|
-| `uv run ruff check .` | **524 errors** (was 634; 109 of the drop is `backend/scratch/` now gitignored, 1 from R1 — not a code-quality improvement) |
-| `uv run mypy` | **18 errors in 6 files** (was 23 in 10) |
-| `uv run lint-imports` | **2 of 5 contracts BROKEN** |
+| `uv run ruff check .` | **481 errors** (was 634; still mostly untouched — tracked separately as R6) |
+| `uv run mypy` | **2 errors in 1 file** (was 23 in 10 — `storage/client.py`, an unused `type: ignore`, untouched by any remediation work so far) |
+| `uv run lint-imports` | **0 of 5 contracts broken** (was 2 broken) |
 | `uv run pytest tests/unit` | 514 passed |
 | `uv run pytest tests/integration` | **0 failed**, 253 passed (was 18 failed / 234 passed originally) |
 | `npx nx run-many -t lint` | **0 of 26 projects fail** (was 7 of 24) |
@@ -115,10 +115,69 @@ structure `de17b27d462e` was written to introduce, and defeats any future
 routing or pincode-based feature. Fixing it means widening the
 `CustomerService.addAddress` signature.
 
-### C2 — Clean Architecture contracts (2 of 5 broken)
+### C2 — Clean Architecture contracts (2 of 5 broken) ✅ RESOLVED (R5, 2026-08-18)
 
-- `lpg.api` → `sqlalchemy`: `routers/auth.py:29` (uncommitted), `routers/complaint.py:5-6`, several `dependencies/*`. Raw `text()` executed from the API layer.
-- `lpg.infrastructure` → `fastapi`: `realtime/connection_manager.py:21` — **type-only, under `TYPE_CHECKING`**. Judgement call: add `ignore_imports` or invert the dependency. No runtime coupling exists.
+Re-running `uv run lint-imports` before touching anything showed the real
+scope was much larger than this row's original description: not 3 router
+sites, but **3 genuine router-level violations plus 11 composition-root-shaped
+ones** the original sweep never enumerated (some pre-existing and missed,
+some from modules — accounting, driver events, employee repo — that shipped
+after C2 was first written).
+
+**Genuine violations (3), each a router reaching around its own
+`UnitOfWork`/dependency-injection seam into raw SQLAlchemy or infrastructure
+types directly:**
+
+- `routers/auth.py`'s `_resolve_tenant_id` ran `session.execute(text("SELECT
+  tenant.auth_resolve_tenant_id_by_slug(:slug)"))` directly against a session
+  pulled via a deferred `lpg.api.app` import — no port, no injection. Added
+  `TenantSlugResolver` (`application/identity/ports.py`), implemented by
+  `SqlAlchemyTenantSlugResolver` (`infrastructure/identity/`), wired via a
+  new `get_tenant_slug_resolver()` in `dependencies/identity.py` — same
+  shape as every other `get_*_repository()` in that file. `otp_request`/
+  `otp_verify` now take it as a real `Depends()` parameter.
+- `routers/complaint.py`'s `get_complaint`/`list_complaints` did
+  `getattr(uow, "_uow", uow)` then `getattr(uow_impl, "session")` to
+  hand-roll `select(ComplaintModel)` queries with eager-loading and
+  pagination — bypassing `ComplaintRepository` entirely, even though
+  `get_by_id` already existed on it and did the identical eager-loaded
+  query. Added `list_complaints`/`count_complaints` to `ComplaintRepository`
+  (domain port) and `SqlAlchemyComplaintRepository` (extracting a shared
+  `_to_domain()` helper from the pre-existing `get_by_id` mapping code), and
+  rewrote both endpoints to call `uow.complaints.*` — the accessor the
+  DI wrapper (`dependencies/complaint.py::_ComplaintUnitOfWorkWrapper`)
+  already exposed and the router had been reaching around.
+- `routers/notifications.py` repeated the identical
+  `getattr(uow, "_uow", uow)` / `getattr(uow_impl, "session")` hack on
+  **all four** endpoints to build `SqlAlchemyInAppNotificationRepository`
+  by hand. Added `dependencies/notification.py::get_notification_repository()`
+  (same composition-root shape as every other dependency-wiring module) and
+  switched all four endpoints to `Depends()` it instead.
+
+**Composition-root-shaped violations (11):** `dependencies/accounting.py`,
+`dependencies/admin.py` (the employee repository — added after the last
+audit), `dependencies/complaint.py`, `dependencies/reporting.py`, and two
+`lpg.api.app` domain-event-handler registrations (`accounting_handlers`,
+`tenant_admin_handlers`) — all structurally identical to the dozen+ entries
+this contract's `ignore_imports` already accepted for identity/admin/
+customer/delivery/inventory/order. Added matching entries rather than
+touching the code — this **is** the composition root's documented role.
+
+**`realtime/connection_manager.py`'s FastAPI import — inverted, not
+ignored.** The only thing this module actually calls on `WebSocket` is
+`.send_json(...)`. Replaced the `TYPE_CHECKING`-guarded `from fastapi import
+WebSocket` with a local, structural `Protocol` (`class WebSocket(Protocol):
+async def send_json(self, data: Any) -> None: ...`) — `fastapi.WebSocket`
+satisfies it with zero explicit coupling in either direction, matching this
+codebase's existing `TenantResolver`/`RealtimePublisher` dependency-inversion
+idiom rather than just suppressing the check.
+
+Verified: `uv run lint-imports` — **0 of 5 contracts broken** (was 2).
+`uv run mypy` on every touched file — 0 issues. `uv run pytest tests/unit`
+— 514 passed, unchanged. `uv run pytest tests/integration` — **253 passed,
+0 failed**, unchanged. Backend-wide `uv run ruff check .` moved 524→481
+(incidental — import-block reordering `ruff --fix` picked up in files
+already being edited here; the remaining count is R6's scope, untouched).
 
 ### C3 — PrimeNG v22 blank buttons ✅ RESOLVED (R2, 2026-08-18)
 
@@ -504,7 +563,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R2** — C3 blank buttons → **done 2026-08-18**, 2 files, 2 distinct failure modes (fully blank vs. icon-only-missing)
 - [x] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → **done 2026-08-18**, 0 of 26 projects fail. Did *not* repair `dashboard:test` (wrong original assumption, corrected in C11); that failure is now folded into R4
 - [x] **R4** — Frontend tests → **done 2026-08-18**, 0 of 25 projects fail (was 6). Three defect classes: a `jest.config.cts` `transformIgnorePatterns` gap on 6 projects (4 actually failing), TestBed provider gaps never caught because those specs never previously ran to completion, and two independent stale-assertion / missing-provider bugs surfaced once unblocked (`dashboard`, `shared-data-access`). Full writeup in C12
-- [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
+- [x] **R5** — C2 import contracts → **done 2026-08-18**, 0 of 5 contracts broken (was 2). New `TenantSlugResolver` port replaces `routers/auth.py`'s raw `text()`; `ComplaintRepository`/`InAppNotificationRepository` gained list/count methods and proper DI wiring replacing two routers' raw-session hacks; 11 composition-root-shaped edges added to `ignore_imports`; `connection_manager.py`'s FastAPI import inverted into a local `Protocol`. Full writeup in C2
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
 - [ ] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress`
 - [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time

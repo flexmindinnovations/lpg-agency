@@ -249,3 +249,17 @@ class PermissionRepository(Protocol):
     async def set_permissions_for_user(self, user_id: uuid.UUID, permission_codes: set[str]) -> None:
         """Overwrite the permissions assigned to a user."""
         ...
+
+
+@runtime_checkable
+class TenantSlugResolver(Protocol):
+    """Resolves a human-readable agency code (`tenant.slug`) to its UUID.
+
+    `/auth/otp/request` and `/auth/otp/verify` accept either a raw
+    `tenant_id` or an agency-code slug from unauthenticated callers (mobile
+    clients that don't yet have a tenant UUID cached) — that lookup is one
+    SQL call against `tenant.auth_resolve_tenant_id_by_slug`, infrastructure
+    the router must not reach for directly.
+    """
+
+    async def resolve(self, slug: str) -> uuid.UUID | None: ...

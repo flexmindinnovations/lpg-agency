@@ -13,14 +13,26 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import Any, Protocol, runtime_checkable
 
 from lpg.config.logging import get_logger
 
-if TYPE_CHECKING:
-    from fastapi import WebSocket
-
 _logger = get_logger(__name__)
+
+
+@runtime_checkable
+class WebSocket(Protocol):
+    """The one method this module actually calls on FastAPI's `WebSocket`.
+
+    A structural `Protocol` instead of importing the real type — this is
+    infrastructure, but `16-realtime-architecture.md`'s WebSocket transport
+    is itself a FastAPI/Starlette concept, and `ConnectionManager` has no
+    reason to know that; it only needs "something with an async
+    `send_json`". `fastapi.WebSocket` satisfies this structurally with zero
+    coupling in either direction (`FastAPI stays inside the api layer`).
+    """
+
+    async def send_json(self, data: Any) -> None: ...
 
 # Backpressure: if a client's send queue exceeds this depth, disconnect it
 # rather than consuming unbounded memory (§7).

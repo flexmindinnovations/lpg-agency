@@ -251,6 +251,8 @@ ignore_imports = [
     # session and build concrete repositories), so the composition root is
     # what registers them and hands them the Database.
     "lpg.api.app -> lpg.infrastructure.events.cylinder_ledger_handlers",
+    "lpg.api.app -> lpg.infrastructure.events.accounting_handlers",
+    "lpg.api.app -> lpg.infrastructure.events.tenant_admin_handlers",
     "lpg.api.app -> lpg.infrastructure.redis.client",
     "lpg.api.app -> lpg.infrastructure.health",
     "lpg.api.app -> lpg.infrastructure.realtime.publisher",
@@ -262,6 +264,11 @@ ignore_imports = [
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.unit_of_work",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.repositories.identity",
+    # R5: dependencies/identity.py also wires the tenant-slug resolver
+    # `routers/auth.py`'s otp_request/otp_verify use to accept an agency
+    # code from unauthenticated callers, instead of the router running raw
+    # SQL against the database directly.
+    "lpg.api.v1.dependencies.identity -> lpg.infrastructure.identity.tenant_slug_resolver",
     # Area I (Phase 7): dependencies/admin.py wires every Phase 7 repository —
     # same composition-root role as dependencies/identity.py above, scoped to
     # the admin surface's own seams.
@@ -270,6 +277,7 @@ ignore_imports = [
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.identity",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.tenant",
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.employee",
     # Area J (Phase 8): dependencies/customer.py wires customer repository
     "lpg.api.v1.dependencies.customer -> lpg.infrastructure.persistence.repositories.customer",
     "lpg.api.v1.dependencies.customer -> lpg.infrastructure.security.field_encryption",
@@ -290,6 +298,24 @@ ignore_imports = [
     "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.route",
     "lpg.api.v1.dependencies.cylinder_ledger -> lpg.infrastructure.persistence.repositories.cylinder_ledger",
     "lpg.api.v1.dependencies.printing -> lpg.infrastructure.printing.engine",
+    # R5: dependencies/accounting.py wires the accounting repository and (for
+    # its own UnitOfWork-scoped seam) the concrete SqlAlchemyUnitOfWork type.
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.accounting",
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.unit_of_work",
+    # R5: dependencies/complaint.py wires the complaint repository, unwrapping
+    # to the concrete SqlAlchemyUnitOfWork the same way dependencies/accounting.py
+    # above does — this replaces `routers/complaint.py` reaching around the
+    # UnitOfWork into a raw session directly (the actual C2 violation fixed).
+    "lpg.api.v1.dependencies.complaint -> lpg.infrastructure.persistence.repositories.complaint",
+    "lpg.api.v1.dependencies.complaint -> lpg.infrastructure.persistence.unit_of_work",
+    # R5: dependencies/notification.py wires the in-app notification
+    # repository, replacing `routers/notifications.py` reaching around the
+    # UnitOfWork into a raw session directly on every endpoint (the actual
+    # C2 violation fixed).
+    "lpg.api.v1.dependencies.notification -> lpg.infrastructure.persistence.repositories.notification",
+    "lpg.api.v1.dependencies.notification -> lpg.infrastructure.persistence.unit_of_work",
+    # R5: dependencies/reporting.py wires the reporting repository.
+    "lpg.api.v1.dependencies.reporting -> lpg.infrastructure.persistence.repositories.reporting",
 ]
 
 [[tool.importlinter.contracts]]

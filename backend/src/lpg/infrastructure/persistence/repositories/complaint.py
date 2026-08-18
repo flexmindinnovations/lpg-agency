@@ -1,14 +1,23 @@
 import uuid
-from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from lpg.domain.complaint.complaint import Complaint, ComplaintAssignment, ComplaintResolution
 from lpg.domain.complaint.ports import ComplaintRepository
-from lpg.domain.complaint.value_objects import ComplaintCategory, ComplaintPriority, ComplaintStatus, ResolutionOutcome
-from lpg.infrastructure.persistence.models.complaint import ComplaintModel, ComplaintAssignmentModel, ComplaintResolutionModel
+from lpg.domain.complaint.value_objects import (
+    ComplaintCategory,
+    ComplaintPriority,
+    ComplaintStatus,
+    ResolutionOutcome,
+)
+from lpg.infrastructure.persistence.models.complaint import (
+    ComplaintAssignmentModel,
+    ComplaintModel,
+    ComplaintResolutionModel,
+)
+
 
 class SqlAlchemyComplaintRepository(ComplaintRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -20,7 +29,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
         if not model:
             model = ComplaintModel(id=complaint.id)
             self._session.add(model)
-            
+
         model.tenant_id = complaint.tenant_id
         model.customer_id = complaint.customer_id
         model.order_id = complaint.order_id
@@ -33,7 +42,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
         model.updated_at = complaint.updated_at
         model.created_by = complaint.created_by
         model.updated_by = complaint.updated_by
-        
+
         # Merge assignments
         existing_assignments = {a.id: a for a in model.assignments}
         model.assignments = []
@@ -50,7 +59,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
                     created_by=domain_a.created_by,
                 )
             model.assignments.append(assignment_model)
-            
+
         # Merge resolution
         if complaint.resolution:
             domain_r = complaint.resolution
@@ -67,23 +76,12 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
             model.resolution.created_at = domain_r.created_at
         else:
             model.resolution = None
-            
+
         for event in complaint.events:
             self._session.info.setdefault("domain_events", []).append(event)
         complaint.clear_events()
 
-    async def get_by_id(self, tenant_id: uuid.UUID, complaint_id: uuid.UUID) -> Optional[Complaint]:
-        stmt = (
-            select(ComplaintModel)
-            .options(selectinload(ComplaintModel.assignments), selectinload(ComplaintModel.resolution))
-            .where(ComplaintModel.tenant_id == tenant_id, ComplaintModel.id == complaint_id)
-        )
-        result = await self._session.execute(stmt)
-        model = result.scalar_one_or_none()
-        
-        if not model:
-            return None
-            
+    def _to_domain(self, model: ComplaintModel) -> Complaint:
         complaint = Complaint(
             entity_id=model.id,
             tenant_id=model.tenant_id,
@@ -99,7 +97,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
             created_by=model.created_by,
             updated_by=model.updated_by,
         )
-        
+
         complaint.assignments = [
             ComplaintAssignment(
                 entity_id=a.id,
@@ -112,7 +110,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
             )
             for a in model.assignments
         ]
-        
+
         if model.resolution:
             complaint.resolution = ComplaintResolution(
                 entity_id=model.resolution.id,
@@ -124,5 +122,65 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
                 resolved_at=model.resolution.resolved_at,
                 created_at=model.resolution.created_at,
             )
-            
+
         return complaint
+
+    async def get_by_id(self, tenant_id: uuid.UUID, complaint_id: uuid.UUID) -> Complaint | None:
+        stmt = (
+            select(ComplaintModel)
+            .options(
+                selectinload(ComplaintModel.assignments), selectinload(ComplaintModel.resolution)
+            )
+            .where(ComplaintModel.tenant_id == tenant_id, ComplaintModel.id == complaint_id)
+        )
+        result = await self._session.execute(stmt)
+        model = result.scalar_one_or_none()
+
+        if not model:
+            return None
+
+        return self._to_domain(model)
+
+    async def list_complaints(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        skip: int = 0,
+        limit: int = 50,
+        status: str | None = None,
+        customer_id: uuid.UUID | None = None,
+    ) -> list[Complaint]:
+        stmt = (
+            select(ComplaintModel)
+            .options(
+                selectinload(ComplaintModel.assignments), selectinload(ComplaintModel.resolution)
+            )
+            .where(ComplaintModel.tenant_id == tenant_id)
+        )
+        if status:
+            stmt = stmt.where(ComplaintModel.status == status)
+        if customer_id:
+            stmt = stmt.where(ComplaintModel.customer_id == customer_id)
+
+        stmt = stmt.order_by(ComplaintModel.created_at.desc()).offset(skip).limit(limit)
+        result = await self._session.execute(stmt)
+        return [self._to_domain(m) for m in result.scalars().all()]
+
+    async def count_complaints(
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        customer_id: uuid.UUID | None = None,
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(ComplaintModel)
+            .where(ComplaintModel.tenant_id == tenant_id)
+        )
+        if status:
+            stmt = stmt.where(ComplaintModel.status == status)
+        if customer_id:
+            stmt = stmt.where(ComplaintModel.customer_id == customer_id)
+
+        return await self._session.scalar(stmt) or 0

@@ -25,8 +25,7 @@ import uuid
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response, HTTPException
-from sqlalchemy import text
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
@@ -39,6 +38,7 @@ from lpg.api.v1.dependencies.identity import (
     get_password_reset_token_repository,
     get_permission_repository,
     get_refresh_token_repository,
+    get_tenant_slug_resolver,
     get_token_hasher,
     require_rate_limit,
 )
@@ -75,6 +75,7 @@ from lpg.application.identity.ports import (
     PasswordResetTokenRepository,
     PermissionRepository,
     RefreshTokenRepository,
+    TenantSlugResolver,
     TokenHasher,
 )
 from lpg.application.identity.refresh_token import RefreshTokenCommand, RefreshTokenUseCase
@@ -86,28 +87,16 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 _REFRESH_COOKIE_NAME = "lpg_refresh_token"
 
 
-async def _resolve_tenant_id(raw: str) -> uuid.UUID:
+async def _resolve_tenant_id(raw: str, tenant_slug_resolver: TenantSlugResolver) -> uuid.UUID:
     try:
         return uuid.UUID(raw)
     except ValueError:
         pass
 
-    from lpg.api.app import get_app_state
-
-    state = get_app_state()
-    if state.database is None:
-        raise RuntimeError("Database not configured")
-
-    async for session in state.database.open_session():
-        result = await session.execute(
-            text("SELECT tenant.auth_resolve_tenant_id_by_slug(:slug)"), {"slug": raw}
-        )
-        tid = result.scalar()
-        if tid is None:
-            raise HTTPException(status_code=400, detail="Invalid agency code.")
-        return uuid.UUID(str(tid))
-    
-    raise RuntimeError("Unreachable")
+    tenant_id = await tenant_slug_resolver.resolve(raw)
+    if tenant_id is None:
+        raise HTTPException(status_code=400, detail="Invalid agency code.")
+    return tenant_id
 
 
 def _set_refresh_cookie(response: Response, token_pair: TokenPair, settings: Settings) -> None:
@@ -175,12 +164,13 @@ async def otp_request(
     body: OtpRequestRequest,
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
+    tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:otp_request", limit=5, window_seconds=3600)),
     ],
 ) -> None:
-    tenant_uuid = await _resolve_tenant_id(body.tenant_id)
+    tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
     use_case = RequestOtpUseCase(otp_store, otp_delivery)
     await use_case.execute(
         RequestOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number)
@@ -200,6 +190,7 @@ async def otp_verify(
     permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
+    tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
 ) -> TokenResponse:
     use_case = VerifyOtpUseCase(
         otp_store,
@@ -210,7 +201,7 @@ async def otp_verify(
         jwt_signer,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
     )
-    tenant_uuid = await _resolve_tenant_id(body.tenant_id)
+    tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
     token_pair = await use_case.execute(
         VerifyOtpCommand(
             tenant_id=tenant_uuid, phone_number=body.phone_number, code=body.code

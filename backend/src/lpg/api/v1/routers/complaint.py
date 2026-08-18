@@ -1,12 +1,10 @@
-from typing import Annotated
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
-from sqlalchemy.orm import selectinload
 
-from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.complaint import get_complaint_unit_of_work
+from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.api.v1.schemas.complaint import (
     AssignComplaintRequest,
@@ -25,8 +23,6 @@ from lpg.application.complaint.use_cases import (
     ResolveComplaintCommand,
     ResolveComplaintUseCase,
 )
-from lpg.infrastructure.persistence.models.complaint import ComplaintModel
-from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
 
@@ -88,22 +84,11 @@ async def get_complaint(
     ctx: Annotated[TenantContext, Depends(get_tenant_context)],
     uow: Annotated[ComplaintUnitOfWork, Depends(get_complaint_unit_of_work)],
 ) -> ComplaintResponse:
-    # Use the session directly for reads
-    uow_impl = getattr(uow, "_uow", uow)
-    session = getattr(uow_impl, "session")
-    
-    stmt = (
-        select(ComplaintModel)
-        .options(selectinload(ComplaintModel.assignments), selectinload(ComplaintModel.resolution))
-        .where(ComplaintModel.tenant_id == ctx.tenant_id, ComplaintModel.id == complaint_id)
-    )
-    result = await session.execute(stmt)
-    model = result.scalar_one_or_none()
-    
-    if not model:
+    complaint = await uow.complaints.get_by_id(ctx.tenant_id, complaint_id)
+    if complaint is None:
         raise HTTPException(status_code=404, detail="Complaint not found")
-        
-    return ComplaintResponse.model_validate(model)
+
+    return ComplaintResponse.model_validate(complaint)
 
 @router.get("", response_model=ComplaintListResponse)
 async def list_complaints(
@@ -114,25 +99,16 @@ async def list_complaints(
     status: str | None = None,
     customer_id: uuid.UUID | None = None,
 ) -> ComplaintListResponse:
-    uow_impl = getattr(uow, "_uow", uow)
-    session = getattr(uow_impl, "session")
-    
-    stmt = select(ComplaintModel).where(ComplaintModel.tenant_id == ctx.tenant_id)
-    if status:
-        stmt = stmt.where(ComplaintModel.status == status)
-    if customer_id:
-        stmt = stmt.where(ComplaintModel.customer_id == customer_id)
-        
-    count_stmt = select(func.count()).select_from(stmt.subquery())
-    total = await session.scalar(count_stmt) or 0
-    
-    stmt = stmt.order_by(ComplaintModel.created_at.desc()).offset(skip).limit(limit)
-    result = await session.execute(stmt)
-    items = result.scalars().all()
-    
+    items = await uow.complaints.list_complaints(
+        ctx.tenant_id, skip=skip, limit=limit, status=status, customer_id=customer_id
+    )
+    total = await uow.complaints.count_complaints(
+        ctx.tenant_id, status=status, customer_id=customer_id
+    )
+
     return ComplaintListResponse(
         items=[ComplaintResponse.model_validate(i) for i in items],
         total=total,
         skip=skip,
-        limit=limit
+        limit=limit,
     )

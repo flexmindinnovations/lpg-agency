@@ -45,6 +45,7 @@ from lpg.application.identity.ports import (
     PasswordResetTokenRepository,
     PermissionRepository,
     RefreshTokenRepository,
+    TenantSlugResolver,
     TokenHasher,
 )
 from lpg.config.logging import get_logger
@@ -308,6 +309,12 @@ def get_permission_repository() -> PermissionRepository:
     )
 
     return SqlAlchemyPermissionRepository(_get_database())
+
+
+def get_tenant_slug_resolver() -> TenantSlugResolver:
+    from lpg.infrastructure.identity.tenant_slug_resolver import SqlAlchemyTenantSlugResolver
+
+    return SqlAlchemyTenantSlugResolver(_get_database())
 
 
 def get_permission_checker(
