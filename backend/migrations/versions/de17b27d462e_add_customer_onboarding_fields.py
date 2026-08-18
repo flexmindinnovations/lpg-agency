@@ -54,7 +54,7 @@ def upgrade() -> None:
     op.drop_column('customer_address', 'address_line', schema='customer')
 
     # KycDocument table changes
-    op.add_column('kyc_document', sa.Column('document_number', sa.String(length=100), nullable=False, server_default=''), schema='customer')
+    op.add_column('kyc_document', sa.Column('document_number', sa.Text(), nullable=False, server_default=''), schema='customer')
     op.add_column('kyc_document', sa.Column('file_url', sa.Text(), nullable=True), schema='customer')
     op.add_column('kyc_document', sa.Column('issue_date', sa.Date(), nullable=True), schema='customer')
     op.add_column('kyc_document', sa.Column('expiry_date', sa.Date(), nullable=True), schema='customer')

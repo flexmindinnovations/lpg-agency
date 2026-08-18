@@ -31,15 +31,15 @@ async def main():
         # 1. Ensure tenant exists
         print("Checking if tenant exists...")
         tenant_row = await conn.execute(
-            text("SELECT id FROM tenant.tenant WHERE slug = 'dev-tenant'")
+            text("SELECT id FROM tenant.tenant WHERE slug = 'DEV123456'")
         )
         tenant_id = tenant_row.scalar()
         if not tenant_id:
-            print("Creating default tenant 'dev-tenant'...")
+            print("Creating default tenant 'DEV123456'...")
             tenant_id = await conn.execute(
                 text(
                     "INSERT INTO tenant.tenant (id, name, slug) "
-                    "VALUES (gen_random_uuid(), 'Dev Agency Tenant', 'dev-tenant') "
+                    "VALUES (gen_random_uuid(), 'Dev Agency Tenant', 'DEV123456') "
                     "RETURNING id"
                 )
             )

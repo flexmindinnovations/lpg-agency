@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from logging.config import fileConfig
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from alembic import context
 from sqlalchemy import pool
@@ -41,21 +43,48 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+_LOCAL_DEV_FALLBACK = (
+    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
+)
+
+
+def _describe(url: str) -> str:
+    """Render ``host:port/database`` from a DSN, never the credentials."""
+    parsed = urlsplit(url)
+    return f"{parsed.hostname}:{parsed.port or 5432}{parsed.path}"
+
+
 def _database_url() -> str:
-    """Resolve the migration connection string.
+    """Resolve the migration connection string, announcing the target.
 
     Prefers ``LPG_MIGRATION_DATABASE_URL`` — migrations run as the elevated
     role over a *direct* connection, not as the application role through a
     transaction pooler (`06-database-architecture.md` §10, ADR-027). Falls back
     to ``LPG_DATABASE_URL``, then alembic.ini, then the local docker compose
     superuser.
+
+    **The banner is not decoration.** This module reads ``os.environ`` only and
+    never loads ``backend/.env``, so a bare ``alembic upgrade head`` in a shell
+    that has not exported one of these variables silently lands on the local
+    dev fallback. That failure mode is invisible: alembic reports a successful
+    upgrade, just against a database nobody intended. It cost this project a
+    round of "applied to Supabase" claims that were false — every one of those
+    runs had quietly hit ``lpg_dev``. Printing the resolved host and the
+    variable it came from makes the wrong target obvious in the first line of
+    output instead of days later.
     """
-    return (
-        os.environ.get("LPG_MIGRATION_DATABASE_URL")
-        or os.environ.get("LPG_DATABASE_URL")
-        or config.get_main_option("sqlalchemy.url")
-        or "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
-    )
+    for source in ("LPG_MIGRATION_DATABASE_URL", "LPG_DATABASE_URL"):
+        url = os.environ.get(source)
+        if url:
+            break
+    else:
+        url = config.get_main_option("sqlalchemy.url")
+        source = "alembic.ini"
+        if not url:
+            url, source = _LOCAL_DEV_FALLBACK, "built-in local-dev fallback"
+
+    print(f"[alembic] target: {_describe(url)}  (from {source})", file=sys.stderr)
+    return url
 
 
 def run_migrations_offline() -> None:
