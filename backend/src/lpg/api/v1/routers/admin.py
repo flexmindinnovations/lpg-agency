@@ -193,7 +193,7 @@ router = APIRouter(prefix="/admin", tags=["Administration"])
 
 @router.get("/tenant", response_model=TenantResponse, summary="The current tenant")
 async def get_tenant(
-    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:read"))],
     repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
 ) -> TenantResponse:
     tenant = await repository.get(principal.tenant_id)

@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R11 · **Migrations:** `e2a91c4f7b58` (all 4 environments)
+**Generated:** 2026-08-18 · **Last updated:** after R13 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
 
 ## How this was produced
 
@@ -14,7 +14,7 @@ result disagree, the measured result wins and the disagreement is recorded.
 | `uv run mypy` | **18 errors in 6 files** (was 23 in 10) |
 | `uv run lint-imports` | **2 of 5 contracts BROKEN** |
 | `uv run pytest tests/unit` | 514 passed |
-| `uv run pytest tests/integration` | **1 failed**, 252 passed (was 18 failed / 234 passed originally) |
+| `uv run pytest tests/integration` | **0 failed**, 253 passed (was 18 failed / 234 passed originally) |
 | `npx nx run-many -t lint` | **7 of 24 projects fail** |
 | `npx nx run-many -t test` | **4 of 23 projects fail** |
 | `npx nx build dashboard` | succeeds |
@@ -48,7 +48,7 @@ backlog this file tracks.
 | 04 | Angular web foundation | complete | ⚪ ✅ | 100% | ✅ | — | — |
 | 05 | Flutter foundations | complete | ⚪ ❓ | 100% | ❓ | not exercised | 12 dart tests exist; mobile CI **not run** in this pass — unverified, not assumed broken |
 | 06 | Auth & authorization | complete | ✅ | 100% | ✅ | import-linter `routers/auth.py` → sqlalchemy (C2, open) | C9 fixed in R11 — new users now get their role's permissions on creation |
-| 07 | Admin / tenant master data | complete | 🟡 1 real gap | 100% | 🔴 | 1 integration fail (R13 — `GET /admin/tenant` ungated); lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Frontend lint errors remain; R13 is a genuine finding, not test debt |
+| 07 | Admin / tenant master data | complete | 🟡 backend ✅ | 100% | 🟡 | lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Backend gap closed by R13; frontend lint errors remain |
 | 08 | Customer management | ✅ COMPLETE | ✅ | 100% | ✅ | — | C1 fixed in R1; stale KYC test key fixed in R11 pass |
 | 09 | Driver management | ✅ COMPLETE | ✅ | 100% | ✅ | — | — |
 | 10 | Inventory management | ✅ COMPLETE | ✅ | 100% | ✅ | — | Was C10 (exception-swallowing), fixed |
@@ -251,17 +251,27 @@ fixed at the source rather than papered over by clearing rows.
 against a schema that has required `document_number` since it was written — a
 stale key, fixed exactly like C1.
 
-**One finding deliberately left open, not silently patched — R13:**
-`GET /api/v1/admin/tenant` (`routers/admin.py`) has **no permission dependency
-at all** — only `Depends(get_current_principal)` ("authenticated"), while
-every sibling endpoint in the same router requires one (`rename_tenant`
-requires `tenant:configure`). A seeded `driver` calls it and gets `200` where
-`test_a_driver_is_denied_admin_access` expects `403`. There is no `tenant:read`
-permission code to gate it with, and choosing between adding one or judging
-the endpoint intentionally ungated (it returns only name/slug/status/plan/
-contact — arguably fine for any authenticated tenant member to read) is a
-product decision, not a bug with one obvious fix. Left failing rather than
-guessed at. Tracked separately as **R13**.
+**R13 — ✅ RESOLVED, 2026-08-18.** `GET /api/v1/admin/tenant`
+(`routers/admin.py`) had **no permission dependency at all** — only
+`Depends(get_current_principal)` ("authenticated"), while every sibling
+endpoint in the same router requires one (`rename_tenant` requires
+`tenant:configure`). A seeded `driver` could call it and got `200` where
+`test_a_driver_is_denied_admin_access` expects `403`.
+
+Deliberately left open at the time rather than guessed at, since neither
+option (add a permission code, or judge the endpoint intentionally ungated)
+had an obvious answer. Resolved by adding a permission code —
+`f3c8a56d29e1_add_tenant_read_permission.py`:
+
+- New code `tenant:read`, granted to `super_admin`/`agency_admin`/`manager`/`dispatcher` — mirroring `a907e81bc74c`'s role list for `users:read`, the one existing precedent in this codebase for a comparable basic-info-read permission, rather than inventing a new list. `warehouse_staff`, `accountant`, `driver`, `customer` excluded, matching what the test asserts.
+- Confirmed first: no frontend feature currently calls this endpoint (`AdminTenantService.getTenant` has zero callers outside the generated client), so gating it narrows nothing a real UI depends on today.
+- **Backfilled `identity.identity_user_permission` for existing users of those roles in the same migration**, not just `role_permission` — the exact gap this session already found twice (`b4d19e7c3a52`, then C9/R11 itself). Since `8c221c3e0a91`, `has_permission` never consults `role_permission` at request time; a migration that only inserts there grants the new code to nobody who already exists. Landing this migration without that step would have reintroduced C9's bug for one more permission code on day one.
+- Router changed to `Depends(require_permission("tenant:read"))`; `get_current_principal` remains used elsewhere in the same file.
+
+Verified: `tests/integration` **253 passed, 0 failed**. `tests/unit` 514
+passed, unchanged. mypy 18/6, import-linter 3 kept/2 broken, both unchanged —
+confirming nothing outside this one endpoint moved. Applied to `lpg_dev`,
+`lpg_test`, `lpg_uat`; **not yet applied to Supabase**.
 
 ### C10 — `get_unit_of_work` silently downgraded every domain error to 500 ✅ RESOLVED (R11, 2026-08-18)
 
@@ -331,7 +341,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [ ] **R0** — Commit the working tree, so later fixes stay separable from in-flight work
 - [x] **R1** — C1 fixture drift → **done 2026-08-18**, cleared 11 of 18; frontend follow-up cleared 2 more sites (blank dropdown, dead wizard field)
 - [x] **R11** — C9 restore permissions for newly-created users → **done 2026-08-18**, plus C10 (see below) and 4 test-infra defects found while closing it out
-- [ ] **R13** — `GET /admin/tenant` has no permission dependency at all; a driver gets 200 where a 403 is expected. No `tenant:read` code exists to gate it with — **needs a product decision**, not a patch (add a permission code, or accept the endpoint as intentionally open to any authenticated tenant member)
+- [x] **R13** — `GET /admin/tenant` had no permission dependency → **done 2026-08-18**, added `tenant:read` (super_admin/agency_admin/manager/dispatcher), backfilled existing users, gated the endpoint. `tests/integration`: 253/253 passing, 0 failed
 - [ ] **R2** — C3 blank buttons → 2 files, user-visible bug
 - [ ] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → also repairs `dashboard:test`
 - [ ] **R4** — Frontend tests (4 projects)
