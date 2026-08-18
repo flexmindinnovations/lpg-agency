@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R3 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+**Generated:** 2026-08-18 · **Last updated:** after R4 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
 
 ## How this was produced
 
@@ -16,7 +16,7 @@ result disagree, the measured result wins and the disagreement is recorded.
 | `uv run pytest tests/unit` | 514 passed |
 | `uv run pytest tests/integration` | **0 failed**, 253 passed (was 18 failed / 234 passed originally) |
 | `npx nx run-many -t lint` | **0 of 26 projects fail** (was 7 of 24) |
-| `npx nx run-many -t test` | **6 of 25 projects fail** (was 4 of 23 — see R3/R4) |
+| `npx nx run-many -t test` | **0 of 25 projects fail** (was 4 of 23 — see R3/R4) |
 | `npx nx build dashboard` | succeeds |
 
 This file exists because four separate phases were marked COMPLETE in their own
@@ -384,6 +384,81 @@ from this one Jest/ESM defect now counted per-project, plus
 expects an `/api/v1/orders` retry request that never fires; not investigated
 further here).
 
+### C12 — Frontend tests: 6 of 25 projects failing ✅ RESOLVED (R4, 2026-08-18)
+
+Three distinct defect classes, all confirmed by re-running
+`npx nx run-many -t test --skip-nx-cache`:
+
+**1. Jest/ESM `transformIgnorePatterns` gap (4 projects: `feature-complaints`,
+`notification-feature-notifications`, `notification-ui-bell`,
+`notification-ui-drawer`).** Every other project's `jest.config.cts` has
+`transformIgnorePatterns: ['node_modules/(?!(@primeui|@noble)|.*\\.mjs$)']`
+— these 4 (plus `reporting/data-access` and `reporting/feature-reports`,
+latent but not yet triggering) still had the older
+`['node_modules/(?!.*\\.mjs$)']`, which doesn't transform `@primeui`'s
+license-manager or `@noble/ed25519`'s ESM `.js` files, so Jest hit
+`SyntaxError: Unexpected token 'export'` the moment a component imported
+PrimeNG's `badge`/`drawer` modules. Fixed all 6 to match the workspace
+standard.
+
+**2. Spec files that never successfully ran before, so were never caught
+missing TestBed providers their components actually need** — the ESM
+crash above happened *before* any test body executed, masking these:
+`notification-bell`/`notification-drawer`/`notification-feature-notifications`
+inject `NotificationService` (HTTP), and `notification-drawer` renders a
+`RouterLink`, and `notification-feature-notifications` injects `MessageService`
+— none of it wired into the specs' `TestBed.configureTestingModule`. Added
+`provideHttpClient()` + `provideHttpClientTesting()` + a stub
+`ApiConfiguration`, `provideRouter([])`, and `MessageService`, matching the
+pattern already established in `feature-vehicles.spec.ts` and
+`profile-menu.component.spec.ts`.
+
+**3. Two independent, already-latent gaps surfaced once the above unblocked
+their projects:**
+- `shell-layout.spec.ts` (`dashboard`) — `No provider found for
+  _ConfirmationService`; `shell-layout.ts` renders `<p-confirmDialog>` but
+  the spec only provided `MessageService`. Added `ConfirmationService`.
+- `app.spec.ts` (`dashboard`) — two tests asserting stale Phase-1
+  invariants: `shellRoute?.component` (the shell route now uses
+  `loadComponent`, lazy-loaded, not `component`) and a `businessPaths` list
+  (`delivery`, `accounting`, `ledger`, `complaints`, `reports`) that had
+  already shipped for every module it named — 3 of the 5 entries never
+  matched real path segments to begin with (the real ones are
+  `drivers`/`vehicles`/`dispatch`, `invoices`, `ledger/:customerId`), so
+  those were always vacuously passing; only `complaints` and `reports`
+  literal-matched and now fail because those modules are live. Fixed the
+  first assertion to check `loadComponent`, and replaced "contains no
+  business routes" with a test of the invariant that's actually still true
+  and worth guarding: every child route other than `''`/`profile`/
+  `notifications`/`**` carries a `canActivate` guard — following the same
+  incremental-retirement precedent this file already used for `orders`.
+- `auth.interceptor.spec.ts` (`shared-data-access`) — `authInterceptor`
+  gained `Router` and `ConfirmationService` injections (for the
+  session-expired re-login dialog) that the spec's providers never picked
+  up, so `inject()` threw before any request reached the test backend,
+  failing all 4 tests with "found none". Added the two providers. The
+  fourth test also asserted stale behavior — expecting the observable to
+  error on a repeat refresh failure, when the interceptor deliberately
+  `return EMPTY`s in that case (per its own inline comment, so
+  `problemDetailsInterceptor` doesn't show a second, generic toast on top
+  of the confirm dialog). Rewrote the assertion to match the documented
+  contract: no error, the observable completes, the session is cleared,
+  and `ConfirmationService.confirm` is called with the session-expired
+  dialog.
+- `libs/shared/data-access/src/lib/services/notification.spec.ts` — dead
+  scaffold, unrelated to the fixes above. Imported a class named
+  `Notification` that doesn't exist in `notification.ts` (only
+  `NotificationService` does — presumably renamed early to avoid
+  colliding with the browser's global `Notification` API), so the import
+  silently resolved to `undefined` and `TestBed.inject(undefined)` threw.
+  Never tested anything real; deleted rather than fixed forward, since
+  writing a new spec for `NotificationService` is new coverage (R7's
+  scope), not a fix for this one.
+
+Verified: `npx nx run-many -t test --skip-nx-cache` — **0 of 25 projects
+fail** (was 6). `npx nx run-many -t lint` and `npx nx build dashboard`
+re-confirmed still green after these changes.
+
 ### C8 — Seven designed domain events were never implemented
 
 Found by the documentation baseline audit (2026-08-18), verifying
@@ -428,7 +503,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R13** — `GET /admin/tenant` had no permission dependency → **done 2026-08-18**, added `tenant:read` (super_admin/agency_admin/manager/dispatcher), backfilled existing users, gated the endpoint. `tests/integration`: 253/253 passing, 0 failed
 - [x] **R2** — C3 blank buttons → **done 2026-08-18**, 2 files, 2 distinct failure modes (fully blank vs. icon-only-missing)
 - [x] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → **done 2026-08-18**, 0 of 26 projects fail. Did *not* repair `dashboard:test` (wrong original assumption, corrected in C11); that failure is now folded into R4
-- [ ] **R4** — Frontend tests (6 of 25 projects fail): `feature-complaints`, `notification-feature-notifications`, `notification-ui-bell`, `notification-ui-drawer` (one shared Jest/ESM `SyntaxError` defect, now counted across 4 projects instead of 1 after R3's library split), `dashboard` (`_ConfirmationService` provider missing in `shell-layout.spec.ts`, found during R3), `shared-data-access` (`auth.interceptor.spec.ts`, unrelated, not yet triaged)
+- [x] **R4** — Frontend tests → **done 2026-08-18**, 0 of 25 projects fail (was 6). Three defect classes: a `jest.config.cts` `transformIgnorePatterns` gap on 6 projects (4 actually failing), TestBed provider gaps never caught because those specs never previously ran to completion, and two independent stale-assertion / missing-provider bugs surfaced once unblocked (`dashboard`, `shared-data-access`). Full writeup in C12
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
 - [ ] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress`

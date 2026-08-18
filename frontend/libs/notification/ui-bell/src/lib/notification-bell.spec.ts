@@ -1,4 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { ApiConfiguration } from '@lpg/shared/data-access';
 import { NotificationBell } from './notification-bell';
 
 describe('NotificationBell', () => {
@@ -7,7 +10,12 @@ describe('NotificationBell', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NotificationBell]
+      imports: [NotificationBell],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NotificationBell);

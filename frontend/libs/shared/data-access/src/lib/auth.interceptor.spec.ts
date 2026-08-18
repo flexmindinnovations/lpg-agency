@@ -1,6 +1,8 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { ConfirmationService } from 'primeng/api';
 import { authInterceptor } from './auth.interceptor';
 import { AuthTokenStore } from './auth-token.store';
 
@@ -14,6 +16,8 @@ describe('authInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
+        provideRouter([]),
+        ConfirmationService,
       ],
     });
 
@@ -56,11 +60,17 @@ describe('authInterceptor', () => {
     httpTesting.expectNone('/api/v1/auth/refresh');
   });
 
-  it('refreshes and retries once on a 401 from an ordinary endpoint, then clears the session on repeat failure', () => {
+  it('refreshes and retries once on a 401 from an ordinary endpoint, then clears the session and prompts re-login on repeat failure', () => {
     tokenStore.setAccessToken('stale-token');
+    const confirmationService = TestBed.inject(ConfirmationService);
+    const confirmSpy = jest.spyOn(confirmationService, 'confirm');
     let observedError: unknown;
+    let completed = false;
 
-    http.get('/api/v1/orders').subscribe({ error: (error) => (observedError = error) });
+    http.get('/api/v1/orders').subscribe({
+      error: (error) => (observedError = error),
+      complete: () => (completed = true),
+    });
 
     httpTesting
       .expectOne('/api/v1/orders')
@@ -70,7 +80,15 @@ describe('authInterceptor', () => {
       .expectOne('/api/v1/auth/refresh')
       .flush(null, { status: 401, statusText: 'Unauthorized' });
 
-    expect(observedError).toBeTruthy();
+    // A repeat 401 on the refresh itself clears the session and prompts the
+    // user to log back in, but deliberately does not error the caller's
+    // request — the interceptor returns EMPTY so `problemDetailsInterceptor`
+    // doesn't also show a generic error toast on top of the confirm dialog.
+    expect(observedError).toBeUndefined();
+    expect(completed).toBe(true);
     expect(tokenStore.accessToken()).toBeNull();
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ header: 'Session Expired' }),
+    );
   });
 });

@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { ShellLayout } from './shell-layout';
 
 describe('ShellLayout', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ShellLayout],
-      providers: [provideRouter([]), MessageService],
+      providers: [provideRouter([]), MessageService, ConfirmationService],
     }).compileComponents();
   });
 

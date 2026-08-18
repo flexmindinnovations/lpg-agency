@@ -28,21 +28,23 @@ describe('Routing foundation', () => {
   it('gates every other route behind authGuard and ShellLayout', () => {
     const shellRoute = appRoutes.find((route) => route.path === '');
     expect(shellRoute?.canActivate).toBeTruthy();
-    expect(shellRoute?.component).toBeTruthy();
+    // ShellLayout is lazy-loaded (`loadComponent`), not eagerly imported.
+    expect(shellRoute?.loadComponent).toBeTruthy();
   });
 
-  it('contains no business routes', () => {
-    // Phase 1 is foundation only. Remaining business routes each arrive in
-    // their own phase behind their own plan. `orders` shipped with Order
-    // Management and is deliberately no longer in this list.
-    const businessPaths = ['delivery', 'accounting', 'ledger', 'complaints', 'reports'];
-    const declaredTopLevel = appRoutes.map((route) => route.path ?? '');
-    const declaredNested = appRoutes.flatMap(
-      (route) => route.children?.map((child) => child.path ?? '') ?? [],
-    );
-    for (const path of businessPaths) {
-      expect(declaredTopLevel).not.toContain(path);
-      expect(declaredNested).not.toContain(path);
+  it('gates every business route (other than profile/notifications/not-found) behind a permission guard', () => {
+    // Every business module named in earlier revisions of this test
+    // (delivery, accounting, ledger, orders, complaints, reports) has since
+    // shipped — the invariant worth guarding isn't "these don't exist yet",
+    // it's that every route which isn't explicitly exempt requires a
+    // `permissionGuard`, matching `permission.guard.ts`'s own docstring that
+    // the server re-enforces every one of these regardless.
+    const exempt = new Set(['', 'profile', 'notifications', '**']);
+    const shellRoute = appRoutes.find((route) => route.path === '');
+    const children = shellRoute?.children ?? [];
+    for (const child of children) {
+      if (exempt.has(child.path ?? '')) continue;
+      expect(child.canActivate).toBeTruthy();
     }
   });
 });
