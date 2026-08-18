@@ -180,7 +180,7 @@ class TestCustomerEndpointsThroughRealStack:
             f"/api/v1/customers/{customer_id}/kyc",
             json={
                 "doc_type": "aadhaar",
-                "doc_reference": "AADHAAR-REF-123",
+                "document_number": "AADHAAR-REF-123",
             },
             headers=headers,
         )

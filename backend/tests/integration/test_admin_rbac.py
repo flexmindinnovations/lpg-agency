@@ -11,6 +11,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.api.v1.dependencies.identity import require_live_permission, require_permission
 from lpg.application.common.errors import PermissionDeniedError
@@ -21,6 +22,8 @@ from lpg.infrastructure.persistence.repositories.identity import SqlAlchemyPermi
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
     from lpg.config.settings import Settings
 
@@ -39,6 +42,25 @@ async def database(
         yield db
     finally:
         await db.disconnect()
+
+
+@pytest.fixture
+async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[AsyncEngine]:
+    """Missing from this file until now — `test_allows_a_real_super_admin`
+    referenced it without ever defining it, so the test errored on
+    collection rather than running. Copied verbatim from
+    `test_admin_endpoints_smoke.py`, which every other file needing a
+    superuser-privileged connection duplicates the same way.
+    """
+    if not postgres_available:
+        pytest.skip("PostgreSQL is not reachable — start it with ./scripts/dev-up.sh")
+    engine = create_async_engine(
+        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_test"
+    )
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
 
 class TestClaimsBasedChecks:
@@ -133,21 +155,27 @@ class TestLivePermissionCheckForPlatformFlags:
         from sqlalchemy import text
         tenant_id = uuid.uuid4()
         user_id = uuid.uuid4()
-        
+        # uuid4-suffixed rather than a fixed literal: a fixed email collides
+        # with a leftover row from a prior local run against the same
+        # lpg_test database (uq_identity_identity_user_email) — the same
+        # flake class R1 already fixed twice in test_identity_repositories.py.
+        email = f"{uuid.uuid4().hex}@super-admin.example"
+
         async with admin_engine_lpg_test.begin() as session:
             await session.execute(
                 text(
                     "INSERT INTO tenant.tenant (id, name, slug, primary_contact_email) "
-                    "VALUES (:tenant_id, 'Super Admin Tenant', :slug, 'super@example.com')"
+                    "VALUES (:tenant_id, 'Super Admin Tenant', :slug, :email)"
                 ),
-                {"tenant_id": tenant_id, "slug": f"TS{uuid.uuid4().hex[:6]}"},
+                {"tenant_id": tenant_id, "slug": f"TS{uuid.uuid4().hex[:6]}", "email": email},
             )
             await session.execute(
                 text(
-                    "INSERT INTO identity.identity_user (id, tenant_id, email, password_hash, role) "
-                    "VALUES (:user_id, :tenant_id, 'super@example.com', 'hash', 'super_admin')"
+                    "INSERT INTO identity.identity_user "
+                    "(id, tenant_id, email, password_hash, role) "
+                    "VALUES (:user_id, :tenant_id, :email, 'hash', 'super_admin')"
                 ),
-                {"user_id": user_id, "tenant_id": tenant_id},
+                {"user_id": user_id, "tenant_id": tenant_id, "email": email},
             )
             await session.execute(
                 text(

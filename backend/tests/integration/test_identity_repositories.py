@@ -298,7 +298,7 @@ class TestSqlAlchemyPermissionRepository:
         self, database: Database, admin_engine: AsyncEngine
     ) -> None:
         tenant_id = await _seed_tenant(admin_engine)
-        user_id = await _seed_user(admin_engine, tenant_id, email="granted@example.com")
+        user_id = await _seed_user(admin_engine, tenant_id, email=f"{uuid.uuid4().hex}@x.example")
         
         async with admin_engine.begin() as conn:
             await conn.execute(
@@ -316,7 +316,7 @@ class TestSqlAlchemyPermissionRepository:
         self, database: Database, admin_engine: AsyncEngine
     ) -> None:
         tenant_id = await _seed_tenant(admin_engine)
-        user_id = await _seed_user(admin_engine, tenant_id, email="ungranted@example.com")
+        user_id = await _seed_user(admin_engine, tenant_id, email=f"{uuid.uuid4().hex}@x.example")
         
         repo = SqlAlchemyPermissionRepository(database)
         assert not await repo.has_permission(user_id=user_id, permission_code="tenant:configure")

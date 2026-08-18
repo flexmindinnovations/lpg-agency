@@ -13,6 +13,8 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.api.v1.dependencies.identity import require_live_permission, require_permission
 from lpg.application.common.errors import PermissionDeniedError
@@ -23,6 +25,8 @@ from lpg.infrastructure.persistence.repositories.identity import SqlAlchemyPermi
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
     from lpg.config.settings import Settings
 
@@ -41,6 +45,23 @@ async def database(
         yield db
     finally:
         await db.disconnect()
+
+
+@pytest.fixture
+async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[AsyncEngine]:
+    """A superuser-privileged connection, for seeding a *real* backing user.
+
+    Same reasoning as `test_inventory_rbac.py`'s copy of this fixture.
+    """
+    if not postgres_available:
+        pytest.skip("PostgreSQL is not reachable — start it with ./scripts/dev-up.sh")
+    engine = create_async_engine(
+        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_test"
+    )
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
 
 def _principal(role: str, permission_code: str) -> JwtAuthenticatedPrincipal:
@@ -147,10 +168,49 @@ class TestLivePermissionCheckForOrdersCancelApprove:
         with pytest.raises(PermissionDeniedError):
             await dependency(principal, checker)
 
-    async def test_allows_a_real_agency_admin(self, database: Database) -> None:
+    async def test_allows_a_real_agency_admin(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        """Same reasoning as test_inventory_rbac.py's copy of this test —
+        `has_permission` needs a real identity_user_permission row, which a
+        synthetic uuid.uuid4() user_id can never have.
+        """
+
+        tenant_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+
+        async with admin_engine_lpg_test.begin() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO tenant.tenant (id, name, slug, primary_contact_email) "
+                    "VALUES (:tenant_id, 'Order RBAC Tenant', :slug, 'ops@example.com')"
+                ),
+                {"tenant_id": tenant_id, "slug": f"TS{uuid.uuid4().hex[:6]}"},
+            )
+            await session.execute(
+                text(
+                    "INSERT INTO identity.identity_user "
+                    "(id, tenant_id, email, password_hash, role) "
+                    "VALUES (:user_id, :tenant_id, :email, 'hash', :role)"
+                ),
+                {
+                    "user_id": user_id,
+                    "tenant_id": tenant_id,
+                    "email": f"{uuid.uuid4().hex}@rbac.example",
+                    "role": "agency_admin",
+                },
+            )
+            await session.execute(
+                text(
+                    "INSERT INTO identity.identity_user_permission (user_id, permission_id) "
+                    "SELECT :user_id, id FROM identity.permission WHERE code = :code"
+                ),
+                {"user_id": user_id, "code": "orders:cancel_approve"},
+            )
+
         principal = JwtAuthenticatedPrincipal(
-            tenant_id=uuid.uuid4(),
-            user_id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            user_id=user_id,
             role="agency_admin",
             permission_codes=frozenset({"orders:cancel_approve"}),
         )

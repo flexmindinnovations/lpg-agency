@@ -330,6 +330,29 @@ class SqlAlchemyStaffUserRepository:
         return []  # pragma: no cover
 
     async def add(self, user: IdentityUser) -> None:
+        """Create the user and materialise their role's permissions.
+
+        `8c221c3e0a91` moved permission resolution from role-based to
+        per-user (`identity.identity_user_permission`), and backfilled every
+        user that existed at the time — but nothing was added to *create*
+        that backfill for a user made afterward. Every path that creates a
+        user funnels through this one method (`InviteStaffUserUseCase`, and
+        the `EmployeeRegistered` handler in
+        `infrastructure/events/tenant_admin_handlers.py`), which is why the
+        fix lives here rather than in either caller: a user materialised
+        anywhere else in the future gets this automatically, and neither
+        caller can forget it.
+
+        Deliberately not a read-time fallback to `role_permission` in
+        `SqlAlchemyPermissionRepository`. `PUT /admin/users/{id}/permissions`
+        does a full delete-then-insert of a user's *exact* permission set
+        (`set_permissions_for_user`) — a fallback would mean an admin
+        revoking a role-granted permission for one user, and saving, would
+        silently keep granting it from the role. Materialising once at
+        creation keeps that editor's contract intact: whatever is in
+        `identity_user_permission` for a user *is* their permission set,
+        full stop, including a deliberately-emptied one.
+        """
         async for session in self._database.session(tenant_id=self._tenant_id):
             session.add(
                 IdentityUserModel(
@@ -344,6 +367,20 @@ class SqlAlchemyStaffUserRepository:
                     failed_login_count=user.failed_login_count,
                     locked_until=user.locked_until,
                 )
+            )
+            # Flush so the FK from identity_user_permission has a row to
+            # reference — autoflush is off for this session factory.
+            await session.flush()
+            await session.execute(
+                text("""
+                    INSERT INTO identity.identity_user_permission
+                        (id, user_id, permission_id, created_at)
+                    SELECT gen_random_uuid(), :user_id, rp.permission_id, now()
+                    FROM identity.role_permission rp
+                    JOIN identity.role r ON r.id = rp.role_id
+                    WHERE r.code = :role
+                """),
+                {"user_id": str(user.id), "role": user.role},
             )
 
     async def save(self, user: IdentityUser) -> None:

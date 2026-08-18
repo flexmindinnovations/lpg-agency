@@ -64,15 +64,27 @@ async def get_unit_of_work(
                 yield uow
     except Exception as e:
         from fastapi import HTTPException
+
         from lpg.application.common.errors import ApplicationError
-        
-        if isinstance(e, (HTTPException, ApplicationError)):
+        from lpg.domain.common.base import DomainError
+
+        # DomainError (invariant violations, invalid state transitions) must
+        # reach `domain_error_handler` and come back as 409 with its real
+        # error_code — that handler's whole docstring is "well-formed request,
+        # not-currently-permitted state, and the client branches on that".
+        # This block used to catch it along with everything else and flatten
+        # it into an opaque 500, defeating that contract on every endpoint
+        # that resolves a UnitOfWork through this dependency — found via three
+        # integration tests expecting 409 ("Cannot transition order from
+        # 'closed' to 'closed'", and the inventory/route equivalents) that all
+        # got 500 instead.
+        if isinstance(e, (HTTPException, ApplicationError, DomainError)):
             raise
-            
+
         from lpg.config.logging import get_logger
         logger = get_logger(__name__)
         logger.error("unhandled_unit_of_work_exception", error=str(e))
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}") from None
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e!s}") from None
 
 
 def get_unit_of_work_factory(

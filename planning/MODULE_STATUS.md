@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R1 · **Migrations:** `e2a91c4f7b58` (all 4 environments)
+**Generated:** 2026-08-18 · **Last updated:** after R11 · **Migrations:** `e2a91c4f7b58` (all 4 environments)
 
 ## How this was produced
 
@@ -11,10 +11,10 @@ result disagree, the measured result wins and the disagreement is recorded.
 | CI command | Result |
 |---|---|
 | `uv run ruff check .` | **524 errors** (was 634; 109 of the drop is `backend/scratch/` now gitignored, 1 from R1 — not a code-quality improvement) |
-| `uv run mypy` | **19 errors in 7 files** (was 23 in 10; R1 cleared 4) |
+| `uv run mypy` | **18 errors in 6 files** (was 23 in 10) |
 | `uv run lint-imports` | **2 of 5 contracts BROKEN** |
 | `uv run pytest tests/unit` | 514 passed |
-| `uv run pytest tests/integration` | **7 failed**, 245 passed, 1 error (was 18 failed / 234 passed before R1) |
+| `uv run pytest tests/integration` | **1 failed**, 252 passed (was 18 failed / 234 passed originally) |
 | `npx nx run-many -t lint` | **7 of 24 projects fail** |
 | `npx nx run-many -t test` | **4 of 23 projects fail** |
 | `npx nx build dashboard` | succeeds |
@@ -47,13 +47,13 @@ backlog this file tracks.
 | 03 | Shared infrastructure | complete | ⚪ 🟡 | 100% | 🟡 | import-linter: `realtime/connection_manager` → fastapi | Import is type-only under `TYPE_CHECKING`; needs `ignore_imports` entry **or** refactor — decision required |
 | 04 | Angular web foundation | complete | ⚪ ✅ | 100% | ✅ | — | — |
 | 05 | Flutter foundations | complete | ⚪ ❓ | 100% | ❓ | not exercised | 12 dart tests exist; mobile CI **not run** in this pass — unverified, not assumed broken |
-| 06 | Auth & authorization | complete | 🔴 **live regression** | 100% | 🔴 | import-linter `routers/auth.py` → sqlalchemy | **Owns C9** — every user created since `8c221c3e0a91` has zero permissions. Test fixtures fixed in R1 |
-| 07 | Admin / tenant master data | complete | 🟡 works, gates red | 100% | 🔴 | 1 fail + 1 **error** (both C9); lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Frontend lint errors; test `NameError` fixed in R1 |
-| 08 | Customer management | ✅ COMPLETE | 🟡 1 fail left | 100% | 🔴 | 1 integration fail (C9) | C1 fixture drift **fixed in R1** |
+| 06 | Auth & authorization | complete | ✅ | 100% | ✅ | import-linter `routers/auth.py` → sqlalchemy (C2, open) | C9 fixed in R11 — new users now get their role's permissions on creation |
+| 07 | Admin / tenant master data | complete | 🟡 1 real gap | 100% | 🔴 | 1 integration fail (R13 — `GET /admin/tenant` ungated); lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Frontend lint errors remain; R13 is a genuine finding, not test debt |
+| 08 | Customer management | ✅ COMPLETE | ✅ | 100% | ✅ | — | C1 fixed in R1; stale KYC test key fixed in R11 pass |
 | 09 | Driver management | ✅ COMPLETE | ✅ | 100% | ✅ | — | — |
-| 10 | Inventory management | ✅ COMPLETE | 🟡 2 fails left | 100% | 🔴 | 2 integration fails (both C9) | C1 portion cleared by R1 |
-| 11 | Order management | complete (no planning dir) | 🟡 **7 of 8 fixed** | 100% | 🔴 | 1 integration fail (C9) | R1 cleared 7 of 8. `planning/features/11-order-management/` still **does not exist** |
-| 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | 🟡 1 fail left | 100% | 🔴 | 1 integration fail (C9) | C1 portion cleared by R1 |
+| 10 | Inventory management | ✅ COMPLETE | ✅ | 100% | ✅ | — | Was C10 (exception-swallowing), fixed |
+| 11 | Order management | complete (no planning dir) | ✅ | 100% | ✅ | — | All 8 original failures cleared (C1, C9, C10 combined). `planning/features/11-order-management/` still **does not exist** |
+| 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | ✅ | 100% | ✅ | — | Was C10, fixed |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
 | 14 | Accounting / invoicing | ✅ COMPLETE | 🔴 untested | ~90% | 🔴 | lint: `feature-invoices` (2 **blank buttons**) | **No invoice endpoint tests, no accounting integration tests.** See C3 |
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
@@ -164,7 +164,7 @@ contract doc would not have matched even once mounted. Corrected there.
 exposes four previously unreachable endpoints to RBAC and RLS for the first
 time. Tracked as R7a.
 
-### C9 — 🔴 Every user created since `8c221c3e0a91` has ZERO permissions
+### C9 — Every user created since `8c221c3e0a91` had ZERO permissions ✅ RESOLVED (R11, 2026-08-18)
 
 **A live production regression, found by R1 — not a test defect.**
 
@@ -187,25 +187,108 @@ their permission editor. Their role is set correctly and confers nothing.
 `orders:cancel_approve` is granted to `agency_admin` in `role_permission`, and a
 real `agency_admin` is still refused. That is the shape of the bug in one line.
 
-This accounts for **all 7 remaining integration failures**. The tests were
-correct and were detecting a real regression.
-
 > **Correction.** An earlier revision of this file attributed all 18 failures to
 > stale `address_line` fixtures and stated product code was correct. That held
-> for 11 of them. The other 7 are this — a product bug the fixture fix simply
-> uncovered.
+> for 11 of them. It then attributed the remaining 7 to this defect — also
+> wrong. Diagnosing each of the 7 individually (rather than assuming a shared
+> cause) found only 2 were actually C9. The other 5 split across two more
+> defects, below, both unrelated to permissions.
 
-**Not fixed here — it needs a design decision, not a patch:**
+**✅ Fixed 2026-08-18 (R11).** Both real creation paths — `InviteStaffUserUseCase`
+and the `EmployeeRegistered` event handler — funnel through exactly one method,
+`SqlAlchemyStaffUserRepository.add()`, so the fix lives there rather than in
+either caller: `add()` now flushes the new `identity_user` row and inserts its
+role's permissions from `role_permission` in the same transaction, before
+returning.
 
-1. Does `role_permission` remain a fallback when a user has no explicit grants (restores old behaviour, keeps per-user overrides as additive), or
-2. Does every creation path explicitly materialise the role's permissions (matches what the migration's backfill did, but every new creation path must remember to do it)?
+Deliberately **not** a read-time fallback to `role_permission` in
+`SqlAlchemyPermissionRepository` — the option this file originally
+recommended. `PUT /admin/users/{id}/permissions` does a full delete-then-insert
+of a user's *exact* permission set (`set_permissions_for_user`); a fallback
+would mean an admin revoking a role-granted permission for one user, and
+saving, would silently keep granting it from the role on every later read.
+Materialising once at creation keeps that editor's contract intact: whatever
+is in `identity_user_permission` for a user *is* their permission set, full
+stop, including a deliberately-emptied one. This reversed the initial
+recommendation after actually reading `set_permissions_for_user`'s semantics.
 
-Option 1 is more forgiving and matches how the docs describe RBAC. Option 2
-matches the intent of the per-user table. Whichever is chosen must also cover
-customer and employee registration, and needs a test that creates a user
-through the *real* invite path and asserts it can act.
+**Two more defects surfaced while closing this out — real, and now fixed —
+initially mis-attributed to C9 by assuming a shared cause without checking:**
 
-Tracked as **R11 — highest priority**, above the remaining lint work.
+- **`get_unit_of_work` was swallowing every `DomainError` as an opaque 500.**
+  `api/v1/dependencies/unit_of_work.py` caught `Exception` broadly and
+  re-raised only `HTTPException`/`ApplicationError` unchanged — every business
+  state-transition violation (order/route/inventory invalid-transition errors)
+  got flattened into a generic 500 instead of `domain_error_handler`'s
+  documented 409 with a real `error_code`. This dependency is used by 18
+  files; the bug defeated the "well-formed request, not-currently-permitted
+  state" contract almost everywhere a `UnitOfWork` is resolved. Fixed by
+  adding `DomainError` to the re-raise tuple, matching the pattern already
+  used for the other two types. Found because 3 of the 7 post-R1 failures
+  shared this exact shape ("Cannot transition X from 'A' to 'B'" arriving as
+  500, not 409) and had nothing to do with permissions.
+- **Two RBAC "live check" tests used a synthetic `uuid.uuid4()` `user_id` with
+  no backing row.**
+  `TestLivePermissionCheckForReconciliationApprove::test_allows_a_real_warehouse_staff`
+  and `TestLivePermissionCheckForOrdersCancelApprove::test_allows_a_real_agency_admin`
+  predate the per-user model and asserted a live check succeeds for a role
+  that holds the permission in `role_permission` — true under the old
+  role-based check, structurally impossible under the per-user one, since
+  `has_permission` requires a real row keyed to a real `user_id`. Fixed by
+  seeding a real tenant + user + grant via a real `admin_engine_lpg_test`
+  connection in both tests, rather than loosening product behaviour to match
+  a stale test.
+
+**Also fixed in the same pass, unrelated to C9:**
+`test_admin_rbac.py::test_allows_a_real_super_admin` referenced a fixture,
+`admin_engine_lpg_test`, that file never defined — a copy-paste omission
+relative to the ~10 sibling files that each carry their own copy; added. That
+test (and separately, R1's `test_identity_repositories.py` fix) hardcoded a
+literal email instead of uuid-suffixing it like every neighbouring call site,
+which flakes on any second local run against the same `lpg_test` database —
+fixed at the source rather than papered over by clearing rows.
+`test_customer_endpoints_smoke.py`'s KYC submission sent `doc_reference`
+against a schema that has required `document_number` since it was written — a
+stale key, fixed exactly like C1.
+
+**One finding deliberately left open, not silently patched — R13:**
+`GET /api/v1/admin/tenant` (`routers/admin.py`) has **no permission dependency
+at all** — only `Depends(get_current_principal)` ("authenticated"), while
+every sibling endpoint in the same router requires one (`rename_tenant`
+requires `tenant:configure`). A seeded `driver` calls it and gets `200` where
+`test_a_driver_is_denied_admin_access` expects `403`. There is no `tenant:read`
+permission code to gate it with, and choosing between adding one or judging
+the endpoint intentionally ungated (it returns only name/slug/status/plan/
+contact — arguably fine for any authenticated tenant member to read) is a
+product decision, not a bug with one obvious fix. Left failing rather than
+guessed at. Tracked separately as **R13**.
+
+### C10 — `get_unit_of_work` silently downgraded every domain error to 500 ✅ RESOLVED (R11, 2026-08-18)
+
+Found while diagnosing the failures left after C9's fix, by actually reading
+each one instead of assuming a shared cause — the earlier assumption that "all
+7 remaining are C9" was wrong for 5 of them.
+
+`api/v1/dependencies/unit_of_work.py::get_unit_of_work` wraps the request in a
+broad `except Exception as e:`, and only re-raised `HTTPException` and
+`ApplicationError` unchanged — everything else, including every `DomainError`
+(`InvariantViolation`, `InvalidOrderStatusTransitionError`,
+`InvalidStatusTransitionError`, …), was flattened into a generic
+`HTTPException(500, ...)`. This directly defeats `domain_error_handler`'s
+entire documented purpose (`middleware/problem_details.py`): a business-rule
+violation is a well-formed request against a not-currently-permitted state and
+should come back `409` with a stable `error_code`, not an opaque `500`.
+
+`get_unit_of_work` is depended on by 18 files, so this was live on nearly
+every mutating endpoint, not one corner case. Three integration tests caught
+it independently — an order, a route, and an inventory location each hitting
+an invalid state transition and getting `500` instead of `409` — before being
+traced to one shared cause.
+
+**Fixed** by adding `DomainError` to the tuple of exception types re-raised
+unchanged, matching the pattern already used for `HTTPException`/
+`ApplicationError`. `get_unit_of_work_factory` in the same file has no such
+catch-all and was unaffected; no other dependency module repeats this pattern.
 
 ### C8 — Seven designed domain events were never implemented
 
@@ -246,14 +329,15 @@ Phase 11, 16, 17, Reporting and Employees.
 Sequenced by gate-failures-cleared per unit of work, not by module number.
 
 - [ ] **R0** — Commit the working tree, so later fixes stay separable from in-flight work
-- [x] **R1** — C1 fixture drift → **done 2026-08-18**, cleared 11 of 18; exposed C9
+- [x] **R1** — C1 fixture drift → **done 2026-08-18**, cleared 11 of 18; frontend follow-up cleared 2 more sites (blank dropdown, dead wizard field)
+- [x] **R11** — C9 restore permissions for newly-created users → **done 2026-08-18**, plus C10 (see below) and 4 test-infra defects found while closing it out
+- [ ] **R13** — `GET /admin/tenant` has no permission dependency at all; a driver gets 200 where a 403 is expected. No `tenant:read` code exists to gate it with — **needs a product decision**, not a patch (add a permission code, or accept the endpoint as intentionally open to any authenticated tenant member)
 - [ ] **R2** — C3 blank buttons → 2 files, user-visible bug
 - [ ] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → also repairs `dashboard:test`
 - [ ] **R4** — Frontend tests (4 projects)
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
-- [ ] **R12** — C1 follow-up: onboarding wizard flattens structured address into one line
-- [ ] **R11** — C9 restore permissions for newly-created users 🔴 **highest priority — live regression**
+- [ ] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress`
 - [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
