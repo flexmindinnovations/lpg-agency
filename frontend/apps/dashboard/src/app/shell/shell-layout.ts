@@ -37,10 +37,10 @@ import { NotificationDrawer } from '@lpg/notification/ui-drawer';
       [role]="role()"
       (signOut)="onSignOut()"
     >
-      <lpg-notification-bell shell-top-right-actions (toggle)="isDrawerVisible.set(!isDrawerVisible())" />
+      <lib-notification-bell shell-top-right-actions (toggled)="isDrawerVisible.set(!isDrawerVisible())" />
       <router-outlet />
     </lpg-app-shell>
-    <lpg-notification-drawer [(visible)]="isDrawerVisible" />
+    <lib-notification-drawer [(visible)]="isDrawerVisible" />
     <p-toast position="bottom-right" />
     <p-confirmdialog />
   `,

@@ -43,7 +43,7 @@ function errorMessageFor(error: unknown): string {
 }
 
 @Component({
-  selector: 'lpg-feature-employees',
+  selector: 'lib-feature-employees',
   standalone: true,
   imports: [HeaderPortalDirective, 
     ReactiveFormsModule,

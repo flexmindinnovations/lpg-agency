@@ -1,0 +1,26 @@
+{
+  "name": "notification-ui-bell",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/notification/ui-bell/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": [
+    "scope:notification",
+    "type:feature"
+  ],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "jestConfig": "libs/notification/ui-bell/jest.config.cts",
+        "tsConfig": "libs/notification/ui-bell/tsconfig.spec.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

@@ -6,7 +6,7 @@ import { BadgeModule } from 'primeng/badge';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
-  selector: 'lpg-notification-bell',
+  selector: 'lib-notification-bell',
   imports: [BadgeModule, ButtonModule],
   templateUrl: './notification-bell.html',
   styleUrl: './notification-bell.css'
@@ -16,7 +16,7 @@ export class NotificationBell {
 
   private readonly wsService = inject(WebSocketService);
 
-  @Output() toggle = new EventEmitter<void>();
+  @Output() toggled = new EventEmitter<void>();
 
   unreadCount = signal<number>(0);
 

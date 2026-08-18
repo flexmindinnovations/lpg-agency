@@ -8,40 +8,44 @@
   styleClass="lpg-notification-drawer"
 >
   <div class="drawer-content">
-    <div *ngIf="notifications().length === 0" class="empty-state">
+    @if (notifications().length === 0) {
+    <div class="empty-state">
       No recent notifications.
     </div>
-    
-    <div *ngFor="let notification of notifications()" 
-         class="notification-item"
+    }
+
+    @for (notification of notifications(); track notification.id) {
+    <div class="notification-item"
          [class.notification-item--unread]="!notification.is_read">
-         
+
       <div class="notification-header">
         <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
           {{ notification.title }}
         </h4>
         <div class="notification-actions">
-          <p-button *ngIf="!notification.is_read" 
-                    icon="pi pi-check" 
-                    [text]="true" 
-                    [rounded]="true" 
-                    severity="secondary" 
+          @if (!notification.is_read) {
+          <p-button icon="pi pi-check"
+                    [text]="true"
+                    [rounded]="true"
+                    severity="secondary"
                     size="small"
                     pTooltip="Mark as read"
                     (onClick)="markAsRead(notification.id)">
           </p-button>
+          }
         </div>
       </div>
-      
+
       <p class="notification-body">
         {{ notification.body }}
       </p>
-      
+
       <span class="notification-time">
         {{ notification.created_at | date:'short' }}
       </span>
     </div>
-    
+    }
+
     <div class="drawer-footer">
       <a routerLink="/notifications" class="view-all-link" (click)="onHide()">
         View All Notifications

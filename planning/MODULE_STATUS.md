@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R2 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+**Generated:** 2026-08-18 · **Last updated:** after R3 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
 
 ## How this was produced
 
@@ -15,8 +15,8 @@ result disagree, the measured result wins and the disagreement is recorded.
 | `uv run lint-imports` | **2 of 5 contracts BROKEN** |
 | `uv run pytest tests/unit` | 514 passed |
 | `uv run pytest tests/integration` | **0 failed**, 253 passed (was 18 failed / 234 passed originally) |
-| `npx nx run-many -t lint` | **7 of 24 projects fail** |
-| `npx nx run-many -t test` | **4 of 23 projects fail** |
+| `npx nx run-many -t lint` | **0 of 26 projects fail** (was 7 of 24) |
+| `npx nx run-many -t test` | **6 of 25 projects fail** (was 4 of 23 — see R3/R4) |
 | `npx nx build dashboard` | succeeds |
 
 This file exists because four separate phases were marked COMPLETE in their own
@@ -312,6 +312,78 @@ unchanged, matching the pattern already used for `HTTPException`/
 `ApplicationError`. `get_unit_of_work_factory` in the same file has no such
 catch-all and was unaffected; no other dependency module repeats this pattern.
 
+### C11 — Frontend lint: 7 of 24 projects failing ✅ RESOLVED (R3, 2026-08-18)
+
+Mechanical fixes, one per project, all confirmed by re-running
+`npx nx run-many -t lint --skip-nx-cache`:
+
+- `notification-bell.ts`/`notification-drawer.ts` — `selector: 'lpg-*'` →
+  `'lib-*'` (`@angular-eslint/component-selector`, prefix must be `lib`);
+  `notification-bell`'s `@Output() toggle` renamed to `toggled`
+  (`no-output-native` — `toggle` collides with a real DOM event name), with
+  the two call sites in `shell-layout.ts` updated to match.
+- `notification-drawer.html` — `*ngIf`/`*ngFor` converted to `@if`/`@for`
+  (`template/prefer-control-flow`); `*ngFor` uses `track notification.id`.
+- `feature-employees.ts` — same selector-prefix fix.
+- `feature-flag-overrides-page.ts` — removed an empty `ngOnInit(): void {}`
+  and the now-unused `OnInit` import (`no-empty-lifecycle-method` +
+  `no-empty-function`).
+- `cylinder-types-page.ts`, `price-list-page.ts`,
+  `tenant-configuration-page.ts` — stripped a stray UTF-8 BOM
+  (`\xEF\xBB\xBF`) that had leaked into line 2 of each file
+  (`no-irregular-whitespace`).
+- `reporting/data-access/project.json` — had `"tags": []`; the boundary rule
+  couldn't match an untagged dependency against the allowed-list, breaking
+  `reporting-feature-reports`. Tagged `["type:data-access", "scope:reporting"]`.
+
+**The `shell-layout.ts` lazy-import violation was architectural, not
+mechanical.** `tsconfig.base.json` had `@lpg/notification/ui-bell` and
+`@lpg/notification/ui-drawer` path aliases pointing at *individual files
+inside* `libs/notification/feature-notifications/` — the same Nx project as
+the lazy-loaded notifications-list route. Nx's module graph operates at the
+project (folder) level, not the file level, so any static import through
+those aliases from `shell-layout.ts` registered as a static import of the
+whole lazy-loaded project, tripping `@nx/enforce-module-boundaries`'s
+"static import of a lazy-loaded library" rule.
+
+Fixed by physically splitting `notification-bell`/`notification-drawer` into
+two new genuine Nx libraries — `notification-ui-bell`,
+`notification-ui-drawer` — matching the alias names that were already
+chosen in `tsconfig.base.json` (apparently unexecuted original intent). Both
+components inject `NotificationService`/`WebSocketService` and own real
+side effects (WebSocket subscriptions, HTTP calls), so despite the `ui-*`
+directory name they're tagged `type:feature`, not `type:ui` — `type:ui` may
+only depend on `type:util`/`type:design-tokens` per the boundary rules, and
+tagging them `type:ui` first produced two new boundary violations of the
+same kind this fix was meant to remove. `type:app` (dashboard) is permitted
+to depend on `type:feature` libraries, same as `type:ui` ones, so the retag
+resolved it with no behavioral change.
+
+Verified: `npx nx run-many -t lint --skip-nx-cache` — **0 of 26 projects
+fail** (2 more projects than the original 24, from the library split), only
+pre-existing unrelated warnings remain. `npx nx build dashboard` succeeds.
+
+**Did not repair `dashboard:test`, despite the original R3 line saying it
+would** — that was a wrong assumption. `shell-layout.spec.ts` fails on `No
+provider found for _ConfirmationService`, confirmed via `git stash` on just
+`shell-layout.ts` to fail identically with or without this change: a
+pre-existing test-harness gap unrelated to the lazy-import fix, not
+previously tracked. Added to R4's scope below.
+
+Also surfaced: splitting `notification-feature-notifications`'s spec file
+into three project-local spec files means the workspace's one pre-existing
+`SyntaxError: Unexpected token 'export'` Jest/ESM failure (R4, first found
+via `feature-complaints:test`) now fails independently in
+`notification-ui-bell`, `notification-ui-drawer`, and
+`notification-feature-notifications` — three failing projects, not a new
+defect three times over. Confirmed via `git stash -u` that
+`notification-feature-notifications:test` failed identically before the
+split. `npx nx run-many -t test` moved from 4-of-23 failing to 6-of-25: +2
+from this one Jest/ESM defect now counted per-project, plus
+`shared-data-access:test` (pre-existing, unrelated to R3 — `auth.interceptor.spec.ts`
+expects an `/api/v1/orders` retry request that never fires; not investigated
+further here).
+
 ### C8 — Seven designed domain events were never implemented
 
 Found by the documentation baseline audit (2026-08-18), verifying
@@ -355,8 +427,8 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R11** — C9 restore permissions for newly-created users → **done 2026-08-18**, plus C10 (see below) and 4 test-infra defects found while closing it out
 - [x] **R13** — `GET /admin/tenant` had no permission dependency → **done 2026-08-18**, added `tenant:read` (super_admin/agency_admin/manager/dispatcher), backfilled existing users, gated the endpoint. `tests/integration`: 253/253 passing, 0 failed
 - [x] **R2** — C3 blank buttons → **done 2026-08-18**, 2 files, 2 distinct failure modes (fully blank vs. icon-only-missing)
-- [ ] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → also repairs `dashboard:test`
-- [ ] **R4** — Frontend tests (4 projects)
+- [x] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → **done 2026-08-18**, 0 of 26 projects fail. Did *not* repair `dashboard:test` (wrong original assumption, corrected in C11); that failure is now folded into R4
+- [ ] **R4** — Frontend tests (6 of 25 projects fail): `feature-complaints`, `notification-feature-notifications`, `notification-ui-bell`, `notification-ui-drawer` (one shared Jest/ESM `SyntaxError` defect, now counted across 4 projects instead of 1 after R3's library split), `dashboard` (`_ConfirmationService` provider missing in `shell-layout.spec.ts`, found during R3), `shared-data-access` (`auth.interceptor.spec.ts`, unrelated, not yet triaged)
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
 - [ ] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress`

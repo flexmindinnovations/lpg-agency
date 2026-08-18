@@ -3,7 +3,7 @@
   [text]="true" 
   [rounded]="true" 
   severity="secondary" 
-  (onClick)="toggle.emit()"
+  (onClick)="toggled.emit()"
   [badge]="unreadCount() > 0 ? unreadCount().toString() : ''" 
   badgeClass="p-badge-danger">
 </p-button>
