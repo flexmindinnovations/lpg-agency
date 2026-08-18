@@ -68,7 +68,10 @@ Dependency-ordered. The full roadmap with rationale is in [`planning/current_pha
 | 17 | Printing | 13, 16 | Template engine, tenant branding, thermal/A4/PDF, barcode/QR, preview, print audit (D-41) |
 | 18 | Production Hardening | all | Performance against D-34, WCAG 2.2 AA audit (D-35), security review, observability, load testing, data migration |
 | 19 | CI/CD and Deployment | 1 onward | Per-stack workflows, IaC, four environments, release automation, rollback |
-| 20 | Phase 2 / AI Capabilities | 18 | Deferred per A-21 |
+| 20 | Regulatory & MDG Compliance | 13, 16 | **Hard requirements, not features.** Weighment, TDT star rating, cylinder identity, SV/TV/DGCC vouchers, security-deposit ledger, PAHAL/PMUY, compliance calendar. See [feature-gap-analysis](../research/feature-gap-analysis.md) §2 |
+| 21 | AI Foundation | 20 | Model gateway, feature store, evaluation harness, guardrails, cost/PII controls |
+| 22 | AI Operational Intelligence | 21 | Classical ML: refill prediction, demand forecasting, route optimisation, anomaly detection, credit scoring, ETA |
+| 23 | AI Assistive Interfaces | 21, 22 | LLM/hybrid: conversational ordering, KYC extraction, complaint triage, voice capture, analytics copilot, MDG risk copilot |
 
 ### Phase numbering: this table vs `planning/features/`
 
