@@ -73,7 +73,7 @@ backlog this file tracks.
 
 Not owned by one module — fix once, centrally.
 
-### C1 — `address_line` → `line_1` fixture drift ✅ RESOLVED (R1, 2026-08-18)
+### C1 — `address_line` → `line_1` drift ✅ RESOLVED (R1, 2026-08-18)
 
 Migration `de17b27d462e` restructured `customer.customer_address` into
 `line_1`/`line_2`/`area`/`city`/`district`/`state`/`pincode`. Product code is
@@ -91,6 +91,29 @@ rename plus 3 more from adjacent stale test code (`_seed_user` called with a
 positional email, an undefined `role` variable). The prediction that it would
 clear all 18 was wrong: the remaining 7 turned out to be C9, a real product
 regression that this fix uncovered.
+
+**Second pass — the frontend had drifted too, and the first pass missed it.**
+R1 was initially scoped to `backend/tests/` only, on the assumption the rename
+was contained there. Sweeping `frontend/` and `mobile/` found two more:
+
+| Site | Defect |
+|---|---|
+| `order-queue.html:81` | `optionLabel="address_line"` bound over `customer.addresses`. `CustomerAddressResponse` carries `line_1` and has no `address_line`, so **every option in the Create Order "Delivery Address" dropdown rendered blank** — user-visible, and nothing failed loudly. Now `line_1`. |
+| `customer-onboarding-wizard.component.ts:160` | Sent `address_line` inside a `RegisterCustomerRequest`. That schema has had `line_1`/`area`/`city`/… since `de17b27d462e` and no `address_line`; Pydantic's default `extra="ignore"` dropped it silently. The step *looked* like it registered an address and never did — the address was only ever created by the `addAddress` call that follows. Removed, with the reason recorded in place. |
+
+Checked and correct, left alone: `tenant.warehouse.address_line` (a real
+column), the Order aggregate's `DeliveryAddress.address_line` (a snapshot value
+object) in `order-detail.html`, `feature-dispatch.html` and the mobile
+`DeliveryAddressPayload`, and mobile's `CustomerAddressResponse` which already
+reads `line_1`. Four of the six frontend hits were false alarms — the two real
+ones only surface by checking each against the generated model.
+
+**Follow-up, not fixed (R12):** the onboarding wizard collects structured
+address fields and then flattens all eight into a single `line_1` string before
+calling `addAddress`, which accepts only one line. That discards exactly the
+structure `de17b27d462e` was written to introduce, and defeats any future
+routing or pincode-based feature. Fixing it means widening the
+`CustomerService.addAddress` signature.
 
 ### C2 — Clean Architecture contracts (2 of 5 broken)
 
@@ -229,6 +252,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [ ] **R4** — Frontend tests (4 projects)
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
+- [ ] **R12** — C1 follow-up: onboarding wizard flattens structured address into one line
 - [ ] **R11** — C9 restore permissions for newly-created users 🔴 **highest priority — live regression**
 - [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice

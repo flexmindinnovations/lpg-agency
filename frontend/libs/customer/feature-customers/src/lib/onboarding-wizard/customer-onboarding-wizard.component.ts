@@ -157,7 +157,12 @@ export class CustomerOnboardingWizardComponent implements OnInit {
         consumer_number: `CN-${Date.now()}`, // fallback since consumer number is required
         phone_number: regData.phone_number,
         branch_id: regData.branch_id,
-        address_line: `${addrData.line_1}, ${addrData.area}, ${addrData.city}, ${addrData.state} - ${addrData.pincode}`,
+        // No address here. `RegisterCustomerRequest` carries `line_1`/`area`/
+        // `city`/… since `de17b27d462e`; the `address_line` key this used to
+        // send has not existed on that schema since, and Pydantic silently
+        // dropped it — so this looked like it registered an address and never
+        // did. The address is created by the `addAddress` call below, which is
+        // where it actually happened all along.
       };
 
       const customer = await this.customerService.register(registerPayload).toPromise();
