@@ -105,7 +105,7 @@ class TestCustomerRepository:
                 assert reloaded.full_name == "Alice Smith"
                 assert reloaded.phone_number == "+1234567890"
                 assert len(reloaded.addresses) == 1
-                assert reloaded.addresses[0].address_line == "123 Main St"
+                assert reloaded.addresses[0].line_1 == "123 Main St"
                 assert len(reloaded.kyc_documents) == 1
                 assert reloaded.kyc_documents[0].doc_type == "aadhaar"
                 # Decrypted back to the original plaintext reference.

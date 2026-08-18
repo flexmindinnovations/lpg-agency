@@ -235,7 +235,10 @@ class TestListStaffUsers:
                     "JOIN identity.role r ON r.id = rp.role_id "
                     "WHERE r.code = :role"
                 ),
-                {"user_id": user_id, "role": role},
+                # Matches the role hardcoded in the INSERT above: this user is
+                # seeded precisely so the assertion can prove ListStaffUsers
+                # excludes it.
+                {"user_id": user_id, "role": "customer"},
             )
 
         list_use_case = ListStaffUsersUseCase(repository)

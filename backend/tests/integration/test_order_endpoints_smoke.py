@@ -261,7 +261,7 @@ async def _seed_customer(
             await conn.execute(
                 text(
                     "INSERT INTO customer.customer_address "
-                    "(id, tenant_id, customer_id, address_line) "
+                    "(id, tenant_id, customer_id, line_1) "
                     "VALUES (gen_random_uuid(), :tenant_id, :customer_id, '123 Test St') "
                     "RETURNING id"
                 ),

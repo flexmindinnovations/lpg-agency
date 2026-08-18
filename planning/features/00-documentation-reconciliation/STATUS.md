@@ -1,94 +1,51 @@
 # STATUS — Documentation Reconciliation & Technical Baseline
 
-**Feature:** 00-documentation-reconciliation
-**Plan:** [PLAN.md](./PLAN.md) · **Tasks:** [TASKS.md](./TASKS.md)
-
----
-
 ## Status
 
-**COMPLETE**
+**✅ COMPLETE — re-verified end to end 2026-08-18.**
 
-## Started
+Originally closed in Phase 0. Re-opened and re-run on 2026-08-18 because four
+later phases had been marked COMPLETE and then failed independent verification,
+which made every documentation claim suspect until re-checked.
 
-2026-08-09
+## What was verified, and how
 
-## Completed
+Not by reading `STATUS.md` files — by running the project's own CI commands and
+comparing documentation against the code, the database and the package
+manifests.
 
-2026-08-09
-
-## Last Updated
-
-2026-08-09
-
----
-
-## Progress
-
-| Group | Description | State |
+| Check | Method | Result |
 |---|---|---|
-| A | Decision record (ADR supersession + new ADRs) | ✅ Complete |
-| B | Preserve the .NET architecture documents | ✅ Complete |
-| C | Python / FastAPI backend architecture | ✅ Complete |
-| D | Targeted architecture corrections | ✅ Complete |
-| E | Frontend reconciliation | ✅ Complete |
-| F | Cross-cutting contradictions | ✅ Complete |
-| G | Documentation hygiene | ✅ Complete |
-| H | Knowledge summaries | ✅ Complete |
-| I | Verification & closeout | ✅ Complete |
+| Internal links | All `.md` under `docs/`, `knowledge/`, `planning/` + root | ✅ **0 broken** |
+| File-path references | Every backticked `backend/…` `frontend/…` `mobile/…` path | ✅ all 11 exist |
+| RBAC permission codes | Docs vs `identity.permission` | ✅ all match |
+| Order state machine | `08-state-machines.md` vs `Order` aggregate vs DB CHECK | ✅ **all 10 states identical across three layers** |
+| Tech-stack versions | Docs vs `pyproject.toml` / `package.json` | ⚠️ 1 stale — fixed |
+| Domain events | `09-domain-events.md` vs `class X(DomainEvent)` | ❌ **badly drifted** — fixed |
+| Router mounting | Every router vs `app.py` `include_router` calls | ❌ **1 dead module** — documented |
 
-**52 of 53 tasks complete.** T-53 (start Phase 1) is marked `[-]` — deliberately not done, per explicit instruction.
+## Findings and disposition
 
----
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | **Reporting router never mounted.** Imported at `app.py:39`, never mounted. 0 of 101 OpenAPI paths match `report`; the Angular Reports page calls 4 endpoints and gets 404 on all. Every other router checked — only this one. | Documented as **C7 / R7a**. Not fixed: mounting exposes 4 endpoints to RBAC and RLS for the first time and must land with tests. |
+| 2 | **Two competing phase-numbering schemes.** Driver Management built as `09-driver-management` but never added to the roadmap, so every planning directory after Phase 8 is one ahead of its roadmap row. | Fixed — full mapping table in `roadmap.md`, naming the four implemented areas with no planning directory. |
+| 3 | **Domain-event catalog drifted both ways.** 10 of 18 documented events exist; 1 was renamed; **7 never implemented** — including the entire complaint pair, so the complaint domain publishes nothing despite SLA obligations. 31 implemented events undocumented. | Doc fixed with reconciliation + full catalog. Gaps logged as **C8 / R10**. |
+| 4 | **`customer_address` schema doc stale** — still described the `address_line` column removed by `de17b27d462e`. | Fixed, with an explicit warning that `warehouse.address_line` and `DeliveryAddress.address_line` are different fields. |
+| 5 | **Three endpoint groups undocumented** (notifications, employees, print-jobs); Reporting documented under a `/reports/` prefix that does not exist (real prefix `/reporting/`) with an async export design that was never built. | Fixed. |
+| 6 | **Security architecture had no database-privilege layer.** RBAC was documented; GRANTs and RLS were not — the gap that produced the `permission denied for table employee` outage. | Written as §3.1: three authorization layers, four defect variants, and the trap that testing as `lpg_admin` passes regardless (superuser, `rolbypassrls`). |
+| 7 | **One stale version claim** — signal-based change detection attributed to "Angular 20 default"; workspace is 22.0.4. | Fixed. Two other `Angular 20` mentions are historical records in a stack note and an ADR Context — correctly left. |
 
-## Verification Results
+## Checked and found accurate
 
-| Check | Result |
-|---|---|
-| **Contradiction check** — no active-path document instructs building with .NET / EF Core / MediatR / Azure SQL / SignalR / FluentValidation / Serilog / Hangfire / Cypress | ✅ Pass. Remaining mentions on active paths are supersession explanations or deliberate PostgreSQL-vs-SQL-Server comparisons. One genuine instruction was caught and fixed during verification (`testing-strategy.md` still named Cypress as the E2E tool). |
-| **Reference check** — no document links to a non-existent `docs/` subdirectory | ✅ Pass on all active paths. One `modules/order-management.md` reference remains inside ADR-007's preserved original text, which must stay verbatim. |
-| **Exit criteria** — all 14 questions answerable from `AGENTS.md` → `knowledge/` → `docs/` → `planning/current_phase.md` | ✅ Pass, all 14 verified |
-| **No application source code produced** | ✅ Confirmed — `backend/`, `frontend/`, `mobile/` each contain 0 files |
+Worth recording, because both looked wrong at first glance:
 
----
+- **AG Grid.** A stack note says "AG Grid Enterprise", which contradicts `package.json`. It does not — a same-day revision two lines below supersedes it with Community-as-default and Enterprise-as-optional. No Enterprise import exists anywhere in the frontend.
+- **Phase 13's `/ledger/:customerId` route.** Suspected to be another unverified claim; it is wired at `app.routes.ts:50`.
 
-## Deliverables
+## Standing rule this phase establishes
 
-**Preserved (moved, not deleted) — 7 files**
-`docs/architecture/superseded/` — six `-dotnet` documents with SUPERSEDED banners, plus a README explaining the set, what replaced what, and which decisions survived.
-
-**Rewritten — 8 files**
-`01-system-architecture.md` · `03-backend-architecture.md` · `04-frontend-architecture.md` · `06-database-architecture.md` · `09-printing-architecture.md` · `13-deployment.md` · `14-folder-structure.md` · `15-architecture-decision-records.md`
-
-**Created — 5 files**
-`16-realtime-architecture.md` · `docs/README.md` · `docs/adr/README.md` · `docs/implementation/roadmap.md` · `docs/implementation/module-implementation-plan.md`
-
-**Corrected in place — 17 files**
-`02-domain-driven-design.md` · `07-api-architecture.md` · `08-security-architecture.md` · `10-performance-strategy.md` · `12-observability.md` · `docs/implementation/{README,engineering-standards,testing-strategy}.md` · `docs/adr/decisions.md` · `docs/business/assumptions.md` · `docs/engineering/open-questions.md` · `knowledge/{02,03,05,07,09,11,12}` · `AGENTS.md` · `README.md`
-
-**ADRs:** 3 superseded (004, 005, 007) · 3 amended (002, 003, 010) · **15 added (012–026)**
-
----
-
-## Notes
-
-- **Traceability constraint honoured.** Nothing was deleted. Superseded ADRs keep their original text verbatim with a supersession block above it; superseded documents were physically relocated with banners naming their replacement and the reason.
-- **Scope grew in one place:** 15 new ADRs rather than the planned 10. Boundary enforcement, monorepo layout, and the OpenAPI workflow each warranted their own record rather than being folded into adjacent decisions.
-- **Two items discovered and recorded, not fixed:** the `docs/modules/` gap (DW-09) and the legacy path references inside `docs/business/` (DW-10). Both are documented in `docs/README.md` §Legacy Path Map so a reader can resolve any reference they encounter.
-- **One correction made mid-flight:** tasks in `TASKS.md` were initially written pre-checked. That violates "do not mark work complete unless implemented and verified", and was corrected before any work began.
-
----
-
-## Blockers
-
-None.
-
----
-
-## Next
-
-**Phase 1 — Repository / Foundation. NOT STARTED.**
-
-Awaiting explicit go-ahead, per instruction: *"Do NOT start Phase 1 automatically."*
-
-When authorized: create `planning/features/01-repository-foundation/` with `PLAN.md`, `TASKS.md`, `STATUS.md` before any implementation.
+[`planning/MODULE_STATUS.md`](../../MODULE_STATUS.md) is the authority on what
+is *verified*. The per-phase `STATUS.md` files and `knowledge/12-current-status.md`
+record what was *built*. Where they disagree, `MODULE_STATUS.md` wins, and a row
+moves to ✅ only when its gates are re-run green with the output seen.

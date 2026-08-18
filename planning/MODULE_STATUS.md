@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Commit:** `fb772f1` + 169 uncommitted files · **Migrations:** `e2a91c4f7b58` (all 4 environments)
+**Generated:** 2026-08-18 · **Last updated:** after R1 · **Migrations:** `e2a91c4f7b58` (all 4 environments)
 
 ## How this was produced
 
@@ -10,11 +10,11 @@ result disagree, the measured result wins and the disagreement is recorded.
 
 | CI command | Result |
 |---|---|
-| `uv run ruff check .` | **634 errors** |
-| `uv run mypy` | **23 errors in 10 files** |
+| `uv run ruff check .` | **524 errors** (was 634; 109 of the drop is `backend/scratch/` now gitignored, 1 from R1 — not a code-quality improvement) |
+| `uv run mypy` | **19 errors in 7 files** (was 23 in 10; R1 cleared 4) |
 | `uv run lint-imports` | **2 of 5 contracts BROKEN** |
 | `uv run pytest tests/unit` | 514 passed |
-| `uv run pytest tests/integration` | **18 failed**, 234 passed, 1 error |
+| `uv run pytest tests/integration` | **7 failed**, 245 passed, 1 error (was 18 failed / 234 passed before R1) |
 | `npx nx run-many -t lint` | **7 of 24 projects fail** |
 | `npx nx run-many -t test` | **4 of 23 projects fail** |
 | `npx nx build dashboard` | succeeds |
@@ -47,13 +47,13 @@ backlog this file tracks.
 | 03 | Shared infrastructure | complete | ⚪ 🟡 | 100% | 🟡 | import-linter: `realtime/connection_manager` → fastapi | Import is type-only under `TYPE_CHECKING`; needs `ignore_imports` entry **or** refactor — decision required |
 | 04 | Angular web foundation | complete | ⚪ ✅ | 100% | ✅ | — | — |
 | 05 | Flutter foundations | complete | ⚪ ❓ | 100% | ❓ | not exercised | 12 dart tests exist; mobile CI **not run** in this pass — unverified, not assumed broken |
-| 06 | Auth & authorization | complete | 🟡 works, gates red | 100% | 🔴 | 3 integration fails (`identity_repositories` ×2, `staff_user_repository`); import-linter `routers/auth.py` → sqlalchemy | `_seed_user()` signature drift in tests; raw `text()` in API layer breaks contract |
-| 07 | Admin / tenant master data | complete | 🟡 works, gates red | 100% | 🔴 | 1 fail + 1 **error** (`admin_endpoints_smoke`, `admin_rbac`); lint: `admin-feature-flags`, `admin-feature-tenant-settings` | `NameError: role` in test helper; frontend lint errors |
-| 08 | Customer management | ✅ COMPLETE | 🟡 works, gates red | 100% | 🔴 | 2 integration fails | **Root cause of all 18 failures** — see C1 |
+| 06 | Auth & authorization | complete | 🔴 **live regression** | 100% | 🔴 | import-linter `routers/auth.py` → sqlalchemy | **Owns C9** — every user created since `8c221c3e0a91` has zero permissions. Test fixtures fixed in R1 |
+| 07 | Admin / tenant master data | complete | 🟡 works, gates red | 100% | 🔴 | 1 fail + 1 **error** (both C9); lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Frontend lint errors; test `NameError` fixed in R1 |
+| 08 | Customer management | ✅ COMPLETE | 🟡 1 fail left | 100% | 🔴 | 1 integration fail (C9) | C1 fixture drift **fixed in R1** |
 | 09 | Driver management | ✅ COMPLETE | ✅ | 100% | ✅ | — | — |
-| 10 | Inventory management | ✅ COMPLETE | 🟡 works, gates red | 100% | 🔴 | 2 integration fails | Inherits C1; cleared by the same fix |
-| 11 | Order management | complete (no planning dir) | 🟡 works, gates red | 100% | 🔴 | **8 integration fails** — largest single block | `planning/features/11-order-management/` **does not exist**; all 8 inherit C1 |
-| 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | 🟡 works, gates red | 100% | 🔴 | 1 integration fail (`route_endpoints_smoke`) | Inherits C1 |
+| 10 | Inventory management | ✅ COMPLETE | 🟡 2 fails left | 100% | 🔴 | 2 integration fails (both C9) | C1 portion cleared by R1 |
+| 11 | Order management | complete (no planning dir) | 🟡 **7 of 8 fixed** | 100% | 🔴 | 1 integration fail (C9) | R1 cleared 7 of 8. `planning/features/11-order-management/` still **does not exist** |
+| 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | 🟡 1 fail left | 100% | 🔴 | 1 integration fail (C9) | C1 portion cleared by R1 |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
 | 14 | Accounting / invoicing | ✅ COMPLETE | 🔴 untested | ~90% | 🔴 | lint: `feature-invoices` (2 **blank buttons**) | **No invoice endpoint tests, no accounting integration tests.** See C3 |
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
@@ -73,7 +73,7 @@ backlog this file tracks.
 
 Not owned by one module — fix once, centrally.
 
-### C1 — `address_line` → `line_1` fixture drift (blocks all 18 integration tests)
+### C1 — `address_line` → `line_1` fixture drift ✅ RESOLVED (R1, 2026-08-18)
 
 Migration `de17b27d462e` restructured `customer.customer_address` into
 `line_1`/`line_2`/`area`/`city`/`district`/`state`/`pincode`. Product code is
@@ -86,7 +86,11 @@ rename those.**
 Files: `test_order_endpoints_smoke.py:264`, `test_route_endpoints_smoke.py:413`,
 `test_customer_repository.py:108`, `test_customer_endpoints_smoke.py:162`.
 
-**Fixing this alone clears 18 of 18 integration failures and most mypy errors.**
+**Fixed 2026-08-18 (R1).** Cleared 11 of 18 failures — 8 from the fixture
+rename plus 3 more from adjacent stale test code (`_seed_user` called with a
+positional email, an undefined `role` variable). The prediction that it would
+clear all 18 was wrong: the remaining 7 turned out to be C9, a real product
+regression that this fix uncovered.
 
 ### C2 — Clean Architecture contracts (2 of 5 broken)
 
@@ -137,6 +141,49 @@ contract doc would not have matched even once mounted. Corrected there.
 exposes four previously unreachable endpoints to RBAC and RLS for the first
 time. Tracked as R7a.
 
+### C9 — 🔴 Every user created since `8c221c3e0a91` has ZERO permissions
+
+**A live production regression, found by R1 — not a test defect.**
+
+Migration `8c221c3e0a91` changed permission resolution from **role-based** to
+**per-user**. `SqlAlchemyPermissionRepository.has_permission` and
+`get_permission_codes_for_user` now read only from
+`identity.identity_user_permission`; neither consults `identity.role_permission`
+or the user's `role` column any more.
+
+The migration backfilled every user that existed at the time, which is why the
+running app still works and why this went unnoticed. But:
+
+- The **only** write path is `set_permissions_for_user`, called from exactly one place — `PUT /api/v1/admin/users/{id}/permissions`.
+- **No user-creation path grants anything.** `InviteStaffUserUseCase` sets `role=` and stops. Customer registration and employee registration likewise.
+
+So any staff member invited today can authenticate and then do **nothing** —
+every `require_permission` check fails — until an administrator manually opens
+their permission editor. Their role is set correctly and confers nothing.
+
+`orders:cancel_approve` is granted to `agency_admin` in `role_permission`, and a
+real `agency_admin` is still refused. That is the shape of the bug in one line.
+
+This accounts for **all 7 remaining integration failures**. The tests were
+correct and were detecting a real regression.
+
+> **Correction.** An earlier revision of this file attributed all 18 failures to
+> stale `address_line` fixtures and stated product code was correct. That held
+> for 11 of them. The other 7 are this — a product bug the fixture fix simply
+> uncovered.
+
+**Not fixed here — it needs a design decision, not a patch:**
+
+1. Does `role_permission` remain a fallback when a user has no explicit grants (restores old behaviour, keeps per-user overrides as additive), or
+2. Does every creation path explicitly materialise the role's permissions (matches what the migration's backfill did, but every new creation path must remember to do it)?
+
+Option 1 is more forgiving and matches how the docs describe RBAC. Option 2
+matches the intent of the per-user table. Whichever is chosen must also cover
+customer and employee registration, and needs a test that creates a user
+through the *real* invite path and asserts it can act.
+
+Tracked as **R11 — highest priority**, above the remaining lint work.
+
 ### C8 — Seven designed domain events were never implemented
 
 Found by the documentation baseline audit (2026-08-18), verifying
@@ -176,12 +223,13 @@ Phase 11, 16, 17, Reporting and Employees.
 Sequenced by gate-failures-cleared per unit of work, not by module number.
 
 - [ ] **R0** — Commit the working tree, so later fixes stay separable from in-flight work
-- [ ] **R1** — C1 fixture drift → clears 18 integration failures + most mypy errors *(highest leverage)*
+- [x] **R1** — C1 fixture drift → **done 2026-08-18**, cleared 11 of 18; exposed C9
 - [ ] **R2** — C3 blank buttons → 2 files, user-visible bug
 - [ ] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → also repairs `dashboard:test`
 - [ ] **R4** — Frontend tests (4 projects)
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
+- [ ] **R11** — C9 restore permissions for newly-created users 🔴 **highest priority — live regression**
 - [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees

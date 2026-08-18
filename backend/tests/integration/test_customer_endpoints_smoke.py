@@ -159,7 +159,7 @@ class TestCustomerEndpointsThroughRealStack:
                 "full_name": "Ramesh Patil",
                 "phone_number": "+919876543210",
                 "customer_type": "domestic",
-                "address_line": "123 High Street",
+                "line_1": "123 High Street",
             },
             headers=headers,
         )
