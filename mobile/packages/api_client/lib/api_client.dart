@@ -9,4 +9,6 @@ library;
 
 export 'src/api_client.dart';
 export 'src/auth_api.dart';
+export 'src/customer_api.dart';
+export 'src/order_api.dart';
 export 'src/models.dart';

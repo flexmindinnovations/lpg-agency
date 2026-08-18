@@ -4,6 +4,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
+import 'package:sync_engine/sync_engine.dart';
 
 import 'src/auth_provider.dart';
 import 'src/local_database_provider.dart';
@@ -53,6 +54,12 @@ void main() async {
     tokenStorage: tokenStorage,
   );
   authController = AuthController(authRepository);
+
+  final syncCoordinator = SyncCoordinator(
+    database: localDatabase.database,
+    apiClient: apiClient,
+  );
+  syncCoordinator.start();
 
   runApp(
     ProviderScope(

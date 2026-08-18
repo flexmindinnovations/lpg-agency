@@ -1,0 +1,27 @@
+name: sync_engine
+description: "Offline synchronization engine for Driver App."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  local_storage:
+    path: ../local_storage
+  api_client:
+    path: ../api_client
+  core:
+    path: ../core
+  uuid: ^4.5.1
+  dio: ^5.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mockito: ^5.4.5
+  build_runner: ^2.4.13

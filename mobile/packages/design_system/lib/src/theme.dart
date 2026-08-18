@@ -138,6 +138,33 @@ abstract final class LpgTheme {
         seedColor: colors.actionPrimary,
         brightness: brightness,
       ).copyWith(surface: colors.surfaceBase, error: colors.statusDanger),
+      fontFamily: 'Inter', // clean sans-serif typography
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colors.actionPrimary,
+          foregroundColor: LpgTokens.primitiveColorWhite,
+          shape: const StadiumBorder(), // Pill-shaped buttons
+          padding: const EdgeInsets.symmetric(
+            horizontal: LpgTokens.spacingLg * 1.0,
+            vertical: LpgTokens.spacingMd * 1.0,
+          ),
+          elevation: 0,
+          textStyle: const TextStyle(
+            fontSize: LpgTokens.typographyBodyFontSize * 1.0,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: colors.surfaceRaised,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(LpgTokens.radiusLg * 1.0),
+          side: BorderSide(color: colors.borderDefault),
+        ),
+        margin: EdgeInsets.zero,
+      ),
       extensions: [colors],
     );
   }

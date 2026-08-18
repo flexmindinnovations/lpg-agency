@@ -4,8 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
-import 'home_screen.dart';
+import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/orders/presentation/orders_screen.dart';
+import 'package:api_client/api_client.dart';
+import 'features/profile/presentation/add_address_screen.dart';
+import 'features/profile/presentation/edit_profile_screen.dart';
+import 'features/profile/presentation/profile_screen.dart';
+import 'features/shell/presentation/app_shell.dart';
+import 'features/support/presentation/support_screen.dart';
 import 'login_screen.dart';
+import 'splash_screen.dart';
 
 /// Routing foundation, with Phase 6's route guards now wired in.
 ///
@@ -20,30 +28,93 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: authController,
     redirect: (context, state) {
       final status = authController.state.status;
       final loggingIn = state.matchedLocation == '/login';
+      final splashing = state.matchedLocation == '/splash';
 
-      // Still resolving the startup session restore — hold position rather
-      // than bouncing to /login and immediately back once it resolves.
-      if (status == AuthStatus.unknown) return null;
+      // Still resolving the startup session restore — stay on splash screen.
+      if (status == AuthStatus.unknown) {
+        if (!splashing) return '/splash';
+        return null;
+      }
 
       if (status != AuthStatus.authenticated && !loggingIn) return '/login';
-      if (status == AuthStatus.authenticated && loggingIn) return '/';
+      if (status == AuthStatus.authenticated && (loggingIn || splashing)) return '/';
       return null;
     },
     routes: [
       GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      // Stateful shell route for bottom navigation bar
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return AppShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                name: 'dashboard',
+                builder: (context, state) => const DashboardScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/orders',
+                name: 'orders',
+                builder: (context, state) => const OrdersScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/support',
+                name: 'support',
+                builder: (context, state) => const SupportScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                name: 'profile',
+                builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    name: 'profile_edit',
+                    builder: (context, state) => EditProfileScreen(
+                      profile: state.extra as CustomerResponse,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'addresses/new',
+                    name: 'profile_address_new',
+                    builder: (context, state) => AddAddressScreen(
+                      customerId: state.extra as String,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) =>
