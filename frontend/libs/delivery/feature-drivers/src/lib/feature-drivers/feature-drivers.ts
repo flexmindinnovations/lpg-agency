@@ -77,7 +77,7 @@ export class FeatureDrivers implements OnInit {
 
   protected readonly drivers = signal<DriverResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
-  protected readonly employees = signal<EmployeeResponse[]>([]);
+  protected readonly employees = signal<(EmployeeResponse & { _displayName?: string })[]>([]);
   protected readonly selectedDriver = signal<DriverResponse | null>(null);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
@@ -176,7 +176,13 @@ export class FeatureDrivers implements OnInit {
 
   protected loadEmployees(branchId?: string): void {
     this.employeeService.listEmployees({ branch_id: branchId }).subscribe({
-      next: (page) => this.employees.set(page.items),
+      next: (page) => {
+        const mapped = page.items.map(e => ({
+          ...e,
+          _displayName: `${e.first_name} ${e.last_name} (${e.employee_code})`
+        }));
+        this.employees.set(mapped);
+      },
       error: () => this.errorMessage.set('Failed to load employees.'),
     });
   }
@@ -229,12 +235,22 @@ export class FeatureDrivers implements OnInit {
 
     const val = this.registerForm.getRawValue();
     this.loading.set(true);
+
+    let expiryDateString: string | undefined = undefined;
+    if (val.license_expiry_date) {
+      const dateObj = new Date(val.license_expiry_date);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      expiryDateString = `${year}-${month}-${day}`;
+    }
+
     this.deliveryService
       .registerDriver({
         branch_id: val.branch_id,
         employee_id: val.employee_id,
         license_number: val.license_number,
-        license_expiry_date: val.license_expiry_date || undefined,
+        license_expiry_date: expiryDateString,
       })
       .subscribe({
         next: () => {
