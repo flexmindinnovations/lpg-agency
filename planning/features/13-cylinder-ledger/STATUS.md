@@ -10,7 +10,9 @@
 - [x] Domain model (`CylinderLedger` aggregate, `LedgerTransaction`, balance projection)
 - [x] Application use cases (append-from-order, manual adjust, read)
 - [x] Repository implementation
-- [x] Alembic migration, applied to the local test DB **and** the Supabase dev DB
+- [x] Alembic migration, applied to **all four** environments — `lpg_dev`, `lpg_test`, `lpg_uat` and Supabase, each verified at head `e2a91c4f7b58` with `scripts/verify_env_parity.sql` returning zero defects.
+- Note (2026-08-17/18): an earlier version of this file claimed the migration had reached Supabase when it had not. `migrations/env.py::_database_url()` reads `os.environ` only and never loads `backend/.env`, so a bare `alembic upgrade head` fell through to its `localhost:55432/lpg_dev` fallback — reporting success against local dev while appearing to target Supabase. Supabase was 21 revisions behind, with no grants or RLS on `cylinder_ledger`. `env.py` now prints the resolved host and the variable it came from on every run, so that failure is visible in the first line of output. To target a non-default database, export the DSN explicitly:
+  `LPG_MIGRATION_DATABASE_URL="<dsn>" uv run alembic upgrade head`
 - [x] REST API (`GET/POST /customers/{id}/ledger…`)
 - [x] Domain-event projection wired to `CylinderDelivered`
 - [x] Gates: ruff, `mypy --strict`, all 5 import-linter contracts, 251 integration + 494 unit tests
