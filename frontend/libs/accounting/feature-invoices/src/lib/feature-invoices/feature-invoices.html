@@ -114,20 +114,22 @@
         <button
           pButton
           type="button"
-          icon="pi pi-file-pdf"
-          label="Print PDF"
           [loading]="isPrinting()"
           (click)="printPdf()"
-        ></button>
+        >
+          <i pButtonIcon class="pi pi-file-pdf"></i>
+          <span pButtonLabel>Print PDF</span>
+        </button>
         <button
           pButton
           type="button"
-          icon="pi pi-print"
-          label="Print Thermal"
           severity="secondary"
           [loading]="isPrinting()"
           (click)="printThermal()"
-        ></button>
+        >
+          <i pButtonIcon class="pi pi-print"></i>
+          <span pButtonLabel>Print Thermal</span>
+        </button>
       </div>
     </div>
   }

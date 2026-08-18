@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R13 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+**Generated:** 2026-08-18 · **Last updated:** after R2 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
 
 ## How this was produced
 
@@ -55,9 +55,9 @@ backlog this file tracks.
 | 11 | Order management | complete (no planning dir) | ✅ | 100% | ✅ | — | All 8 original failures cleared (C1, C9, C10 combined). `planning/features/11-order-management/` still **does not exist** |
 | 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | ✅ | 100% | ✅ | — | Was C10, fixed |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
-| 14 | Accounting / invoicing | ✅ COMPLETE | 🔴 untested | ~90% | 🔴 | lint: `feature-invoices` (2 **blank buttons**) | **No invoice endpoint tests, no accounting integration tests.** See C3 |
+| 14 | Accounting / invoicing | ✅ COMPLETE | 🔴 untested | ~90% | 🔴 | — | **No invoice endpoint tests, no accounting integration tests.** Blank buttons fixed (C3/R2) |
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
-| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | 🔴 **zero backend tests** | ~90% | 🔴 | test: `feature-complaints`; import-linter `routers/complaint.py` → sqlalchemy; ruff `domain/complaint` 27 | Full aggregate + router with **no tests at all**; 2 blank buttons; no planning dir |
+| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | 🔴 **zero backend tests** | ~90% | 🔴 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup); import-linter `routers/complaint.py` → sqlalchemy; ruff `domain/complaint` 27 | Full aggregate + router with **no tests at all**; blank buttons fixed (C3/R2); no planning dir |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
 | 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** |
 | — | Reporting | folded into 18 | 🔴 **router never mounted — 100% dead** | ~90% built, **0% reachable** | 🔴 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7 — every endpoint 404s |
@@ -120,14 +120,26 @@ routing or pincode-based feature. Fixing it means widening the
 - `lpg.api` → `sqlalchemy`: `routers/auth.py:29` (uncommitted), `routers/complaint.py:5-6`, several `dependencies/*`. Raw `text()` executed from the API layer.
 - `lpg.infrastructure` → `fastapi`: `realtime/connection_manager.py:21` — **type-only, under `TYPE_CHECKING`**. Judgement call: add `ignore_imports` or invert the dependency. No runtime coupling exists.
 
-### C3 — PrimeNG v22 blank buttons (user-visible)
+### C3 — PrimeNG v22 blank buttons ✅ RESOLVED (R2, 2026-08-18)
 
 `<button pButton icon="…" label="…">` — both attributes are **no-ops on the
-directive**; they exist only on the `<p-button>` *component*. These render
-**empty**. Correct pattern is `<i pButtonIcon>` + `<span pButtonLabel>`; the
-label span is required, or `ButtonDirective.isIconOnly` collapses the button.
+directive**; they exist only on the `<p-button>` *component*. Correct pattern
+is `<i pButtonIcon>` + `<span pButtonLabel>`; the label span is required, or
+`ButtonDirective.isIconOnly` collapses the button.
 
-Remaining: `feature-invoices.html:114,122`, `feature-complaints.html`.
+Fixed both sites, and they turned out to be two different failure modes, not
+one:
+
+- `feature-invoices.html:114,122` — icon **and** label attributes, matching C3's original description exactly: fully empty buttons.
+- `feature-complaints.html:134-148` (`Assign`/`Resolve`) — `icon="…"` attribute only, with plain-text content already present (`>Assign</button>`, no `label=`). The icon silently never rendered, but the text did — a smaller defect than the fully-blank case, and one the original sweep's regex would have caught (it matched on `icon=` OR `label=`) but the earlier description didn't distinguish. Found by reading each site rather than assuming both matched the same pattern.
+
+Re-swept the whole frontend afterward (`grep` for `pButton` combined with
+`icon=`/`label=` across every `.html`) — zero remaining occurrences.
+`feature-invoices`/`feature-complaints` lint clean; `nx build dashboard`
+succeeds. `feature-complaints:test` still fails, but confirmed via `git
+stash` that the exact same `SyntaxError: Unexpected token 'export'` fails
+identically with or without this change — pre-existing Jest/ESM config gap,
+tracked as R4, not caused or fixed here.
 
 ### C4 — Zero test coverage on four shipped modules
 
@@ -342,7 +354,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R1** — C1 fixture drift → **done 2026-08-18**, cleared 11 of 18; frontend follow-up cleared 2 more sites (blank dropdown, dead wizard field)
 - [x] **R11** — C9 restore permissions for newly-created users → **done 2026-08-18**, plus C10 (see below) and 4 test-infra defects found while closing it out
 - [x] **R13** — `GET /admin/tenant` had no permission dependency → **done 2026-08-18**, added `tenant:read` (super_admin/agency_admin/manager/dispatcher), backfilled existing users, gated the endpoint. `tests/integration`: 253/253 passing, 0 failed
-- [ ] **R2** — C3 blank buttons → 2 files, user-visible bug
+- [x] **R2** — C3 blank buttons → **done 2026-08-18**, 2 files, 2 distinct failure modes (fully blank vs. icon-only-missing)
 - [ ] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → also repairs `dashboard:test`
 - [ ] **R4** — Frontend tests (4 projects)
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer

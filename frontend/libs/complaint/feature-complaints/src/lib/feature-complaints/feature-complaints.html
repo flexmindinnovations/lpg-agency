@@ -135,17 +135,21 @@
           *lpgHasPermission="'complaints:assign'"
           pButton
           class="p-button-outlined"
-          icon="pi pi-user-plus"
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
           (click)="openAssignModal()"
-        >Assign</button>
+        >
+          <i pButtonIcon class="pi pi-user-plus"></i>
+          <span pButtonLabel>Assign</span>
+        </button>
         <button
           *lpgHasPermission="'complaints:resolve'"
           pButton
-          icon="pi pi-check"
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
           (click)="openResolveModal()"
-        >Resolve</button>
+        >
+          <i pButtonIcon class="pi pi-check"></i>
+          <span pButtonLabel>Resolve</span>
+        </button>
       </div>
     }
   </ng-template>
