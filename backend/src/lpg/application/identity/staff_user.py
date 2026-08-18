@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from lpg.application.common.cqrs import Command
+from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import NotFoundError
 from lpg.domain.identity.password_reset_token import PasswordResetToken
 from lpg.domain.identity.user import IdentityUser
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from lpg.application.identity.ports import (
         EmailSender,
         PasswordResetTokenRepository,
+        PermissionRepository,
         RefreshTokenRepository,
         StaffUserRepository,
         TokenHasher,
@@ -160,3 +161,64 @@ class ListStaffUsersUseCase:
         return await self._staff_user_repository.list_for_tenant(
             query.tenant_id, exclude_roles=_STAFF_ROLES_EXCLUDED_FROM_LISTING
         )
+
+
+@dataclass(frozen=True, slots=True)
+class GetStaffUserPermissionsQuery:
+    user_id: uuid.UUID
+
+
+class GetStaffUserPermissionsUseCase:
+    def __init__(
+        self,
+        staff_user_repository: StaffUserRepository,
+        permission_repository: PermissionRepository,
+    ) -> None:
+        self._staff_user_repository = staff_user_repository
+        self._permission_repository = permission_repository
+
+    async def execute(self, query: GetStaffUserPermissionsQuery) -> frozenset[str]:
+        user = await self._staff_user_repository.get(query.user_id)
+        if user is None:
+            msg = f"No staff user visible with id {query.user_id}."
+            raise NotFoundError(msg, user_id=str(query.user_id))
+
+        return await self._permission_repository.get_permission_codes_for_user(query.user_id)
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateStaffUserPermissionsCommand(Command):
+    user_id: uuid.UUID
+    permission_codes: set[str]
+
+
+class UpdateStaffUserPermissionsUseCase:
+    def __init__(
+        self,
+        staff_user_repository: StaffUserRepository,
+        permission_repository: PermissionRepository,
+    ) -> None:
+        self._staff_user_repository = staff_user_repository
+        self._permission_repository = permission_repository
+
+    async def execute(self, command: UpdateStaffUserPermissionsCommand) -> None:
+        user = await self._staff_user_repository.get(command.user_id)
+        if user is None:
+            msg = f"No staff user visible with id {command.user_id}."
+            raise NotFoundError(msg, user_id=str(command.user_id))
+
+        await self._permission_repository.set_permissions_for_user(
+            command.user_id, command.permission_codes
+        )
+
+@dataclass(frozen=True, slots=True)
+class ListPermissionsQuery(Query):
+    pass
+
+
+class ListPermissionsUseCase:
+    def __init__(self, permission_repository: PermissionRepository) -> None:
+        self._permission_repository = permission_repository
+
+    async def execute(self, _query: ListPermissionsQuery) -> frozenset[str]:
+        return await self._permission_repository.get_all_permission_codes()

@@ -60,6 +60,27 @@ class SqlAlchemyTenantRepository:
         self._uow.register_aggregate(tenant)
         return tenant
 
+    async def get_by_slug(self, slug: str) -> Tenant | None:
+        result = await self._uow.session.execute(
+            select(TenantModel).where(TenantModel.slug == slug)
+        )
+        row = result.scalars().first()
+        if row is None:
+            return None
+
+        tenant = Tenant(
+            row.id,
+            row.name,
+            row.slug,
+            status=row.status,
+            subscription_plan=row.subscription_plan,
+            primary_contact_email=row.primary_contact_email,
+            country=row.country,
+            version=row.version,
+        )
+        self._uow.register_aggregate(tenant)
+        return tenant
+
     async def save(self, tenant: Tenant) -> None:
         row = await self._uow.session.get(TenantModel, tenant.id)
         if row is None:

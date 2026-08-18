@@ -208,6 +208,10 @@ class ReassignRoleRequest(BaseModel):
     new_role: str
 
 
+class UpdateStaffUserPermissionsRequest(BaseModel):
+    permission_codes: list[str]
+
+
 # -- Audit Log ----------------------------------------------------------------------
 
 

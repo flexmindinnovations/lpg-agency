@@ -46,7 +46,7 @@ async def issue_tokens(
     # `AuthenticatedPrincipal.permission_codes`. The four high-sensitivity
     # actions (§7) still re-check live against the DB regardless of what's
     # in this claim.
-    permission_codes = await permission_repository.get_permission_codes_for_role(user.role)
+    permission_codes = await permission_repository.get_permission_codes_for_user(user.id)
 
     access_token = jwt_signer.issue_access_token(
         {

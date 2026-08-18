@@ -34,6 +34,8 @@ class PermissionChecker:
     async def has_permission_live(
         self, principal: AuthenticatedPrincipal, permission_code: str
     ) -> bool:
+        if principal.user_id is None:
+            return False
         return await self._permission_repository.has_permission(
-            role=principal.role, permission_code=permission_code
+            user_id=principal.user_id, permission_code=permission_code
         )

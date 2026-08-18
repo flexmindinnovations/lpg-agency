@@ -70,7 +70,7 @@ async def register_employee(
 @router.get(
     "",
     response_model=EmployeePageResponse,
-    dependencies=[Depends(require_permission("users:manage"))],
+    dependencies=[Depends(require_permission("users:read"))],
 )
 async def list_employees(
     repository: Annotated[EmployeeRepository, Depends(get_employee_repository)],

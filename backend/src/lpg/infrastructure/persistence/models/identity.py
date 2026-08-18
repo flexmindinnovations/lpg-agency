@@ -113,6 +113,18 @@ class UserRoleModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class IdentityUserPermissionModel(Base):
+    __tablename__ = "identity_user_permission"
+    __table_args__ = {"schema": "identity"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("identity.identity_user.id"))
+    permission_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("identity.permission.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+
+
 class RefreshTokenModel(Base):
     __tablename__ = "refresh_token"
     __table_args__ = {"schema": "identity"}  # noqa: RUF012

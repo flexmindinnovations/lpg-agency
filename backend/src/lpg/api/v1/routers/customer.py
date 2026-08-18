@@ -9,7 +9,7 @@ from lpg.api.v1.dependencies.customer import (
     get_consumer_number_sequence,
     get_customer_repository,
 )
-from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.identity import get_current_principal, require_permission, require_permission_or_self
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.customer import (
     AddCustomerAddressRequest,
@@ -32,6 +32,8 @@ from lpg.application.customer.use_cases import (
     AddCustomerAddressUseCase,
     GetCustomerQuery,
     GetCustomerUseCase,
+    GetCustomerByUserIdQuery,
+    GetCustomerByUserIdUseCase,
     ListCustomersQuery,
     ListCustomersUseCase,
     PeekNextConsumerNumberUseCase,
@@ -127,9 +129,27 @@ async def list_customers(
 
 
 @router.get(
+    "/me",
+    response_model=CustomerResponse,
+    summary="Get current customer profile",
+)
+async def get_my_profile(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+) -> CustomerResponse:
+    if not principal.user_id:
+        raise HTTPException(status_code=401, detail="User ID missing")
+    use_case = GetCustomerByUserIdUseCase(repository)
+    customer = await use_case.execute(GetCustomerByUserIdQuery(identity_user_id=principal.user_id))
+    if customer is None:
+        raise NotFoundError("No customer profile found for the current user.")
+    return CustomerResponse.model_validate(customer)
+
+
+@router.get(
     "/{customer_id}",
     response_model=CustomerResponse,
-    dependencies=[Depends(require_permission("customers:read"))],
+    dependencies=[Depends(require_permission_or_self("customers:read"))],
 )
 async def get_customer(
     customer_id: uuid.UUID,
@@ -146,7 +166,7 @@ async def get_customer(
 @router.put(
     "/{customer_id}",
     response_model=CustomerResponse,
-    dependencies=[Depends(require_permission("customers:update"))],
+    dependencies=[Depends(require_permission_or_self("customers:update"))],
 )
 async def update_customer_profile(
     customer_id: uuid.UUID,
@@ -176,7 +196,7 @@ async def update_customer_profile(
 @router.post(
     "/{customer_id}/addresses",
     response_model=uuid.UUID,
-    dependencies=[Depends(require_permission("customers:update"))],
+    dependencies=[Depends(require_permission_or_self("customers:update"))],
 )
 async def add_address(
     customer_id: uuid.UUID,
@@ -205,7 +225,7 @@ async def add_address(
 
 @router.put(
     "/{customer_id}/addresses/{address_id}/primary",
-    dependencies=[Depends(require_permission("customers:update"))],
+    dependencies=[Depends(require_permission_or_self("customers:update"))],
 )
 async def set_primary_address(
     customer_id: uuid.UUID,

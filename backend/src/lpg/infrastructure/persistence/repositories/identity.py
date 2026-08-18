@@ -229,35 +229,66 @@ class SqlAlchemyPermissionRepository:
     def __init__(self, database: Database) -> None:
         self._database = database
 
-    async def has_permission(self, *, role: str, permission_code: str) -> bool:
+    async def has_permission(self, *, user_id: uuid.UUID, permission_code: str) -> bool:
         async for session in self._database.session():
             result = await session.execute(
                 text("""
                     SELECT 1
-                    FROM identity.role_permission rp
-                    JOIN identity.role r ON r.id = rp.role_id
-                    JOIN identity.permission p ON p.id = rp.permission_id
-                    WHERE r.code = :role AND p.code = :permission_code
+                    FROM identity.identity_user_permission up
+                    JOIN identity.permission p ON p.id = up.permission_id
+                    WHERE up.user_id = :user_id AND p.code = :permission_code
                 """),
-                {"role": role, "permission_code": permission_code},
+                {"user_id": str(user_id), "permission_code": permission_code},
             )
             return result.first() is not None
         return False  # pragma: no cover
 
-    async def get_permission_codes_for_role(self, role: str) -> frozenset[str]:
+    async def get_permission_codes_for_user(self, user_id: uuid.UUID) -> frozenset[str]:
         async for session in self._database.session():
             result = await session.execute(
                 text("""
                     SELECT p.code
-                    FROM identity.role_permission rp
-                    JOIN identity.role r ON r.id = rp.role_id
-                    JOIN identity.permission p ON p.id = rp.permission_id
-                    WHERE r.code = :role
+                    FROM identity.identity_user_permission up
+                    JOIN identity.permission p ON p.id = up.permission_id
+                    WHERE up.user_id = :user_id
                 """),
-                {"role": role},
+                {"user_id": str(user_id)},
             )
             return frozenset(row.code for row in result)
         return frozenset()  # pragma: no cover
+
+    async def get_all_permission_codes(self) -> frozenset[str]:
+        async for session in self._database.session():
+            result = await session.execute(
+                text("""
+                    SELECT code
+                    FROM identity.permission
+                """)
+            )
+            return frozenset(row.code for row in result)
+        return frozenset()  # pragma: no cover
+
+    async def set_permissions_for_user(self, user_id: uuid.UUID, permission_codes: set[str]) -> None:
+        async for session in self._database.session():
+            # First, delete all current permissions for the user
+            await session.execute(
+                text("DELETE FROM identity.identity_user_permission WHERE user_id = :user_id"),
+                {"user_id": str(user_id)}
+            )
+            
+            if not permission_codes:
+                return
+            
+            # Insert new permissions
+            await session.execute(
+                text("""
+                    INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at)
+                    SELECT gen_random_uuid(), :user_id, p.id, now()
+                    FROM identity.permission p
+                    WHERE p.code = ANY(:permission_codes)
+                """),
+                {"user_id": str(user_id), "permission_codes": list(permission_codes)}
+            )
 
 
 class SqlAlchemyStaffUserRepository:

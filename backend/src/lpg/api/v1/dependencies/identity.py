@@ -87,7 +87,9 @@ def require_rate_limit(
         client_host = request.client.host if request.client else "unknown"
         limiter = RateLimiter(state.redis)
         await limiter.enforce(
-            key=f"{key_prefix}:{client_host}", limit=limit, window_seconds=window_seconds
+            key=f"{key_prefix}:{client_host}",
+            limit=limit,
+            window_seconds=window_seconds,
         )
 
     return _dependency
@@ -124,6 +126,44 @@ def require_permission(
                 user_id=str(principal.user_id),
             )
             msg = f"Missing required permission: {permission_code!r}."
+            msg = (
+                f"DEBUG FAIL: \n"
+                f"Checking for: {permission_code!r} (type: {type(permission_code)})\n"
+                f"Against: {principal.permission_codes!r} (type: {type(principal.permission_codes)})"
+            )
+            raise PermissionDeniedError(msg, permission_code=permission_code)
+        return principal
+
+    return _dependency
+
+
+def require_permission_or_self(
+    permission_code: str,
+    user_id_param: str = "customer_id",
+) -> Callable[..., Coroutine[None, None, AuthenticatedPrincipal]]:
+    """Dependency factory: grants access if the `user_id_param` path parameter
+    matches the current principal's `user_id`, OR if the principal holds the
+    required `permission_code`. Used for endpoints where a customer can
+    read/update their own data without needing global agency permissions.
+    """
+
+    async def _dependency(
+        request: Request,
+        principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    ) -> AuthenticatedPrincipal:
+        path_user_id = request.path_params.get(user_id_param)
+        if path_user_id and str(principal.user_id) == path_user_id:
+            return principal
+
+        if permission_code not in principal.permission_codes:
+            _logger.warning(
+                "permission_denied",
+                permission_code=permission_code,
+                role=principal.role,
+                user_id=str(principal.user_id),
+                path_user_id=path_user_id,
+            )
+            msg = f"Missing required permission: {permission_code!r} or must be the owner."
             raise PermissionDeniedError(msg, permission_code=permission_code)
         return principal
 
@@ -142,7 +182,9 @@ def require_live_permission(
 
     async def _dependency(
         principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-        permission_checker: Annotated[PermissionChecker, Depends(get_permission_checker)],
+        permission_checker: Annotated[
+            PermissionChecker, Depends(get_permission_checker)
+        ],
     ) -> AuthenticatedPrincipal:
         if permission_code not in principal.permission_codes:
             _logger.warning(
@@ -269,7 +311,9 @@ def get_permission_repository() -> PermissionRepository:
 
 
 def get_permission_checker(
-    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    permission_repository: Annotated[
+        PermissionRepository, Depends(get_permission_repository)
+    ],
 ) -> PermissionChecker:
     from lpg.application.identity.authorize import PermissionChecker
 

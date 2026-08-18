@@ -57,10 +57,22 @@ async def get_unit_of_work(
         msg = "Database is not connected — the application lifespan has not run."
         raise RuntimeError(msg)
 
-    async for session in database.open_session(tenant_id=tenant_context.tenant_id):
-        uow = SqlAlchemyUnitOfWork(session, tenant_context, event_dispatcher=state.event_dispatcher)
-        async with uow:
-            yield uow
+    try:
+        async for session in database.open_session(tenant_id=tenant_context.tenant_id):
+            uow = SqlAlchemyUnitOfWork(session, tenant_context, event_dispatcher=state.event_dispatcher)
+            async with uow:
+                yield uow
+    except Exception as e:
+        from fastapi import HTTPException
+        from lpg.application.common.errors import ApplicationError
+        
+        if isinstance(e, (HTTPException, ApplicationError)):
+            raise
+            
+        from lpg.config.logging import get_logger
+        logger = get_logger(__name__)
+        logger.error("unhandled_unit_of_work_exception", error=str(e))
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}") from None
 
 
 def get_unit_of_work_factory(

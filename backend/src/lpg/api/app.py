@@ -73,7 +73,7 @@ from lpg.infrastructure.redis.client import RedisClient
 from lpg.infrastructure.storage.client import S3CompatibleFileStorage
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from lpg.application.common.ports import HealthCheck
     from lpg.application.identity.ports import JwtSigner, PasswordHasher
@@ -117,7 +117,7 @@ def get_health_checks() -> list[HealthCheck]:
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001 - FastAPI signature
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001 - FastAPI signature
     """Open and close process-wide resources.
 
     Database and Redis connections are created but not dialled here. If a

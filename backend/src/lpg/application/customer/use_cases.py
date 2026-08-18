@@ -384,6 +384,19 @@ class GetCustomerUseCase:
         return await self._repository.get_by_id(query.customer_id)
 
 
+@dataclass(frozen=True, slots=True)
+class GetCustomerByUserIdQuery(Query):
+    identity_user_id: uuid.UUID
+
+
+class GetCustomerByUserIdUseCase:
+    def __init__(self, repository: CustomerRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: GetCustomerByUserIdQuery) -> Customer | None:
+        return await self._repository.get_by_identity_user_id(query.identity_user_id)
+
+
 class PeekNextConsumerNumberUseCase:
     """Suggests the next auto-generated Consumer Number for the register form.
 

@@ -233,11 +233,19 @@ class PermissionRepository(Protocol):
     cross-tenant action).
     """
 
-    async def has_permission(self, *, role: str, permission_code: str) -> bool: ...
+    async def has_permission(self, *, user_id: uuid.UUID, permission_code: str) -> bool: ...
 
-    async def get_permission_codes_for_role(self, role: str) -> frozenset[str]:
-        """Every permission code granted to `role` — embedded in the JWT's
+    async def get_permission_codes_for_user(self, user_id: uuid.UUID) -> frozenset[str]:
+        """Every permission code granted to `user_id` — embedded in the JWT's
         `scope` claim at issuance (`docs/data/17-api-security.md` §4: "fast,
         no-database-round-trip authorization on standard endpoints").
         """
+        ...
+
+    async def get_all_permission_codes(self) -> frozenset[str]:
+        """All available permission codes in the system."""
+        ...
+
+    async def set_permissions_for_user(self, user_id: uuid.UUID, permission_codes: set[str]) -> None:
+        """Overwrite the permissions assigned to a user."""
         ...

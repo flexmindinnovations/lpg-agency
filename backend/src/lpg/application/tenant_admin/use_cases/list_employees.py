@@ -22,17 +22,23 @@ class ListEmployeesUseCase:
     def __init__(self, repository: "EmployeeRepository") -> None:
         self._repository = repository
 
-    async def execute(self, query: ListEmployeesQuery) -> tuple["Sequence[Employee]", int]:
-        employees = await self._repository.list_employees(
-            skip=query.skip,
-            limit=query.limit,
-            search=query.search,
-            role=query.role,
-            branch_id=query.branch_id,
-        )
-        total = await self._repository.count_employees(
-            search=query.search,
-            role=query.role,
-            branch_id=query.branch_id,
-        )
-        return employees, total
+    async def execute(
+        self, query: ListEmployeesQuery
+    ) -> tuple["Sequence[Employee]", int]:
+        try:
+            employees = await self._repository.list_employees(
+                skip=query.skip,
+                limit=query.limit,
+                search=query.search,
+                role=query.role,
+                branch_id=query.branch_id,
+            )
+            total = await self._repository.count_employees(
+                search=query.search,
+                role=query.role,
+                branch_id=query.branch_id,
+            )
+            return employees, total
+        except Exception as e:
+            print(f"Error: {e}")
+            raise e

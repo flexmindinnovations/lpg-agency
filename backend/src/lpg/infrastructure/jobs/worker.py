@@ -1,3 +1,4 @@
+from __future__ import annotations
 from arq import cron
 from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 """ARQ worker entry point (ADR-029).
@@ -36,7 +37,6 @@ No business job exists yet. ``ping`` is infrastructure only — proof the
 worker round-trips through Redis, nothing more.
 """
 
-from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING, Any

@@ -25,7 +25,8 @@ import uuid
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request, Response, HTTPException
+from sqlalchemy import text
 
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
@@ -83,6 +84,30 @@ from lpg.config.settings import Settings, get_settings
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 _REFRESH_COOKIE_NAME = "lpg_refresh_token"
+
+
+async def _resolve_tenant_id(raw: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(raw)
+    except ValueError:
+        pass
+
+    from lpg.api.app import get_app_state
+
+    state = get_app_state()
+    if state.database is None:
+        raise RuntimeError("Database not configured")
+
+    async for session in state.database.open_session():
+        result = await session.execute(
+            text("SELECT tenant.auth_resolve_tenant_id_by_slug(:slug)"), {"slug": raw}
+        )
+        tid = result.scalar()
+        if tid is None:
+            raise HTTPException(status_code=400, detail="Invalid agency code.")
+        return uuid.UUID(str(tid))
+    
+    raise RuntimeError("Unreachable")
 
 
 def _set_refresh_cookie(response: Response, token_pair: TokenPair, settings: Settings) -> None:
@@ -155,9 +180,10 @@ async def otp_request(
         Depends(require_rate_limit(key_prefix="auth:otp_request", limit=5, window_seconds=3600)),
     ],
 ) -> None:
+    tenant_uuid = await _resolve_tenant_id(body.tenant_id)
     use_case = RequestOtpUseCase(otp_store, otp_delivery)
     await use_case.execute(
-        RequestOtpCommand(tenant_id=uuid.UUID(body.tenant_id), phone_number=body.phone_number)
+        RequestOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number)
     )
 
 
@@ -184,9 +210,10 @@ async def otp_verify(
         jwt_signer,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
     )
+    tenant_uuid = await _resolve_tenant_id(body.tenant_id)
     token_pair = await use_case.execute(
         VerifyOtpCommand(
-            tenant_id=uuid.UUID(body.tenant_id), phone_number=body.phone_number, code=body.code
+            tenant_id=tenant_uuid, phone_number=body.phone_number, code=body.code
         )
     )
     _set_refresh_cookie(response, token_pair, settings)

@@ -122,7 +122,7 @@ class KycDocumentModel(Base):
         Uuid(), ForeignKey("customer.customer.id", ondelete="CASCADE")
     )
     doc_type: Mapped[str] = mapped_column(String(50))
-    document_number: Mapped[str] = mapped_column(String(100))
+    document_number: Mapped[str] = mapped_column(Text())
     file_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
     issue_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date(), nullable=True)

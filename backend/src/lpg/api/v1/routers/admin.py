@@ -38,6 +38,7 @@ from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_email_sender,
     get_password_reset_token_repository,
+    get_permission_repository,
     get_refresh_token_repository,
     get_token_hasher,
     require_live_permission,
@@ -76,6 +77,7 @@ from lpg.api.v1.schemas.admin import (
     StaffUserResponse,
     TenantConfigurationResponse,
     TenantResponse,
+    UpdateStaffUserPermissionsRequest,
     WarehouseResponse,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
@@ -86,6 +88,7 @@ from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
     EmailSender,
     PasswordResetTokenRepository,
+    PermissionRepository,
     RefreshTokenRepository,
     StaffUserRepository,
     TokenHasher,
@@ -93,12 +96,18 @@ from lpg.application.identity.ports import (
 from lpg.application.identity.staff_user import (
     DeactivateStaffUserCommand,
     DeactivateStaffUserUseCase,
+    GetStaffUserPermissionsQuery,
+    GetStaffUserPermissionsUseCase,
     InviteStaffUserCommand,
     InviteStaffUserUseCase,
+    ListPermissionsQuery,
+    ListPermissionsUseCase,
     ListStaffUsersQuery,
     ListStaffUsersUseCase,
     ReassignRoleCommand,
     ReassignRoleUseCase,
+    UpdateStaffUserPermissionsCommand,
+    UpdateStaffUserPermissionsUseCase,
 )
 from lpg.application.platform.feature_flag import (
     CreateFeatureFlagCommand,
@@ -184,7 +193,7 @@ router = APIRouter(prefix="/admin", tags=["Administration"])
 
 @router.get("/tenant", response_model=TenantResponse, summary="The current tenant")
 async def get_tenant(
-    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
 ) -> TenantResponse:
     tenant = await repository.get(principal.tenant_id)
@@ -229,7 +238,7 @@ async def rename_tenant(
 
 @router.get("/branches", response_model=list[BranchResponse], summary="List branches")
 async def list_branches(
-    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[BranchRepository, Depends(get_branch_repository)],
 ) -> list[BranchResponse]:
     use_case = ListBranchesUseCase(repository)
@@ -280,7 +289,7 @@ async def set_branch_region(
 
 @router.get("/warehouses", response_model=list[WarehouseResponse], summary="List warehouses")
 async def list_warehouses(
-    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[WarehouseRepository, Depends(get_warehouse_repository)],
 ) -> list[WarehouseResponse]:
     use_case = ListWarehousesUseCase(repository)
@@ -354,7 +363,7 @@ async def relocate_warehouse(
     "/cylinder-types", response_model=list[CylinderTypeResponse], summary="List cylinder types"
 )
 async def list_cylinder_types(
-    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
 ) -> list[CylinderTypeResponse]:
     use_case = ListCylinderTypesUseCase(repository)
@@ -536,7 +545,7 @@ async def get_effective_tenant_configuration(
 
 @router.get("/price-list", response_model=list[PriceListEntryResponse], summary="List prices")
 async def list_prices(
-    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
 ) -> list[PriceListEntryResponse]:
     use_case = ListPricesUseCase(repository)
@@ -592,7 +601,7 @@ async def set_price(
 async def get_effective_price(
     cylinder_type_id: uuid.UUID,
     customer_type: str,
-    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
     branch_id: uuid.UUID | None = None,
 ) -> PriceListEntryResponse | None:
@@ -866,6 +875,56 @@ async def reassign_role(
 ) -> None:
     use_case = ReassignRoleUseCase(repository)
     await use_case.execute(ReassignRoleCommand(user_id=user_id, new_role=body.new_role))
+
+
+@router.get(
+    "/users/{user_id}/permissions",
+    response_model=list[str],
+    summary="Get a staff user's permissions",
+)
+async def get_user_permissions(
+    user_id: uuid.UUID,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    staff_repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+) -> list[str]:
+    use_case = GetStaffUserPermissionsUseCase(staff_repository, permission_repository)
+    codes = await use_case.execute(GetStaffUserPermissionsQuery(user_id=user_id))
+    return sorted(list(codes))
+
+
+@router.put(
+    "/users/{user_id}/permissions",
+    status_code=204,
+    summary="Update a staff user's permissions",
+)
+async def update_user_permissions(
+    user_id: uuid.UUID,
+    body: UpdateStaffUserPermissionsRequest,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    staff_repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+) -> None:
+    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository)
+    await use_case.execute(
+        UpdateStaffUserPermissionsCommand(
+            user_id=user_id, permission_codes=set(body.permission_codes)
+        )
+    )
+
+@router.get(
+    "/permissions",
+    response_model=list[str],
+    summary="List all available system permissions",
+)
+async def list_permissions(
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+) -> list[str]:
+    use_case = ListPermissionsUseCase(permission_repository)
+    codes = await use_case.execute(ListPermissionsQuery())
+    return sorted(list(codes))
+
 
 
 # -- Audit Log ----------------------------------------------------------------------

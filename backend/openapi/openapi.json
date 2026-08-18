@@ -3,10 +3,54 @@
     "schemas": {
       "AddCustomerAddressRequest": {
         "properties": {
-          "address_line": {
-            "minLength": 1,
-            "title": "Address Line",
+          "address_type": {
+            "default": "delivery",
+            "title": "Address Type",
             "type": "string"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "landmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landmark"
           },
           "latitude": {
             "anyOf": [
@@ -14,6 +58,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -22,11 +67,13 @@
             ],
             "title": "Latitude"
           },
-          "longitude": {
+          "line_1": {
+            "minLength": 1,
+            "title": "Line 1",
+            "type": "string"
+          },
+          "line_2": {
             "anyOf": [
-              {
-                "type": "number"
-              },
               {
                 "type": "string"
               },
@@ -34,11 +81,48 @@
                 "type": "null"
               }
             ],
+            "title": "Line 2"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Longitude"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
           }
         },
         "required": [
-          "address_line"
+          "line_1"
         ],
         "title": "AddCustomerAddressRequest",
         "type": "object"
@@ -52,6 +136,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -128,6 +213,38 @@
         "title": "AdjustLedgerBalanceRequest",
         "type": "object"
       },
+      "ApproveCustomerRequest": {
+        "properties": {
+          "consumer_number": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          }
+        },
+        "title": "ApproveCustomerRequest",
+        "type": "object"
+      },
+      "AssignComplaintRequest": {
+        "properties": {
+          "assigned_to": {
+            "format": "uuid",
+            "title": "Assigned To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assigned_to"
+        ],
+        "title": "AssignComplaintRequest",
+        "type": "object"
+      },
       "AuditLogEntryResponse": {
         "properties": {
           "action": {
@@ -159,6 +276,7 @@
           "after_state": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -170,6 +288,7 @@
           "before_state": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -272,7 +391,7 @@
       "Body_upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post": {
         "properties": {
           "file": {
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File",
             "type": "string"
           }
@@ -465,6 +584,271 @@
         "title": "ChangeCylinderStatusRequest",
         "type": "object"
       },
+      "ComplaintAssignmentResponse": {
+        "properties": {
+          "assigned_at": {
+            "format": "date-time",
+            "title": "Assigned At",
+            "type": "string"
+          },
+          "assigned_to": {
+            "format": "uuid",
+            "title": "Assigned To",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "assigned_to",
+          "assigned_at",
+          "created_at",
+          "created_by"
+        ],
+        "title": "ComplaintAssignmentResponse",
+        "type": "object"
+      },
+      "ComplaintCategory": {
+        "enum": [
+          "ShortDelivery",
+          "DamagedCylinder",
+          "BillingDispute",
+          "DriverConduct",
+          "LateDelivery",
+          "Other"
+        ],
+        "title": "ComplaintCategory",
+        "type": "string"
+      },
+      "ComplaintListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ComplaintResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "ComplaintListResponse",
+        "type": "object"
+      },
+      "ComplaintPriority": {
+        "enum": [
+          "Low",
+          "Medium",
+          "High",
+          "Critical"
+        ],
+        "title": "ComplaintPriority",
+        "type": "string"
+      },
+      "ComplaintResolutionResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ResolutionOutcome"
+          },
+          "resolution_notes": {
+            "title": "Resolution Notes",
+            "type": "string"
+          },
+          "resolved_at": {
+            "format": "date-time",
+            "title": "Resolved At",
+            "type": "string"
+          },
+          "resolved_by": {
+            "format": "uuid",
+            "title": "Resolved By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "resolution_notes",
+          "resolved_by",
+          "resolved_at",
+          "created_at"
+        ],
+        "title": "ComplaintResolutionResponse",
+        "type": "object"
+      },
+      "ComplaintResponse": {
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/ComplaintAssignmentResponse"
+            },
+            "title": "Assignments",
+            "type": "array"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ComplaintCategory"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ComplaintPriority"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComplaintResolutionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sla_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Due At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComplaintStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "id",
+          "customer_id",
+          "category",
+          "priority",
+          "status",
+          "description",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ComplaintResponse",
+        "type": "object"
+      },
+      "ComplaintStatus": {
+        "enum": [
+          "Open",
+          "Assigned",
+          "InProgress",
+          "Resolved",
+          "Rejected",
+          "Closed"
+        ],
+        "title": "ComplaintStatus",
+        "type": "string"
+      },
       "CreateBranchRequest": {
         "properties": {
           "name": {
@@ -504,6 +888,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -678,9 +1063,42 @@
       },
       "CustomerAddressResponse": {
         "properties": {
-          "address_line": {
-            "title": "Address Line",
+          "address_type": {
+            "title": "Address Type",
             "type": "string"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
           },
           "id": {
             "format": "uuid",
@@ -691,9 +1109,21 @@
             "title": "Is Primary",
             "type": "boolean"
           },
+          "landmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landmark"
+          },
           "latitude": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -702,7 +1132,11 @@
             ],
             "title": "Latitude"
           },
-          "longitude": {
+          "line_1": {
+            "title": "Line 1",
+            "type": "string"
+          },
+          "line_2": {
             "anyOf": [
               {
                 "type": "string"
@@ -711,12 +1145,54 @@
                 "type": "null"
               }
             ],
+            "title": "Line 2"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Longitude"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
           }
         },
         "required": [
           "id",
-          "address_line",
+          "line_1",
+          "line_2",
+          "landmark",
+          "area",
+          "city",
+          "district",
+          "state",
+          "pincode",
+          "address_type",
           "latitude",
           "longitude",
           "is_primary"
@@ -755,18 +1231,70 @@
             "title": "Addresses",
             "type": "array"
           },
+          "alternate_mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternate Mobile"
+          },
           "branch_id": {
             "format": "uuid",
             "title": "Branch Id",
             "type": "string"
           },
           "consumer_number": {
-            "title": "Consumer Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          },
+          "contact_person": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Person"
           },
           "customer_type": {
             "title": "Customer Type",
             "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           },
           "full_name": {
             "title": "Full Name",
@@ -813,6 +1341,10 @@
           "consumer_number",
           "full_name",
           "phone_number",
+          "contact_person",
+          "alternate_mobile",
+          "email",
+          "date_of_birth",
           "customer_type",
           "kyc_status",
           "status",
@@ -881,6 +1413,7 @@
           "price": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -890,6 +1423,7 @@
             "title": "Price"
           },
           "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           }
@@ -919,6 +1453,7 @@
             "type": "string"
           },
           "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           }
@@ -1834,18 +2369,22 @@
             "type": "integer"
           },
           "subtotal": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
           },
           "tax_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Tax Amount",
             "type": "string"
           },
           "total_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Amount",
             "type": "string"
           },
           "unit_price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Unit Price",
             "type": "string"
           }
@@ -1927,10 +2466,12 @@
             "type": "string"
           },
           "subtotal": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
           },
           "tax_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Tax Amount",
             "type": "string"
           },
@@ -1940,6 +2481,7 @@
             "type": "string"
           },
           "total_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Amount",
             "type": "string"
           },
@@ -1982,18 +2524,64 @@
       },
       "KycDocumentResponse": {
         "properties": {
-          "doc_reference": {
-            "title": "Doc Reference",
-            "type": "string"
-          },
           "doc_type": {
             "title": "Doc Type",
             "type": "string"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Url"
           },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "issue_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Date"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
           },
           "verification_status": {
             "title": "Verification Status",
@@ -2015,8 +2603,12 @@
         "required": [
           "id",
           "doc_type",
-          "doc_reference",
+          "document_number",
+          "file_url",
+          "issue_date",
+          "expiry_date",
           "verification_status",
+          "rejection_reason",
           "verified_at"
         ],
         "title": "KycDocumentResponse",
@@ -2210,6 +2802,75 @@
         "title": "NextConsumerNumberResponse",
         "type": "object"
       },
+      "NotificationResponse": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_read": {
+            "title": "Is Read",
+            "type": "boolean"
+          },
+          "notification_type": {
+            "title": "Notification Type",
+            "type": "string"
+          },
+          "reference_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Id"
+          },
+          "reference_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Type"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "notification_type",
+          "title",
+          "body",
+          "is_read",
+          "created_at"
+        ],
+        "title": "NotificationResponse",
+        "type": "object"
+      },
       "OrderLineResponse": {
         "properties": {
           "cylinder_type_id": {
@@ -2245,6 +2906,7 @@
           "unit_price": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -2333,6 +2995,7 @@
             "type": "array"
           },
           "metadata": {
+            "additionalProperties": true,
             "title": "Metadata",
             "type": "object"
           },
@@ -2395,6 +3058,7 @@
           "total_amount": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -2549,6 +3213,22 @@
         "title": "OtpVerifyRequest",
         "type": "object"
       },
+      "PaginatedNotificationResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PaginatedNotificationResponse",
+        "type": "object"
+      },
       "PasswordForgotRequest": {
         "properties": {
           "email": {
@@ -2664,6 +3344,7 @@
             "type": "string"
           },
           "price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Price",
             "type": "string"
           }
@@ -2729,17 +3410,67 @@
         "title": "PrincipalResponse",
         "type": "object"
       },
+      "PrintJobRequest": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_type": {
+            "title": "Document Type",
+            "type": "string"
+          },
+          "format": {
+            "default": "pdf",
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_type",
+          "document_id"
+        ],
+        "title": "PrintJobRequest",
+        "type": "object"
+      },
+      "PrintJobResponse": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_url",
+          "format",
+          "content_type"
+        ],
+        "title": "PrintJobResponse",
+        "type": "object"
+      },
       "ProofOfDeliveryResponse": {
         "properties": {
           "amount_collected": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount Collected",
             "type": "string"
           },
           "gps_lat": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lat",
             "type": "string"
           },
           "gps_lng": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lng",
             "type": "string"
           },
@@ -2877,6 +3608,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -2888,6 +3620,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -2899,6 +3632,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -2935,6 +3669,47 @@
           "amount_collected"
         ],
         "title": "ProofOfDeliverySubmission",
+        "type": "object"
+      },
+      "RaiseComplaintRequest": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/ComplaintCategory"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "order_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Id"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ComplaintPriority"
+          }
+        },
+        "required": [
+          "customer_id",
+          "category",
+          "priority",
+          "description"
+        ],
+        "title": "RaiseComplaintRequest",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -3179,7 +3954,7 @@
       },
       "RegisterCustomerRequest": {
         "properties": {
-          "address_line": {
+          "address_type": {
             "anyOf": [
               {
                 "type": "string"
@@ -3188,23 +3963,110 @@
                 "type": "null"
               }
             ],
-            "title": "Address Line"
+            "title": "Address Type"
+          },
+          "alternate_mobile": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternate Mobile"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
           },
           "branch_id": {
             "format": "uuid",
             "title": "Branch Id",
             "type": "string"
           },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
           "consumer_number": {
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Consumer Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          },
+          "contact_person": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Person"
           },
           "customer_type": {
             "default": "domestic",
             "title": "Customer Type",
             "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           },
           "full_name": {
             "maxLength": 200,
@@ -3212,12 +4074,24 @@
             "title": "Full Name",
             "type": "string"
           },
+          "landmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landmark"
+          },
           "latitude": {
             "anyOf": [
               {
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -3226,12 +4100,35 @@
             ],
             "title": "Latitude"
           },
+          "line_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line 1"
+          },
+          "line_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line 2"
+          },
           "longitude": {
             "anyOf": [
               {
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -3257,11 +4154,32 @@
             "minLength": 1,
             "title": "Phone Number",
             "type": "string"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
           }
         },
         "required": [
           "branch_id",
-          "consumer_number",
           "full_name",
           "phone_number"
         ],
@@ -3487,6 +4405,34 @@
           "name"
         ],
         "title": "RenameWarehouseRequest",
+        "type": "object"
+      },
+      "ResolutionOutcome": {
+        "enum": [
+          "Resolved",
+          "Compensated",
+          "Rejected"
+        ],
+        "title": "ResolutionOutcome",
+        "type": "string"
+      },
+      "ResolveComplaintRequest": {
+        "properties": {
+          "outcome": {
+            "$ref": "#/components/schemas/ResolutionOutcome"
+          },
+          "resolution_notes": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Resolution Notes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "resolution_notes"
+        ],
+        "title": "ResolveComplaintRequest",
         "type": "object"
       },
       "RoutePageResponse": {
@@ -3783,6 +4729,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -3875,21 +4822,56 @@
       },
       "SubmitKycDocumentRequest": {
         "properties": {
-          "doc_reference": {
-            "minLength": 1,
-            "title": "Doc Reference",
-            "type": "string"
-          },
           "doc_type": {
             "maxLength": 50,
             "minLength": 1,
             "title": "Doc Type",
             "type": "string"
+          },
+          "document_number": {
+            "minLength": 1,
+            "title": "Document Number",
+            "type": "string"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Url"
+          },
+          "issue_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Date"
           }
         },
         "required": [
           "doc_type",
-          "doc_reference"
+          "document_number"
         ],
         "title": "SubmitKycDocumentRequest",
         "type": "object"
@@ -3994,16 +4976,77 @@
         "title": "TokenResponse",
         "type": "object"
       },
+      "UnreadCountResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "UnreadCountResponse",
+        "type": "object"
+      },
       "UpdateCustomerProfileRequest": {
         "properties": {
+          "alternate_mobile": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternate Mobile"
+          },
           "branch_id": {
             "format": "uuid",
             "title": "Branch Id",
             "type": "string"
           },
+          "contact_person": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Person"
+          },
           "customer_type": {
             "title": "Customer Type",
             "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           },
           "full_name": {
             "maxLength": 200,
@@ -4101,6 +5144,22 @@
         "title": "UpdateRouteStatusRequest",
         "type": "object"
       },
+      "UpdateStaffUserPermissionsRequest": {
+        "properties": {
+          "permission_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permission Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "permission_codes"
+        ],
+        "title": "UpdateStaffUserPermissionsRequest",
+        "type": "object"
+      },
       "UpdateVehicleStatusRequest": {
         "properties": {
           "status": {
@@ -4116,6 +5175,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -4241,6 +5307,17 @@
       },
       "VerifyKycDocumentRequest": {
         "properties": {
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
           "status": {
             "pattern": "^(verified|rejected)$",
             "title": "Status",
@@ -5068,6 +6145,31 @@
         ]
       }
     },
+    "/api/v1/admin/permissions": {
+      "get": {
+        "operationId": "list_permissions_api_v1_admin_permissions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Permissions Api V1 Admin Permissions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List all available system permissions",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/price-list": {
       "get": {
         "operationId": "list_prices_api_v1_admin_price_list_get",
@@ -5480,6 +6582,97 @@
           }
         },
         "summary": "Deactivate a staff user",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/permissions": {
+      "get": {
+        "operationId": "get_user_permissions_api_v1_admin_users__user_id__permissions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Get User Permissions Api V1 Admin Users  User Id  Permissions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a staff user's permissions",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "put": {
+        "operationId": "update_user_permissions_api_v1_admin_users__user_id__permissions_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffUserPermissionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update a staff user's permissions",
         "tags": [
           "Administration"
         ]
@@ -5967,6 +7160,274 @@
         ]
       }
     },
+    "/api/v1/complaints": {
+      "get": {
+        "operationId": "list_complaints_api_v1_complaints_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Complaints",
+        "tags": [
+          "Complaints"
+        ]
+      },
+      "post": {
+        "operationId": "raise_complaint_api_v1_complaints_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "title": "Response Raise Complaint Api V1 Complaints Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Raise Complaint",
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/api/v1/complaints/{complaint_id}": {
+      "get": {
+        "operationId": "get_complaint_api_v1_complaints__complaint_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "complaint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Complaint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplaintResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Complaint",
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/api/v1/complaints/{complaint_id}/assign": {
+      "post": {
+        "operationId": "assign_complaint_api_v1_complaints__complaint_id__assign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "complaint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Complaint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign Complaint",
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/api/v1/complaints/{complaint_id}/resolve": {
+      "post": {
+        "operationId": "resolve_complaint_api_v1_complaints__complaint_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "complaint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Complaint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Complaint",
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
     "/api/v1/customers": {
       "get": {
         "operationId": "list_customers_api_v1_customers_get",
@@ -6070,6 +7531,27 @@
           }
         },
         "summary": "Register Customer",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/me": {
+      "get": {
+        "operationId": "get_my_profile_api_v1_customers_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get current customer profile",
         "tags": [
           "customers"
         ]
@@ -6291,6 +7773,57 @@
           }
         },
         "summary": "Set Primary Address",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/approve": {
+      "post": {
+        "operationId": "approve_customer_api_v1_customers__customer_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Customer",
         "tags": [
           "customers"
         ]
@@ -7556,6 +9089,152 @@
         ]
       }
     },
+    "/api/v1/notifications": {
+      "get": {
+        "description": "List notifications for the current user.",
+        "operationId": "list_notifications_api_v1_notifications_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unread_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unread Only",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotificationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Notifications",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "description": "Mark all notifications as read for the current user.",
+        "operationId": "mark_all_read_api_v1_notifications_read_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mark All Read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "description": "Get the unread notification count for the current user.",
+        "operationId": "get_unread_count_api_v1_notifications_unread_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Unread Count",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "description": "Mark a specific notification as read.",
+        "operationId": "mark_read_api_v1_notifications__id__read_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
     "/api/v1/orders": {
       "get": {
         "description": "Order Queue — the dominant query pattern, status/branch/date filterable.",
@@ -8330,6 +10009,48 @@
         "summary": "Reschedule Order",
         "tags": [
           "orders"
+        ]
+      }
+    },
+    "/api/v1/print-jobs": {
+      "post": {
+        "description": "Generate a printable document and return a download URL.",
+        "operationId": "create_print_job_api_v1_print_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrintJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Print Job",
+        "tags": [
+          "Printing"
         ]
       }
     },
