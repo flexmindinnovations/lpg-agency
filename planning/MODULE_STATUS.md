@@ -60,7 +60,7 @@ backlog this file tracks.
 | 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | 🔴 **zero backend tests** | ~90% | 🔴 | test: `feature-complaints`; import-linter `routers/complaint.py` → sqlalchemy; ruff `domain/complaint` 27 | Full aggregate + router with **no tests at all**; 2 blank buttons; no planning dir |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
 | 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** |
-| — | Reporting | folded into 18 | 🔴 **zero tests** | ~90% | 🔴 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | No tests; no planning dir |
+| — | Reporting | folded into 18 | 🔴 **router never mounted — 100% dead** | ~90% built, **0% reachable** | 🔴 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7 — every endpoint 404s |
 | — | Employees (tenant-admin) | — | 🔴 **zero tests** | ~90% | 🔴 | lint: `feature-employees` | No tests — this is the table whose missing GRANT caused the `permission denied` outage |
 | — | Dashboard shell | — | 🟡 builds, tests red | 100% | 🔴 | lint + test: `dashboard` | `shell-layout.ts` statically imports 2 lazy libs → breaks lazy boundary **and** `shell-layout.spec.ts` |
 | — | Shared data-access | — | 🟡 | 100% | 🔴 | test: `shared-data-access` | Unit tests failing |
@@ -105,6 +105,34 @@ test files whatsoever**, and each is marked COMPLETE. `employee` is precisely
 the table whose missing GRANT caused a production-shaped outage that no test
 caught.
 
+### C7 — Reporting is unreachable: the router is never mounted
+
+Found during the end-to-end documentation audit, not by any test.
+
+`api/app.py:39` imports `reporting` alongside every other router, but the
+corresponding `app.include_router(reporting.router, ...)` line **does not
+exist** — there are 16 `include_router` calls and none of them is reporting.
+The module is therefore dead code end to end:
+
+- `routers/reporting.py` defines 4 endpoints under prefix `/reporting`
+  (`/sales`, `/gst`, `/drivers`, `/consumption`)
+- none appear in the generated OpenAPI spec (0 of 101 paths match `report`)
+- `libs/reporting/data-access/reporting.store.ts` calls
+  `/api/v1/reporting/{sales,drivers,consumption,gst}` — **all four 404**
+- the `/reports` route and its nav entry are live, so the page is reachable
+  and simply fails
+
+No test caught this because Reporting has no tests (C4), and the unused import
+does not trip ruff because the name *is* referenced in the import list.
+
+Separately, `docs/data/11-api-contracts.md` documented these under
+`/api/v1/reports/...` (plural) while the code uses `/reporting/...` — so the
+contract doc would not have matched even once mounted. Corrected there.
+
+**Fix is one line**, but it should land with tests, since mounting the router
+exposes four previously unreachable endpoints to RBAC and RLS for the first
+time. Tracked as R7a.
+
 ### C5 — Lint / type debt
 
 634 ruff errors (~190 auto-fixable), 23 mypy errors. Hotspots: `api/v1` 72,
@@ -127,6 +155,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [ ] **R4** — Frontend tests (4 projects)
 - [ ] **R5** — C2 import contracts → decide `TYPE_CHECKING` policy, remove `text()` from API layer
 - [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
+- [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass

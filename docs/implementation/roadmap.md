@@ -70,6 +70,44 @@ Dependency-ordered. The full roadmap with rationale is in [`planning/current_pha
 | 19 | CI/CD and Deployment | 1 onward | Per-stack workflows, IaC, four environments, release automation, rollback |
 | 20 | Phase 2 / AI Capabilities | 18 | Deferred per A-21 |
 
+### Phase numbering: this table vs `planning/features/`
+
+**The numbers in the table above are NOT the directory numbers in
+`planning/features/`, and never have been.** Driver Management was built as a
+distinct phase and given directory `09-driver-management`, but was never added
+to this table — so from Customer Management onward, every planning directory
+sits one number ahead of its row here. Anyone reading "Phase 12" means Cylinder
+Ledger in this table and Delivery & Dispatch on disk.
+
+The directory numbers are the ones used in commit messages, `STATUS.md` files
+and day-to-day conversation, so they are treated as canonical. This table keeps
+its original numbering because the `D-nn` decision references throughout the
+SRS point at it. Use this mapping to move between them:
+
+| Roadmap # (this table) | `planning/features/` directory | Verified state |
+|---|---|---|
+| 8 — Customer Management | `08-customer-management` | built, gates red |
+| *(absent)* | `09-driver-management` | **built and verified** |
+| 9 — Inventory Management | `10-inventory-management` | built, gates red |
+| 10 — Order Management | *(no directory — never created)* | built, gates red |
+| 11 — Delivery Management | `12-delivery-dispatch` | built, gates red |
+| 12 — Cylinder Ledger | `13-cylinder-ledger` | **built and verified** |
+| 13 — Accounting & Billing | `14-accounting` | built, untested |
+| 14 — Notifications | `15-notifications` | built, gates red |
+| 15 — Complaint Management | *(no directory)* | built, untested |
+| 16 — Reporting & Analytics | *(no directory)* | built, untested |
+| 17 — Printing | `18-printing-engine` | built, partial tests |
+| 18 — Production Hardening | *(completed in `13db542`)* | — |
+| 19 — CI/CD and Deployment | *(workflows exist)* | — |
+| 20 — AI Capabilities | see below | not started |
+| *(new)* | `19-customer-app-v2` | in progress |
+
+Four implemented areas have no planning directory at all: Order Management,
+Complaint Management, Reporting, and Employees. Per-module verified status
+lives in [`planning/MODULE_STATUS.md`](../../planning/MODULE_STATUS.md), which
+is the authority on what is actually done — not the ✅ marks in individual
+`STATUS.md` files, four of which have failed independent verification.
+
 ### Two sequencing notes
 
 **Real-time and printing cross-cut.** Both appear as numbered phases, but neither is built once at the end. Real-time infrastructure lands in phase 3 and each feature publishes its own events as it ships. Receipts and invoices are built alongside Delivery and Accounting; phase 17 completes the engine, templates, and tenant configuration.

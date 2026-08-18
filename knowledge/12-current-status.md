@@ -8,6 +8,15 @@ It is a **summary**. The authoritative, always-current record is [`planning/curr
 
 This document is updated after every major milestone.
 
+> **For whether something actually works, use
+> [`planning/MODULE_STATUS.md`](../planning/MODULE_STATUS.md), not this file.**
+> This document and the per-phase `STATUS.md` files record what was *built*.
+> `MODULE_STATUS.md` records what was *verified* — every row backed by a re-run
+> of the project's own CI commands. The two differ today: most modules are fully
+> built while their gates are red. That distinction exists because four phases
+> (8, 9, 12, 13) were marked COMPLETE here and in their own `STATUS.md`, and
+> then failed independent verification.
+
 ---
 
 # Project Information

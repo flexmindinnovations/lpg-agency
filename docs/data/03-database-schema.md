@@ -162,9 +162,27 @@ All tables across 9 PostgreSQL schemas (`tenant`, `customer`, `orders`, `deliver
 | Column | Type | Nullable | Default | Constraints |
 |---|---|---|---|---|
 | customer_id | uuid | No | — | FK |
-| address_line | text | No | — | — |
+| line_1 | text | No | — | must be non-blank |
+| line_2 | text | Yes | null | — |
+| landmark | varchar | Yes | null | — |
+| area | varchar | Yes | null | — |
+| city | varchar | Yes | null | — |
+| district | varchar | Yes | null | — |
+| state | varchar | Yes | null | — |
+| pincode | varchar | Yes | null | — |
+| address_type | varchar | No | `'delivery'` | CHECK IN ('delivery','billing','both') |
 | latitude / longitude | numeric(9,6) | Yes | null | valid range if present |
-| is_primary | boolean | No | `false` | partial unique index: max one true per customer |
+| is_primary | boolean | No | `false` | partial unique index: max one true per undeleted customer |
+
+> **Renamed in `de17b27d462e`.** This table previously had a single
+> `address_line` column; the customer-onboarding work split it into the
+> structured fields above. Two *other* `address_line` columns still exist and
+> are unrelated — `tenant.warehouse.address_line` (a real column, documented
+> above) and `DeliveryAddress.address_line` on the Order aggregate (a frozen
+> snapshot value object, not a table column). Do not "fix" either of those to
+> `line_1`. The backend test fixtures were not updated for this rename and are
+> currently the sole cause of 18 failing integration tests — tracked as R1 in
+> [`planning/MODULE_STATUS.md`](../../planning/MODULE_STATUS.md).
 
 ### `customer.kyc_document`
 | Column | Type | Nullable | Default | Constraints |

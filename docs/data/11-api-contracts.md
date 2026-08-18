@@ -192,15 +192,75 @@ Base path `/api/v1`. Every endpoint requires `Authorization: Bearer <JWT>` unles
 
 ## Module: Reporting
 
-### `GET /api/v1/reports/daily-sales`
-**Query Parameters:** `date`, `branch_id`.
-**Response `200 OK`:** aggregated totals + breakdown.
+> ⚠️ **These endpoints are implemented but NOT reachable.** `api/app.py`
+> imports the reporting router and never calls `include_router` on it, so none
+> of the paths below appear in the OpenAPI spec and all of them return 404. The
+> Angular Reports page calls them and fails. See C7 in
+> [`planning/MODULE_STATUS.md`](../../planning/MODULE_STATUS.md).
+>
+> This section previously documented a `/api/v1/reports/…` (plural) prefix with
+> an async export-job contract that does not exist in the code. It has been
+> rewritten to match `routers/reporting.py` as actually written; the export-job
+> design is retained as a future item, not a current contract.
 
-### `POST /api/v1/reports/{report_type}/exports`
-**Response `202 Accepted`:** `{ "job_id" }`.
+Prefix is `/reporting` (singular). All four are synchronous reads.
 
-### `GET /api/v1/report-exports/{job_id}`
-**Response:** job status + download URL when ready.
+### `GET /api/v1/reporting/sales`
+**Query Parameters:** `start_date`, `end_date`.
+**Response `200 OK`:** `DailySalesResponse[]`.
+
+### `GET /api/v1/reporting/gst`
+**Response `200 OK`:** `GstFilingResponse[]`.
+
+### `GET /api/v1/reporting/drivers`
+**Query Parameters:** `start_date`, `end_date`.
+**Response `200 OK`:** `DriverPerformanceResponse[]`.
+
+### `GET /api/v1/reporting/consumption`
+**Response `200 OK`:** `CustomerConsumptionResponse[]`.
+
+**Not yet built:** async export jobs (`POST .../exports` → `202` + `job_id`,
+then poll for a download URL). Required for D-28 scheduling.
+
+---
+
+## Module: Notifications
+
+### `GET /api/v1/notifications`
+**Response `200 OK`:** the caller's in-app notifications.
+
+### `GET /api/v1/notifications/unread-count`
+**Response `200 OK`:** `{ "count": <int> }`. Polled by the shell's bell.
+
+### `PATCH /api/v1/notifications/{id}/read`
+**Response `200 OK`:** marks one notification read.
+
+### `POST /api/v1/notifications/read-all`
+**Response `200 OK`:** marks every unread notification read.
+
+---
+
+## Module: Employees
+
+### `GET /api/v1/employees`
+**Response `200 OK`:** tenant employees. Requires `users:read`.
+
+> This endpoint returned 500 for every caller until `b4d19e7c3a52`, because
+> `tenant.employee` was created with RLS but no GRANT to the application role.
+> The request passed its RBAC check and then failed at the database. RBAC
+> permission and database privilege are separate layers — see
+> [`08-security-architecture.md`](../architecture/08-security-architecture.md).
+
+### `POST /api/v1/employees`
+**Response `201 Created`:** registers an employee. Requires `users:manage`.
+
+---
+
+## Module: Printing
+
+### `POST /api/v1/print-jobs`
+**Response `201 Created`:** queues a render (invoice / thermal receipt) and
+returns the job with its blob reference.
 
 ---
 
