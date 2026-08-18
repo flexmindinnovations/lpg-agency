@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
-from typing import Sequence
+from typing import TYPE_CHECKING
 
-from lpg.application.reporting.ports import GstFilingRecord, ReportingRepository
+if TYPE_CHECKING:
+    import uuid
+    from collections.abc import Sequence
+
+    from lpg.application.reporting.ports import GstFilingRecord, ReportingRepository
 
 
 @dataclass(frozen=True, slots=True)

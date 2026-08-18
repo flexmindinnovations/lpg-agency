@@ -22,10 +22,10 @@ from lpg.application.accounting.use_cases import (
 from lpg.domain.accounting.invoice import Invoice
 from lpg.domain.order.order import OrderLine
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_order_line(
     *,
@@ -60,6 +60,7 @@ def _make_tenant_config_entry(value: str) -> MagicMock:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_invoice_repo() -> MagicMock:
     repo = MagicMock()
@@ -89,8 +90,8 @@ def mock_tenant_config_repo() -> MagicMock:
 # GenerateInvoiceForOrderUseCase
 # ---------------------------------------------------------------------------
 
-class TestGenerateInvoiceForOrderUseCase:
 
+class TestGenerateInvoiceForOrderUseCase:
     async def test_generates_invoice_for_delivered_order(
         self,
         mock_invoice_repo: MagicMock,
@@ -99,7 +100,9 @@ class TestGenerateInvoiceForOrderUseCase:
     ) -> None:
         """A delivered order with lines produces one invoice saved via the repo."""
         tenant_id = uuid.uuid4()
-        order = _make_order(lines=[_make_order_line(quantity_delivered=2, unit_price=Decimal("150.00"))])
+        order = _make_order(
+            lines=[_make_order_line(quantity_delivered=2, unit_price=Decimal("150.00"))]
+        )
         mock_order_repo.get_by_id = AsyncMock(return_value=order)
 
         use_case = GenerateInvoiceForOrderUseCase(
@@ -133,8 +136,10 @@ class TestGenerateInvoiceForOrderUseCase:
         tenant_id = uuid.uuid4()
         delivered_at = datetime.now(UTC)
 
-        # One line: 4 units × ₹100.00 = ₹400 subtotal; 18% GST = ₹72 tax; total ₹472
-        order = _make_order(lines=[_make_order_line(quantity_delivered=4, unit_price=Decimal("100.00"))])
+        # One line: 4 units x Rs.100.00 = Rs.400 subtotal; 18% GST = Rs.72 tax; total Rs.472
+        order = _make_order(
+            lines=[_make_order_line(quantity_delivered=4, unit_price=Decimal("100.00"))]
+        )
         mock_order_repo.get_by_id = AsyncMock(return_value=order)
 
         gst_entry = _make_tenant_config_entry("18")
@@ -246,7 +251,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
     ) -> None:
-        """If the order is missing (race condition / late event), generation is skipped gracefully."""
+        """If the order is missing (race condition / late event), generation is
+        skipped gracefully."""
         mock_order_repo.get_by_id = AsyncMock(return_value=None)
 
         use_case = GenerateInvoiceForOrderUseCase(
@@ -270,7 +276,9 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_tenant_config_repo: MagicMock,
     ) -> None:
         """When no GST rate is configured, tax_amount is 0 and total equals subtotal."""
-        order = _make_order(lines=[_make_order_line(quantity_delivered=1, unit_price=Decimal("200.00"))])
+        order = _make_order(
+            lines=[_make_order_line(quantity_delivered=1, unit_price=Decimal("200.00"))]
+        )
         mock_order_repo.get_by_id = AsyncMock(return_value=order)
         mock_tenant_config_repo.list_for_tenant_and_key = AsyncMock(return_value=[])
 
@@ -319,8 +327,8 @@ class TestGenerateInvoiceForOrderUseCase:
 # GetInvoiceUseCase
 # ---------------------------------------------------------------------------
 
-class TestGetInvoiceUseCase:
 
+class TestGetInvoiceUseCase:
     async def test_returns_invoice_by_id(self, mock_invoice_repo: MagicMock) -> None:
         invoice_id = uuid.uuid4()
         expected = MagicMock(spec=Invoice)
@@ -345,8 +353,8 @@ class TestGetInvoiceUseCase:
 # ListInvoicesUseCase
 # ---------------------------------------------------------------------------
 
-class TestListInvoicesUseCase:
 
+class TestListInvoicesUseCase:
     async def test_returns_paginated_invoices_with_total(
         self, mock_invoice_repo: MagicMock
     ) -> None:
@@ -360,9 +368,7 @@ class TestListInvoicesUseCase:
         assert result is invoices
         assert total == 2
 
-    async def test_passes_filters_to_repository(
-        self, mock_invoice_repo: MagicMock
-    ) -> None:
+    async def test_passes_filters_to_repository(self, mock_invoice_repo: MagicMock) -> None:
         customer_id = uuid.uuid4()
         query = ListInvoicesQuery(skip=5, limit=20, customer_id=customer_id, status="issued")
 

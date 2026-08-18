@@ -34,6 +34,7 @@ class WebSocket(Protocol):
 
     async def send_json(self, data: Any) -> None: ...
 
+
 # Backpressure: if a client's send queue exceeds this depth, disconnect it
 # rather than consuming unbounded memory (§7).
 _MAX_SEND_QUEUE_DEPTH = 64
@@ -67,9 +68,7 @@ class ConnectionManager:
 
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=_MAX_SEND_QUEUE_DEPTH)
         self._send_queues[websocket] = queue
-        self._sender_tasks[websocket] = asyncio.create_task(
-            self._sender_loop(websocket, queue)
-        )
+        self._sender_tasks[websocket] = asyncio.create_task(self._sender_loop(websocket, queue))
 
         _logger.info(
             "ws_connected",
@@ -146,11 +145,9 @@ class ConnectionManager:
                 message = await queue.get()
                 try:
                     await websocket.send_json(message)
-                except Exception:
+                except Exception:  # noqa: BLE001 - send failure means the socket is gone
                     _logger.debug("ws_send_failed")
                     await self.disconnect(websocket)
                     return
         except asyncio.CancelledError:
             return
-
-

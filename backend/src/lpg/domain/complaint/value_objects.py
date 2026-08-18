@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ComplaintCategory(str, Enum):
     SHORT_DELIVERY = "ShortDelivery"
     DAMAGED_CYLINDER = "DamagedCylinder"
@@ -8,11 +9,13 @@ class ComplaintCategory(str, Enum):
     LATE_DELIVERY = "LateDelivery"
     OTHER = "Other"
 
+
 class ComplaintPriority(str, Enum):
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
     CRITICAL = "Critical"
+
 
 class ComplaintStatus(str, Enum):
     OPEN = "Open"
@@ -21,6 +24,7 @@ class ComplaintStatus(str, Enum):
     RESOLVED = "Resolved"
     REJECTED = "Rejected"
     CLOSED = "Closed"
+
 
 class ResolutionOutcome(str, Enum):
     RESOLVED = "Resolved"

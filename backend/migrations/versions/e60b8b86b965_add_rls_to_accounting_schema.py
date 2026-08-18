@@ -70,7 +70,7 @@ def _enable_rls(table: str) -> None:
 def upgrade() -> None:
     op.execute(_grant(table="invoice", privileges="SELECT, INSERT"))
     op.execute(_revoke_mutation(table="invoice"))
-    
+
     op.execute(_grant(table="invoice_line", privileges="SELECT, INSERT"))
     op.execute(_revoke_mutation(table="invoice_line"))
 
@@ -99,10 +99,10 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_invoice_line_isolation ON {_SCHEMA}.invoice_line")
     op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_invoice_isolation ON {_SCHEMA}.invoice")
-    
+
     op.execute(f"ALTER TABLE {_SCHEMA}.invoice_line NO FORCE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {_SCHEMA}.invoice_line DISABLE ROW LEVEL SECURITY")
-    
+
     op.execute(f"ALTER TABLE {_SCHEMA}.invoice NO FORCE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {_SCHEMA}.invoice DISABLE ROW LEVEL SECURITY")
 

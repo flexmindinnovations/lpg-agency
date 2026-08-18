@@ -246,7 +246,9 @@ class PermissionRepository(Protocol):
         """All available permission codes in the system."""
         ...
 
-    async def set_permissions_for_user(self, user_id: uuid.UUID, permission_codes: set[str]) -> None:
+    async def set_permissions_for_user(
+        self, user_id: uuid.UUID, permission_codes: set[str]
+    ) -> None:
         """Overwrite the permissions assigned to a user."""
         ...
 

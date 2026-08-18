@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from lpg.application.printing.models import (
@@ -55,7 +55,7 @@ def _make_payload() -> InvoicePrintPayload:
         total_amount=Decimal("3540.00"),
         tax_rate_percent=Decimal("18.0"),
         payment_status="issued",
-        issued_at=datetime(2026, 8, 14, 10, 30, 0, tzinfo=timezone.utc),
+        issued_at=datetime(2026, 8, 14, 10, 30, 0, tzinfo=UTC),
         qr_code_data="lpg-invoice:inv-00001234",
     )
 

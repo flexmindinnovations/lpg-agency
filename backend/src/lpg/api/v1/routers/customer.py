@@ -9,10 +9,15 @@ from lpg.api.v1.dependencies.customer import (
     get_consumer_number_sequence,
     get_customer_repository,
 )
-from lpg.api.v1.dependencies.identity import get_current_principal, require_permission, require_permission_or_self
+from lpg.api.v1.dependencies.identity import (
+    get_current_principal,
+    require_permission,
+    require_permission_or_self,
+)
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.customer import (
     AddCustomerAddressRequest,
+    ApproveCustomerRequest,
     CustomerPageResponse,
     CustomerResponse,
     KycDocumentListResponse,
@@ -22,7 +27,6 @@ from lpg.api.v1.schemas.customer import (
     SubmitKycDocumentRequest,
     UpdateCustomerProfileRequest,
     VerifyKycDocumentRequest,
-    ApproveCustomerRequest,
 )
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
@@ -30,10 +34,12 @@ from lpg.application.customer.ports import ConsumerNumberSequence, CustomerRepos
 from lpg.application.customer.use_cases import (
     AddCustomerAddressCommand,
     AddCustomerAddressUseCase,
-    GetCustomerQuery,
-    GetCustomerUseCase,
+    ApproveCustomerCommand,
+    ApproveCustomerUseCase,
     GetCustomerByUserIdQuery,
     GetCustomerByUserIdUseCase,
+    GetCustomerQuery,
+    GetCustomerUseCase,
     ListCustomersQuery,
     ListCustomersUseCase,
     PeekNextConsumerNumberUseCase,
@@ -47,12 +53,10 @@ from lpg.application.customer.use_cases import (
     UpdateCustomerProfileUseCase,
     VerifyKycDocumentCommand,
     VerifyKycDocumentUseCase,
-    ApproveCustomerCommand,
-    ApproveCustomerUseCase,
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
 
-router = APIRouter(prefix="/customers", tags=["customers"])
+router = APIRouter(prefix="/customers", tags=["Customers"])
 
 
 @router.post(
@@ -103,7 +107,9 @@ async def register_customer(
             pincode=request.pincode,
             address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
-            longitude=float(request.longitude) if request.longitude is not None else None,
+            longitude=(
+                float(request.longitude) if request.longitude is not None else None
+            ),
         )
     )
     return CustomerResponse.model_validate(customer)
@@ -121,7 +127,9 @@ async def list_customers(
     search: str | None = None,
 ) -> CustomerPageResponse:
     use_case = ListCustomersUseCase(repository)
-    result = await use_case.execute(ListCustomersQuery(skip=skip, limit=limit, search=search))
+    result = await use_case.execute(
+        ListCustomersQuery(skip=skip, limit=limit, search=search)
+    )
     return CustomerPageResponse(
         items=[CustomerResponse.model_validate(c) for c in result.items],
         total=result.total,
@@ -140,7 +148,9 @@ async def get_my_profile(
     if not principal.user_id:
         raise HTTPException(status_code=401, detail="User ID missing")
     use_case = GetCustomerByUserIdUseCase(repository)
-    customer = await use_case.execute(GetCustomerByUserIdQuery(identity_user_id=principal.user_id))
+    customer = await use_case.execute(
+        GetCustomerByUserIdQuery(identity_user_id=principal.user_id)
+    )
     if customer is None:
         raise NotFoundError("No customer profile found for the current user.")
     return CustomerResponse.model_validate(customer)
@@ -218,7 +228,9 @@ async def add_address(
             pincode=request.pincode,
             address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
-            longitude=float(request.longitude) if request.longitude is not None else None,
+            longitude=(
+                float(request.longitude) if request.longitude is not None else None
+            ),
         )
     )
 
@@ -234,7 +246,9 @@ async def set_primary_address(
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> None:
     use_case = SetPrimaryAddressUseCase(repository, unit_of_work)
-    await use_case.execute(SetPrimaryAddressCommand(customer_id=customer_id, address_id=address_id))
+    await use_case.execute(
+        SetPrimaryAddressCommand(customer_id=customer_id, address_id=address_id)
+    )
 
 
 @router.get(
@@ -252,7 +266,9 @@ async def list_kyc_documents(
         msg = f"No customer visible with id {customer_id}."
         raise NotFoundError(msg, customer_id=str(customer_id))
     return KycDocumentListResponse(
-        items=[KycDocumentResponse.model_validate(doc) for doc in customer.kyc_documents]
+        items=[
+            KycDocumentResponse.model_validate(doc) for doc in customer.kyc_documents
+        ]
     )
 
 

@@ -36,7 +36,6 @@ from lpg.api.v1.routers import (
     notifications,
     order,
     printing,
-    reporting,
     route,
     ws,
 )
@@ -117,7 +116,9 @@ def get_health_checks() -> list[HealthCheck]:
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001 - FastAPI signature
+async def lifespan(
+    app: FastAPI,  # noqa: ARG001 - FastAPI's lifespan-context-manager signature
+) -> AsyncGenerator[None]:
     """Open and close process-wide resources.
 
     Database and Redis connections are created but not dialled here. If a
@@ -180,7 +181,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001 
 
     _state.connection_manager = connection_manager
     _state.realtime_subscriber = realtime_subscriber
-    
+
     realtime_publisher = RedisRealtimePublisher(redis_client)
     _state.realtime_publisher = realtime_publisher
     register_realtime_handlers(_state.event_dispatcher, realtime_publisher)
@@ -243,7 +244,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
         # OpenAPI is served under the version prefix so the spec URL is
         # versioned alongside the API it describes (ADR-009).
-        openapi_url=f"{settings.api_v1_prefix}/openapi.json" if settings.docs_enabled else None,
+        openapi_url=(
+            f"{settings.api_v1_prefix}/openapi.json" if settings.docs_enabled else None
+        ),
         docs_url=f"{settings.api_v1_prefix}/docs" if settings.docs_enabled else None,
         redoc_url=f"{settings.api_v1_prefix}/redoc" if settings.docs_enabled else None,
         # Route metadata *is* the contract — FastAPI generates the OpenAPI spec
@@ -253,7 +256,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {"name": "Health", "description": "Liveness and readiness probes."},
             {
                 "name": "Authentication",
-                "description": "Login, OTP, refresh, logout, password reset (Phase 6).",
+                "description": "Login, OTP, refresh, logout, password reset.",
             },
         ],
     )

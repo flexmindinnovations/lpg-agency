@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -24,6 +23,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 from sqlalchemy.engine.reflection import Inspector
+
 
 def upgrade() -> None:
     conn = op.get_bind()
@@ -71,7 +71,7 @@ def upgrade() -> None:
                 WITH CHECK (tenant_id = (current_setting('app.current_tenant_id', true))::uuid);
             """
         )
-    
+
     # 4. Modify driver table
     # We will first add the new column allowing nulls
     columns = [c['name'] for c in inspector.get_columns('driver', schema='delivery')]
@@ -83,17 +83,17 @@ def upgrade() -> None:
         # The requirement says "add employee_id (foreign key reference)", and the model says `nullable=False`.
         # Let's clean up existing delivery data since this is a hard breaking change.
         op.execute("TRUNCATE TABLE delivery.driver CASCADE;")
-        
+
         op.alter_column('driver', 'employee_id', nullable=False, schema='delivery')
-        
+
         op.create_foreign_key(
-            op.f('fk_driver_employee'), 
-            'driver', 
-            'employee', 
-            ['employee_id'], 
-            ['id'], 
-            source_schema='delivery', 
-            referent_schema='tenant', 
+            op.f('fk_driver_employee'),
+            'driver',
+            'employee',
+            ['employee_id'],
+            ['id'],
+            source_schema='delivery',
+            referent_schema='tenant',
             ondelete='CASCADE'
         )
     if 'employee_code' in columns:
@@ -106,13 +106,13 @@ def downgrade() -> None:
     op.execute("TRUNCATE TABLE delivery.driver CASCADE;")
     op.alter_column('driver', 'employee_code', nullable=False, schema='delivery')
     op.create_unique_constraint('uq_driver_tenant_employee_code', 'driver', ['tenant_id', 'employee_code'], schema='delivery')
-    
+
     op.drop_constraint(op.f('fk_driver_employee'), 'driver', schema='delivery', type_='foreignkey')
     op.drop_column('driver', 'employee_id', schema='delivery')
 
     # 2. Revert RLS
     op.execute("DROP POLICY IF EXISTS employee_tenant_isolation_policy ON tenant.employee;")
-    
+
     # 3. Drop table and sequence
     op.drop_table('employee', schema='tenant')
     op.execute("DROP SEQUENCE tenant.employee_code_seq;")

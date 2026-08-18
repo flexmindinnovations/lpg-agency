@@ -11,8 +11,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alembic import op
-import sqlalchemy as sa
-
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

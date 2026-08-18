@@ -85,12 +85,14 @@ async def list_employees(
         ListEmployeesQuery,
         ListEmployeesUseCase,
     )
+
     use_case = ListEmployeesUseCase(repository)
     employees, total = await use_case.execute(
         ListEmployeesQuery(
             skip=skip,
             limit=limit,
             search=search,
+            status=status,
             role=role,
             branch_id=branch_id,
         )
@@ -109,10 +111,10 @@ async def list_employees(
                 role=e.role,
                 status=e.status,
                 email=e.email,
-            ) for e in employees
+            )
+            for e in employees
         ],
         total=total,
         page=page,
         page_size=limit,
     )
-

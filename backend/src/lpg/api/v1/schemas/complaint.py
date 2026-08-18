@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,6 +12,7 @@ from lpg.domain.complaint.value_objects import (
     ResolutionOutcome,
 )
 
+
 class ComplaintAssignmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,6 +21,7 @@ class ComplaintAssignmentResponse(BaseModel):
     assigned_at: datetime
     created_at: datetime
     created_by: uuid.UUID | None
+
 
 class ComplaintResolutionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -31,6 +32,7 @@ class ComplaintResolutionResponse(BaseModel):
     resolved_by: uuid.UUID
     resolved_at: datetime
     created_at: datetime
+
 
 class ComplaintResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -50,11 +52,13 @@ class ComplaintResponse(BaseModel):
     assignments: list[ComplaintAssignmentResponse] = Field(default_factory=list)
     resolution: ComplaintResolutionResponse | None = None
 
+
 class ComplaintListResponse(BaseModel):
     items: list[ComplaintResponse]
     total: int
     skip: int
     limit: int
+
 
 class RaiseComplaintRequest(BaseModel):
     customer_id: uuid.UUID
@@ -63,8 +67,10 @@ class RaiseComplaintRequest(BaseModel):
     description: str = Field(..., min_length=1, max_length=2000)
     order_id: uuid.UUID | None = None
 
+
 class AssignComplaintRequest(BaseModel):
     assigned_to: uuid.UUID
+
 
 class ResolveComplaintRequest(BaseModel):
     outcome: ResolutionOutcome

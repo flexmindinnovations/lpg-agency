@@ -80,7 +80,11 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         self._uow.register_aggregate(invoice)
 
     async def get_by_id(self, invoice_id: uuid.UUID) -> Invoice | None:
-        stmt = select(InvoiceModel).where(InvoiceModel.id == invoice_id).options(selectinload(InvoiceModel.lines))
+        stmt = (
+            select(InvoiceModel)
+            .where(InvoiceModel.id == invoice_id)
+            .options(selectinload(InvoiceModel.lines))
+        )
         result = await self._session.execute(stmt)
         model = result.scalar_one_or_none()
         if not model:
@@ -95,15 +99,22 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         order_id: uuid.UUID | None = None,
         status: str | None = None,
     ) -> list[Invoice]:
-        stmt = select(InvoiceModel).where(InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id)
+        stmt = select(InvoiceModel).where(
+            InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id
+        )
         if customer_id:
             stmt = stmt.where(InvoiceModel.customer_id == customer_id)
         if order_id:
             stmt = stmt.where(InvoiceModel.order_id == order_id)
         if status:
             stmt = stmt.where(InvoiceModel.status == status)
-        
-        stmt = stmt.order_by(InvoiceModel.issued_at.desc()).offset(skip).limit(limit).options(selectinload(InvoiceModel.lines))
+
+        stmt = (
+            stmt.order_by(InvoiceModel.issued_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .options(selectinload(InvoiceModel.lines))
+        )
         result = await self._session.execute(stmt)
         models = result.scalars().all()
         return [self._to_domain(m) for m in models]
@@ -115,20 +126,21 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         status: str | None = None,
     ) -> int:
         from sqlalchemy import func
-        stmt = select(func.count(InvoiceModel.id)).where(InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id)
+
+        stmt = select(func.count(InvoiceModel.id)).where(
+            InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id
+        )
         if customer_id:
             stmt = stmt.where(InvoiceModel.customer_id == customer_id)
         if order_id:
             stmt = stmt.where(InvoiceModel.order_id == order_id)
         if status:
             stmt = stmt.where(InvoiceModel.status == status)
-        
+
         result = await self._session.execute(stmt)
         return result.scalar_one() or 0
 
-    async def get_by_order_id(
-        self, tenant_id: uuid.UUID, order_id: uuid.UUID
-    ) -> Invoice | None:
+    async def get_by_order_id(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> Invoice | None:
         stmt = (
             select(InvoiceModel)
             .where(

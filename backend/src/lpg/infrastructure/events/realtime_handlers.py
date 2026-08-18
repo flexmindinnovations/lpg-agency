@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lpg.domain.customer.customer import CustomerStatusChanged, PrimaryAddressSet
 from lpg.domain.delivery.driver import DriverRegistered, DriverStatusChanged
 from lpg.domain.delivery.route import (
     OrderAssignedToRoute,
@@ -46,21 +45,36 @@ def register_realtime_handlers(
         await publisher.publish(channel, message)
 
     async def on_order_status_changed(
-        event: BookingCreated | BookingConfirmed | BookingCancelled | InventoryReserved | CylinderDelivered | DeliveryFailed | OrderClosed
+        event: BookingCreated
+        | BookingConfirmed
+        | BookingCancelled
+        | InventoryReserved
+        | CylinderDelivered
+        | DeliveryFailed
+        | OrderClosed,
     ) -> None:
         """Notify order state changes to the specific order channel and dashboard."""
         order_id = str(getattr(event, "order_id", getattr(event, "booking_id", "")))
         if not order_id:
             return
 
-        status = type(event).__name__.replace("Booking", "").replace("Order", "").replace("Cylinder", "").lower()
+        status = (
+            type(event)
+            .__name__.replace("Booking", "")
+            .replace("Order", "")
+            .replace("Cylinder", "")
+            .lower()
+        )
         message = {
             "type": "order.status_changed",
             "order_id": order_id,
             "event": type(event).__name__,
+            "status": status,
         }
-        
-        await publisher.publish(f"tenant:{getattr(event, 'tenant_id', 'global')}:order:{order_id}", message)
+
+        await publisher.publish(
+            f"tenant:{getattr(event, 'tenant_id', 'global')}:order:{order_id}", message
+        )
         await publish_dashboard_update(event)
 
     async def on_notification_created(event: InAppNotificationCreated) -> None:
@@ -73,7 +87,11 @@ def register_realtime_handlers(
         await publisher.publish(channel, message)
 
     async def on_route_status_changed(
-        event: RoutePlanned | RouteStatusChanged | OrderAssignedToRoute | OrderDelivered | OrderDeliveryFailed
+        event: RoutePlanned
+        | RouteStatusChanged
+        | OrderAssignedToRoute
+        | OrderDelivered
+        | OrderDeliveryFailed,
     ) -> None:
         """Notify dispatch and drivers of route updates."""
         message = {
@@ -84,8 +102,10 @@ def register_realtime_handlers(
         await publisher.publish(f"tenant:{getattr(event, 'tenant_id', 'global')}:dispatch", message)
 
         if hasattr(event, "driver_id") and event.driver_id:
-            await publisher.publish(f"tenant:{getattr(event, 'tenant_id', 'global')}:driver:{event.driver_id}", message)
-        
+            await publisher.publish(
+                f"tenant:{getattr(event, 'tenant_id', 'global')}:driver:{event.driver_id}", message
+            )
+
         if isinstance(event, (OrderDelivered, OrderDeliveryFailed)):
             await publish_dashboard_update(event)
 
@@ -115,7 +135,7 @@ def register_realtime_handlers(
     dispatcher.register(OrderAssignedToRoute, on_route_status_changed)  # type: ignore[arg-type]
     dispatcher.register(OrderDelivered, on_route_status_changed)  # type: ignore[arg-type]
     dispatcher.register(OrderDeliveryFailed, on_route_status_changed)  # type: ignore[arg-type]
-    
+
     # Drivers
     dispatcher.register(DriverRegistered, on_driver_updated)  # type: ignore[arg-type]
     dispatcher.register(DriverStatusChanged, on_driver_updated)  # type: ignore[arg-type]

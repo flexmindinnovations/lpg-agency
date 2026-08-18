@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+from alembic import op
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -25,7 +24,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.execute("CREATE SCHEMA IF NOT EXISTS cylinder_ledger")
-    
+
     op.create_table('cylinder_ledger',
         sa.Column('id', sa.Uuid(), nullable=False),
         sa.Column('tenant_id', sa.Uuid(), nullable=False),
@@ -43,7 +42,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id', name=op.f('pk_cylinder_ledger')),
         schema='cylinder_ledger'
     )
-    
+
     op.create_table('ledger_transaction',
         sa.Column('id', sa.Uuid(), nullable=False),
         sa.Column('tenant_id', sa.Uuid(), nullable=False),
@@ -61,7 +60,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id', name=op.f('pk_ledger_transaction')),
         schema='cylinder_ledger'
     )
-    
+
     op.create_table('cylinder_balance',
         sa.Column('id', sa.Uuid(), nullable=False),
         sa.Column('tenant_id', sa.Uuid(), nullable=False),

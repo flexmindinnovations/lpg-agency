@@ -9,8 +9,8 @@ documents for SQLAlchemy's `Mapped[...]`, here for Pydantic instead.
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003
-from decimal import Decimal  # noqa: TC003
+from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field

@@ -26,6 +26,7 @@ from lpg.application.complaint.use_cases import (
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
 
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def raise_complaint(
     request: RaiseComplaintRequest,
@@ -43,6 +44,7 @@ async def raise_complaint(
     complaint_id = await use_case.execute(request, command)
     return {"id": complaint_id}
 
+
 @router.post("/{complaint_id}/assign", status_code=status.HTTP_204_NO_CONTENT)
 async def assign_complaint(
     complaint_id: uuid.UUID,
@@ -58,7 +60,8 @@ async def assign_complaint(
     try:
         await use_case.execute(request, command)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
 
 @router.post("/{complaint_id}/resolve", status_code=status.HTTP_204_NO_CONTENT)
 async def resolve_complaint(
@@ -76,7 +79,8 @@ async def resolve_complaint(
     try:
         await use_case.execute(request, command)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
 
 @router.get("/{complaint_id}", response_model=ComplaintResponse)
 async def get_complaint(
@@ -89,6 +93,7 @@ async def get_complaint(
         raise HTTPException(status_code=404, detail="Complaint not found")
 
     return ComplaintResponse.model_validate(complaint)
+
 
 @router.get("", response_model=ComplaintListResponse)
 async def list_complaints(

@@ -3,20 +3,17 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import uuid
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-
 from lpg.application.common.errors import TokenInvalidError
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
     from lpg.application.identity.ports import JwtSigner
-    from lpg.infrastructure.realtime.connection_manager import ConnectionManager
 
 _logger = get_logger(__name__)
 router = APIRouter(tags=["Realtime"])
@@ -30,9 +27,7 @@ async def _verify_token(token: str, signer: JwtSigner) -> dict[str, Any]:
     return signer.decode_access_token(token)
 
 
-def _resolve_subscription_intent(
-    intent: str, claims: dict[str, Any]
-) -> str | None:
+def _resolve_subscription_intent(intent: str, claims: dict[str, Any]) -> str | None:
     """Map a client's subscription intent to a server-constructed Redis channel.
 
     Enforces RBAC on the subscription intent exactly as REST endpoints do (D-38).
@@ -78,11 +73,10 @@ def _resolve_subscription_intent(
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket, token: str = Query(...)
-) -> None:
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)) -> None:
     """Accept a WebSocket connection and handle real-time subscriptions."""
     from lpg.api.app import get_app_state
+
     state = get_app_state()
     signer = state.jwt_signer
     manager = state.connection_manager
@@ -98,7 +92,7 @@ async def websocket_endpoint(
         return
 
     await websocket.accept()
-    
+
     # We maintain the active channels for this socket to handle refresh and cleanup
     active_channels: list[str] = []
 
@@ -107,19 +101,19 @@ async def websocket_endpoint(
             # We use wait_for to enforce keepalive/ping
             try:
                 message = await asyncio.wait_for(websocket.receive_text(), timeout=_PING_INTERVAL_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send ping
                 try:
                     await websocket.send_json({"type": "ping"})
                     continue
-                except Exception:
+                except Exception:  # noqa: BLE001 - send failure means the socket is gone, break
                     break
 
             try:
                 data = json.loads(message)
             except ValueError:
                 continue
-                
+
             if data.get("type") == "pong":
                 continue
 
@@ -131,7 +125,7 @@ async def websocket_endpoint(
                     await websocket.close(code=1008)
                     return
                 continue
-                
+
             # Subscription handling
             if "subscribe" in data and isinstance(data["subscribe"], list):
                 new_channels = []
@@ -139,11 +133,11 @@ async def websocket_endpoint(
                     channel = _resolve_subscription_intent(intent, claims)
                     if channel and channel not in active_channels:
                         new_channels.append(channel)
-                
+
                 if new_channels:
                     active_channels.extend(new_channels)
                     await manager.connect(websocket, new_channels)
-                    
+
     except WebSocketDisconnect:
         pass
     finally:

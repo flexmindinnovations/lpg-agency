@@ -18,7 +18,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from lpg.api.v1.dependencies.delivery import get_driver_repository, get_vehicle_repository
+from lpg.api.v1.dependencies.delivery import (
+    get_driver_repository,
+    get_vehicle_repository,
+)
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.delivery import (
@@ -58,7 +61,7 @@ from lpg.application.delivery.use_cases import (
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.domain.common.base import DomainError
 
-router = APIRouter(tags=["delivery"])
+router = APIRouter(tags=["Delivery"])
 
 
 def _driver_to_response(driver: object) -> DriverResponse:

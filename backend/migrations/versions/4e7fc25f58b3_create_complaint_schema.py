@@ -11,8 +11,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alembic import op
-import sqlalchemy as sa
-
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -46,7 +44,7 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX ON complaint.complaint (tenant_id, customer_id);")
     op.execute("CREATE INDEX ON complaint.complaint (tenant_id, status);")
-    
+
     op.execute("ALTER TABLE complaint.complaint ENABLE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY tenant_isolation ON complaint.complaint
@@ -64,7 +62,7 @@ def upgrade() -> None:
             created_by UUID
         );
     """)
-    
+
     op.execute("ALTER TABLE complaint.complaint_assignment ENABLE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY tenant_isolation ON complaint.complaint_assignment
@@ -83,7 +81,7 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
     """)
-    
+
     op.execute("ALTER TABLE complaint.complaint_resolution ENABLE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY tenant_isolation ON complaint.complaint_resolution

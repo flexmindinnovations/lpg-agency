@@ -10,7 +10,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.schemas.invoice import InvoicePageResponse, InvoiceResponse
-from lpg.domain.accounting.invoice import Invoice
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.accounting.use_cases import (
     GetInvoiceQuery,
@@ -18,6 +17,7 @@ from lpg.application.accounting.use_cases import (
     ListInvoicesQuery,
     ListInvoicesUseCase,
 )
+from lpg.domain.accounting.invoice import Invoice
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 

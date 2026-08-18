@@ -268,26 +268,29 @@ class SqlAlchemyPermissionRepository:
             return frozenset(row.code for row in result)
         return frozenset()  # pragma: no cover
 
-    async def set_permissions_for_user(self, user_id: uuid.UUID, permission_codes: set[str]) -> None:
+    async def set_permissions_for_user(
+        self, user_id: uuid.UUID, permission_codes: set[str]
+    ) -> None:
         async for session in self._database.session():
             # First, delete all current permissions for the user
             await session.execute(
                 text("DELETE FROM identity.identity_user_permission WHERE user_id = :user_id"),
-                {"user_id": str(user_id)}
+                {"user_id": str(user_id)},
             )
-            
+
             if not permission_codes:
                 return
-            
+
             # Insert new permissions
             await session.execute(
                 text("""
-                    INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at)
+                    INSERT INTO identity.identity_user_permission
+                        (id, user_id, permission_id, created_at)
                     SELECT gen_random_uuid(), :user_id, p.id, now()
                     FROM identity.permission p
                     WHERE p.code = ANY(:permission_codes)
                 """),
-                {"user_id": str(user_id), "permission_codes": list(permission_codes)}
+                {"user_id": str(user_id), "permission_codes": list(permission_codes)},
             )
 
 

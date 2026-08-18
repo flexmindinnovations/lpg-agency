@@ -121,6 +121,7 @@ class SqlAlchemyEmployeeRepository:
         skip: int = 0,
         limit: int = 50,
         search: str | None = None,
+        status: str | None = None,
         role: str | None = None,
         branch_id: uuid.UUID | None = None,
     ) -> Sequence[Employee]:
@@ -137,6 +138,8 @@ class SqlAlchemyEmployeeRepository:
                     EmployeeModel.email.ilike(pattern),
                 )
             )
+        if status:
+            stmt = stmt.where(EmployeeModel.status == status)
         if role:
             stmt = stmt.where(EmployeeModel.role == role)
         if branch_id:
@@ -149,11 +152,14 @@ class SqlAlchemyEmployeeRepository:
     async def count_employees(
         self,
         search: str | None = None,
+        status: str | None = None,
         role: str | None = None,
         branch_id: uuid.UUID | None = None,
     ) -> int:
         stmt = (
-            select(func.count()).select_from(EmployeeModel).where(EmployeeModel.is_deleted.is_(False))
+            select(func.count())
+            .select_from(EmployeeModel)
+            .where(EmployeeModel.is_deleted.is_(False))
         )
         if search:
             pattern = f"%{search}%"
@@ -166,6 +172,8 @@ class SqlAlchemyEmployeeRepository:
                     EmployeeModel.email.ilike(pattern),
                 )
             )
+        if status:
+            stmt = stmt.where(EmployeeModel.status == status)
         if role:
             stmt = stmt.where(EmployeeModel.role == role)
         if branch_id:

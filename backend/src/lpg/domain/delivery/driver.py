@@ -210,8 +210,6 @@ class Driver(AggregateRoot):
     # Private validators
     # ------------------------------------------------------------------
 
-
-
     @staticmethod
     def _validate_license_number(number: str) -> None:
         if not number or not number.strip():

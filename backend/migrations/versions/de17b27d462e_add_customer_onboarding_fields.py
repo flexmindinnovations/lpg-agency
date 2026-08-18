@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+from alembic import op
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -48,7 +47,7 @@ def upgrade() -> None:
     op.add_column('customer_address', sa.Column('state', sa.String(length=100), nullable=True), schema='customer')
     op.add_column('customer_address', sa.Column('pincode', sa.String(length=20), nullable=True), schema='customer')
     op.add_column('customer_address', sa.Column('address_type', sa.String(length=50), server_default='delivery', nullable=False), schema='customer')
-    
+
     # We must populate line_1 with existing address_line data before dropping it
     op.execute("UPDATE customer.customer_address SET line_1 = address_line")
     op.drop_column('customer_address', 'address_line', schema='customer')
@@ -59,7 +58,7 @@ def upgrade() -> None:
     op.add_column('kyc_document', sa.Column('issue_date', sa.Date(), nullable=True), schema='customer')
     op.add_column('kyc_document', sa.Column('expiry_date', sa.Date(), nullable=True), schema='customer')
     op.add_column('kyc_document', sa.Column('rejection_reason', sa.Text(), nullable=True), schema='customer')
-    
+
     # We must populate document_number with existing doc_reference data before dropping it
     op.execute("UPDATE customer.kyc_document SET document_number = doc_reference")
     op.drop_column('kyc_document', 'doc_reference', schema='customer')

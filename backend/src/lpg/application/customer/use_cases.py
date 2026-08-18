@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -14,6 +13,7 @@ from lpg.application.common.errors import (
 from lpg.domain.customer.customer import Customer
 
 if TYPE_CHECKING:
+    import datetime
     import uuid
 
     from lpg.application.common.ports import UnitOfWork
@@ -33,7 +33,7 @@ class RegisterCustomerCommand(Command):
     date_of_birth: datetime.date | None = None
     customer_type: str = "domestic"
     lpg_subsidy_id: str | None = None
-    
+
     line_1: str | None = None
     line_2: str | None = None
     landmark: str | None = None
@@ -317,7 +317,12 @@ class ApproveCustomerCommand(Command):
 
 
 class ApproveCustomerUseCase:
-    def __init__(self, repository: CustomerRepository, sequence: ConsumerNumberSequence, unit_of_work: UnitOfWork) -> None:
+    def __init__(
+        self,
+        repository: CustomerRepository,
+        sequence: ConsumerNumberSequence,
+        unit_of_work: UnitOfWork,
+    ) -> None:
         self._repository = repository
         self._sequence = sequence
         self._unit_of_work = unit_of_work
@@ -327,7 +332,7 @@ class ApproveCustomerUseCase:
         if customer is None:
             msg = f"No customer visible with id {command.customer_id}."
             raise NotFoundError(msg, customer_id=str(command.customer_id))
-        
+
         consumer_number = command.consumer_number
         if not consumer_number:
             consumer_number = await self._sequence.next()

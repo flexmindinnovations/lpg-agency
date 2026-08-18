@@ -24,20 +24,16 @@ class EmployeeBranchStaffResolver(BranchStaffResolver):
         branch_id: uuid.UUID,
         eligible_roles: frozenset[str],
     ) -> list[uuid.UUID]:
-        employees = await self._employee_repo.list_employees(
-            branch_id=branch_id, limit=200
-        )
-        
+        employees = await self._employee_repo.list_employees(branch_id=branch_id, limit=200)
+
         user_ids: list[uuid.UUID] = []
         for emp in employees:
             if emp.role not in eligible_roles or emp.status != "active":
                 continue
-            
+
             # Resolve to IdentityUser using the phone number
-            identity = await self._identity_repo.get_by_phone_number(
-                tenant_id, emp.phone_number
-            )
+            identity = await self._identity_repo.get_by_phone_number(tenant_id, emp.phone_number)
             if identity:
                 user_ids.append(identity.id)
-                
+
         return user_ids

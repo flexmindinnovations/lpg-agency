@@ -5,18 +5,18 @@ from typing import TYPE_CHECKING
 
 import barcode
 import qrcode
-from qrcode.image.pil import PilImage
 
 if TYPE_CHECKING:
-    pass
+    from qrcode.image.pil import PilImage
 
 
 def generate_qr_png(data: str, *, size: int = 200) -> bytes:
-    """Generate a QR code as PNG bytes."""
+    """Generate a QR code as PNG bytes, resized to `size` x `size` pixels."""
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
     qr.add_data(data)
     qr.make(fit=True)
     img: PilImage = qr.make_image(fill_color="black", back_color="white")
+    img = img.resize((size, size))
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()

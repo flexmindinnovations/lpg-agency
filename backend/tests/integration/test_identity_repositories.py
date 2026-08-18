@@ -88,7 +88,8 @@ async def _seed_user(
         ).scalar_one()
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
                 "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
                 "FROM identity.role_permission rp "
                 "JOIN identity.role r ON r.id = rp.role_id "
@@ -299,12 +300,13 @@ class TestSqlAlchemyPermissionRepository:
     ) -> None:
         tenant_id = await _seed_tenant(admin_engine)
         user_id = await _seed_user(admin_engine, tenant_id, email=f"{uuid.uuid4().hex}@x.example")
-        
+
         async with admin_engine.begin() as conn:
             await conn.execute(
                 text(
                     "INSERT INTO identity.identity_user_permission (id, user_id, permission_id) "
-                    "SELECT gen_random_uuid(), :user_id, id FROM identity.permission WHERE code = 'tenant:configure'"
+                    "SELECT gen_random_uuid(), :user_id, id FROM identity.permission "
+                    "WHERE code = 'tenant:configure'"
                 ),
                 {"user_id": user_id},
             )
@@ -317,7 +319,7 @@ class TestSqlAlchemyPermissionRepository:
     ) -> None:
         tenant_id = await _seed_tenant(admin_engine)
         user_id = await _seed_user(admin_engine, tenant_id, email=f"{uuid.uuid4().hex}@x.example")
-        
+
         repo = SqlAlchemyPermissionRepository(database)
         assert not await repo.has_permission(user_id=user_id, permission_code="tenant:configure")
 

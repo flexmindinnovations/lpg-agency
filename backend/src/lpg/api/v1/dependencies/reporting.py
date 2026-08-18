@@ -1,21 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import Depends
 
+from lpg.api.v1.dependencies.tenant import get_tenant_context
+from lpg.application.common.ports import TenantContext
 from lpg.application.reporting.ports import ReportingRepository
 from lpg.application.reporting.queries.get_customer_consumption import GetCustomerConsumptionUseCase
 from lpg.application.reporting.queries.get_daily_sales import GetDailySalesUseCase
 from lpg.application.reporting.queries.get_driver_performance import GetDriverPerformanceUseCase
 from lpg.application.reporting.queries.get_gst_report import GetGstReportUseCase
 from lpg.infrastructure.persistence.repositories.reporting import SqlAlchemyReportingRepository
-
-
-from collections.abc import AsyncIterator
-
-from lpg.api.v1.dependencies.tenant import get_tenant_context
-from lpg.application.common.ports import TenantContext
 
 
 async def get_reporting_repository(

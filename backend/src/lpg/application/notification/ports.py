@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import uuid
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from lpg.domain.notification.in_app_notification import InAppNotification
-from lpg.domain.notification.notification_log import NotificationLog
+if TYPE_CHECKING:
+    import uuid
+
+    from lpg.domain.notification.in_app_notification import InAppNotification
+    from lpg.domain.notification.notification_log import NotificationLog
 
 
 class InAppNotificationRepository(Protocol):

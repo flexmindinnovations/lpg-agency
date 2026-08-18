@@ -1,12 +1,10 @@
-"""SQLAlchemy ORM models for the accounting schema.
-"""
+"""SQLAlchemy ORM models for the accounting schema."""
 
 from __future__ import annotations
 
+import uuid  # noqa: TC003
 from datetime import datetime  # noqa: TC003
-import uuid
-from decimal import Decimal
-from typing import TYPE_CHECKING
+from decimal import Decimal  # noqa: TC003
 
 from sqlalchemy import (
     DateTime,
@@ -21,9 +19,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lpg.infrastructure.persistence.database import Base
 
-if TYPE_CHECKING:
-    import uuid
-
 
 class InvoiceModel(Base):
     __tablename__ = "invoice"
@@ -34,9 +29,7 @@ class InvoiceModel(Base):
         Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
     )
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("customer.customer.id"))
-    order_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(), ForeignKey("orders.order.id"), unique=True
-    )
+    order_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("orders.order.id"), unique=True)
     status: Mapped[str] = mapped_column(String(30))
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
@@ -70,6 +63,4 @@ class InvoiceLineModel(Base):
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
 
-    invoice: Mapped[InvoiceModel] = relationship(
-        "InvoiceModel", back_populates="lines"
-    )
+    invoice: Mapped[InvoiceModel] = relationship("InvoiceModel", back_populates="lines")

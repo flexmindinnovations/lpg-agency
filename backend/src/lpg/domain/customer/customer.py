@@ -64,7 +64,6 @@ class KycDocumentVerified(DomainEvent):
     status: str
 
 
-
 @dataclass(frozen=True, slots=True)
 class CustomerApproved(DomainEvent):
     customer_id: uuid.UUID
@@ -73,7 +72,22 @@ class CustomerApproved(DomainEvent):
 
 
 class CustomerAddress:
-    __slots__ = ("id", "address_type", "line_1", "line_2", "landmark", "area", "city", "district", "state", "pincode", "latitude", "longitude", "is_primary")
+    __slots__ = (
+        "address_type",
+        "area",
+        "city",
+        "district",
+        "id",
+        "is_primary",
+        "landmark",
+        "latitude",
+        "line_1",
+        "line_2",
+        "longitude",
+        "pincode",
+        "state",
+    )
+
     def __init__(
         self,
         address_id: uuid.UUID,
@@ -116,7 +130,19 @@ class CustomerAddress:
 
 
 class KycDocument:
-    __slots__ = ("id", "doc_type", "document_number", "file_url", "issue_date", "expiry_date", "verification_status", "verified_by", "verified_at", "rejection_reason")
+    __slots__ = (
+        "doc_type",
+        "document_number",
+        "expiry_date",
+        "file_url",
+        "id",
+        "issue_date",
+        "rejection_reason",
+        "verification_status",
+        "verified_at",
+        "verified_by",
+    )
+
     def __init__(
         self,
         document_id: uuid.UUID,
@@ -151,14 +177,16 @@ class KycDocument:
         self.verified_at = verified_at
         self.rejection_reason = rejection_reason
 
-    def verify(self, verified_by: uuid.UUID, status: str, rejection_reason: str | None = None) -> None:
+    def verify(
+        self, verified_by: uuid.UUID, status: str, rejection_reason: str | None = None
+    ) -> None:
         if status not in ("verified", "rejected"):
             msg = f"KYC can only be verified or rejected, got: {status}"
             raise InvariantViolation(msg)
         if status == "rejected" and not rejection_reason:
             msg = "Rejection reason is required when rejecting KYC."
             raise InvariantViolation(msg)
-            
+
         self.verification_status = status
         self.rejection_reason = rejection_reason if status == "rejected" else None
         self.verified_by = verified_by
@@ -168,9 +196,13 @@ class KycDocument:
 class Customer(AggregateRoot):
     __slots__ = (
         "_addresses",
+        "_alternate_mobile",
         "_branch_id",
         "_consumer_number",
+        "_contact_person",
         "_customer_type",
+        "_date_of_birth",
+        "_email",
         "_full_name",
         "_identity_user_id",
         "_kyc_documents",
@@ -179,10 +211,6 @@ class Customer(AggregateRoot):
         "_phone_number",
         "_status",
         "_tenant_id",
-        "_contact_person",
-        "_alternate_mobile",
-        "_email",
-        "_date_of_birth",
     )
 
     def __init__(
@@ -227,7 +255,14 @@ class Customer(AggregateRoot):
         if kyc_status not in ("pending", "verified", "rejected", "expired"):
             msg = f"Invalid KYC status: {kyc_status}"
             raise InvariantViolation(msg, customer_id=str(customer_id))
-        if status not in ("onboarding", "pending_approval", "active", "inactive", "blocked", "closed"):
+        if status not in (
+            "onboarding",
+            "pending_approval",
+            "active",
+            "inactive",
+            "blocked",
+            "closed",
+        ):
             msg = f"Invalid customer status: {status}"
             raise InvariantViolation(msg, customer_id=str(customer_id))
         if status not in ("onboarding", "pending_approval") and not consumer_number:
@@ -303,7 +338,6 @@ class Customer(AggregateRoot):
     def identity_user_id(self) -> uuid.UUID | None:
         return self._identity_user_id
 
-
     @property
     def contact_person(self) -> str | None:
         return self._contact_person
@@ -320,13 +354,19 @@ class Customer(AggregateRoot):
     def date_of_birth(self) -> date | None:
         return self._date_of_birth
 
-
     def link_identity_user(self, identity_user_id: uuid.UUID) -> None:
         """Associate this customer profile with an identity user account."""
         self._identity_user_id = identity_user_id
 
     def change_status(self, new_status: str) -> None:
-        if new_status not in ("onboarding", "pending_approval", "active", "inactive", "blocked", "closed"):
+        if new_status not in (
+            "onboarding",
+            "pending_approval",
+            "active",
+            "inactive",
+            "blocked",
+            "closed",
+        ):
             msg = f"Invalid status: {new_status}"
             raise InvariantViolation(msg, customer_id=str(self.id))
 
@@ -417,7 +457,13 @@ class Customer(AggregateRoot):
         )
         return doc_id
 
-    def verify_kyc(self, doc_id: uuid.UUID, verified_by: uuid.UUID, status: str, rejection_reason: str | None = None) -> None:
+    def verify_kyc(
+        self,
+        doc_id: uuid.UUID,
+        verified_by: uuid.UUID,
+        status: str,
+        rejection_reason: str | None = None,
+    ) -> None:
         target = next((d for d in self._kyc_documents if d.id == doc_id), None)
         if not target:
             msg = f"KYC document {doc_id} not found."
@@ -447,19 +493,16 @@ class Customer(AggregateRoot):
         if self._status not in ("onboarding", "pending_approval"):
             msg = f"Cannot approve customer in status {self._status}"
             raise InvariantViolation(msg, customer_id=str(self.id))
-            
+
         if not consumer_number.strip():
             msg = "Consumer number must be provided on approval."
             raise InvariantViolation(msg, customer_id=str(self.id))
-            
+
         self._consumer_number = consumer_number.strip()
         self._status = "active"
-        
+
         self.record_event(
             CustomerApproved(
-                customer_id=self.id,
-                approved_by=approved_by,
-                consumer_number=self._consumer_number
+                customer_id=self.id, approved_by=approved_by, consumer_number=self._consumer_number
             )
         )
-

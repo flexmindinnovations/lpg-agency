@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-import uuid
+from typing import TYPE_CHECKING
 
 from lpg.application.common.errors import NotFoundError
-from lpg.application.common.ports import UnitOfWork
-from lpg.application.notification.ports import InAppNotificationRepository
-from lpg.domain.notification.in_app_notification import InAppNotification
+
+if TYPE_CHECKING:
+    import uuid
+
+    from lpg.application.common.ports import UnitOfWork
+    from lpg.application.notification.ports import InAppNotificationRepository
+    from lpg.domain.notification.in_app_notification import InAppNotification
 
 
 class ListNotificationsUseCase:
@@ -31,9 +35,7 @@ class CountUnreadUseCase:
 
 
 class MarkReadUseCase:
-    def __init__(
-        self, uow: UnitOfWork, repository: InAppNotificationRepository
-    ) -> None:
+    def __init__(self, uow: UnitOfWork, repository: InAppNotificationRepository) -> None:
         self._uow = uow
         self._repository = repository
 
@@ -42,15 +44,13 @@ class MarkReadUseCase:
             notification = await self._repository.get_by_id(notification_id)
             if not notification or notification.recipient_user_id != user_id:
                 raise NotFoundError("Notification not found")
-            
+
             notification.mark_read()
             await self._repository.save(notification)
 
 
 class MarkAllReadUseCase:
-    def __init__(
-        self, uow: UnitOfWork, repository: InAppNotificationRepository
-    ) -> None:
+    def __init__(self, uow: UnitOfWork, repository: InAppNotificationRepository) -> None:
         self._uow = uow
         self._repository = repository
 

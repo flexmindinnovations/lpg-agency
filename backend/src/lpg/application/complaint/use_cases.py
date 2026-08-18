@@ -1,16 +1,15 @@
 import uuid
 from dataclasses import dataclass
-from typing import Optional
-from datetime import datetime
 
+from lpg.application.common.ports import TenantResolver
+from lpg.application.complaint.ports import ComplaintUnitOfWork
 from lpg.domain.complaint.complaint import Complaint
 from lpg.domain.complaint.value_objects import (
     ComplaintCategory,
     ComplaintPriority,
     ResolutionOutcome,
 )
-from lpg.application.common.ports import TenantResolver
-from lpg.application.complaint.ports import ComplaintUnitOfWork
+
 
 @dataclass
 class RaiseComplaintCommand:
@@ -18,7 +17,8 @@ class RaiseComplaintCommand:
     category: ComplaintCategory
     priority: ComplaintPriority
     description: str
-    order_id: Optional[uuid.UUID] = None
+    order_id: uuid.UUID | None = None
+
 
 class RaiseComplaintUseCase:
     def __init__(self, uow: ComplaintUnitOfWork, tenant_resolver: TenantResolver) -> None:
@@ -46,10 +46,12 @@ class RaiseComplaintUseCase:
 
         return complaint.id
 
+
 @dataclass
 class AssignComplaintCommand:
     complaint_id: uuid.UUID
     assigned_to: uuid.UUID
+
 
 class AssignComplaintUseCase:
     def __init__(self, uow: ComplaintUnitOfWork, tenant_resolver: TenantResolver) -> None:
@@ -65,16 +67,18 @@ class AssignComplaintUseCase:
             complaint = await self._uow.complaints.get_by_id(ctx.tenant_id, command.complaint_id)
             if not complaint:
                 raise ValueError(f"Complaint {command.complaint_id} not found")
-                
+
             complaint.assign(command.assigned_to, assigned_by=ctx.user_id)
             await self._uow.complaints.save(complaint)
             await self._uow.commit()
+
 
 @dataclass
 class ResolveComplaintCommand:
     complaint_id: uuid.UUID
     outcome: ResolutionOutcome
     resolution_notes: str
+
 
 class ResolveComplaintUseCase:
     def __init__(self, uow: ComplaintUnitOfWork, tenant_resolver: TenantResolver) -> None:
@@ -90,7 +94,7 @@ class ResolveComplaintUseCase:
             complaint = await self._uow.complaints.get_by_id(ctx.tenant_id, command.complaint_id)
             if not complaint:
                 raise ValueError(f"Complaint {command.complaint_id} not found")
-                
+
             complaint.resolve(
                 outcome=command.outcome,
                 resolution_notes=command.resolution_notes,

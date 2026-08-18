@@ -21,7 +21,7 @@ from lpg.application.cylinder_ledger.use_cases import (
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
 
-router = APIRouter(prefix="/customers/{customer_id}/ledger", tags=["cylinder-ledger"])
+router = APIRouter(prefix="/customers/{customer_id}/ledger", tags=["Cylinder Ledger"])
 
 
 @router.get(
@@ -31,7 +31,9 @@ router = APIRouter(prefix="/customers/{customer_id}/ledger", tags=["cylinder-led
 )
 async def get_ledger(
     customer_id: uuid.UUID,
-    use_case: Annotated[GetCylinderLedgerUseCase, Depends(get_cylinder_ledger_use_case)],
+    use_case: Annotated[
+        GetCylinderLedgerUseCase, Depends(get_cylinder_ledger_use_case)
+    ],
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> CylinderLedgerResponse:
@@ -57,7 +59,9 @@ async def get_ledger(
 async def adjust_balance(
     customer_id: uuid.UUID,
     request: AdjustLedgerBalanceRequest,
-    use_case: Annotated[AdjustLedgerBalanceUseCase, Depends(get_adjust_ledger_balance_use_case)],
+    use_case: Annotated[
+        AdjustLedgerBalanceUseCase, Depends(get_adjust_ledger_balance_use_case)
+    ],
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> CylinderLedgerResponse:

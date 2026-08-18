@@ -11,6 +11,7 @@ drops — real-time degrades but core operations are unaffected (§7).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -50,10 +51,8 @@ class RedisSubscriber:
         self._running = False
         if self._task is not None:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
         _logger.info("redis_subscriber_stopped")
 
@@ -79,11 +78,11 @@ class RedisSubscriber:
         """Subscribe to tenant:* pattern and process incoming messages."""
         pubsub = self._redis.client.pubsub()
         try:
-            await pubsub.psubscribe("tenant:*")  
+            await pubsub.psubscribe("tenant:*")
             _logger.info("redis_subscribed", pattern="tenant:*")
 
             while self._running:
-                message = await pubsub.get_message(  
+                message = await pubsub.get_message(
                     ignore_subscribe_messages=True,
                     timeout=1.0,
                 )
@@ -100,5 +99,5 @@ class RedisSubscriber:
 
                     await self._manager.broadcast(channel, data)
         finally:
-            await pubsub.punsubscribe("tenant:*")  
+            await pubsub.punsubscribe("tenant:*")
             await pubsub.aclose()  # type: ignore[no-untyped-call]

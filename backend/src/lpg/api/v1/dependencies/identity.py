@@ -127,11 +127,6 @@ def require_permission(
                 user_id=str(principal.user_id),
             )
             msg = f"Missing required permission: {permission_code!r}."
-            msg = (
-                f"DEBUG FAIL: \n"
-                f"Checking for: {permission_code!r} (type: {type(permission_code)})\n"
-                f"Against: {principal.permission_codes!r} (type: {type(principal.permission_codes)})"
-            )
             raise PermissionDeniedError(msg, permission_code=permission_code)
         return principal
 
@@ -183,9 +178,7 @@ def require_live_permission(
 
     async def _dependency(
         principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-        permission_checker: Annotated[
-            PermissionChecker, Depends(get_permission_checker)
-        ],
+        permission_checker: Annotated[PermissionChecker, Depends(get_permission_checker)],
     ) -> AuthenticatedPrincipal:
         if permission_code not in principal.permission_codes:
             _logger.warning(
@@ -318,9 +311,7 @@ def get_tenant_slug_resolver() -> TenantSlugResolver:
 
 
 def get_permission_checker(
-    permission_repository: Annotated[
-        PermissionRepository, Depends(get_permission_repository)
-    ],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
 ) -> PermissionChecker:
     from lpg.application.identity.authorize import PermissionChecker
 

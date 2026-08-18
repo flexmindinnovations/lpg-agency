@@ -249,12 +249,12 @@ class TestOrderConfirm:
         order = _make_order(lines=[_make_line(quantity_ordered=3)])
         order.submit(changed_by=uuid.uuid4())
         order.clear_events()
-        
+
         changed_by = uuid.uuid4()
         order.confirm(
             unit_prices={order.lines[0].cylinder_type_id: Decimal("950.00")}, changed_by=changed_by
         )
-        
+
         events = order.events
         assert len(events) == 1
         assert events[0].__class__.__name__ == "BookingConfirmed"

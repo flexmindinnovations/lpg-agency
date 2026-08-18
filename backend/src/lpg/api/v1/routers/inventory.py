@@ -98,7 +98,7 @@ from lpg.application.inventory.use_cases import (
 )
 from lpg.domain.inventory.inventory_location import InventoryLocation
 
-router = APIRouter(tags=["inventory"])
+router = APIRouter(tags=["Inventory"])
 
 
 def _require_actor(principal: AuthenticatedPrincipal) -> uuid.UUID:
@@ -107,7 +107,9 @@ def _require_actor(principal: AuthenticatedPrincipal) -> uuid.UUID:
     return principal.user_id
 
 
-def _location_to_balance_response(location: InventoryLocation) -> InventoryBalanceResponse:
+def _location_to_balance_response(
+    location: InventoryLocation,
+) -> InventoryBalanceResponse:
     return InventoryBalanceResponse(
         location_type=cast("LocationType", location.location_type),
         location_ref_id=location.location_ref_id,
@@ -121,7 +123,9 @@ def _location_to_balance_response(location: InventoryLocation) -> InventoryBalan
     )
 
 
-def _transaction_to_response(entry: InventoryTransactionEntry) -> InventoryTransactionResponse:
+def _transaction_to_response(
+    entry: InventoryTransactionEntry,
+) -> InventoryTransactionResponse:
     return InventoryTransactionResponse(
         id=entry.id,
         tenant_id=entry.tenant_id,
@@ -151,7 +155,9 @@ def _grn_to_response(entry: GoodsReceiptNoteEntry) -> GoodsReceiptResponse:
     )
 
 
-def _reconciliation_to_response(entry: ReconciliationRecordEntry) -> ReconciliationRecordResponse:
+def _reconciliation_to_response(
+    entry: ReconciliationRecordEntry,
+) -> ReconciliationRecordResponse:
     return ReconciliationRecordResponse(
         id=entry.id,
         tenant_id=entry.tenant_id,
@@ -181,7 +187,9 @@ async def get_inventory_balance(
     location_type: LocationType,
     location_ref_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
 ) -> InventoryBalanceResponse:
     """Current balance for a warehouse or vehicle. All-zero, not 404, if never touched."""
     use_case = GetInventoryBalanceUseCase(repository)
@@ -204,7 +212,9 @@ async def list_inventory_transactions(
     location_type: LocationType,
     location_ref_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     cursor: str | None = None,
     limit: int = 50,
 ) -> InventoryTransactionPageResponse:
@@ -250,7 +260,9 @@ async def record_goods_receipt(
 ) -> GoodsReceiptResponse:
     """Record a Goods Receipt Note — credits the warehouse's Filled balance."""
     actor_id = _require_actor(principal)
-    use_case = RecordGoodsReceiptUseCase(location_repository, grn_repository, unit_of_work)
+    use_case = RecordGoodsReceiptUseCase(
+        location_repository, grn_repository, unit_of_work
+    )
     grn = await use_case.execute(
         RecordGoodsReceiptCommand(
             tenant_id=principal.tenant_id,
@@ -278,7 +290,9 @@ async def record_goods_receipt(
 async def create_load_transfer(
     request: LoadTransferRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> LoadTransferResponse:
     """Move stock from a warehouse onto a vehicle — one transaction, or none."""
@@ -321,7 +335,9 @@ async def record_delivery(
     vehicle_id: uuid.UUID,
     request: RecordDeliveryRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> InventoryBalanceResponse:
     """Filled cylinders leave the vehicle to a customer."""
@@ -349,7 +365,9 @@ async def record_collection(
     vehicle_id: uuid.UUID,
     request: RecordCollectionRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> InventoryBalanceResponse:
     """Empty cylinders are collected from a customer onto the vehicle."""
@@ -383,7 +401,9 @@ async def change_cylinder_status(
     location_ref_id: uuid.UUID,
     request: ChangeCylinderStatusRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> InventoryBalanceResponse:
     """Move stock between statuses at one location (e.g. filled -> leakage).
@@ -418,7 +438,9 @@ async def adjust_inventory(
     location_ref_id: uuid.UUID,
     request: AdjustInventoryRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> InventoryBalanceResponse:
     """Manual correction. 409 INSUFFICIENT_STOCK / INVALID_STATUS_TRANSITION as applicable."""

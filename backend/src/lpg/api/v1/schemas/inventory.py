@@ -13,8 +13,8 @@ real business data, not fabricated at mapping time.
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003
-from datetime import datetime  # noqa: TC003
+import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field

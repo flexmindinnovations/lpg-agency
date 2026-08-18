@@ -7,9 +7,9 @@ class-definition time.
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003
-from datetime import datetime  # noqa: TC003
-from decimal import Decimal  # noqa: TC003
+import uuid
+from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel
 

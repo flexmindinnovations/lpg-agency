@@ -207,16 +207,24 @@ async def _seed_branch(engine: AsyncEngine, *, tenant_id: uuid.UUID, name: str) 
     return uuid.UUID(str(branch_id))
 
 
-
-async def _seed_employee(engine: AsyncEngine, *, tenant_id: uuid.UUID, branch_id: uuid.UUID) -> uuid.UUID:
+async def _seed_employee(
+    engine: AsyncEngine, *, tenant_id: uuid.UUID, branch_id: uuid.UUID
+) -> uuid.UUID:
     async with engine.begin() as conn:
         employee_id = (
             await conn.execute(
                 text(
-                    "INSERT INTO tenant.employee (id, tenant_id, branch_id, employee_code, first_name, last_name, phone_number, role, status) "
-                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, 'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
+                    "INSERT INTO tenant.employee "
+                    "(id, tenant_id, branch_id, employee_code, first_name, last_name, "
+                    "phone_number, role, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, "
+                    "'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
                 ),
-                {"tenant_id": str(tenant_id), "branch_id": str(branch_id), "employee_code": f"DRV-{uuid.uuid4().hex[:6]}"},
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "employee_code": f"DRV-{uuid.uuid4().hex[:6]}",
+                },
             )
         ).scalar_one()
     return uuid.UUID(str(employee_id))
@@ -234,24 +242,26 @@ async def _seed_staff_user(
     async with engine.begin() as conn:
         user_id = (
             await conn.execute(
-            text(
-                "INSERT INTO identity.identity_user "
-                "(id, tenant_id, branch_id, email, password_hash, role) "
-                "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :email, :password_hash, :role) "
+                text(
+                    "INSERT INTO identity.identity_user "
+                    "(id, tenant_id, branch_id, email, password_hash, role) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :email, "
+                    ":password_hash, :role) "
                     "RETURNING id"
-            ),
-            {
-                "tenant_id": str(tenant_id),
-                "branch_id": str(branch_id) if branch_id else None,
-                "email": email,
-                "password_hash": password_hash,
-                "role": role,
-            },
-        )
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id) if branch_id else None,
+                    "email": email,
+                    "password_hash": password_hash,
+                    "role": role,
+                },
+            )
         ).scalar_one()
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
                 "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
                 "FROM identity.role_permission rp "
                 "JOIN identity.role r ON r.id = rp.role_id "
@@ -273,10 +283,17 @@ async def _seed_driver(
         employee_id = (
             await conn.execute(
                 text(
-                    "INSERT INTO tenant.employee (id, tenant_id, branch_id, employee_code, first_name, last_name, phone_number, role, status) "
-                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, 'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
+                    "INSERT INTO tenant.employee "
+                    "(id, tenant_id, branch_id, employee_code, first_name, last_name, "
+                    "phone_number, role, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, "
+                    "'Test', 'Driver', '1234567890', 'driver', 'active') RETURNING id"
                 ),
-                {"tenant_id": str(tenant_id), "branch_id": str(branch_id), "employee_code": f"DRV-{uuid.uuid4().hex[:6]}"},
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "employee_code": f"DRV-{uuid.uuid4().hex[:6]}",
+                },
             )
         ).scalar_one()
         identity_user_id = (
@@ -297,13 +314,14 @@ async def _seed_driver(
         ).scalar_one()
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
                 "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
                 "FROM identity.role_permission rp "
                 "JOIN identity.role r ON r.id = rp.role_id "
                 "WHERE r.code = :role"
             ),
-            {"user_id": identity_user_id, "role": 'driver'},
+            {"user_id": identity_user_id, "role": "driver"},
         )
         driver_id = (
             await conn.execute(

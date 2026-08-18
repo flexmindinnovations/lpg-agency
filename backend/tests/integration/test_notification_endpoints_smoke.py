@@ -97,7 +97,8 @@ async def _seed_staff_user(
         ).scalar_one()
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
                 "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
                 "FROM identity.role_permission rp "
                 "JOIN identity.role r ON r.id = rp.role_id "
@@ -152,17 +153,19 @@ class TestNotificationEndpointsThroughTheRealStack:
             role="agency_admin",
         )
         notification_id = await _seed_notification(admin_engine_lpg_test, tenant_id, user_id)
-        
+
         token = await _login(real_lifespan_client, email=email, password=password)
         headers = {"Authorization": f"Bearer {token}"}
 
         # 1. Unread count should be 1
-        count_resp = await real_lifespan_client.get("/api/v1/notifications/unread-count", headers=headers)
+        count_resp = await real_lifespan_client.get(
+            "/api/v1/notifications/unread-count", headers=headers
+        )
         if count_resp.status_code != 200:
             print("ERROR", count_resp.json())
         assert count_resp.status_code == 200
         assert count_resp.json()["count"] == 1
-        
+
         # 2. List notifications should contain it
         list_resp = await real_lifespan_client.get("/api/v1/notifications", headers=headers)
         assert list_resp.status_code == 200
@@ -170,15 +173,21 @@ class TestNotificationEndpointsThroughTheRealStack:
         assert len(items) == 1
         assert items[0]["id"] == str(notification_id)
         assert items[0]["is_read"] is False
-        
+
         # 3. Mark read
-        mark_read_resp = await real_lifespan_client.patch(f"/api/v1/notifications/{notification_id}/read", headers=headers)
+        mark_read_resp = await real_lifespan_client.patch(
+            f"/api/v1/notifications/{notification_id}/read", headers=headers
+        )
         assert mark_read_resp.status_code == 200
-        
+
         # 4. Check unread count is 0
-        count_resp = await real_lifespan_client.get("/api/v1/notifications/unread-count", headers=headers)
+        count_resp = await real_lifespan_client.get(
+            "/api/v1/notifications/unread-count", headers=headers
+        )
         assert count_resp.json()["count"] == 0
-        
+
         # 5. Mark all read
-        mark_all_read_resp = await real_lifespan_client.post("/api/v1/notifications/read-all", headers=headers)
+        mark_all_read_resp = await real_lifespan_client.post(
+            "/api/v1/notifications/read-all", headers=headers
+        )
         assert mark_all_read_resp.status_code == 204

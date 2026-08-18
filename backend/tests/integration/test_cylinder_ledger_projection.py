@@ -85,13 +85,17 @@ async def _seed_branch(admin_engine: AsyncEngine, *, tenant_id: uuid.UUID) -> uu
     return uuid.UUID(str(branch_id))
 
 
-async def _seed_customer(admin_engine: AsyncEngine, *, tenant_id: uuid.UUID, branch_id: uuid.UUID) -> uuid.UUID:
+async def _seed_customer(
+    admin_engine: AsyncEngine, *, tenant_id: uuid.UUID, branch_id: uuid.UUID
+) -> uuid.UUID:
     async with admin_engine.begin() as conn:
         customer_id = (
             await conn.execute(
                 text(
-                    "INSERT INTO customer.customer (id, tenant_id, branch_id, consumer_number, full_name, phone_number, customer_type, status, kyc_status) "
-                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, 'C-1234', 'John Doe', '555-1234', 'domestic', 'active', 'verified') RETURNING id"
+                    "INSERT INTO customer.customer (id, tenant_id, branch_id, consumer_number, "
+                    "full_name, phone_number, customer_type, status, kyc_status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, 'C-1234', 'John Doe', "
+                    "'555-1234', 'domestic', 'active', 'verified') RETURNING id"
                 ),
                 {"tenant_id": str(tenant_id), "branch_id": str(branch_id)},
             )

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
 import structlog
-from arq import cron
 
 from lpg.config.logging import get_logger
 

@@ -42,9 +42,17 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 
 from lpg.api.v1.dependencies.admin import (
     get_price_list_repository,
@@ -74,6 +82,7 @@ from lpg.api.v1.dependencies.order import (
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.order import (
     AssignOrderRequest,
+    BookingSource,
     BulkCancelOrderResultItem,
     BulkCancelOrdersRequest,
     BulkCancelOrdersResponse,
@@ -86,7 +95,9 @@ from lpg.api.v1.schemas.order import (
     OrderLineResponse,
     OrderPageResponse,
     OrderResponse,
+    OrderStatus,
     OrderStatusHistoryEntryResponse,
+    PaymentMethod,
     PodAttachmentResponse,
     ProofOfDeliveryResponse,
     RecordFailedDeliveryRequest,
@@ -95,7 +106,11 @@ from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.delivery.ports import DriverRepository, RouteRepository
-from lpg.application.identity.ports import AuthenticatedPrincipal, OtpDeliveryPort, OtpStore
+from lpg.application.identity.ports import (
+    AuthenticatedPrincipal,
+    OtpDeliveryPort,
+    OtpStore,
+)
 from lpg.application.inventory.ports import InventoryLocationRepository
 from lpg.application.order.ports import (
     CancellationRecordRepository,
@@ -138,11 +153,14 @@ from lpg.application.order.use_cases import (
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
 )
-from lpg.application.tenant.ports import PriceListRepository, TenantConfigurationRepository
+from lpg.application.tenant.ports import (
+    PriceListRepository,
+    TenantConfigurationRepository,
+)
 from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order
 from lpg.infrastructure.idempotency.service import IdempotencyService, fingerprint
 
-router = APIRouter(tags=["orders"])
+router = APIRouter(tags=["Orders"])
 
 
 def _require_actor(principal: AuthenticatedPrincipal) -> uuid.UUID:
@@ -164,9 +182,9 @@ def _order_to_response(order: Order) -> OrderResponse:
             latitude=address.latitude,
             longitude=address.longitude,
         ),
-        status=order.status,
-        booking_source=order.booking_source,
-        payment_method_preference=order.payment_method_preference,
+        status=cast("OrderStatus", order.status),
+        booking_source=cast("BookingSource", order.booking_source),
+        payment_method_preference=cast("PaymentMethod | None", order.payment_method_preference),
         requested_date=order.requested_date,
         metadata=order.metadata,
         route_stop_id=order.route_stop_id,
@@ -197,7 +215,7 @@ def _pod_to_response(entry: ProofOfDeliveryEntry) -> ProofOfDeliveryResponse:
         photo_blob_ref=entry.photo_blob_ref,
         gps_lat=entry.gps_lat,
         gps_lng=entry.gps_lng,
-        payment_method=entry.payment_method,
+        payment_method=cast("PaymentMethod", entry.payment_method),
         amount_collected=entry.amount_collected,
         recorded_by=entry.recorded_by,
         recorded_at=entry.recorded_at,
@@ -272,16 +290,22 @@ async def create_order(
     body: CreateOrderRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
 ) -> OrderResponse:
     """Create a booking (`draft -> booked`). Idempotency-Key required."""
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
-        raise HTTPException(status_code=400, detail="Idempotency-Key header is required.")
+        raise HTTPException(
+            status_code=400, detail="Idempotency-Key header is required."
+        )
 
     actor_id = _require_actor(principal)
     scope = await _resolve_scope(
@@ -289,11 +313,12 @@ async def create_order(
     )
     customer_id = body.customer_id
     if principal.role == "customer":
-        if scope.blocked:
+        scoped_id = scope.customer_id
+        if scope.blocked or scoped_id is None:
             raise HTTPException(
                 status_code=403, detail="No customer profile linked to this account."
             )
-        customer_id = scope.customer_id  # type: ignore[assignment]
+        customer_id = scoped_id
 
     use_case = CreateOrderUseCase(order_repository, unit_of_work)
 
@@ -312,7 +337,9 @@ async def create_order(
                 booking_source=body.booking_source,
                 requested_date=body.requested_date,
                 lines=[
-                    CreateOrderLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
+                    CreateOrderLine(
+                        cylinder_type_id=line.cylinder_type_id, quantity=line.quantity
+                    )
                     for line in body.lines
                 ],
                 created_by=actor_id,
@@ -338,7 +365,9 @@ async def create_order(
 async def list_orders(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     skip: int = 0,
@@ -377,7 +406,9 @@ async def get_order(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
 ) -> OrderResponse:
@@ -409,7 +440,9 @@ async def list_order_status_history(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
 ) -> list[OrderStatusHistoryEntryResponse]:
@@ -434,8 +467,8 @@ async def list_order_status_history(
         OrderStatusHistoryEntryResponse(
             id=entry.id,
             order_id=entry.order_id,
-            from_status=entry.from_status,
-            to_status=entry.to_status,
+            from_status=cast("OrderStatus | None", entry.from_status),
+            to_status=cast("OrderStatus", entry.to_status),
             changed_by=entry.changed_by,
             changed_at=entry.changed_at,
             reason=entry.reason,
@@ -453,10 +486,16 @@ async def confirm_order(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
-    price_list_repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
+    price_list_repository: Annotated[
+        PriceListRepository, Depends(get_price_list_repository)
+    ],
     cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
-    credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
+    credit_limit_evaluator: Annotated[
+        CreditLimitEvaluator, Depends(get_credit_limit_evaluator)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> OrderResponse:
     """`booked -> confirmed`. Resolves and snapshots unit prices; runs the
@@ -471,7 +510,9 @@ async def confirm_order(
         credit_limit_evaluator,
         unit_of_work,
     )
-    order = await use_case.execute(ConfirmOrderCommand(order_id=order_id, changed_by=actor_id))
+    order = await use_case.execute(
+        ConfirmOrderCommand(order_id=order_id, changed_by=actor_id)
+    )
     return _order_to_response(order)
 
 
@@ -530,7 +571,9 @@ async def dispatch_order(
     """`assigned -> ready_for_dispatch` ("vehicle loaded")."""
     actor_id = _require_actor(principal)
     use_case = DispatchOrderUseCase(order_repository, unit_of_work)
-    order = await use_case.execute(DispatchOrderCommand(order_id=order_id, changed_by=actor_id))
+    order = await use_case.execute(
+        DispatchOrderCommand(order_id=order_id, changed_by=actor_id)
+    )
     return _order_to_response(order)
 
 
@@ -544,7 +587,9 @@ async def depart_order(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
@@ -561,7 +606,9 @@ async def depart_order(
         otp_delivery,
         unit_of_work,
     )
-    order = await use_case.execute(DepartOrderCommand(order_id=order_id, changed_by=actor_id))
+    order = await use_case.execute(
+        DepartOrderCommand(order_id=order_id, changed_by=actor_id)
+    )
     return _order_to_response(order)
 
 
@@ -583,7 +630,9 @@ async def reschedule_order(
     """
     actor_id = _require_actor(principal)
     use_case = RescheduleOrderUseCase(order_repository, route_repository, unit_of_work)
-    order = await use_case.execute(RescheduleOrderCommand(order_id=order_id, changed_by=actor_id))
+    order = await use_case.execute(
+        RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
+    )
     return _order_to_response(order)
 
 
@@ -660,10 +709,14 @@ async def deliver_order(
     inventory_location_repository: Annotated[
         InventoryLocationRepository, Depends(get_inventory_location_repository)
     ],
-    pod_repository: Annotated[ProofOfDeliveryRepository, Depends(get_proof_of_delivery_repository)],
+    pod_repository: Annotated[
+        ProofOfDeliveryRepository, Depends(get_proof_of_delivery_repository)
+    ],
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
 ) -> DeliverOrderResponse:
     """`out_for_delivery -> delivered`. Idempotency-Key required (offline-
     sync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);
@@ -672,7 +725,9 @@ async def deliver_order(
     """
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
-        raise HTTPException(status_code=400, detail="Idempotency-Key header is required.")
+        raise HTTPException(
+            status_code=400, detail="Idempotency-Key header is required."
+        )
 
     await _require_own_driver_order(
         order_id, principal, order_repository, driver_repository, route_repository
@@ -742,7 +797,9 @@ async def record_failed_delivery(
         order_id, principal, order_repository, driver_repository, route_repository
     )
     actor_id = _require_actor(principal)
-    use_case = RecordFailedDeliveryUseCase(order_repository, route_repository, unit_of_work)
+    use_case = RecordFailedDeliveryUseCase(
+        order_repository, route_repository, unit_of_work
+    )
     order = await use_case.execute(
         RecordFailedDeliveryCommand(
             order_id=order_id,
@@ -872,7 +929,9 @@ async def bulk_cancel_orders(
         results=(
             [
                 BulkCancelOrderResultItem(
-                    order_id=item.order_id, succeeded=item.succeeded, error_code=item.error_code
+                    order_id=item.order_id,
+                    succeeded=item.succeeded,
+                    error_code=item.error_code,
                 )
                 for item in result.results
             ]
@@ -903,5 +962,7 @@ async def close_order(
     """
     actor_id = _require_actor(principal)
     use_case = CloseOrderUseCase(order_repository, unit_of_work)
-    order = await use_case.execute(CloseOrderCommand(order_id=order_id, closed_by=actor_id))
+    order = await use_case.execute(
+        CloseOrderCommand(order_id=order_id, closed_by=actor_id)
+    )
     return _order_to_response(order)

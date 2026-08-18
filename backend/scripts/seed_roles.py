@@ -40,7 +40,7 @@ async def main():
         for user_info in USERS_TO_SEED:
             email = user_info["email"]
             role_code = user_info["role"]
-            
+
             # 1. Get role ID
             role_row = await conn.execute(
                 text("SELECT id FROM identity.role WHERE code = :code"),
@@ -69,7 +69,12 @@ async def main():
                         "(gen_random_uuid(), :tenant_id, :email, :password_hash, :role) "
                         "RETURNING id"
                     ),
-                    {"tenant_id": tenant_id, "email": email, "password_hash": pw_hash, "role": role_code},
+                    {
+                        "tenant_id": tenant_id,
+                        "email": email,
+                        "password_hash": pw_hash,
+                        "role": role_code,
+                    },
                 )
                 user_id = user_id.scalar_one()
 

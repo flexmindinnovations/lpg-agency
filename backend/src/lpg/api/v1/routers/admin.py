@@ -890,7 +890,7 @@ async def get_user_permissions(
 ) -> list[str]:
     use_case = GetStaffUserPermissionsUseCase(staff_repository, permission_repository)
     codes = await use_case.execute(GetStaffUserPermissionsQuery(user_id=user_id))
-    return sorted(list(codes))
+    return sorted(codes)
 
 
 @router.put(
@@ -912,6 +912,7 @@ async def update_user_permissions(
         )
     )
 
+
 @router.get(
     "/permissions",
     response_model=list[str],
@@ -923,8 +924,7 @@ async def list_permissions(
 ) -> list[str]:
     use_case = ListPermissionsUseCase(permission_repository)
     codes = await use_case.execute(ListPermissionsQuery())
-    return sorted(list(codes))
-
+    return sorted(codes)
 
 
 # -- Audit Log ----------------------------------------------------------------------

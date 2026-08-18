@@ -121,6 +121,20 @@ ignore = [
 # the rule; it has no Depends()-annotated functions to protect.
 "src/lpg/api/v1/routers/*.py" = ["TC001", "TC002", "TC003"]
 "src/lpg/api/v1/dependencies/*.py" = ["TC001", "TC002", "TC003"]
+# Same failure mode, different framework: Pydantic v2 resolves a BaseModel's
+# field annotations at class-definition time too (`model_rebuild()` fails
+# with "not fully defined" otherwise) — a name TC001/TC003 would hide behind
+# `if TYPE_CHECKING:` is invisible to that resolution just like FastAPI's
+# `Depends()` above. Several files already carried this as a written note
+# (`schemas/order.py`, `schemas/inventory.py`); this makes it a real,
+# enforced exemption instead of something only caught by reading comments —
+# found via `ruff --unsafe-fixes` actually breaking `schemas/notification.py`
+# at runtime (R6, 2026-08-18) before this entry existed.
+"src/lpg/api/v1/schemas/*.py" = ["TC001", "TC002", "TC003"]
+# Local dev/demo seeding only — "correct-horse-battery" is the well-known
+# XKCD placeholder, never a real credential, and this script is never run
+# against a production database.
+"scripts/seed_roles.py" = ["S105"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["lpg"]

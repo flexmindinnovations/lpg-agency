@@ -17,9 +17,9 @@ fields are absent, not null-faked. See the plan's Context section.
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003
-from datetime import datetime  # noqa: TC003
-from decimal import Decimal  # noqa: TC003
+import uuid
+from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field

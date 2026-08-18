@@ -1,5 +1,4 @@
-"""Accounting repository ports.
-"""
+"""Accounting repository ports."""
 
 from __future__ import annotations
 

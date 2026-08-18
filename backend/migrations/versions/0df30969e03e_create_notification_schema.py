@@ -11,8 +11,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alembic import op
-import sqlalchemy as sa
-
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,7 +39,7 @@ def upgrade() -> None:
         );
     """)
     op.execute("CREATE INDEX ON notification.in_app_notification (tenant_id, recipient_user_id, is_read);")
-    
+
     op.execute("ALTER TABLE notification.in_app_notification ENABLE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY tenant_isolation ON notification.in_app_notification
@@ -67,7 +65,7 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
     """)
-    
+
     op.execute("ALTER TABLE notification.notification_log ENABLE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY tenant_isolation ON notification.notification_log

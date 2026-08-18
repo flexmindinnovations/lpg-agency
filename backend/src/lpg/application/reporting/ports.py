@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import date
-from decimal import Decimal
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import uuid
+    from datetime import date
+    from decimal import Decimal
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,21 +48,24 @@ class DriverPerformanceRecord:
 
 class ReportingRepository(ABC):
     @abstractmethod
-    async def get_daily_sales(self, tenant_id: uuid.UUID, start_date: date, end_date: date) -> list[DailySalesRecord]:
-        ...
+    async def get_daily_sales(
+        self, tenant_id: uuid.UUID, start_date: date, end_date: date
+    ) -> list[DailySalesRecord]: ...
 
     @abstractmethod
-    async def get_outstanding_balances(self, tenant_id: uuid.UUID) -> list[OutstandingBalanceRecord]:
-        ...
+    async def get_outstanding_balances(
+        self, tenant_id: uuid.UUID
+    ) -> list[OutstandingBalanceRecord]: ...
 
     @abstractmethod
-    async def get_gst_filing_periods(self, tenant_id: uuid.UUID) -> list[GstFilingRecord]:
-        ...
+    async def get_gst_filing_periods(self, tenant_id: uuid.UUID) -> list[GstFilingRecord]: ...
 
     @abstractmethod
-    async def get_customer_consumption(self, tenant_id: uuid.UUID) -> list[CustomerConsumptionRecord]:
-        ...
+    async def get_customer_consumption(
+        self, tenant_id: uuid.UUID
+    ) -> list[CustomerConsumptionRecord]: ...
 
     @abstractmethod
-    async def get_driver_performance(self, tenant_id: uuid.UUID, start_date: date, end_date: date) -> list[DriverPerformanceRecord]:
-        ...
+    async def get_driver_performance(
+        self, tenant_id: uuid.UUID, start_date: date, end_date: date
+    ) -> list[DriverPerformanceRecord]: ...

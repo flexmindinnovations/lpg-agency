@@ -58,7 +58,9 @@ class GenerateInvoiceForOrderUseCase:
             _logger.error("order_not_found_for_invoice", order_id=str(order_id))
             return
 
-        configs = await self._tenant_config_repository.list_for_tenant_and_key(tenant_id, "gst_rate_percent")
+        configs = await self._tenant_config_repository.list_for_tenant_and_key(
+            tenant_id, "gst_rate_percent"
+        )
         gst_config = TenantConfigurationResolver.resolve(configs, "gst_rate_percent", delivered_at)
 
         gst_rate = gst_config.config_value if gst_config else None
@@ -138,9 +140,7 @@ class ListInvoicesUseCase:
     def __init__(self, repository: InvoiceRepository) -> None:
         self._repository = repository
 
-    async def execute(
-        self, query: ListInvoicesQuery
-    ) -> tuple[list[Invoice], int]:
+    async def execute(self, query: ListInvoicesQuery) -> tuple[list[Invoice], int]:
         items = await self._repository.list_invoices(
             skip=query.skip,
             limit=query.limit,

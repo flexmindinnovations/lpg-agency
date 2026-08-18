@@ -4,12 +4,12 @@ import structlog
 
 from lpg.domain.accounting.invoice import InvoiceGenerated
 from lpg.domain.common.base import DomainEvent
+from lpg.domain.delivery.route import OrderAssignedToRoute, RouteStatusChanged
 from lpg.domain.order.order import (
     BookingConfirmed,
     CylinderDelivered,
     DeliveryFailed,
 )
-from lpg.domain.delivery.route import OrderAssignedToRoute, RouteStatusChanged
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.jobs.pool import JobQueue
 
@@ -21,7 +21,7 @@ def register_notification_handlers(
     job_queue: JobQueue,
 ) -> None:
     """Register notification handlers.
-    
+
     Handlers are intentionally thin — no DB access here. They only enqueue an ARQ job.
     """
 
@@ -53,17 +53,17 @@ def register_notification_handlers(
         assert isinstance(event, RouteStatusChanged)
         if event.new_status != "in_progress":
             return
-            
+
         # The event payload only gives us route_id. The job needs order details.
         # But wait, RouteStatusChanged doesn't have order_id!
         # It's better to iterate over the route's stops and enqueue a job per order.
         # However, we're in the event handler (no DB access).
         # We must enqueue a job that resolves the orders, OR the event must carry them.
-        # Let's pass the route_id to a new specialized job or let the `send_notification` 
+        # Let's pass the route_id to a new specialized job or let the `send_notification`
         # handle a `route_in_progress` type which resolves and spawns individual notifications.
         # For now, let's just enqueue `route_in_progress` and we will fix it later if needed,
         # but the plan says "Out for Delivery" is triggered by RouteStatusChanged.
-        # I'll enqueue a single job `send_route_notifications` if needed, 
+        # I'll enqueue a single job `send_route_notifications` if needed,
         # or just enqueue it with type `route_in_progress`.
         # Actually, let's skip out_for_delivery for now if it requires extra jobs not in plan,
         # or implement it safely. The plan didn't specify modifying RouteStatusChanged.
@@ -103,7 +103,7 @@ def register_notification_handlers(
             "send_notification",
             {
                 "type": "delivery_failed_staff",
-                "tenant_id": str(event.tenant_id), # Wait, DeliveryFailed doesn't have tenant_id?
+                "tenant_id": str(event.tenant_id),  # Wait, DeliveryFailed doesn't have tenant_id?
                 "order_id": str(event.order_id),
             },
         )

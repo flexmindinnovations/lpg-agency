@@ -7,9 +7,7 @@ from datetime import UTC, datetime
 
 from lpg.domain.common.base import AggregateRoot, InvariantViolation
 
-_VALID_STATUSES = frozenset(
-    {"queued", "sent", "delivered", "failed", "retrying", "dead_lettered"}
-)
+_VALID_STATUSES = frozenset({"queued", "sent", "delivered", "failed", "retrying", "dead_lettered"})
 
 
 class NotificationLog(AggregateRoot):
@@ -70,7 +68,7 @@ class NotificationLog(AggregateRoot):
         self._reference_id = reference_id
         self._retry_count = retry_count
         self._last_error = last_error
-        
+
         now = datetime.now(UTC)
         self._created_at = created_at or now
         self._updated_at = updated_at or now

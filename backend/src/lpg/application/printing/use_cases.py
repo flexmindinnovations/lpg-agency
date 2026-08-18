@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -14,6 +13,8 @@ from lpg.application.printing.models import (
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
+    import uuid
+
     from lpg.application.accounting.ports import InvoiceRepository
     from lpg.application.common.ports import FileStorage
     from lpg.application.printing.ports import PrintingEngine
@@ -75,7 +76,8 @@ class GeneratePrintJobUseCase:
             ),
             line_items=[
                 PrintLineItem(
-                    description=f"Cylinder Type {str(line.cylinder_type_id)[:8]}",  # TODO: resolve name
+                    # TODO: resolve name
+                    description=f"Cylinder Type {str(line.cylinder_type_id)[:8]}",
                     quantity=line.quantity,
                     unit_price=line.unit_price,
                     subtotal=line.subtotal,

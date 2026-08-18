@@ -17,12 +17,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import aioboto3
-from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+from botocore.exceptions import ClientError
 
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
-    from types_aiobotocore_s3.client import S3Client  # type: ignore[import-not-found]
+    from types_aiobotocore_s3.client import S3Client
 
     from lpg.config.settings import Settings
 

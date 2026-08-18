@@ -277,7 +277,9 @@ class SqlAlchemyCustomerRepository:
             if doc_id in existing_docs:
                 existing_doc = existing_docs[doc_id]
                 existing_doc.doc_type = domain_doc.doc_type
-                existing_doc.document_number = self._field_encryptor.encrypt(domain_doc.document_number)
+                existing_doc.document_number = self._field_encryptor.encrypt(
+                    domain_doc.document_number
+                )
                 existing_doc.file_url = domain_doc.file_url
                 existing_doc.issue_date = domain_doc.issue_date
                 existing_doc.expiry_date = domain_doc.expiry_date

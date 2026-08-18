@@ -172,9 +172,7 @@ async def otp_request(
 ) -> None:
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
     use_case = RequestOtpUseCase(otp_store, otp_delivery)
-    await use_case.execute(
-        RequestOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number)
-    )
+    await use_case.execute(RequestOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number))
 
 
 @router.post("/otp/verify", response_model=TokenResponse, summary="Verify an OTP and log in")
@@ -203,9 +201,7 @@ async def otp_verify(
     )
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
     token_pair = await use_case.execute(
-        VerifyOtpCommand(
-            tenant_id=tenant_uuid, phone_number=body.phone_number, code=body.code
-        )
+        VerifyOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number, code=body.code)
     )
     _set_refresh_cookie(response, token_pair, settings)
     return TokenResponse(

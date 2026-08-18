@@ -1,6 +1,6 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R5 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+**Generated:** 2026-08-18 · **Last updated:** after R6 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
 
 ## How this was produced
 
@@ -10,8 +10,8 @@ result disagree, the measured result wins and the disagreement is recorded.
 
 | CI command | Result |
 |---|---|
-| `uv run ruff check .` | **481 errors** (was 634; still mostly untouched — tracked separately as R6) |
-| `uv run mypy` | **2 errors in 1 file** (was 23 in 10 — `storage/client.py`, an unused `type: ignore`, untouched by any remediation work so far) |
+| `uv run ruff check .` | **73 errors** (was 634) — all in `migrations/versions/*.py` (accepted debt, never reformatted) or 4 deliberately-unchanged `UP042`s (see C5) |
+| `uv run mypy` | **0 errors** (was 23 in 10 files) |
 | `uv run lint-imports` | **0 of 5 contracts broken** (was 2 broken) |
 | `uv run pytest tests/unit` | 514 passed |
 | `uv run pytest tests/integration` | **0 failed**, 253 passed (was 18 failed / 234 passed originally) |
@@ -541,11 +541,99 @@ of them by domain.
 Tracked as **R10**. Not urgent in the way a red gate is, but it is the reason
 several downstream features cannot be built without first adding the event.
 
-### C5 — Lint / type debt
+### C5 — Lint / type debt ✅ RESOLVED (R6, 2026-08-18)
 
-634 ruff errors (~190 auto-fixable), 23 mypy errors. Hotspots: `api/v1` 72,
-`infra/persistence` 55, `infra/jobs` 43, `domain/complaint` 27,
-`application/reporting` 26, `infra/events` 16, `domain/customer` 13.
+Started this pass at 481 ruff errors, 2 mypy errors (both already reduced
+from the original 634/23 baseline by R1–R5's incidental cleanup of files
+they happened to touch).
+
+**`ruff check --fix` + `ruff format src tests`** cleared the vast majority
+mechanically: import sorting, unused imports, trailing/blank-line
+whitespace, `Optional[X]` → `X | None`, deprecated-import updates,
+`__slots__`/dunder-`__all__` sort order, and line wrapping via the
+formatter (which fixed most of the ~190 originally-estimated `E501`s as a
+side effect — genuinely fixing 112 line-length violations that
+`ruff check --fix` alone can't touch, since it isn't a rewrapping tool).
+Migrations picked up `ruff check --fix`'s safe pass too (import sorting,
+unused-import removal, `Union[X, None]` → `X | None` — confirmed zero SQL/DDL
+content changed, import statements only) but were deliberately excluded
+from the `ruff format` rewrap: they're historical, already-applied
+artifacts, and reformatting ~10 of them for pure line-length style would
+be diff noise on files this codebase's own convention already treats as
+frozen. Their remaining 59 `E501` + 8 `W291` + 2 `E402`
+are accepted debt, left as-is.
+
+**One real regression, caught by the test suite, not by lint:**
+`ruff --unsafe-fixes` (used for `TC001`/`TC003`, "move type-only imports
+behind `TYPE_CHECKING`") applied the exact footgun `routers/*.py` and
+`dependencies/*.py` already carry a written exemption for in
+`pyproject.toml` — except this time against **SQLAlchemy's declarative
+`Mapped[X]` columns** and **Pydantic's `BaseModel` field types**, not
+FastAPI's `Depends()`. Both frameworks resolve `from __future__ import
+annotations`-deferred type hints at class-definition/`model_rebuild()`
+time; a name hidden behind `TYPE_CHECKING` is invisible to that resolution
+exactly like it is to FastAPI's `get_type_hints()`. First symptom: `uv run
+pytest tests/unit` failed 6 tests with `NameError: name 'Decimal' is not
+defined` inside SQLAlchemy's mapper configuration
+(`models/accounting.py`). Fixed by reverting to real imports there (2
+model files), matching every other `models/*.py` file's existing
+per-line `# noqa: TC003` convention. **A second instance of the same class
+surfaced only in `tests/integration`**, not `tests/unit`:
+`schemas/notification.py`'s `NotificationResponse` failed with Pydantic's
+"is not fully defined; you should define `uuid`, then call
+`model_rebuild()`" at request time — `uuid`/`datetime` had been moved
+behind `TYPE_CHECKING` too. This one had already been documented as a
+known rule in *other* schema files (`schemas/order.py`,
+`schemas/inventory.py`, both carry a written note), just never turned into
+an enforced exemption — added `"src/lpg/api/v1/schemas/*.py" =
+["TC001","TC002","TC003"]` to `pyproject.toml` to make it one, alongside
+the routers/dependencies entries it mirrors.
+
+**Three real, pre-existing bugs found while reading the flagged code, none
+related to formatting:**
+- `dependencies/identity.py::require_permission` had a debug message
+  assignment (`msg = "DEBUG FAIL: ..."` dumping `type()` reprs) that
+  silently overwrote the intended clean `PermissionDeniedError` text —
+  every 403 on this path leaked internal type information instead of the
+  intended message. Deleted the dead debug line.
+- `barcode_generator.py::generate_qr_png(data, *, size=200)` never
+  applied `size` — every QR code was generated at a fixed native
+  resolution regardless of the caller's request. Confirmed low visual
+  impact (the one call site, `pdf_renderer.py`, embeds it in a template
+  that hardcodes `width:120px;height:120px` via CSS) but still dead,
+  misleading code; fixed by resizing the output image to `size` × `size`.
+- `routers/employee.py::list_employees` accepted a `status` query
+  parameter and silently discarded it — `ListEmployeesQuery` had no
+  `status` field at all, so the filter was broken at every layer, not
+  just the router. Wired it through `ListEmployeesQuery` →
+  `ListEmployeesUseCase` → `EmployeeRepository.list_employees`/
+  `.count_employees` (port + SQLAlchemy implementation), mirroring the
+  existing `role`/`branch_id` filter pattern exactly. Also removed a
+  `print(f"Error: {e}"); raise e` debug try/except in
+  `ListEmployeesUseCase.execute` that added nothing (bare re-raise,
+  `print` instead of the logger) — found in the same file while wiring
+  the filter through.
+- `infrastructure/events/realtime_handlers.py::on_order_status_changed`
+  computed a `status` string from the event class name but never added it
+  to the published WebSocket message — confirmed against
+  `test_realtime_publisher.py`'s own expected message shape
+  (`{"status": "delivered", ...}`), which the handler had never actually
+  produced. Added the missing key.
+
+**Judgement calls to leave alone:** `UP042` (`class X(str, Enum)` →
+`StrEnum`, 4 occurrences in `domain/complaint/value_objects.py`) —
+`StrEnum.__str__` returns the bare value while `(str, Enum)`'s default
+`__str__` returns `"ClassName.MEMBER"` (only `__format__`/f-strings match
+today); changing the base class is a real, if probably-safe, behavioral
+change to string serialization this task's mechanical-cleanup scope
+shouldn't absorb without dedicated verification of every consumer.
+
+Verified: `uv run ruff check .` — 73 errors, all either accepted migration
+debt or the deliberately-left `UP042`s. `uv run mypy` — **0 errors** (was
+2, both cleared: `storage/client.py`'s two `# type: ignore` comments were
+themselves unused, per mypy). `uv run lint-imports` — 5/5 kept, unchanged.
+`uv run pytest tests/unit` — 514 passed. `uv run pytest tests/integration`
+— **253 passed, 0 failed**, unchanged.
 
 ### C6 — Process
 
@@ -564,7 +652,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R3** — Frontend lint (7 projects) + `shell-layout.ts` lazy-import fix → **done 2026-08-18**, 0 of 26 projects fail. Did *not* repair `dashboard:test` (wrong original assumption, corrected in C11); that failure is now folded into R4
 - [x] **R4** — Frontend tests → **done 2026-08-18**, 0 of 25 projects fail (was 6). Three defect classes: a `jest.config.cts` `transformIgnorePatterns` gap on 6 projects (4 actually failing), TestBed provider gaps never caught because those specs never previously ran to completion, and two independent stale-assertion / missing-provider bugs surfaced once unblocked (`dashboard`, `shared-data-access`). Full writeup in C12
 - [x] **R5** — C2 import contracts → **done 2026-08-18**, 0 of 5 contracts broken (was 2). New `TenantSlugResolver` port replaces `routers/auth.py`'s raw `text()`; `ComplaintRepository`/`InAppNotificationRepository` gained list/count methods and proper DI wiring replacing two routers' raw-session hacks; 11 composition-root-shaped edges added to `ignore_imports`; `connection_manager.py`'s FastAPI import inverted into a local `Protocol`. Full writeup in C2
-- [ ] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder
+- [x] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder → **done 2026-08-18**, 481→73 errors, mypy 2→0. Found and fixed 3 real pre-existing bugs while triaging (leaked debug text in a 403 message, a QR-code `size` param silently ignored, an employee list `status` filter accepted but never applied at any layer) and caught+reverted a real regression `ruff --unsafe-fixes` introduced (SQLAlchemy/Pydantic runtime annotation resolution, same footgun class as FastAPI's `Depends()` — now a real `pyproject.toml` exemption for `schemas/*.py`, not just a comment). Full writeup in C5
 - [ ] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress`
 - [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice

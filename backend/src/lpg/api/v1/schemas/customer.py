@@ -10,9 +10,9 @@ instead (see `schemas/admin.py`'s identical note).
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003
-from datetime import date, datetime  # noqa: TC003
-from decimal import Decimal  # noqa: TC003
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -90,7 +90,7 @@ class RegisterCustomerRequest(BaseModel):
     # The nationally-standardized 17-digit LPG ID (subsidy/KYC/bank-linking)
     # — distinct from consumer_number, see `domain/customer/customer.py`.
     lpg_subsidy_id: str | None = Field(default=None, pattern=r"^\d{17}$")
-    
+
     line_1: str | None = None
     line_2: str | None = None
     landmark: str | None = None

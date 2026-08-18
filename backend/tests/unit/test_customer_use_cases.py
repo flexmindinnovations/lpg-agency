@@ -49,7 +49,7 @@ async def test_register_customer_success(mock_repo, mock_uow):
         full_name="Jane Doe",
         phone_number="+1234567890",
         customer_type="commercial",
-            contact_person="Manager",
+        contact_person="Manager",
         line_1="123 Road",
     )
 

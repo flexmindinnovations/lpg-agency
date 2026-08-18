@@ -20,10 +20,12 @@ def get_invoice_repository(
         SqlAlchemyInvoiceRepository,
     )
 
-    # In a real app we might not instantiate repositories directly like this without type narrowing,
-    # but since UnitOfWork is a protocol and we know it's SqlAlchemyUnitOfWork at runtime,
-    # we can cast it if needed, or pass it in. SqlAlchemyInvoiceRepository accepts SqlAlchemyUnitOfWork.
-    # To keep things clean in the API layer, we just type ignore or cast.
+    # In a real app we might not instantiate repositories directly like this
+    # without type narrowing, but since UnitOfWork is a protocol and we know
+    # it's SqlAlchemyUnitOfWork at runtime, we can cast it if needed, or pass
+    # it in. SqlAlchemyInvoiceRepository accepts SqlAlchemyUnitOfWork. To keep
+    # things clean in the API layer, we just type ignore or cast.
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
     uow = typing.cast("SqlAlchemyUnitOfWork", unit_of_work)
     return SqlAlchemyInvoiceRepository(uow)

@@ -153,6 +153,7 @@ class TestLivePermissionCheckForPlatformFlags:
         self, database: Database, admin_engine_lpg_test: AsyncEngine
     ) -> None:
         from sqlalchemy import text
+
         tenant_id = uuid.uuid4()
         user_id = uuid.uuid4()
         # uuid4-suffixed rather than a fixed literal: a fixed email collides
@@ -180,7 +181,8 @@ class TestLivePermissionCheckForPlatformFlags:
             await session.execute(
                 text(
                     "INSERT INTO identity.identity_user_permission (user_id, permission_id) "
-                    "SELECT :user_id, id FROM identity.permission WHERE code = 'feature_flags:manage_platform'"
+                    "SELECT :user_id, id FROM identity.permission "
+                    "WHERE code = 'feature_flags:manage_platform'"
                 ),
                 {"user_id": user_id},
             )

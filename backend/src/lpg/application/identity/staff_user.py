@@ -211,6 +211,7 @@ class UpdateStaffUserPermissionsUseCase:
             command.user_id, command.permission_codes
         )
 
+
 @dataclass(frozen=True, slots=True)
 class ListPermissionsQuery(Query):
     pass

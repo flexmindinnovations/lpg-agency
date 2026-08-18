@@ -27,7 +27,7 @@ dependency yet).
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Annotated
 
@@ -39,7 +39,7 @@ from lpg.application.common.ports import TenantContext, UnitOfWork
 
 async def get_unit_of_work(
     tenant_context: Annotated[TenantContext, Depends(get_tenant_context)],
-) -> AsyncIterator[UnitOfWork]:
+) -> AsyncGenerator[UnitOfWork]:
     """Yield a ``UnitOfWork`` scoped to the resolved request's tenant.
 
     Commits on clean exit, rolls back on exception — see
@@ -59,7 +59,9 @@ async def get_unit_of_work(
 
     try:
         async for session in database.open_session(tenant_id=tenant_context.tenant_id):
-            uow = SqlAlchemyUnitOfWork(session, tenant_context, event_dispatcher=state.event_dispatcher)
+            uow = SqlAlchemyUnitOfWork(
+                session, tenant_context, event_dispatcher=state.event_dispatcher
+            )
             async with uow:
                 yield uow
     except Exception as e:
@@ -82,9 +84,12 @@ async def get_unit_of_work(
             raise
 
         from lpg.config.logging import get_logger
+
         logger = get_logger(__name__)
         logger.error("unhandled_unit_of_work_exception", error=str(e))
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e!s}") from None
+        raise HTTPException(
+            status_code=500, detail=f"An unexpected error occurred: {e!s}"
+        ) from None
 
 
 def get_unit_of_work_factory(
@@ -117,7 +122,7 @@ def get_unit_of_work_factory(
         raise RuntimeError(msg)
 
     @asynccontextmanager
-    async def _factory() -> AsyncIterator[UnitOfWork]:
+    async def _factory() -> AsyncGenerator[UnitOfWork]:
         async for session in database.open_session(tenant_id=tenant_context.tenant_id):
             uow = SqlAlchemyUnitOfWork(
                 session, tenant_context, event_dispatcher=state.event_dispatcher

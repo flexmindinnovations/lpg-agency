@@ -1,6 +1,3 @@
-from __future__ import annotations
-from arq import cron
-from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 """ARQ worker entry point (ADR-029).
 
 Run with::
@@ -37,17 +34,20 @@ No business job exists yet. ``ping`` is infrastructure only — proof the
 worker round-trips through Redis, nothing more.
 """
 
+from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import structlog
+from arq import cron
 from arq.connections import RedisSettings
 
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import get_settings
-from lpg.infrastructure.persistence.database import build_database
 from lpg.infrastructure.jobs.notification_jobs import send_notification
+from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
+from lpg.infrastructure.persistence.database import build_database
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.database import Database
@@ -160,11 +160,11 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 class WorkerSettings:
     """ARQ reads these as class attributes — see module docstring."""
 
-    cron_jobs = [
+    cron_jobs: ClassVar = [
         cron(refresh_materialized_views, hour=2, minute=0)  # Run nightly at 2:00 AM
     ]
 
-    functions = (ping, bulk_cancel_orders, send_notification)
+    functions: ClassVar = (ping, bulk_cancel_orders, send_notification)
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(str(get_settings().redis_url))

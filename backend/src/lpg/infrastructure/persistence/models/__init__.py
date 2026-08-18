@@ -9,6 +9,11 @@ from lpg.infrastructure.persistence.models.accounting import (
     InvoiceModel,
 )
 from lpg.infrastructure.persistence.models.audit_log import AuditLogModel
+from lpg.infrastructure.persistence.models.complaint import (
+    ComplaintAssignmentModel,
+    ComplaintModel,
+    ComplaintResolutionModel,
+)
 from lpg.infrastructure.persistence.models.customer import (
     CustomerAddressModel,
     CustomerModel,
@@ -37,6 +42,10 @@ from lpg.infrastructure.persistence.models.inventory import (
     InventoryTransactionModel,
     ReconciliationRecordModel,
 )
+from lpg.infrastructure.persistence.models.notification import (
+    InAppNotificationModel,
+    NotificationLogModel,
+)
 from lpg.infrastructure.persistence.models.order import (
     CancellationRecordModel,
     FailedDeliveryRecordModel,
@@ -44,10 +53,6 @@ from lpg.infrastructure.persistence.models.order import (
     OrderModel,
     OrderStatusHistoryModel,
     ProofOfDeliveryModel,
-)
-from lpg.infrastructure.persistence.models.notification import (
-    InAppNotificationModel,
-    NotificationLogModel,
 )
 from lpg.infrastructure.persistence.models.tenant import (
     BranchModel,
@@ -59,18 +64,13 @@ from lpg.infrastructure.persistence.models.tenant import (
     TenantModel,
     WarehouseModel,
 )
-from lpg.infrastructure.persistence.models.complaint import (
-    ComplaintModel,
-    ComplaintAssignmentModel,
-    ComplaintResolutionModel,
-)
 
 __all__ = [
     "AuditLogModel",
     "BranchModel",
     "CancellationRecordModel",
-    "ComplaintModel",
     "ComplaintAssignmentModel",
+    "ComplaintModel",
     "ComplaintResolutionModel",
     "CustomerAddressModel",
     "CustomerModel",

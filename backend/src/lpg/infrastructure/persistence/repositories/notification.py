@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select, update
-
 from lpg.domain.notification.in_app_notification import InAppNotification
-from lpg.domain.notification.notification_log import NotificationLog
 
 if TYPE_CHECKING:
+    import uuid
+
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    from lpg.domain.notification.notification_log import NotificationLog
 
 
 class SqlAlchemyInAppNotificationRepository:
@@ -25,6 +25,7 @@ class SqlAlchemyInAppNotificationRepository:
         # Using raw SQL for the aggregate save to avoid complex mapping setup,
         # or we could use Core. We'll use SQLAlchemy Core.
         from sqlalchemy import text
+
         stmt = text("""
             INSERT INTO notification.in_app_notification (
                 id, tenant_id, recipient_user_id, notification_type, title, body,
@@ -53,6 +54,7 @@ class SqlAlchemyInAppNotificationRepository:
     async def get_by_id(self, notification_id: uuid.UUID) -> InAppNotification | None:
         """Get an in-app notification by ID."""
         from sqlalchemy import text
+
         stmt = text("""
             SELECT id, tenant_id, recipient_user_id, notification_type, title, body,
                    reference_type, reference_id, is_read, created_at
@@ -82,6 +84,7 @@ class SqlAlchemyInAppNotificationRepository:
     ) -> list[InAppNotification]:
         """List notifications for a specific user."""
         from sqlalchemy import text
+
         query = """
             SELECT id, tenant_id, recipient_user_id, notification_type, title, body,
                    reference_type, reference_id, is_read, created_at
@@ -91,9 +94,11 @@ class SqlAlchemyInAppNotificationRepository:
         if unread_only:
             query += " AND is_read = false"
         query += " ORDER BY created_at DESC OFFSET :skip LIMIT :limit"
-        
+
         stmt = text(query)
-        result = await self._session.execute(stmt, {"user_id": user_id, "skip": skip, "limit": limit})
+        result = await self._session.execute(
+            stmt, {"user_id": user_id, "skip": skip, "limit": limit}
+        )
         notifications = []
         for row in result.mappings():
             notifications.append(
@@ -116,6 +121,7 @@ class SqlAlchemyInAppNotificationRepository:
     async def count_unread(self, user_id: uuid.UUID) -> int:
         """Count unread notifications for a specific user."""
         from sqlalchemy import text
+
         stmt = text("""
             SELECT count(*)
             FROM notification.in_app_notification
@@ -127,6 +133,7 @@ class SqlAlchemyInAppNotificationRepository:
     async def save(self, notification: InAppNotification) -> None:
         """Save modifications to an existing notification."""
         from sqlalchemy import text
+
         stmt = text("""
             UPDATE notification.in_app_notification
             SET is_read = :is_read
@@ -143,6 +150,7 @@ class SqlAlchemyInAppNotificationRepository:
     async def mark_all_read(self, user_id: uuid.UUID) -> None:
         """Helper method to mark all as read efficiently."""
         from sqlalchemy import text
+
         stmt = text("""
             UPDATE notification.in_app_notification
             SET is_read = true
@@ -160,6 +168,7 @@ class SqlAlchemyNotificationLogRepository:
     async def add(self, log: NotificationLog) -> None:
         """Add a new notification log."""
         from sqlalchemy import text
+
         stmt = text("""
             INSERT INTO notification.notification_log (
                 id, tenant_id, recipient_user_id, notification_type, channel,
@@ -195,6 +204,7 @@ class SqlAlchemyNotificationLogRepository:
     async def save(self, log: NotificationLog) -> None:
         """Save modifications to an existing notification log."""
         from sqlalchemy import text
+
         stmt = text("""
             UPDATE notification.notification_log
             SET status = :status,

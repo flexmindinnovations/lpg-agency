@@ -24,8 +24,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class InvoiceGenerated(DomainEvent):
-    """Fired when an invoice is successfully generated (BR-17).
-    """
+    """Fired when an invoice is successfully generated (BR-17)."""
 
     invoice_id: uuid.UUID
     tenant_id: uuid.UUID
@@ -142,13 +141,18 @@ class Invoice(AggregateRoot):
         calculated_total = sum((line.total_amount for line in lines), Decimal("0"))
 
         if subtotal != calculated_subtotal:
-            msg = f"Invoice subtotal ({subtotal}) does not match line items ({calculated_subtotal})."
+            msg = (
+                f"Invoice subtotal ({subtotal}) does not match line items ({calculated_subtotal})."
+            )
             raise InvariantViolation(msg)
         if tax_amount != calculated_tax:
             msg = f"Invoice tax amount ({tax_amount}) does not match line items ({calculated_tax})."
             raise InvariantViolation(msg)
         if total_amount != calculated_total:
-            msg = f"Invoice total amount ({total_amount}) does not match line items ({calculated_total})."
+            msg = (
+                f"Invoice total amount ({total_amount}) does not match "
+                f"line items ({calculated_total})."
+            )
             raise InvariantViolation(msg)
 
         self._tenant_id = tenant_id

@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
-    ApplicationError,
     DuplicateEmployeeCodeError,
     DuplicateRegistrationNumberError,
     DuplicateRouteAssignmentError,
@@ -108,10 +107,7 @@ class RegisterDriverUseCase:
     async def execute(self, command: RegisterDriverCommand) -> Driver:
         existing = await self._repository.get_by_employee_id(command.employee_id)
         if existing is not None:
-            msg = (
-                f"Driver with employee ID '{command.employee_id}' "
-                "already exists for this tenant."
-            )
+            msg = f"Driver with employee ID '{command.employee_id}' already exists for this tenant."
             raise DuplicateEmployeeCodeError(msg)
 
         driver = Driver(

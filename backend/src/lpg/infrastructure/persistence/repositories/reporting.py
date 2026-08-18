@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import uuid
-from datetime import date
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
@@ -16,6 +14,9 @@ from lpg.application.reporting.ports import (
 )
 
 if TYPE_CHECKING:
+    import uuid
+    from datetime import date
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -23,7 +24,9 @@ class SqlAlchemyReportingRepository(ReportingRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_daily_sales(self, tenant_id: uuid.UUID, start_date: date, end_date: date) -> list[DailySalesRecord]:
+    async def get_daily_sales(
+        self, tenant_id: uuid.UUID, start_date: date, end_date: date
+    ) -> list[DailySalesRecord]:
         stmt = sa.text("""
             SELECT sale_date, branch_id, total_invoices, total_revenue, total_tax
             FROM rpt.vw_daily_sales
@@ -46,7 +49,9 @@ class SqlAlchemyReportingRepository(ReportingRepository):
             for row in result.all()
         ]
 
-    async def get_outstanding_balances(self, tenant_id: uuid.UUID) -> list[OutstandingBalanceRecord]:
+    async def get_outstanding_balances(
+        self, tenant_id: uuid.UUID
+    ) -> list[OutstandingBalanceRecord]:
         stmt = sa.text("""
             SELECT customer_id, outstanding_balance
             FROM rpt.vw_outstanding_balances
@@ -77,7 +82,9 @@ class SqlAlchemyReportingRepository(ReportingRepository):
             for row in result.all()
         ]
 
-    async def get_customer_consumption(self, tenant_id: uuid.UUID) -> list[CustomerConsumptionRecord]:
+    async def get_customer_consumption(
+        self, tenant_id: uuid.UUID
+    ) -> list[CustomerConsumptionRecord]:
         stmt = sa.text("""
             SELECT customer_id, avg_refill_interval_days
             FROM rpt.mv_customer_consumption

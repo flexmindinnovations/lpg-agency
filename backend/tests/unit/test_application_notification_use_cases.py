@@ -7,11 +7,10 @@ import pytest
 from lpg.application.common.errors import NotFoundError
 from lpg.application.notification.use_cases import (
     CountUnreadUseCase,
-    ListNotificationsUseCase,
-    MarkAllReadUseCase,
     MarkReadUseCase,
 )
 from lpg.domain.notification.in_app_notification import InAppNotification
+
 
 class FakeUnitOfWork:
     async def __aenter__(self):
@@ -37,10 +36,7 @@ class FakeInAppNotificationRepository:
     async def list_for_user(
         self, user_id: uuid.UUID, *, skip: int = 0, limit: int = 50, unread_only: bool = False
     ) -> list[InAppNotification]:
-        results = [
-            n for n in self.notifications.values()
-            if n.recipient_user_id == user_id
-        ]
+        results = [n for n in self.notifications.values() if n.recipient_user_id == user_id]
         if unread_only:
             results = [n for n in results if not n.is_read]
         # Sort by created_at desc (in memory mock, we just return the list)
@@ -48,7 +44,8 @@ class FakeInAppNotificationRepository:
 
     async def count_unread(self, user_id: uuid.UUID) -> int:
         return sum(
-            1 for n in self.notifications.values()
+            1
+            for n in self.notifications.values()
             if n.recipient_user_id == user_id and not n.is_read
         )
 

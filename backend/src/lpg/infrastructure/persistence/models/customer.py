@@ -9,7 +9,18 @@ import uuid  # noqa: TC003
 from datetime import date, datetime  # noqa: TC003
 from decimal import Decimal  # noqa: TC003
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Uuid,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lpg.infrastructure.persistence.database import Base

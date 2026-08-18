@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
-from datetime import date
-from typing import Sequence
+from typing import TYPE_CHECKING
 
-from lpg.application.reporting.ports import DailySalesRecord, ReportingRepository
+if TYPE_CHECKING:
+    import uuid
+    from collections.abc import Sequence
+    from datetime import date
+
+    from lpg.application.reporting.ports import DailySalesRecord, ReportingRepository
 
 
 @dataclass(frozen=True, slots=True)

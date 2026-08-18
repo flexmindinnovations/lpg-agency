@@ -19,9 +19,7 @@ if TYPE_CHECKING:
 _SYSTEM_ACTOR_ID = uuid.UUID(int=0)
 
 
-def register_tenant_admin_handlers(
-    dispatcher: DomainEventDispatcher, database: Database
-) -> None:
+def register_tenant_admin_handlers(dispatcher: DomainEventDispatcher, database: Database) -> None:
     async def _on_employee_registered(event: DomainEvent) -> None:
         assert isinstance(event, EmployeeRegistered)
         await _provision_auth_and_roles(database, event)
@@ -68,7 +66,7 @@ async def _provision_auth_and_roles(database: Database, event: EmployeeRegistere
                     tenant_id=event.tenant_id,
                     branch_id=event.branch_id,
                     employee_id=event.employee_id,
-                    license_number="PENDING", # Needs to be updated later by staff
+                    license_number="PENDING",  # Needs to be updated later by staff
                     license_expiry_date=None,
                     identity_user_id=identity_user_id,
                 )

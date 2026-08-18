@@ -14,8 +14,8 @@ persisted value — the same reason `CustomerResponse` omits them.
 
 from __future__ import annotations
 
-import uuid  # noqa: TC003
-from datetime import date  # noqa: TC003
+import uuid
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 

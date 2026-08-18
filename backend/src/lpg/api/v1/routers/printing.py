@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.printing import get_printing_use_case
-from lpg.application.printing.use_cases import GeneratePrintJobUseCase, PrintJobCommand, PrintFormat
+from lpg.application.printing.use_cases import GeneratePrintJobUseCase, PrintFormat, PrintJobCommand
 
 router = APIRouter(prefix="/print-jobs", tags=["Printing"])
 
@@ -38,7 +38,9 @@ async def create_print_job(
     try:
         fmt = PrintFormat(request.format)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {request.format}")
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported format: {request.format}"
+        ) from None
 
     command = PrintJobCommand(
         document_type=request.document_type,
