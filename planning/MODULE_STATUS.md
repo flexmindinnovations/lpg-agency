@@ -55,13 +55,13 @@ backlog this file tracks.
 | 11 | Order management | complete (no planning dir) | ✅ | 100% | ✅ | — | All 8 original failures cleared (C1, C9, C10 combined). `planning/features/11-order-management/` still **does not exist** |
 | 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | ✅ | 100% | ✅ | — | Was C10, fixed |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
-| 14 | Accounting / invoicing | ✅ COMPLETE | 🔴 untested | ~90% | 🔴 | — | **No invoice endpoint tests, no accounting integration tests.** Blank buttons fixed (C3/R2) |
+| 14 | Accounting / invoicing | ✅ COMPLETE | ✅ smoke + RBAC tested (R7) | ~90% | ✅ | — | See C4 — endpoint tests added, found+fixed a real `InvoiceResponse` serialization crash |
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
-| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | 🔴 **zero backend tests** | ~90% | 🔴 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup); import-linter `routers/complaint.py` → sqlalchemy; ruff `domain/complaint` 27 | Full aggregate + router with **no tests at all**; blank buttons fixed (C3/R2); no planning dir |
+| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup) | See C4 — tests found+fixed 3 real backend bugs (assign/resolve crashed outright); blank buttons fixed (C3/R2); no planning dir |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
 | 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** |
-| — | Reporting | folded into 18 | ✅ router mounted (R7a) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7 — mount fixed; deeper coverage is R7 |
-| — | Employees (tenant-admin) | — | 🔴 **zero tests** | ~90% | 🔴 | lint: `feature-employees` | No tests — this is the table whose missing GRANT caused the `permission denied` outage |
+| — | Reporting | folded into 18 | ✅ router mounted + fully tested (R7a, R7) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7/C4 — mount fixed (R7a); real-data coverage for gst/drivers/consumption added (R7) |
+| — | Employees (tenant-admin) | — | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | lint: `feature-employees` | See C4 — tests found+fixed 2 real backend bugs; registration crashed outright |
 | — | Dashboard shell | — | 🟡 builds, tests red | 100% | 🔴 | lint + test: `dashboard` | `shell-layout.ts` statically imports 2 lazy libs → breaks lazy boundary **and** `shell-layout.spec.ts` |
 | — | Shared data-access | — | 🟡 | 100% | 🔴 | test: `shared-data-access` | Unit tests failing |
 | 20 | Regulatory & MDG Compliance | *(new)* | 🔵 planned | 0% | — | — | Hard requirements — weighment, TDT rating, cylinder identity, DAC, vouchers, PAHAL/PMUY, compliance calendar, cash settlement |
@@ -226,12 +226,99 @@ stash` that the exact same `SyntaxError: Unexpected token 'export'` fails
 identically with or without this change — pre-existing Jest/ESM config gap,
 tracked as R4, not caused or fixed here.
 
-### C4 — Zero test coverage on four shipped modules
+### C4 — Zero test coverage on four shipped modules ✅ RESOLVED (R7, 2026-08-19)
 
 `complaint`, `reporting`, `employee`, `invoice` each expose a router with **no
 test files whatsoever**, and each is marked COMPLETE. `employee` is precisely
 the table whose missing GRANT caused a production-shaped outage that no test
 caught.
+
+**✅ Fixed 2026-08-19 (R7).** Added domain unit tests
+(`test_domain_complaint.py`, `test_domain_employee.py`, `test_domain_invoice.py`),
+application-layer unit tests (`test_complaint_use_cases.py`,
+`test_employee_use_cases.py` — invoice's use cases were already covered by
+`test_accounting_use_cases.py`), and through-the-real-stack integration
+tests (`test_complaint_endpoints_smoke.py`, `test_complaint_rbac.py`,
+`test_employee_endpoints_smoke.py`, `test_employee_rbac.py`,
+`test_invoice_endpoints_smoke.py`, `test_invoice_rbac.py`) for all three
+remaining modules, plus extended `test_reporting_endpoints_smoke.py` (R7a)
+with real-data coverage for `/gst`, `/drivers`, `/consumption` — the three
+materialized-view-backed reports R7a's own docstring deferred here.
+
+This is exactly the module C4 predicted would be hiding real defects.
+Writing tests that actually exercise the real database (not mocks) surfaced
+**seven** previously-undetected bugs, every one of them a genuine
+production-breaking defect in a "complete" module — all fixed as part of
+this same change:
+
+1. **Every `POST /complaints`, `/assign`, `/resolve` call crashed.** The
+   three complaint mutation endpoints injected an already-resolved
+   `AuthenticatedPrincipal` into a parameter typed and used as a
+   `TenantResolver`, then called `.resolve(request)` on it —
+   `AttributeError` on every real call. Fixed by having
+   `RaiseComplaintUseCase`/`AssignComplaintUseCase`/`ResolveComplaintUseCase`
+   accept an already-resolved `TenantContext` directly (matching
+   `RegisterEmployeeUseCase`'s pattern), removing the unused/broken
+   `TenantResolver` indirection entirely.
+2. **`.id` raised `AttributeError` on `ComplaintAssignment`/
+   `ComplaintResolution`.** Both are `Entity` subclasses whose
+   `@dataclass`-generated `__init__` never calls `Entity.__init__` or sets
+   its `_id` slot — `entity_id` is the real, populated field, but nothing
+   overrode the inherited `.id` property. This broke two things
+   independently: `SqlAlchemyComplaintRepository.save()`'s assignment-merge
+   lookup, and `ComplaintAssignmentResponse`/`ComplaintResolutionResponse`
+   serialization. Fixed with an `.id` property on both classes reading
+   `entity_id`.
+3. **`POST /complaints/{id}/assign`/`/resolve` crashed with
+   `MissingGreenlet`** even after fix #2. `save()`'s
+   `session.get(ComplaintModel, complaint.id)` carried no loader options;
+   `AsyncSession`'s identity map holds objects weakly, so `get_by_id`'s
+   `model` local could be collected before `save()` ran, leaving a
+   freshly-refetched instance with `.assignments`/`.resolution` unloaded — a
+   later bare attribute access then lazy-loads outside any greenlet-bridged
+   `await`. Fixed by passing the same `selectinload` options `get_by_id`
+   uses to `session.get(..., options=...)` (supported since SQLAlchemy
+   1.4/2.0).
+4. **`GET /invoices` and `GET /invoices/{id}` failed Pydantic validation on
+   every real invoice.** `_invoice_to_response` called
+   `InvoiceResponse.model_validate(invoice)`, but `Invoice`/`InvoiceLine`
+   only expose `.id` (from `Entity`), never the `invoice_id`/`line_id` field
+   names the committed schema — and the frontend's generated client and
+   `feature-invoices.ts` — already depend on. Fixed by building the response
+   field-by-field, matching `_order_to_response`'s convention, rather than
+   relying on `model_validate`.
+5. **Every real employee registration crashed with `assert employee is not
+   None`.** `RegisterEmployeeUseCase` wrapped its body in a *second*,
+   nested `async with self._uow:`, even though the raw `UnitOfWork` it
+   receives is already entered by `get_unit_of_work`'s own
+   request-spanning context manager. That nested block's own exit
+   committed early — and since the RLS tenant context is transaction-scoped
+   (`set_config(..., is_local => true)`, cleared on commit) — the router's
+   post-registration `repository.get_by_id()` reload ran with no tenant
+   context and saw nothing. Fixed by removing the nested `async with`,
+   matching every other use case built against a raw, router-owned
+   `UnitOfWork` (e.g. `InviteStaffUserUseCase`).
+6. **Same symptom, different cause, still present after fix #5.**
+   `SqlAlchemyEmployeeRepository.save()` never flushed after
+   `session.add(row)` on the insert path. The session factory disables
+   autoflush project-wide, so the router's post-save
+   `repository.get_by_id()` reload (needed to return the generated
+   `employee_code`) still saw nothing. Fixed by adding
+   `await self._uow.session.flush()`, matching every other repository's
+   `save()` (inventory, order, route, cylinder_ledger).
+
+Deliberately **not** counted as an eighth bug: `GET /complaints` and
+`GET /complaints/{id}` carry no `require_permission` dependency at all —
+any authenticated staff member of the tenant can read complaints. This
+looks like a real gap, but nothing here confirms it's unintentional, so
+`test_complaint_endpoints_smoke.py` documents it as observed behavior
+(`test_get_and_list_reachable_without_complaints_manage`) rather than
+"fixing" it by guessing at the intended permission.
+
+Verified: `ruff` clean on every touched/new file (pre-existing baseline
+errors in files this change didn't touch are unaffected), `mypy` clean,
+`import-linter` 5/5 kept, 583/583 unit tests, 290/290 integration tests
+(was 256 after R7a; +34 net new).
 
 ### C7 — Reporting is unreachable: the router is never mounted ✅ RESOLVED (R7a, 2026-08-19)
 
@@ -701,7 +788,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder → **done 2026-08-18**, 481→73 errors, mypy 2→0. Found and fixed 3 real pre-existing bugs while triaging (leaked debug text in a 403 message, a QR-code `size` param silently ignored, an employee list `status` filter accepted but never applied at any layer) and caught+reverted a real regression `ruff --unsafe-fixes` introduced (SQLAlchemy/Pydantic runtime annotation resolution, same footgun class as FastAPI's `Depends()` — now a real `pyproject.toml` exemption for `schemas/*.py`, not just a comment). Full writeup in C5
 - [x] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress` → **done 2026-08-18**, widened `CustomerService.addAddress` to accept the full structured payload the backend already supported; also recovered `address_type`, which the old flattening dropped entirely. Not live-browser-verified (login automation friction) — full writeup in C1
 - [x] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time (2026-08-19)
-- [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
+- [x] **R7** — C4 test coverage for complaint / reporting / employee / invoice (2026-08-19) — found+fixed 7 real bugs (see C4 writeup)
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass
 - [ ] **R10** — C8 add the 7 missing domain events, starting with the complaint pair

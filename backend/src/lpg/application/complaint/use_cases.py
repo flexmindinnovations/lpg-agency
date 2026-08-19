@@ -1,14 +1,20 @@
-import uuid
-from dataclasses import dataclass
+from __future__ import annotations
 
-from lpg.application.common.ports import TenantResolver
-from lpg.application.complaint.ports import ComplaintUnitOfWork
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 from lpg.domain.complaint.complaint import Complaint
-from lpg.domain.complaint.value_objects import (
-    ComplaintCategory,
-    ComplaintPriority,
-    ResolutionOutcome,
-)
+
+if TYPE_CHECKING:
+    import uuid
+
+    from lpg.application.common.ports import TenantContext
+    from lpg.application.complaint.ports import ComplaintUnitOfWork
+    from lpg.domain.complaint.value_objects import (
+        ComplaintCategory,
+        ComplaintPriority,
+        ResolutionOutcome,
+    )
 
 
 @dataclass
@@ -21,12 +27,10 @@ class RaiseComplaintCommand:
 
 
 class RaiseComplaintUseCase:
-    def __init__(self, uow: ComplaintUnitOfWork, tenant_resolver: TenantResolver) -> None:
+    def __init__(self, uow: ComplaintUnitOfWork) -> None:
         self._uow = uow
-        self._tenant_resolver = tenant_resolver
 
-    async def execute(self, request: object, command: RaiseComplaintCommand) -> uuid.UUID:
-        ctx = await self._tenant_resolver.resolve(request)
+    async def execute(self, ctx: TenantContext, command: RaiseComplaintCommand) -> uuid.UUID:
         if not ctx.user_id:
             raise ValueError("User must be authenticated to raise a complaint")
 
@@ -54,12 +58,10 @@ class AssignComplaintCommand:
 
 
 class AssignComplaintUseCase:
-    def __init__(self, uow: ComplaintUnitOfWork, tenant_resolver: TenantResolver) -> None:
+    def __init__(self, uow: ComplaintUnitOfWork) -> None:
         self._uow = uow
-        self._tenant_resolver = tenant_resolver
 
-    async def execute(self, request: object, command: AssignComplaintCommand) -> None:
-        ctx = await self._tenant_resolver.resolve(request)
+    async def execute(self, ctx: TenantContext, command: AssignComplaintCommand) -> None:
         if not ctx.user_id:
             raise ValueError("User must be authenticated to assign a complaint")
 
@@ -81,12 +83,10 @@ class ResolveComplaintCommand:
 
 
 class ResolveComplaintUseCase:
-    def __init__(self, uow: ComplaintUnitOfWork, tenant_resolver: TenantResolver) -> None:
+    def __init__(self, uow: ComplaintUnitOfWork) -> None:
         self._uow = uow
-        self._tenant_resolver = tenant_resolver
 
-    async def execute(self, request: object, command: ResolveComplaintCommand) -> None:
-        ctx = await self._tenant_resolver.resolve(request)
+    async def execute(self, ctx: TenantContext, command: ResolveComplaintCommand) -> None:
         if not ctx.user_id:
             raise ValueError("User must be authenticated to resolve a complaint")
 

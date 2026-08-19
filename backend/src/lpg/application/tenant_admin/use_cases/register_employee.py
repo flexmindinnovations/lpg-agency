@@ -46,32 +46,40 @@ class RegisterEmployeeUseCase:
         self._employee_repo = employee_repo
 
     async def execute(self, cmd: RegisterEmployeeCommand) -> uuid.UUID:
-        pass
-
         # Verify tenant scope
         if cmd.tenant_id != self._tenant_context.tenant_id:
             msg = "Cross-tenant employee registration is forbidden."
             raise ApplicationError(msg)
 
-        async with self._uow:
-            # Generate ID and employee code inside the transaction
-            employee_id = self._employee_repo.next_id()
-            employee_code = await self._employee_repo.next_employee_code()
+        # `self._uow` arrives already entered by `get_unit_of_work`'s own
+        # `async with uow: yield uow`, which spans the whole request and
+        # commits exactly once, on that outer exit — after the router has
+        # had a chance to read back what this method just saved, in the
+        # same transaction. Opening a *second*, nested `async with
+        # self._uow:` here used to commit early on this method's own return,
+        # which — since the RLS tenant context is set transaction-scoped
+        # (`set_config(..., is_local => true)`, cleared on commit) — made
+        # the router's post-registration `repository.get_by_id()` reload run
+        # with no tenant context and see nothing. Not opening one here
+        # matches every other use case built against this same raw,
+        # router-owned `UnitOfWork` (e.g. `InviteStaffUserUseCase`).
+        employee_id = self._employee_repo.next_id()
+        employee_code = await self._employee_repo.next_employee_code()
 
-            employee = Employee(
-                employee_id=employee_id,
-                tenant_id=cmd.tenant_id,
-                branch_id=cmd.branch_id,
-                employee_code=employee_code,
-                first_name=cmd.first_name,
-                last_name=cmd.last_name,
-                phone_number=cmd.phone_number,
-                email=cmd.email,
-                role=cmd.role,
-            )
+        employee = Employee(
+            employee_id=employee_id,
+            tenant_id=cmd.tenant_id,
+            branch_id=cmd.branch_id,
+            employee_code=employee_code,
+            first_name=cmd.first_name,
+            last_name=cmd.last_name,
+            phone_number=cmd.phone_number,
+            email=cmd.email,
+            role=cmd.role,
+        )
 
-            await self._employee_repo.save(employee)
+        await self._employee_repo.save(employee)
 
-            # Domain events are dispatched by the UnitOfWork on exit
-            # EmployeeRegistered will trigger IdentityUser creation
-            return employee.id
+        # Domain events are dispatched by the UnitOfWork on commit —
+        # EmployeeRegistered will trigger IdentityUser creation.
+        return employee.id

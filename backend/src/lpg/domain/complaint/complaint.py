@@ -13,6 +13,15 @@ from lpg.domain.complaint.value_objects import (
 
 @dataclass
 class ComplaintAssignment(Entity):
+    """`@dataclass` generates its own `__init__` from these fields, which
+    never calls `Entity.__init__` nor sets its `_id` slot — `entity_id` is
+    the real, populated field. `.id` is overridden below to read it instead
+    of `Entity.id`'s `self._id`, which would otherwise raise `AttributeError`
+    on every access (it did: this broke `save()`'s assignment-merge lookup
+    and `ComplaintAssignmentResponse` serialization alike, on any complaint
+    with at least one assignment, until covered by R7's test suite).
+    """
+
     entity_id: uuid.UUID
     tenant_id: uuid.UUID
     complaint_id: uuid.UUID
@@ -21,9 +30,17 @@ class ComplaintAssignment(Entity):
     created_at: datetime
     created_by: uuid.UUID
 
+    @property
+    def id(self) -> uuid.UUID:
+        return self.entity_id
+
 
 @dataclass
 class ComplaintResolution(Entity):
+    """See `ComplaintAssignment`'s docstring — same `entity_id`-vs-`.id` gap,
+    same fix.
+    """
+
     entity_id: uuid.UUID
     tenant_id: uuid.UUID
     complaint_id: uuid.UUID
@@ -32,6 +49,10 @@ class ComplaintResolution(Entity):
     resolved_by: uuid.UUID
     resolved_at: datetime
     created_at: datetime
+
+    @property
+    def id(self) -> uuid.UUID:
+        return self.entity_id
 
 
 class Complaint(AggregateRoot):

@@ -113,6 +113,14 @@ class SqlAlchemyEmployeeRepository:
                 status=employee.status,
             )
             self._uow.session.add(row)
+            # The session factory disables autoflush project-wide, so a
+            # plain SELECT never sees this pending INSERT on its own — an
+            # explicit flush is required, matching every other repository's
+            # `save()` (e.g. `InventoryLocationRepository`). Without it,
+            # `register_employee`'s post-save `repository.get_by_id()`
+            # reload — needed to return the generated `employee_code` — saw
+            # nothing and crashed the endpoint on every real call.
+            await self._uow.session.flush()
         else:
             self._sync_row(row, employee)
 

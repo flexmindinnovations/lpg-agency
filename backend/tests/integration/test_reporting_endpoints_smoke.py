@@ -205,6 +205,231 @@ async def _seed_invoice(engine: AsyncEngine, *, tenant_id: uuid.UUID) -> None:
         )
 
 
+async def _refresh_materialized_views(engine: AsyncEngine) -> None:
+    """The three materialized reports (`gst`, `drivers`, `consumption`) are
+    not auto-refreshing — only `refresh_materialized_views` (the nightly ARQ
+    cron job) or a manual `REFRESH` makes newly seeded rows visible. Plain
+    (non-concurrent) refresh is fine here: no reader holds a lock on an
+    empty/never-refreshed test-local view.
+    """
+    async with engine.begin() as conn:
+        await conn.execute(text("REFRESH MATERIALIZED VIEW rpt.mv_gst_filing_period"))
+        await conn.execute(text("REFRESH MATERIALIZED VIEW rpt.mv_customer_consumption"))
+        await conn.execute(text("REFRESH MATERIALIZED VIEW rpt.mv_driver_performance_daily"))
+
+
+async def _seed_route_with_delivered_stop(
+    engine: AsyncEngine, *, tenant_id: uuid.UUID
+) -> uuid.UUID:
+    """Branch -> employee -> driver -> vehicle -> customer -> order -> route
+    -> one delivered route_stop, feeding `rpt.mv_driver_performance_daily`.
+    Returns the driver_id.
+    """
+    async with engine.begin() as conn:
+        branch_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.branch (id, tenant_id, name) "
+                    "VALUES (gen_random_uuid(), :tenant_id, 'Reporting Smoke Branch') "
+                    "RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id)},
+            )
+        ).scalar_one()
+        employee_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.employee "
+                    "(id, tenant_id, branch_id, employee_code, first_name, last_name, "
+                    "phone_number, role, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, "
+                    "'Reporting', 'Smoke Driver', '1234567890', 'driver', 'active') "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "employee_code": f"DRV-{uuid.uuid4().hex[:6]}",
+                },
+            )
+        ).scalar_one()
+        driver_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO delivery.driver "
+                    "(id, tenant_id, branch_id, employee_id, license_number) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_id, 'DL123456') "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "employee_id": str(employee_id),
+                },
+            )
+        ).scalar_one()
+        vehicle_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO delivery.vehicle "
+                    "(id, tenant_id, branch_id, registration_number, make, model, capacity_units) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :reg, 'Tata', 'Ace', 50) "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "reg": f"MH-{uuid.uuid4().hex[:8]}",
+                },
+            )
+        ).scalar_one()
+        customer_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer "
+                    "(id, tenant_id, branch_id, customer_type, full_name, phone_number, "
+                    "consumer_number) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, 'domestic', "
+                    "'Reporting Smoke Customer', :phone, :consumer_number) RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "phone": f"9{uuid.uuid4().int % 10**9:09d}",
+                    "consumer_number": f"CN-{uuid.uuid4().hex[:8]}",
+                },
+            )
+        ).scalar_one()
+        address_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer_address (id, tenant_id, customer_id, line_1) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :customer_id, '1 Smoke Test Rd') "
+                    "RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id), "customer_id": str(customer_id)},
+            )
+        ).scalar_one()
+        order_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO orders.order "
+                    "(id, tenant_id, branch_id, customer_id, address_id, "
+                    "delivery_address_line, status, booking_source, requested_date) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :customer_id, "
+                    ":address_id, '1 Smoke Test Rd', 'closed', 'staff', now()) "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "customer_id": str(customer_id),
+                    "address_id": str(address_id),
+                },
+            )
+        ).scalar_one()
+        route_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO delivery.route "
+                    "(id, tenant_id, branch_id, driver_id, vehicle_id, route_date, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :driver_id, :vehicle_id, "
+                    "now(), 'completed') RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "driver_id": str(driver_id),
+                    "vehicle_id": str(vehicle_id),
+                },
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO delivery.route_stop "
+                "(id, route_id, order_id, sequence_number, status) "
+                "VALUES (gen_random_uuid(), :route_id, :order_id, 1, 'delivered')"
+            ),
+            {"route_id": str(route_id), "order_id": str(order_id)},
+        )
+    return uuid.UUID(str(driver_id))
+
+
+async def _seed_exchange_transactions(engine: AsyncEngine, *, tenant_id: uuid.UUID) -> None:
+    """Two `exchange` ledger transactions a day apart for one customer,
+    feeding `rpt.mv_customer_consumption`'s `LAG()`-based refill-interval
+    calculation (a single transaction never has a `prev_time`, so it takes
+    two).
+    """
+    async with engine.begin() as conn:
+        branch_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.branch (id, tenant_id, name) "
+                    "VALUES (gen_random_uuid(), :tenant_id, 'Reporting Smoke Branch') "
+                    "RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id)},
+            )
+        ).scalar_one()
+        customer_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer "
+                    "(id, tenant_id, branch_id, customer_type, full_name, phone_number, "
+                    "consumer_number) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, 'domestic', "
+                    "'Reporting Smoke Consumption Customer', :phone, :consumer_number) "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "phone": f"9{uuid.uuid4().int % 10**9:09d}",
+                    "consumer_number": f"CN-{uuid.uuid4().hex[:8]}",
+                },
+            )
+        ).scalar_one()
+        cylinder_type_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
+                    "VALUES (gen_random_uuid(), :tenant_id, 'Reporting Smoke 14.2kg', 14.2) "
+                    "RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id)},
+            )
+        ).scalar_one()
+        cylinder_ledger_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO cylinder_ledger.cylinder_ledger (id, tenant_id, customer_id) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :customer_id) RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id), "customer_id": str(customer_id)},
+            )
+        ).scalar_one()
+        performer = uuid.uuid4()
+        for days_ago in (10, 5):
+            await conn.execute(
+                text(
+                    "INSERT INTO cylinder_ledger.ledger_transaction "
+                    "(id, tenant_id, cylinder_ledger_id, cylinder_type_id, transaction_type, "
+                    "quantity, performed_by, performed_at) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :cylinder_ledger_id, "
+                    ":cylinder_type_id, 'exchange', 1, :performed_by, "
+                    "now() - (:days_ago || ' days')::interval)"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "cylinder_ledger_id": str(cylinder_ledger_id),
+                    "cylinder_type_id": str(cylinder_type_id),
+                    "performed_by": str(performer),
+                    "days_ago": str(days_ago),
+                },
+            )
+
+
 async def _login(client: AsyncClient, *, email: str, password: str) -> str:
     response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
@@ -330,3 +555,107 @@ class TestReportingEndpointsThroughTheRealStack:
 
         response = await real_lifespan_client.get("/api/v1/reporting/gst", headers=headers)
         assert response.status_code == 403, response.text
+
+
+class TestMaterializedReportsWithRealData:
+    """R7's own share of coverage, deferred by R7a's docstring above: the
+    three materialized-view-backed reports, exercised against real seeded
+    data plus an explicit `REFRESH MATERIALIZED VIEW` (never auto-refreshing
+    outside the nightly `refresh_materialized_views` ARQ job).
+    """
+
+    async def test_gst_report_reflects_seeded_invoice(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@rpt-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Reporting Smoke Tenant (gst)",
+        )
+        await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+        await _refresh_materialized_views(admin_engine_lpg_test)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.get("/api/v1/reporting/gst", headers=headers)
+        assert response.status_code == 200, response.text
+        body = response.json()
+
+        assert len(body) == 1, body
+        assert body[0]["total_gst"] == "50.00"
+
+    async def test_driver_performance_reflects_seeded_route(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@rpt-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Reporting Smoke Tenant (drivers)",
+        )
+        driver_id = await _seed_route_with_delivered_stop(
+            admin_engine_lpg_test, tenant_id=tenant_id
+        )
+        await _refresh_materialized_views(admin_engine_lpg_test)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.get(
+            "/api/v1/reporting/drivers?start_date=2020-01-01&end_date=2030-01-01", headers=headers
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+
+        assert len(body) == 1, body
+        assert body[0]["driver_id"] == str(driver_id)
+        assert body[0]["total_stops"] == 1
+        assert body[0]["delivered_stops"] == 1
+
+    async def test_customer_consumption_reflects_seeded_exchanges(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@rpt-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Reporting Smoke Tenant (consumption)",
+        )
+        await _seed_exchange_transactions(admin_engine_lpg_test, tenant_id=tenant_id)
+        await _refresh_materialized_views(admin_engine_lpg_test)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.get(
+            "/api/v1/reporting/consumption", headers=headers
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+
+        assert len(body) == 1, body
+        # Two exchanges 5 days apart -> exactly one refill interval of 5 days.
+        assert body[0]["avg_refill_interval_days"] == pytest.approx(5.0)

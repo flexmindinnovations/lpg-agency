@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.identity import require_permission
-from lpg.api.v1.schemas.invoice import InvoicePageResponse, InvoiceResponse
+from lpg.api.v1.schemas.invoice import InvoiceLineResponse, InvoicePageResponse, InvoiceResponse
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.accounting.use_cases import (
     GetInvoiceQuery,
@@ -23,8 +23,38 @@ router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
 
 def _invoice_to_response(invoice: Invoice) -> InvoiceResponse:
-    # Since invoice_id vs id is a bit messy, let's use model_dump or construct it
-    return InvoiceResponse.model_validate(invoice)
+    # `Invoice`/`InvoiceLine` only expose `.id` (from `Entity`), while the
+    # committed schema names these fields `invoice_id`/`line_id` — the
+    # frontend's generated client and `feature-invoices.ts` already depend on
+    # that naming, so the fix is here, not a schema rename. Built field-by-
+    # field, matching `_order_to_response`'s convention, rather than
+    # `InvoiceResponse.model_validate(invoice)`, which fails validation on
+    # every real invoice since neither attribute name exists on the domain
+    # object.
+    return InvoiceResponse(
+        invoice_id=invoice.id,
+        tenant_id=invoice.tenant_id,
+        customer_id=invoice.customer_id,
+        order_id=invoice.order_id,
+        status=invoice.status,
+        issued_at=invoice.issued_at,
+        lines=[
+            InvoiceLineResponse(
+                line_id=line.id,
+                cylinder_type_id=line.cylinder_type_id,
+                quantity=line.quantity,
+                unit_price=line.unit_price,
+                subtotal=line.subtotal,
+                tax_amount=line.tax_amount,
+                total_amount=line.total_amount,
+            )
+            for line in invoice.lines
+        ],
+        subtotal=invoice.subtotal,
+        tax_amount=invoice.tax_amount,
+        total_amount=invoice.total_amount,
+        version=invoice.version,
+    )
 
 
 @router.get(

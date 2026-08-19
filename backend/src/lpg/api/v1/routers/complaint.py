@@ -13,7 +13,7 @@ from lpg.api.v1.schemas.complaint import (
     RaiseComplaintRequest,
     ResolveComplaintRequest,
 )
-from lpg.application.common.ports import TenantContext, TenantResolver
+from lpg.application.common.ports import TenantContext
 from lpg.application.complaint.ports import ComplaintUnitOfWork
 from lpg.application.complaint.use_cases import (
     AssignComplaintCommand,
@@ -31,9 +31,9 @@ router = APIRouter(prefix="/complaints", tags=["Complaints"])
 async def raise_complaint(
     request: RaiseComplaintRequest,
     uow: Annotated[ComplaintUnitOfWork, Depends(get_complaint_unit_of_work)],
-    tenant_resolver: Annotated[TenantResolver, Depends(require_permission("complaints.manage"))],
+    principal: Annotated[TenantContext, Depends(require_permission("complaints.manage"))],
 ) -> dict[str, uuid.UUID]:
-    use_case = RaiseComplaintUseCase(uow, tenant_resolver)
+    use_case = RaiseComplaintUseCase(uow)
     command = RaiseComplaintCommand(
         customer_id=request.customer_id,
         category=request.category,
@@ -41,7 +41,7 @@ async def raise_complaint(
         description=request.description,
         order_id=request.order_id,
     )
-    complaint_id = await use_case.execute(request, command)
+    complaint_id = await use_case.execute(principal, command)
     return {"id": complaint_id}
 
 
@@ -50,15 +50,15 @@ async def assign_complaint(
     complaint_id: uuid.UUID,
     request: AssignComplaintRequest,
     uow: Annotated[ComplaintUnitOfWork, Depends(get_complaint_unit_of_work)],
-    tenant_resolver: Annotated[TenantResolver, Depends(require_permission("complaints.manage"))],
+    principal: Annotated[TenantContext, Depends(require_permission("complaints.manage"))],
 ) -> None:
-    use_case = AssignComplaintUseCase(uow, tenant_resolver)
+    use_case = AssignComplaintUseCase(uow)
     command = AssignComplaintCommand(
         complaint_id=complaint_id,
         assigned_to=request.assigned_to,
     )
     try:
-        await use_case.execute(request, command)
+        await use_case.execute(principal, command)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -68,16 +68,16 @@ async def resolve_complaint(
     complaint_id: uuid.UUID,
     request: ResolveComplaintRequest,
     uow: Annotated[ComplaintUnitOfWork, Depends(get_complaint_unit_of_work)],
-    tenant_resolver: Annotated[TenantResolver, Depends(require_permission("complaints.manage"))],
+    principal: Annotated[TenantContext, Depends(require_permission("complaints.manage"))],
 ) -> None:
-    use_case = ResolveComplaintUseCase(uow, tenant_resolver)
+    use_case = ResolveComplaintUseCase(uow)
     command = ResolveComplaintCommand(
         complaint_id=complaint_id,
         outcome=request.outcome,
         resolution_notes=request.resolution_notes,
     )
     try:
-        await use_case.execute(request, command)
+        await use_case.execute(principal, command)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

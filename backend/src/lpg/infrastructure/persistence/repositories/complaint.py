@@ -24,8 +24,25 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
         self._session = session
 
     async def save(self, complaint: Complaint) -> None:
-        # We need to map the Domain object to the ORM Model
-        model = await self._session.get(ComplaintModel, complaint.id)
+        # `AsyncSession`'s identity map holds objects weakly — `get_by_id`'s
+        # `model` local goes out of scope and can be collected before this
+        # runs, so a bare `session.get()` here (no loader options) may issue
+        # a *fresh* fetch that leaves `.assignments`/`.resolution` unloaded.
+        # A later plain attribute access on those then triggers an implicit
+        # lazy-load outside any greenlet-bridged `await`, raising
+        # `MissingGreenlet` — reproducible with a real Postgres session (an
+        # in-memory mock never evicts anything, so this never surfaced in a
+        # mocked unit test). Passing the same eager-load `options` used by
+        # `get_by_id` avoids the implicit lazy-load regardless of whether the
+        # identity-map cache hit or missed.
+        model = await self._session.get(
+            ComplaintModel,
+            complaint.id,
+            options=(
+                selectinload(ComplaintModel.assignments),
+                selectinload(ComplaintModel.resolution),
+            ),
+        )
         if not model:
             model = ComplaintModel(id=complaint.id)
             self._session.add(model)
