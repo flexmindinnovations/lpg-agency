@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from lpg.domain.notification.notification_log import NotificationLog
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
 class SqlAlchemyInAppNotificationRepository:
@@ -162,8 +163,9 @@ class SqlAlchemyInAppNotificationRepository:
 class SqlAlchemyNotificationLogRepository:
     """SQLAlchemy implementation of NotificationLogRepository."""
 
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._uow = uow
+        self._session = uow.session
 
     async def add(self, log: NotificationLog) -> None:
         """Add a new notification log."""
@@ -200,6 +202,13 @@ class SqlAlchemyNotificationLogRepository:
                 "updated_at": log.updated_at,
             },
         )
+        # `mark_sent()`/`mark_failed()` etc. are always called on this same
+        # in-memory instance later in the same job (see
+        # `infrastructure/jobs/notification_jobs.py`), before `save()` — one
+        # registration here is enough for `NotificationSent` (R10) to reach
+        # `collect_events()` on commit, matching every other repository's
+        # `add()`/`_to_domain()` pattern.
+        self._uow.register_aggregate(log)
 
     async def save(self, log: NotificationLog) -> None:
         """Save modifications to an existing notification log."""

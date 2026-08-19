@@ -26,15 +26,17 @@ flowchart TB
 
 The catalog below is the **design** catalog and predates most of the build. It
 was verified against the code on 2026-08-18 and had drifted in both directions:
-of the 18 events it names, **10 exist**; the code defines **41** events in
-total, so **31 are undocumented**.
+of the 18 events it names, **10 exist** at that point (**12** as of R10,
+2026-08-19); the code defines **41+** events in total, so **31 are
+undocumented** (unchanged by R10 — it implemented two already-documented
+events, not new undocumented ones).
 
-**Documented here but not implemented — 8:**
+**Documented here but not implemented — 8, now 6:**
 
 | Event | Owning domain | Status |
 |---|---|---|
-| `ComplaintRaised` | `complaint` | ❌ **the complaint domain defines no events at all** |
-| `ComplaintResolved` | `complaint` | ❌ same |
+| `ComplaintRaised` | `complaint` | ✅ **implemented (R10, 2026-08-19)** — `Complaint.create()` |
+| `ComplaintResolved` | `complaint` | ✅ **implemented (R10, 2026-08-19)** — `Complaint.resolve()`, fires for every outcome (`outcome` field distinguishes resolved/compensated/rejected) |
 | `PaymentCollected` | `accounting` | ❌ only `InvoiceGenerated` exists |
 | `RefundApproved` | `accounting` | ❌ |
 | `CashShortfallDeclared` | `accounting` | ❌ |
@@ -42,14 +44,19 @@ total, so **31 are undocumented**.
 | `NotificationSent` | `notification` | ❌ only `InAppNotificationCreated` exists |
 | `OrderAssigned` (a.k.a. `DriverAssigned`) | `order` / `delivery` | ⚠️ **renamed** to `OrderAssignedToRoute` in Phase 12 when routes replaced direct driver assignment — the behaviour exists, the name here does not |
 
-Only the last is a naming drift. The other seven are genuine gaps: those state
-changes happen and publish nothing, so nothing downstream can react to them.
-The complaint one is the most consequential — complaint handling is subject to
-SLA obligations, and there is currently no event for a notification, an
-escalation, or an audit projection to subscribe to.
+The last row is a naming drift, not a gap. Of the remaining five gaps, each
+would require building genuinely new domain logic first — there is no
+`Payment`, `CreditNote`, or `CashHandover` domain concept anywhere in the
+codebase yet (`PaymentCollected`/`RefundApproved`/`CashShortfallDeclared`
+all presuppose one), no method on the `Customer` aggregate that closes a
+connection (`ConnectionClosed`), and notification delivery is currently
+fire-and-forget with no status-tracking mechanism a self-referential
+`NotificationSent` could report on. Adding "just the event" to any of these
+would be a dead event class with nothing to ever record it — see
+`planning/MODULE_STATUS.md`'s R10 entry for the full accounting.
 
 These are recorded as implementation gaps against their modules in
-[`planning/MODULE_STATUS.md`](../../planning/MODULE_STATUS.md), not fixed here.
+[`planning/MODULE_STATUS.md`](../../planning/MODULE_STATUS.md).
 
 ### Implemented event catalog, by domain
 
@@ -68,7 +75,7 @@ Authoritative as of 2026-08-18 — generated from
 | `order` | `BookingCancelled`, `BookingConfirmed`, `BookingCreated`, `CylinderDelivered`, `DeliveryFailed`, `InventoryReserved`, `OrderClosed` |
 | `tenant` | `BranchRenamed`, `CylinderTypeRenamed`, `TenantRenamed`, `TenantStatusChanged`, `WarehouseRenamed` |
 | `tenant_admin` | `EmployeeRegistered`, `EmployeeStatusChanged` |
-| `complaint` | **none** |
+| `complaint` | `ComplaintRaised`, `ComplaintResolved` |
 | `platform` | **none** |
 
 > **A trap this catalog has already caused.** `order` emits `CylinderDelivered`

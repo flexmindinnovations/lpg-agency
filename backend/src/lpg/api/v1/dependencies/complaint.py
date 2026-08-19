@@ -19,7 +19,7 @@ class _ComplaintUnitOfWorkWrapper:
         from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
         assert isinstance(self._uow, SqlAlchemyUnitOfWork)
-        return SqlAlchemyComplaintRepository(self._uow.session)
+        return SqlAlchemyComplaintRepository(self._uow)
 
     async def __aenter__(self) -> _ComplaintUnitOfWorkWrapper:
         await self._uow.__aenter__()

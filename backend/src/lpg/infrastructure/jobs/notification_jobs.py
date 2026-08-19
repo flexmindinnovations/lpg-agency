@@ -74,7 +74,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             field_encryptor = AESGCMFieldEncryptor(settings.encryption_key.get_secret_value())
 
             in_app_repo = SqlAlchemyInAppNotificationRepository(session)
-            log_repo = SqlAlchemyNotificationLogRepository(session)
+            log_repo = SqlAlchemyNotificationLogRepository(uow)
             identity_repo = SqlAlchemyIdentityUserRepository(database)
 
             # Resolve recipients

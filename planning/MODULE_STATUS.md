@@ -651,7 +651,7 @@ Verified: `npx nx run-many -t test --skip-nx-cache` — **0 of 25 projects
 fail** (was 6). `npx nx run-many -t lint` and `npx nx build dashboard`
 re-confirmed still green after these changes.
 
-### C8 — Seven designed domain events were never implemented
+### C8 — Seven designed domain events were never implemented 🟡 PARTIALLY RESOLVED (R10, 2026-08-19)
 
 Found by the documentation baseline audit (2026-08-18), verifying
 `docs/data/09-domain-events.md` against `class X(DomainEvent)` declarations.
@@ -673,6 +673,81 @@ of them by domain.
 
 Tracked as **R10**. Not urgent in the way a red gate is, but it is the reason
 several downstream features cannot be built without first adding the event.
+
+**🟡 Partially fixed 2026-08-19 (R10).** Researched all seven before writing
+any code, to avoid quietly building new features under the banner of "add an
+event." Three were genuinely ready — the aggregate method the event belongs
+on already exists, doing real work, with nothing new required beyond
+declaring the event and recording it:
+
+- **`ComplaintRaised`** — `Complaint.create()`.
+- **`ComplaintResolved`** — `Complaint.resolve()`; fires for every outcome
+  (resolved/compensated/rejected), `outcome` in the payload distinguishes
+  which, matching the design catalog's own payload shape.
+- **`NotificationSent`** — `NotificationLog._update_status()`, the single
+  method every `mark_sent`/`mark_failed`/`mark_retrying`/`mark_dead_lettered`/
+  `mark_delivered` call funnels through; `status` in the payload carries
+  which outcome, matching "Publisher: Notifications (self-referential — logs
+  its own outcome)."
+
+The other four are **blocked** — each would require building a new domain
+concept from scratch, not adding an event to one that exists:
+
+- **`PaymentCollected`**, **`RefundApproved`**, **`CashShortfallDeclared`**
+  (`accounting`) — no `Payment`, `CreditNote`, or `CashHandover` aggregate,
+  table, or migration exists anywhere in the codebase. `Invoice` has no
+  `mark_paid`/`record_payment` method despite `INVOICE_STATUSES` already
+  including `partially_paid`/`paid`/`refunded` — those states are
+  unreachable placeholders today.
+- **`ConnectionClosed`** (`customer`) — the shallowest of the four:
+  `Customer.change_status("closed")` already exists, is already a one-way
+  terminal transition (`"Cannot reactivate a closed connection"`), and
+  already fires `CustomerStatusChanged`. What's missing is a
+  `CloseCustomerConnectionUseCase` + endpoint to actually invoke it (zero
+  call sites today), plus computing `final_ledger_balance` (no
+  outstanding-balance calculation exists — `rpt.vw_outstanding_balances`
+  is itself an unused port method, per the Reporting module's own history).
+
+Building any of these four is new-feature work with its own design
+questions (a payment-recording flow, a credit-note approval workflow, a
+cash-handover reconciliation step, a connection-closure endpoint) — left
+open, not attempted here.
+
+**Two additional defects found and fixed while making the three "ready"
+events actually dispatch, not just exist as dead code:**
+
+1. `SqlAlchemyComplaintRepository.save()` pushed events onto
+   `session.info["domain_events"]` — a second, incompatible collection
+   mechanism nothing in the codebase ever reads.
+   `SqlAlchemyUnitOfWork.commit()`'s `collect_events()` only walks
+   `_tracked_aggregates`, populated by `register_aggregate()`. Every event
+   `Complaint` ever recorded (assignments, resolutions, and now
+   `ComplaintRaised`/`ComplaintResolved`) was silently dropped at commit —
+   fixed by switching the repository to the same `register_aggregate()`
+   pattern every other repository uses (`SqlAlchemyComplaintRepository`
+   now takes the `UnitOfWork`, not a raw `AsyncSession`).
+2. `SqlAlchemyNotificationLogRepository` took a raw `AsyncSession` and never
+   called `register_aggregate()` at all — same silent-drop outcome for any
+   event ever recorded on `NotificationLog`. Fixed identically.
+
+**A separate, larger gap surfaced but deliberately not fixed here:**
+`infrastructure/jobs/notification_jobs.py`'s `send_notification` ARQ job (and
+`infrastructure/jobs/worker.py`'s `bulk_cancel_orders`) construct their
+`SqlAlchemyUnitOfWork` with no `event_dispatcher` at all — confirmed by
+reading both. So even with the repository fix above, `NotificationSent`
+records correctly in memory but has nowhere to dispatch *to* when fired from
+a background job today; the HTTP-request path (`get_unit_of_work`) does
+wire a real dispatcher, so `ComplaintRaised`/`ComplaintResolved` (both
+HTTP-triggered) dispatch end-to-end correctly. Wiring a dispatcher into ARQ
+job execution is real, separate infrastructure work — likely affects every
+event any background job ever fires, not just this one — and is out of
+R10's scope.
+
+Verified: `ruff`/`mypy` clean on every touched file, `import-linter` 5/5
+kept, new domain unit tests for both `Complaint`'s and `NotificationLog`'s
+events, full integration suite green (existing complaint smoke/RBAC tests
+already exercise the fixed dispatch path end-to-end via the real ASGI
+stack).
 
 ### C5 — Lint / type debt ✅ RESOLVED (R6, 2026-08-18)
 
@@ -791,7 +866,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R7** — C4 test coverage for complaint / reporting / employee / invoice (2026-08-19) — found+fixed 7 real bugs (see C4 writeup)
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass
-- [ ] **R10** — C8 add the 7 missing domain events, starting with the complaint pair
+- [~] **R10** — C8 add the 7 missing domain events, starting with the complaint pair (2026-08-19) — 3 of 7 done (complaint pair + `NotificationSent`) and fixed 2 dead-event-dispatch bugs found along the way; remaining 4 (`PaymentCollected`/`RefundApproved`/`CashShortfallDeclared`/`ConnectionClosed`) blocked on new domain concepts not yet built (see C8 writeup)
 
 ## Rules for updating this file
 

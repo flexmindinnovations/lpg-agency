@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from lpg.domain.complaint.complaint import Complaint, ComplaintAssignment, ComplaintResolution
@@ -18,10 +20,14 @@ from lpg.infrastructure.persistence.models.complaint import (
     ComplaintResolutionModel,
 )
 
+if TYPE_CHECKING:
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
 
 class SqlAlchemyComplaintRepository(ComplaintRepository):
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._uow = uow
+        self._session = uow.session
 
     async def save(self, complaint: Complaint) -> None:
         # `AsyncSession`'s identity map holds objects weakly — `get_by_id`'s
@@ -94,9 +100,14 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
         else:
             model.resolution = None
 
-        for event in complaint.events:
-            self._session.info.setdefault("domain_events", []).append(event)
-        complaint.clear_events()
+        # `register_aggregate` is what `SqlAlchemyUnitOfWork.commit()` actually
+        # reads (`collect_events()` walks `_tracked_aggregates`) — the
+        # previous `session.info["domain_events"]` write here was a second,
+        # incompatible mechanism nothing ever read, silently dropping every
+        # event `Complaint` recorded (R10, 2026-08-19). `commit()` itself
+        # calls `clear_events()` on every tracked aggregate after dispatch,
+        # so this method must not clear them first.
+        self._uow.register_aggregate(complaint)
 
     def _to_domain(self, model: ComplaintModel) -> Complaint:
         complaint = Complaint(

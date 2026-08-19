@@ -2,13 +2,42 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from lpg.domain.common.base import AggregateRoot, Entity
+from lpg.domain.common.base import AggregateRoot, DomainEvent, Entity
 from lpg.domain.complaint.value_objects import (
     ComplaintCategory,
     ComplaintPriority,
     ComplaintStatus,
     ResolutionOutcome,
 )
+
+# ---------------------------------------------------------------------------
+# Domain Events
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class ComplaintRaised(DomainEvent):
+    """Fired when a complaint is raised (BR-33)."""
+
+    complaint_id: uuid.UUID
+    tenant_id: uuid.UUID
+    customer_id: uuid.UUID
+    category: ComplaintCategory
+    priority: ComplaintPriority
+    sla_due_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ComplaintResolved(DomainEvent):
+    """Fired when a complaint reaches a terminal outcome — resolved,
+    compensated, or rejected (D-20). `outcome` distinguishes which.
+    """
+
+    complaint_id: uuid.UUID
+    tenant_id: uuid.UUID
+    outcome: ResolutionOutcome
+    resolved_by: uuid.UUID
+    resolved_at: datetime
 
 
 @dataclass
@@ -118,6 +147,16 @@ class Complaint(AggregateRoot):
             created_by=created_by,
             updated_by=created_by,
         )
+        complaint.record_event(
+            ComplaintRaised(
+                complaint_id=complaint.id,
+                tenant_id=tenant_id,
+                customer_id=customer_id,
+                category=category,
+                priority=priority,
+                sla_due_at=sla_due_at,
+            )
+        )
         return complaint
 
     @staticmethod
@@ -198,3 +237,13 @@ class Complaint(AggregateRoot):
 
         self.updated_at = now
         self.updated_by = resolved_by
+
+        self.record_event(
+            ComplaintResolved(
+                complaint_id=self.id,
+                tenant_id=self.tenant_id,
+                outcome=outcome,
+                resolved_by=resolved_by,
+                resolved_at=now,
+            )
+        )

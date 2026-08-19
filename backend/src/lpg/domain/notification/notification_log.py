@@ -3,11 +3,35 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from lpg.domain.common.base import AggregateRoot, InvariantViolation
+from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
 
 _VALID_STATUSES = frozenset({"queued", "sent", "delivered", "failed", "retrying", "dead_lettered"})
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationSent(DomainEvent):
+    """Fired on every status transition after the initial `queued` state
+    (D-25) — this aggregate's whole purpose is "self-referential — logs its
+    own outcome" (`docs/data/09-domain-events.md`), so `status` covers
+    `sent`/`delivered`/`failed`/`retrying`/`dead_lettered` alike rather than
+    firing only on success; a consumer computing delivery-rate metrics
+    filters on `status` itself.
+
+    `provider_message_id` is `None` today — the stub email/SMS channels
+    (`infrastructure/channels/`) don't return one yet. Wiring that through
+    is a channel-adapter change, not a domain-event gap.
+    """
+
+    notification_id: uuid.UUID
+    tenant_id: uuid.UUID
+    recipient_user_id: uuid.UUID
+    channel: str
+    notification_type: str
+    status: str
+    provider_message_id: str | None = None
 
 
 class NotificationLog(AggregateRoot):
@@ -162,6 +186,17 @@ class NotificationLog(AggregateRoot):
         if error is not None:
             self._last_error = error
         self._updated_at = datetime.now(UTC)
+
+        self.record_event(
+            NotificationSent(
+                notification_id=self.id,
+                tenant_id=self._tenant_id,
+                recipient_user_id=self._recipient_user_id,
+                channel=self._channel,
+                notification_type=self._notification_type,
+                status=new_status,
+            )
+        )
 
     def mark_sent(self) -> None:
         self._update_status("sent")

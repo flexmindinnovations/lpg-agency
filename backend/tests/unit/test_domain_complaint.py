@@ -1,8 +1,9 @@
 """Unit tests for the Complaint aggregate root.
 
 Covers SLA-due-date computation by priority (BR-driven, `Complaint.create`),
-the `assign`/`resolve` transitions, and the terminal-status guard shared by
-both — all without touching the database.
+the `assign`/`resolve` transitions, the terminal-status guard shared by both,
+and the `ComplaintRaised`/`ComplaintResolved` domain events (R10) — all
+without touching the database.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from datetime import timedelta
 import pytest
 
 from lpg.domain.common.base import BusinessRuleViolation
-from lpg.domain.complaint.complaint import Complaint
+from lpg.domain.complaint.complaint import Complaint, ComplaintRaised, ComplaintResolved
 from lpg.domain.complaint.value_objects import (
     ComplaintCategory,
     ComplaintPriority,
@@ -72,6 +73,18 @@ class TestComplaintCreation:
         order_id = uuid.uuid4()
         complaint = _make_complaint(order_id=order_id)
         assert complaint.order_id == order_id
+
+    def test_records_complaint_raised_event(self) -> None:
+        complaint = _make_complaint(priority=ComplaintPriority.HIGH)
+        events = [e for e in complaint.events if isinstance(e, ComplaintRaised)]
+        assert len(events) == 1
+        event = events[0]
+        assert event.complaint_id == complaint.id
+        assert event.tenant_id == complaint.tenant_id
+        assert event.customer_id == complaint.customer_id
+        assert event.category == ComplaintCategory.LATE_DELIVERY
+        assert event.priority == ComplaintPriority.HIGH
+        assert event.sla_due_at == complaint.sla_due_at
 
 
 class TestAssign:
@@ -136,6 +149,31 @@ class TestResolve:
         complaint = _make_complaint()
         complaint.resolve(ResolutionOutcome.REJECTED, "No evidence of shortage.", uuid.uuid4())
         assert complaint.status == ComplaintStatus.REJECTED
+
+    def test_records_complaint_resolved_event(self) -> None:
+        complaint = _make_complaint()
+        resolved_by = uuid.uuid4()
+
+        complaint.resolve(ResolutionOutcome.RESOLVED, "Replacement dispatched.", resolved_by)
+
+        events = [e for e in complaint.events if isinstance(e, ComplaintResolved)]
+        assert len(events) == 1
+        event = events[0]
+        assert event.complaint_id == complaint.id
+        assert event.tenant_id == complaint.tenant_id
+        assert event.outcome == ResolutionOutcome.RESOLVED
+        assert event.resolved_by == resolved_by
+
+    def test_records_complaint_resolved_event_for_rejected_outcome(self) -> None:
+        """One event covers both outcomes — `outcome` in the payload is what
+        a consumer branches on, matching `docs/data/09-domain-events.md`'s
+        `ComplaintResolved` definition."""
+        complaint = _make_complaint()
+        complaint.resolve(ResolutionOutcome.REJECTED, "No evidence.", uuid.uuid4())
+
+        events = [e for e in complaint.events if isinstance(e, ComplaintResolved)]
+        assert len(events) == 1
+        assert events[0].outcome == ResolutionOutcome.REJECTED
 
     @pytest.mark.parametrize(
         "terminal_status",
