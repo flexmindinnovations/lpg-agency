@@ -17,7 +17,7 @@ import {
   type CylinderTypeResponse,
   type PriceListEntryResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
 
@@ -217,7 +217,13 @@ export class PriceListPage implements OnInit {
   protected readonly customerTypes = [...CUSTOMER_TYPES];
 
   protected readonly columns: DataGridColumn<PriceListEntryResponse>[] = [
-    { field: 'customer_type', header: 'Customer Type', sortable: true, filterable: true },
+    {
+      field: 'customer_type',
+      header: 'Customer Type',
+      sortable: true,
+      filterable: true,
+      cellRenderer: StatusChipCell,
+    },
     { field: 'price', header: 'Price', sortable: true, numeric: true },
     { field: 'branch_id', header: 'Branch', filterable: true },
     { field: 'effective_from', header: 'Effective From', sortable: true },

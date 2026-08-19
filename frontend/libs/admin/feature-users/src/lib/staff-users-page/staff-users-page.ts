@@ -13,7 +13,7 @@ import {
   type AppError,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
 const STAFF_ROLES = [
@@ -260,7 +260,7 @@ export class StaffUsersPage implements OnInit {
       filterable: true, 
       onLinkClick: (row) => this.openManageDrawer(row) 
     },
-    { field: 'role', header: 'Role', sortable: true, filterable: true },
+    { field: 'role', header: 'Role', sortable: true, filterable: true, cellRenderer: StatusChipCell },
     { field: 'is_active', header: 'Active', sortable: true },
   ];
 

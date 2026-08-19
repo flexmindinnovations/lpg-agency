@@ -10,7 +10,12 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  HasPermissionDirective,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -101,9 +106,9 @@ export class FeatureVehicles implements OnInit {
     },
     { field: 'make', header: 'Make', sortable: true },
     { field: 'model', header: 'Model', sortable: true },
-    { field: 'ownership_type', header: 'Ownership', sortable: true },
+    { field: 'ownership_type', header: 'Ownership', sortable: true, cellRenderer: StatusChipCell },
     { field: 'capacity_units', header: 'Capacity (Cylinders)', sortable: true },
-    { field: 'status', header: 'Status', sortable: true },
+    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
   ];
 
   // Forms

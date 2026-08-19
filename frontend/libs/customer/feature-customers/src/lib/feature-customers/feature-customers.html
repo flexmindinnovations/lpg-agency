@@ -24,8 +24,8 @@
     @if (customers().length > 0 || searchQuery().length > 0) {
     <div class="data-toolbar">
       <div class="data-toolbar__filters">
-        <p-iconfield styleClass="w-full md:w-64">
-          <p-inputicon styleClass="pi pi-search" />
+        <p-iconfield class="customer-search-field">
+          <p-inputicon class="pi pi-search" />
           <input
             id="customer-search-input"
             pInputText
@@ -38,17 +38,75 @@
         </p-iconfield>
       </div>
       <div class="data-toolbar__actions">
-        <button pButton severity="secondary">
+        <button pButton severity="secondary" (click)="filterPopover.toggle($event)">
           <i pButtonIcon class="pi pi-filter"></i>
           <span pButtonLabel>Filter</span>
+          @if (activeFilterCount() > 0) {
+            <p-badge [value]="activeFilterCount().toString()" severity="info" />
+          }
         </button>
+        <p-popover #filterPopover>
+          <ng-template #content>
+            <div class="filter-panel">
+              <div class="form-group">
+                <label for="filter-type">Type</label>
+                <p-select
+                  inputId="filter-type"
+                  [options]="customerTypeOptions"
+                  [(ngModel)]="filterCustomerType"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Any type"
+                  [showClear]="true"
+                  styleClass="w-full"
+                />
+              </div>
+              <div class="form-group">
+                <label for="filter-kyc">KYC Status</label>
+                <p-select
+                  inputId="filter-kyc"
+                  [options]="kycStatusFilterOptions"
+                  [(ngModel)]="filterKycStatus"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Any KYC status"
+                  [showClear]="true"
+                  styleClass="w-full"
+                />
+              </div>
+              <div class="form-group">
+                <label for="filter-status">Account Status</label>
+                <p-select
+                  inputId="filter-status"
+                  [options]="accountStatusFilterOptions"
+                  [(ngModel)]="filterAccountStatus"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Any account status"
+                  [showClear]="true"
+                  styleClass="w-full"
+                />
+              </div>
+              <button
+                pButton
+                severity="secondary"
+                type="button"
+                class="filter-panel__clear"
+                [disabled]="activeFilterCount() === 0"
+                (click)="clearFilters()"
+              >
+                <span pButtonLabel>Clear filters</span>
+              </button>
+            </div>
+          </ng-template>
+        </p-popover>
       </div>
     </div>
     }
 
     <div class="grid-wrapper">
       <lpg-data-grid
-        [rows]="customers()"
+        [rows]="filteredCustomers()"
         [columns]="columns"
         [loading]="loading()"
         ariaLabel="Customers list"

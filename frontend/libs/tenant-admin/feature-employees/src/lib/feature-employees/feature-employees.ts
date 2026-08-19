@@ -25,7 +25,12 @@ import {
   type BranchResponse,
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  HasPermissionDirective,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -87,8 +92,8 @@ export class FeatureEmployees implements OnInit {
     { field: 'employee_code', header: 'Employee Code', sortable: true, filterable: true },
     { field: 'first_name', header: 'First Name', sortable: true },
     { field: 'last_name', header: 'Last Name', sortable: true },
-    { field: 'role', header: 'Role', sortable: true },
-    { field: 'status', header: 'Status', sortable: true },
+    { field: 'role', header: 'Role', sortable: true, cellRenderer: StatusChipCell },
+    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
   ];
 
   // Forms

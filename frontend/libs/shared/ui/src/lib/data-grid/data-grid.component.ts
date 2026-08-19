@@ -42,6 +42,8 @@ export interface DataGridColumn<TRow = unknown> {
   readonly cellClass?: string | string[] | ((value: unknown, row: TRow) => string | string[]);
   /** Custom Angular component to render the cell. */
   readonly cellRenderer?: Type<unknown>;
+  /** Extra params passed to `cellRenderer`'s `agInit` (e.g. a severity map). */
+  readonly cellRendererParams?: Record<string, unknown>;
   /**
    * Renders this column's cell as a real, keyboard-focusable link-styled
    * button that calls back with the row on activation — the "go to this
@@ -232,7 +234,9 @@ export class DataGridComponent<TRow = unknown> {
         ? (params) => column.tooltipValueGetter?.(params.value, params.data as TRow) ?? ''
         : undefined,
       cellRenderer: column.onLinkClick ? DataGridLinkCell : column.cellRenderer,
-      cellRendererParams: column.onLinkClick ? { onLinkClick: column.onLinkClick } : undefined,
+      cellRendererParams: column.onLinkClick
+        ? { onLinkClick: column.onLinkClick }
+        : column.cellRendererParams,
     })),
   );
 

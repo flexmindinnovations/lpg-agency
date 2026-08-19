@@ -11,7 +11,12 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
-import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  HasPermissionDirective,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
@@ -105,7 +110,7 @@ export class FeatureDrivers implements OnInit {
     },
     { field: 'license_number', header: 'License Number', sortable: true },
     { field: 'license_expiry_date', header: 'License Expiry', sortable: true },
-    { field: 'status', header: 'Status', sortable: true },
+    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
   ];
 
   // Forms

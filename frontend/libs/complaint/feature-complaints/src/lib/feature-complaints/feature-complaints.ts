@@ -25,7 +25,12 @@ import {
   type AssignComplaintRequest,
   type ResolveComplaintRequest,
 } from '../services/complaint.service';
-import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  HasPermissionDirective,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 
 function errorMessageFor(_error: unknown): string {
   // Add specific error handling if backend returns AppError structures
@@ -91,9 +96,36 @@ export class FeatureComplaints implements OnInit {
       tooltipValueGetter: (val) => String(val),
       valueFormatter: (val) => String(val).substring(0, 8) + '...',
     },
-    { field: 'category', header: 'Category', flex: 1, sortable: true },
-    { field: 'priority', header: 'Priority', width: 150, sortable: true },
-    { field: 'status', header: 'Status', width: 150, sortable: true },
+    { field: 'category', header: 'Category', flex: 1, sortable: true, cellRenderer: StatusChipCell },
+    {
+      field: 'priority',
+      header: 'Priority',
+      width: 150,
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        severityMap: { critical: 'danger', high: 'warn', medium: 'info', low: 'secondary' },
+      },
+    },
+    {
+      field: 'status',
+      header: 'Status',
+      width: 150,
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        // Real values are PascalCase with no separator ("InProgress") — the
+        // lookup key is `raw.toLowerCase()`, hence "inprogress" below.
+        severityMap: {
+          open: 'warn',
+          assigned: 'info',
+          inprogress: 'info',
+          resolved: 'success',
+          rejected: 'danger',
+          closed: 'secondary',
+        },
+      },
+    },
     {
       field: 'customer_id',
       header: 'Customer ID',

@@ -38,7 +38,7 @@ import {
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
 
 const CYLINDER_STATUSES = [
   'filled',
@@ -159,20 +159,20 @@ export class FeatureInventory implements OnInit {
       valueFormatter: (value) =>
         this.cylinderTypeNameById().get(value as string) ?? (value as string),
     },
-    { field: 'status', header: 'Status', sortable: true },
+    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
     { field: 'quantity', header: 'Quantity', sortable: true, numeric: true },
   ];
 
   protected readonly transactionColumns: DataGridColumn<InventoryTransactionResponse>[] = [
-    { field: 'transaction_type', header: 'Type', sortable: true },
+    { field: 'transaction_type', header: 'Type', sortable: true, cellRenderer: StatusChipCell },
     {
       field: 'cylinder_type_id',
       header: 'Cylinder Type',
       valueFormatter: (value) =>
         this.cylinderTypeNameById().get(value as string) ?? (value as string),
     },
-    { field: 'from_status', header: 'From', valueFormatter: (value) => (value as string) ?? '—' },
-    { field: 'to_status', header: 'To' },
+    { field: 'from_status', header: 'From', cellRenderer: StatusChipCell },
+    { field: 'to_status', header: 'To', cellRenderer: StatusChipCell },
     { field: 'quantity', header: 'Qty', numeric: true },
     {
       field: 'performed_at',

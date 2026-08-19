@@ -16,9 +16,14 @@ import {
   type CylinderTypeResponse,
   type OrderResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  HasPermissionDirective,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 import { CustomerAutocomplete } from '../customer-autocomplete/customer-autocomplete';
-import { errorMessageFor, statusLabel } from '../order-status.util';
+import { errorMessageFor, STATUS_SEVERITY } from '../order-status.util';
 
 const STATUS_OPTIONS = [
   { label: 'Draft', value: 'draft' },
@@ -101,9 +106,10 @@ export class OrderQueue implements OnInit {
       field: 'status',
       header: 'Status',
       sortable: true,
-      valueFormatter: (value) => statusLabel(value as string),
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: STATUS_SEVERITY },
     },
-    { field: 'booking_source', header: 'Source', valueFormatter: (value) => statusLabel(value as string) },
+    { field: 'booking_source', header: 'Source', cellRenderer: StatusChipCell },
     {
       field: 'requested_date',
       header: 'Requested',

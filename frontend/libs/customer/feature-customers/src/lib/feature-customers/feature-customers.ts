@@ -4,12 +4,13 @@ import {
   Component,
   ElementRef,
   OnInit,
+  computed,
   inject,
   signal,
   viewChild,
   DestroyRef,
 } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -17,8 +18,10 @@ import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
+import { Popover } from 'primeng/popover';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
+import { Badge } from 'primeng/badge';
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from 'primeng/tabs';
 import { MessageService } from 'primeng/api';
 import {
@@ -29,7 +32,12 @@ import {
   type CustomerResponse,
   type KycDocumentResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, HasPermissionDirective } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  HasPermissionDirective,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -56,8 +64,9 @@ import { TitleCasePipe } from '@angular/common';
 @Component({
   selector: 'lpg-feature-customers',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
     ReactiveFormsModule,
+    FormsModule,
     ButtonDirective,
     ButtonIcon,
     ButtonLabel,
@@ -65,8 +74,10 @@ import { TitleCasePipe } from '@angular/common';
     Drawer,
     IconField,
     InputIcon,
+    Popover,
     Select,
     Tag,
+    Badge,
     Tabs,
     TabList,
     Tab,
@@ -96,6 +107,33 @@ export class FeatureCustomers implements OnInit {
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
 
+  // Client-side filters — the backend's GET /customers only accepts
+  // skip/limit/search (no type/status/kyc_status params), and the whole
+  // list is already loaded on one page, so filtering it in memory is the
+  // real functionality here rather than a bigger backend project.
+  protected readonly filterCustomerType = signal<string | null>(null);
+  protected readonly filterKycStatus = signal<string | null>(null);
+  protected readonly filterAccountStatus = signal<string | null>(null);
+
+  protected readonly activeFilterCount = computed(
+    () =>
+      [this.filterCustomerType(), this.filterKycStatus(), this.filterAccountStatus()].filter(
+        (v) => v !== null,
+      ).length,
+  );
+
+  protected readonly filteredCustomers = computed(() => {
+    const type = this.filterCustomerType();
+    const kyc = this.filterKycStatus();
+    const status = this.filterAccountStatus();
+    return this.customers().filter(
+      (c) =>
+        (!type || c.customer_type === type) &&
+        (!kyc || c.kyc_status === kyc) &&
+        (!status || c.status === status),
+    );
+  });
+
   // Modals Visibility Signals
   protected readonly showDetailDrawer = signal(false);
   protected readonly showAddAddressModal = signal(false);
@@ -114,6 +152,22 @@ export class FeatureCustomers implements OnInit {
     { label: 'Commercial', value: 'commercial' },
     { label: 'Industrial', value: 'industrial' },
     { label: 'Government', value: 'government' },
+  ];
+
+  protected readonly kycStatusFilterOptions = [
+    { label: 'Pending', value: 'pending' },
+    { label: 'Verified', value: 'verified' },
+    { label: 'Rejected', value: 'rejected' },
+    { label: 'Expired', value: 'expired' },
+  ];
+
+  protected readonly accountStatusFilterOptions = [
+    { label: 'Onboarding', value: 'onboarding' },
+    { label: 'Pending approval', value: 'pending_approval' },
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' },
+    { label: 'Blocked', value: 'blocked' },
+    { label: 'Closed', value: 'closed' },
   ];
 
   protected readonly kycDocTypeOptions = [
@@ -136,9 +190,24 @@ export class FeatureCustomers implements OnInit {
       onLinkClick: (row) => this.viewCustomer(row),
     },
     { field: 'phone_number', header: 'Phone', sortable: true },
-    { field: 'customer_type', header: 'Type', sortable: true },
-    { field: 'kyc_status', header: 'KYC Status', sortable: true },
-    { field: 'status', header: 'Account Status', sortable: true },
+    { field: 'customer_type', header: 'Type', sortable: true, cellRenderer: StatusChipCell },
+    { field: 'kyc_status', header: 'KYC Status', sortable: true, cellRenderer: StatusChipCell },
+    {
+      field: 'status',
+      header: 'Account Status',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        severityMap: {
+          onboarding: 'warn',
+          pending_approval: 'warn',
+          active: 'success',
+          inactive: 'secondary',
+          blocked: 'danger',
+          closed: 'danger',
+        },
+      },
+    },
   ];
 
   // Forms
@@ -244,6 +313,12 @@ export class FeatureCustomers implements OnInit {
     const value = (event.target as HTMLInputElement).value;
     this.searchQuery.set(value);
     this.reloadList();
+  }
+
+  protected clearFilters(): void {
+    this.filterCustomerType.set(null);
+    this.filterKycStatus.set(null);
+    this.filterAccountStatus.set(null);
   }
 
   protected async viewCustomer(customer: CustomerResponse) {

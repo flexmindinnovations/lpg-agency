@@ -12,7 +12,7 @@ import { IconField } from 'primeng/iconfield';
 import { Tag } from 'primeng/tag';
 import { Drawer } from 'primeng/drawer';
 import { ButtonDirective } from 'primeng/button';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { InvoiceService, PrintingService, type InvoiceResponse } from '@lpg/shared/data-access';
 
@@ -49,7 +49,22 @@ export class FeatureInvoices implements OnInit {
     { field: 'issued_at', header: 'Date', sortable: true, valueFormatter: (val) => new Date(val as string).toLocaleDateString() },
     { field: 'customer_id', header: 'Customer', sortable: false },
     { field: 'total_amount', header: 'Total Amount', sortable: true, numeric: true, valueFormatter: (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(val)) },
-    { field: 'status', header: 'Status', sortable: true, valueFormatter: (val) => String(val).toUpperCase() },
+    {
+      field: 'status',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        severityMap: {
+          draft: 'secondary',
+          issued: 'info',
+          partially_paid: 'warn',
+          paid: 'success',
+          cancelled: 'danger',
+          refunded: 'danger',
+        },
+      },
+    },
   ];
 
   ngOnInit(): void {

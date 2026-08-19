@@ -31,6 +31,24 @@
   min-block-size: 400px;
 }
 
+.customer-search-field {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 28rem;
+}
+
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  inline-size: 16rem;
+  padding: var(--spacing-xs);
+}
+
+.filter-panel__clear {
+  align-self: flex-start;
+}
+
 .customer-detail-content {
   display: flex;
   flex-direction: column;
