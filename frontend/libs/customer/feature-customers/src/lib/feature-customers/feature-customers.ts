@@ -269,7 +269,7 @@ export class FeatureCustomers implements OnInit {
     if (!customer || this.addressForm.invalid) return;
 
     const { address_line } = this.addressForm.getRawValue();
-    this.customerService.addAddress(customer.id, address_line).subscribe({
+    this.customerService.addAddress(customer.id, { line_1: address_line }).subscribe({
       next: () => {
         this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Address added successfully.' });
         this.closeAddAddressModal();

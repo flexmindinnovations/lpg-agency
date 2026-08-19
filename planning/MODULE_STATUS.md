@@ -108,12 +108,38 @@ object) in `order-detail.html`, `feature-dispatch.html` and the mobile
 reads `line_1`. Four of the six frontend hits were false alarms — the two real
 ones only surface by checking each against the generated model.
 
-**Follow-up, not fixed (R12):** the onboarding wizard collects structured
-address fields and then flattens all eight into a single `line_1` string before
-calling `addAddress`, which accepts only one line. That discards exactly the
-structure `de17b27d462e` was written to introduce, and defeats any future
-routing or pincode-based feature. Fixing it means widening the
-`CustomerService.addAddress` signature.
+**Follow-up ✅ RESOLVED (R12, 2026-08-18):** the onboarding wizard collected
+structured address fields and then flattened all eight into a single
+`line_1` string before calling `addAddress`, which only ever sent one line —
+discarding exactly the structure `de17b27d462e` was written to introduce,
+and defeating any future routing or pincode-based feature. The backend
+already accepted the full structured payload (`AddCustomerAddressRequest`
+has `line_1`/`line_2`/`landmark`/`area`/`city`/`district`/`state`/`pincode`/
+`address_type`, confirmed against the generated OpenAPI model — no backend
+change needed), so this was purely a frontend gap. Widened
+`CustomerService.addAddress(customerId, addressLine, lat?, lng?)` to
+`addAddress(customerId, address: AddCustomerAddressRequest)`, updated the
+onboarding wizard to pass its already-collected `addrData` fields directly
+instead of string-concatenating them (also recovering `address_type`,
+which the concatenation had silently dropped entirely — not even present
+in the flattened string). The other call site
+(`feature-customers.ts`'s simpler single-field "Add Address" modal) maps
+its one `address_line` control to `{ line_1: address_line }`, unchanged
+behavior. Confirmed no mobile equivalent of this bug — `customer_app`'s own
+`add_address_screen.dart` already sends structured fields
+(`line1`/`line2`/…) via its own separate `customer_api.dart`.
+
+Verified: `npx nx build dashboard` succeeds (TypeScript checks the new
+payload against the generated `AddCustomerAddressRequest` interface, which
+mirrors the backend's real Pydantic schema). `npx nx run-many -t lint` and
+`-t test` for `customer-feature-customers`/`shared-data-access` — clean,
+9/9 passing. **Not live-browser-verified** — login automation in this
+session's browser tooling didn't get past the sign-in form (the reactive
+form wasn't picking up programmatically-set input despite correct DOM
+values, and a direct API login call was blocked); noting this explicitly
+rather than claiming a UI walkthrough that didn't happen. The fix's
+correctness rests on the type-checked contract match against the
+already-tested backend endpoint, not a live click-through.
 
 ### C2 — Clean Architecture contracts (2 of 5 broken) ✅ RESOLVED (R5, 2026-08-18)
 
@@ -653,7 +679,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R4** — Frontend tests → **done 2026-08-18**, 0 of 25 projects fail (was 6). Three defect classes: a `jest.config.cts` `transformIgnorePatterns` gap on 6 projects (4 actually failing), TestBed provider gaps never caught because those specs never previously ran to completion, and two independent stale-assertion / missing-provider bugs surfaced once unblocked (`dashboard`, `shared-data-access`). Full writeup in C12
 - [x] **R5** — C2 import contracts → **done 2026-08-18**, 0 of 5 contracts broken (was 2). New `TenantSlugResolver` port replaces `routers/auth.py`'s raw `text()`; `ComplaintRepository`/`InAppNotificationRepository` gained list/count methods and proper DI wiring replacing two routers' raw-session hacks; 11 composition-root-shaped edges added to `ignore_imports`; `connection_manager.py`'s FastAPI import inverted into a local `Protocol`. Full writeup in C2
 - [x] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder → **done 2026-08-18**, 481→73 errors, mypy 2→0. Found and fixed 3 real pre-existing bugs while triaging (leaked debug text in a 403 message, a QR-code `size` param silently ignored, an employee list `status` filter accepted but never applied at any layer) and caught+reverted a real regression `ruff --unsafe-fixes` introduced (SQLAlchemy/Pydantic runtime annotation resolution, same footgun class as FastAPI's `Depends()` — now a real `pyproject.toml` exemption for `schemas/*.py`, not just a comment). Full writeup in C5
-- [ ] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress`
+- [x] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress` → **done 2026-08-18**, widened `CustomerService.addAddress` to accept the full structured payload the backend already supported; also recovered `address_type`, which the old flattening dropped entirely. Not live-browser-verified (login automation friction) — full writeup in C1
 - [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees

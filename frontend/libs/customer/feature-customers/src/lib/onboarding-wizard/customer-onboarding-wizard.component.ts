@@ -170,10 +170,17 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       if (customer) {
         // 2. Add full Address
         await this.customerService
-          .addAddress(
-            customer.id,
-            `${addrData.line_1} ${addrData.line_2}, ${addrData.landmark}, ${addrData.area}, ${addrData.city}, ${addrData.district}, ${addrData.state}, ${addrData.pincode}`,
-          )
+          .addAddress(customer.id, {
+            address_type: addrData.address_type,
+            line_1: addrData.line_1,
+            line_2: addrData.line_2 || undefined,
+            landmark: addrData.landmark || undefined,
+            area: addrData.area,
+            city: addrData.city,
+            district: addrData.district,
+            state: addrData.state,
+            pincode: addrData.pincode,
+          })
           .toPromise();
 
         // 3. Submit KYC

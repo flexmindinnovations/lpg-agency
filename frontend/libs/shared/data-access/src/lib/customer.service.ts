@@ -12,6 +12,7 @@ import { setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut }
 import { submitKycApiV1CustomersCustomerIdKycPost } from './generated/fn/customers/submit-kyc-api-v-1-customers-customer-id-kyc-post';
 import { updateCustomerProfileApiV1CustomersCustomerIdPut } from './generated/fn/customers/update-customer-profile-api-v-1-customers-customer-id-put';
 import { verifyKycApiV1CustomersCustomerIdKycDocIdVerifyPost } from './generated/fn/customers/verify-kyc-api-v-1-customers-customer-id-kyc-doc-id-verify-post';
+import type { AddCustomerAddressRequest } from './generated/models/add-customer-address-request';
 import type { CustomerResponse } from './generated/models/customer-response';
 import type { CustomerPageResponse } from './generated/models/customer-page-response';
 import type { KycDocumentListResponse } from './generated/models/kyc-document-list-response';
@@ -58,19 +59,10 @@ export class CustomerService {
     }).pipe(map((res) => res.body));
   }
 
-  addAddress(
-    customerId: string,
-    addressLine: string,
-    latitude?: number,
-    longitude?: number,
-  ): Observable<string> {
+  addAddress(customerId: string, address: AddCustomerAddressRequest): Observable<string> {
     return addAddressApiV1CustomersCustomerIdAddressesPost(this.http, this.config.rootUrl, {
       customer_id: customerId,
-      body: {
-        line_1: addressLine,
-        latitude,
-        longitude,
-      },
+      body: address,
     }).pipe(map((res) => res.body));
   }
 
