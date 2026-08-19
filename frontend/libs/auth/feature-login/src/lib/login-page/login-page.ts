@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { FloatLabel } from 'primeng/floatlabel';
 import { InputText } from 'primeng/inputtext';
-import { Password } from 'primeng/password';
+import { InputPassword } from 'primeng/inputpassword';
 import { Message } from 'primeng/message';
 import { AuthService, type AppError } from '@lpg/shared/data-access';
 import { AuthShell } from '../auth-shell/auth-shell';
@@ -42,7 +42,7 @@ function errorMessageFor(error: unknown): string {
     ButtonDirective,
     FloatLabel,
     InputText,
-    Password,
+    InputPassword,
     Message,
     AuthShell,
   ],
@@ -80,13 +80,13 @@ function errorMessageFor(error: unknown): string {
 
           <div class="form-group">
             <p-floatlabel variant="on" class="login-card__float-label">
-              <p-password
-                inputId="login-password"
+              <input
+                pInputPassword
+                id="login-password"
+                type="password"
                 formControlName="password"
-                [toggleMask]="true"
-                [feedback]="false"
                 autocomplete="current-password"
-                [inputStyle]="{ width: '100%' }"
+                class="login-card__input"
                 [attr.aria-invalid]="passwordInvalid()"
               />
               <label for="login-password">Password</label>
@@ -101,7 +101,9 @@ function errorMessageFor(error: unknown): string {
           <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
             {{ submitting() ? 'Signing in…' : 'Sign in' }}
           </button>
-          <a class="login-card__forgot" routerLink="/login/forgot-password">Forgot your password?</a>
+          <a class="login-card__forgot" routerLink="/login/forgot-password"
+            >Forgot your password?</a
+          >
         </div>
       </form>
     </lpg-auth-shell>

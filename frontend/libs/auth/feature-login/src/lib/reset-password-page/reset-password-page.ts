@@ -9,7 +9,7 @@ import {
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { FloatLabel } from 'primeng/floatlabel';
-import { Password } from 'primeng/password';
+import { InputPassword } from 'primeng/inputpassword';
 import { Message } from 'primeng/message';
 import { AuthService, type AppError } from '@lpg/shared/data-access';
 import { AuthShell } from '../auth-shell/auth-shell';
@@ -48,7 +48,7 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
     RouterLink,
     ButtonDirective,
     FloatLabel,
-    Password,
+    InputPassword,
     Message,
     AuthShell,
   ],
@@ -84,12 +84,13 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
           <div class="login-card__body">
             <div class="form-group">
               <p-floatlabel variant="on" class="login-card__float-label">
-                <p-password
-                  inputId="reset-new-password"
+                <input
+                  pInputPassword
+                  id="reset-new-password"
+                  type="password"
                   formControlName="newPassword"
-                  [toggleMask]="true"
                   autocomplete="new-password"
-                  [inputStyle]="{ width: '100%' }"
+                  class="login-card__input"
                 />
                 <label for="reset-new-password">New password</label>
               </p-floatlabel>
@@ -97,13 +98,13 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 
             <div class="form-group">
               <p-floatlabel variant="on" class="login-card__float-label">
-                <p-password
-                  inputId="reset-confirm-password"
+                <input
+                  pInputPassword
+                  id="reset-confirm-password"
+                  type="password"
                   formControlName="confirmPassword"
-                  [toggleMask]="true"
-                  [feedback]="false"
                   autocomplete="new-password"
-                  [inputStyle]="{ width: '100%' }"
+                  class="login-card__input"
                 />
                 <label for="reset-confirm-password">Confirm new password</label>
               </p-floatlabel>
@@ -154,6 +155,10 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
       .login-card__float-label {
         display: block;
         inline-size: 100%;
+      }
+
+      .login-card__input {
+        width: 100%;
       }
 
       .login-card__footer {
