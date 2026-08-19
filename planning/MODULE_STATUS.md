@@ -973,7 +973,7 @@ sequence re-run and confirmed green.
 
 Sequenced by gate-failures-cleared per unit of work, not by module number.
 
-- [ ] **R0** — Commit the working tree, so later fixes stay separable from in-flight work
+- [x] **R0** — Commit the working tree → **done 2026-08-19** — only remaining dirty file was a stale, unreferenced top-level `backend/openapi.json` snapshot; committed as-is (the real committed contract is `backend/openapi/openapi.json`)
 - [x] **R1** — C1 fixture drift → **done 2026-08-18**, cleared 11 of 18; frontend follow-up cleared 2 more sites (blank dropdown, dead wizard field)
 - [x] **R11** — C9 restore permissions for newly-created users → **done 2026-08-18**, plus C10 (see below) and 4 test-infra defects found while closing it out
 - [x] **R13** — `GET /admin/tenant` had no permission dependency → **done 2026-08-18**, added `tenant:read` (super_admin/agency_admin/manager/dispatcher), backfilled existing users, gated the endpoint. `tests/integration`: 253/253 passing, 0 failed
