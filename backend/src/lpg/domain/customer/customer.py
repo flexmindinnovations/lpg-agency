@@ -10,6 +10,7 @@ from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolatio
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from decimal import Decimal
 
 # Regex for E.164 phone format validation (+ followed by 10 to 15 digits)
 _E164_PHONE_REGEX = re.compile(r"^\+[1-9]\d{9,14}$")
@@ -69,6 +70,22 @@ class CustomerApproved(DomainEvent):
     customer_id: uuid.UUID
     approved_by: uuid.UUID
     consumer_number: str
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionClosed(DomainEvent):
+    """Fired when a customer's connection is closed for good (BR-34).
+
+    `final_ledger_balance` is supplied by the use case, not computed here —
+    the domain layer has no visibility into `accounting.invoice` data. It is
+    the customer's outstanding balance (unpaid issued invoices) at the
+    moment of closure, for Accounting/Cylinder Ledger settlement.
+    """
+
+    customer_id: uuid.UUID
+    tenant_id: uuid.UUID
+    closed_at: datetime
+    final_ledger_balance: Decimal
 
 
 class CustomerAddress:
@@ -381,6 +398,31 @@ class Customer(AggregateRoot):
                 customer_id=self.id,
                 old_status=old_status,
                 new_status=new_status,
+            )
+        )
+
+    def close_connection(self, final_ledger_balance: Decimal) -> None:
+        """Close this connection for good (BR-34, D-21).
+
+        `change_status`'s own terminal-state guard only blocks *reactivating*
+        a closed connection (`new_status != "closed"`) — closing an
+        already-closed one again would silently pass it and re-fire both
+        events with a freshly (re)computed balance. Guarded explicitly here
+        instead, matching how every other terminal state in this codebase
+        (`Employee`'s `inactive`, `Order`'s `cancelled`/`closed`) rejects
+        *any* further transition, not just reactivation.
+        """
+        if self._status == "closed":
+            msg = "Connection is already closed."
+            raise InvariantViolation(msg, customer_id=str(self.id))
+
+        self.change_status("closed")
+        self.record_event(
+            ConnectionClosed(
+                customer_id=self.id,
+                tenant_id=self._tenant_id,
+                closed_at=datetime.now(UTC),
+                final_ledger_balance=final_ledger_balance,
             )
         )
 

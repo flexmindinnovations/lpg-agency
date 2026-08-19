@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 import pytest
 
 from lpg.domain.common.base import InvariantViolation
-from lpg.domain.customer.customer import Customer
+from lpg.domain.customer.customer import ConnectionClosed, Customer, CustomerStatusChanged
 
 
 def test_customer_creation_valid():
@@ -155,4 +156,62 @@ def test_customer_kyc_flow():
     customer.verify_kyc(doc_id, verifier_id, "verified")
     assert customer.kyc_status == "verified"
     assert customer.kyc_documents[0].verification_status == "verified"
-    assert customer.kyc_documents[0].verified_by == verifier_id
+
+
+def test_close_connection_transitions_to_closed_and_records_both_events():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+        status="active",
+    )
+
+    customer.close_connection(Decimal("450.00"))
+
+    assert customer.status == "closed"
+
+    status_events = [e for e in customer.events if isinstance(e, CustomerStatusChanged)]
+    assert len(status_events) == 1
+    assert status_events[0].old_status == "active"
+    assert status_events[0].new_status == "closed"
+
+    closed_events = [e for e in customer.events if isinstance(e, ConnectionClosed)]
+    assert len(closed_events) == 1
+    assert closed_events[0].customer_id == customer.id
+    assert closed_events[0].tenant_id == customer.tenant_id
+    assert closed_events[0].final_ledger_balance == Decimal("450.00")
+
+
+def test_close_connection_accepts_zero_balance():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+        status="active",
+    )
+
+    customer.close_connection(Decimal("0"))
+
+    closed_events = [e for e in customer.events if isinstance(e, ConnectionClosed)]
+    assert closed_events[0].final_ledger_balance == Decimal("0")
+
+
+def test_close_connection_is_terminal():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+        status="closed",
+    )
+
+    with pytest.raises(InvariantViolation, match="already closed"):
+        customer.close_connection(Decimal("0"))

@@ -7,15 +7,24 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from lpg.application.common.cqrs import Query
+from lpg.application.common.cqrs import Command, Query
+from lpg.application.common.errors import NotFoundError, ValidationError
 from lpg.config.logging import get_logger
+from lpg.domain.accounting.cash_handover import CashHandover
+from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import Invoice, InvoiceLine
 from lpg.domain.tenant.tenant_configuration import TenantConfigurationResolver
 
 if TYPE_CHECKING:
     import datetime
 
-    from lpg.application.accounting.ports import InvoiceRepository
+    from lpg.application.accounting.ports import (
+        CashHandoverRepository,
+        CreditNoteRepository,
+        InvoiceRepository,
+    )
+    from lpg.application.common.ports import UnitOfWork
+    from lpg.application.delivery.ports import RouteRepository
     from lpg.application.order.ports import OrderRepository
     from lpg.application.tenant.ports import TenantConfigurationRepository
 
@@ -154,3 +163,171 @@ class ListInvoicesUseCase:
             status=query.status,
         )
         return items, total
+
+
+@dataclass(frozen=True, slots=True)
+class RecordPaymentCommand(Command):
+    invoice_id: uuid.UUID
+    method: str
+    amount: Decimal
+    collected_by: uuid.UUID
+    collected_at: datetime.datetime
+
+
+class RecordPaymentUseCase:
+    """BR-18, D-11."""
+
+    def __init__(self, repository: InvoiceRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RecordPaymentCommand) -> Invoice:
+        invoice = await self._repository.get_by_id(command.invoice_id)
+        if invoice is None:
+            msg = f"No invoice visible with id {command.invoice_id}."
+            raise NotFoundError(msg, invoice_id=str(command.invoice_id))
+
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method=command.method,
+            amount=command.amount,
+            collected_by=command.collected_by,
+            collected_at=command.collected_at,
+        )
+
+        await self._repository.save(invoice)
+        await self._unit_of_work.commit()
+        return invoice
+
+
+@dataclass(frozen=True, slots=True)
+class DeclareCashHandoverCommand(Command):
+    driver_id: uuid.UUID
+    route_id: uuid.UUID
+    actual_amount: Decimal
+    declared_by: uuid.UUID
+
+
+class DeclareCashHandoverUseCase:
+    """BR-32. `expected_amount` is computed from real
+    `orders.proof_of_delivery` data, not entered by hand."""
+
+    def __init__(
+        self,
+        cash_handover_repository: CashHandoverRepository,
+        route_repository: RouteRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._cash_handover_repository = cash_handover_repository
+        self._route_repository = route_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: DeclareCashHandoverCommand) -> CashHandover:
+        route = await self._route_repository.get_by_id(command.route_id)
+        # Same "don't distinguish not-found from not-yours" reasoning
+        # `NotFoundError`'s own docstring gives for cross-tenant records —
+        # extended here to cross-driver ones.
+        if route is None or route.driver_id != command.driver_id:
+            msg = f"No route visible with id {command.route_id} for this driver."
+            raise NotFoundError(msg, route_id=str(command.route_id))
+
+        expected_amount = await self._cash_handover_repository.get_expected_cash_for_route(
+            command.route_id
+        )
+
+        handover = CashHandover.declare(
+            cash_handover_id=self._cash_handover_repository.next_id(),
+            tenant_id=route.tenant_id,
+            driver_id=command.driver_id,
+            route_id=command.route_id,
+            expected_amount=expected_amount,
+            actual_amount=command.actual_amount,
+            declared_by=command.declared_by,
+        )
+
+        await self._cash_handover_repository.add(handover)
+        await self._unit_of_work.commit()
+        return handover
+
+
+@dataclass(frozen=True, slots=True)
+class RequestRefundCommand(Command):
+    invoice_id: uuid.UUID
+    amount: Decimal
+    reason: str
+    requested_by: uuid.UUID
+
+
+class RequestRefundUseCase:
+    """BR-20. `amount` must not exceed the invoice's actual `amount_paid`
+    — validated here, since `CreditNote` has no visibility into `Invoice`.
+    """
+
+    def __init__(
+        self,
+        credit_note_repository: CreditNoteRepository,
+        invoice_repository: InvoiceRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._credit_note_repository = credit_note_repository
+        self._invoice_repository = invoice_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RequestRefundCommand) -> CreditNote:
+        invoice = await self._invoice_repository.get_by_id(command.invoice_id)
+        if invoice is None:
+            msg = f"No invoice visible with id {command.invoice_id}."
+            raise NotFoundError(msg, invoice_id=str(command.invoice_id))
+
+        if command.amount > invoice.amount_paid:
+            msg = (
+                f"Refund amount {command.amount} exceeds this invoice's "
+                f"amount paid ({invoice.amount_paid})."
+            )
+            raise ValidationError(msg, invoice_id=str(command.invoice_id))
+
+        credit_note = CreditNote.request(
+            credit_note_id=self._credit_note_repository.next_id(),
+            tenant_id=invoice.tenant_id,
+            invoice_id=invoice.id,
+            amount=command.amount,
+            reason=command.reason,
+            requested_by=command.requested_by,
+        )
+
+        await self._credit_note_repository.add(credit_note)
+        await self._unit_of_work.commit()
+        return credit_note
+
+
+@dataclass(frozen=True, slots=True)
+class ApproveRefundCommand(Command):
+    invoice_id: uuid.UUID
+    credit_note_id: uuid.UUID
+    approved_by: uuid.UUID
+
+
+class ApproveRefundUseCase:
+    """BR-20."""
+
+    def __init__(
+        self, credit_note_repository: CreditNoteRepository, unit_of_work: UnitOfWork
+    ) -> None:
+        self._credit_note_repository = credit_note_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ApproveRefundCommand) -> CreditNote:
+        credit_note = await self._credit_note_repository.get_by_id(command.credit_note_id)
+        # Same "don't distinguish not-found from not-yours" reasoning
+        # `NotFoundError`'s own docstring gives for cross-tenant records —
+        # extended here to the nested-resource URL's `invoice_id` not
+        # actually owning this credit note.
+        if credit_note is None or credit_note.invoice_id != command.invoice_id:
+            msg = f"No credit note visible with id {command.credit_note_id} on this invoice."
+            raise NotFoundError(msg, credit_note_id=str(command.credit_note_id))
+
+        credit_note.approve(command.approved_by)
+
+        await self._credit_note_repository.save(credit_note)
+        await self._unit_of_work.commit()
+        return credit_note

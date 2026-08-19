@@ -89,6 +89,8 @@ export type { PasswordResetApiV1AuthPasswordResetPost$Params as PasswordResetApi
 export { passwordResetApiV1AuthPasswordResetPost as passwordResetApiV1AuthPasswordResetPost } from './fn/authentication/password-reset-api-v-1-auth-password-reset-post';
 export type { RefreshApiV1AuthRefreshPost$Params as RefreshApiV1AuthRefreshPost$Params } from './fn/authentication/refresh-api-v-1-auth-refresh-post';
 export { refreshApiV1AuthRefreshPost as refreshApiV1AuthRefreshPost } from './fn/authentication/refresh-api-v-1-auth-refresh-post';
+export type { DeclareCashHandoverApiV1CashHandoversPost$Params as DeclareCashHandoverApiV1CashHandoversPost$Params } from './fn/cash-handovers/declare-cash-handover-api-v-1-cash-handovers-post';
+export { declareCashHandoverApiV1CashHandoversPost as declareCashHandoverApiV1CashHandoversPost } from './fn/cash-handovers/declare-cash-handover-api-v-1-cash-handovers-post';
 export type { ListComplaintsApiV1ComplaintsGet$Params as ListComplaintsApiV1ComplaintsGet$Params } from './fn/complaints/list-complaints-api-v-1-complaints-get';
 export { listComplaintsApiV1ComplaintsGet as listComplaintsApiV1ComplaintsGet } from './fn/complaints/list-complaints-api-v-1-complaints-get';
 export type { RaiseComplaintApiV1ComplaintsPost$Params as RaiseComplaintApiV1ComplaintsPost$Params } from './fn/complaints/raise-complaint-api-v-1-complaints-post';
@@ -117,6 +119,8 @@ export type { SetPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimary
 export { setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut as setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut } from './fn/customers/set-primary-address-api-v-1-customers-customer-id-addresses-address-id-primary-put';
 export type { ApproveCustomerApiV1CustomersCustomerIdApprovePost$Params as ApproveCustomerApiV1CustomersCustomerIdApprovePost$Params } from './fn/customers/approve-customer-api-v-1-customers-customer-id-approve-post';
 export { approveCustomerApiV1CustomersCustomerIdApprovePost as approveCustomerApiV1CustomersCustomerIdApprovePost } from './fn/customers/approve-customer-api-v-1-customers-customer-id-approve-post';
+export type { CloseCustomerConnectionApiV1CustomersCustomerIdClosePost$Params as CloseCustomerConnectionApiV1CustomersCustomerIdClosePost$Params } from './fn/customers/close-customer-connection-api-v-1-customers-customer-id-close-post';
+export { closeCustomerConnectionApiV1CustomersCustomerIdClosePost as closeCustomerConnectionApiV1CustomersCustomerIdClosePost } from './fn/customers/close-customer-connection-api-v-1-customers-customer-id-close-post';
 export type { ListKycDocumentsApiV1CustomersCustomerIdKycGet$Params as ListKycDocumentsApiV1CustomersCustomerIdKycGet$Params } from './fn/customers/list-kyc-documents-api-v-1-customers-customer-id-kyc-get';
 export { listKycDocumentsApiV1CustomersCustomerIdKycGet as listKycDocumentsApiV1CustomersCustomerIdKycGet } from './fn/customers/list-kyc-documents-api-v-1-customers-customer-id-kyc-get';
 export type { SubmitKycApiV1CustomersCustomerIdKycPost$Params as SubmitKycApiV1CustomersCustomerIdKycPost$Params } from './fn/customers/submit-kyc-api-v-1-customers-customer-id-kyc-post';
@@ -175,6 +179,12 @@ export type { ListInvoicesApiV1InvoicesGet$Params as ListInvoicesApiV1InvoicesGe
 export { listInvoicesApiV1InvoicesGet as listInvoicesApiV1InvoicesGet } from './fn/invoices/list-invoices-api-v-1-invoices-get';
 export type { GetInvoiceApiV1InvoicesInvoiceIdGet$Params as GetInvoiceApiV1InvoicesInvoiceIdGet$Params } from './fn/invoices/get-invoice-api-v-1-invoices-invoice-id-get';
 export { getInvoiceApiV1InvoicesInvoiceIdGet as getInvoiceApiV1InvoicesInvoiceIdGet } from './fn/invoices/get-invoice-api-v-1-invoices-invoice-id-get';
+export type { RecordPaymentApiV1InvoicesInvoiceIdPaymentsPost$Params as RecordPaymentApiV1InvoicesInvoiceIdPaymentsPost$Params } from './fn/invoices/record-payment-api-v-1-invoices-invoice-id-payments-post';
+export { recordPaymentApiV1InvoicesInvoiceIdPaymentsPost as recordPaymentApiV1InvoicesInvoiceIdPaymentsPost } from './fn/invoices/record-payment-api-v-1-invoices-invoice-id-payments-post';
+export type { RequestRefundApiV1InvoicesInvoiceIdRefundsPost$Params as RequestRefundApiV1InvoicesInvoiceIdRefundsPost$Params } from './fn/invoices/request-refund-api-v-1-invoices-invoice-id-refunds-post';
+export { requestRefundApiV1InvoicesInvoiceIdRefundsPost as requestRefundApiV1InvoicesInvoiceIdRefundsPost } from './fn/invoices/request-refund-api-v-1-invoices-invoice-id-refunds-post';
+export type { ApproveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost$Params as ApproveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost$Params } from './fn/invoices/approve-refund-api-v-1-invoices-invoice-id-refunds-credit-note-id-approve-post';
+export { approveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost as approveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost } from './fn/invoices/approve-refund-api-v-1-invoices-invoice-id-refunds-credit-note-id-approve-post';
 export type { ListNotificationsApiV1NotificationsGet$Params as ListNotificationsApiV1NotificationsGet$Params } from './fn/notifications/list-notifications-api-v-1-notifications-get';
 export { listNotificationsApiV1NotificationsGet as listNotificationsApiV1NotificationsGet } from './fn/notifications/list-notifications-api-v-1-notifications-get';
 export type { MarkAllReadApiV1NotificationsReadAllPost$Params as MarkAllReadApiV1NotificationsReadAllPost$Params } from './fn/notifications/mark-all-read-api-v-1-notifications-read-all-post';

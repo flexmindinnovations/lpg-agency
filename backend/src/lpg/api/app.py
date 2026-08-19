@@ -24,6 +24,7 @@ from lpg.api.middleware.problem_details import register_exception_handlers
 from lpg.api.v1.routers import (
     admin,
     auth,
+    cash_handover,
     complaint,
     customer,
     cylinder_ledger,
@@ -298,6 +299,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(route.router, prefix=settings.api_v1_prefix)
     app.include_router(dashboard.router, prefix=settings.api_v1_prefix)
     app.include_router(invoice.router, prefix=settings.api_v1_prefix)
+    app.include_router(cash_handover.router, prefix=settings.api_v1_prefix)
     app.include_router(complaint.router, prefix=settings.api_v1_prefix)
     app.include_router(printing.router, prefix=settings.api_v1_prefix)
     app.include_router(reporting.router, prefix=settings.api_v1_prefix)

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from lpg.application.common.errors import ConflictError
+from lpg.application.common.errors import ConflictError, NotFoundError
 from lpg.application.customer.use_cases import (
     AddCustomerAddressCommand,
     AddCustomerAddressUseCase,
+    CloseCustomerConnectionCommand,
+    CloseCustomerConnectionUseCase,
     RegisterCustomerCommand,
     RegisterCustomerUseCase,
     SubmitKycDocumentCommand,
@@ -151,3 +154,45 @@ async def test_verify_kyc(mock_repo, mock_uow):
 
     await use_case.execute(command)
     assert customer.kyc_status == "verified"
+
+
+@pytest.fixture
+def mock_invoice_repo():
+    repo = MagicMock()
+    repo.get_outstanding_balance = AsyncMock(return_value=Decimal("0"))
+    return repo
+
+
+async def test_close_customer_connection_success(mock_repo, mock_invoice_repo, mock_uow):
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-123",
+        full_name="Jane Doe",
+        phone_number="+1234567890",
+        status="active",
+    )
+    mock_repo.get_by_id.return_value = customer
+    mock_invoice_repo.get_outstanding_balance = AsyncMock(return_value=Decimal("275.50"))
+    use_case = CloseCustomerConnectionUseCase(mock_repo, mock_invoice_repo, mock_uow)
+
+    await use_case.execute(CloseCustomerConnectionCommand(customer_id=customer.id))
+
+    assert customer.status == "closed"
+    mock_invoice_repo.get_outstanding_balance.assert_called_once_with(customer.id)
+    mock_repo.save.assert_called_once_with(customer)
+    mock_uow.commit.assert_called_once()
+
+
+async def test_close_customer_connection_raises_when_not_found(
+    mock_repo, mock_invoice_repo, mock_uow
+):
+    mock_repo.get_by_id.return_value = None
+    use_case = CloseCustomerConnectionUseCase(mock_repo, mock_invoice_repo, mock_uow)
+
+    with pytest.raises(NotFoundError):
+        await use_case.execute(CloseCustomerConnectionCommand(customer_id=uuid.uuid4()))
+
+    mock_repo.save.assert_not_called()
+    mock_uow.commit.assert_not_called()

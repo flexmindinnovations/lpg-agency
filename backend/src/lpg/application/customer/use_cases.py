@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     import datetime
     import uuid
 
+    from lpg.application.accounting.ports import InvoiceRepository
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.customer.ports import ConsumerNumberSequence, CustomerRepository
 
@@ -344,6 +345,42 @@ class ApproveCustomerUseCase:
             raise DuplicateConsumerNumberError(msg, consumer_number=consumer_number)
 
         customer.approve(approved_by=command.approved_by, consumer_number=consumer_number)
+
+        await self._repository.save(customer)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class CloseCustomerConnectionCommand(Command):
+    customer_id: uuid.UUID
+
+
+class CloseCustomerConnectionUseCase:
+    """BR-34 / D-21. `final_ledger_balance` is computed here, from real
+    `accounting.invoice` data, then handed to the aggregate — `Customer`
+    itself has no visibility into invoices (Clean Architecture layering).
+    """
+
+    def __init__(
+        self,
+        repository: CustomerRepository,
+        invoice_repository: InvoiceRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._repository = repository
+        self._invoice_repository = invoice_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: CloseCustomerConnectionCommand) -> None:
+        customer = await self._repository.get_by_id(command.customer_id)
+        if customer is None:
+            msg = f"No customer visible with id {command.customer_id}."
+            raise NotFoundError(msg, customer_id=str(command.customer_id))
+
+        final_ledger_balance = await self._invoice_repository.get_outstanding_balance(
+            command.customer_id
+        )
+        customer.close_connection(final_ledger_balance)
 
         await self._repository.save(customer)
         await self._unit_of_work.commit()

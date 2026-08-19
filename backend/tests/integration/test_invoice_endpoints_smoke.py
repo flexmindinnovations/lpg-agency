@@ -353,3 +353,278 @@ class TestInvoiceEndpointsThroughTheRealStack:
 
         response = await real_lifespan_client.get("/api/v1/invoices", headers=headers)
         assert response.status_code == 403, response.text
+
+    async def test_record_partial_then_full_payment_moves_status_to_paid(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """R10 (`PaymentCollected`) end to end, through the real dispatch
+        path fixed alongside it — proves both the new
+        `invoices:record_payment` permission grant and `Invoice.
+        record_payment()`'s partial-then-full status transition survive a
+        real round trip through the database.
+        """
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="accountant",
+            tenant_name="Invoice Smoke Tenant (payment)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        first_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "upi", "amount": "300.00"},
+        )
+        assert first_response.status_code == 201, first_response.text
+        first_body = first_response.json()
+        assert first_body["status"] == "partially_paid"
+        assert first_body["amount_paid"] == "300.00"
+        assert len(first_body["payments"]) == 1
+
+        second_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "cash", "amount": "200.00"},
+        )
+        assert second_response.status_code == 201, second_response.text
+        second_body = second_response.json()
+        assert second_body["status"] == "paid"
+        assert second_body["amount_paid"] == "500.00"
+        assert len(second_body["payments"]) == 2
+
+        get_response = await real_lifespan_client.get(
+            f"/api/v1/invoices/{invoice_id}", headers=headers
+        )
+        assert get_response.status_code == 200, get_response.text
+        assert get_response.json()["status"] == "paid"
+
+    async def test_record_payment_rejects_overpayment(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="accountant",
+            tenant_name="Invoice Smoke Tenant (overpay)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "cash", "amount": "999.00"},
+        )
+        assert response.status_code == 409, response.text
+
+    async def test_record_payment_denied_without_permission(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """`dispatcher` holds neither `invoices:read` nor
+        `invoices:record_payment`."""
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="dispatcher",
+            tenant_name="Invoice Smoke Tenant (payment denied)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "cash", "amount": "1.00"},
+        )
+        assert response.status_code == 403, response.text
+
+    async def test_request_and_approve_refund_full_flow(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """R10 (`RefundApproved`) end to end — request against a paid
+        invoice, then approve, proving both new permission grants
+        (`credit_notes:request`, `credit_notes:approve`) and the
+        invoice_id-ownership check on the approve endpoint.
+        """
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Invoice Smoke Tenant (refund)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        payment_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "cash", "amount": "500.00"},
+        )
+        assert payment_response.status_code == 201, payment_response.text
+
+        request_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/refunds",
+            headers=headers,
+            json={"amount": "150.00", "reason": "Damaged cylinder returned."},
+        )
+        assert request_response.status_code == 201, request_response.text
+        credit_note = request_response.json()
+        assert credit_note["is_approved"] is False
+        assert credit_note["amount"] == "150.00"
+
+        approve_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/refunds/{credit_note['id']}/approve",
+            headers=headers,
+        )
+        assert approve_response.status_code == 200, approve_response.text
+        approved_body = approve_response.json()
+        assert approved_body["is_approved"] is True
+        assert approved_body["approved_by"] is not None
+
+    async def test_request_refund_rejects_amount_exceeding_amount_paid(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Invoice Smoke Tenant (refund overclaim)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        payment_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "cash", "amount": "100.00"},
+        )
+        assert payment_response.status_code == 201, payment_response.text
+
+        response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/refunds",
+            headers=headers,
+            json={"amount": "200.00", "reason": "n/a"},
+        )
+        assert response.status_code == 422, response.text
+
+    async def test_refund_endpoints_denied_without_permission(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """`dispatcher` holds neither `credit_notes:request` nor
+        `credit_notes:approve`."""
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="dispatcher",
+            tenant_name="Invoice Smoke Tenant (refund denied)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/refunds",
+            headers=headers,
+            json={"amount": "1.00", "reason": "n/a"},
+        )
+        assert response.status_code == 403, response.text
+
+    async def test_approve_refund_denied_for_accountant(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """`credit_notes:approve` deliberately excludes `accountant`
+        (narrower than `credit_notes:request`, mirroring `orders:cancel_
+        approve`'s request-vs-approve split)."""
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@invoice-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="accountant",
+            tenant_name="Invoice Smoke Tenant (approve denied)",
+        )
+        invoice_id = await _seed_invoice(admin_engine_lpg_test, tenant_id=tenant_id)
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        payment_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/payments",
+            headers=headers,
+            json={"method": "cash", "amount": "500.00"},
+        )
+        assert payment_response.status_code == 201, payment_response.text
+
+        request_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/refunds",
+            headers=headers,
+            json={"amount": "50.00", "reason": "n/a"},
+        )
+        assert request_response.status_code == 201, request_response.text
+        credit_note_id = request_response.json()["id"]
+
+        approve_response = await real_lifespan_client.post(
+            f"/api/v1/invoices/{invoice_id}/refunds/{credit_note_id}/approve",
+            headers=headers,
+        )
+        assert approve_response.status_code == 403, approve_response.text

@@ -13,13 +13,24 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lpg.application.accounting.use_cases import (
+    ApproveRefundCommand,
+    ApproveRefundUseCase,
+    DeclareCashHandoverCommand,
+    DeclareCashHandoverUseCase,
     GenerateInvoiceForOrderUseCase,
     GetInvoiceQuery,
     GetInvoiceUseCase,
     ListInvoicesQuery,
     ListInvoicesUseCase,
+    RecordPaymentCommand,
+    RecordPaymentUseCase,
+    RequestRefundCommand,
+    RequestRefundUseCase,
 )
-from lpg.domain.accounting.invoice import Invoice
+from lpg.application.common.errors import NotFoundError, ValidationError
+from lpg.domain.accounting.cash_handover import CashHandover
+from lpg.domain.accounting.credit_note import CreditNote
+from lpg.domain.accounting.invoice import Invoice, InvoiceLine
 from lpg.domain.order.order import OrderLine
 
 # ---------------------------------------------------------------------------
@@ -66,9 +77,11 @@ def mock_invoice_repo() -> MagicMock:
     repo = MagicMock()
     repo.get_by_order_id = AsyncMock(return_value=None)
     repo.add = AsyncMock()
+    repo.save = AsyncMock()
     repo.get_by_id = AsyncMock(return_value=None)
     repo.list_invoices = AsyncMock(return_value=[])
     repo.count_invoices = AsyncMock(return_value=0)
+    repo.get_outstanding_balance = AsyncMock(return_value=Decimal("0"))
     return repo
 
 
@@ -350,6 +363,80 @@ class TestGetInvoiceUseCase:
 
 
 # ---------------------------------------------------------------------------
+# RecordPaymentUseCase
+# ---------------------------------------------------------------------------
+
+
+def _make_invoice(*, total_amount: Decimal = Decimal("236.00")) -> Invoice:
+    invoice_line = InvoiceLine(
+        line_id=uuid.uuid4(),
+        cylinder_type_id=uuid.uuid4(),
+        quantity=1,
+        unit_price=total_amount,
+        subtotal=total_amount,
+        tax_amount=Decimal("0"),
+        total_amount=total_amount,
+    )
+    return Invoice(
+        invoice_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        order_id=uuid.uuid4(),
+        status="issued",
+        subtotal=total_amount,
+        tax_amount=Decimal("0"),
+        total_amount=total_amount,
+        issued_at=datetime.now(UTC),
+        lines=[invoice_line],
+    )
+
+
+class TestRecordPaymentUseCase:
+    async def test_records_payment_and_saves(
+        self, mock_invoice_repo: MagicMock, mock_uow_with_commit: MagicMock
+    ) -> None:
+        invoice = _make_invoice(total_amount=Decimal("236.00"))
+        mock_invoice_repo.get_by_id = AsyncMock(return_value=invoice)
+        collected_by = uuid.uuid4()
+
+        use_case = RecordPaymentUseCase(mock_invoice_repo, mock_uow_with_commit)
+        result = await use_case.execute(
+            RecordPaymentCommand(
+                invoice_id=invoice.id,
+                method="cash",
+                amount=Decimal("236.00"),
+                collected_by=collected_by,
+                collected_at=datetime.now(UTC),
+            )
+        )
+
+        assert result is invoice
+        assert invoice.status == "paid"
+        mock_invoice_repo.save.assert_called_once_with(invoice)
+        mock_uow_with_commit.commit.assert_called_once()
+
+    async def test_raises_when_invoice_not_found(
+        self, mock_invoice_repo: MagicMock, mock_uow_with_commit: MagicMock
+    ) -> None:
+        mock_invoice_repo.get_by_id = AsyncMock(return_value=None)
+        use_case = RecordPaymentUseCase(mock_invoice_repo, mock_uow_with_commit)
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                RecordPaymentCommand(
+                    invoice_id=uuid.uuid4(),
+                    method="cash",
+                    amount=Decimal("1.00"),
+                    collected_by=uuid.uuid4(),
+                    collected_at=datetime.now(UTC),
+                )
+            )
+
+        mock_invoice_repo.save.assert_not_called()
+        mock_uow_with_commit.commit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # ListInvoicesUseCase
 # ---------------------------------------------------------------------------
 
@@ -382,3 +469,302 @@ class TestListInvoicesUseCase:
             order_id=None,
             status="issued",
         )
+
+
+# ---------------------------------------------------------------------------
+# DeclareCashHandoverUseCase
+# ---------------------------------------------------------------------------
+
+
+def _make_route(*, tenant_id: uuid.UUID, driver_id: uuid.UUID) -> MagicMock:
+    route = MagicMock()
+    route.tenant_id = tenant_id
+    route.driver_id = driver_id
+    return route
+
+
+@pytest.fixture
+def mock_cash_handover_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.next_id = MagicMock(return_value=uuid.uuid4())
+    repo.add = AsyncMock()
+    repo.get_expected_cash_for_route = AsyncMock(return_value=Decimal("0"))
+    return repo
+
+
+@pytest.fixture
+def mock_route_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_by_id = AsyncMock(return_value=None)
+    return repo
+
+
+@pytest.fixture
+def mock_uow_with_commit() -> MagicMock:
+    uow = MagicMock()
+    uow.commit = AsyncMock()
+    return uow
+
+
+class TestDeclareCashHandoverUseCase:
+    async def test_declares_handover_and_saves(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+    ) -> None:
+        tenant_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        route_id = uuid.uuid4()
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=tenant_id, driver_id=driver_id
+        )
+        mock_cash_handover_repo.get_expected_cash_for_route = AsyncMock(
+            return_value=Decimal("1000.00")
+        )
+
+        use_case = DeclareCashHandoverUseCase(
+            mock_cash_handover_repo, mock_route_repo, mock_uow_with_commit
+        )
+        command = DeclareCashHandoverCommand(
+            driver_id=driver_id,
+            route_id=route_id,
+            actual_amount=Decimal("850.00"),
+            declared_by=driver_id,
+        )
+
+        handover = await use_case.execute(command)
+
+        assert isinstance(handover, CashHandover)
+        assert handover.tenant_id == tenant_id
+        assert handover.expected_amount == Decimal("1000.00")
+        assert handover.actual_amount == Decimal("850.00")
+        assert handover.shortfall == Decimal("150.00")
+        mock_cash_handover_repo.add.assert_called_once_with(handover)
+        mock_uow_with_commit.commit.assert_called_once()
+
+    async def test_raises_when_route_not_found(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+    ) -> None:
+        mock_route_repo.get_by_id.return_value = None
+        use_case = DeclareCashHandoverUseCase(
+            mock_cash_handover_repo, mock_route_repo, mock_uow_with_commit
+        )
+        command = DeclareCashHandoverCommand(
+            driver_id=uuid.uuid4(),
+            route_id=uuid.uuid4(),
+            actual_amount=Decimal("0"),
+            declared_by=uuid.uuid4(),
+        )
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(command)
+
+        mock_cash_handover_repo.add.assert_not_called()
+        mock_uow_with_commit.commit.assert_not_called()
+
+    async def test_raises_when_route_belongs_to_a_different_driver(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+    ) -> None:
+        actual_driver_id = uuid.uuid4()
+        someone_elses_driver_id = uuid.uuid4()
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=uuid.uuid4(), driver_id=actual_driver_id
+        )
+        use_case = DeclareCashHandoverUseCase(
+            mock_cash_handover_repo, mock_route_repo, mock_uow_with_commit
+        )
+        command = DeclareCashHandoverCommand(
+            driver_id=someone_elses_driver_id,
+            route_id=uuid.uuid4(),
+            actual_amount=Decimal("0"),
+            declared_by=someone_elses_driver_id,
+        )
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(command)
+
+        mock_cash_handover_repo.add.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# RequestRefundUseCase / ApproveRefundUseCase
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_credit_note_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.next_id = MagicMock(return_value=uuid.uuid4())
+    repo.add = AsyncMock()
+    repo.save = AsyncMock()
+    repo.get_by_id = AsyncMock(return_value=None)
+    return repo
+
+
+def _make_paid_invoice(*, amount_paid: Decimal = Decimal("236.00")) -> Invoice:
+    invoice = _make_invoice(total_amount=Decimal("236.00"))
+    invoice.record_payment(
+        payment_id=uuid.uuid4(),
+        method="cash",
+        amount=amount_paid,
+        collected_by=uuid.uuid4(),
+        collected_at=datetime.now(UTC),
+    )
+    return invoice
+
+
+class TestRequestRefundUseCase:
+    async def test_requests_refund_and_saves(
+        self,
+        mock_credit_note_repo: MagicMock,
+        mock_invoice_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+    ) -> None:
+        invoice = _make_paid_invoice(amount_paid=Decimal("236.00"))
+        mock_invoice_repo.get_by_id = AsyncMock(return_value=invoice)
+
+        use_case = RequestRefundUseCase(
+            mock_credit_note_repo, mock_invoice_repo, mock_uow_with_commit
+        )
+        credit_note = await use_case.execute(
+            RequestRefundCommand(
+                invoice_id=invoice.id,
+                amount=Decimal("100.00"),
+                reason="Damaged cylinder.",
+                requested_by=uuid.uuid4(),
+            )
+        )
+
+        assert isinstance(credit_note, CreditNote)
+        assert credit_note.tenant_id == invoice.tenant_id
+        assert credit_note.invoice_id == invoice.id
+        assert credit_note.amount == Decimal("100.00")
+        assert credit_note.is_approved is False
+        mock_credit_note_repo.add.assert_called_once_with(credit_note)
+        mock_uow_with_commit.commit.assert_called_once()
+
+    async def test_raises_when_invoice_not_found(
+        self,
+        mock_credit_note_repo: MagicMock,
+        mock_invoice_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+    ) -> None:
+        mock_invoice_repo.get_by_id = AsyncMock(return_value=None)
+        use_case = RequestRefundUseCase(
+            mock_credit_note_repo, mock_invoice_repo, mock_uow_with_commit
+        )
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                RequestRefundCommand(
+                    invoice_id=uuid.uuid4(),
+                    amount=Decimal("1.00"),
+                    reason="n/a",
+                    requested_by=uuid.uuid4(),
+                )
+            )
+
+        mock_credit_note_repo.add.assert_not_called()
+
+    async def test_rejects_refund_exceeding_amount_paid(
+        self,
+        mock_credit_note_repo: MagicMock,
+        mock_invoice_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+    ) -> None:
+        invoice = _make_paid_invoice(amount_paid=Decimal("100.00"))
+        mock_invoice_repo.get_by_id = AsyncMock(return_value=invoice)
+        use_case = RequestRefundUseCase(
+            mock_credit_note_repo, mock_invoice_repo, mock_uow_with_commit
+        )
+
+        with pytest.raises(ValidationError, match="exceeds"):
+            await use_case.execute(
+                RequestRefundCommand(
+                    invoice_id=invoice.id,
+                    amount=Decimal("150.00"),
+                    reason="n/a",
+                    requested_by=uuid.uuid4(),
+                )
+            )
+
+        mock_credit_note_repo.add.assert_not_called()
+
+
+class TestApproveRefundUseCase:
+    async def test_approves_and_saves(
+        self, mock_credit_note_repo: MagicMock, mock_uow_with_commit: MagicMock
+    ) -> None:
+        invoice_id = uuid.uuid4()
+        credit_note = CreditNote.request(
+            credit_note_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            invoice_id=invoice_id,
+            amount=Decimal("100.00"),
+            reason="Damaged cylinder.",
+            requested_by=uuid.uuid4(),
+        )
+        mock_credit_note_repo.get_by_id = AsyncMock(return_value=credit_note)
+        approved_by = uuid.uuid4()
+
+        use_case = ApproveRefundUseCase(mock_credit_note_repo, mock_uow_with_commit)
+        result = await use_case.execute(
+            ApproveRefundCommand(
+                invoice_id=invoice_id, credit_note_id=credit_note.id, approved_by=approved_by
+            )
+        )
+
+        assert result is credit_note
+        assert credit_note.is_approved is True
+        assert credit_note.approved_by == approved_by
+        mock_credit_note_repo.save.assert_called_once_with(credit_note)
+        mock_uow_with_commit.commit.assert_called_once()
+
+    async def test_raises_when_credit_note_not_found(
+        self, mock_credit_note_repo: MagicMock, mock_uow_with_commit: MagicMock
+    ) -> None:
+        mock_credit_note_repo.get_by_id = AsyncMock(return_value=None)
+        use_case = ApproveRefundUseCase(mock_credit_note_repo, mock_uow_with_commit)
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                ApproveRefundCommand(
+                    invoice_id=uuid.uuid4(),
+                    credit_note_id=uuid.uuid4(),
+                    approved_by=uuid.uuid4(),
+                )
+            )
+
+        mock_credit_note_repo.save.assert_not_called()
+
+    async def test_raises_when_credit_note_belongs_to_a_different_invoice(
+        self, mock_credit_note_repo: MagicMock, mock_uow_with_commit: MagicMock
+    ) -> None:
+        credit_note = CreditNote.request(
+            credit_note_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            invoice_id=uuid.uuid4(),
+            amount=Decimal("100.00"),
+            reason="Damaged cylinder.",
+            requested_by=uuid.uuid4(),
+        )
+        mock_credit_note_repo.get_by_id = AsyncMock(return_value=credit_note)
+        use_case = ApproveRefundUseCase(mock_credit_note_repo, mock_uow_with_commit)
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                ApproveRefundCommand(
+                    invoice_id=uuid.uuid4(),  # a different invoice
+                    credit_note_id=credit_note.id,
+                    approved_by=uuid.uuid4(),
+                )
+            )
+
+        mock_credit_note_repo.save.assert_not_called()

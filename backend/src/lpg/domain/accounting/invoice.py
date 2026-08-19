@@ -34,6 +34,22 @@ class InvoiceGenerated(DomainEvent):
     issued_at: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class PaymentCollected(DomainEvent):
+    """Fired on every recorded payment (BR-18, D-11) — including a partial
+    one; `docs/data/09-domain-events.md`'s payload doesn't distinguish
+    partial from final, so neither does this.
+    """
+
+    payment_id: uuid.UUID
+    tenant_id: uuid.UUID
+    invoice_id: uuid.UUID
+    method: str
+    amount: Decimal
+    collected_by: uuid.UUID
+    collected_at: datetime
+
+
 # ---------------------------------------------------------------------------
 # Value Objects / Entities
 # ---------------------------------------------------------------------------
@@ -81,6 +97,39 @@ class InvoiceLine:
         self.total_amount = total_amount
 
 
+class Payment:
+    """A single payment recorded against an Invoice.
+
+    Owned exclusively by `Invoice` — never loaded or persisted
+    independently, same as `InvoiceLine`. An invoice can carry more than
+    one (partial payments), which is exactly why `amount_paid` sums them
+    rather than a single scalar field.
+    """
+
+    __slots__ = ("amount", "collected_at", "collected_by", "id", "method")
+
+    def __init__(
+        self,
+        payment_id: uuid.UUID,
+        method: str,
+        amount: Decimal,
+        collected_by: uuid.UUID,
+        collected_at: datetime,
+    ) -> None:
+        if method not in PAYMENT_METHODS:
+            msg = f"'{method}' is not a valid payment method."
+            raise InvariantViolation(msg, method=method)
+        if amount <= Decimal("0"):
+            msg = f"Payment amount must be > 0, got {amount}."
+            raise InvariantViolation(msg)
+
+        self.id = payment_id
+        self.method = method
+        self.amount = amount
+        self.collected_by = collected_by
+        self.collected_at = collected_at
+
+
 # ---------------------------------------------------------------------------
 # Aggregate Root
 # ---------------------------------------------------------------------------
@@ -88,6 +137,11 @@ class InvoiceLine:
 INVOICE_STATUSES: frozenset[str] = frozenset(
     {"draft", "issued", "partially_paid", "paid", "cancelled", "refunded"}
 )
+
+# Mirrors `domain/order/order.py`'s `PAYMENT_METHODS` — duplicated rather
+# than imported, since `accounting` has no other dependency on the `order`
+# domain and one frozenset isn't worth introducing one for.
+PAYMENT_METHODS: frozenset[str] = frozenset({"cash", "upi", "card", "online_gateway", "credit"})
 
 
 class Invoice(AggregateRoot):
@@ -104,6 +158,7 @@ class Invoice(AggregateRoot):
         "_issued_at",
         "_lines",
         "_order_id",
+        "_payments",
         "_status",
         "_subtotal",
         "_tax_amount",
@@ -124,6 +179,7 @@ class Invoice(AggregateRoot):
         total_amount: Decimal,
         issued_at: datetime,
         lines: Sequence[InvoiceLine],
+        payments: Sequence[Payment] = (),
         version: int = 1,
     ) -> None:
         super().__init__(invoice_id, version=version)
@@ -164,6 +220,7 @@ class Invoice(AggregateRoot):
         self._total_amount = total_amount
         self._issued_at = issued_at
         self._lines: list[InvoiceLine] = list(lines)
+        self._payments: list[Payment] = list(payments)
 
     @classmethod
     def generate_for_delivered_order(
@@ -245,3 +302,61 @@ class Invoice(AggregateRoot):
     @property
     def lines(self) -> Sequence[InvoiceLine]:
         return tuple(self._lines)
+
+    @property
+    def payments(self) -> Sequence[Payment]:
+        return tuple(self._payments)
+
+    @property
+    def amount_paid(self) -> Decimal:
+        return sum((payment.amount for payment in self._payments), Decimal("0"))
+
+    def record_payment(
+        self,
+        *,
+        payment_id: uuid.UUID,
+        method: str,
+        amount: Decimal,
+        collected_by: uuid.UUID,
+        collected_at: datetime,
+    ) -> None:
+        """BR-18, D-11. Supports partial payments — `status` only reaches
+        `paid` once cumulative `amount_paid` equals `total_amount`;
+        otherwise it moves to `partially_paid`.
+        """
+        if self._status in ("cancelled", "refunded"):
+            msg = f"Cannot record a payment against a {self._status} invoice."
+            raise InvariantViolation(msg, status=self._status)
+        if self._status == "paid":
+            msg = "Invoice is already fully paid."
+            raise InvariantViolation(msg)
+
+        prospective_paid = self.amount_paid + amount
+        if prospective_paid > self._total_amount:
+            msg = (
+                f"Payment of {amount} would bring total paid to {prospective_paid}, "
+                f"exceeding the invoice total of {self._total_amount}."
+            )
+            raise InvariantViolation(msg)
+
+        payment = Payment(
+            payment_id=payment_id,
+            method=method,
+            amount=amount,
+            collected_by=collected_by,
+            collected_at=collected_at,
+        )
+        self._payments.append(payment)
+        self._status = "paid" if prospective_paid == self._total_amount else "partially_paid"
+
+        self.record_event(
+            PaymentCollected(
+                payment_id=payment_id,
+                tenant_id=self._tenant_id,
+                invoice_id=self.id,
+                method=method,
+                amount=amount,
+                collected_by=collected_by,
+                collected_at=collected_at,
+            )
+        )

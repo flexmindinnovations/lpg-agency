@@ -49,13 +49,13 @@ backlog this file tracks.
 | 05 | Flutter foundations | complete | ⚪ ❓ | 100% | ❓ | not exercised | 12 dart tests exist; mobile CI **not run** in this pass — unverified, not assumed broken |
 | 06 | Auth & authorization | complete | ✅ | 100% | ✅ | import-linter `routers/auth.py` → sqlalchemy (C2, open) | C9 fixed in R11 — new users now get their role's permissions on creation |
 | 07 | Admin / tenant master data | complete | 🟡 backend ✅ | 100% | 🟡 | lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Backend gap closed by R13; frontend lint errors remain |
-| 08 | Customer management | ✅ COMPLETE | ✅ | 100% | ✅ | — | C1 fixed in R1; stale KYC test key fixed in R11 pass |
+| 08 | Customer management | ✅ COMPLETE | ✅ | 100% | ✅ | — | C1 fixed in R1; stale KYC test key fixed in R11 pass; R10 found `customers:manage` (gating the pre-existing `/approve` endpoint) had never been granted to any role since it shipped — fixed, and reused for the new `/close` endpoint |
 | 09 | Driver management | ✅ COMPLETE | ✅ | 100% | ✅ | — | — |
 | 10 | Inventory management | ✅ COMPLETE | ✅ | 100% | ✅ | — | Was C10 (exception-swallowing), fixed |
 | 11 | Order management | ✅ complete | ✅ | 100% | ✅ | — | All 8 original failures cleared (C1, C9, C10 combined). Planning dir backfilled 2026-08-19 (R8) — flagged one still-open gap while backfilling: BR-04/BR-19 confirm-time checks are still permissive stubs despite Cylinder Ledger/Accounting now existing |
 | 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | ✅ | 100% | ✅ | — | Was C10, fixed |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
-| 14 | Accounting / invoicing | ✅ COMPLETE | ✅ smoke + RBAC tested (R7) | ~90% | ✅ | — | See C4 — endpoint tests added, found+fixed a real `InvoiceResponse` serialization crash |
+| 14 | Accounting / invoicing | ✅ COMPLETE | ✅ smoke + RBAC tested (R7, R10) | ~90% | ✅ | — | See C4/C8 — R7 found+fixed a real `InvoiceResponse` serialization crash; R10 added `Payment`/`CreditNote`/`CashHandover` (partial payments, refund approval, cash-shortfall declaration) and found+fixed a missing `UPDATE` grant on `accounting.invoice` |
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
 | 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup) | See C4 — tests found+fixed 3 real backend bugs (assign/resolve crashed outright); blank buttons fixed (C3/R2); planning dir backfilled 2026-08-19 (R8) |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
@@ -651,7 +651,7 @@ Verified: `npx nx run-many -t test --skip-nx-cache` — **0 of 25 projects
 fail** (was 6). `npx nx run-many -t lint` and `npx nx build dashboard`
 re-confirmed still green after these changes.
 
-### C8 — Seven designed domain events were never implemented 🟡 PARTIALLY RESOLVED (R10, 2026-08-19)
+### C8 — Seven designed domain events were never implemented ✅ RESOLVED (R10, 2026-08-19)
 
 Found by the documentation baseline audit (2026-08-18), verifying
 `docs/data/09-domain-events.md` against `class X(DomainEvent)` declarations.
@@ -674,7 +674,7 @@ of them by domain.
 Tracked as **R10**. Not urgent in the way a red gate is, but it is the reason
 several downstream features cannot be built without first adding the event.
 
-**🟡 Partially fixed 2026-08-19 (R10).** Researched all seven before writing
+**✅ Fixed 2026-08-19 (R10).** Researched all seven before writing
 any code, to avoid quietly building new features under the banner of "add an
 event." Three were genuinely ready — the aggregate method the event belongs
 on already exists, doing real work, with nothing new required beyond
@@ -690,31 +690,52 @@ declaring the event and recording it:
   which outcome, matching "Publisher: Notifications (self-referential — logs
   its own outcome)."
 
-The other four are **blocked** — each would require building a new domain
-concept from scratch, not adding an event to one that exists:
+The other four were then built as real, minimal features — not faked —
+since none of them had anything to hang an event on yet:
 
-- **`PaymentCollected`**, **`RefundApproved`**, **`CashShortfallDeclared`**
-  (`accounting`) — no `Payment`, `CreditNote`, or `CashHandover` aggregate,
-  table, or migration exists anywhere in the codebase. `Invoice` has no
-  `mark_paid`/`record_payment` method despite `INVOICE_STATUSES` already
-  including `partially_paid`/`paid`/`refunded` — those states are
-  unreachable placeholders today.
-- **`ConnectionClosed`** (`customer`) — the shallowest of the four:
-  `Customer.change_status("closed")` already exists, is already a one-way
-  terminal transition (`"Cannot reactivate a closed connection"`), and
-  already fires `CustomerStatusChanged`. What's missing is a
-  `CloseCustomerConnectionUseCase` + endpoint to actually invoke it (zero
-  call sites today), plus computing `final_ledger_balance` (no
-  outstanding-balance calculation exists — `rpt.vw_outstanding_balances`
-  is itself an unused port method, per the Reporting module's own history).
+- **`ConnectionClosed`** (`customer`) — added
+  `Customer.close_connection(final_ledger_balance)`, wrapping
+  `change_status("closed")` plus an explicit "already closed" guard
+  (`change_status`'s own guard only blocks *reactivating*, not re-closing —
+  would have let a second close silently re-fire both events). New
+  `CloseCustomerConnectionUseCase` computes `final_ledger_balance` from
+  real `accounting.invoice` data (`InvoiceRepository.get_outstanding_
+  balance`, same definition `rpt.vw_outstanding_balances` uses) and calls
+  it. New endpoint `POST /customers/{id}/close`, gated by the pre-existing
+  `customers:manage` code.
+- **`CashShortfallDeclared`** (`accounting`) — new `CashHandover` aggregate
+  (`domain/accounting/cash_handover.py`) and `accounting.cash_handover`
+  table (`c039189dfbdc`). `expected_amount` is computed from real data —
+  `SUM(orders.proof_of_delivery.amount_collected)` for cash-method stops
+  on the route (`route_stop.order_id` → `proof_of_delivery.order_id`) — not
+  entered by hand. The event fires only when `actual_amount < expected_
+  amount`; an exact or over-match records no event. New permission
+  `cash_handovers:declare` (driver/dispatcher/manager/agency_admin), new
+  endpoint `POST /cash-handovers`.
+- **`PaymentCollected`** (`accounting`) — `Invoice` gained an in-aggregate
+  `Payment` entity and `record_payment()`, supporting partial payments:
+  `status` reaches `paid` only once cumulative payments equal `total_
+  amount`, otherwise `partially_paid` — the two `INVOICE_STATUSES` values
+  that existed since the very first invoice migration but nothing had ever
+  reached. New `accounting.payment` table (`11ddf55a78ed`), new permission
+  `invoices:record_payment` (same role set as `invoices:read`), new
+  endpoint `POST /invoices/{id}/payments`.
+- **`RefundApproved`** (`accounting`) — new `CreditNote` aggregate
+  (`domain/accounting/credit_note.py`), a two-step request/approve
+  workflow tracked as its own aggregate rather than nested in `Invoice` —
+  same reasoning `orders.cancellation_record` is a standalone table, since
+  the two steps are separate requests, often different actors. `amount`
+  is validated against the invoice's actual `amount_paid` (a refund can't
+  exceed what was really collected). New `accounting.credit_note` table
+  (`bdd1f778c21a`), new permissions `credit_notes:request` (broader) and
+  `credit_notes:approve` (narrower, excludes `accountant` — mirrors
+  `orders:cancel_approve`'s request-vs-approve split), new endpoints
+  `POST /invoices/{id}/refunds` and `POST /invoices/{id}/refunds/{id}/approve`.
 
-Building any of these four is new-feature work with its own design
-questions (a payment-recording flow, a credit-note approval workflow, a
-cash-handover reconciliation step, a connection-closure endpoint) — left
-open, not attempted here.
-
-**Two additional defects found and fixed while making the three "ready"
-events actually dispatch, not just exist as dead code:**
+**Four real bugs found and fixed while making all seven events actually
+dispatch, not just exist as dead code — two from the first pass
+(complaint pair, `NotificationSent`), two more surfaced building the
+remaining four:**
 
 1. `SqlAlchemyComplaintRepository.save()` pushed events onto
    `session.info["domain_events"]` — a second, incompatible collection
@@ -729,25 +750,57 @@ events actually dispatch, not just exist as dead code:**
 2. `SqlAlchemyNotificationLogRepository` took a raw `AsyncSession` and never
    called `register_aggregate()` at all — same silent-drop outcome for any
    event ever recorded on `NotificationLog`. Fixed identically.
+3. **`customers:manage` — the permission code the pre-existing `POST
+   /customers/{id}/approve` endpoint has always required — was never
+   granted to any role, ever, in any migration.** Confirmed by grepping
+   every migration: `4f4645fda65e` seeded `customers:read`/`:update`,
+   `fa52b77ec442` seeded `customers:create`; nothing ever seeded
+   `customers:manage`. A claims-based `require_permission` check denies
+   whenever the code is simply absent, so `/approve` has been
+   **unconditionally unreachable by every role since it shipped** — found
+   while wiring the new `/close` endpoint onto the same code, which would
+   have been equally dead on arrival. Fixed with a new migration
+   (`76aa61425c66`) granting it to `agency_admin`/`manager`, backfilling
+   `identity_user_permission` for existing users of those roles too (not
+   just `role_permission` — see `f3c8a56d29e1`'s docstring for why a
+   role-only grant applies to nobody who already exists).
+4. **`accounting.invoice` never had `UPDATE` granted to the app role.**
+   `e60b8b86b965` (2026-08-13) revoked `UPDATE, DELETE` when the invoice
+   schema was created — reasonable at the time, since `add()` was the only
+   write path and nothing mutated an existing row. `record_payment()`'s
+   `status` transition needed `UPDATE`; every real payment attempt failed
+   with `InsufficientPrivilegeError` in integration testing before this
+   was caught. Fixed with `6ae4682bd49d` (`DELETE` stays revoked).
+Worth noting, not counted as a fifth bug since it never shipped broken:
+`SqlAlchemyInvoiceRepository.save()` (the new update path `record_
+payment()` needed) was written with `session.get(..., options=...)` from
+the start — deliberately avoiding the exact `MissingGreenlet` bug R7's
+complaint work already found and fixed the hard way, a direct payoff of
+that earlier fix rather than a coincidence.
 
-**A separate, larger gap surfaced but deliberately not fixed here:**
+**A separate, larger gap surfaced but deliberately not fixed:**
 `infrastructure/jobs/notification_jobs.py`'s `send_notification` ARQ job (and
 `infrastructure/jobs/worker.py`'s `bulk_cancel_orders`) construct their
 `SqlAlchemyUnitOfWork` with no `event_dispatcher` at all — confirmed by
-reading both. So even with the repository fix above, `NotificationSent`
-records correctly in memory but has nowhere to dispatch *to* when fired from
-a background job today; the HTTP-request path (`get_unit_of_work`) does
-wire a real dispatcher, so `ComplaintRaised`/`ComplaintResolved` (both
-HTTP-triggered) dispatch end-to-end correctly. Wiring a dispatcher into ARQ
-job execution is real, separate infrastructure work — likely affects every
-event any background job ever fires, not just this one — and is out of
-R10's scope.
+reading both. So `NotificationSent` records correctly in memory but has
+nowhere to dispatch *to* when fired from a background job today; the
+HTTP-request path (`get_unit_of_work`) does wire a real dispatcher, so the
+other six events (all HTTP-triggered) dispatch end-to-end correctly. Wiring
+a dispatcher into ARQ job execution is real, separate infrastructure work —
+likely affects every event any background job ever fires, not just this
+one — genuinely out of scope for an "add domain events" item.
 
-Verified: `ruff`/`mypy` clean on every touched file, `import-linter` 5/5
-kept, new domain unit tests for both `Complaint`'s and `NotificationLog`'s
-events, full integration suite green (existing complaint smoke/RBAC tests
-already exercise the fixed dispatch path end-to-end via the real ASGI
-stack).
+Verified: `ruff`/`mypy` clean on every touched file (73 pre-existing
+baseline errors unchanged), `import-linter` 5/5 kept, new domain unit
+tests for `Customer.close_connection`, `CashHandover`, `Invoice.
+record_payment`, and `CreditNote`, new integration smoke + RBAC tests for
+all 5 new endpoints (all passing against real Postgres/Redis on first
+correctness pass once each bug above was found and fixed), full suite
+green: 632/632 unit, 313/313 integration. Migrations `76aa61425c66` through
+`bdd1f778c21a` applied to both `lpg_dev` and `lpg_test` locally — not yet
+applied to `lpg_uat` or Supabase (this session has no access to those).
+OpenAPI spec and Angular client regenerated; the 5 new endpoints have no
+frontend caller yet (backend-only pass, matching R10's original scope).
 
 ### C5 — Lint / type debt ✅ RESOLVED (R6, 2026-08-18)
 
@@ -879,7 +932,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R7** — C4 test coverage for complaint / reporting / employee / invoice (2026-08-19) — found+fixed 7 real bugs (see C4 writeup)
 - [x] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees (2026-08-19) — see C6 writeup; surfaced one still-open gap in Order Management (BR-04/BR-19 confirm-time stubs)
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass
-- [~] **R10** — C8 add the 7 missing domain events, starting with the complaint pair (2026-08-19) — 3 of 7 done (complaint pair + `NotificationSent`) and fixed 2 dead-event-dispatch bugs found along the way; remaining 4 (`PaymentCollected`/`RefundApproved`/`CashShortfallDeclared`/`ConnectionClosed`) blocked on new domain concepts not yet built (see C8 writeup)
+- [x] **R10** — C8 add the 7 missing domain events, starting with the complaint pair (2026-08-19) — all 7 done; the 4 that needed new domain concepts (`CashHandover`, `Payment`, `CreditNote`, `Customer.close_connection`) were built as real, minimal features rather than left blocked. Found+fixed 4 real bugs along the way, including a permission code (`customers:manage`) that had gated a pre-existing endpoint since it shipped without ever being granted to any role (see C8 writeup)
 
 ## Rules for updating this file
 

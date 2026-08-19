@@ -121,6 +121,95 @@ async def _seed_branch(engine: AsyncEngine, *, tenant_id: uuid.UUID, name: str) 
     return uuid.UUID(str(branch_id))
 
 
+async def _seed_active_customer(
+    engine: AsyncEngine, *, tenant_id: uuid.UUID, branch_id: uuid.UUID
+) -> uuid.UUID:
+    """A customer already past onboarding — `close_connection` (R10,
+    `ConnectionClosed`) only makes sense from `active`, and reaching that
+    through the real onboarding+approval flow is unrelated to what these
+    tests actually verify.
+    """
+    async with engine.begin() as conn:
+        customer_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer "
+                    "(id, tenant_id, branch_id, customer_type, full_name, phone_number, "
+                    "consumer_number, status) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, 'domestic', "
+                    "'Close Connection Smoke Customer', :phone, :consumer_number, 'active') "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "phone": f"+91{uuid.uuid4().int % 10**9:09d}",
+                    "consumer_number": f"CN-{uuid.uuid4().hex[:8]}",
+                },
+            )
+        ).scalar_one()
+    return uuid.UUID(str(customer_id))
+
+
+async def _seed_issued_invoice(
+    engine: AsyncEngine,
+    *,
+    tenant_id: uuid.UUID,
+    branch_id: uuid.UUID,
+    customer_id: uuid.UUID,
+    total_amount: str,
+) -> None:
+    """`accounting.invoice.order_id` is `NOT NULL UNIQUE` — a real (if
+    otherwise-unused) order must exist for the invoice to reference.
+    """
+    async with engine.begin() as conn:
+        address_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer_address (id, tenant_id, customer_id, line_1) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :customer_id, '1 Smoke Test Rd') "
+                    "RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id), "customer_id": str(customer_id)},
+            )
+        ).scalar_one()
+        order_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO orders.order "
+                    "(id, tenant_id, branch_id, customer_id, address_id, "
+                    "delivery_address_line, status, booking_source, requested_date, "
+                    "total_amount) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :customer_id, "
+                    ":address_id, '1 Smoke Test Rd', 'closed', 'staff', now(), :total_amount) "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "customer_id": str(customer_id),
+                    "address_id": str(address_id),
+                    "total_amount": total_amount,
+                },
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO accounting.invoice "
+                "(id, tenant_id, customer_id, order_id, status, subtotal, tax_amount, "
+                "total_amount, issued_at) "
+                "VALUES (gen_random_uuid(), :tenant_id, :customer_id, :order_id, 'issued', "
+                ":total_amount, 0, :total_amount, now())"
+            ),
+            {
+                "tenant_id": str(tenant_id),
+                "customer_id": str(customer_id),
+                "order_id": str(order_id),
+                "total_amount": total_amount,
+            },
+        )
+
+
 async def _login(client: AsyncClient, *, email: str, password: str) -> str:
     response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
@@ -273,3 +362,120 @@ class TestCustomerEndpointsThroughRealStack:
         )
         assert peek_again_response.status_code == 200, peek_again_response.text
         assert peek_again_response.json()["consumer_number"] != suggested
+
+    async def test_close_customer_connection_computes_real_outstanding_balance(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """Proves R10's `ConnectionClosed`/`customers:manage` fix end to
+        end: the migration granting `customers:manage` (previously never
+        granted to any role — this endpoint, and the pre-existing
+        `/approve`, were unconditionally unreachable), the status
+        transition, and `final_ledger_balance` reflecting a real seeded
+        invoice rather than a placeholder.
+        """
+        email = f"{uuid.uuid4().hex}@cust-smoke.example"
+        password = "correct horse battery staple 42"
+        hasher = Argon2PasswordHasher(integration_settings)
+        tenant_id, _user_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+        )
+        branch_id = await _seed_branch(
+            admin_engine_lpg_test, tenant_id=tenant_id, name="Close Connection Branch"
+        )
+        customer_id = await _seed_active_customer(
+            admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
+        )
+        await _seed_issued_invoice(
+            admin_engine_lpg_test,
+            tenant_id=tenant_id,
+            branch_id=branch_id,
+            customer_id=customer_id,
+            total_amount="325.50",
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        close_response = await real_lifespan_client.post(
+            f"/api/v1/customers/{customer_id}/close", headers=headers
+        )
+        assert close_response.status_code == 200, close_response.text
+
+        get_response = await real_lifespan_client.get(
+            f"/api/v1/customers/{customer_id}", headers=headers
+        )
+        assert get_response.status_code == 200, get_response.text
+        assert get_response.json()["status"] == "closed"
+
+    async def test_close_customer_connection_is_terminal(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@cust-smoke.example"
+        password = "correct horse battery staple 42"
+        hasher = Argon2PasswordHasher(integration_settings)
+        tenant_id, _user_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+        )
+        branch_id = await _seed_branch(
+            admin_engine_lpg_test, tenant_id=tenant_id, name="Close Connection Branch (terminal)"
+        )
+        customer_id = await _seed_active_customer(
+            admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        first_response = await real_lifespan_client.post(
+            f"/api/v1/customers/{customer_id}/close", headers=headers
+        )
+        assert first_response.status_code == 200, first_response.text
+
+        second_response = await real_lifespan_client.post(
+            f"/api/v1/customers/{customer_id}/close", headers=headers
+        )
+        assert second_response.status_code == 409, second_response.text
+
+    async def test_close_customer_connection_denied_without_customers_manage(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """`dispatcher` holds `customers:update` but not `customers:manage`
+        — narrower permission does not imply the broader one."""
+        email = f"{uuid.uuid4().hex}@cust-smoke.example"
+        password = "correct horse battery staple 42"
+        hasher = Argon2PasswordHasher(integration_settings)
+        tenant_id, _user_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="dispatcher",
+        )
+        branch_id = await _seed_branch(
+            admin_engine_lpg_test, tenant_id=tenant_id, name="Close Connection Branch (denied)"
+        )
+        customer_id = await _seed_active_customer(
+            admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.post(
+            f"/api/v1/customers/{customer_id}/close", headers=headers
+        )
+        assert response.status_code == 403, response.text

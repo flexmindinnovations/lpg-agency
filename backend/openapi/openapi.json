@@ -549,6 +549,59 @@
         "title": "CancelOrderResponse",
         "type": "object"
       },
+      "CashHandoverResponse": {
+        "properties": {
+          "actual_amount": {
+            "title": "Actual Amount",
+            "type": "string"
+          },
+          "declared_at": {
+            "format": "date-time",
+            "title": "Declared At",
+            "type": "string"
+          },
+          "declared_by": {
+            "format": "uuid",
+            "title": "Declared By",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "expected_amount": {
+            "title": "Expected Amount",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          },
+          "shortfall": {
+            "title": "Shortfall",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "driver_id",
+          "route_id",
+          "expected_amount",
+          "actual_amount",
+          "shortfall",
+          "declared_by",
+          "declared_at"
+        ],
+        "title": "CashHandoverResponse",
+        "type": "object"
+      },
       "ChangeCylinderStatusRequest": {
         "properties": {
           "cylinder_type_id": {
@@ -1053,6 +1106,79 @@
           "address_line"
         ],
         "title": "CreateWarehouseRequest",
+        "type": "object"
+      },
+      "CreditNoteResponse": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invoice_id": {
+            "format": "uuid",
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "is_approved": {
+            "title": "Is Approved",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "requested_by": {
+            "format": "uuid",
+            "title": "Requested By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "invoice_id",
+          "amount",
+          "reason",
+          "requested_by",
+          "requested_at",
+          "approved_by",
+          "approved_at",
+          "is_approved"
+        ],
+        "title": "CreditNoteResponse",
         "type": "object"
       },
       "CustomerAddressResponse": {
@@ -1646,6 +1772,39 @@
           "recent_activity"
         ],
         "title": "DashboardSummaryResponse",
+        "type": "object"
+      },
+      "DeclareCashHandoverRequest": {
+        "properties": {
+          "actual_amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Actual Amount"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "driver_id",
+          "route_id",
+          "actual_amount"
+        ],
+        "title": "DeclareCashHandoverRequest",
         "type": "object"
       },
       "DeliverOrderRequest": {
@@ -2533,6 +2692,11 @@
       },
       "InvoiceResponse": {
         "properties": {
+          "amount_paid": {
+            "default": "0",
+            "title": "Amount Paid",
+            "type": "string"
+          },
           "customer_id": {
             "format": "uuid",
             "title": "Customer Id",
@@ -2559,6 +2723,13 @@
             "format": "uuid",
             "title": "Order Id",
             "type": "string"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            },
+            "title": "Payments",
+            "type": "array"
           },
           "status": {
             "title": "Status",
@@ -3355,6 +3526,42 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PaymentResponse": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "collected_at": {
+            "format": "date-time",
+            "title": "Collected At",
+            "type": "string"
+          },
+          "collected_by": {
+            "format": "uuid",
+            "title": "Collected By",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id",
+          "method",
+          "amount",
+          "collected_by",
+          "collected_at"
+        ],
+        "title": "PaymentResponse",
+        "type": "object"
+      },
       "PlanRouteRequest": {
         "properties": {
           "branch_id": {
@@ -4020,6 +4227,32 @@
         "title": "RecordFailedDeliveryRequest",
         "type": "object"
       },
+      "RecordPaymentRequest": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "amount"
+        ],
+        "title": "RecordPaymentRequest",
+        "type": "object"
+      },
       "RefreshRequest": {
         "description": "`refresh_token` is optional in the body — the Dashboard's browser\nclient relies on the `HttpOnly` cookie instead\n(`api/v1/routers/auth.py`'s module docstring). Mobile clients, which\ncan't rely on a cookie, supply it here.",
         "properties": {
@@ -4489,6 +4722,33 @@
           "name"
         ],
         "title": "RenameWarehouseRequest",
+        "type": "object"
+      },
+      "RequestRefundRequest": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "reason"
+        ],
+        "title": "RequestRefundRequest",
         "type": "object"
       },
       "ResolutionOutcome": {
@@ -7236,6 +7496,48 @@
         ]
       }
     },
+    "/api/v1/cash-handovers": {
+      "post": {
+        "description": "A driver (or dispatcher/manager on their behalf) declares the cash\nhanded over at the end of a route. `expected_amount` is computed\nserver-side from real cash-payment proof-of-delivery records — never\ntrusted from the request.",
+        "operationId": "declare_cash_handover_api_v1_cash_handovers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclareCashHandoverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashHandoverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Declare Cash Handover",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
     "/api/v1/complaints": {
       "get": {
         "operationId": "list_complaints_api_v1_complaints_get",
@@ -7900,6 +8202,48 @@
           }
         },
         "summary": "Approve Customer",
+        "tags": [
+          "Customers"
+        ]
+      }
+    },
+    "/api/v1/customers/{customer_id}/close": {
+      "post": {
+        "description": "Close a customer's connection for good (BR-34, D-21) — terminal;\n`Customer.change_status` already rejects any transition away from\n`closed`. Same `customers:manage` permission as `/approve`, the other\nsignificant, staff-only customer lifecycle action.",
+        "operationId": "close_customer_connection_api_v1_customers__customer_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Customer Connection",
         "tags": [
           "Customers"
         ]
@@ -9160,6 +9504,168 @@
           }
         },
         "summary": "Get Invoice",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
+    "/api/v1/invoices/{invoice_id}/payments": {
+      "post": {
+        "description": "Record a payment against an invoice (R10, `PaymentCollected`,\nBR-18/D-11). Supports partial payments — `status` only reaches `paid`\nonce cumulative payments equal `total_amount`.",
+        "operationId": "record_payment_api_v1_invoices__invoice_id__payments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Payment",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
+    "/api/v1/invoices/{invoice_id}/refunds": {
+      "post": {
+        "description": "Request a refund against an invoice (R10, BR-20). Not yet approved —\n`amount` cannot exceed the invoice's actual `amount_paid`.",
+        "operationId": "request_refund_api_v1_invoices__invoice_id__refunds_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestRefundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditNoteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Refund",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
+    "/api/v1/invoices/{invoice_id}/refunds/{credit_note_id}/approve": {
+      "post": {
+        "description": "Approve a previously-requested refund (R10, `RefundApproved`, BR-20).\n\n`invoice_id` is validated against the credit note's own `invoice_id` —\na credit note requested against one invoice cannot be approved through\na different invoice's nested URL.",
+        "operationId": "approve_refund_api_v1_invoices__invoice_id__refunds__credit_note_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "credit_note_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credit Note Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditNoteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Refund",
         "tags": [
           "Invoices"
         ]

@@ -16,7 +16,7 @@ from decimal import Decimal
 
 import pytest
 
-from lpg.domain.accounting.invoice import Invoice, InvoiceGenerated, InvoiceLine
+from lpg.domain.accounting.invoice import Invoice, InvoiceGenerated, InvoiceLine, PaymentCollected
 from lpg.domain.common.base import InvariantViolation
 
 
@@ -196,4 +196,151 @@ class TestGenerateForDeliveredOrder:
                 order_id=uuid.uuid4(),
                 delivered_at=datetime.now(UTC),
                 lines=[],
+            )
+
+
+class TestRecordPayment:
+    def test_full_payment_moves_status_to_paid(self) -> None:
+        invoice = _make_invoice()  # total_amount = Decimal("236.00")
+        collected_by = uuid.uuid4()
+
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method="cash",
+            amount=Decimal("236.00"),
+            collected_by=collected_by,
+            collected_at=datetime.now(UTC),
+        )
+
+        assert invoice.status == "paid"
+        assert invoice.amount_paid == Decimal("236.00")
+        assert len(invoice.payments) == 1
+
+    def test_partial_payment_moves_status_to_partially_paid(self) -> None:
+        invoice = _make_invoice()  # total_amount = Decimal("236.00")
+
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method="upi",
+            amount=Decimal("100.00"),
+            collected_by=uuid.uuid4(),
+            collected_at=datetime.now(UTC),
+        )
+
+        assert invoice.status == "partially_paid"
+        assert invoice.amount_paid == Decimal("100.00")
+
+    def test_two_partial_payments_sum_to_paid(self) -> None:
+        invoice = _make_invoice()  # total_amount = Decimal("236.00")
+
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method="cash",
+            amount=Decimal("136.00"),
+            collected_by=uuid.uuid4(),
+            collected_at=datetime.now(UTC),
+        )
+        assert invoice.status == "partially_paid"
+
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method="upi",
+            amount=Decimal("100.00"),
+            collected_by=uuid.uuid4(),
+            collected_at=datetime.now(UTC),
+        )
+        assert invoice.status == "paid"
+        assert invoice.amount_paid == Decimal("236.00")
+        assert len(invoice.payments) == 2
+
+    def test_records_payment_collected_event(self) -> None:
+        invoice = _make_invoice()
+        payment_id = uuid.uuid4()
+        collected_by = uuid.uuid4()
+        collected_at = datetime.now(UTC)
+
+        invoice.record_payment(
+            payment_id=payment_id,
+            method="card",
+            amount=Decimal("236.00"),
+            collected_by=collected_by,
+            collected_at=collected_at,
+        )
+
+        events = [e for e in invoice.events if isinstance(e, PaymentCollected)]
+        assert len(events) == 1
+        event = events[0]
+        assert event.payment_id == payment_id
+        assert event.tenant_id == invoice.tenant_id
+        assert event.invoice_id == invoice.id
+        assert event.method == "card"
+        assert event.amount == Decimal("236.00")
+        assert event.collected_by == collected_by
+        assert event.collected_at == collected_at
+
+    def test_rejects_overpayment(self) -> None:
+        invoice = _make_invoice()  # total_amount = Decimal("236.00")
+
+        with pytest.raises(InvariantViolation, match="exceeding the invoice total"):
+            invoice.record_payment(
+                payment_id=uuid.uuid4(),
+                method="cash",
+                amount=Decimal("300.00"),
+                collected_by=uuid.uuid4(),
+                collected_at=datetime.now(UTC),
+            )
+
+    def test_rejects_payment_after_fully_paid(self) -> None:
+        invoice = _make_invoice()
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method="cash",
+            amount=Decimal("236.00"),
+            collected_by=uuid.uuid4(),
+            collected_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(InvariantViolation, match="already fully paid"):
+            invoice.record_payment(
+                payment_id=uuid.uuid4(),
+                method="cash",
+                amount=Decimal("1.00"),
+                collected_by=uuid.uuid4(),
+                collected_at=datetime.now(UTC),
+            )
+
+    def test_rejects_payment_against_cancelled_invoice(self) -> None:
+        invoice = _make_invoice(status="cancelled")
+
+        with pytest.raises(InvariantViolation, match="cancelled invoice"):
+            invoice.record_payment(
+                payment_id=uuid.uuid4(),
+                method="cash",
+                amount=Decimal("1.00"),
+                collected_by=uuid.uuid4(),
+                collected_at=datetime.now(UTC),
+            )
+
+    def test_rejects_invalid_payment_method(self) -> None:
+        invoice = _make_invoice()
+
+        with pytest.raises(InvariantViolation, match="not a valid payment method"):
+            invoice.record_payment(
+                payment_id=uuid.uuid4(),
+                method="bitcoin",
+                amount=Decimal("1.00"),
+                collected_by=uuid.uuid4(),
+                collected_at=datetime.now(UTC),
+            )
+
+    def test_rejects_zero_amount(self) -> None:
+        invoice = _make_invoice()
+
+        with pytest.raises(InvariantViolation, match="must be > 0"):
+            invoice.record_payment(
+                payment_id=uuid.uuid4(),
+                method="cash",
+                amount=Decimal("0"),
+                collected_by=uuid.uuid4(),
+                collected_at=datetime.now(UTC),
             )

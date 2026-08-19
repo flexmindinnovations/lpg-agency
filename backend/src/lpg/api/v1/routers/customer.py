@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.customer import (
     get_consumer_number_sequence,
     get_customer_repository,
@@ -28,6 +29,7 @@ from lpg.api.v1.schemas.customer import (
     UpdateCustomerProfileRequest,
     VerifyKycDocumentRequest,
 )
+from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.customer.ports import ConsumerNumberSequence, CustomerRepository
@@ -36,6 +38,8 @@ from lpg.application.customer.use_cases import (
     AddCustomerAddressUseCase,
     ApproveCustomerCommand,
     ApproveCustomerUseCase,
+    CloseCustomerConnectionCommand,
+    CloseCustomerConnectionUseCase,
     GetCustomerByUserIdQuery,
     GetCustomerByUserIdUseCase,
     GetCustomerQuery,
@@ -344,3 +348,22 @@ async def approve_customer(
             consumer_number=request.consumer_number,
         )
     )
+
+
+@router.post(
+    "/{customer_id}/close",
+    dependencies=[Depends(require_permission("customers:manage"))],
+)
+async def close_customer_connection(
+    customer_id: uuid.UUID,
+    repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    invoice_repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    """Close a customer's connection for good (BR-34, D-21) — terminal;
+    `Customer.change_status` already rejects any transition away from
+    `closed`. Same `customers:manage` permission as `/approve`, the other
+    significant, staff-only customer lifecycle action.
+    """
+    use_case = CloseCustomerConnectionUseCase(repository, invoice_repository, unit_of_work)
+    await use_case.execute(CloseCustomerConnectionCommand(customer_id=customer_id))
