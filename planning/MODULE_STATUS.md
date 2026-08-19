@@ -927,16 +927,16 @@ analyze` → `flutter test`. `packages/sync_engine` was confirmed excluded
 from the CI matrix by reading the workflow file directly (only 7 entries
 listed), not assumed.
 
-**Findings, per package:**
+**Findings, per package** (as originally found, then fixed same pass — see below):
 
 | Package | Format | Analyze | Test |
 |---|---|---|---|
-| `packages/api_client` | 🔴 3 files unformatted (`customer_api.dart`, `models.dart`, `order_api.dart`) | ✅ 0 issues | ✅ 9/9 |
+| `packages/api_client` | ✅ fixed — 3 files were unformatted (`customer_api.dart`, `models.dart`, `order_api.dart`) | ✅ 0 issues | ✅ 9/9 |
 | `packages/auth` | ✅ | ✅ 0 issues | ✅ 16/16 |
 | `packages/core` | ✅ | ✅ 0 issues | ✅ 4/4 |
 | `packages/design_system` | ✅ | ✅ 0 issues | ✅ 5/5 |
-| `packages/local_storage` | 🔴 1 file unformatted (`app_database.dart`) | ✅ 0 issues | ✅ 7/7 |
-| `apps/customer_app` | 🔴 13 files unformatted | 🔴 20 issues (7× `avoid_print` in `orders_provider.dart`, 6× in `profile_provider.dart`, 6× `deprecated_member_use` — `withOpacity` — across 4 screen files) | 🔴 3/3 tests fail (`test/widget_test.dart`) — root cause: `RenderFlex overflowed by 17 pixels` in `lib/src/features/dashboard/presentation/dashboard_screen.dart:43`, a `Column` that overflows in the test harness viewport; the overflow assertion cascades into the two subsequent widget-finder assertions failing |
+| `packages/local_storage` | ✅ fixed — 1 file was unformatted (`app_database.dart`) | ✅ 0 issues | ✅ 7/7 |
+| `apps/customer_app` | ✅ fixed — 13 files were unformatted | ✅ fixed — 20 issues were found (7× `avoid_print` in `orders_provider.dart`, 6× in `profile_provider.dart`, 6× `deprecated_member_use` — `withOpacity` — across 4 screen files) | ✅ fixed — 3/3 tests were failing (`test/widget_test.dart`); root cause was a real `RenderFlex overflowed by 17 pixels` in `lib/src/features/dashboard/presentation/dashboard_screen.dart:43`, a `Column` that overflowed in the test harness viewport, which cascaded into two subsequent widget-finder assertions failing |
 | `apps/driver_app` | ✅ | ✅ 0 issues | ✅ 3/3 |
 
 **Root cause of the gap**: `flutter analyze`'s default exit code fails on
