@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
+import { FloatLabel } from 'primeng/floatlabel';
 import { InputText } from 'primeng/inputtext';
 import { AuthService } from '@lpg/shared/data-access';
+import { AuthShell } from '../auth-shell/auth-shell';
 
 /**
  * Requests a password-reset email. Always shows the same success state
@@ -15,125 +17,119 @@ import { AuthService } from '@lpg/shared/data-access';
 @Component({
   selector: 'lpg-forgot-password-page',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, InputText],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, FloatLabel, InputText, AuthShell],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="login-page">
-      <div class="login-card">
-        @if (submitted()) {
+    <lpg-auth-shell>
+      @if (submitted()) {
+        <div class="login-card__header">
+          <h1 class="login-card__title">Check your email</h1>
+          <p class="login-card__lede">
+            If an account exists for that address, we've sent a link to reset the password.
+          </p>
+        </div>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <div class="login-card__header">
-            <h1 class="login-card__title">Check your email</h1>
+            <h1 class="login-card__title">Reset your password</h1>
             <p class="login-card__lede">
-              If an account exists for that address, we've sent a link to reset the password.
+              Enter your email and we'll send you a link to reset your password.
             </p>
           </div>
-        } @else {
-          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-            <div class="login-card__header">
-              <h1 class="login-card__title">Reset your password</h1>
-              <p class="login-card__lede">
-                Enter your email and we'll send you a link to reset your password.
-              </p>
-            </div>
 
-            <div class="login-card__body">
-              <div class="form-group">
-                <label for="forgot-email">Email</label>
+          <div class="login-card__body">
+            <div class="form-group">
+              <p-floatlabel variant="on" class="login-card__float-label">
                 <input
                   pInputText
                   id="forgot-email"
                   type="email"
                   formControlName="email"
                   autocomplete="username"
+                  class="login-card__input"
                   [attr.aria-invalid]="emailInvalid()"
                 />
-                @if (emailInvalid()) {
-                  <span class="field-error">Enter a valid email address.</span>
-                }
-              </div>
+                <label for="forgot-email">Email</label>
+              </p-floatlabel>
+              @if (emailInvalid()) {
+                <span class="field-error">Enter a valid email address.</span>
+              }
             </div>
+          </div>
 
-            <div class="login-card__footer">
-              <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
-                {{ submitting() ? 'Sending…' : 'Send reset link' }}
-              </button>
-            </div>
-          </form>
-        }
+          <div class="login-card__footer">
+            <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
+              {{ submitting() ? 'Sending…' : 'Send reset link' }}
+            </button>
+          </div>
+        </form>
+      }
 
-        <a class="login-card__forgot" routerLink="/login">Back to sign in</a>
-      </div>
-    </div>
+      <a class="login-card__forgot" routerLink="/login">Back to sign in</a>
+    </lpg-auth-shell>
   `,
   styles: [
     `
-      .login-page {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-block-size: 100vh;
-        padding: var(--spacing-lg);
-        background: var(--color-surface-sunken);
-      }
-
-      .login-card {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-lg);
-        inline-size: 100%;
-        max-inline-size: 26rem;
-        padding: var(--spacing-xl);
-        background: var(--color-surface-base);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-xl);
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      }
-
       .login-card__header {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
-        text-align: center;
+        margin-block-end: var(--spacing-xl);
       }
 
       .login-card__title {
         margin: 0;
-        font-size: var(--typography-heading1-font-size);
-        font-weight: var(--typography-heading1-font-weight);
-        letter-spacing: -0.025em;
+        font-size: var(--typography-display-font-size);
+        font-weight: var(--typography-display-font-weight);
+        letter-spacing: -0.02em;
+        color: var(--color-text-primary);
       }
 
       .login-card__lede {
         margin: 0;
         color: var(--color-text-secondary);
-        font-size: var(--typography-body-small-font-size);
+        font-size: var(--typography-body-font-size);
       }
 
       .login-card__body {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-        margin-block-start: var(--spacing-lg);
+      }
+
+      .login-card__float-label {
+        display: block;
+        inline-size: 100%;
+      }
+
+      .login-card__input {
+        width: 100%;
       }
 
       .login-card__footer {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-        margin-block-start: var(--spacing-lg);
+        margin-block-start: var(--spacing-xl);
       }
 
       .login-card__submit {
         width: 100%;
+        transition: transform var(--motion-duration-micro) var(--motion-easing-standard);
+      }
+
+      .login-card__submit:active:not(:disabled) {
+        transform: translateY(1px);
       }
 
       .login-card__forgot {
-        align-self: center;
+        display: block;
+        text-align: center;
         color: var(--color-action-primary);
         font-size: var(--typography-body-small-font-size);
         text-decoration: none;
         font-weight: var(--typography-label-font-weight);
-        margin-block-start: var(--spacing-md);
+        margin-block-start: var(--spacing-lg);
       }
 
       .login-card__forgot:hover {

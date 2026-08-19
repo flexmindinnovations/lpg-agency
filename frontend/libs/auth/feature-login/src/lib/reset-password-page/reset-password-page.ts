@@ -8,9 +8,11 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
+import { FloatLabel } from 'primeng/floatlabel';
 import { Password } from 'primeng/password';
 import { Message } from 'primeng/message';
 import { AuthService, type AppError } from '@lpg/shared/data-access';
+import { AuthShell } from '../auth-shell/auth-shell';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -41,39 +43,47 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 @Component({
   selector: 'lpg-reset-password-page',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, Password, Message],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    ButtonDirective,
+    FloatLabel,
+    Password,
+    Message,
+    AuthShell,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="login-page">
-      <div class="login-card">
-        @if (!resetToken()) {
+    <lpg-auth-shell>
+      @if (!resetToken()) {
+        <div class="login-card__header">
+          <h1 class="login-card__title">Invalid link</h1>
+          <p class="login-card__lede">
+            This password reset link is missing its token. Request a new one.
+          </p>
+        </div>
+      } @else if (succeeded()) {
+        <div class="login-card__header">
+          <h1 class="login-card__title">Password updated</h1>
+          <p class="login-card__lede">Your password has been reset.</p>
+        </div>
+        <div class="login-card__footer">
+          <a class="login-card__submit-link" routerLink="/login">Continue to sign in</a>
+        </div>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <div class="login-card__header">
-            <h1 class="login-card__title">Invalid link</h1>
-            <p class="login-card__lede">
-              This password reset link is missing its token. Request a new one.
-            </p>
+            <h1 class="login-card__title">Choose a new password</h1>
+            <p class="login-card__lede">Use at least 12 characters.</p>
           </div>
-        } @else if (succeeded()) {
-          <div class="login-card__header">
-            <h1 class="login-card__title">Password updated</h1>
-            <p class="login-card__lede">Your password has been reset.</p>
-          </div>
-          <div class="login-card__footer">
-            <a class="login-card__submit-link" routerLink="/login">Continue to sign in</a>
-          </div>
-        } @else {
-          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-            <div class="login-card__header">
-              <h1 class="login-card__title">Choose a new password</h1>
-            </div>
 
-            @if (errorMessage(); as message) {
-              <p-message severity="error">{{ message }}</p-message>
-            }
+          @if (errorMessage(); as message) {
+            <p-message severity="error">{{ message }}</p-message>
+          }
 
-            <div class="login-card__body">
-              <div class="form-group">
-                <label for="reset-new-password">New password</label>
+          <div class="login-card__body">
+            <div class="form-group">
+              <p-floatlabel variant="on" class="login-card__float-label">
                 <p-password
                   inputId="reset-new-password"
                   formControlName="newPassword"
@@ -81,10 +91,12 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
                   autocomplete="new-password"
                   [inputStyle]="{ width: '100%' }"
                 />
-              </div>
+                <label for="reset-new-password">New password</label>
+              </p-floatlabel>
+            </div>
 
-              <div class="form-group">
-                <label for="reset-confirm-password">Confirm new password</label>
+            <div class="form-group">
+              <p-floatlabel variant="on" class="login-card__float-label">
                 <p-password
                   inputId="reset-confirm-password"
                   formControlName="confirmPassword"
@@ -93,82 +105,71 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
                   autocomplete="new-password"
                   [inputStyle]="{ width: '100%' }"
                 />
-                @if (mismatch()) {
-                  <span class="field-error">Passwords do not match.</span>
-                }
-              </div>
+                <label for="reset-confirm-password">Confirm new password</label>
+              </p-floatlabel>
+              @if (mismatch()) {
+                <span class="field-error">Passwords do not match.</span>
+              }
             </div>
+          </div>
 
-            <div class="login-card__footer">
-              <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
-                {{ submitting() ? 'Saving…' : 'Save new password' }}
-              </button>
-            </div>
-          </form>
-        }
-      </div>
-    </div>
+          <div class="login-card__footer">
+            <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
+              {{ submitting() ? 'Saving…' : 'Save new password' }}
+            </button>
+          </div>
+        </form>
+      }
+    </lpg-auth-shell>
   `,
   styles: [
     `
-      .login-page {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-block-size: 100vh;
-        padding: var(--spacing-lg);
-        background: var(--color-surface-sunken);
-      }
-
-      .login-card {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-lg);
-        inline-size: 100%;
-        max-inline-size: 26rem;
-        padding: var(--spacing-xl);
-        background: var(--color-surface-base);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-xl);
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      }
-
       .login-card__header {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
-        text-align: center;
+        margin-block-end: var(--spacing-xl);
       }
 
       .login-card__title {
         margin: 0;
-        font-size: var(--typography-heading1-font-size);
-        font-weight: var(--typography-heading1-font-weight);
-        letter-spacing: -0.025em;
+        font-size: var(--typography-display-font-size);
+        font-weight: var(--typography-display-font-weight);
+        letter-spacing: -0.02em;
+        color: var(--color-text-primary);
       }
 
       .login-card__lede {
         margin: 0;
         color: var(--color-text-secondary);
-        font-size: var(--typography-body-small-font-size);
+        font-size: var(--typography-body-font-size);
       }
 
       .login-card__body {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-        margin-block-start: var(--spacing-md);
+      }
+
+      .login-card__float-label {
+        display: block;
+        inline-size: 100%;
       }
 
       .login-card__footer {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-        margin-block-start: var(--spacing-lg);
+        margin-block-start: var(--spacing-xl);
       }
 
       .login-card__submit {
         width: 100%;
+        transition: transform var(--motion-duration-micro) var(--motion-easing-standard);
+      }
+
+      .login-card__submit:active:not(:disabled) {
+        transform: translateY(1px);
       }
 
       .login-card__submit-link {
@@ -176,10 +177,10 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
         align-items: center;
         justify-content: center;
         width: 100%;
-        padding: 0.5rem 1rem;
+        padding: 0.625rem 1rem;
         background: var(--color-action-primary);
         color: var(--color-action-primary-text);
-        border-radius: var(--radius-md);
+        border-radius: var(--component-button-radius);
         text-decoration: none;
         font-size: var(--typography-body-small-font-size);
         font-weight: var(--typography-label-font-weight);
