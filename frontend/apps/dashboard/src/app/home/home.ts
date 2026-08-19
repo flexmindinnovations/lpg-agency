@@ -218,7 +218,7 @@ function escapeCsvCell(value: string): string {
         background: var(--color-surface-raised);
         border: var(--border-width) solid var(--color-border-default);
         border-radius: var(--radius-lg);
-        padding: var(--spacing-lg);
+        padding: var(--spacing-xl);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-sm);
@@ -248,20 +248,22 @@ function escapeCsvCell(value: string): string {
         display: flex;
         align-items: center;
         justify-content: center;
-        inline-size: 36px;
-        block-size: 36px;
+        inline-size: 40px;
+        block-size: 40px;
         border-radius: var(--radius-md);
-        font-size: 16px;
+        font-size: 17px;
+        flex-shrink: 0;
       }
 
-      .kpi-card__icon.bg-red { background: rgba(220, 38, 38, 0.1); color: rgb(220, 38, 38); }
-      .kpi-card__icon.bg-blue { background: rgba(37, 99, 235, 0.1); color: rgb(37, 99, 235); }
-      .kpi-card__icon.bg-green { background: rgba(22, 163, 74, 0.1); color: rgb(22, 163, 74); }
-      .kpi-card__icon.bg-yellow { background: rgba(202, 138, 4, 0.1); color: rgb(202, 138, 4); }
-      .kpi-card__icon.bg-purple { background: rgba(126, 34, 206, 0.1); color: rgb(126, 34, 206); }
+      .kpi-card__icon.bg-danger { background: color-mix(in srgb, var(--color-status-danger) 12%, transparent); color: var(--color-status-danger); }
+      .kpi-card__icon.bg-info { background: color-mix(in srgb, var(--color-status-info) 12%, transparent); color: var(--color-status-info); }
+      .kpi-card__icon.bg-success { background: color-mix(in srgb, var(--color-status-success) 12%, transparent); color: var(--color-status-success); }
+      .kpi-card__icon.bg-warning { background: color-mix(in srgb, var(--color-status-warning) 12%, transparent); color: var(--color-status-warning); }
+      .kpi-card__icon.bg-accent { background: color-mix(in srgb, var(--primitive-color-flame-orange-500) 12%, transparent); color: var(--primitive-color-flame-orange-500); }
+      .kpi-card__icon.bg-primary { background: color-mix(in srgb, var(--color-action-primary) 12%, transparent); color: var(--color-action-primary); }
 
       .kpi-card__value {
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 700;
         color: var(--color-text-primary);
         letter-spacing: -0.02em;
@@ -290,7 +292,7 @@ function escapeCsvCell(value: string): string {
         background: var(--color-surface-raised);
         border: var(--border-width) solid var(--color-border-default);
         border-radius: var(--radius-lg);
-        padding: var(--spacing-lg);
+        padding: var(--spacing-xl);
         box-shadow: var(--elevation-1);
       }
 
@@ -343,7 +345,7 @@ function escapeCsvCell(value: string): string {
         background: var(--color-surface-raised);
         border: var(--border-width) solid var(--color-border-default);
         border-radius: var(--radius-md);
-        padding: var(--spacing-md);
+        padding: var(--spacing-lg);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
@@ -371,7 +373,7 @@ function escapeCsvCell(value: string): string {
         background: var(--color-surface-raised);
         border: var(--border-width) solid var(--color-border-default);
         border-radius: var(--radius-md);
-        padding: var(--spacing-md);
+        padding: var(--spacing-lg);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xs);
@@ -534,42 +536,42 @@ export class Home implements OnDestroy {
         title: 'Total Customers',
         value: (summary?.customer_count ?? 0).toLocaleString(),
         icon: 'pi pi-users',
-        colorClass: 'bg-blue',
+        colorClass: 'bg-info',
         permission: 'customers:read'
       },
       {
         title: 'Drivers',
         value: (summary?.driver_count ?? 0).toLocaleString(),
         icon: 'pi pi-id-card',
-        colorClass: 'bg-purple',
+        colorClass: 'bg-accent',
         permission: 'drivers:read'
       },
       {
         title: 'Fleet Vehicles',
         value: (summary?.vehicle_count ?? 0).toLocaleString(),
         icon: 'pi pi-truck',
-        colorClass: 'bg-yellow',
+        colorClass: 'bg-warning',
         permission: 'vehicles:read'
       },
       {
         title: 'Warehouses',
         value: (summary?.warehouse_count ?? 0).toLocaleString(),
         icon: 'pi pi-warehouse',
-        colorClass: 'bg-blue',
+        colorClass: 'bg-primary',
         permission: 'tenant:configure'
       },
       {
         title: 'Filled Cylinders',
         value: filled.toLocaleString(),
         icon: 'pi pi-box',
-        colorClass: 'bg-green',
+        colorClass: 'bg-success',
         permission: 'inventory:read'
       },
       {
         title: 'Cylinders Needing Attention',
         value: needingAttention.toLocaleString(),
         icon: 'pi pi-exclamation-triangle',
-        colorClass: 'bg-red',
+        colorClass: 'bg-danger',
         permission: 'inventory:read'
       },
     ]);
@@ -622,6 +624,9 @@ export class Home implements OnDestroy {
     let surfaceBorder = rootStyle.getPropertyValue('--color-border-default').trim();
     if (!surfaceBorder) surfaceBorder = '#e5e7eb';
 
+    let brandPrimary = rootStyle.getPropertyValue('--color-action-primary').trim();
+    if (!brandPrimary) brandPrimary = '#162b66';
+
     const vehicleStatuses = this.summary()?.vehicles_by_status ?? {};
     const vehicleLabels = Object.keys(vehicleStatuses);
     this.vehicleStatusChartData.set({
@@ -630,8 +635,9 @@ export class Home implements OnDestroy {
         {
           label: 'Vehicles',
           data: vehicleLabels.length > 0 ? vehicleLabels.map((s) => vehicleStatuses[s]) : [0],
-          backgroundColor: 'rgb(37, 99, 235)',
-          borderRadius: 4,
+          backgroundColor: brandPrimary,
+          borderRadius: 8,
+          maxBarThickness: 56,
         },
       ],
     });
@@ -649,16 +655,27 @@ export class Home implements OnDestroy {
       },
     });
 
+    let statusSuccess = rootStyle.getPropertyValue('--color-status-success').trim();
+    if (!statusSuccess) statusSuccess = '#16a34a';
+    let statusWarning = rootStyle.getPropertyValue('--color-status-warning').trim();
+    if (!statusWarning) statusWarning = '#d97706';
+    let statusDanger = rootStyle.getPropertyValue('--color-status-danger').trim();
+    if (!statusDanger) statusDanger = '#dc2626';
+    let flameOrange = rootStyle.getPropertyValue('--primitive-color-flame-orange-500').trim();
+    if (!flameOrange) flameOrange = '#ff6f12';
+    let neutral = rootStyle.getPropertyValue('--color-text-disabled').trim();
+    if (!neutral) neutral = '#9ca3af';
+
     const inventoryStatuses = this.summary()?.inventory_by_status ?? {};
     const inventoryLabels = Object.keys(inventoryStatuses);
     const statusColors: Record<string, string> = {
-      filled: 'rgb(37, 99, 235)',
-      empty: 'rgb(156, 163, 175)',
-      damaged: 'rgb(220, 38, 38)',
-      leakage: 'rgb(202, 138, 4)',
-      quarantine: 'rgb(126, 34, 206)',
-      repair: 'rgb(13, 148, 136)',
-      scrap: 'rgb(75, 85, 99)',
+      filled: brandPrimary,
+      empty: neutral,
+      damaged: statusDanger,
+      leakage: statusWarning,
+      quarantine: flameOrange,
+      repair: statusSuccess,
+      scrap: surfaceBorder,
     };
     this.inventoryChartData.set({
       labels: inventoryLabels.length > 0 ? inventoryLabels : ['No inventory yet'],
@@ -667,8 +684,8 @@ export class Home implements OnDestroy {
           data: inventoryLabels.length > 0 ? inventoryLabels.map((s) => inventoryStatuses[s]) : [1],
           backgroundColor:
             inventoryLabels.length > 0
-              ? inventoryLabels.map((s) => statusColors[s] ?? 'rgb(156, 163, 175)')
-              : ['rgb(229, 231, 235)'],
+              ? inventoryLabels.map((s) => statusColors[s] ?? neutral)
+              : [surfaceBorder],
           borderWidth: 0,
         },
       ],
