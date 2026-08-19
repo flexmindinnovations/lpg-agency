@@ -60,7 +60,7 @@ backlog this file tracks.
 | 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | 🔴 **zero backend tests** | ~90% | 🔴 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup); import-linter `routers/complaint.py` → sqlalchemy; ruff `domain/complaint` 27 | Full aggregate + router with **no tests at all**; blank buttons fixed (C3/R2); no planning dir |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
 | 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** |
-| — | Reporting | folded into 18 | 🔴 **router never mounted — 100% dead** | ~90% built, **0% reachable** | 🔴 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7 — every endpoint 404s |
+| — | Reporting | folded into 18 | ✅ router mounted (R7a) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7 — mount fixed; deeper coverage is R7 |
 | — | Employees (tenant-admin) | — | 🔴 **zero tests** | ~90% | 🔴 | lint: `feature-employees` | No tests — this is the table whose missing GRANT caused the `permission denied` outage |
 | — | Dashboard shell | — | 🟡 builds, tests red | 100% | 🔴 | lint + test: `dashboard` | `shell-layout.ts` statically imports 2 lazy libs → breaks lazy boundary **and** `shell-layout.spec.ts` |
 | — | Shared data-access | — | 🟡 | 100% | 🔴 | test: `shared-data-access` | Unit tests failing |
@@ -233,7 +233,7 @@ test files whatsoever**, and each is marked COMPLETE. `employee` is precisely
 the table whose missing GRANT caused a production-shaped outage that no test
 caught.
 
-### C7 — Reporting is unreachable: the router is never mounted
+### C7 — Reporting is unreachable: the router is never mounted ✅ RESOLVED (R7a, 2026-08-19)
 
 Found during the end-to-end documentation audit, not by any test.
 
@@ -260,6 +260,26 @@ contract doc would not have matched even once mounted. Corrected there.
 **Fix is one line**, but it should land with tests, since mounting the router
 exposes four previously unreachable endpoints to RBAC and RLS for the first
 time. Tracked as R7a.
+
+**✅ Fixed 2026-08-19 (R7a).** Restored the `reporting` import (removed as
+dead code by R6's ruff cleanup, correctly, since it truly was unused before
+this fix) and added the missing `app.include_router(reporting.router,
+prefix=settings.api_v1_prefix)` in `api/app.py`. All four endpoints
+(`/sales`, `/gst`, `/drivers`, `/consumption`) are now reachable, RBAC-gated
+(`reports:read`, already granted by `b3f7c1d9e4a2`), and queried against the
+real `rpt` schema views/materialized views created by
+`bab6ab8f401f`. `libs/reporting/data-access/reporting.store.ts` already
+called the correct paths, so no frontend change was needed beyond
+regenerating the committed OpenAPI spec and Angular API client.
+
+New `tests/integration/test_reporting_endpoints_smoke.py` (3 tests) proves
+the mount itself: all four endpoints return 200 (not 404) for a freshly
+seeded tenant, `/sales` reflects a real seeded invoice and is tenant-scoped
+(a second tenant's invoice never appears), and a role without `reports:read`
+(`driver`) is refused with 403. Deeper business-logic coverage for the other
+three reports (`/gst`, `/drivers`, `/consumption` all need a fuller
+order→delivery→invoice lifecycle or cylinder-ledger exchange history to
+produce non-empty rows) is left to R7, per that item's own broader scope.
 
 ### C9 — Every user created since `8c221c3e0a91` had ZERO permissions ✅ RESOLVED (R11, 2026-08-18)
 
@@ -680,7 +700,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R5** — C2 import contracts → **done 2026-08-18**, 0 of 5 contracts broken (was 2). New `TenantSlugResolver` port replaces `routers/auth.py`'s raw `text()`; `ComplaintRepository`/`InAppNotificationRepository` gained list/count methods and proper DI wiring replacing two routers' raw-session hacks; 11 composition-root-shaped edges added to `ignore_imports`; `connection_manager.py`'s FastAPI import inverted into a local `Protocol`. Full writeup in C2
 - [x] **R6** — `ruff --fix` the ~190 mechanical errors, then triage the remainder → **done 2026-08-18**, 481→73 errors, mypy 2→0. Found and fixed 3 real pre-existing bugs while triaging (leaked debug text in a 403 message, a QR-code `size` param silently ignored, an employee list `status` filter accepted but never applied at any layer) and caught+reverted a real regression `ruff --unsafe-fixes` introduced (SQLAlchemy/Pydantic runtime annotation resolution, same footgun class as FastAPI's `Depends()` — now a real `pyproject.toml` exemption for `schemas/*.py`, not just a comment). Full writeup in C5
 - [x] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress` → **done 2026-08-18**, widened `CustomerService.addAddress` to accept the full structured payload the backend already supported; also recovered `address_type`, which the old flattening dropped entirely. Not live-browser-verified (login automation friction) — full writeup in C1
-- [ ] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time
+- [x] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time (2026-08-19)
 - [ ] **R7** — C4 test coverage for complaint / reporting / employee / invoice
 - [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass

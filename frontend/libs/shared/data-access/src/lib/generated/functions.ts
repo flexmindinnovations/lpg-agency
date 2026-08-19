@@ -217,6 +217,14 @@ export type { RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params as Reschedu
 export { rescheduleOrderApiV1OrdersOrderIdReschedulePost as rescheduleOrderApiV1OrdersOrderIdReschedulePost } from './fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
 export type { CreatePrintJobApiV1PrintJobsPost$Params as CreatePrintJobApiV1PrintJobsPost$Params } from './fn/printing/create-print-job-api-v-1-print-jobs-post';
 export { createPrintJobApiV1PrintJobsPost as createPrintJobApiV1PrintJobsPost } from './fn/printing/create-print-job-api-v-1-print-jobs-post';
+export type { GetCustomerConsumptionApiV1ReportingConsumptionGet$Params as GetCustomerConsumptionApiV1ReportingConsumptionGet$Params } from './fn/reporting/get-customer-consumption-api-v-1-reporting-consumption-get';
+export { getCustomerConsumptionApiV1ReportingConsumptionGet as getCustomerConsumptionApiV1ReportingConsumptionGet } from './fn/reporting/get-customer-consumption-api-v-1-reporting-consumption-get';
+export type { GetDriverPerformanceApiV1ReportingDriversGet$Params as GetDriverPerformanceApiV1ReportingDriversGet$Params } from './fn/reporting/get-driver-performance-api-v-1-reporting-drivers-get';
+export { getDriverPerformanceApiV1ReportingDriversGet as getDriverPerformanceApiV1ReportingDriversGet } from './fn/reporting/get-driver-performance-api-v-1-reporting-drivers-get';
+export type { GetGstReportApiV1ReportingGstGet$Params as GetGstReportApiV1ReportingGstGet$Params } from './fn/reporting/get-gst-report-api-v-1-reporting-gst-get';
+export { getGstReportApiV1ReportingGstGet as getGstReportApiV1ReportingGstGet } from './fn/reporting/get-gst-report-api-v-1-reporting-gst-get';
+export type { GetDailySalesApiV1ReportingSalesGet$Params as GetDailySalesApiV1ReportingSalesGet$Params } from './fn/reporting/get-daily-sales-api-v-1-reporting-sales-get';
+export { getDailySalesApiV1ReportingSalesGet as getDailySalesApiV1ReportingSalesGet } from './fn/reporting/get-daily-sales-api-v-1-reporting-sales-get';
 export type { ListRoutesApiV1RoutesGet$Params as ListRoutesApiV1RoutesGet$Params } from './fn/routes/list-routes-api-v-1-routes-get';
 export { listRoutesApiV1RoutesGet as listRoutesApiV1RoutesGet } from './fn/routes/list-routes-api-v-1-routes-get';
 export type { PlanRouteApiV1RoutesPost$Params as PlanRouteApiV1RoutesPost$Params } from './fn/routes/plan-route-api-v-1-routes-post';

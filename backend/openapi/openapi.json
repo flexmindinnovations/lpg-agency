@@ -58,7 +58,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -89,7 +88,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -136,7 +134,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -276,7 +273,6 @@
           "after_state": {
             "anyOf": [
               {
-                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -288,7 +284,6 @@
           "before_state": {
             "anyOf": [
               {
-                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -391,7 +386,7 @@
       "Body_upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
+            "format": "binary",
             "title": "File",
             "type": "string"
           }
@@ -888,7 +883,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -1123,7 +1117,6 @@
           "latitude": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -1150,7 +1143,6 @@
           "longitude": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -1198,6 +1190,25 @@
           "is_primary"
         ],
         "title": "CustomerAddressResponse",
+        "type": "object"
+      },
+      "CustomerConsumptionResponse": {
+        "properties": {
+          "avg_refill_interval_days": {
+            "title": "Avg Refill Interval Days",
+            "type": "number"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "avg_refill_interval_days"
+        ],
+        "title": "CustomerConsumptionResponse",
         "type": "object"
       },
       "CustomerPageResponse": {
@@ -1413,7 +1424,6 @@
           "price": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -1423,7 +1433,6 @@
             "title": "Price"
           },
           "weight_kg": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           }
@@ -1453,7 +1462,6 @@
             "type": "string"
           },
           "weight_kg": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           }
@@ -1465,6 +1473,48 @@
           "is_active"
         ],
         "title": "CylinderTypeResponse",
+        "type": "object"
+      },
+      "DailySalesResponse": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "sale_date": {
+            "format": "date",
+            "title": "Sale Date",
+            "type": "string"
+          },
+          "total_invoices": {
+            "title": "Total Invoices",
+            "type": "integer"
+          },
+          "total_revenue": {
+            "title": "Total Revenue",
+            "type": "string"
+          },
+          "total_tax": {
+            "title": "Total Tax",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sale_date",
+          "branch_id",
+          "total_invoices",
+          "total_revenue",
+          "total_tax"
+        ],
+        "title": "DailySalesResponse",
         "type": "object"
       },
       "DashboardActivityEntryResponse": {
@@ -1765,6 +1815,41 @@
           "page_size"
         ],
         "title": "DriverPageResponse",
+        "type": "object"
+      },
+      "DriverPerformanceResponse": {
+        "properties": {
+          "cash_accuracy": {
+            "title": "Cash Accuracy",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "delivered_stops": {
+            "title": "Delivered Stops",
+            "type": "integer"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "total_stops": {
+            "title": "Total Stops",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "driver_id",
+          "date",
+          "total_stops",
+          "delivered_stops",
+          "cash_accuracy"
+        ],
+        "title": "DriverPerformanceResponse",
         "type": "object"
       },
       "DriverResponse": {
@@ -2124,6 +2209,24 @@
         "title": "GoodsReceiptResponse",
         "type": "object"
       },
+      "GstFilingResponse": {
+        "properties": {
+          "filing_period": {
+            "title": "Filing Period",
+            "type": "string"
+          },
+          "total_gst": {
+            "title": "Total Gst",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filing_period",
+          "total_gst"
+        ],
+        "title": "GstFilingResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2369,22 +2472,18 @@
             "type": "integer"
           },
           "subtotal": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
           },
           "tax_amount": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Tax Amount",
             "type": "string"
           },
           "total_amount": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Amount",
             "type": "string"
           },
           "unit_price": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Unit Price",
             "type": "string"
           }
@@ -2466,12 +2565,10 @@
             "type": "string"
           },
           "subtotal": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
           },
           "tax_amount": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Tax Amount",
             "type": "string"
           },
@@ -2481,7 +2578,6 @@
             "type": "string"
           },
           "total_amount": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Amount",
             "type": "string"
           },
@@ -2906,7 +3002,6 @@
           "unit_price": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -2995,7 +3090,6 @@
             "type": "array"
           },
           "metadata": {
-            "additionalProperties": true,
             "title": "Metadata",
             "type": "object"
           },
@@ -3058,7 +3152,6 @@
           "total_amount": {
             "anyOf": [
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -3344,7 +3437,6 @@
             "type": "string"
           },
           "price": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Price",
             "type": "string"
           }
@@ -3460,17 +3552,14 @@
       "ProofOfDeliveryResponse": {
         "properties": {
           "amount_collected": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount Collected",
             "type": "string"
           },
           "gps_lat": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lat",
             "type": "string"
           },
           "gps_lng": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lng",
             "type": "string"
           },
@@ -3608,7 +3697,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -3620,7 +3708,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -3632,7 +3719,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -4091,7 +4177,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4128,7 +4213,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4729,7 +4813,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -5175,13 +5258,6 @@
       },
       "ValidationError": {
         "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
           "loc": {
             "items": {
               "anyOf": [
@@ -7493,7 +7569,7 @@
         },
         "summary": "List Customers",
         "tags": [
-          "customers"
+          "Customers"
         ]
       },
       "post": {
@@ -7532,7 +7608,7 @@
         },
         "summary": "Register Customer",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7553,7 +7629,7 @@
         },
         "summary": "Get current customer profile",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7574,7 +7650,7 @@
         },
         "summary": "Peek Next Consumer Number",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7617,7 +7693,7 @@
         },
         "summary": "Get Customer",
         "tags": [
-          "customers"
+          "Customers"
         ]
       },
       "put": {
@@ -7668,7 +7744,7 @@
         },
         "summary": "Update Customer Profile",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7723,7 +7799,7 @@
         },
         "summary": "Add Address",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7774,7 +7850,7 @@
         },
         "summary": "Set Primary Address",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7825,7 +7901,7 @@
         },
         "summary": "Approve Customer",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7868,7 +7944,7 @@
         },
         "summary": "List Kyc Documents",
         "tags": [
-          "customers"
+          "Customers"
         ]
       },
       "post": {
@@ -7921,7 +7997,7 @@
         },
         "summary": "Submit Kyc",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -7982,7 +8058,7 @@
         },
         "summary": "Verify Kyc",
         "tags": [
-          "customers"
+          "Customers"
         ]
       }
     },
@@ -8025,7 +8101,7 @@
         },
         "summary": "Get Ledger",
         "tags": [
-          "cylinder-ledger"
+          "Cylinder Ledger"
         ]
       }
     },
@@ -8078,7 +8154,7 @@
         },
         "summary": "Adjust Balance",
         "tags": [
-          "cylinder-ledger"
+          "Cylinder Ledger"
         ]
       }
     },
@@ -8099,7 +8175,7 @@
         },
         "summary": "Consolidated platform-wide summary for the dashboard",
         "tags": [
-          "dashboard"
+          "Dashboard"
         ]
       }
     },
@@ -8202,7 +8278,7 @@
         },
         "summary": "List Drivers",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       },
       "post": {
@@ -8242,7 +8318,7 @@
         },
         "summary": "Register Driver",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -8286,7 +8362,7 @@
         },
         "summary": "Get Driver",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -8340,7 +8416,7 @@
         },
         "summary": "Update Driver License",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -8394,7 +8470,7 @@
         },
         "summary": "Update Driver Status",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -8618,7 +8694,7 @@
         },
         "summary": "Adjust Inventory",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -8675,7 +8751,7 @@
         },
         "summary": "Get Inventory Balance",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -8742,7 +8818,7 @@
         },
         "summary": "Create Reconciliation Record",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -8809,7 +8885,7 @@
         },
         "summary": "Change Cylinder Status",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -8892,7 +8968,7 @@
         },
         "summary": "List Inventory Transactions",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -8934,7 +9010,7 @@
         },
         "summary": "Create Load Transfer",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -9301,7 +9377,7 @@
         },
         "summary": "List Orders",
         "tags": [
-          "orders"
+          "Orders"
         ]
       },
       "post": {
@@ -9341,7 +9417,7 @@
         },
         "summary": "Create Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9383,7 +9459,7 @@
         },
         "summary": "Bulk Cancel Orders",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9426,7 +9502,7 @@
         },
         "summary": "Get Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9480,7 +9556,7 @@
         },
         "summary": "Assign Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9534,7 +9610,7 @@
         },
         "summary": "Cancel Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9578,7 +9654,7 @@
         },
         "summary": "Approve Order Cancellation",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9622,7 +9698,7 @@
         },
         "summary": "Close Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9666,7 +9742,7 @@
         },
         "summary": "Confirm Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9720,7 +9796,7 @@
         },
         "summary": "Deliver Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9764,7 +9840,7 @@
         },
         "summary": "Depart Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9808,7 +9884,7 @@
         },
         "summary": "Dispatch Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9862,7 +9938,7 @@
         },
         "summary": "Record Failed Delivery",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9910,7 +9986,7 @@
         },
         "summary": "List Order Status History",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -9964,7 +10040,7 @@
         },
         "summary": "Upload Pod Attachment",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -10008,7 +10084,7 @@
         },
         "summary": "Reschedule Order",
         "tags": [
-          "orders"
+          "Orders"
         ]
       }
     },
@@ -10094,7 +10170,171 @@
         },
         "summary": "Approve Reconciliation Record",
         "tags": [
-          "inventory"
+          "Inventory"
+        ]
+      }
+    },
+    "/api/v1/reporting/consumption": {
+      "get": {
+        "operationId": "get_customer_consumption_api_v1_reporting_consumption_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsumptionResponse"
+                  },
+                  "title": "Response Get Customer Consumption Api V1 Reporting Consumption Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Customer Consumption",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reporting/drivers": {
+      "get": {
+        "operationId": "get_driver_performance_api_v1_reporting_drivers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DriverPerformanceResponse"
+                  },
+                  "title": "Response Get Driver Performance Api V1 Reporting Drivers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Driver Performance",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reporting/gst": {
+      "get": {
+        "operationId": "get_gst_report_api_v1_reporting_gst_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GstFilingResponse"
+                  },
+                  "title": "Response Get Gst Report Api V1 Reporting Gst Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Gst Report",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
+    "/api/v1/reporting/sales": {
+      "get": {
+        "operationId": "get_daily_sales_api_v1_reporting_sales_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DailySalesResponse"
+                  },
+                  "title": "Response Get Daily Sales Api V1 Reporting Sales Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Daily Sales",
+        "tags": [
+          "reporting"
         ]
       }
     },
@@ -10650,7 +10890,7 @@
         },
         "summary": "List Vehicles",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       },
       "post": {
@@ -10690,7 +10930,7 @@
         },
         "summary": "Register Vehicle",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -10734,7 +10974,7 @@
         },
         "summary": "Get Vehicle",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -10788,7 +11028,7 @@
         },
         "summary": "Record Collection",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -10842,7 +11082,7 @@
         },
         "summary": "Record Delivery",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -10896,7 +11136,7 @@
         },
         "summary": "Update Vehicle Status",
         "tags": [
-          "delivery"
+          "Delivery"
         ]
       }
     },
@@ -10950,7 +11190,7 @@
         },
         "summary": "Record Goods Receipt",
         "tags": [
-          "inventory"
+          "Inventory"
         ]
       }
     },
@@ -11008,7 +11248,7 @@
       "name": "Health"
     },
     {
-      "description": "Login, OTP, refresh, logout, password reset (Phase 6).",
+      "description": "Login, OTP, refresh, logout, password reset.",
       "name": "Authentication"
     }
   ]
