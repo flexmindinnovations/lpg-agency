@@ -41,7 +41,7 @@ backlog this file tracks.
 
 | # | Module | Docs claim | Verified actual | Impl | Verified | Gate failures owned | Missing / blocking |
 |---|---|---|---|---|---|---|---|
-| 00 | Documentation baseline | complete | ⚪ exists, partly stale | 100% | n/a | — | Phase 13 + `current_phase` claims corrected 2026-08-18; no planning dirs for 11/16/17 |
+| 00 | Documentation baseline | complete | ⚪ exists, partly stale | 100% | n/a | — | Phase 13 + `current_phase` claims corrected 2026-08-18; planning dirs for 11/16/17/reporting backfilled 2026-08-19 (R8) |
 | 01 | Repository foundation | complete | ⚪ ✅ | 100% | ✅ | — | — |
 | 02 | Backend foundation | complete | ⚪ 🟡 | 100% | 🟡 | ruff: `infra/persistence` 55, `infra/jobs` 43 | Lint debt only; no functional gap |
 | 03 | Shared infrastructure | complete | ⚪ 🟡 | 100% | 🟡 | import-linter: `realtime/connection_manager` → fastapi | Import is type-only under `TYPE_CHECKING`; needs `ignore_imports` entry **or** refactor — decision required |
@@ -52,16 +52,16 @@ backlog this file tracks.
 | 08 | Customer management | ✅ COMPLETE | ✅ | 100% | ✅ | — | C1 fixed in R1; stale KYC test key fixed in R11 pass |
 | 09 | Driver management | ✅ COMPLETE | ✅ | 100% | ✅ | — | — |
 | 10 | Inventory management | ✅ COMPLETE | ✅ | 100% | ✅ | — | Was C10 (exception-swallowing), fixed |
-| 11 | Order management | complete (no planning dir) | ✅ | 100% | ✅ | — | All 8 original failures cleared (C1, C9, C10 combined). `planning/features/11-order-management/` still **does not exist** |
+| 11 | Order management | ✅ complete | ✅ | 100% | ✅ | — | All 8 original failures cleared (C1, C9, C10 combined). Planning dir backfilled 2026-08-19 (R8) — flagged one still-open gap while backfilling: BR-04/BR-19 confirm-time checks are still permissive stubs despite Cylinder Ledger/Accounting now existing |
 | 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | ✅ | 100% | ✅ | — | Was C10, fixed |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
 | 14 | Accounting / invoicing | ✅ COMPLETE | ✅ smoke + RBAC tested (R7) | ~90% | ✅ | — | See C4 — endpoint tests added, found+fixed a real `InvoiceResponse` serialization crash |
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
-| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup) | See C4 — tests found+fixed 3 real backend bugs (assign/resolve crashed outright); blank buttons fixed (C3/R2); no planning dir |
+| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup) | See C4 — tests found+fixed 3 real backend bugs (assign/resolve crashed outright); blank buttons fixed (C3/R2); planning dir backfilled 2026-08-19 (R8) |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
 | 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** |
-| — | Reporting | folded into 18 | ✅ router mounted + fully tested (R7a, R7) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7/C4 — mount fixed (R7a); real-data coverage for gst/drivers/consumption added (R7) |
-| — | Employees (tenant-admin) | — | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | lint: `feature-employees` | See C4 — tests found+fixed 2 real backend bugs; registration crashed outright |
+| — | Reporting | folded into 18 | ✅ router mounted + fully tested (R7a, R7) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7/C4 — mount fixed (R7a); real-data coverage for gst/drivers/consumption added (R7); `planning/features/reporting/` backfilled 2026-08-19 (R8) |
+| 16 | Employees (tenant-admin) | — | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | lint: `feature-employees` | See C4 — tests found+fixed 2 real backend bugs; registration crashed outright; `planning/features/16-employees/` backfilled 2026-08-19 (R8) |
 | — | Dashboard shell | — | 🟡 builds, tests red | 100% | 🔴 | lint + test: `dashboard` | `shell-layout.ts` statically imports 2 lazy libs → breaks lazy boundary **and** `shell-layout.spec.ts` |
 | — | Shared data-access | — | 🟡 | 100% | 🔴 | test: `shared-data-access` | Unit tests failing |
 | 20 | Regulatory & MDG Compliance | *(new)* | 🔵 planned | 0% | — | — | Hard requirements — weighment, TDT rating, cylinder identity, DAC, vouchers, PAHAL/PMUY, compliance calendar, cash settlement |
@@ -843,10 +843,23 @@ themselves unused, per mypy). `uv run lint-imports` — 5/5 kept, unchanged.
 `uv run pytest tests/unit` — 514 passed. `uv run pytest tests/integration`
 — **253 passed, 0 failed**, unchanged.
 
-### C6 — Process
+### C6 — Process ✅ RESOLVED (R8, 2026-08-19)
 
 169 uncommitted files; last commit 2026-08-15. Missing planning dirs for
-Phase 11, 16, 17, Reporting and Employees.
+Phase 11, 16 (Employees), 17, and Reporting.
+
+**✅ Fixed 2026-08-19 (R8).** Backfilled all four —
+`planning/features/11-order-management/`, `16-employees/`,
+`17-complaint-management/`, `reporting/` — each with `PLAN.md`/`TASKS.md`/
+`STATUS.md` matching the established convention (`13-cylinder-ledger/` was
+used as the reference format). These are retroactive: they document the
+real, current, already-verified state of code that shipped without ever
+having this documentation written, not a plan someone followed. Each
+`STATUS.md` also surfaces anything found along the way that a forward-looking
+plan would have caught, including one previously-unflagged, still-open gap
+in Order Management (BR-04/BR-19 confirm-time checks are permissive stubs
+despite both Cylinder Ledger and Accounting having since shipped real data
+those checks could use).
 
 ## Remediation order
 
@@ -864,7 +877,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R12** — onboarding wizard flattens structured address into one line before calling `addAddress` → **done 2026-08-18**, widened `CustomerService.addAddress` to accept the full structured payload the backend already supported; also recovered `address_type`, which the old flattening dropped entirely. Not live-browser-verified (login automation friction) — full writeup in C1
 - [x] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time (2026-08-19)
 - [x] **R7** — C4 test coverage for complaint / reporting / employee / invoice (2026-08-19) — found+fixed 7 real bugs (see C4 writeup)
-- [ ] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees
+- [x] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees (2026-08-19) — see C6 writeup; surfaced one still-open gap in Order Management (BR-04/BR-19 confirm-time stubs)
 - [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass
 - [~] **R10** — C8 add the 7 missing domain events, starting with the complaint pair (2026-08-19) — 3 of 7 done (complaint pair + `NotificationSent`) and fixed 2 dead-event-dispatch bugs found along the way; remaining 4 (`PaymentCollected`/`RefundApproved`/`CashShortfallDeclared`/`ConnectionClosed`) blocked on new domain concepts not yet built (see C8 writeup)
 
