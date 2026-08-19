@@ -23,7 +23,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _altMobileController;
   late TextEditingController _contactPersonController;
-  
+
   bool _isLoading = false;
   String? _error;
 
@@ -33,8 +33,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _fullNameController = TextEditingController(text: widget.profile.fullName);
     _phoneController = TextEditingController(text: widget.profile.phoneNumber);
     _emailController = TextEditingController(text: widget.profile.email ?? '');
-    _altMobileController = TextEditingController(text: widget.profile.alternateMobile ?? '');
-    _contactPersonController = TextEditingController(text: widget.profile.contactPerson ?? '');
+    _altMobileController = TextEditingController(
+      text: widget.profile.alternateMobile ?? '',
+    );
+    _contactPersonController = TextEditingController(
+      text: widget.profile.contactPerson ?? '',
+    );
   }
 
   @override
@@ -62,15 +66,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       phoneNumber: _phoneController.text.trim(),
       customerType: widget.profile.customerType,
       status: widget.profile.status,
-      email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
-      alternateMobile: _altMobileController.text.trim().isEmpty ? null : _altMobileController.text.trim(),
-      contactPerson: _contactPersonController.text.trim().isEmpty ? null : _contactPersonController.text.trim(),
+      email: _emailController.text.trim().isEmpty
+          ? null
+          : _emailController.text.trim(),
+      alternateMobile: _altMobileController.text.trim().isEmpty
+          ? null
+          : _altMobileController.text.trim(),
+      contactPerson: _contactPersonController.text.trim().isEmpty
+          ? null
+          : _contactPersonController.text.trim(),
       dateOfBirth: widget.profile.dateOfBirth,
       lpgSubsidyId: widget.profile.lpgSubsidyId,
     );
 
     final result = await api.updateCustomer(widget.profile.id, request);
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
       result.when(
@@ -120,7 +130,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: colors.statusDanger.withOpacity(0.1),
+                          color: colors.statusDanger.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: colors.statusDanger),
                         ),
@@ -134,28 +144,38 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     TextFormField(
                       controller: _fullNameController,
                       decoration: const InputDecoration(labelText: 'Full Name'),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(labelText: 'Phone Number'),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                      ),
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
-                      decoration: const InputDecoration(labelText: 'Email Address'),
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _altMobileController,
-                      decoration: const InputDecoration(labelText: 'Alternate Mobile'),
+                      decoration: const InputDecoration(
+                        labelText: 'Alternate Mobile',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _contactPersonController,
-                      decoration: const InputDecoration(labelText: 'Contact Person'),
+                      decoration: const InputDecoration(
+                        labelText: 'Contact Person',
+                      ),
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(

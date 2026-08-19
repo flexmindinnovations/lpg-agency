@@ -25,7 +25,7 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
   final _pincodeController = TextEditingController();
-  
+
   String _addressType = 'home';
   bool _isLoading = false;
   String? _error;
@@ -53,17 +53,29 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
     final api = ref.read(customerApiProvider);
     final request = AddCustomerAddressRequest(
       line1: _line1Controller.text.trim(),
-      line2: _line2Controller.text.trim().isEmpty ? null : _line2Controller.text.trim(),
-      landmark: _landmarkController.text.trim().isEmpty ? null : _landmarkController.text.trim(),
-      area: _areaController.text.trim().isEmpty ? null : _areaController.text.trim(),
-      city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
-      state: _stateController.text.trim().isEmpty ? null : _stateController.text.trim(),
-      pincode: _pincodeController.text.trim().isEmpty ? null : _pincodeController.text.trim(),
+      line2: _line2Controller.text.trim().isEmpty
+          ? null
+          : _line2Controller.text.trim(),
+      landmark: _landmarkController.text.trim().isEmpty
+          ? null
+          : _landmarkController.text.trim(),
+      area: _areaController.text.trim().isEmpty
+          ? null
+          : _areaController.text.trim(),
+      city: _cityController.text.trim().isEmpty
+          ? null
+          : _cityController.text.trim(),
+      state: _stateController.text.trim().isEmpty
+          ? null
+          : _stateController.text.trim(),
+      pincode: _pincodeController.text.trim().isEmpty
+          ? null
+          : _pincodeController.text.trim(),
       addressType: _addressType,
     );
 
     final result = await api.addCustomerAddress(widget.customerId, request);
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
       result.when(
@@ -113,7 +125,7 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: colors.statusDanger.withOpacity(0.1),
+                          color: colors.statusDanger.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: colors.statusDanger),
                         ),
@@ -124,14 +136,26 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                       ),
                       const SizedBox(height: 24),
                     ],
-                    
+
                     Text('Address Type', style: theme.textTheme.labelLarge),
                     const SizedBox(height: 8),
                     SegmentedButton<String>(
                       segments: const [
-                        ButtonSegment(value: 'home', label: Text('Home'), icon: Icon(Icons.home)),
-                        ButtonSegment(value: 'work', label: Text('Work'), icon: Icon(Icons.business)),
-                        ButtonSegment(value: 'other', label: Text('Other'), icon: Icon(Icons.location_on)),
+                        ButtonSegment(
+                          value: 'home',
+                          label: Text('Home'),
+                          icon: Icon(Icons.home),
+                        ),
+                        ButtonSegment(
+                          value: 'work',
+                          label: Text('Work'),
+                          icon: Icon(Icons.business),
+                        ),
+                        ButtonSegment(
+                          value: 'other',
+                          label: Text('Other'),
+                          icon: Icon(Icons.location_on),
+                        ),
                       ],
                       selected: {_addressType},
                       onSelectionChanged: (Set<String> newSelection) {
@@ -144,13 +168,18 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
 
                     TextFormField(
                       controller: _line1Controller,
-                      decoration: const InputDecoration(labelText: 'Address Line 1*'),
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Address Line 1*',
+                      ),
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _line2Controller,
-                      decoration: const InputDecoration(labelText: 'Address Line 2'),
+                      decoration: const InputDecoration(
+                        labelText: 'Address Line 2',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -168,14 +197,18 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _cityController,
-                            decoration: const InputDecoration(labelText: 'City'),
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: TextFormField(
                             controller: _stateController,
-                            decoration: const InputDecoration(labelText: 'State'),
+                            decoration: const InputDecoration(
+                              labelText: 'State',
+                            ),
                           ),
                         ),
                       ],

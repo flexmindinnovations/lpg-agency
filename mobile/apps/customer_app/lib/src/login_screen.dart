@@ -42,12 +42,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final phone = _phoneController.text.trim();
 
     if (tenantId.isEmpty || phone.isEmpty) {
-      setState(() => _errorMessage = 'Please enter both Agency Code and Phone number.');
+      setState(
+        () => _errorMessage = 'Please enter both Agency Code and Phone number.',
+      );
       return;
     }
 
     if (!RegExp(r'^[A-Za-z]{2}\d{4,6}$').hasMatch(tenantId)) {
-      setState(() => _errorMessage = 'Invalid Agency Code format (e.g. AB123456).');
+      setState(
+        () => _errorMessage = 'Invalid Agency Code format (e.g. AB123456).',
+      );
       return;
     }
 
@@ -63,10 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final result = await ref
         .read(authControllerProvider)
-        .requestOtp(
-          tenantId: tenantId,
-          phoneNumber: phone,
-        );
+        .requestOtp(tenantId: tenantId, phoneNumber: phone);
 
     if (!mounted) return;
     setState(() {
@@ -175,14 +176,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              
+
               if (_errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: colors.statusDanger.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.statusDanger.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: colors.statusDanger.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -191,7 +194,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: colors.statusDanger, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.statusDanger,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -199,7 +205,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
               ],
-              
+
               TextField(
                 controller: _tenantIdController,
                 enabled: !_codeRequested,
@@ -207,7 +213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 style: TextStyle(color: colors.textPrimary),
               ),
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: _phoneController,
                 enabled: !_codeRequested,
@@ -215,20 +221,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: inputDecoration.copyWith(labelText: 'Phone number'),
                 style: TextStyle(color: colors.textPrimary),
               ),
-              
+
               if (_codeRequested) ...[
                 const SizedBox(height: 16),
                 TextField(
                   controller: _codeController,
                   keyboardType: TextInputType.number,
-                  decoration: inputDecoration.copyWith(labelText: 'Verification code'),
+                  decoration: inputDecoration.copyWith(
+                    labelText: 'Verification code',
+                  ),
                   style: TextStyle(color: colors.textPrimary),
                   autofocus: true,
                 ),
               ],
-              
+
               const SizedBox(height: 32),
-              
+
               SizedBox(
                 height: 56,
                 child: ElevatedButton(

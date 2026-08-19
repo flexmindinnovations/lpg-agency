@@ -68,7 +68,7 @@ class OrdersScreen extends ConsumerWidget {
                   Icon(
                     Icons.receipt_long_outlined,
                     size: 64,
-                    color: colors.textSecondary.withOpacity(0.5),
+                    color: colors.textSecondary.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -96,11 +96,15 @@ class OrdersScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final order = orders[index];
                 final isCompleted = order.status == 'delivered';
-                final isCancelled = order.status == 'cancelled' || order.status == 'failed_delivery';
-                
+                final isCancelled =
+                    order.status == 'cancelled' ||
+                    order.status == 'failed_delivery';
+
                 final statusColor = isCompleted
                     ? colors.statusSuccess
-                    : (isCancelled ? colors.statusDanger : colors.actionPrimary);
+                    : (isCancelled
+                          ? colors.statusDanger
+                          : colors.actionPrimary);
 
                 return Card(
                   elevation: 0,
@@ -130,13 +134,18 @@ class OrdersScreen extends ConsumerWidget {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.1),
+                                  color: statusColor.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  order.status.replaceAll('_', ' ').toUpperCase(),
+                                  order.status
+                                      .replaceAll('_', ' ')
+                                      .toUpperCase(),
                                   style: theme.textTheme.labelSmall?.copyWith(
                                     color: statusColor,
                                     fontWeight: FontWeight.w600,
@@ -148,10 +157,16 @@ class OrdersScreen extends ConsumerWidget {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.calendar_today_outlined, size: 16, color: colors.textSecondary),
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 16,
+                                color: colors.textSecondary,
+                              ),
                               const SizedBox(width: 8),
                               Text(
-                                DateFormat('MMM dd, yyyy • hh:mm a').format(order.requestedDate),
+                                DateFormat(
+                                  'MMM dd, yyyy • hh:mm a',
+                                ).format(order.requestedDate),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colors.textSecondary,
                                 ),
@@ -175,26 +190,32 @@ class OrdersScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    order.totalAmount != null 
-                                      ? '₹${order.totalAmount!.toStringAsFixed(2)}'
-                                      : 'Pending',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.textPrimary,
-                                    ),
+                                    order.totalAmount != null
+                                        ? '₹${order.totalAmount!.toStringAsFixed(2)}'
+                                        : 'Pending',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: colors.textPrimary,
+                                        ),
                                   ),
                                 ],
                               ),
                               if (order.status == 'out_for_delivery')
                                 ElevatedButton.icon(
                                   onPressed: () {},
-                                  icon: const Icon(Icons.location_on_outlined, size: 16),
+                                  icon: const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 16,
+                                  ),
                                   label: const Text('Track Order'),
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    textStyle: theme.textTheme.labelLarge?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
                                     ),
+                                    textStyle: theme.textTheme.labelLarge
+                                        ?.copyWith(fontWeight: FontWeight.w600),
                                   ),
                                 )
                               else

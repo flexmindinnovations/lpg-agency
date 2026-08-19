@@ -124,9 +124,13 @@ class CustomerResponse {
         kycStatus: json['kyc_status'] as String,
         status: json['status'] as String,
         lpgSubsidyId: json['lpg_subsidy_id'] as String?,
-        addresses: (json['addresses'] as List<dynamic>?)
-                ?.map((e) =>
-                    CustomerAddressResponse.fromJson(e as Map<String, dynamic>))
+        addresses:
+            (json['addresses'] as List<dynamic>?)
+                ?.map(
+                  (e) => CustomerAddressResponse.fromJson(
+                    e as Map<String, dynamic>,
+                  ),
+                )
                 .toList() ??
             const [],
       );
@@ -220,24 +224,25 @@ class OrderResponse {
   });
 
   factory OrderResponse.fromJson(Map<String, dynamic> json) => OrderResponse(
-        id: json['id'] as String,
-        tenantId: json['tenant_id'] as String,
-        branchId: json['branch_id'] as String,
-        customerId: json['customer_id'] as String,
-        addressId: json['address_id'] as String,
-        deliveryAddress: DeliveryAddressPayload.fromJson(
-            json['delivery_address'] as Map<String, dynamic>),
-        status: json['status'] as String,
-        bookingSource: json['booking_source'] as String,
-        paymentMethodPreference: json['payment_method_preference'] as String?,
-        requestedDate: DateTime.parse(json['requested_date'] as String),
-        metadata: json['metadata'] as Map<String, dynamic>,
-        routeStopId: json['route_stop_id'] as String?,
-        totalAmount: (json['total_amount'] as num?)?.toDouble(),
-        lines: (json['lines'] as List<dynamic>)
-            .map((e) => OrderLineResponse.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: json['id'] as String,
+    tenantId: json['tenant_id'] as String,
+    branchId: json['branch_id'] as String,
+    customerId: json['customer_id'] as String,
+    addressId: json['address_id'] as String,
+    deliveryAddress: DeliveryAddressPayload.fromJson(
+      json['delivery_address'] as Map<String, dynamic>,
+    ),
+    status: json['status'] as String,
+    bookingSource: json['booking_source'] as String,
+    paymentMethodPreference: json['payment_method_preference'] as String?,
+    requestedDate: DateTime.parse(json['requested_date'] as String),
+    metadata: json['metadata'] as Map<String, dynamic>,
+    routeStopId: json['route_stop_id'] as String?,
+    totalAmount: (json['total_amount'] as num?)?.toDouble(),
+    lines: (json['lines'] as List<dynamic>)
+        .map((e) => OrderLineResponse.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 
   final String id;
   final String tenantId;
@@ -256,10 +261,7 @@ class OrderResponse {
 }
 
 class OrderPageResponse {
-  const OrderPageResponse({
-    required this.items,
-    required this.total,
-  });
+  const OrderPageResponse({required this.items, required this.total});
 
   factory OrderPageResponse.fromJson(Map<String, dynamic> json) =>
       OrderPageResponse(
@@ -300,17 +302,17 @@ class UpdateCustomerProfileRequest {
   final String? lpgSubsidyId;
 
   Map<String, dynamic> toJson() => {
-        'branch_id': branchId,
-        'full_name': fullName,
-        'phone_number': phoneNumber,
-        if (contactPerson != null) 'contact_person': contactPerson,
-        if (alternateMobile != null) 'alternate_mobile': alternateMobile,
-        if (email != null) 'email': email,
-        if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-        'customer_type': customerType,
-        'status': status,
-        if (lpgSubsidyId != null) 'lpg_subsidy_id': lpgSubsidyId,
-      };
+    'branch_id': branchId,
+    'full_name': fullName,
+    'phone_number': phoneNumber,
+    if (contactPerson != null) 'contact_person': contactPerson,
+    if (alternateMobile != null) 'alternate_mobile': alternateMobile,
+    if (email != null) 'email': email,
+    if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
+    'customer_type': customerType,
+    'status': status,
+    if (lpgSubsidyId != null) 'lpg_subsidy_id': lpgSubsidyId,
+  };
 }
 
 /// Request to add a customer address.
@@ -342,16 +344,16 @@ class AddCustomerAddressRequest {
   final double? longitude;
 
   Map<String, dynamic> toJson() => {
-        'line_1': line1,
-        if (line2 != null) 'line_2': line2,
-        if (landmark != null) 'landmark': landmark,
-        if (area != null) 'area': area,
-        if (city != null) 'city': city,
-        if (district != null) 'district': district,
-        if (state != null) 'state': state,
-        if (pincode != null) 'pincode': pincode,
-        'address_type': addressType,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-      };
+    'line_1': line1,
+    if (line2 != null) 'line_2': line2,
+    if (landmark != null) 'landmark': landmark,
+    if (area != null) 'area': area,
+    if (city != null) 'city': city,
+    if (district != null) 'district': district,
+    if (state != null) 'state': state,
+    if (pincode != null) 'pincode': pincode,
+    'address_type': addressType,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
+  };
 }

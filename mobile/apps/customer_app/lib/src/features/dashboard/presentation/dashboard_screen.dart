@@ -35,10 +35,10 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () {
               // TODO: Navigate to notifications screen
             },
-          )
+          ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -47,7 +47,11 @@ class DashboardScreen extends ConsumerWidget {
             // Location Header
             Row(
               children: [
-                Icon(Icons.location_on_outlined, size: 16, color: colors.textSecondary),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'HOME',
@@ -59,7 +63,7 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Main Balance Card
             Container(
               padding: const EdgeInsets.all(32),
@@ -94,9 +98,9 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Primary Action Button (Pill shaped)
             ElevatedButton(
               onPressed: () => _showOrderSheet(context),
@@ -109,9 +113,9 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 48),
-            
+
             // Recent Activity Section
             Text(
               'Recent Activity',
@@ -121,7 +125,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             _buildActivityItem(
               context: context,
               icon: Icons.local_gas_station_outlined,
@@ -149,7 +153,7 @@ class DashboardScreen extends ConsumerWidget {
   }) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         Container(

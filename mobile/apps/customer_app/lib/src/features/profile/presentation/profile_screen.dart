@@ -32,7 +32,8 @@ class ProfileScreen extends ConsumerWidget {
           if (profileAsync.hasValue && profileAsync.value != null)
             IconButton(
               icon: Icon(Icons.edit_outlined, color: colors.actionPrimary),
-              onPressed: () => context.push('/profile/edit', extra: profileAsync.value),
+              onPressed: () =>
+                  context.push('/profile/edit', extra: profileAsync.value),
             ),
         ],
       ),
@@ -81,7 +82,9 @@ class ProfileScreen extends ConsumerWidget {
                   radius: 40,
                   backgroundColor: colors.actionPrimary,
                   child: Text(
-                    profile.fullName.isNotEmpty ? profile.fullName[0].toUpperCase() : '?',
+                    profile.fullName.isNotEmpty
+                        ? profile.fullName[0].toUpperCase()
+                        : '?',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: colors.surfaceBase,
                       fontWeight: FontWeight.bold,
@@ -108,16 +111,16 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // KYC Status Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: profile.kycStatus == 'VERIFIED'
-                      ? colors.statusSuccess.withOpacity(0.1)
-                      : colors.statusWarning.withOpacity(0.1),
+                      ? colors.statusSuccess.withValues(alpha: 0.1)
+                      : colors.statusWarning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: profile.kycStatus == 'VERIFIED'
@@ -161,7 +164,7 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 32),
               Text(
                 'Account Details',
@@ -172,28 +175,28 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               _buildDetailRow(
-                context, 
-                label: 'Customer Type', 
+                context,
+                label: 'Customer Type',
                 value: profile.customerType,
                 icon: Icons.person_outline,
               ),
               const SizedBox(height: 12),
               _buildDetailRow(
-                context, 
-                label: 'Email', 
+                context,
+                label: 'Email',
                 value: profile.email ?? 'Not provided',
                 icon: Icons.email_outlined,
               ),
               if (profile.consumerNumber != null) ...[
                 const SizedBox(height: 12),
                 _buildDetailRow(
-                  context, 
-                  label: 'Consumer Number', 
+                  context,
+                  label: 'Consumer Number',
                   value: profile.consumerNumber!,
                   icon: Icons.numbers_outlined,
                 ),
               ],
-              
+
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -206,7 +209,10 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => context.push('/profile/addresses/new', extra: profile.id),
+                    onPressed: () => context.push(
+                      '/profile/addresses/new',
+                      extra: profile.id,
+                    ),
                     child: const Text('Add New'),
                   ),
                 ],
@@ -223,76 +229,89 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 )
               else
-                ...profile.addresses.map((address) => Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceRaised,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: address.isPrimary 
-                          ? colors.actionPrimary 
-                          : colors.borderDefault,
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        address.addressType.toUpperCase() == 'HOME' 
-                            ? Icons.home_outlined 
-                            : Icons.business_outlined,
-                        color: address.isPrimary ? colors.actionPrimary : colors.textSecondary,
-                        size: 20,
+                ...profile.addresses.map(
+                  (address) => Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceRaised,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: address.isPrimary
+                            ? colors.actionPrimary
+                            : colors.borderDefault,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  address.addressType,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: address.isPrimary ? colors.actionPrimary : colors.textPrimary,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          address.addressType.toUpperCase() == 'HOME'
+                              ? Icons.home_outlined
+                              : Icons.business_outlined,
+                          color: address.isPrimary
+                              ? colors.actionPrimary
+                              : colors.textSecondary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    address.addressType,
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: address.isPrimary
+                                              ? colors.actionPrimary
+                                              : colors.textPrimary,
+                                        ),
                                   ),
-                                ),
-                                if (address.isPrimary) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: colors.actionPrimary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'PRIMARY',
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                        color: colors.actionPrimary,
-                                        fontSize: 10,
+                                  if (address.isPrimary) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colors.actionPrimary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'PRIMARY',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: colors.actionPrimary,
+                                              fontSize: 10,
+                                            ),
                                       ),
                                     ),
-                                  ),
-                                ]
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${address.line1}${address.line2 != null ? ', ${address.line2}' : ''}\n'
-                              '${address.city ?? ''}, ${address.state ?? ''} ${address.pincode ?? ''}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colors.textSecondary,
+                                  ],
+                                ],
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                '${address.line1}${address.line2 != null ? ', ${address.line2}' : ''}\n'
+                                '${address.city ?? ''}, ${address.state ?? ''} ${address.pincode ?? ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                )),
-                
+                ),
+
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
@@ -315,10 +334,15 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, {required String label, required String value, required IconData icon}) {
+  Widget _buildDetailRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         Container(

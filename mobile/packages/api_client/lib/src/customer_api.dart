@@ -12,7 +12,9 @@ final class CustomerApi {
 
   Future<Result<CustomerResponse>> getCustomer(String customerId) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/customers/$customerId');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/customers/$customerId',
+      );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
       }

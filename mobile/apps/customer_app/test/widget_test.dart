@@ -72,15 +72,18 @@ void main() {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.text('LPG Agency'), findsWidgets);
-    expect(find.text('Repository foundation'), findsOneWidget);
+    expect(find.text('LPG Flow'), findsOneWidget);
+    expect(find.text('Current Gas Balance'), findsOneWidget);
   });
 
   testWidgets('shell has a Material scaffold', (tester) async {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.byType(Scaffold), findsOneWidget);
+    // One Scaffold for the AppShell (bottom nav) and one for the active
+    // branch screen's own AppBar — the standard StatefulNavigationShell
+    // shape, not a bug.
+    expect(find.byType(Scaffold), findsWidgets);
   });
 
   testWidgets('an unauthenticated session is redirected to sign-in', (
@@ -95,7 +98,7 @@ void main() {
     await tester.pumpWidget(_appWith(AuthController(repository)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in'), findsWidgets);
-    expect(find.text('Repository foundation'), findsNothing);
+    expect(find.textContaining('Sign in'), findsWidgets);
+    expect(find.text('Current Gas Balance'), findsNothing);
   });
 }

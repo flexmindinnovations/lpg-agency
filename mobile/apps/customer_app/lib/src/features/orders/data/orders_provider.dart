@@ -7,31 +7,17 @@ import '../../../providers.dart';
 
 /// Provides the current customer's list of orders.
 final ordersProvider = FutureProvider<List<OrderResponse>>((ref) async {
-  print('ordersProvider evaluated. Auth status: ${ref.watch(authControllerProvider).state.status}');
   final api = ref.watch(orderApiProvider);
   final authController = ref.watch(authControllerProvider);
-  
-  if (authController.state.status == AuthStatus.authenticated && authController.state.principal != null) {
-    print('ordersProvider: fetching orders');
-    try {
-      final result = await api.getMyOrders();
-      print('ordersProvider: result received: ${result.runtimeType}');
-      return result.when(
-        onSuccess: (data) {
-          print('ordersProvider: success, got ${data.items.length} items');
-          return data.items;
-        },
-        onFailure: (failure) {
-          print('ordersProvider: failure: ${failure.message}');
-          throw Exception(failure.message);
-        },
-      );
-    } catch (e) {
-      print('ordersProvider: exception $e');
-      throw Exception(e.toString());
-    }
+
+  if (authController.state.status == AuthStatus.authenticated &&
+      authController.state.principal != null) {
+    final result = await api.getMyOrders();
+    return result.when(
+      onSuccess: (data) => data.items,
+      onFailure: (failure) => throw Exception(failure.message),
+    );
   }
-  
-  print('ordersProvider: Returning empty list');
+
   return [];
 });

@@ -42,7 +42,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (status != AuthStatus.authenticated && !loggingIn) return '/login';
-      if (status == AuthStatus.authenticated && (loggingIn || splashing)) return '/';
+      if (status == AuthStatus.authenticated && (loggingIn || splashing)) {
+        return '/';
+      }
       return null;
     },
     routes: [
@@ -106,9 +108,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'addresses/new',
                     name: 'profile_address_new',
-                    builder: (context, state) => AddAddressScreen(
-                      customerId: state.extra as String,
-                    ),
+                    builder: (context, state) =>
+                        AddAddressScreen(customerId: state.extra as String),
                   ),
                 ],
               ),

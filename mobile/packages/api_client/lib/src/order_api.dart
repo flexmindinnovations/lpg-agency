@@ -18,10 +18,7 @@ final class OrderApi {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/orders',
-        queryParameters: {
-          'page': page,
-          'size': size,
-        },
+        queryParameters: {'page': page, 'size': size},
       );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
@@ -37,7 +34,9 @@ final class OrderApi {
   /// Fetch details of a specific order
   Future<Result<OrderResponse>> getOrder(String orderId) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/orders/$orderId');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/orders/$orderId',
+      );
       if (response.data == null) {
         return const FailureResult(Failure(message: 'Response data is null'));
       }

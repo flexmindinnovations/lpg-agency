@@ -3,14 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 /// The main application shell for the Customer App.
-/// 
+///
 /// Provides a persistent bottom navigation bar across the four main tabs:
 /// Dashboard, Orders, Support, and Profile.
 class AppShell extends StatelessWidget {
-  const AppShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const AppShell({super.key, required this.navigationShell});
 
   /// The navigation shell and state for the branches.
   final StatefulNavigationShell navigationShell;

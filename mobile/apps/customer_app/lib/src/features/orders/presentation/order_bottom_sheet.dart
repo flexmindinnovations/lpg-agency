@@ -49,7 +49,7 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
             ),
           ),
           const SizedBox(height: 32),
-          
+
           Text(
             'New Order',
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -66,9 +66,9 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Quantity selector
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -96,9 +96,9 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 48),
-          
+
           ElevatedButton(
             onPressed: () {
               final syncCoordinator = ref.read(syncCoordinatorProvider);
@@ -106,7 +106,7 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
                 'order_gas',
                 jsonEncode({'quantity': _quantity, 'cylinder_size_kg': 14.0}),
               );
-              
+
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -145,7 +145,9 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
         ),
         child: Icon(
           icon,
-          color: onPressed == null ? colors.textSecondary.withValues(alpha: 0.5) : colors.textPrimary,
+          color: onPressed == null
+              ? colors.textSecondary.withValues(alpha: 0.5)
+              : colors.textPrimary,
         ),
       ),
     );

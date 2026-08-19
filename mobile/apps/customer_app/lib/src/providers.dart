@@ -32,4 +32,3 @@ final orderApiProvider = Provider<OrderApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return OrderApi(apiClient.dio);
 });
-
