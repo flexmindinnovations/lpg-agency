@@ -46,7 +46,7 @@ backlog this file tracks.
 | 02 | Backend foundation | complete | ⚪ 🟡 | 100% | 🟡 | ruff: `infra/persistence` 55, `infra/jobs` 43 | Lint debt only; no functional gap |
 | 03 | Shared infrastructure | complete | ⚪ 🟡 | 100% | 🟡 | import-linter: `realtime/connection_manager` → fastapi | Import is type-only under `TYPE_CHECKING`; needs `ignore_imports` entry **or** refactor — decision required |
 | 04 | Angular web foundation | complete | ⚪ ✅ | 100% | ✅ | — | — |
-| 05 | Flutter foundations | complete | ⚪ ❓ | 100% | ❓ | not exercised | 12 dart tests exist; mobile CI **not run** in this pass — unverified, not assumed broken |
+| 05 | Flutter foundations | complete | 🟡 5 of 7 packages green | 100% | 🟡 | format: `api_client` (3 files), `local_storage` (1 file) | R9 ran the real CI sequence against all 7 matrix packages; `api_client`/`local_storage` fail format-check only (analyze+test both clean). See C13 |
 | 06 | Auth & authorization | complete | ✅ | 100% | ✅ | import-linter `routers/auth.py` → sqlalchemy (C2, open) | C9 fixed in R11 — new users now get their role's permissions on creation |
 | 07 | Admin / tenant master data | complete | 🟡 backend ✅ | 100% | 🟡 | lint: `admin-feature-flags`, `admin-feature-tenant-settings` | Backend gap closed by R13; frontend lint errors remain |
 | 08 | Customer management | ✅ COMPLETE | ✅ | 100% | ✅ | — | C1 fixed in R1; stale KYC test key fixed in R11 pass; R10 found `customers:manage` (gating the pre-existing `/approve` endpoint) had never been granted to any role since it shipped — fixed, and reused for the new `/close` endpoint |
@@ -59,7 +59,7 @@ backlog this file tracks.
 | 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
 | 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup) | See C4 — tests found+fixed 3 real backend bugs (assign/resolve crashed outright); blank buttons fixed (C3/R2); planning dir backfilled 2026-08-19 (R8) |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
-| 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** |
+| 19 | Customer app V2 | In Progress | 🔴 in progress | ~35% | 🔴 | format (13 files), analyze (20 issues), test (3/3 widget tests fail) | 16 dart files in `customer_app` — the **only module whose doc status is honest**; R9 confirmed real CI would fail today — `RenderFlex` overflow in `dashboard_screen.dart:43` cascades into all 3 widget test failures. See C13 |
 | — | Reporting | folded into 18 | ✅ router mounted + fully tested (R7a, R7) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7/C4 — mount fixed (R7a); real-data coverage for gst/drivers/consumption added (R7); `planning/features/reporting/` backfilled 2026-08-19 (R8) |
 | 16 | Employees (tenant-admin) | — | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | lint: `feature-employees` | See C4 — tests found+fixed 2 real backend bugs; registration crashed outright; `planning/features/16-employees/` backfilled 2026-08-19 (R8) |
 | — | Dashboard shell | — | 🟡 builds, tests red | 100% | 🔴 | lint + test: `dashboard` | `shell-layout.ts` statically imports 2 lazy libs → breaks lazy boundary **and** `shell-layout.spec.ts` |
@@ -914,6 +914,48 @@ in Order Management (BR-04/BR-19 confirm-time checks are permissive stubs
 despite both Cylinder Ledger and Accounting having since shipped real data
 those checks could use).
 
+### C13 — Mobile CI never actually run: `customer_app` fails all 3 gates it was claimed to pass ✅ RESOLVED (R9, 2026-08-19)
+
+Row 05's own prior text said it plainly: "mobile CI **not run** in this pass —
+unverified, not assumed broken." R9 ran the exact 4-step sequence
+`.github/workflows/mobile-ci.yml` runs, locally, against all 7 matrix
+packages (`packages/{api_client,auth,core,design_system,local_storage}`,
+`apps/{customer_app,driver_app}`) — `flutter pub get` →
+`dart format --set-exit-if-changed .` (run non-destructively via
+`--output=none` to avoid mutating the tree while checking) → `flutter
+analyze` → `flutter test`. `packages/sync_engine` was confirmed excluded
+from the CI matrix by reading the workflow file directly (only 7 entries
+listed), not assumed.
+
+**Findings, per package:**
+
+| Package | Format | Analyze | Test |
+|---|---|---|---|
+| `packages/api_client` | 🔴 3 files unformatted (`customer_api.dart`, `models.dart`, `order_api.dart`) | ✅ 0 issues | ✅ 9/9 |
+| `packages/auth` | ✅ | ✅ 0 issues | ✅ 16/16 |
+| `packages/core` | ✅ | ✅ 0 issues | ✅ 4/4 |
+| `packages/design_system` | ✅ | ✅ 0 issues | ✅ 5/5 |
+| `packages/local_storage` | 🔴 1 file unformatted (`app_database.dart`) | ✅ 0 issues | ✅ 7/7 |
+| `apps/customer_app` | 🔴 13 files unformatted | 🔴 20 issues (7× `avoid_print` in `orders_provider.dart`, 6× in `profile_provider.dart`, 6× `deprecated_member_use` — `withOpacity` — across 4 screen files) | 🔴 3/3 tests fail (`test/widget_test.dart`) — root cause: `RenderFlex overflowed by 17 pixels` in `lib/src/features/dashboard/presentation/dashboard_screen.dart:43`, a `Column` that overflows in the test harness viewport; the overflow assertion cascades into the two subsequent widget-finder assertions failing |
+| `apps/driver_app` | ✅ | ✅ 0 issues | ✅ 3/3 |
+
+**Root cause of the gap**: `flutter analyze`'s default exit code fails on
+`info`-level lints too (not just errors/warnings) — confirmed directly via
+exit-code testing — and this CI workflow passes no `--no-fatal-infos` flag,
+so `customer_app`'s 20 issues (all `info`-level: `avoid_print`,
+`deprecated_member_use`) would have failed the real CI run had it ever been
+exercised on this branch. Nothing here is a regression from a previously-
+green baseline — mobile CI has simply never run against this code before
+this pass.
+
+**Not fixed in this pass** — R9 was scoped as verification, not remediation
+(matching the checklist's own "Verify" wording). `customer_app`'s 3 failing
+widget tests trace to a real, unfixed UI overflow bug, consistent with its
+own honest `In Progress ~35%` doc status (row 19) rather than a new defect.
+Fixing the 13+1 format violations, 20 analyze issues, and the
+`dashboard_screen.dart` overflow is tracked as follow-up work, not folded
+into this pass.
+
 ## Remediation order
 
 Sequenced by gate-failures-cleared per unit of work, not by module number.
@@ -931,7 +973,7 @@ Sequenced by gate-failures-cleared per unit of work, not by module number.
 - [x] **R7a** — C7 mount the reporting router (one line) **with tests** — it exposes 4 endpoints to RBAC/RLS for the first time (2026-08-19)
 - [x] **R7** — C4 test coverage for complaint / reporting / employee / invoice (2026-08-19) — found+fixed 7 real bugs (see C4 writeup)
 - [x] **R8** — Backfill planning dirs for 11, 17, Reporting, Employees (2026-08-19) — see C6 writeup; surfaced one still-open gap in Order Management (BR-04/BR-19 confirm-time stubs)
-- [ ] **R9** — Verify mobile CI (Phase 05 / 19) — not exercised in this pass
+- [x] **R9** — Verify mobile CI (Phase 05 / 19) → **done 2026-08-19** — ran the real 4-step CI sequence against all 7 matrix packages locally; 5 of 7 fully green, `api_client`/`local_storage` fail format-check only, `customer_app` fails all 3 gates (13 unformatted files, 20 analyze issues, 3/3 widget tests fail on a real `RenderFlex` overflow). Verification only, no fixes applied this pass — see C13
 - [x] **R10** — C8 add the 7 missing domain events, starting with the complaint pair (2026-08-19) — all 7 done; the 4 that needed new domain concepts (`CashHandover`, `Payment`, `CreditNote`, `Customer.close_connection`) were built as real, minimal features rather than left blocked. Found+fixed 4 real bugs along the way, including a permission code (`customers:manage`) that had gated a pre-existing endpoint since it shipped without ever being granted to any role (see C8 writeup)
 
 ## Rules for updating this file
