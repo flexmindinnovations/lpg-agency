@@ -6,19 +6,19 @@
   <div class="error-state">{{ store.error() }}</div>
 } @else {
   <p-table [value]="store.gstFiling()" [tableStyle]="{ 'min-width': '50rem' }" styleClass="p-datatable-striped">
-    <ng-template pTemplate="header">
+    <ng-template #header>
       <tr>
         <th>Filing Period</th>
         <th>Total GST</th>
       </tr>
     </ng-template>
-    <ng-template pTemplate="body" let-record>
+    <ng-template #body let-record>
       <tr>
         <td>{{ record.filing_period }}</td>
         <td>{{ record.total_gst | currency:'INR' }}</td>
       </tr>
     </ng-template>
-    <ng-template pTemplate="emptymessage">
+    <ng-template #emptymessage>
       <tr>
         <td colspan="2" class="empty-message">No GST filing data available.</td>
       </tr>

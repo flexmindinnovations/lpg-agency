@@ -322,13 +322,21 @@ async def main() -> None:
                 params={**p, "name": name, "w": weight},
             )
 
-        effective_from = (now - timedelta(days=90)).date()
+        # This row's deterministic id (`sid("price", ...)`) is keyed only on
+        # `(cyl, ctype)` — `effective_from` was never part of that key, so it
+        # cannot also be part of the match clause below. It used to be
+        # (`now - 90 days`), which meant a re-run on a later day matched on a
+        # different `effective_from`, missed its own earlier row, and then
+        # collided with it on the id-only primary key when re-inserting —
+        # found while extending this script. Match on the real natural key
+        # only; effective_from is still recorded for genuinely new rows.
+        effective_from = date(2026, 1, 1)
         for cyl, ctype, price in PRICES:
             await ensure(
                 "tenant.price_list",
                 match=(
                     "tenant_id = :t AND cylinder_type_id = :c AND customer_type = :ct "
-                    "AND branch_id IS NULL AND effective_from = :eff"
+                    "AND branch_id IS NULL"
                 ),
                 columns="tenant_id, cylinder_type_id, customer_type, price, effective_from",
                 values=":t, :c, :ct, :price, :eff",
@@ -343,10 +351,11 @@ async def main() -> None:
             )
 
         # Cancellation fee policy — the key Phase 10 already recognised.
+        # Same fix as price_list just above: this row's id is keyed only on
+        # `config_key`, so effective_from cannot also gate the match.
         await ensure(
             "tenant.tenant_configuration",
-            match="tenant_id = :t AND config_key = 'cancellation_fee_amount' "
-            "AND effective_from = :eff",
+            match="tenant_id = :t AND config_key = 'cancellation_fee_amount'",
             columns="tenant_id, config_key, config_value, effective_from",
             values=":t, 'cancellation_fee_amount', "
             "'{\"policy_type\": \"flat\", \"amount\": \"50.00\"}'::jsonb, :eff",
@@ -434,10 +443,11 @@ async def main() -> None:
             _ = branch  # branch scoping is carried on the JWT, not this table
 
         # --- Drivers and vehicles ------------------------------------------
+        driver_ids: dict[str, uuid.UUID] = {}
         vehicle_ids: dict[str, uuid.UUID] = {}
         for emp_code, licence, reg, make, model, capacity in FLEET:
             branch = next(b for c, *_, b in EMPLOYEES if c == emp_code)
-            await ensure(
+            driver_ids[emp_code] = await ensure(
                 "delivery.driver",
                 match="tenant_id = :t AND employee_id = :e",
                 columns=(
@@ -590,6 +600,7 @@ async def main() -> None:
         ).scalar() or sid("user", "manager@example.com")
 
         price_by_key = {(c, ct): pr for c, ct, pr in PRICES}
+        order_ids: dict[str, uuid.UUID] = {}
         for idx, (phone, cyl, qty, status, offset) in enumerate(ORDERS):
             cust = next(c for c in CUSTOMERS if c[1] == phone)
             ctype, branch = cust[2], cust[3]
@@ -631,6 +642,7 @@ async def main() -> None:
                     "total": (unit_price * qty) if priced else None,
                 },
             )
+            order_ids[f"{phone}:{idx}"] = order_id
             await ensure(
                 "orders.order_line",
                 match="order_id = :o AND cylinder_type_id = :cyl",
@@ -663,6 +675,173 @@ async def main() -> None:
                 },
             )
 
+        # --- Invoices -----------------------------------------------------
+        # Written directly, same reasoning as Orders above — the delivered/
+        # closed subset of ORDERS is what `GenerateInvoiceForOrderUseCase`
+        # would have produced. Backs `rpt.vw_daily_sales` (live view) and
+        # `rpt.mv_gst_filing_period` (materialized, refreshed below).
+        gst_rate_by_customer_type = {"domestic": Decimal("0.05")}  # else 18%
+        invoice_ids: dict[str, uuid.UUID] = {}
+        for idx, (phone, cyl, qty, status, offset) in enumerate(ORDERS):
+            if status not in {"delivered", "closed"}:
+                continue
+            cust = next(c for c in CUSTOMERS if c[1] == phone)
+            ctype = cust[2]
+            unit_price = price_by_key.get((cyl, ctype)) or Decimal("905.50")
+            subtotal = unit_price * qty
+            gst_rate = gst_rate_by_customer_type.get(ctype, Decimal("0.18"))
+            tax_amount = (subtotal * gst_rate).quantize(Decimal("0.01"))
+            total_amount = subtotal + tax_amount
+            order_key = f"{phone}:{idx}"
+            invoice_id = await ensure(
+                "accounting.invoice",
+                match="order_id = :o",
+                columns=(
+                    "tenant_id, customer_id, order_id, status, subtotal, tax_amount, "
+                    "total_amount, issued_at"
+                ),
+                values=":t, :c, :o, :st, :sub, :tax, :total, :at",
+                new_id=sid("invoice", order_key),
+                params={
+                    **p,
+                    "c": customer_ids[phone],
+                    "o": order_ids[order_key],
+                    # Older deliveries have had time to be paid; the rest are
+                    # still outstanding — a plausible spread, not a fake one.
+                    "st": "paid" if offset <= -5 else "issued",
+                    "sub": subtotal,
+                    "tax": tax_amount,
+                    "total": total_amount,
+                    "at": now + timedelta(days=offset),
+                },
+            )
+            invoice_ids[order_key] = invoice_id
+            await ensure(
+                "accounting.invoice_line",
+                match="invoice_id = :i AND cylinder_type_id = :cyl",
+                columns=(
+                    "invoice_id, cylinder_type_id, quantity, unit_price, subtotal, "
+                    "tax_amount, total_amount"
+                ),
+                values=":i, :cyl, :q, :price, :sub, :tax, :total",
+                new_id=sid("invoice_line", order_key),
+                params={
+                    "i": invoice_id,
+                    "cyl": cylinder_ids[cyl],
+                    "q": qty,
+                    "price": unit_price,
+                    "sub": subtotal,
+                    "tax": tax_amount,
+                    "total": total_amount,
+                },
+            )
+
+        # --- Driver routes --------------------------------------------------
+        # Backs `rpt.mv_driver_performance_daily` (materialized, refreshed
+        # below). One route per driver, referencing real orders as stops —
+        # the Gachibowli route deliberately mixes in two still-pending stops
+        # rather than showing every driver at a fake 100%.
+        DRIVER_ROUTES: list[tuple[str, str, int, str, list[tuple[str, str]]]] = [
+            (
+                "EMP-1003", "TS07UB4412", -6, "completed",
+                [("+919848012001:0", "delivered"),
+                 ("+919848012002:1", "delivered"),
+                 ("+919848012003:2", "delivered")],
+            ),
+            (
+                "EMP-1005", "TS08UC7781", -4, "completed",
+                [("+919848012005:3", "delivered"),
+                 ("+919848012007:4", "delivered")],
+            ),
+            (
+                "EMP-1007", "TS09UA3320", -1, "in_progress",
+                [("+919848012009:5", "delivered"),
+                 ("+919848012010:6", "pending"),
+                 ("+919848012011:7", "pending")],
+            ),
+        ]
+        for emp_code, reg, offset, route_status, stops in DRIVER_ROUTES:
+            route_key = f"{emp_code}:{offset}"
+            route_id = await ensure(
+                "delivery.route",
+                match="tenant_id = :t AND driver_id = :d AND route_date = :rd",
+                columns="tenant_id, branch_id, driver_id, vehicle_id, route_date, status",
+                values=":t, :b, :d, :v, :rd, :st",
+                new_id=sid("route", route_key),
+                params={
+                    **p,
+                    "b": branch_ids[next(b for c, *_, b in EMPLOYEES if c == emp_code)],
+                    "d": driver_ids[emp_code],
+                    "v": vehicle_ids[reg],
+                    "rd": now + timedelta(days=offset),
+                    "st": route_status,
+                },
+            )
+            for seq, (order_key, stop_status) in enumerate(stops, start=1):
+                await ensure(
+                    "delivery.route_stop",
+                    match="route_id = :r AND order_id = :o",
+                    columns="route_id, order_id, sequence_number, status",
+                    values=":r, :o, :seq, :st",
+                    new_id=sid("route_stop", f"{route_key}:{order_key}"),
+                    params={
+                        "r": route_id,
+                        "o": order_ids[order_key],
+                        "seq": seq,
+                        "st": stop_status,
+                    },
+                )
+
+        # --- Cylinder ledger deliveries ---------------------------------------
+        # Backs `rpt.mv_customer_consumption` (materialized, refreshed below)
+        # — it needs at least two `delivery` transactions per customer to
+        # compute a refill interval (`3dd09c061286` fixed the view to key on
+        # the real `delivery` transaction type instead of a phantom
+        # `exchange` one the domain layer never actually writes). Spread
+        # ~monthly, well outside the reports' 30-day sales window on purpose:
+        # consumption history is meant to be long-range.
+        CONSUMPTION = [
+            # (phone, cylinder, day_offsets)
+            ("+919848012001", "Domestic 14.2kg", (-95, -65, -35, -8)),
+            ("+919848012002", "Domestic 14.2kg", (-80, -50, -22)),
+            ("+919848012003", "Commercial 19kg", (-70, -42, -18)),
+        ]
+        for phone, cyl, offsets in CONSUMPTION:
+            ledger_id = await ensure(
+                "cylinder_ledger.cylinder_ledger",
+                match="tenant_id = :t AND customer_id = :c",
+                columns="tenant_id, customer_id",
+                values=":t, :c",
+                new_id=sid("cylinder_ledger", phone),
+                params={**p, "c": customer_ids[phone]},
+            )
+            for offset in offsets:
+                await ensure(
+                    "cylinder_ledger.ledger_transaction",
+                    match="cylinder_ledger_id = :l AND performed_at = :at",
+                    columns=(
+                        "tenant_id, cylinder_ledger_id, cylinder_type_id, "
+                        "transaction_type, quantity, reason, performed_by, performed_at"
+                    ),
+                    values=":t, :l, :cyl, 'delivery', 1, 'Refill delivery', :by, :at",
+                    new_id=sid("ledger_txn", f"{phone}:{offset}"),
+                    params={
+                        **p,
+                        "l": ledger_id,
+                        "cyl": cylinder_ids[cyl],
+                        "by": admin_id,
+                        "at": now + timedelta(days=offset),
+                    },
+                )
+
+        # Materialized views don't see the rows above until refreshed.
+        for view in (
+            "rpt.mv_gst_filing_period",
+            "rpt.mv_customer_consumption",
+            "rpt.mv_driver_performance_daily",
+        ):
+            await conn.execute(text(f"REFRESH MATERIALIZED VIEW {view}"))  # noqa: S608 - fixed literal, no user input
+
         # --- Summary ---------------------------------------------------------
         counts = await conn.execute(
             text("""
@@ -676,7 +855,11 @@ async def main() -> None:
                   (SELECT count(*) FROM delivery.vehicle)           AS vehicles,
                   (SELECT count(*) FROM customer.customer)          AS customers,
                   (SELECT count(*) FROM inventory.inventory_balance) AS balances,
-                  (SELECT count(*) FROM orders."order")             AS orders
+                  (SELECT count(*) FROM orders."order")             AS orders,
+                  (SELECT count(*) FROM accounting.invoice)         AS invoices,
+                  (SELECT count(*) FROM delivery.route)             AS routes,
+                  (SELECT count(*) FROM delivery.route_stop)        AS route_stops,
+                  (SELECT count(*) FROM cylinder_ledger.ledger_transaction) AS ledger_transactions
             """)
         )
         row = counts.mappings().one()

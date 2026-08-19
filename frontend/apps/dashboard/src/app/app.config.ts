@@ -14,7 +14,7 @@ import { appRoutes } from './app.routes';
 import { PRIME_NG_LICENSE_KEY } from './prime-license';
 import { environment } from '../environments/environment';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { PERMISSION_CHECKER } from '@lpg/shared/util';
+import { PERMISSION_CHECKER, API_BASE_URL } from '@lpg/shared/util';
 import { inject } from '@angular/core';
 import { AuthService } from '@lpg/shared/data-access';
 
@@ -32,6 +32,11 @@ export const appConfig: ApplicationConfig = {
     // Backend root URL, swapped per build configuration via `fileReplacements`
     // (`apps/dashboard/project.json`) — see `src/environments/environment.ts`.
     provideApiConfiguration(environment.apiUrl),
+    // Same value, `type:util`-reachable DI surface for hand-written
+    // `type:data-access` libs (e.g. `reporting/data-access`) that cannot
+    // depend on `@lpg/shared/data-access`'s `ApiConfiguration` — see
+    // `API_BASE_URL`'s own docstring.
+    { provide: API_BASE_URL, useValue: environment.apiUrl },
     provideHttpClient(
       // Order matters: correlation ID is attached on the way out, the
       // bearer token is attached (and a 401 gets one silent
