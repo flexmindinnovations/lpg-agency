@@ -120,6 +120,15 @@ FLEET = [
 ]
 
 # (name, phone, type, branch, area, pincode, status, kyc)
+# `Customer.__init__` requires `contact_person` for customer_type=="commercial"
+# specifically (not industrial/government) — the 3 seeded commercial
+# customers below (name, keyed by phone).
+COMMERCIAL_CONTACT_PERSONS = {
+    "+919848012003": "Lakshmi Narayana",
+    "+919848012005": "Farhan Qureshi",
+    "+919848012009": "Divya Prasad",
+}
+
 CUSTOMERS = [
     ("Anand Krishnan", "+919848012001", "domestic", "Hyderabad Central",
      "Himayatnagar", "500029", "active", "verified"),
@@ -539,15 +548,29 @@ async def main() -> None:
         # --- Customers and addresses ----------------------------------------
         customer_ids: dict[str, uuid.UUID] = {}
         address_ids: dict[str, uuid.UUID] = {}
-        for name, phone, ctype, branch, area, pincode, status, kyc in CUSTOMERS:
+        for idx, (name, phone, ctype, branch, area, pincode, status, kyc) in enumerate(CUSTOMERS):
+            # `Customer.__init__` requires a `consumer_number` for every
+            # status except onboarding/pending_approval — written directly
+            # here (`CN-NNNNNN`, matching `CustomerNumberSequenceRepository`'s
+            # own format) rather than through that sequence service, for the
+            # same reason Orders below are written directly. Never having set
+            # this broke `GET /customers` outright for every seeded customer
+            # past onboarding, the same way the address_type bug just above
+            # did — found the same way, by that endpoint 409ing.
+            consumer_number = (
+                None if status in ("onboarding", "pending_approval") else f"CN-{idx + 1:06d}"
+            )
+            # Same story as consumer_number — commercial customers need a
+            # contact_person, this seed never set one.
+            contact_person = COMMERCIAL_CONTACT_PERSONS.get(phone) if ctype == "commercial" else None
             cust_id = await ensure(
                 "customer.customer",
                 match="tenant_id = :t AND phone_number = :ph",
                 columns=(
                     "tenant_id, branch_id, full_name, phone_number, "
-                    "customer_type, kyc_status, status"
+                    "customer_type, kyc_status, status, consumer_number, contact_person"
                 ),
-                values=":t, :b, :n, :ph, :ct, :kyc, :st",
+                values=":t, :b, :n, :ph, :ct, :kyc, :st, :cn, :cp",
                 new_id=sid("customer", phone),
                 params={
                     **p,
@@ -557,6 +580,8 @@ async def main() -> None:
                     "ct": ctype,
                     "kyc": kyc,
                     "st": status,
+                    "cn": consumer_number,
+                    "cp": contact_person,
                 },
             )
             customer_ids[phone] = cust_id
@@ -580,7 +605,12 @@ async def main() -> None:
                     "l1": f"{spread(phone, 900) + 1}-{spread(name, 90) + 10}, {area}",
                     "area": area,
                     "pin": pincode,
-                    "atype": "residential" if ctype == "domestic" else "commercial",
+                    # `domain/customer/customer.py`'s `CustomerAddress` only
+                    # accepts delivery/billing/both — "residential"/
+                    # "commercial" (this field's old values) were never valid
+                    # and broke `GET /customers` outright the moment it tried
+                    # to reconstruct any of these rows into a domain object.
+                    "atype": "delivery" if ctype == "domestic" else "both",
                     # Scattered around Hyderabad so the dispatch map has spread.
                     "lat": Decimal("17.3850") + Decimal(spread(phone, 500)) / Decimal(10000),
                     "lng": Decimal("78.4867") + Decimal(spread(area, 500)) / Decimal(10000),

@@ -81,6 +81,10 @@ class SqlAlchemyCustomerRepository:
             addresses=addresses,
             kyc_documents=kyc_docs,
             identity_user_id=row.identity_user_id,
+            contact_person=row.contact_person,
+            alternate_mobile=row.alternate_mobile,
+            email=row.email,
+            date_of_birth=row.date_of_birth,
             version=row.version,
         )
         self._uow.register_aggregate(customer)
@@ -196,6 +200,10 @@ class SqlAlchemyCustomerRepository:
                 status=customer.status,
                 lpg_subsidy_id=customer.lpg_subsidy_id,
                 identity_user_id=customer.identity_user_id,
+                contact_person=customer.contact_person,
+                alternate_mobile=customer.alternate_mobile,
+                email=customer.email,
+                date_of_birth=customer.date_of_birth,
             )
             self._uow.session.add(row)
         else:
@@ -208,6 +216,10 @@ class SqlAlchemyCustomerRepository:
             row.status = customer.status
             row.lpg_subsidy_id = customer.lpg_subsidy_id
             row.identity_user_id = customer.identity_user_id
+            row.contact_person = customer.contact_person
+            row.alternate_mobile = customer.alternate_mobile
+            row.email = customer.email
+            row.date_of_birth = customer.date_of_birth
             row.version = customer.version
 
         # Sync Addresses
