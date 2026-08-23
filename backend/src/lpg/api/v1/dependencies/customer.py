@@ -7,7 +7,12 @@ from fastapi import Depends
 from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.ports import UnitOfWork
-from lpg.application.customer.ports import ConsumerNumberSequence, CustomerRepository
+from lpg.application.customer.ports import (
+    ConsumerNumberSequence,
+    CustomerRepository,
+    DocumentOcrPort,
+    OnboardingDraftRepository,
+)
 from lpg.application.identity.ports import AuthenticatedPrincipal
 
 
@@ -31,3 +36,19 @@ def get_consumer_number_sequence(
     )
 
     return SqlAlchemyConsumerNumberSequence(unit_of_work, principal.tenant_id)  # type: ignore[arg-type]
+
+
+def get_onboarding_draft_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OnboardingDraftRepository:
+    from lpg.infrastructure.persistence.repositories.onboarding_draft import (
+        SqlAlchemyOnboardingDraftRepository,
+    )
+
+    return SqlAlchemyOnboardingDraftRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_document_ocr_port() -> DocumentOcrPort:
+    from lpg.infrastructure.ocr.rapidocr_adapter import RapidOcrDocumentAdapter
+
+    return RapidOcrDocumentAdapter()

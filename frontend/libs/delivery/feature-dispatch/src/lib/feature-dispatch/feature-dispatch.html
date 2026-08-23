@@ -96,7 +96,7 @@
         @for (order of unassignedOrders(); track order.id) {
           <div class="unassigned-card">
             <div class="unassigned-card__info">
-              <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top">{{ order.id.split('-')[0] }}…</span>
+              <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top">{{ order.order_number ?? order.id }}</span>
               <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
             </div>
             <button
@@ -167,8 +167,8 @@
       <p-select
         id="driver_id"
         formControlName="driver_id"
-        [options]="drivers()"
-        optionLabel="employee_code"
+        [options]="driverOptions()"
+        optionLabel="label"
         optionValue="id"
         placeholder="Select a driver"
         [fluid]="true"
@@ -184,8 +184,8 @@
       <p-select
         id="vehicle_id"
         formControlName="vehicle_id"
-        [options]="vehicles()"
-        optionLabel="registration_number"
+        [options]="vehicleOptions()"
+        optionLabel="label"
         optionValue="id"
         placeholder="Select a vehicle"
         [fluid]="true"
@@ -193,6 +193,32 @@
       />
       @if (planForm.get('vehicle_id')?.invalid && planForm.get('vehicle_id')?.touched) {
         <small class="field-error">Vehicle is required.</small>
+      }
+      @if (selectedVehicle(); as v) {
+        <div class="vehicle-summary">
+          <div class="detail-grid">
+            <div class="detail-field">
+              <span class="detail-field__label">Name</span>
+              <span>{{ v.make }} {{ v.model }}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-field__label">Number</span>
+              <span>{{ v.registration_number }}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-field__label">Capacity</span>
+              <span>{{ v.capacity_units }} cylinders</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-field__label">Ownership</span>
+              <span>{{ v.ownership_type | titlecase }}</span>
+            </div>
+            <div class="detail-field">
+              <span class="detail-field__label">Status</span>
+              <span>{{ v.status | titlecase }}</span>
+            </div>
+          </div>
+        </div>
       }
     </div>
 
@@ -335,7 +361,7 @@
                 </div>
               }
             </div>
-            <button pButton type="button" text (click)="addLoadLine()">
+            <button pButton type="button" text class="add-line-button" (click)="addLoadLine()">
               <i pButtonIcon class="pi pi-plus"></i>
               <span pButtonLabel>Add Line</span>
             </button>
@@ -352,13 +378,53 @@
         </div>
       }
 
-      <h3 class="section-title">Stops</h3>
+      <div class="stops-header">
+        <h3 class="section-title">Stops</h3>
+        @if (canAddStopToSelectedRoute()) {
+          <button pButton type="button" text (click)="openAddStopForm()">
+            <i pButtonIcon class="pi pi-plus"></i>
+            <span pButtonLabel>Add Stop</span>
+          </button>
+        }
+      </div>
+
+      @if (showAddStopForm()) {
+        <div class="load-form">
+          <form [formGroup]="addStopForm" (ngSubmit)="onSubmitAddStop()" class="dialog-form">
+            <div class="form-group">
+              <label for="add_stop_order">Order</label>
+              <p-select
+                id="add_stop_order"
+                formControlName="order_id"
+                [options]="unassignedOrderOptions()"
+                optionLabel="label"
+                optionValue="id"
+                placeholder="Select an order"
+                [fluid]="true"
+                [appendTo]="'body'"
+              />
+              @if (unassignedOrderOptions().length === 0) {
+                <small class="field-error">No unassigned orders are available right now.</small>
+              }
+            </div>
+            <div class="modal-actions">
+              <button pButton type="button" severity="secondary" (click)="showAddStopForm.set(false)">
+                Cancel
+              </button>
+              <button pButton type="submit" [disabled]="addStopForm.invalid || loading()">
+                Add
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
       <div class="stops-list">
         @for (stop of route.stops ?? []; track stop.id) {
           <div class="stop-card">
             <div class="stop-card__row">
               <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
-              <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top">Order {{ stop.order_id.split('-')[0] }}…</span>
+              <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top">Order {{ orderNumberById().get(stop.order_id) ?? shortId(stop.order_id) }}</span>
               <p-tag [severity]="statusSeverity(stop.status)" [value]="statusLabel(stop.status)" />
             </div>
             @if (stop.failure_reason) {
@@ -398,7 +464,7 @@
   @if (selectedOrderForAssign(); as order) {
     <form [formGroup]="assignOrderForm" (ngSubmit)="onSubmitAssignOrder()" class="dialog-form">
       <p class="assign-order-summary">
-        Order <strong [pTooltip]="order.id" tooltipPosition="top">{{ order.id.split('-')[0] }}…</strong> — {{ order.delivery_address.address_line }}
+        Order <strong [pTooltip]="order.id" tooltipPosition="top">{{ order.order_number ?? order.id }}</strong> — {{ order.delivery_address.address_line }}
       </p>
       <div class="form-group">
         <label for="assign_route">Target Route</label>

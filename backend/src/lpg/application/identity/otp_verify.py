@@ -21,9 +21,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command
-from lpg.application.common.errors import InvalidCredentialsError, OtpMismatchError
+from lpg.application.common.errors import (
+    InvalidCredentialsError,
+    LicenseExpiredError,
+    LicenseNotActivatedError,
+    OtpMismatchError,
+)
 from lpg.application.identity.otp_request import otp_store_key
 from lpg.application.identity.tokens import TokenPair, issue_tokens
+from lpg.domain.license.license import LicenseLifecycleState
 
 if TYPE_CHECKING:
     import uuid
@@ -37,6 +43,7 @@ if TYPE_CHECKING:
         RefreshTokenRepository,
         TokenHasher,
     )
+    from lpg.application.license.ports import LicenseStatusChecker
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +62,7 @@ class VerifyOtpUseCase:
         permission_repository: PermissionRepository,
         token_hasher: TokenHasher,
         jwt_signer: JwtSigner,
+        license_status_checker: LicenseStatusChecker,
         *,
         refresh_token_ttl: timedelta,
     ) -> None:
@@ -64,6 +72,7 @@ class VerifyOtpUseCase:
         self._permission_repository = permission_repository
         self._token_hasher = token_hasher
         self._jwt_signer = jwt_signer
+        self._license_status_checker = license_status_checker
         self._refresh_token_ttl = refresh_token_ttl
 
     async def execute(self, command: VerifyOtpCommand) -> TokenPair:
@@ -79,6 +88,14 @@ class VerifyOtpUseCase:
         if user is None or not user.is_active:
             msg = "No account is associated with this number."
             raise InvalidCredentialsError(msg)
+
+        license_status = await self._license_status_checker.get_status(command.tenant_id)
+        if license_status is LicenseLifecycleState.PENDING_ACTIVATION:
+            msg = "This tenant's license has not been activated."
+            raise LicenseNotActivatedError(msg, tenant_id=str(command.tenant_id))
+        if license_status in (LicenseLifecycleState.BLOCKED, LicenseLifecycleState.REVOKED):
+            msg = "This tenant's license has expired."
+            raise LicenseExpiredError(msg, tenant_id=str(command.tenant_id))
 
         user.record_successful_login()
         await self._user_repository.save(user)

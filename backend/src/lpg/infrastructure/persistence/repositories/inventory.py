@@ -291,10 +291,12 @@ class SqlAlchemyGoodsReceiptNoteRepository:
         quantity_received: int,
         source_omc: str | None,
         received_by: uuid.UUID,
+        grn_number: str,
     ) -> GoodsReceiptNoteEntry:
         row = GoodsReceiptNoteModel(
             id=grn_id,
             tenant_id=tenant_id,
+            grn_number=grn_number,
             warehouse_id=warehouse_id,
             cylinder_type_id=cylinder_type_id,
             quantity_received=quantity_received,
@@ -312,6 +314,7 @@ class SqlAlchemyGoodsReceiptNoteRepository:
             source_omc=row.source_omc,
             received_by=row.received_by,
             received_at=row.received_at,
+            grn_number=row.grn_number,
         )
 
 

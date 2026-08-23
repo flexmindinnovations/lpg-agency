@@ -28,6 +28,7 @@ from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.errors import TokenInvalidError
 from lpg.config.settings import Settings
+from lpg.domain.license.license import LicenseLifecycleState
 from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -36,6 +37,30 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 pytestmark = pytest.mark.integration
+
+
+class _AlwaysActiveLicenseStatusChecker:
+    """Stub `LicenseStatusChecker` — this module's own concern is the
+    `TenantContext`/`UnitOfWork` delegation chain, not license enforcement
+    (that has its own dedicated tests), so `get_tenant_context`'s license
+    check is stubbed out here rather than standing up a real Redis
+    connection just to satisfy it. Same pattern as
+    `test_observability_seam.py`'s identically-named stub."""
+
+    async def get_status(self, tenant_id: uuid.UUID) -> LicenseLifecycleState:
+        del tenant_id
+        return LicenseLifecycleState.ACTIVE
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id
+
+
+@pytest.fixture(autouse=True)
+def _stub_license_status_checker(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "lpg.api.v1.dependencies.license.get_license_status_checker",
+        lambda: _AlwaysActiveLicenseStatusChecker(),
+    )
 
 # Built lazily on first use, not at module level: a module-level `Settings()`
 # call runs at collection time, before the autouse `_no_real_dotenv` fixture

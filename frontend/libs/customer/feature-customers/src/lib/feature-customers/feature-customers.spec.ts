@@ -3,6 +3,7 @@ import { FeatureCustomers } from './feature-customers';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 
 describe('FeatureCustomers', () => {
   let component: FeatureCustomers;
@@ -15,6 +16,10 @@ describe('FeatureCustomers', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         MessageService,
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
       ],
     }).compileComponents();
 

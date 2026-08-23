@@ -355,11 +355,23 @@ async def _seed_route_with_delivered_stop(
     return uuid.UUID(str(driver_id))
 
 
-async def _seed_exchange_transactions(engine: AsyncEngine, *, tenant_id: uuid.UUID) -> None:
-    """Two `exchange` ledger transactions a day apart for one customer,
+async def _seed_delivery_transactions(engine: AsyncEngine, *, tenant_id: uuid.UUID) -> None:
+    """Two `delivery` ledger transactions a day apart for one customer,
     feeding `rpt.mv_customer_consumption`'s `LAG()`-based refill-interval
     calculation (a single transaction never has a `prev_time`, so it takes
     two).
+
+    `transaction_type` must be `'delivery'`, not `'exchange'` — `'exchange'`
+    was never a real value in `domain/cylinder_ledger/cylinder_ledger.py`'s
+    `TRANSACTION_TYPES` (`delivery`, `collection`, `adjustment`,
+    `initial_balance` only). This fixture originally used it anyway, which
+    happened to match `rpt.mv_customer_consumption`'s own filter at the
+    time; migration `3dd09c061286` corrected the view to filter on
+    `'delivery'` instead (the value the view's own docstring says the real
+    write path actually uses) but this fixture was never updated to match,
+    silently breaking `test_customer_consumption_reflects_seeded_exchanges`
+    from that point on — the view legitimately produced zero rows for data
+    seeded under a transaction_type it no longer looks for.
     """
     async with engine.begin() as conn:
         branch_id = (
@@ -417,7 +429,7 @@ async def _seed_exchange_transactions(engine: AsyncEngine, *, tenant_id: uuid.UU
                     "(id, tenant_id, cylinder_ledger_id, cylinder_type_id, transaction_type, "
                     "quantity, performed_by, performed_at) "
                     "VALUES (gen_random_uuid(), :tenant_id, :cylinder_ledger_id, "
-                    ":cylinder_type_id, 'exchange', 1, :performed_by, "
+                    ":cylinder_type_id, 'delivery', 1, :performed_by, "
                     "now() - (:days_ago || ' days')::interval)"
                 ),
                 {
@@ -628,7 +640,7 @@ class TestMaterializedReportsWithRealData:
         assert body[0]["total_stops"] == 1
         assert body[0]["delivered_stops"] == 1
 
-    async def test_customer_consumption_reflects_seeded_exchanges(
+    async def test_customer_consumption_reflects_seeded_deliveries(
         self,
         real_lifespan_client: AsyncClient,
         admin_engine_lpg_test: AsyncEngine,
@@ -644,7 +656,7 @@ class TestMaterializedReportsWithRealData:
             role="agency_admin",
             tenant_name="Reporting Smoke Tenant (consumption)",
         )
-        await _seed_exchange_transactions(admin_engine_lpg_test, tenant_id=tenant_id)
+        await _seed_delivery_transactions(admin_engine_lpg_test, tenant_id=tenant_id)
         await _refresh_materialized_views(admin_engine_lpg_test)
 
         token = await _login(real_lifespan_client, email=email, password=password)

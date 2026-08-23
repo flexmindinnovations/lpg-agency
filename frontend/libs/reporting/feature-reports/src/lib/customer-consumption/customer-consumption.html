@@ -8,13 +8,13 @@
   <p-table [value]="store.customerConsumption()" [tableStyle]="{ 'min-width': '50rem' }" styleClass="p-datatable-striped">
     <ng-template #header>
       <tr>
-        <th>Customer ID</th>
+        <th>Customer Name</th>
         <th>Avg Refill Interval (Days)</th>
       </tr>
     </ng-template>
     <ng-template #body let-record>
       <tr>
-        <td>{{ record.customer_id }}</td>
+        <td>{{ record.customer_name }}</td>
         <td>{{ record.avg_refill_interval_days | number:'1.0-1' }}</td>
       </tr>
     </ng-template>

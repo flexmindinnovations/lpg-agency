@@ -18,6 +18,9 @@
             display: flex;
             margin-bottom: 20px;
         }
+        .meta-row {
+            margin-bottom: 10px;
+        }
         .company-info {
             width: 60%;
         }
@@ -28,7 +31,7 @@
         .company-name {
             font-size: 18px;
             font-weight: bold;
-            color: #1a3c34;
+            color: #162b66;
             margin-bottom: 4px;
         }
         .company-detail {
@@ -38,7 +41,7 @@
         .invoice-title {
             font-size: 22px;
             font-weight: bold;
-            color: #1a3c34;
+            color: #162b66;
             margin-bottom: 8px;
         }
         .meta-label {
@@ -52,11 +55,11 @@
             font-weight: bold;
         }
         .divider {
-            border-top: 2px solid #1a3c34;
-            margin: 12px 0;
+            border-top: 2px solid #162b66;
+            margin: 8px 0;
         }
         .bill-to {
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
         .section-label {
             font-size: 9px;
@@ -72,10 +75,10 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
         }
         thead th {
-            background-color: #1a3c34;
+            background-color: #162b66;
             color: white;
             padding: 8px 10px;
             text-align: left;
@@ -87,24 +90,27 @@
             text-align: right;
         }
         tbody td {
-            padding: 8px 10px;
+            padding: 7px 10px;
             border-bottom: 1px solid #e0e0e0;
             font-size: 11px;
+            line-height: 1.3;
         }
         tbody td.right {
             text-align: right;
+            white-space: nowrap;
         }
         .totals-section {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         .totals-table {
             width: 300px;
             float: right;
         }
         .totals-table td {
-            padding: 4px 8px;
+            padding: 3px 8px;
             font-size: 11px;
+            line-height: 1.1;
         }
         .totals-table td.label {
             text-align: left;
@@ -115,11 +121,11 @@
             font-weight: bold;
         }
         .totals-table tr.grand-total td {
-            border-top: 2px solid #1a3c34;
+            border-top: 2px solid #162b66;
             font-size: 14px;
             font-weight: bold;
-            color: #1a3c34;
-            padding-top: 8px;
+            color: #162b66;
+            padding-top: 6px;
         }
         .footer {
             clear: both;
@@ -135,24 +141,49 @@
             width: 120px;
             height: 120px;
         }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        /* Colors mirror the app's `p-tag` severities exactly (captured from
+           the live invoice drawer/grid) so the PDF's status badge matches
+           what the user already sees on screen instead of an unrelated,
+           hardcoded Bootstrap-style palette. Sentence case (not uppercase)
+           for the same reason — see `toSentenceCase` in the frontend.
+
+           Applied to a `<td>` (a tiny single-cell table, see markup below),
+           not a `<span>` — xhtml2pdf's underlying reportlab engine renders
+           inline text runs as flat Paragraph flowables with no box model,
+           so `padding`/`background`/`border-radius` on a `<span>` are
+           silently dropped (it rendered as plain colored text, no pill).
+           Table cells are the one element xhtml2pdf reliably backgrounds
+           and pads — the same mechanic already used for `thead th` above. */
+        .status-badge-draft {
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            border: none; background: #f1f5f9; color: #475569;
         }
-        .status-issued { background: #fff3cd; color: #856404; }
-        .status-paid { background: #d4edda; color: #155724; }
-        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-badge-issued {
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            border: none; background: #e0f2fe; color: #0369a1;
+        }
+        .status-badge-partially_paid {
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            border: none; background: #ffedd5; color: #c2410c;
+        }
+        .status-badge-paid {
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            border: none; background: #e8f6ed; color: #107535;
+        }
+        .status-badge-cancelled {
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            border: none; background: #fbe9e9; color: #9e1b1b;
+        }
+        .status-badge-refunded {
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            border: none; background: #fbe9e9; color: #9e1b1b;
+        }
     </style>
 </head>
 <body>
-    <table class="header" style="width:100%; border:none;">
+    <table class="header" cellpadding="0" cellspacing="0" style="width:100%; border:none;">
         <tr>
-            <td style="width:60%; vertical-align:top; border:none;">
+            <td style="width:60%; vertical-align:top; border:none; padding:0;">
                 <div class="company-name">{{ payload.tenant_header.agency_name }}</div>
                 {% if payload.tenant_header.address_line_1 %}
                 <div class="company-detail">{{ payload.tenant_header.address_line_1 }}</div>
@@ -170,17 +201,44 @@
                 <div class="company-detail"><strong>Phone:</strong> {{ payload.tenant_header.phone }}</div>
                 {% endif %}
             </td>
-            <td style="width:40%; text-align:right; vertical-align:top; border:none;">
+            <td style="width:40%; text-align:right; vertical-align:top; border:none; padding:0;">
                 <div class="invoice-title">INVOICE</div>
-                <div class="meta-label">Invoice Number</div>
-                <div class="meta-value">{{ payload.invoice_number }}</div>
-                <br />
-                <div class="meta-label">Date</div>
-                <div class="meta-value">{{ payload.issued_at.strftime('%d %b %Y') }}</div>
-                <br />
-                <div class="meta-label">Status</div>
-                <span class="status-badge status-{{ payload.payment_status }}">{{ payload.payment_status }}</span>
             </td>
+        </tr>
+    </table>
+
+    <table class="meta-row" cellpadding="0" cellspacing="0" style="width:100%; border:none;">
+        <tr>
+            <td style="width:40%; vertical-align:top; border:none; padding:0;">
+                <div class="meta-label">Invoice Number</div>
+            </td>
+            <td style="width:35%; vertical-align:top; border:none; padding:0;">
+                <div class="meta-label">Date</div>
+            </td>
+            <td style="width:70pt; vertical-align:top; border:none; padding:0; white-space:nowrap;">
+                <div class="meta-label">Status</div>
+            </td>
+            <td style="border:none; padding:0;"></td>
+        </tr>
+        <tr>
+            <td style="width:40%; vertical-align:top; border:none; padding:0;">
+                <div class="meta-value">{{ payload.invoice_number }}</div>
+            </td>
+            <td style="width:35%; vertical-align:top; border:none; padding:0;">
+                <div class="meta-value">{{ payload.issued_at.strftime('%d %b %Y') }}</div>
+            </td>
+            <!-- Status is a TOP-LEVEL cell of this same table (not a nested
+                 table) so its background/padding are applied reliably. A
+                 percentage width here (the original approach) resolves to
+                 only a few points on a normal page — smaller than this
+                 badge's own CSS padding, which makes reportlab's table
+                 layout raise "negative availWidth" for every invoice
+                 regardless of status text length. A fixed point width wide
+                 enough for the longest label ("Partially paid") plus
+                 padding avoids that while still stopping the badge from
+                 stretching to fill the column. -->
+            <td class="status-badge-{{ payload.payment_status }}" style="width:70pt; vertical-align:middle; white-space:nowrap; text-align:center;">{{ payload.payment_status.replace('_', ' ') | capitalize }}</td>
+            <td style="border:none; padding:0;"></td>
         </tr>
     </table>
 
@@ -200,14 +258,14 @@
         {% endif %}
     </div>
 
-    <table>
+    <table width="100%" style="width:100%; border-collapse:collapse;">
         <thead>
             <tr>
                 <th style="width:5%;">#</th>
-                <th style="width:35%;">Description</th>
-                <th class="right" style="width:10%;">Qty</th>
-                <th class="right" style="width:15%;">Unit Price</th>
-                <th class="right" style="width:15%;">Tax</th>
+                <th style="width:27%;">Description</th>
+                <th class="right" style="width:8%;">Qty</th>
+                <th class="right" style="width:20%;">Unit Price</th>
+                <th class="right" style="width:20%;">Tax</th>
                 <th class="right" style="width:20%;">Amount</th>
             </tr>
         </thead>
@@ -217,9 +275,9 @@
                 <td>{{ loop.index }}</td>
                 <td>{{ item.description }}</td>
                 <td class="right">{{ item.quantity }}</td>
-                <td class="right">₹{{ "{:,.2f}".format(item.unit_price) }}</td>
-                <td class="right">₹{{ "{:,.2f}".format(item.tax_amount) }}</td>
-                <td class="right">₹{{ "{:,.2f}".format(item.total_amount) }}</td>
+                <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.unit_price) }}</td>
+                <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.tax_amount) }}</td>
+                <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.total_amount) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -229,15 +287,15 @@
         <table class="totals-table">
             <tr>
                 <td class="label">Subtotal</td>
-                <td class="value">₹{{ "{:,.2f}".format(payload.subtotal) }}</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.subtotal) }}</td>
             </tr>
             <tr>
                 <td class="label">GST ({{ payload.tax_rate_percent }}%)</td>
-                <td class="value">₹{{ "{:,.2f}".format(payload.tax_amount) }}</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.tax_amount) }}</td>
             </tr>
             <tr class="grand-total">
                 <td class="label">Total</td>
-                <td class="value">₹{{ "{:,.2f}".format(payload.total_amount) }}</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.total_amount) }}</td>
             </tr>
         </table>
     </div>

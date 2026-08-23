@@ -24,6 +24,22 @@
   font-weight: normal;
 }
 
+/* Scoped override of the shared .page-header__actions row (component
+   view encapsulation keeps this from leaking to other pages using the
+   same class) — Back sits on the left, the status-action buttons group
+   on the right, instead of everything crowding into one left-aligned row. */
+.page-header__actions {
+  justify-content: space-between;
+  inline-size: 100%;
+}
+
+.page-header__actions-buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));

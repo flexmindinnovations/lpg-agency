@@ -28,6 +28,7 @@ class CustomerConsumptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     customer_id: uuid.UUID
+    customer_name: str
     avg_refill_interval_days: float
 
 

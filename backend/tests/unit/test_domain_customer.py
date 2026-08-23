@@ -158,6 +158,127 @@ def test_customer_kyc_flow():
     assert customer.kyc_documents[0].verification_status == "verified"
 
 
+def test_resubmitting_the_same_doc_type_replaces_the_prior_document():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+    )
+    first_id = customer.submit_kyc("aadhaar", "111122223333", file_url="blob/first.png")
+
+    second_id = customer.submit_kyc("aadhaar", "444455556666", file_url="blob/second.png")
+
+    assert len(customer.kyc_documents) == 1
+    assert customer.kyc_documents[0].id == second_id
+    assert customer.kyc_documents[0].id != first_id
+    assert customer.kyc_documents[0].document_number == "444455556666"
+    assert customer.kyc_documents[0].file_url == "blob/second.png"
+
+
+def test_a_different_doc_type_is_added_alongside_not_replacing():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+    )
+    customer.submit_kyc("aadhaar", "111122223333")
+
+    customer.submit_kyc("pan", "ABCDE1234F")
+
+    assert {d.doc_type for d in customer.kyc_documents} == {"aadhaar", "pan"}
+
+
+def test_verifying_one_document_does_not_verify_the_whole_customer_while_another_is_pending():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+    )
+    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
+    customer.submit_kyc("pan", "ABCDE1234F")  # left pending
+
+    customer.verify_kyc(aadhaar_id, uuid.uuid4(), "verified")
+
+    assert customer.kyc_status == "pending"
+
+
+def test_rejecting_one_document_marks_the_customer_rejected_even_if_another_is_verified():
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+    )
+    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
+    pan_id = customer.submit_kyc("pan", "ABCDE1234F")
+    verifier_id = uuid.uuid4()
+    customer.verify_kyc(aadhaar_id, verifier_id, "verified")
+
+    customer.verify_kyc(pan_id, verifier_id, "rejected", rejection_reason="Expired document")
+
+    assert customer.kyc_status == "rejected"
+    # The already-verified document's own status is untouched.
+    assert customer.kyc_documents[0].verification_status == "verified"
+
+
+def test_adding_a_second_doc_type_correctly_requires_it_to_be_verified_too():
+    # kyc_status means "every current document is verified" — adding a
+    # second document type alongside an already-verified one correctly
+    # drops the aggregate back to "pending" until the new one is reviewed
+    # too, without touching the first document's own verified status.
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+    )
+    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
+    customer.verify_kyc(aadhaar_id, uuid.uuid4(), "verified")
+    assert customer.kyc_status == "verified"
+
+    customer.submit_kyc("pan", "ABCDE1234F")
+
+    assert customer.kyc_status == "pending"
+    assert customer.kyc_documents[0].verification_status == "verified"
+
+
+def test_resubmitting_an_already_verified_doc_type_requires_re_verification():
+    # Regression: submit_kyc previously appended a duplicate row and reset
+    # kyc_status unconditionally either way — now it replaces the same
+    # doc_type outright, and the reset to "pending" reflects that the
+    # replacement document genuinely hasn't been reviewed yet.
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+    )
+    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
+    customer.verify_kyc(aadhaar_id, uuid.uuid4(), "verified")
+    assert customer.kyc_status == "verified"
+
+    customer.submit_kyc("aadhaar", "999988887777")
+
+    assert len(customer.kyc_documents) == 1
+    assert customer.kyc_status == "pending"
+    assert customer.kyc_documents[0].verification_status == "pending"
+
+
 def test_close_connection_transitions_to_closed_and_records_both_events():
     customer = Customer(
         customer_id=uuid.uuid4(),

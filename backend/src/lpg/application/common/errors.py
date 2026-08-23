@@ -311,3 +311,52 @@ class IncompletePodError(ApplicationError):
     error_code = "INCOMPLETE_PROOF_OF_DELIVERY"
     http_status = 400
     title = "Proof of delivery is incomplete."
+
+
+class LicenseNotActivatedError(ConflictError):
+    """No license exists for this tenant yet, or one exists but has never
+    been activated — raised at login/refresh, distinct from `LicenseExpiredError`
+    so the client can render "activate your license" rather than "renew it".
+    """
+
+    error_code = "LICENSE_NOT_ACTIVATED"
+    title = "This tenant's license has not been activated."
+
+
+class LicenseExpiredError(ConflictError):
+    """The tenant's license is past its grace period (`BLOCKED`) or has been
+    revoked — raised at login/refresh and on every authenticated request via
+    `JwtTenantResolver`, since a license can expire mid-session.
+    """
+
+    error_code = "LICENSE_EXPIRED"
+    title = "This tenant's license has expired."
+
+
+class LicenseActivationFailedError(ConflictError):
+    """The presented activation key does not match this tenant's license, or
+    the license is already activated/revoked."""
+
+    error_code = "LICENSE_ACTIVATION_FAILED"
+    title = "License activation failed."
+
+
+class LicenseAlreadyIssuedError(ConflictError):
+    """This tenant already holds a non-revoked license — `IssueLicenseUseCase`
+    raises this instead of letting the attempt fall through to `platform.
+    license`'s partial unique index (`uq_license_tenant_id_active`,
+    migration `f5746de5730e`) and surface as a raw `IntegrityError`. Revoke
+    the existing license first; reissuing after a revoke is the case that
+    index exists to allow."""
+
+    error_code = "LICENSE_ALREADY_ISSUED"
+    title = "This tenant already has an active license."
+
+
+class DeviceLimitReachedError(ConflictError):
+    """Registering this device would exceed the license's per-app-type device
+    cap (BR: never auto-evicts an existing device — the caller must revoke
+    one first)."""
+
+    error_code = "DEVICE_LIMIT_REACHED"
+    title = "The device limit for this app has been reached."

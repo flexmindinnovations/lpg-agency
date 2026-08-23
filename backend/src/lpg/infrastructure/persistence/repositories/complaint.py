@@ -54,6 +54,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
             self._session.add(model)
 
         model.tenant_id = complaint.tenant_id
+        model.complaint_number = complaint.complaint_number
         model.customer_id = complaint.customer_id
         model.order_id = complaint.order_id
         model.category = complaint.category.value
@@ -115,6 +116,7 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
             tenant_id=model.tenant_id,
             customer_id=model.customer_id,
             order_id=model.order_id,
+            complaint_number=model.complaint_number,
             category=ComplaintCategory(model.category),
             priority=ComplaintPriority(model.priority),
             status=ComplaintStatus(model.status),

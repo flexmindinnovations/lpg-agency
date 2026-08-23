@@ -208,6 +208,7 @@ class SqlAlchemyCustomerRepository:
             self._uow.session.add(row)
         else:
             # Update existing row
+            row.consumer_number = customer.consumer_number
             row.branch_id = customer.branch_id
             row.full_name = customer.full_name
             row.phone_number = customer.phone_number
@@ -348,7 +349,7 @@ class SqlAlchemyCustomerRepository:
                 )
             )
 
-        stmt = stmt.order_by(CustomerModel.full_name).offset(skip).limit(limit)
+        stmt = stmt.order_by(CustomerModel.created_at.desc()).offset(skip).limit(limit)
         result = await self._uow.session.execute(stmt)
         return [self._to_domain(row) for row in result.scalars()]
 
@@ -375,7 +376,11 @@ class SqlAlchemyConsumerNumberSequence:
     suggested number, without any application-level locking.
     """
 
-    _PREFIX = "CN-"
+    # No separator between the prefix and the digits (e.g. "CN000001") —
+    # existing customers issued under the old "CN-000001" format keep
+    # their number as-is; this only changes what newly-assigned numbers
+    # look like.
+    _PREFIX = "CN"
     _PAD_WIDTH = 6
 
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork, tenant_id: uuid.UUID) -> None:

@@ -83,6 +83,21 @@ def test_render_invoice_thermal() -> None:
     assert "3540.00" in text
 
 
+def test_render_invoice_thermal_html() -> None:
+    engine = Xhtml2pdfPrintingEngine()
+    payload = _make_payload()
+    html_bytes = engine.render_invoice_thermal_html(payload)
+
+    html_text = html_bytes.decode("utf-8")
+    assert html_text.startswith("<!doctype html>")
+    assert "Sharma Gas Agency" in html_text
+    assert "INV-00001234" in html_text
+    assert "Rajesh Kumar" in html_text
+    assert "3540.00" in html_text
+    assert "window.print()" in html_text
+    assert "window.close()" in html_text
+
+
 def test_generate_qr_code() -> None:
     engine = Xhtml2pdfPrintingEngine()
     qr_bytes = engine.generate_qr_code("https://example.com/verify/inv-123")

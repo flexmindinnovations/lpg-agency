@@ -42,6 +42,7 @@ class OrderModel(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
     )
+    order_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     branch_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.branch.id", ondelete="CASCADE")
     )

@@ -259,8 +259,12 @@ async def test_record_goods_receipt_credits_filled_and_creates_grn(
     warehouse_id = uuid.uuid4()
     grn_entry = MagicMock(spec=GoodsReceiptNoteEntry)
     mock_grn_repo.create.return_value = grn_entry
+    mock_grn_number_sequence = MagicMock()
+    mock_grn_number_sequence.next = AsyncMock(return_value="GRN000001")
 
-    use_case = RecordGoodsReceiptUseCase(mock_location_repo, mock_grn_repo, mock_uow)
+    use_case = RecordGoodsReceiptUseCase(
+        mock_location_repo, mock_grn_repo, mock_uow, mock_grn_number_sequence
+    )
     result = await use_case.execute(
         RecordGoodsReceiptCommand(
             tenant_id=tenant_id,

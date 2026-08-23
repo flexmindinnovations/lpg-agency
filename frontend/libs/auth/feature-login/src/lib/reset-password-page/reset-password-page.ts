@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import {
   AbstractControl,
   NonNullableFormBuilder,
@@ -62,6 +62,9 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
             This password reset link is missing its token. Request a new one.
           </p>
         </div>
+        <div class="login-card__footer">
+          <a class="login-card__forgot" routerLink="/login">Back to sign in</a>
+        </div>
       } @else if (succeeded()) {
         <div class="login-card__header">
           <h1 class="login-card__title">Password updated</h1>
@@ -83,31 +86,63 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 
           <div class="login-card__body">
             <div class="form-group">
-              <p-floatlabel variant="on" class="login-card__float-label">
-                <input
-                  pInputPassword
-                  id="reset-new-password"
-                  type="password"
-                  formControlName="newPassword"
-                  autocomplete="new-password"
-                  class="login-card__input"
-                />
-                <label for="reset-new-password">New password</label>
-              </p-floatlabel>
+              <div class="password-field">
+                <p-floatlabel variant="on" class="login-card__float-label">
+                  <input
+                    #newPasswordInput
+                    pInputPassword
+                    id="reset-new-password"
+                    type="password"
+                    formControlName="newPassword"
+                    autocomplete="new-password"
+                    class="login-card__input password-field__input"
+                  />
+                  <label for="reset-new-password">New password</label>
+                </p-floatlabel>
+                <button
+                  type="button"
+                  class="password-field__toggle"
+                  tabindex="-1"
+                  (click)="toggleNewPasswordVisibility()"
+                  [attr.aria-label]="newPasswordVisible() ? 'Hide password' : 'Show password'"
+                >
+                  <i
+                    class="pi"
+                    [class.pi-eye]="!newPasswordVisible()"
+                    [class.pi-eye-slash]="newPasswordVisible()"
+                  ></i>
+                </button>
+              </div>
             </div>
 
             <div class="form-group">
-              <p-floatlabel variant="on" class="login-card__float-label">
-                <input
-                  pInputPassword
-                  id="reset-confirm-password"
-                  type="password"
-                  formControlName="confirmPassword"
-                  autocomplete="new-password"
-                  class="login-card__input"
-                />
-                <label for="reset-confirm-password">Confirm new password</label>
-              </p-floatlabel>
+              <div class="password-field">
+                <p-floatlabel variant="on" class="login-card__float-label">
+                  <input
+                    #confirmPasswordInput
+                    pInputPassword
+                    id="reset-confirm-password"
+                    type="password"
+                    formControlName="confirmPassword"
+                    autocomplete="new-password"
+                    class="login-card__input password-field__input"
+                  />
+                  <label for="reset-confirm-password">Confirm new password</label>
+                </p-floatlabel>
+                <button
+                  type="button"
+                  class="password-field__toggle"
+                  tabindex="-1"
+                  (click)="toggleConfirmPasswordVisibility()"
+                  [attr.aria-label]="confirmPasswordVisible() ? 'Hide password' : 'Show password'"
+                >
+                  <i
+                    class="pi"
+                    [class.pi-eye]="!confirmPasswordVisible()"
+                    [class.pi-eye-slash]="confirmPasswordVisible()"
+                  ></i>
+                </button>
+              </div>
               @if (mismatch()) {
                 <span class="field-error">Passwords do not match.</span>
               }
@@ -118,6 +153,7 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
             <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
               {{ submitting() ? 'Saving…' : 'Save new password' }}
             </button>
+            <a class="login-card__forgot" routerLink="/login">Back to sign in</a>
           </div>
         </form>
       }
@@ -146,6 +182,11 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
         font-size: var(--typography-body-font-size);
       }
 
+      p-message {
+        display: block;
+        margin-block-end: var(--spacing-lg);
+      }
+
       .login-card__body {
         display: flex;
         flex-direction: column;
@@ -159,6 +200,34 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 
       .login-card__input {
         width: 100%;
+      }
+
+      .password-field {
+        position: relative;
+      }
+
+      .password-field__input {
+        padding-inline-end: 2.5rem;
+      }
+
+      .password-field__toggle {
+        position: absolute;
+        inset-inline-end: var(--spacing-sm);
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        padding: 0;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        z-index: 1;
+      }
+
+      .password-field__toggle:hover {
+        color: var(--color-text-primary);
       }
 
       .login-card__footer {
@@ -194,6 +263,18 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
       .login-card__submit-link:hover {
         background: var(--color-action-primary-hover);
       }
+
+      .login-card__forgot {
+        align-self: center;
+        color: var(--color-action-primary);
+        font-size: var(--typography-body-small-font-size);
+        text-decoration: none;
+        font-weight: var(--typography-label-font-weight);
+      }
+
+      .login-card__forgot:hover {
+        text-decoration: underline;
+      }
     `,
   ],
 })
@@ -207,6 +288,13 @@ export class ResetPasswordPage {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly resetToken = signal(this.route.snapshot.queryParamMap.get('token'));
 
+  // `pInputPassword` is a bare directive with no `exportAs`, so a template
+  // reference variable (`#ref`) resolves to the native element —
+  // `read: InputPassword` is what actually gets the directive instance
+  // (and its `mask`/`toggleMask()` state) off that same element.
+  private readonly newPasswordInput = viewChild('newPasswordInput', { read: InputPassword });
+  private readonly confirmPasswordInput = viewChild('confirmPasswordInput', { read: InputPassword });
+
   protected readonly form = this.formBuilder.group(
     {
       newPassword: ['', [Validators.required, Validators.minLength(12)]],
@@ -217,6 +305,22 @@ export class ResetPasswordPage {
 
   protected mismatch(): boolean {
     return this.form.hasError('passwordMismatch') && this.form.controls.confirmPassword.touched;
+  }
+
+  protected newPasswordVisible(): boolean {
+    return this.newPasswordInput()?.mask() === false;
+  }
+
+  protected toggleNewPasswordVisibility(): void {
+    this.newPasswordInput()?.toggleMask();
+  }
+
+  protected confirmPasswordVisible(): boolean {
+    return this.confirmPasswordInput()?.mask() === false;
+  }
+
+  protected toggleConfirmPasswordVisibility(): void {
+    this.confirmPasswordInput()?.toggleMask();
   }
 
   protected submit(): void {

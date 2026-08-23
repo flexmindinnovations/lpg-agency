@@ -1,11 +1,15 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
-import { InputText } from 'primeng/inputtext';
+import { Select } from 'primeng/select';
 import { Message } from 'primeng/message';
-import { AdminFeatureFlagService, type AppError } from '@lpg/shared/data-access';
+import {
+  AdminFeatureFlagService,
+  type AppError,
+  type FeatureFlagSummaryResponse,
+} from '@lpg/shared/data-access';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -26,7 +30,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-flag-overrides-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, Message],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, Select, Message],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -38,7 +42,7 @@ function errorMessageFor(error: unknown): string {
         </div>
     </ng-template>
       </div>
-      <p>Override a platform flag for this tenant only. Blank the key to check a flag's status.</p>
+      <p>Override a platform flag for this tenant only.</p>
 
       @if (checkedStatus(); as status) {
         <p-message severity="info">{{ status }}</p-message>
@@ -47,23 +51,52 @@ function errorMessageFor(error: unknown): string {
         <p-message severity="error">{{ message }}</p-message>
       }
 
-      <section class="admin-form-section">
-        <form [formGroup]="form" novalidate>
-          <div class="form-group">
-            <label for="flag-key">Flag key</label>
-            <input pInputText id="flag-key" type="text" formControlName="key" />
-          </div>
-          <div class="admin-form-actions">
-            <button pButton type="button" (click)="checkStatus()">Check status</button>
-            <button pButton type="button" severity="success" (click)="setOverride(true)">
-              Enable for this tenant
-            </button>
-            <button pButton type="button" severity="danger" (click)="setOverride(false)">
-              Disable for this tenant
-            </button>
-          </div>
-        </form>
-      </section>
+      @if (!loading() && availableFlags().length === 0) {
+        <p-message severity="warn">
+          No flags exist yet — a super admin needs to create one on the Platform Flags page first.
+        </p-message>
+      } @else {
+        <section class="admin-form-section">
+          <form [formGroup]="form" novalidate>
+            <div class="form-group">
+              <label for="flag-key">Flag</label>
+              <p-select
+                id="flag-key"
+                formControlName="key"
+                [options]="flagOptions()"
+                optionLabel="label"
+                optionValue="value"
+                [loading]="loading()"
+                placeholder="Select a flag"
+                appendTo="body"
+              ></p-select>
+            </div>
+            <div class="admin-form-actions">
+              <button pButton type="button" [disabled]="form.invalid" (click)="checkStatus()">
+                Check status
+              </button>
+              <button
+                pButton
+                type="button"
+                severity="success"
+                [disabled]="form.invalid"
+                (click)="setOverride(true)"
+              >
+                Enable for this tenant
+              </button>
+              <button
+                pButton
+                type="button"
+                severity="danger"
+                [disabled]="form.invalid"
+                (click)="setOverride(false)"
+              >
+                Disable for this tenant
+              </button>
+            </div>
+          </form>
+        </section>
+      }
     </div>
   `,
   styles: [
@@ -100,30 +133,39 @@ function errorMessageFor(error: unknown): string {
         margin-block-start: var(--spacing-sm);
         flex-wrap: wrap;
       }
-
-      .grid-section {
-        margin-block-start: var(--spacing-lg);
-      }
-
-      .grid-wrapper {
-        block-size: 400px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-      }
     `,
   ],
 })
-export class FeatureFlagOverridesPage {
+export class FeatureFlagOverridesPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly featureFlagService = inject(AdminFeatureFlagService);
 
+  protected readonly loading = signal(false);
+  protected readonly availableFlags = signal<FeatureFlagSummaryResponse[]>([]);
   protected readonly checkedStatus = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+
+  protected readonly flagOptions = computed(() =>
+    this.availableFlags().map((flag) => ({
+      label: `${flag.key} — ${flag.description}`,
+      value: flag.key,
+    })),
+  );
 
   protected readonly form = this.formBuilder.group({
     key: ['', [Validators.required]],
   });
+
+  ngOnInit(): void {
+    this.loading.set(true);
+    this.featureFlagService.listAvailableFlags().subscribe({
+      next: (flags) => {
+        this.availableFlags.set(flags);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
 
   protected checkStatus(): void {
     if (this.form.invalid) {

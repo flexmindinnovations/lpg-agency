@@ -10,11 +10,14 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin, type Observable } from 'rxjs';
 import {
   DataGridComponent,
   type DataGridColumn,
   HasPermissionDirective,
   StatusChipCell,
+  type ChipSeverity,
+  toSentenceCase,
 } from '@lpg/shared/ui';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -25,6 +28,7 @@ import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
+import { Tag } from 'primeng/tag';
 import {
   AdminBranchService,
   DeliveryService,
@@ -51,7 +55,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-vehicles',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -62,13 +66,13 @@ function errorMessageFor(error: unknown): string {
     InputIcon,
     Message,
     Select,
+    Tag,
     DataGridComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-vehicles.html',
   styleUrl: './feature-vehicles.css',
-  providers: [MessageService],
 })
 export class FeatureVehicles implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
@@ -76,22 +80,60 @@ export class FeatureVehicles implements OnInit {
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly messageService = inject(MessageService);
+
+  private static readonly STATUS_SEVERITY: Record<string, ChipSeverity> = {
+    active: 'success',
+    maintenance: 'warn',
+    inactive: 'secondary',
+  };
+
+  protected readonly statusOptions = [
+    { label: 'Active', value: 'active' },
+    { label: 'Maintenance', value: 'maintenance' },
+    { label: 'Inactive', value: 'inactive' },
+  ];
+
+  protected readonly toSentenceCase = toSentenceCase;
+
+  protected statusSeverity(status: string): ChipSeverity {
+    return FeatureVehicles.STATUS_SEVERITY[status] ?? 'secondary';
+  }
 
   protected readonly vehicles = signal<VehicleResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
-  protected readonly selectedVehicle = signal<VehicleResponse | null>(null);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
   protected readonly errorMessage = signal<string | null>(null);
 
   // Modal Visibility Signals
   protected readonly showRegisterModal = signal(false);
-  protected readonly showUpdateStatusModal = signal(false);
 
-  // PrimeNG's Dialog has no built-in "return focus to trigger" behaviour —
-  // matches `apps/dashboard/src/app/home/home.ts`'s documented pattern. The
-  // Update Status dialog is opened via grid row selection, not a button, so
-  // it has no natural focus-restore target and is intentionally left as-is.
+  // Details drawer — view mode shows the vehicle's current data (with an
+  // Edit button, gated by RBAC below), edit mode swaps in a form covering
+  // every field: make/model/ownership/capacity go through the "details"
+  // endpoint, status through its own — separate domain operations, so
+  // saveEdit() only calls whichever endpoint(s) actually changed.
+  protected readonly showDetailDrawer = signal(false);
+  protected readonly selectedVehicle = signal<VehicleResponse | null>(null);
+  protected readonly editMode = signal(false);
+  protected readonly saving = signal(false);
+
+  protected readonly ownershipOptions = [
+    { label: 'Owned', value: 'owned' },
+    { label: 'Third Party', value: 'third_party' },
+    { label: 'Rental', value: 'rental' },
+    { label: 'Gig', value: 'gig' },
+  ];
+
+  protected readonly editForm = this.fb.group({
+    make: ['', [Validators.required]],
+    model: ['', [Validators.required]],
+    ownership_type: ['owned', [Validators.required]],
+    capacity_units: [1, [Validators.required, Validators.min(1)]],
+    status: ['active', [Validators.required]],
+  });
+
   protected readonly registerTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
@@ -102,13 +144,19 @@ export class FeatureVehicles implements OnInit {
       header: 'Reg No.',
       sortable: true,
       filterable: true,
-      onLinkClick: (row) => this.openStatusModal(row),
+      onLinkClick: (row) => this.openDetails(row),
     },
     { field: 'make', header: 'Make', sortable: true },
     { field: 'model', header: 'Model', sortable: true },
     { field: 'ownership_type', header: 'Ownership', sortable: true, cellRenderer: StatusChipCell },
     { field: 'capacity_units', header: 'Capacity (Cylinders)', sortable: true },
-    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
+    {
+      field: 'status',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: FeatureVehicles.STATUS_SEVERITY },
+    },
   ];
 
   // Forms
@@ -121,22 +169,11 @@ export class FeatureVehicles implements OnInit {
     capacity_units: [20, [Validators.required, Validators.min(1)]],
   });
 
-  protected readonly statusForm = this.fb.group({
-    status: ['active', [Validators.required]],
-  });
-
   protected get registerModalVisible(): boolean {
     return this.showRegisterModal();
   }
   protected set registerModalVisible(value: boolean) {
     this.showRegisterModal.set(value);
-  }
-
-  protected get updateStatusModalVisible(): boolean {
-    return this.showUpdateStatusModal();
-  }
-  protected set updateStatusModalVisible(value: boolean) {
-    this.showUpdateStatusModal.set(value);
   }
 
   ngOnInit(): void {
@@ -237,26 +274,80 @@ export class FeatureVehicles implements OnInit {
       });
   }
 
-  protected openStatusModal(vehicle: VehicleResponse): void {
+  protected openDetails(vehicle: VehicleResponse): void {
     this.selectedVehicle.set(vehicle);
-    this.statusForm.patchValue({ status: vehicle.status });
-    this.showUpdateStatusModal.set(true);
+    this.editMode.set(false);
+    this.showDetailDrawer.set(true);
   }
 
-  protected onSubmitStatus(): void {
-    const vehicle = this.selectedVehicle();
-    if (!vehicle || this.statusForm.invalid) return;
+  protected closeDetails(): void {
+    this.showDetailDrawer.set(false);
+    this.editMode.set(false);
+  }
 
-    const newStatus = this.statusForm.getRawValue().status;
-    this.loading.set(true);
-    this.deliveryService.updateVehicleStatus(vehicle.id, newStatus).subscribe({
-      next: () => {
-        this.showUpdateStatusModal.set(false);
+  protected startEdit(): void {
+    const vehicle = this.selectedVehicle();
+    if (!vehicle) return;
+    this.editForm.reset({
+      make: vehicle.make,
+      model: vehicle.model,
+      ownership_type: vehicle.ownership_type,
+      capacity_units: vehicle.capacity_units,
+      status: vehicle.status,
+    });
+    this.editMode.set(true);
+  }
+
+  protected cancelEdit(): void {
+    this.editMode.set(false);
+  }
+
+  /** Calls whichever of the two backend endpoints (details, status) the
+   * changed fields actually need — mirrors `FeatureDrivers.saveEdit()`. */
+  protected saveEdit(): void {
+    const vehicle = this.selectedVehicle();
+    if (!vehicle || this.editForm.invalid) return;
+
+    const val = this.editForm.getRawValue();
+    const detailsChanged =
+      val.make !== vehicle.make ||
+      val.model !== vehicle.model ||
+      val.ownership_type !== vehicle.ownership_type ||
+      val.capacity_units !== vehicle.capacity_units;
+    const statusChanged = val.status !== vehicle.status;
+
+    if (!detailsChanged && !statusChanged) {
+      this.editMode.set(false);
+      return;
+    }
+
+    const requests: Observable<VehicleResponse>[] = [];
+    if (detailsChanged) {
+      requests.push(
+        this.deliveryService.updateVehicleDetails(vehicle.id, {
+          make: val.make,
+          model: val.model,
+          ownership_type: val.ownership_type,
+          capacity_units: val.capacity_units,
+        }),
+      );
+    }
+    if (statusChanged) {
+      requests.push(this.deliveryService.updateVehicleStatus(vehicle.id, val.status));
+    }
+
+    this.saving.set(true);
+    forkJoin(requests).subscribe({
+      next: (results) => {
+        this.selectedVehicle.set(results[results.length - 1]);
+        this.editMode.set(false);
+        this.saving.set(false);
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Vehicle updated.' });
         this.loadVehicles();
       },
       error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
-        this.loading.set(false);
+        this.saving.set(false);
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
       },
     });
   }

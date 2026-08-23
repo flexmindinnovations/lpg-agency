@@ -24,6 +24,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from lpg.application.common.errors import (
     AccountLockedError,
     InvalidCredentialsError,
+    LicenseExpiredError,
+    LicenseNotActivatedError,
     OtpExpiredError,
     OtpMismatchError,
     PermissionDeniedError,
@@ -42,6 +44,7 @@ from lpg.application.identity.password_reset import (
 )
 from lpg.application.identity.principal import JwtAuthenticatedPrincipal
 from lpg.application.identity.refresh_token import RefreshTokenCommand, RefreshTokenUseCase
+from lpg.domain.license.license import LicenseLifecycleState
 from lpg.infrastructure.identity.otp_service import OtpService
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.identity.token_hasher import Sha256TokenHasher
@@ -217,6 +220,7 @@ class TestLoginLockout:
             hasher,
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             lockout_threshold=3,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -246,6 +250,7 @@ class TestLoginLockout:
             hasher,
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             lockout_threshold=3,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -287,6 +292,7 @@ class TestRefreshTokenReuseDetection:
             hasher,
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -299,6 +305,7 @@ class TestRefreshTokenReuseDetection:
             SqlAlchemyPermissionRepository(database),
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -320,6 +327,98 @@ class TestRefreshTokenReuseDetection:
             await refresh_use_case.execute(
                 RefreshTokenCommand(refresh_token=second_pair.refresh_token)
             )
+
+
+class TestLicenseGate:
+    """`LoginUseCase`/`RefreshTokenUseCase` actually raise at the license
+    check (Tenant License Activation plan, step 9) — the wiring proof the
+    plan's own Verification section calls for, distinct from
+    `test_domain_license.py`'s pure `compute_status` fencepost coverage and
+    from `get_tenant_context`'s per-request check (`test_tenant_dependency_
+    chain.py`)."""
+
+    async def test_login_raises_not_activated_for_a_pending_license(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@license-gate.example"
+        hasher = Argon2PasswordHasher(integration_settings)
+        await _seed_user(admin_engine_lpg_test, email=email, password_hash=hasher.hash("correct"))
+
+        use_case = LoginUseCase(
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            hasher,
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _FixedLicenseStatusChecker(LicenseLifecycleState.PENDING_ACTIVATION),
+            lockout_threshold=5,
+            lockout_duration=timedelta(minutes=15),
+            refresh_token_ttl=timedelta(days=30),
+        )
+
+        with pytest.raises(LicenseNotActivatedError):
+            await use_case.execute(LoginCommand(email=email, password="correct"))
+
+    async def test_login_raises_expired_for_a_blocked_license(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@license-gate.example"
+        hasher = Argon2PasswordHasher(integration_settings)
+        await _seed_user(admin_engine_lpg_test, email=email, password_hash=hasher.hash("correct"))
+
+        use_case = LoginUseCase(
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            hasher,
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _FixedLicenseStatusChecker(LicenseLifecycleState.BLOCKED),
+            lockout_threshold=5,
+            lockout_duration=timedelta(minutes=15),
+            refresh_token_ttl=timedelta(days=30),
+        )
+
+        with pytest.raises(LicenseExpiredError):
+            await use_case.execute(LoginCommand(email=email, password="correct"))
+
+    async def test_refresh_raises_expired_once_the_license_is_revoked(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        """A refresh token issued while the license was active is still
+        rejected on its next use once the license flips to REVOKED — the
+        check re-runs at every token exchange, not just at initial login."""
+        email = f"{uuid.uuid4().hex}@license-gate.example"
+        hasher = Argon2PasswordHasher(integration_settings)
+        await _seed_user(admin_engine_lpg_test, email=email, password_hash=hasher.hash("correct"))
+
+        login_use_case = LoginUseCase(
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            hasher,
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
+            lockout_threshold=5,
+            lockout_duration=timedelta(minutes=15),
+            refresh_token_ttl=timedelta(days=30),
+        )
+        pair = await login_use_case.execute(LoginCommand(email=email, password="correct"))
+
+        refresh_use_case = RefreshTokenUseCase(
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _FixedLicenseStatusChecker(LicenseLifecycleState.REVOKED),
+            refresh_token_ttl=timedelta(days=30),
+        )
+
+        with pytest.raises(LicenseExpiredError):
+            await refresh_use_case.execute(RefreshTokenCommand(refresh_token=pair.refresh_token))
 
 
 class TestPermissionCheckerLiveRecheck:
@@ -401,6 +500,7 @@ class TestOtpFlow:
             SqlAlchemyPermissionRepository(database),
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
         pair = await verify_use_case.execute(
@@ -432,6 +532,7 @@ class TestOtpFlow:
             SqlAlchemyPermissionRepository(database),
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -451,6 +552,7 @@ class TestOtpFlow:
             SqlAlchemyPermissionRepository(database),
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -591,6 +693,7 @@ class TestLogoutInvalidatesServerSide:
             hasher,
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -608,6 +711,7 @@ class TestLogoutInvalidatesServerSide:
             SqlAlchemyPermissionRepository(database),
             Sha256TokenHasher(),
             _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
         with pytest.raises(RefreshTokenInvalidError):
@@ -634,3 +738,33 @@ class _StubJwtSigner:
 
     def decode_access_token(self, token: str) -> dict[str, object]:
         raise NotImplementedError
+
+
+class _AlwaysActiveLicenseStatusChecker:
+    """A minimal `LicenseStatusChecker` for these tests — they exercise
+    lockout/reuse-detection/OTP business rules, not license enforcement
+    (that's `TestLicenseGate` below), so every user here is treated as
+    belonging to an always-active-license tenant."""
+
+    async def get_status(self, tenant_id: uuid.UUID) -> LicenseLifecycleState:
+        del tenant_id
+        return LicenseLifecycleState.ACTIVE
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id
+
+
+class _FixedLicenseStatusChecker:
+    """A `LicenseStatusChecker` stub that always reports one fixed status,
+    for `TestLicenseGate`'s own coverage of the login/refresh/OTP rejection
+    paths themselves."""
+
+    def __init__(self, status: LicenseLifecycleState) -> None:
+        self._status = status
+
+    async def get_status(self, tenant_id: uuid.UUID) -> LicenseLifecycleState:
+        del tenant_id
+        return self._status
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id

@@ -13,6 +13,7 @@ export interface OrderResponse {
   lines: Array<OrderLineResponse>;
   metadata: {
 };
+  order_number?: (string | null);
   payment_method_preference: ('cash' | 'upi' | 'card' | 'online_gateway' | 'credit' | null);
   requested_date: string;
   route_stop_id: (string | null);

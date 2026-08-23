@@ -24,6 +24,7 @@ from starlette.requests import Request
 from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings
+from lpg.domain.license.license import LicenseLifecycleState
 from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 
 if TYPE_CHECKING:
@@ -59,6 +60,28 @@ def signer() -> Iterator[PyJwtSigner]:
         yield instance
     finally:
         state.jwt_signer = None
+
+
+class _AlwaysActiveLicenseStatusChecker:
+    """Stub `LicenseStatusChecker` — this module's own concern is structlog
+    binding, not license enforcement (that has its own dedicated tests), so
+    `get_tenant_context`'s license check is stubbed out here rather than
+    standing up real Redis/DB just to satisfy it."""
+
+    async def get_status(self, tenant_id: uuid.UUID) -> LicenseLifecycleState:
+        del tenant_id
+        return LicenseLifecycleState.ACTIVE
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id
+
+
+@pytest.fixture(autouse=True)
+def _stub_license_status_checker(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "lpg.api.v1.dependencies.license.get_license_status_checker",
+        lambda: _AlwaysActiveLicenseStatusChecker(),
+    )
 
 
 def _issue_token(signer: PyJwtSigner, *, tenant_id: uuid.UUID, user_id: uuid.UUID | None) -> str:

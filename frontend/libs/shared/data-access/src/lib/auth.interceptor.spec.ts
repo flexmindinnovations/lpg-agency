@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
 import { authInterceptor } from './auth.interceptor';
+import { problemDetailsInterceptor } from './problem-details';
 import { AuthTokenStore } from './auth-token.store';
 
 describe('authInterceptor', () => {
@@ -86,6 +87,60 @@ describe('authInterceptor', () => {
     // doesn't also show a generic error toast on top of the confirm dialog.
     expect(observedError).toBeUndefined();
     expect(completed).toBe(true);
+    expect(tokenStore.accessToken()).toBeNull();
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ header: 'Session Expired' }),
+    );
+  });
+});
+
+describe('authInterceptor composed with problemDetailsInterceptor (production order)', () => {
+  // Regression test for a real bug: app.config.ts registered
+  // problemDetailsInterceptor closer to the backend than authInterceptor.
+  // Angular's interceptor chain nests so the *last* array entry sees a
+  // response first — problemDetailsInterceptor's catchError converted every
+  // HttpErrorResponse into a plain AppError before authInterceptor's own
+  // `error instanceof HttpErrorResponse` check ever ran, silently disabling
+  // the refresh-and-retry / session-expired-dialog logic for every real
+  // request. The interceptor-in-isolation tests above never caught this
+  // because they never compose the two together. Order here must match
+  // app.config.ts's `withInterceptors([...])` array exactly.
+  let http: HttpClient;
+  let httpTesting: HttpTestingController;
+  let tokenStore: AuthTokenStore;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([problemDetailsInterceptor, authInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        ConfirmationService,
+      ],
+    });
+
+    http = TestBed.inject(HttpClient);
+    httpTesting = TestBed.inject(HttpTestingController);
+    tokenStore = TestBed.inject(AuthTokenStore);
+  });
+
+  afterEach(() => httpTesting.verify());
+
+  it('still shows the session-expired dialog on a real 401 when composed with problemDetailsInterceptor', () => {
+    tokenStore.setAccessToken('stale-token');
+    const confirmationService = TestBed.inject(ConfirmationService);
+    const confirmSpy = jest.spyOn(confirmationService, 'confirm');
+
+    http.get('/api/v1/orders').subscribe({ error: () => undefined });
+
+    httpTesting
+      .expectOne('/api/v1/orders')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    httpTesting
+      .expectOne('/api/v1/auth/refresh')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
     expect(tokenStore.accessToken()).toBeNull();
     expect(confirmSpy).toHaveBeenCalledWith(
       expect.objectContaining({ header: 'Session Expired' }),

@@ -3,6 +3,7 @@
 
 export interface GoodsReceiptResponse {
   cylinder_type_id: string;
+  grn_number?: (string | null);
   id: string;
   quantity_received: number;
   received_at: string;

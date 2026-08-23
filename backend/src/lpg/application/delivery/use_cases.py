@@ -77,6 +77,13 @@ class UpdateDriverLicenseCommand(Command):
 
 
 @dataclass(frozen=True, slots=True)
+class UpdateDriverAssignmentCommand(Command):
+    driver_id: uuid.UUID
+    employee_id: uuid.UUID
+    branch_id: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
 class GetDriverQuery(Query):
     driver_id: uuid.UUID
 
@@ -167,6 +174,44 @@ class UpdateDriverLicenseUseCase:
         return driver
 
 
+class UpdateDriverAssignmentUseCase:
+    """Relinks a driver profile to a (possibly different) employee/branch.
+
+    Mirrors `RegisterDriverUseCase`'s duplicate-employee check — except a
+    driver reassigned onto its *own current* employee_id (only the branch
+    changing) is not a duplicate, so the check is skipped when the employee
+    isn't actually changing.
+    """
+
+    def __init__(
+        self,
+        repository: DriverRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: UpdateDriverAssignmentCommand) -> Driver:
+        driver = await self._repository.get_by_id(command.driver_id)
+        if driver is None:
+            msg = f"Driver '{command.driver_id}' not found."
+            raise NotFoundError(msg, driver_id=str(command.driver_id))
+
+        if command.employee_id != driver.employee_id:
+            existing = await self._repository.get_by_employee_id(command.employee_id)
+            if existing is not None:
+                msg = (
+                    f"Driver with employee ID '{command.employee_id}' "
+                    "already exists for this tenant."
+                )
+                raise DuplicateEmployeeCodeError(msg)
+
+        driver.reassign(command.employee_id, command.branch_id)
+        await self._repository.save(driver)
+        await self._unit_of_work.commit()
+        return driver
+
+
 class GetDriverUseCase:
     def __init__(self, repository: DriverRepository) -> None:
         self._repository = repository
@@ -219,6 +264,15 @@ class RegisterVehicleCommand(Command):
 class UpdateVehicleStatusCommand(Command):
     vehicle_id: uuid.UUID
     new_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateVehicleDetailsCommand(Command):
+    vehicle_id: uuid.UUID
+    make: str
+    model: str
+    ownership_type: str
+    capacity_units: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -292,6 +346,29 @@ class UpdateVehicleStatusUseCase:
             raise NotFoundError(msg, vehicle_id=str(command.vehicle_id))
 
         vehicle.change_status(command.new_status)
+        await self._repository.save(vehicle)
+        await self._unit_of_work.commit()
+        return vehicle
+
+
+class UpdateVehicleDetailsUseCase:
+    def __init__(
+        self,
+        repository: VehicleRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: UpdateVehicleDetailsCommand) -> Vehicle:
+        vehicle = await self._repository.get_by_id(command.vehicle_id)
+        if vehicle is None:
+            msg = f"Vehicle '{command.vehicle_id}' not found."
+            raise NotFoundError(msg, vehicle_id=str(command.vehicle_id))
+
+        vehicle.update_details(
+            command.make, command.model, command.ownership_type, command.capacity_units
+        )
         await self._repository.save(vehicle)
         await self._unit_of_work.commit()
         return vehicle

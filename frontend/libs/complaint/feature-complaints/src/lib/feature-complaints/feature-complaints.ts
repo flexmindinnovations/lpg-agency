@@ -30,6 +30,7 @@ import {
   type DataGridColumn,
   HasPermissionDirective,
   StatusChipCell,
+  shortId,
 } from '@lpg/shared/ui';
 
 function errorMessageFor(_error: unknown): string {
@@ -70,6 +71,8 @@ export class FeatureComplaints implements OnInit {
 
   readonly registerTriggerEl = viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
+  protected readonly shortId = shortId;
+
   // State
   readonly complaints = signal<Complaint[]>([]);
   readonly loading = signal(true);
@@ -90,11 +93,11 @@ export class FeatureComplaints implements OnInit {
   // Grid config
   readonly columns: DataGridColumn<Complaint>[] = [
     {
-      field: 'id',
-      header: 'Complaint ID',
+      field: 'complaint_number',
+      header: 'Complaint #',
       width: 140,
-      tooltipValueGetter: (val) => String(val),
-      valueFormatter: (val) => String(val).substring(0, 8) + '...',
+      tooltipValueGetter: (_val, row) => row.id,
+      valueFormatter: (val, row) => (val as string | undefined) ?? shortId(row.id),
     },
     { field: 'category', header: 'Category', flex: 1, sortable: true, cellRenderer: StatusChipCell },
     {
@@ -128,10 +131,10 @@ export class FeatureComplaints implements OnInit {
     },
     {
       field: 'customer_id',
-      header: 'Customer ID',
+      header: 'Customer',
       width: 150,
       tooltipValueGetter: (val) => String(val),
-      valueFormatter: (val) => String(val).substring(0, 8) + '...',
+      valueFormatter: (val) => shortId(val),
     },
     {
       field: 'created_at',

@@ -7,19 +7,51 @@ import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import {
   AdminTenantConfigurationService,
   type AppError,
   type TenantConfigurationResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, formatTimestamp } from '@lpg/shared/ui';
+
+/** The recognized config-key catalog, each with a human-readable label and
+ * a description of what it controls — mirrors the backend's
+ * `RECOGNIZED_CONFIG_KEYS` (`domain/tenant/tenant_configuration.py`). Order
+ * here is display order in the "Set a configuration value" dropdown. */
+const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = {
+  gst_rate_percent: {
+    label: 'GST Rate (%)',
+    description:
+      'The GST tax rate applied when computing invoice tax at issuance (BR-16). Historized so a past invoice stays reproducible against the rate that was actually in effect when it was issued.',
+  },
+  cancellation_fee_amount: {
+    label: 'Cancellation Fee Amount',
+    description:
+      "Flat fee charged to a customer when an order is cancelled, per the tenant's cancellation policy.",
+  },
+  credit_limit_default: {
+    label: 'Default Credit Limit',
+    description:
+      "Default outstanding-balance credit limit applied to a customer's account when no more specific override exists.",
+  },
+};
 
 const RECOGNIZED_CONFIG_KEYS = [
   'gst_rate_percent',
   'cancellation_fee_amount',
   'credit_limit_default',
 ] as const;
+
+/** Best-effort label for a config key the frontend's catalog doesn't
+ * recognize yet — the backend allows new keys without a schema change
+ * (`config_value` is jsonb), so the frontend catalog can legitimately lag
+ * behind. Falls back to a naive Title Case of the raw key rather than
+ * showing nothing. */
+function humanizeConfigKey(key: string): string {
+  return CONFIG_KEY_INFO[key]?.label ?? key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -29,6 +61,44 @@ function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
     default:
       return 'Something went wrong saving the configuration value. Please try again.';
+  }
+}
+
+/** AG Grid cell renderer for the config-key column: an info icon (hover for
+ * the key's description) followed by its human-readable label — the raw
+ * `gst_rate_percent`-style key is never the only thing shown. */
+@Component({
+  selector: 'lpg-config-key-cell',
+  standalone: true,
+  imports: [TooltipModule],
+  template: `
+    <div style="display: flex; align-items: center; gap: 0.5rem; height: 100%;">
+      @if (description()) {
+        <i
+          class="pi pi-info-circle"
+          style="opacity: 0.6; font-size: 0.875rem; cursor: help;"
+          [pTooltip]="description()"
+          tooltipPosition="top"
+        ></i>
+      }
+      <span>{{ label() }}</span>
+    </div>
+  `,
+})
+class ConfigKeyCell {
+  protected readonly label = signal('');
+  protected readonly description = signal('');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
+  agInit(params: any): void {
+    const key = String(params.value ?? '');
+    this.label.set(humanizeConfigKey(key));
+    this.description.set(CONFIG_KEY_INFO[key]?.description ?? '');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  refresh(params: any): boolean {
+    this.agInit(params);
+    return true;
   }
 }
 
@@ -114,6 +184,8 @@ function errorMessageFor(error: unknown): string {
               id="config-key"
               formControlName="configKey"
               [options]="recognizedKeys"
+              optionLabel="label"
+              optionValue="value"
               placeholder="Select a key"
               styleClass="w-full"
               appendTo="body">
@@ -186,16 +258,24 @@ export class TenantConfigurationPage implements OnInit {
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
-  protected readonly recognizedKeys = [...RECOGNIZED_CONFIG_KEYS];
+  protected readonly recognizedKeys = RECOGNIZED_CONFIG_KEYS.map((key) => ({
+    label: CONFIG_KEY_INFO[key].label,
+    value: key,
+  }));
 
   protected readonly columns: DataGridColumn<TenantConfigurationResponse>[] = [
-    { field: 'config_key', header: 'Key', sortable: true, filterable: true },
+    { field: 'config_key', header: 'Key', sortable: true, filterable: true, cellRenderer: ConfigKeyCell },
     {
       field: 'config_value',
       header: 'Value',
       valueFormatter: (value) => JSON.stringify(value),
     },
-    { field: 'effective_from', header: 'Effective From', sortable: true },
+    {
+      field: 'effective_from',
+      header: 'Effective From',
+      sortable: true,
+      valueFormatter: (value) => formatTimestamp(value),
+    },
   ];
 
   protected readonly form = this.formBuilder.group({
@@ -238,7 +318,7 @@ export class TenantConfigurationPage implements OnInit {
     this.configService.setConfiguration(configKey, configValue).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: `"${configKey}" saved.` });
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: `"${humanizeConfigKey(configKey)}" saved.` });
         this.createDrawerVisible.set(false);
         this.form.reset();
         this.reload();

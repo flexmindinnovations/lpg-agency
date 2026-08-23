@@ -17,7 +17,7 @@ module docstring for the FastAPI footgun this avoids.
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -44,6 +44,12 @@ from lpg.api.v1.dependencies.identity import (
     require_live_permission,
     require_permission,
 )
+from lpg.api.v1.dependencies.license import (
+    get_license_feature_override_repository,
+    get_license_repository,
+    get_license_status_checker,
+    get_linked_device_repository,
+)
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.admin import (
     AdjustCylinderTypeWeightRequest,
@@ -58,6 +64,7 @@ from lpg.api.v1.schemas.admin import (
     FeatureFlagEnabledResponse,
     FeatureFlagOverrideResponse,
     FeatureFlagResponse,
+    FeatureFlagSummaryResponse,
     InviteStaffUserRequest,
     PriceListEntryResponse,
     ReassignRoleRequest,
@@ -79,6 +86,17 @@ from lpg.api.v1.schemas.admin import (
     TenantResponse,
     UpdateStaffUserPermissionsRequest,
     WarehouseResponse,
+)
+from lpg.api.v1.schemas.license import (
+    ActivateLicenseRequest,
+    IssuedLicenseResponse,
+    IssueLicenseRequest,
+    LicenseResponse,
+    LicenseStatusResponse,
+    LinkedDeviceResponse,
+    SetLicenseDeviceCapRequest,
+    SetLicenseFeatureOverrideRequest,
+    SetLicensePlanTierRequest,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
 from lpg.application.audit.ports import AuditLogRepository
@@ -108,6 +126,42 @@ from lpg.application.identity.staff_user import (
     ReassignRoleUseCase,
     UpdateStaffUserPermissionsCommand,
     UpdateStaffUserPermissionsUseCase,
+)
+from lpg.application.license.activate_license import (
+    ActivateLicenseCommand,
+    ActivateLicenseUseCase,
+)
+from lpg.application.license.entitlement import (
+    SetLicenseFeatureOverrideCommand,
+    SetLicenseFeatureOverrideUseCase,
+)
+from lpg.application.license.issue_license import (
+    IssueLicenseCommand,
+    IssueLicenseUseCase,
+    ListLicensesQuery,
+    ListLicensesUseCase,
+    RevokeLicenseCommand,
+    RevokeLicenseUseCase,
+    SetLicenseDeviceCapCommand,
+    SetLicenseDeviceCapUseCase,
+    SetLicensePlanTierCommand,
+    SetLicensePlanTierUseCase,
+)
+from lpg.application.license.license_status import (
+    GetLicenseStatusQuery,
+    GetLicenseStatusUseCase,
+)
+from lpg.application.license.manage_devices import (
+    ListLinkedDevicesQuery,
+    ListLinkedDevicesUseCase,
+    RevokeDeviceCommand,
+    RevokeDeviceUseCase,
+)
+from lpg.application.license.ports import (
+    LicenseFeatureOverrideRepository,
+    LicenseRepository,
+    LicenseStatusChecker,
+    LinkedDeviceRepository,
 )
 from lpg.application.platform.feature_flag import (
     CreateFeatureFlagCommand,
@@ -184,6 +238,8 @@ from lpg.application.tenant.warehouse import (
     RenameWarehouseUseCase,
 )
 from lpg.config.settings import Settings, get_settings
+from lpg.domain.license.license import License
+from lpg.domain.license.linked_device import LinkedDevice
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
@@ -765,6 +821,26 @@ async def is_feature_flag_enabled(
 # -- Feature Flags (tenant overrides) ----------------------------------------------
 
 
+@router.get(
+    "/feature-flags/available",
+    response_model=list[FeatureFlagSummaryResponse],
+    summary="List flags a tenant admin can override, key + description only",
+)
+async def list_available_feature_flags(
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_permission("feature_flags:manage_tenant"))
+    ],
+    repository: Annotated[FeatureFlagRepository, Depends(get_feature_flag_repository)],
+) -> list[FeatureFlagSummaryResponse]:
+    """Feeds the override picker on the tenant Feature Flags page. Deliberately
+    narrower than `GET /feature-flags` (platform-only, `manage_platform`):
+    rollout %/schedule are rollout mechanics a tenant admin has no reason to
+    see when picking a flag to override for their own tenant."""
+    use_case = ListFeatureFlagsUseCase(repository)
+    flags = await use_case.execute(ListFeatureFlagsQuery())
+    return [FeatureFlagSummaryResponse(key=f.key, description=f.description) for f in flags]
+
+
 @router.put(
     "/feature-flags/overrides/{key}",
     response_model=FeatureFlagOverrideResponse,
@@ -791,6 +867,247 @@ async def set_feature_flag_override(
         )
     )
     return FeatureFlagOverrideResponse(flag_key=key, is_enabled=body.enabled)
+
+
+# -- License ------------------------------------------------------------------------
+#
+# Mounted under /admin, same as Feature Flags — GET /admin/license/status
+# needs no permission code, mirroring GET /admin/feature-flags/{key}/enabled's
+# own placement precedent: any authenticated principal's client may need to
+# know its own tenant's license status, unlike managing the license itself.
+
+
+def _license_response(license: License) -> LicenseResponse:
+    return LicenseResponse(
+        tenant_id=str(license.tenant_id),
+        status=license.compute_status(at=datetime.now(UTC)).value,
+        plan_tier=license.plan_tier,
+        key_prefix=license.key_prefix,
+        device_caps=license.device_caps,
+        issued_at=license.issued_at,
+        activated_at=license.activated_at,
+        expires_at=license.expires_at,
+        grace_ends_at=license.grace_ends_at,
+        revoked_at=license.revoked_at,
+    )
+
+
+def _device_response(device: LinkedDevice) -> LinkedDeviceResponse:
+    return LinkedDeviceResponse(
+        id=str(device.id),
+        app_type=device.app_type,
+        device_identifier=device.device_identifier,
+        display_name=device.display_name,
+        registered_at=device.registered_at,
+        last_seen_at=device.last_seen_at,
+        revoked_at=device.revoked_at,
+        is_active=device.is_active,
+    )
+
+
+@router.get(
+    "/license/status",
+    response_model=LicenseStatusResponse,
+    summary="This tenant's own license status",
+)
+async def get_license_status(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+) -> LicenseStatusResponse:
+    use_case = GetLicenseStatusUseCase(status_checker, repository)
+    result = await use_case.execute(GetLicenseStatusQuery(tenant_id=principal.tenant_id))
+    return LicenseStatusResponse(
+        status=result.status.value,
+        plan_tier=result.plan_tier,
+        key_prefix=result.key_prefix,
+        activated_at=result.activated_at,
+        expires_at=result.expires_at,
+        grace_ends_at=result.grace_ends_at,
+    )
+
+
+@router.post(
+    "/license",
+    response_model=IssuedLicenseResponse,
+    status_code=201,
+    summary="Issue a license for a tenant",
+)
+async def issue_license(
+    body: IssueLicenseRequest,
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
+    ],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> IssuedLicenseResponse:
+    use_case = IssueLicenseUseCase(repository, token_hasher, unit_of_work)
+    license_, plaintext_key = await use_case.execute(
+        IssueLicenseCommand(
+            tenant_id=uuid.UUID(body.tenant_id),
+            plan_tier=body.plan_tier,
+            validity_period=timedelta(days=body.validity_days),
+            device_caps=body.device_caps,
+        )
+    )
+    return IssuedLicenseResponse(
+        tenant_id=str(license_.tenant_id),
+        plaintext_key=plaintext_key,
+        key_prefix=license_.key_prefix,
+        plan_tier=license_.plan_tier,
+        issued_at=license_.issued_at,
+    )
+
+
+@router.get("/license", response_model=list[LicenseResponse], summary="List every tenant's license")
+async def list_licenses(
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
+    ],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+) -> list[LicenseResponse]:
+    use_case = ListLicensesUseCase(repository)
+    licenses = await use_case.execute(ListLicensesQuery())
+    return [_license_response(license_) for license_ in licenses]
+
+
+@router.patch(
+    "/license/{tenant_id}/revoke", status_code=204, summary="Revoke a tenant's license"
+)
+async def revoke_license(
+    tenant_id: str,
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
+    ],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+    status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = RevokeLicenseUseCase(repository, status_checker, unit_of_work)
+    await use_case.execute(RevokeLicenseCommand(tenant_id=uuid.UUID(tenant_id)))
+
+
+@router.patch(
+    "/license/{tenant_id}/plan-tier", status_code=204, summary="Set a tenant's plan tier"
+)
+async def set_license_plan_tier(
+    tenant_id: str,
+    body: SetLicensePlanTierRequest,
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
+    ],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = SetLicensePlanTierUseCase(repository, unit_of_work)
+    await use_case.execute(
+        SetLicensePlanTierCommand(tenant_id=uuid.UUID(tenant_id), plan_tier=body.plan_tier)
+    )
+
+
+@router.patch(
+    "/license/{tenant_id}/device-caps/{app_type}",
+    status_code=204,
+    summary="Set a tenant's per-app-type device cap",
+)
+async def set_license_device_cap(
+    tenant_id: str,
+    app_type: str,
+    body: SetLicenseDeviceCapRequest,
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
+    ],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = SetLicenseDeviceCapUseCase(repository, unit_of_work)
+    await use_case.execute(
+        SetLicenseDeviceCapCommand(
+            tenant_id=uuid.UUID(tenant_id), app_type=app_type, max_devices=body.max_devices
+        )
+    )
+
+
+@router.put(
+    "/license/{tenant_id}/feature-overrides/{key}",
+    status_code=204,
+    summary="Set a tenant's license feature override",
+)
+async def set_license_feature_override(
+    tenant_id: str,
+    key: str,
+    body: SetLicenseFeatureOverrideRequest,
+    _principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
+    ],
+    override_repository: Annotated[
+        LicenseFeatureOverrideRepository, Depends(get_license_feature_override_repository)
+    ],
+    license_repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = SetLicenseFeatureOverrideUseCase(
+        override_repository, license_repository, unit_of_work
+    )
+    await use_case.execute(
+        SetLicenseFeatureOverrideCommand(
+            tenant_id=uuid.UUID(tenant_id), feature_key=key, granted=body.granted
+        )
+    )
+
+
+@router.post(
+    "/license/activate", response_model=LicenseResponse, summary="Activate this tenant's license"
+)
+async def activate_license(
+    body: ActivateLicenseRequest,
+    principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_permission("license:manage_tenant"))
+    ],
+    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> LicenseResponse:
+    use_case = ActivateLicenseUseCase(repository, token_hasher, status_checker, unit_of_work)
+    license_ = await use_case.execute(
+        ActivateLicenseCommand(tenant_id=principal.tenant_id, presented_key=body.key)
+    )
+    return _license_response(license_)
+
+
+@router.get(
+    "/license/devices",
+    response_model=list[LinkedDeviceResponse],
+    summary="List this tenant's linked devices",
+)
+async def list_linked_devices(
+    principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_permission("license:manage_tenant"))
+    ],
+    repository: Annotated[LinkedDeviceRepository, Depends(get_linked_device_repository)],
+) -> list[LinkedDeviceResponse]:
+    use_case = ListLinkedDevicesUseCase(repository)
+    devices = await use_case.execute(ListLinkedDevicesQuery(tenant_id=principal.tenant_id))
+    return [_device_response(device) for device in devices]
+
+
+@router.patch(
+    "/license/devices/{device_id}/revoke", status_code=204, summary="Revoke a linked device"
+)
+async def revoke_linked_device(
+    device_id: str,
+    principal: Annotated[
+        AuthenticatedPrincipal, Depends(require_permission("license:manage_tenant"))
+    ],
+    repository: Annotated[LinkedDeviceRepository, Depends(get_linked_device_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = RevokeDeviceUseCase(repository, unit_of_work)
+    await use_case.execute(
+        RevokeDeviceCommand(tenant_id=principal.tenant_id, device_id=uuid.UUID(device_id))
+    )
 
 
 # -- Staff Users ------------------------------------------------------------------

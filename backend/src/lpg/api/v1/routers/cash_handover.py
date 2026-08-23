@@ -6,12 +6,15 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from lpg.api.v1.dependencies.accounting import get_cash_handover_repository
+from lpg.api.v1.dependencies.accounting import (
+    get_cash_handover_number_sequence,
+    get_cash_handover_repository,
+)
 from lpg.api.v1.dependencies.delivery import get_route_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.cash_handover import CashHandoverResponse, DeclareCashHandoverRequest
-from lpg.application.accounting.ports import CashHandoverRepository
+from lpg.application.accounting.ports import CashHandoverNumberSequence, CashHandoverRepository
 from lpg.application.accounting.use_cases import (
     DeclareCashHandoverCommand,
     DeclareCashHandoverUseCase,
@@ -44,6 +47,9 @@ async def declare_cash_handover(
     ],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    handover_number_sequence: Annotated[
+        CashHandoverNumberSequence, Depends(get_cash_handover_number_sequence)
+    ],
 ) -> CashHandoverResponse:
     """A driver (or dispatcher/manager on their behalf) declares the cash
     handed over at the end of a route. `expected_amount` is computed
@@ -52,7 +58,9 @@ async def declare_cash_handover(
     """
     if principal.user_id is None:
         raise HTTPException(status_code=401, detail="User ID is required.")
-    use_case = DeclareCashHandoverUseCase(cash_handover_repository, route_repository, unit_of_work)
+    use_case = DeclareCashHandoverUseCase(
+        cash_handover_repository, route_repository, unit_of_work, handover_number_sequence
+    )
     handover = await use_case.execute(
         DeclareCashHandoverCommand(
             driver_id=request.driver_id,

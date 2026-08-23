@@ -74,9 +74,17 @@ def _make_complaint(**kwargs: object) -> Complaint:
         "priority": ComplaintPriority.MEDIUM,
         "description": "test complaint",
         "created_by": uuid.uuid4(),
+        "complaint_number": "CMP000001",
     }
     defaults.update(kwargs)
     return Complaint.create(**defaults)  # type: ignore[arg-type]
+
+
+@pytest.fixture
+def mock_complaint_number_sequence() -> MagicMock:
+    sequence = MagicMock()
+    sequence.next = AsyncMock(return_value="CMP000001")
+    return sequence
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +94,10 @@ def _make_complaint(**kwargs: object) -> Complaint:
 
 class TestRaiseComplaintUseCase:
     async def test_raises_complaint_and_saves(
-        self, mock_uow: MagicMock, mock_repo: MagicMock
+        self,
+        mock_uow: MagicMock,
+        mock_repo: MagicMock,
+        mock_complaint_number_sequence: MagicMock,
     ) -> None:
         command = RaiseComplaintCommand(
             customer_id=uuid.uuid4(),
@@ -94,7 +105,7 @@ class TestRaiseComplaintUseCase:
             priority=ComplaintPriority.HIGH,
             description="Two hours late.",
         )
-        use_case = RaiseComplaintUseCase(mock_uow)
+        use_case = RaiseComplaintUseCase(mock_uow, mock_complaint_number_sequence)
 
         complaint_id = await use_case.execute(_make_tenant_context(), command)
 
@@ -105,14 +116,16 @@ class TestRaiseComplaintUseCase:
         assert saved.priority == ComplaintPriority.HIGH
         mock_uow.commit.assert_called_once()
 
-    async def test_rejects_unauthenticated_request(self, mock_uow: MagicMock) -> None:
+    async def test_rejects_unauthenticated_request(
+        self, mock_uow: MagicMock, mock_complaint_number_sequence: MagicMock
+    ) -> None:
         command = RaiseComplaintCommand(
             customer_id=uuid.uuid4(),
             category=ComplaintCategory.OTHER,
             priority=ComplaintPriority.LOW,
             description="n/a",
         )
-        use_case = RaiseComplaintUseCase(mock_uow)
+        use_case = RaiseComplaintUseCase(mock_uow, mock_complaint_number_sequence)
 
         with pytest.raises(ValueError, match="authenticated"):
             await use_case.execute(_make_tenant_context(user_id=None), command)

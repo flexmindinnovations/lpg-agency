@@ -21,6 +21,7 @@ import {
   type DataGridColumn,
   HasPermissionDirective,
   StatusChipCell,
+  shortId,
 } from '@lpg/shared/ui';
 import { CustomerAutocomplete } from '../customer-autocomplete/customer-autocomplete';
 import { errorMessageFor, STATUS_SEVERITY } from '../order-status.util';
@@ -96,10 +97,10 @@ export class OrderQueue implements OnInit {
 
   protected readonly orderColumns: DataGridColumn<OrderResponse>[] = [
     {
-      field: 'id',
-      header: 'Order ID',
-      valueFormatter: (value) => `${(value as string).split('-')[0]}…`,
-      tooltipValueGetter: (value) => value as string,
+      field: 'order_number',
+      header: 'Order #',
+      valueFormatter: (value, row) => (value as string | null) ?? shortId(row.id),
+      tooltipValueGetter: (_value, row) => row.id,
       onLinkClick: (row) => this.viewOrder(row),
     },
     {

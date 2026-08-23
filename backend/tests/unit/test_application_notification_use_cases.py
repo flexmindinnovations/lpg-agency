@@ -34,7 +34,7 @@ class FakeInAppNotificationRepository:
         return self.notifications.get(notification_id)
 
     async def list_for_user(
-        self, user_id: uuid.UUID, *, skip: int = 0, limit: int = 50, unread_only: bool = False
+        self, user_id: uuid.UUID, skip: int, limit: int, unread_only: bool = False
     ) -> list[InAppNotification]:
         results = [n for n in self.notifications.values() if n.recipient_user_id == user_id]
         if unread_only:

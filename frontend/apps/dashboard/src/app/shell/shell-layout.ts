@@ -1,11 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterOutlet } from '@angular/router';
+import { interval, startWith } from 'rxjs';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
-import { AuthService, AuthTokenStore } from '@lpg/shared/data-access';
+import { AuthService, AuthTokenStore, LicenseStatusStore } from '@lpg/shared/data-access';
+import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { NotificationBell } from '@lpg/notification/ui-bell';
 import { NotificationDrawer } from '@lpg/notification/ui-drawer';
+
+/** How often to nag a tenant in its license grace period — matches
+ * `NotificationBell`'s own 5-minute polling interval convention. */
+const GRACE_REMINDER_INTERVAL_MS = 300_000;
 
 /**
  * Hosts the shared `AppShellComponent` for every authenticated route.
@@ -28,6 +35,7 @@ import { NotificationDrawer } from '@lpg/notification/ui-drawer';
   selector: 'lpg-shell-layout',
   standalone: true,
   imports: [RouterOutlet, AppShellComponent, ToastModule, ConfirmDialogModule, NotificationBell, NotificationDrawer],
+  providers: [MessageService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-app-shell
@@ -51,9 +59,29 @@ export class ShellLayout {
   private readonly authService = inject(AuthService);
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly router = inject(Router);
+  private readonly licenseStatusStore = inject(LicenseStatusStore);
+  private readonly messageService = inject(MessageService);
 
   protected readonly email = computed(() => this.authService.principal()?.email ?? null);
   protected readonly role = computed(() => this.authService.principal()?.role ?? '');
+
+  constructor() {
+    // Nags every 5 minutes while the license is in its 1-day grace window
+    // — full access continues, this is a reminder to renew, not a block.
+    // Keeps nav usable throughout, unlike the hard `licenseGuard` gate.
+    interval(GRACE_REMINDER_INTERVAL_MS)
+      .pipe(startWith(0), takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.licenseStatusStore.status()?.status === 'grace') {
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'License expiring soon',
+            detail: 'This tenant’s license is in its grace period. Renew it to avoid losing access.',
+            life: 8000,
+          });
+        }
+      });
+  }
 
   protected onSignOut(): void {
     this.authService.logout().subscribe(() => {
@@ -99,8 +127,11 @@ export class ShellLayout {
         { label: 'Pricing', icon: 'pi pi-tag', route: '/admin/price-lists', condition: can('tenant:configure') },
         { label: 'Users & Roles', icon: 'pi pi-user', route: '/admin/users', condition: can('users:manage') },
         { label: 'Tenant Config', icon: 'pi pi-cog', route: '/admin/tenant-config', condition: can('tenant:configure') },
-        { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags', condition: can('feature_flags:manage_tenant') },
+        { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags', exact: true, condition: can('feature_flags:manage_tenant') },
         { label: 'Platform Flags', icon: 'pi pi-globe', route: '/admin/feature-flags/platform', condition: can('feature_flags:manage_platform') },
+        { label: 'License', icon: 'pi pi-key', route: '/admin/license', exact: true, condition: can('license:manage_tenant') },
+        { label: 'Linked Devices', icon: 'pi pi-mobile', route: '/admin/license/devices', condition: can('license:manage_tenant') },
+        { label: 'License Issuance', icon: 'pi pi-shield', route: '/admin/license/issuance', condition: can('license:manage_platform') },
         { label: 'Audit Log', icon: 'pi pi-history', route: '/admin/audit-log', condition: can('audit:read') },
       ]),
     ];

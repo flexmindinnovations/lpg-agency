@@ -154,10 +154,13 @@ class Invoice(AggregateRoot):
     """
 
     __slots__ = (
+        "_customer_consumer_number",
         "_customer_id",
+        "_invoice_number",
         "_issued_at",
         "_lines",
         "_order_id",
+        "_order_number",
         "_payments",
         "_status",
         "_subtotal",
@@ -171,6 +174,7 @@ class Invoice(AggregateRoot):
         *,
         invoice_id: uuid.UUID,
         tenant_id: uuid.UUID,
+        invoice_number: str | None,
         customer_id: uuid.UUID,
         order_id: uuid.UUID,
         status: str,
@@ -180,6 +184,8 @@ class Invoice(AggregateRoot):
         issued_at: datetime,
         lines: Sequence[InvoiceLine],
         payments: Sequence[Payment] = (),
+        order_number: str | None = None,
+        customer_consumer_number: str | None = None,
         version: int = 1,
     ) -> None:
         super().__init__(invoice_id, version=version)
@@ -212,8 +218,11 @@ class Invoice(AggregateRoot):
             raise InvariantViolation(msg)
 
         self._tenant_id = tenant_id
+        self._invoice_number = invoice_number
         self._customer_id = customer_id
         self._order_id = order_id
+        self._order_number = order_number
+        self._customer_consumer_number = customer_consumer_number
         self._status = status
         self._subtotal = subtotal
         self._tax_amount = tax_amount
@@ -228,10 +237,13 @@ class Invoice(AggregateRoot):
         *,
         invoice_id: uuid.UUID,
         tenant_id: uuid.UUID,
+        invoice_number: str,
         customer_id: uuid.UUID,
         order_id: uuid.UUID,
         delivered_at: datetime,
         lines: Sequence[InvoiceLine],
+        order_number: str | None = None,
+        customer_consumer_number: str | None = None,
     ) -> Invoice:
         """Factory method to generate a new invoice (Issued status) for a delivered order."""
         if not lines:
@@ -245,8 +257,11 @@ class Invoice(AggregateRoot):
         invoice = cls(
             invoice_id=invoice_id,
             tenant_id=tenant_id,
+            invoice_number=invoice_number,
             customer_id=customer_id,
             order_id=order_id,
+            order_number=order_number,
+            customer_consumer_number=customer_consumer_number,
             status="issued",
             subtotal=subtotal,
             tax_amount=tax_amount,
@@ -272,12 +287,24 @@ class Invoice(AggregateRoot):
         return self._tenant_id
 
     @property
+    def invoice_number(self) -> str | None:
+        return self._invoice_number
+
+    @property
     def customer_id(self) -> uuid.UUID:
         return self._customer_id
 
     @property
+    def customer_consumer_number(self) -> str | None:
+        return self._customer_consumer_number
+
+    @property
     def order_id(self) -> uuid.UUID:
         return self._order_id
+
+    @property
+    def order_number(self) -> str | None:
+        return self._order_number
 
     @property
     def status(self) -> str:

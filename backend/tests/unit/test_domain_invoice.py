@@ -73,6 +73,7 @@ def _make_invoice(
     defaults: dict[str, object] = {
         "invoice_id": uuid.uuid4(),
         "tenant_id": uuid.uuid4(),
+        "invoice_number": "INV-2026-000001",
         "customer_id": uuid.uuid4(),
         "order_id": uuid.uuid4(),
         "status": "issued",
@@ -141,6 +142,7 @@ class TestGenerateForDeliveredOrder:
         ]
         invoice = Invoice.generate_for_delivered_order(
             invoice_id=uuid.uuid4(),
+            invoice_number="INV-2026-000001",
             tenant_id=uuid.uuid4(),
             customer_id=uuid.uuid4(),
             order_id=uuid.uuid4(),
@@ -154,6 +156,7 @@ class TestGenerateForDeliveredOrder:
     def test_sets_status_issued(self) -> None:
         invoice = Invoice.generate_for_delivered_order(
             invoice_id=uuid.uuid4(),
+            invoice_number="INV-2026-000001",
             tenant_id=uuid.uuid4(),
             customer_id=uuid.uuid4(),
             order_id=uuid.uuid4(),
@@ -170,6 +173,7 @@ class TestGenerateForDeliveredOrder:
 
         invoice = Invoice.generate_for_delivered_order(
             invoice_id=uuid.uuid4(),
+            invoice_number="INV-2026-000001",
             tenant_id=tenant_id,
             customer_id=customer_id,
             order_id=order_id,
@@ -191,6 +195,7 @@ class TestGenerateForDeliveredOrder:
         with pytest.raises(InvariantViolation, match="without line items"):
             Invoice.generate_for_delivered_order(
                 invoice_id=uuid.uuid4(),
+                invoice_number="INV-2026-000001",
                 tenant_id=uuid.uuid4(),
                 customer_id=uuid.uuid4(),
                 order_id=uuid.uuid4(),

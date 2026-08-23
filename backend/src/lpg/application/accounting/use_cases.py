@@ -19,11 +19,15 @@ if TYPE_CHECKING:
     import datetime
 
     from lpg.application.accounting.ports import (
+        CashHandoverNumberSequence,
         CashHandoverRepository,
+        CreditNoteNumberSequence,
         CreditNoteRepository,
+        InvoiceNumberSequence,
         InvoiceRepository,
     )
     from lpg.application.common.ports import UnitOfWork
+    from lpg.application.customer.ports import CustomerRepository
     from lpg.application.delivery.ports import RouteRepository
     from lpg.application.order.ports import OrderRepository
     from lpg.application.tenant.ports import TenantConfigurationRepository
@@ -38,11 +42,15 @@ class GenerateInvoiceForOrderUseCase:
         self,
         invoice_repository: InvoiceRepository,
         order_repository: OrderRepository,
+        customer_repository: CustomerRepository,
         tenant_config_repository: TenantConfigurationRepository,
+        invoice_number_sequence: InvoiceNumberSequence,
     ) -> None:
         self._invoice_repository = invoice_repository
         self._order_repository = order_repository
+        self._customer_repository = customer_repository
         self._tenant_config_repository = tenant_config_repository
+        self._invoice_number_sequence = invoice_number_sequence
 
     async def execute(
         self,
@@ -106,14 +114,20 @@ class GenerateInvoiceForOrderUseCase:
             _logger.info("order_had_no_delivered_lines", order_id=str(order_id))
             return
 
+        customer = await self._customer_repository.get_by_id(order.customer_id)
+
         invoice_id = uuid.uuid4()
+        invoice_number = await self._invoice_number_sequence.next()
         invoice = Invoice.generate_for_delivered_order(
             invoice_id=invoice_id,
             tenant_id=tenant_id,
+            invoice_number=invoice_number,
             customer_id=order.customer_id,
             order_id=order.id,
             delivered_at=delivered_at,
             lines=lines,
+            order_number=order.order_number,
+            customer_consumer_number=customer.consumer_number if customer else None,
         )
         await self._invoice_repository.add(invoice)
         _logger.info("invoice_generated", invoice_id=str(invoice.id), order_id=str(order_id))
@@ -217,10 +231,12 @@ class DeclareCashHandoverUseCase:
         cash_handover_repository: CashHandoverRepository,
         route_repository: RouteRepository,
         unit_of_work: UnitOfWork,
+        handover_number_sequence: CashHandoverNumberSequence,
     ) -> None:
         self._cash_handover_repository = cash_handover_repository
         self._route_repository = route_repository
         self._unit_of_work = unit_of_work
+        self._handover_number_sequence = handover_number_sequence
 
     async def execute(self, command: DeclareCashHandoverCommand) -> CashHandover:
         route = await self._route_repository.get_by_id(command.route_id)
@@ -235,6 +251,7 @@ class DeclareCashHandoverUseCase:
             command.route_id
         )
 
+        handover_number = await self._handover_number_sequence.next()
         handover = CashHandover.declare(
             cash_handover_id=self._cash_handover_repository.next_id(),
             tenant_id=route.tenant_id,
@@ -243,6 +260,7 @@ class DeclareCashHandoverUseCase:
             expected_amount=expected_amount,
             actual_amount=command.actual_amount,
             declared_by=command.declared_by,
+            handover_number=handover_number,
         )
 
         await self._cash_handover_repository.add(handover)
@@ -268,10 +286,12 @@ class RequestRefundUseCase:
         credit_note_repository: CreditNoteRepository,
         invoice_repository: InvoiceRepository,
         unit_of_work: UnitOfWork,
+        credit_note_number_sequence: CreditNoteNumberSequence,
     ) -> None:
         self._credit_note_repository = credit_note_repository
         self._invoice_repository = invoice_repository
         self._unit_of_work = unit_of_work
+        self._credit_note_number_sequence = credit_note_number_sequence
 
     async def execute(self, command: RequestRefundCommand) -> CreditNote:
         invoice = await self._invoice_repository.get_by_id(command.invoice_id)
@@ -286,6 +306,7 @@ class RequestRefundUseCase:
             )
             raise ValidationError(msg, invoice_id=str(command.invoice_id))
 
+        credit_note_number = await self._credit_note_number_sequence.next()
         credit_note = CreditNote.request(
             credit_note_id=self._credit_note_repository.next_id(),
             tenant_id=invoice.tenant_id,
@@ -293,6 +314,7 @@ class RequestRefundUseCase:
             amount=command.amount,
             reason=command.reason,
             requested_by=command.requested_by,
+            credit_note_number=credit_note_number,
         )
 
         await self._credit_note_repository.add(credit_note)

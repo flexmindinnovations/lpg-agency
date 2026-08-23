@@ -95,6 +95,7 @@ class Complaint(AggregateRoot):
         description: str,
         status: ComplaintStatus = ComplaintStatus.OPEN,
         order_id: uuid.UUID | None = None,
+        complaint_number: str | None = None,
         sla_due_at: datetime | None = None,
         created_at: datetime | None = None,
         updated_at: datetime | None = None,
@@ -106,6 +107,7 @@ class Complaint(AggregateRoot):
         self.tenant_id = tenant_id
         self.customer_id = customer_id
         self.order_id = order_id
+        self.complaint_number = complaint_number
         self.category = category
         self.priority = priority
         self.status = status
@@ -130,6 +132,7 @@ class Complaint(AggregateRoot):
         priority: ComplaintPriority,
         description: str,
         created_by: uuid.UUID,
+        complaint_number: str,
         order_id: uuid.UUID | None = None,
     ) -> "Complaint":
         # Calculate SLA Due At based on priority
@@ -143,6 +146,7 @@ class Complaint(AggregateRoot):
             priority=priority,
             description=description,
             order_id=order_id,
+            complaint_number=complaint_number,
             sla_due_at=sla_due_at,
             created_by=created_by,
             updated_by=created_by,

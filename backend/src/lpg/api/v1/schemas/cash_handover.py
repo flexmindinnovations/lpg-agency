@@ -22,6 +22,7 @@ class CashHandoverResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    handover_number: str | None = None
     driver_id: uuid.UUID
     route_id: uuid.UUID
     expected_amount: Decimal

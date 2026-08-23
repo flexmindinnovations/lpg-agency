@@ -562,7 +562,9 @@ async def main() -> None:
             )
             # Same story as consumer_number — commercial customers need a
             # contact_person, this seed never set one.
-            contact_person = COMMERCIAL_CONTACT_PERSONS.get(phone) if ctype == "commercial" else None
+            contact_person = (
+                COMMERCIAL_CONTACT_PERSONS.get(phone) if ctype == "commercial" else None
+            )
             cust_id = await ensure(
                 "customer.customer",
                 match="tenant_id = :t AND phone_number = :ph",
@@ -870,7 +872,7 @@ async def main() -> None:
             "rpt.mv_customer_consumption",
             "rpt.mv_driver_performance_daily",
         ):
-            await conn.execute(text(f"REFRESH MATERIALIZED VIEW {view}"))  # noqa: S608 - fixed literal, no user input
+            await conn.execute(text(f"REFRESH MATERIALIZED VIEW {view}"))
 
         # --- Summary ---------------------------------------------------------
         counts = await conn.execute(

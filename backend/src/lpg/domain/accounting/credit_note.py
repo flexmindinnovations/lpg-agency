@@ -53,6 +53,7 @@ class CreditNote(AggregateRoot):
         "_amount",
         "_approved_at",
         "_approved_by",
+        "_credit_note_number",
         "_invoice_id",
         "_reason",
         "_requested_at",
@@ -69,6 +70,7 @@ class CreditNote(AggregateRoot):
         amount: Decimal,
         reason: str,
         requested_by: uuid.UUID,
+        credit_note_number: str | None = None,
         requested_at: datetime | None = None,
         approved_by: uuid.UUID | None = None,
         approved_at: datetime | None = None,
@@ -87,6 +89,7 @@ class CreditNote(AggregateRoot):
 
         self._tenant_id = tenant_id
         self._invoice_id = invoice_id
+        self._credit_note_number = credit_note_number
         self._amount = amount
         self._reason = reason
         self._requested_by = requested_by
@@ -104,6 +107,7 @@ class CreditNote(AggregateRoot):
         amount: Decimal,
         reason: str,
         requested_by: uuid.UUID,
+        credit_note_number: str,
     ) -> CreditNote:
         return cls(
             credit_note_id=credit_note_id,
@@ -112,6 +116,7 @@ class CreditNote(AggregateRoot):
             amount=amount,
             reason=reason,
             requested_by=requested_by,
+            credit_note_number=credit_note_number,
         )
 
     def approve(self, approved_by: uuid.UUID) -> None:
@@ -139,6 +144,10 @@ class CreditNote(AggregateRoot):
     @property
     def invoice_id(self) -> uuid.UUID:
         return self._invoice_id
+
+    @property
+    def credit_note_number(self) -> str | None:
+        return self._credit_note_number
 
     @property
     def amount(self) -> Decimal:

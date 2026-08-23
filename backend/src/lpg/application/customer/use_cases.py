@@ -11,14 +11,22 @@ from lpg.application.common.errors import (
     NotFoundError,
 )
 from lpg.domain.customer.customer import Customer
+from lpg.domain.customer.kyc_document_parser import parse_kyc_document
+from lpg.domain.customer.onboarding_draft import OnboardingDraftEntry
 
 if TYPE_CHECKING:
     import datetime
     import uuid
+    from typing import Any
 
     from lpg.application.accounting.ports import InvoiceRepository
-    from lpg.application.common.ports import UnitOfWork
-    from lpg.application.customer.ports import ConsumerNumberSequence, CustomerRepository
+    from lpg.application.common.ports import FileStorage, UnitOfWork
+    from lpg.application.customer.ports import (
+        ConsumerNumberSequence,
+        CustomerRepository,
+        DocumentOcrPort,
+        OnboardingDraftRepository,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -289,9 +297,28 @@ class VerifyKycDocumentCommand(Command):
 
 
 class VerifyKycDocumentUseCase:
-    def __init__(self, repository: CustomerRepository, unit_of_work: UnitOfWork) -> None:
+    """Verifying/rejecting a document also drives the customer's overall
+    account out of onboarding: the moment every current KYC document is
+    verified, this auto-approves the account in the same transaction
+    (assigns a consumer number, `status` -> "active") — there was
+    previously no separate UI action that ever called the standalone
+    approve-customer endpoint, so completing KYC review is what actually
+    finishes onboarding for staff in practice. Requires `kyc:manage`
+    (the permission gating this endpoint), not `customers:manage` — the
+    two are granted together to the roles that handle onboarding today;
+    if that ever changes, this auto-approval should move behind its own
+    permission check.
+    """
+
+    def __init__(
+        self,
+        repository: CustomerRepository,
+        unit_of_work: UnitOfWork,
+        sequence: ConsumerNumberSequence,
+    ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
+        self._sequence = sequence
 
     async def execute(self, command: VerifyKycDocumentCommand) -> None:
         customer = await self._repository.get_by_id(command.customer_id)
@@ -305,6 +332,17 @@ class VerifyKycDocumentUseCase:
             status=command.status,
             rejection_reason=command.rejection_reason,
         )
+
+        if customer.kyc_status == "verified" and customer.status in (
+            "onboarding",
+            "pending_approval",
+        ):
+            consumer_number = await self._sequence.next()
+            existing_cn = await self._repository.get_by_consumer_number(consumer_number)
+            if existing_cn is not None and existing_cn.id != customer.id:
+                msg = f"Customer with consumer number {consumer_number} already exists."
+                raise DuplicateConsumerNumberError(msg, consumer_number=consumer_number)
+            customer.approve(approved_by=command.verified_by, consumer_number=consumer_number)
 
         await self._repository.save(customer)
         await self._unit_of_work.commit()
@@ -454,3 +492,169 @@ class PeekNextConsumerNumberUseCase:
         value = await self._sequence.next()
         await self._unit_of_work.commit()
         return value
+
+
+@dataclass(frozen=True, slots=True)
+class SaveOnboardingDraftCommand(Command):
+    tenant_id: uuid.UUID
+    created_by: uuid.UUID
+    current_step: int
+    draft_id: uuid.UUID | None = None
+    branch_id: uuid.UUID | None = None
+    registration_data: dict[str, Any] | None = None
+    address_data: dict[str, Any] | None = None
+    kyc_data: dict[str, Any] | None = None
+    kyc_document_blob_ref: str | None = None
+
+
+class SaveOnboardingDraftUseCase:
+    """Create-or-update, scoped to the caller's own draft. Updating someone
+    else's `draft_id` (not owned by `created_by`) raises `NotFoundError`
+    rather than `PERMISSION_DENIED` — the same "don't leak existence of a
+    record you can't see" posture already used by `require_permission_or_self`
+    elsewhere in this API layer.
+    """
+
+    def __init__(self, repository: OnboardingDraftRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: SaveOnboardingDraftCommand) -> OnboardingDraftEntry:
+        existing = None
+        if command.draft_id is not None:
+            existing = await self._repository.get_by_id(command.draft_id, command.tenant_id)
+            if existing is None or existing.created_by != command.created_by:
+                msg = f"No draft visible with id {command.draft_id}."
+                raise NotFoundError(msg, draft_id=str(command.draft_id))
+
+        draft = OnboardingDraftEntry(
+            id=existing.id if existing is not None else self._repository.next_id(),
+            tenant_id=command.tenant_id,
+            created_by=command.created_by,
+            branch_id=command.branch_id,
+            current_step=command.current_step,
+            registration_data=command.registration_data or {},
+            address_data=command.address_data or {},
+            kyc_data=command.kyc_data or {},
+            kyc_document_blob_ref=command.kyc_document_blob_ref,
+        )
+
+        saved = await self._repository.save(draft)
+        await self._unit_of_work.commit()
+        return saved
+
+
+@dataclass(frozen=True, slots=True)
+class GetOnboardingDraftQuery(Query):
+    draft_id: uuid.UUID
+    tenant_id: uuid.UUID
+    requested_by: uuid.UUID
+
+
+class GetOnboardingDraftUseCase:
+    def __init__(self, repository: OnboardingDraftRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: GetOnboardingDraftQuery) -> OnboardingDraftEntry | None:
+        draft = await self._repository.get_by_id(query.draft_id, query.tenant_id)
+        if draft is None or draft.created_by != query.requested_by:
+            return None
+        return draft
+
+
+@dataclass(frozen=True, slots=True)
+class ListMyOnboardingDraftsQuery(Query):
+    tenant_id: uuid.UUID
+    created_by: uuid.UUID
+
+
+class ListMyOnboardingDraftsUseCase:
+    def __init__(self, repository: OnboardingDraftRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: ListMyOnboardingDraftsQuery) -> list[OnboardingDraftEntry]:
+        return await self._repository.list_by_user(query.tenant_id, query.created_by)
+
+
+@dataclass(frozen=True, slots=True)
+class DeleteOnboardingDraftCommand(Command):
+    draft_id: uuid.UUID
+    tenant_id: uuid.UUID
+    requested_by: uuid.UUID
+
+
+class DeleteOnboardingDraftUseCase:
+    def __init__(self, repository: OnboardingDraftRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: DeleteOnboardingDraftCommand) -> None:
+        existing = await self._repository.get_by_id(command.draft_id, command.tenant_id)
+        if existing is None or existing.created_by != command.requested_by:
+            msg = f"No draft visible with id {command.draft_id}."
+            raise NotFoundError(msg, draft_id=str(command.draft_id))
+
+        await self._repository.delete(command.draft_id, command.tenant_id)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeKycDocumentCommand(Command):
+    blob_ref: str
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeKycDocumentResult:
+    doc_type: str | None
+    document_number: str | None
+    full_name: str | None
+    date_of_birth: datetime.date | None
+    confidence: float
+    address_line_1: str | None
+    address_line_2: str | None
+    address_landmark: str | None
+    address_area: str | None
+    address_city: str | None
+    address_district: str | None
+    address_state: str | None
+    address_pincode: str | None
+
+
+class RecognizeKycDocumentUseCase:
+    """The backend "second pass": re-runs OCR, server-side, on a document
+    image the client already uploaded via `kyc-attachments`, using a
+    heavier model than is practical to ship to a browser. Same field-
+    parsing logic as the client's own fast first pass
+    (`kyc_document_parser.py`, a deliberate port of the TypeScript
+    version) — only the OCR engine differs.
+    """
+
+    def __init__(self, file_storage: FileStorage, ocr: DocumentOcrPort) -> None:
+        self._file_storage = file_storage
+        self._ocr = ocr
+
+    async def execute(self, command: RecognizeKycDocumentCommand) -> RecognizeKycDocumentResult:
+        image_bytes = await self._file_storage.download(command.blob_ref)
+        if image_bytes is None:
+            msg = f"No uploaded document found for blob ref {command.blob_ref}."
+            raise NotFoundError(msg, blob_ref=command.blob_ref)
+
+        ocr_result = await self._ocr.recognize(image_bytes)
+        parsed = parse_kyc_document(ocr_result.text)
+        address = parsed.address
+
+        return RecognizeKycDocumentResult(
+            doc_type=parsed.doc_type,
+            document_number=parsed.document_number,
+            full_name=parsed.full_name,
+            date_of_birth=parsed.date_of_birth,
+            confidence=ocr_result.confidence,
+            address_line_1=address.line_1 if address else None,
+            address_line_2=address.line_2 if address else None,
+            address_landmark=address.landmark if address else None,
+            address_area=address.area if address else None,
+            address_city=address.city if address else None,
+            address_district=address.district if address else None,
+            address_state=address.state if address else None,
+            address_pincode=address.pincode if address else None,
+        )

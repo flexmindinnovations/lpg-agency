@@ -19,6 +19,10 @@ class PrintingEngine(ABC):
         """Render an invoice to thermal receipt bytes (plain text for now)."""
 
     @abstractmethod
+    def render_invoice_thermal_html(self, payload: InvoicePrintPayload) -> bytes:
+        """Render the thermal receipt as a print-ready HTML page (Print/Close controls)."""
+
+    @abstractmethod
     def generate_qr_code(self, data: str, *, size: int = 200) -> bytes:
         """Generate a QR code PNG image."""
 

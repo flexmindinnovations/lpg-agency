@@ -111,6 +111,54 @@ class TestCustomerRepository:
                 # Decrypted back to the original plaintext reference.
                 assert reloaded.kyc_documents[0].document_number == "REF-A123"
 
+    async def test_consumer_number_assigned_on_approval_persists_across_an_update(
+        self, database: Database, admin_engine: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        # Regression: `save()`'s "update existing row" branch never copied
+        # `consumer_number` back onto the ORM row (only the "create new
+        # row" branch did) — invisible until now because consumer_number
+        # was previously only ever set at creation, never reassigned on an
+        # already-persisted customer. Approving KYC (which assigns a
+        # consumer number to a customer that started with none) is the
+        # first real path that updates it.
+        tenant_id = await _seed_tenant(admin_engine)
+        branch_id = await _seed_branch(admin_engine, tenant_id=tenant_id, name="Test Branch")
+        context = RequestTenantContext(tenant_id=tenant_id)
+        field_encryptor = FernetFieldEncryptor(integration_settings)
+
+        customer_id = uuid.uuid4()
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                customer = Customer(
+                    customer_id=customer_id,
+                    tenant_id=tenant_id,
+                    branch_id=branch_id,
+                    full_name="Bob Onboarding",
+                    phone_number="+1234567891",
+                    # No consumer_number — matches a real just-registered
+                    # customer, still in "onboarding" status.
+                )
+                await repo.save(customer)
+
+        async for approve_session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(approve_session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                customer = await repo.get_by_id(customer_id)
+                assert customer is not None
+                assert customer.consumer_number is None
+                customer.approve(approved_by=uuid.uuid4(), consumer_number="CN-APPROVED-1")
+                await repo.save(customer)
+
+        async for verify_session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(verify_session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                reloaded = await repo.get_by_id(customer_id)
+                assert reloaded is not None
+                assert reloaded.status == "active"
+                assert reloaded.consumer_number == "CN-APPROVED-1"
+
     async def test_kyc_doc_reference_is_encrypted_at_rest(
         self,
         database: Database,
@@ -252,7 +300,7 @@ class TestConsumerNumberSequence:
                     values.append(await sequence.next())
                     await uow.commit()
 
-        assert values == ["CN-000001", "CN-000002", "CN-000003"]
+        assert values == ["CN000001", "CN000002", "CN000003"]
 
     async def test_next_is_independent_per_tenant(
         self, database: Database, admin_engine: AsyncEngine
@@ -275,5 +323,5 @@ class TestConsumerNumberSequence:
                 await uow.commit()
 
         # Each tenant's counter starts fresh at 1, independently of the other.
-        assert first == "CN-000001"
-        assert second == "CN-000001"
+        assert first == "CN000001"
+        assert second == "CN000001"

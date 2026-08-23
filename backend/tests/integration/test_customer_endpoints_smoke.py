@@ -295,6 +295,55 @@ class TestCustomerEndpointsThroughRealStack:
         assert list_response.json()["items"][0]["full_name"] == "Ramesh Patil"
         assert list_response.json()["items"][0]["kyc_status"] == "verified"
 
+    async def test_list_customers_shows_most_recently_registered_first(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@cust-smoke.example"
+        password = "correct horse battery staple 42"
+        hasher = Argon2PasswordHasher(integration_settings)
+        tenant_id, _user_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+        )
+        branch_id = await _seed_branch(
+            admin_engine_lpg_test, tenant_id=tenant_id, name="North Branch"
+        )
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        async def register(name: str) -> str:
+            response = await real_lifespan_client.post(
+                "/api/v1/customers",
+                json={
+                    "branch_id": str(branch_id),
+                    "consumer_number": f"CN-{uuid.uuid4().hex[:6]}",
+                    "full_name": name,
+                    "phone_number": f"+9198{uuid.uuid4().int % 10**8:08d}",
+                    "customer_type": "domestic",
+                    "line_1": "123 High Street",
+                },
+                headers=headers,
+            )
+            assert response.status_code == 200, response.text
+            return str(response.json()["id"])
+
+        first_id = await register("Alphabet First")
+        second_id = await register("Zzz Registered Last")
+
+        list_response = await real_lifespan_client.get("/api/v1/customers", headers=headers)
+        assert list_response.status_code == 200, list_response.text
+        ids = [item["id"] for item in list_response.json()["items"]]
+        # "Alphabet First" sorts before "Zzz Registered Last" alphabetically,
+        # but registration order (newest first) is what the list should
+        # reflect — newly added customers are what staff need to see without
+        # scrolling or searching.
+        assert ids.index(second_id) < ids.index(first_id)
+
     async def test_next_consumer_number_and_lpg_subsidy_id_smoke(
         self,
         real_lifespan_client: AsyncClient,
@@ -322,7 +371,7 @@ class TestCustomerEndpointsThroughRealStack:
         )
         assert peek_response.status_code == 200, peek_response.text
         suggested = peek_response.json()["consumer_number"]
-        assert suggested.startswith("CN-")
+        assert suggested.startswith("CN")
 
         # 2. Register a customer using the suggested number and a valid LPG ID
         register_response = await real_lifespan_client.post(

@@ -42,6 +42,7 @@ from lpg.api.v1.dependencies.identity import (
     get_token_hasher,
     require_rate_limit,
 )
+from lpg.api.v1.dependencies.license import get_license_status_checker
 from lpg.api.v1.schemas.identity import (
     LoginRequest,
     LogoutRequest,
@@ -80,6 +81,7 @@ from lpg.application.identity.ports import (
 )
 from lpg.application.identity.refresh_token import RefreshTokenCommand, RefreshTokenUseCase
 from lpg.application.identity.tokens import TokenPair
+from lpg.application.license.ports import LicenseStatusChecker
 from lpg.config.settings import Settings, get_settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -136,6 +138,7 @@ async def login(
     password_hasher: Annotated[PasswordHasher, Depends(get_password_hasher)],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
+    license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     _rate_limit: Annotated[
         None,
         Depends(require_rate_limit(key_prefix="auth:login", limit=10, window_seconds=60)),
@@ -148,6 +151,7 @@ async def login(
         password_hasher,
         token_hasher,
         jwt_signer,
+        license_status_checker,
         lockout_threshold=settings.login_lockout_threshold,
         lockout_duration=timedelta(minutes=settings.login_lockout_duration_minutes),
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
@@ -189,6 +193,7 @@ async def otp_verify(
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
     tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
+    license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
 ) -> TokenResponse:
     use_case = VerifyOtpUseCase(
         otp_store,
@@ -197,6 +202,7 @@ async def otp_verify(
         permission_repository,
         token_hasher,
         jwt_signer,
+        license_status_checker,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
     )
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
@@ -222,6 +228,7 @@ async def refresh(
     permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
+    license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
 ) -> TokenResponse:
     raw_token = _resolve_refresh_token(request, body.refresh_token)
     if raw_token is None:
@@ -234,6 +241,7 @@ async def refresh(
         permission_repository,
         token_hasher,
         jwt_signer,
+        license_status_checker,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
     )
     token_pair = await use_case.execute(RefreshTokenCommand(refresh_token=raw_token))

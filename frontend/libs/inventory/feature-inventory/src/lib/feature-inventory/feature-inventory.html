@@ -10,7 +10,7 @@
   <div class="page-header__actions">
         @if (locationType() === 'warehouse') {
         <button
-          *lpgHasPermission="'inventory:adjust'"
+          *lpgHasPermission="'inventory:load'"
           #grnTriggerEl
           pButton
           type="button"
@@ -47,7 +47,7 @@
         </button>
         }
         <button
-          *lpgHasPermission="'inventory:adjust'"
+          *lpgHasPermission="'inventory:load'"
           #statusChangeTriggerEl
           pButton
           type="button"
@@ -70,8 +70,8 @@
           <i pButtonIcon class="pi pi-pencil"></i>
           <span pButtonLabel>Adjust</span>
         </button>
-        @if (hasReconcileOrAdjust()) {
         <button
+          *lpgHasPermission="'inventory:load'"
           #reconcileTriggerEl
           pButton
           type="button"
@@ -82,7 +82,6 @@
           <i pButtonIcon class="pi pi-check-square"></i>
           <span pButtonLabel>Reconcile</span>
         </button>
-        }
       </div>
 </ng-template>
   </div>
@@ -497,7 +496,13 @@
         <button pButton type="button" severity="secondary" (click)="showReconcileModal.set(false)">
           Close
         </button>
-        <button pButton type="button" (click)="onApproveReconciliation()" [disabled]="loading()">
+        <button
+          *lpgHasPermission="'reconciliation:approve'"
+          pButton
+          type="button"
+          (click)="onApproveReconciliation()"
+          [disabled]="loading()"
+        >
           Approve
         </button>
       </div>

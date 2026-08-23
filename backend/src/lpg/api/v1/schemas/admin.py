@@ -177,6 +177,16 @@ class SetFeatureFlagOverrideRequest(BaseModel):
     enabled: bool
 
 
+class FeatureFlagSummaryResponse(BaseModel):
+    """Key + description only — the tenant-facing flag picker. Deliberately
+    excludes `rollout_percentage`/`starts_at`/`ends_at`: those are platform
+    rollout mechanics, not something a tenant admin needs or should see when
+    choosing a flag to override for their own tenant."""
+
+    key: str
+    description: str
+
+
 class FeatureFlagOverrideResponse(BaseModel):
     flag_key: str
     is_enabled: bool

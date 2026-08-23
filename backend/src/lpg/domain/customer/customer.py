@@ -483,6 +483,16 @@ class Customer(AggregateRoot):
         expiry_date: date | None = None,
     ) -> uuid.UUID:
         doc_id = uuid.uuid4()
+        normalized_doc_type = doc_type.strip().lower()
+        # A resubmission of the same doc_type (a clearer photo, a fix
+        # after rejection) supersedes the previous attempt rather than
+        # accumulating as a duplicate — a customer only ever has one
+        # *current* Aadhaar/PAN/etc. on file. A different doc_type is a
+        # genuine addition (e.g. PAN alongside an existing Aadhaar), so
+        # only same-type documents are replaced.
+        self._kyc_documents = [
+            d for d in self._kyc_documents if d.doc_type != normalized_doc_type
+        ]
         doc = KycDocument(
             document_id=doc_id,
             doc_type=doc_type,
@@ -493,7 +503,7 @@ class Customer(AggregateRoot):
             verification_status="pending",
         )
         self._kyc_documents.append(doc)
-        self._kyc_status = "pending"
+        self._recompute_kyc_status()
         self.record_event(
             KycDocumentSubmitted(customer_id=self.id, document_id=doc_id, doc_type=doc_type)
         )
@@ -512,15 +522,7 @@ class Customer(AggregateRoot):
             raise InvariantViolation(msg, customer_id=str(self.id))
 
         target.verify(verified_by, status, rejection_reason)
-
-        # Recalculate aggregate KYC status based on current documents status
-        if status == "verified":
-            # Check if all required docs are verified? For now just set verified if this one is,
-            # but ideally we check if *all* are verified. Let's keep existing logic.
-            # (Approval use-case will do the thorough check).
-            self._kyc_status = "verified"
-        else:
-            self._kyc_status = "rejected"
+        self._recompute_kyc_status()
 
         self.record_event(
             KycDocumentVerified(
@@ -530,6 +532,29 @@ class Customer(AggregateRoot):
                 status=status,
             )
         )
+
+    def _recompute_kyc_status(self) -> None:
+        """The aggregate `kyc_status` always reflects the *current* full
+        document set, recomputed from scratch, rather than being set
+        piecemeal from whichever single action just happened — verified
+        only when every current document is verified, rejected if any
+        current document needs re-review, pending otherwise (including
+        "no documents yet"). Recomputing from scratch after every
+        submit/verify means it can never drift out of sync with the
+        documents themselves, which piecemeal updates previously allowed:
+        `verify_kyc` used to set the aggregate from just the one document
+        being verified (ignoring any others), and `submit_kyc` used to
+        unconditionally reset it to "pending" even when submitting an
+        unrelated, already-verified document type.
+        """
+        if not self._kyc_documents:
+            self._kyc_status = "pending"
+        elif any(d.verification_status == "rejected" for d in self._kyc_documents):
+            self._kyc_status = "rejected"
+        elif all(d.verification_status == "verified" for d in self._kyc_documents):
+            self._kyc_status = "verified"
+        else:
+            self._kyc_status = "pending"
 
     def approve(self, approved_by: uuid.UUID, consumer_number: str) -> None:
         if self._status not in ("onboarding", "pending_approval"):

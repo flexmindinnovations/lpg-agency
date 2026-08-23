@@ -9,8 +9,10 @@ import { listDriversApiV1DriversGet } from './generated/fn/delivery/list-drivers
 import { listVehiclesApiV1VehiclesGet } from './generated/fn/delivery/list-vehicles-api-v-1-vehicles-get';
 import { registerDriverApiV1DriversPost } from './generated/fn/delivery/register-driver-api-v-1-drivers-post';
 import { registerVehicleApiV1VehiclesPost } from './generated/fn/delivery/register-vehicle-api-v-1-vehicles-post';
+import { updateDriverAssignmentApiV1DriversDriverIdAssignmentPatch } from './generated/fn/delivery/update-driver-assignment-api-v-1-drivers-driver-id-assignment-patch';
 import { updateDriverLicenseApiV1DriversDriverIdLicensePatch } from './generated/fn/delivery/update-driver-license-api-v-1-drivers-driver-id-license-patch';
 import { updateDriverStatusApiV1DriversDriverIdStatusPatch } from './generated/fn/delivery/update-driver-status-api-v-1-drivers-driver-id-status-patch';
+import { updateVehicleDetailsApiV1VehiclesVehicleIdDetailsPatch } from './generated/fn/delivery/update-vehicle-details-api-v-1-vehicles-vehicle-id-details-patch';
 import { updateVehicleStatusApiV1VehiclesVehicleIdStatusPatch } from './generated/fn/delivery/update-vehicle-status-api-v-1-vehicles-vehicle-id-status-patch';
 import { planRouteApiV1RoutesPost } from './generated/fn/routes/plan-route-api-v-1-routes-post';
 import { listRoutesApiV1RoutesGet } from './generated/fn/routes/list-routes-api-v-1-routes-get';
@@ -26,10 +28,12 @@ import type { PlanRouteRequest } from './generated/models/plan-route-request';
 import type { DriverResponse } from './generated/models/driver-response';
 import type { DriverPageResponse } from './generated/models/driver-page-response';
 import type { RegisterDriverRequest } from './generated/models/register-driver-request';
+import type { UpdateDriverAssignmentRequest } from './generated/models/update-driver-assignment-request';
 import type { UpdateDriverLicenseRequest } from './generated/models/update-driver-license-request';
 import type { VehicleResponse } from './generated/models/vehicle-response';
 import type { VehiclePageResponse } from './generated/models/vehicle-page-response';
 import type { RegisterVehicleRequest } from './generated/models/register-vehicle-request';
+import type { UpdateVehicleDetailsRequest } from './generated/models/update-vehicle-details-request';
 import type { UpdateRouteStatusRequest } from './generated/models/update-route-status-request';
 import type { LoadVehicleRequest } from './generated/models/load-vehicle-request';
 
@@ -87,6 +91,16 @@ export class DeliveryService {
     }).pipe(map((res) => res.body));
   }
 
+  updateDriverAssignment(
+    driverId: string,
+    request: UpdateDriverAssignmentRequest,
+  ): Observable<DriverResponse> {
+    return updateDriverAssignmentApiV1DriversDriverIdAssignmentPatch(this.http, this.config.rootUrl, {
+      driver_id: driverId,
+      body: request,
+    }).pipe(map((res) => res.body));
+  }
+
   // ---------------------------------------------------------------------------
   // Vehicle Operations
   // ---------------------------------------------------------------------------
@@ -123,6 +137,16 @@ export class DeliveryService {
     return updateVehicleStatusApiV1VehiclesVehicleIdStatusPatch(this.http, this.config.rootUrl, {
       vehicle_id: vehicleId,
       body: { status },
+    }).pipe(map((res) => res.body));
+  }
+
+  updateVehicleDetails(
+    vehicleId: string,
+    request: UpdateVehicleDetailsRequest,
+  ): Observable<VehicleResponse> {
+    return updateVehicleDetailsApiV1VehiclesVehicleIdDetailsPatch(this.http, this.config.rootUrl, {
+      vehicle_id: vehicleId,
+      body: request,
     }).pipe(map((res) => res.body));
   }
   // ---------------------------------------------------------------------------

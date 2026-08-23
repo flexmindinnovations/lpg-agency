@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     import uuid
 
     from lpg.application.common.ports import TenantContext
-    from lpg.application.complaint.ports import ComplaintUnitOfWork
+    from lpg.application.complaint.ports import ComplaintNumberSequence, ComplaintUnitOfWork
     from lpg.domain.complaint.value_objects import (
         ComplaintCategory,
         ComplaintPriority,
@@ -27,13 +27,15 @@ class RaiseComplaintCommand:
 
 
 class RaiseComplaintUseCase:
-    def __init__(self, uow: ComplaintUnitOfWork) -> None:
+    def __init__(self, uow: ComplaintUnitOfWork, sequence: ComplaintNumberSequence) -> None:
         self._uow = uow
+        self._sequence = sequence
 
     async def execute(self, ctx: TenantContext, command: RaiseComplaintCommand) -> uuid.UUID:
         if not ctx.user_id:
             raise ValueError("User must be authenticated to raise a complaint")
 
+        complaint_number = await self._sequence.next()
         complaint = Complaint.create(
             tenant_id=ctx.tenant_id,
             customer_id=command.customer_id,
@@ -41,6 +43,7 @@ class RaiseComplaintUseCase:
             priority=command.priority,
             description=command.description,
             created_by=ctx.user_id,
+            complaint_number=complaint_number,
             order_id=command.order_id,
         )
 

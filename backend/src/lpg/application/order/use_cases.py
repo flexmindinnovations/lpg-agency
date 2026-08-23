@@ -48,6 +48,7 @@ if TYPE_CHECKING:
         CancellationRecordRepository,
         CreditLimitEvaluator,
         CylinderCapPolicy,
+        OrderNumberSequence,
         OrderRepository,
         OrderStatusHistoryEntry,
         ProofOfDeliveryEntry,
@@ -94,17 +95,25 @@ class CreateOrderCommand(Command):
 
 
 class CreateOrderUseCase:
-    def __init__(self, repository: OrderRepository, unit_of_work: UnitOfWork) -> None:
+    def __init__(
+        self,
+        repository: OrderRepository,
+        unit_of_work: UnitOfWork,
+        order_number_sequence: OrderNumberSequence,
+    ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
+        self._order_number_sequence = order_number_sequence
 
     async def execute(self, command: CreateOrderCommand) -> Order:
+        order_number = await self._order_number_sequence.next()
         order = Order(
             order_id=self._repository.next_id(),
             tenant_id=command.tenant_id,
             branch_id=command.branch_id,
             customer_id=command.customer_id,
             address_id=command.address_id,
+            order_number=order_number,
             delivery_address=command.delivery_address,
             booking_source=command.booking_source,
             requested_date=command.requested_date,

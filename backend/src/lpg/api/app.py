@@ -35,6 +35,7 @@ from lpg.api.v1.routers import (
     inventory,
     invoice,
     notifications,
+    onboarding_draft,
     order,
     printing,
     reporting,
@@ -289,6 +290,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # API v1
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
+    # `onboarding_draft.router`'s literal `/customers/onboarding-drafts` path
+    # must be registered before `customer.router`'s `/customers/{customer_id}`
+    # — Starlette dispatches to the first *full* (path+method) match, and a
+    # path-parameter route matches any literal segment, so a GET to
+    # `/customers/onboarding-drafts` would otherwise be swallowed by
+    # `get_customer` with `customer_id="onboarding-drafts"`.
+    app.include_router(onboarding_draft.router, prefix=settings.api_v1_prefix)
     app.include_router(customer.router, prefix=settings.api_v1_prefix)
     app.include_router(employee.router, prefix=settings.api_v1_prefix)
     app.include_router(cylinder_ledger.router, prefix=settings.api_v1_prefix)

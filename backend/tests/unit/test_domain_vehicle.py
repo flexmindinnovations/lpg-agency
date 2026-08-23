@@ -11,7 +11,12 @@ import uuid
 import pytest
 
 from lpg.domain.common.base import InvariantViolation
-from lpg.domain.delivery.vehicle import Vehicle, VehicleRegistered, VehicleStatusChanged
+from lpg.domain.delivery.vehicle import (
+    Vehicle,
+    VehicleDetailsUpdated,
+    VehicleRegistered,
+    VehicleStatusChanged,
+)
 
 
 def _make_vehicle(**kwargs: object) -> Vehicle:
@@ -118,3 +123,49 @@ class TestVehicleStatusTransitions:
         assert isinstance(event, VehicleStatusChanged)
         assert event.old_status == "active"
         assert event.new_status == "maintenance"
+
+
+class TestVehicleDetailsUpdate:
+    def test_updates_all_fields(self) -> None:
+        vehicle = _make_vehicle()
+        vehicle.update_details("Ashok Leyland", "Dost+", "rental", 25)
+        assert vehicle.make == "Ashok Leyland"
+        assert vehicle.model == "Dost+"
+        assert vehicle.ownership_type == "rental"
+        assert vehicle.capacity_units == 25
+
+    def test_raises_on_empty_make_during_update(self) -> None:
+        vehicle = _make_vehicle()
+        with pytest.raises(InvariantViolation, match="make"):
+            vehicle.update_details("", "Ace", "owned", 10)
+
+    def test_raises_on_invalid_ownership_type_during_update(self) -> None:
+        vehicle = _make_vehicle()
+        with pytest.raises(InvariantViolation, match="ownership type"):
+            vehicle.update_details("Tata", "Ace", "leased", 10)
+
+    def test_raises_on_zero_capacity_during_update(self) -> None:
+        vehicle = _make_vehicle()
+        with pytest.raises(InvariantViolation, match="capacity_units"):
+            vehicle.update_details("Tata", "Ace", "owned", 0)
+
+    def test_records_details_updated_event(self) -> None:
+        vehicle = _make_vehicle()
+        vehicle.clear_events()
+        vehicle.update_details("Mahindra", "Bolero", "gig", 15)
+        events = vehicle.events
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, VehicleDetailsUpdated)
+        assert event.make == "Mahindra"
+        assert event.model == "Bolero"
+        assert event.ownership_type == "gig"
+        assert event.capacity_units == 15
+
+    def test_invalid_update_leaves_state_unchanged(self) -> None:
+        """A rejected update doesn't partially apply."""
+        vehicle = _make_vehicle(make="Tata", model="Ace")
+        with pytest.raises(InvariantViolation):
+            vehicle.update_details("Mahindra", "Bolero", "invalid_type", 15)
+        assert vehicle.make == "Tata"
+        assert vehicle.model == "Ace"

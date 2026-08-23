@@ -1,6 +1,20 @@
 {
   "components": {
     "schemas": {
+      "ActivateLicenseRequest": {
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "ActivateLicenseRequest",
+        "type": "object"
+      },
       "AddCustomerAddressRequest": {
         "properties": {
           "address_type": {
@@ -383,6 +397,20 @@
         "title": "AuditLogPageResponse",
         "type": "object"
       },
+      "Body_upload_kyc_attachment_api_v1_customers_kyc_attachments_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_kyc_attachment_api_v1_customers_kyc_attachments_post",
+        "type": "object"
+      },
       "Body_upload_pod_attachment_api_v1_orders__order_id__pod_attachments_post": {
         "properties": {
           "file": {
@@ -573,6 +601,17 @@
           "expected_amount": {
             "title": "Expected Amount",
             "type": "string"
+          },
+          "handover_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handover Number"
           },
           "id": {
             "format": "uuid",
@@ -782,6 +821,17 @@
           },
           "category": {
             "$ref": "#/components/schemas/ComplaintCategory"
+          },
+          "complaint_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complaint Number"
           },
           "created_at": {
             "format": "date-time",
@@ -1138,6 +1188,17 @@
             ],
             "title": "Approved By"
           },
+          "credit_note_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Note Number"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1328,10 +1389,15 @@
             "format": "uuid",
             "title": "Customer Id",
             "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
           }
         },
         "required": [
           "customer_id",
+          "customer_name",
           "avg_refill_interval_days"
         ],
         "title": "CustomerConsumptionResponse",
@@ -2276,6 +2342,25 @@
         "title": "FeatureFlagResponse",
         "type": "object"
       },
+      "FeatureFlagSummaryResponse": {
+        "description": "Key + description only — the tenant-facing flag picker. Deliberately\nexcludes `rollout_percentage`/`starts_at`/`ends_at`: those are platform\nrollout mechanics, not something a tenant admin needs or should see when\nchoosing a flag to override for their own tenant.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "description"
+        ],
+        "title": "FeatureFlagSummaryResponse",
+        "type": "object"
+      },
       "GoodsReceiptRequest": {
         "properties": {
           "cylinder_type_id": {
@@ -2313,6 +2398,17 @@
             "format": "uuid",
             "title": "Cylinder Type Id",
             "type": "string"
+          },
+          "grn_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grn Number"
           },
           "id": {
             "format": "uuid",
@@ -2697,6 +2793,17 @@
             "title": "Amount Paid",
             "type": "string"
           },
+          "customer_consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Consumer Number"
+          },
           "customer_id": {
             "format": "uuid",
             "title": "Customer Id",
@@ -2706,6 +2813,17 @@
             "format": "uuid",
             "title": "Invoice Id",
             "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
           },
           "issued_at": {
             "format": "date-time",
@@ -2723,6 +2841,17 @@
             "format": "uuid",
             "title": "Order Id",
             "type": "string"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
           },
           "payments": {
             "items": {
@@ -2771,6 +2900,101 @@
           "version"
         ],
         "title": "InvoiceResponse",
+        "type": "object"
+      },
+      "IssueLicenseRequest": {
+        "properties": {
+          "device_caps": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Caps"
+          },
+          "plan_tier": {
+            "minLength": 1,
+            "title": "Plan Tier",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "validity_days": {
+            "default": 365,
+            "exclusiveMinimum": 0.0,
+            "title": "Validity Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "plan_tier"
+        ],
+        "title": "IssueLicenseRequest",
+        "type": "object"
+      },
+      "IssuedLicenseResponse": {
+        "description": "The **only** response that ever carries `plaintext_key` — shown once,\nat issuance, and never retrievable again.",
+        "properties": {
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "key_prefix": {
+            "title": "Key Prefix",
+            "type": "string"
+          },
+          "plaintext_key": {
+            "title": "Plaintext Key",
+            "type": "string"
+          },
+          "plan_tier": {
+            "title": "Plan Tier",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "plaintext_key",
+          "key_prefix",
+          "plan_tier",
+          "issued_at"
+        ],
+        "title": "IssuedLicenseResponse",
+        "type": "object"
+      },
+      "KycAttachmentResponse": {
+        "description": "A pre-uploaded KYC document image blob ref — see\n`upload_kyc_attachment`'s docstring for why this is a separate,\ncustomer-agnostic endpoint from `POST /{customer_id}/kyc`.",
+        "properties": {
+          "blob_ref": {
+            "title": "Blob Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blob_ref"
+        ],
+        "title": "KycAttachmentResponse",
         "type": "object"
       },
       "KycDocumentListResponse": {
@@ -2879,6 +3103,241 @@
           "verified_at"
         ],
         "title": "KycDocumentResponse",
+        "type": "object"
+      },
+      "LicenseResponse": {
+        "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "device_caps": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Device Caps",
+            "type": "object"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "grace_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grace Ends At"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "key_prefix": {
+            "title": "Key Prefix",
+            "type": "string"
+          },
+          "plan_tier": {
+            "title": "Plan Tier",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "status",
+          "plan_tier",
+          "key_prefix",
+          "device_caps",
+          "issued_at",
+          "activated_at",
+          "expires_at",
+          "grace_ends_at",
+          "revoked_at"
+        ],
+        "title": "LicenseResponse",
+        "type": "object"
+      },
+      "LicenseStatusResponse": {
+        "properties": {
+          "activated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "grace_ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grace Ends At"
+          },
+          "key_prefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Prefix"
+          },
+          "plan_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Tier"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "plan_tier",
+          "key_prefix",
+          "activated_at",
+          "expires_at",
+          "grace_ends_at"
+        ],
+        "title": "LicenseStatusResponse",
+        "type": "object"
+      },
+      "LinkedDeviceResponse": {
+        "properties": {
+          "app_type": {
+            "title": "App Type",
+            "type": "string"
+          },
+          "device_identifier": {
+            "title": "Device Identifier",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "registered_at": {
+            "format": "date-time",
+            "title": "Registered At",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          }
+        },
+        "required": [
+          "id",
+          "app_type",
+          "device_identifier",
+          "display_name",
+          "registered_at",
+          "last_seen_at",
+          "revoked_at",
+          "is_active"
+        ],
+        "title": "LinkedDeviceResponse",
         "type": "object"
       },
       "LivenessResponse": {
@@ -3138,6 +3597,107 @@
         "title": "NotificationResponse",
         "type": "object"
       },
+      "OnboardingDraftListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OnboardingDraftResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OnboardingDraftListResponse",
+        "type": "object"
+      },
+      "OnboardingDraftResponse": {
+        "properties": {
+          "address_data": {
+            "title": "Address Data",
+            "type": "object"
+          },
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "current_step": {
+            "title": "Current Step",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kyc_data": {
+            "title": "Kyc Data",
+            "type": "object"
+          },
+          "kyc_document_blob_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Document Blob Ref"
+          },
+          "registration_data": {
+            "title": "Registration Data",
+            "type": "object"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "branch_id",
+          "current_step",
+          "registration_data",
+          "address_data",
+          "kyc_data",
+          "kyc_document_blob_ref",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "OnboardingDraftResponse",
+        "type": "object"
+      },
       "OrderLineResponse": {
         "properties": {
           "cylinder_type_id": {
@@ -3263,6 +3823,17 @@
           "metadata": {
             "title": "Metadata",
             "type": "object"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
           },
           "payment_method_preference": {
             "anyOf": [
@@ -4040,6 +4611,179 @@
           "new_role"
         ],
         "title": "ReassignRoleRequest",
+        "type": "object"
+      },
+      "RecognizeKycDocumentRequest": {
+        "properties": {
+          "blob_ref": {
+            "minLength": 1,
+            "title": "Blob Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blob_ref"
+        ],
+        "title": "RecognizeKycDocumentRequest",
+        "type": "object"
+      },
+      "RecognizeKycDocumentResponse": {
+        "description": "Result of the backend OCR \"second pass\" — see\n`RecognizeKycDocumentUseCase`'s docstring for why this exists.\n\nThe address_* fields are a best-effort split of the Aadhaar address\nblock (see `kyc_document_parser.py::_parse_address`) — freeform,\nunlabeled text with no fixed structure, so these are meaningfully less\nreliable than doc_type/document_number/full_name/date_of_birth. The\nAddress step's fields stay required and editable regardless of what\nauto-fills here.",
+        "properties": {
+          "address_area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Area"
+          },
+          "address_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address City"
+          },
+          "address_district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address District"
+          },
+          "address_landmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Landmark"
+          },
+          "address_line_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line 1"
+          },
+          "address_line_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line 2"
+          },
+          "address_pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Pincode"
+          },
+          "address_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address State"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "document_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Number"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          }
+        },
+        "required": [
+          "doc_type",
+          "document_number",
+          "full_name",
+          "date_of_birth",
+          "confidence",
+          "address_line_1",
+          "address_line_2",
+          "address_landmark",
+          "address_area",
+          "address_city",
+          "address_district",
+          "address_state",
+          "address_pincode"
+        ],
+        "title": "RecognizeKycDocumentResponse",
         "type": "object"
       },
       "ReconciliationRecordCreateRequest": {
@@ -4928,6 +5672,67 @@
         "title": "RouteStopResponse",
         "type": "object"
       },
+      "SaveOnboardingDraftRequest": {
+        "properties": {
+          "address_data": {
+            "default": {},
+            "title": "Address Data",
+            "type": "object"
+          },
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "current_step": {
+            "default": 1,
+            "title": "Current Step",
+            "type": "integer"
+          },
+          "draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Id"
+          },
+          "kyc_data": {
+            "default": {},
+            "title": "Kyc Data",
+            "type": "object"
+          },
+          "kyc_document_blob_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Document Blob Ref"
+          },
+          "registration_data": {
+            "default": {},
+            "title": "Registration Data",
+            "type": "object"
+          }
+        },
+        "title": "SaveOnboardingDraftRequest",
+        "type": "object"
+      },
       "ScheduleFeatureFlagRequest": {
         "properties": {
           "ends_at": {
@@ -5031,6 +5836,51 @@
           }
         },
         "title": "SetFeatureFlagRolloutPercentageRequest",
+        "type": "object"
+      },
+      "SetLicenseDeviceCapRequest": {
+        "properties": {
+          "max_devices": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Devices"
+          }
+        },
+        "title": "SetLicenseDeviceCapRequest",
+        "type": "object"
+      },
+      "SetLicenseFeatureOverrideRequest": {
+        "properties": {
+          "granted": {
+            "title": "Granted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "granted"
+        ],
+        "title": "SetLicenseFeatureOverrideRequest",
+        "type": "object"
+      },
+      "SetLicensePlanTierRequest": {
+        "properties": {
+          "plan_tier": {
+            "minLength": 1,
+            "title": "Plan Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_tier"
+        ],
+        "title": "SetLicensePlanTierRequest",
         "type": "object"
       },
       "SetPriceRequest": {
@@ -5430,6 +6280,26 @@
         "title": "UpdateCustomerProfileRequest",
         "type": "object"
       },
+      "UpdateDriverAssignmentRequest": {
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "employee_id": {
+            "format": "uuid",
+            "title": "Employee Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id",
+          "branch_id"
+        ],
+        "title": "UpdateDriverAssignmentRequest",
+        "type": "object"
+      },
       "UpdateDriverLicenseRequest": {
         "properties": {
           "license_expiry_date": {
@@ -5501,6 +6371,39 @@
           "permission_codes"
         ],
         "title": "UpdateStaffUserPermissionsRequest",
+        "type": "object"
+      },
+      "UpdateVehicleDetailsRequest": {
+        "properties": {
+          "capacity_units": {
+            "minimum": 1.0,
+            "title": "Capacity Units",
+            "type": "integer"
+          },
+          "make": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "ownership_type": {
+            "title": "Ownership Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "make",
+          "model",
+          "ownership_type",
+          "capacity_units"
+        ],
+        "title": "UpdateVehicleDetailsRequest",
         "type": "object"
       },
       "UpdateVehicleStatusRequest": {
@@ -6251,6 +7154,32 @@
         ]
       }
     },
+    "/api/v1/admin/feature-flags/available": {
+      "get": {
+        "description": "Feeds the override picker on the tenant Feature Flags page. Deliberately\nnarrower than `GET /feature-flags` (platform-only, `manage_platform`):\nrollout %/schedule are rollout mechanics a tenant admin has no reason to\nsee when picking a flag to override for their own tenant.",
+        "operationId": "list_available_feature_flags_api_v1_admin_feature_flags_available_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureFlagSummaryResponse"
+                  },
+                  "title": "Response List Available Feature Flags Api V1 Admin Feature Flags Available Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List flags a tenant admin can override, key + description only",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/feature-flags/overrides/{key}": {
       "put": {
         "operationId": "set_feature_flag_override_api_v1_admin_feature_flags_overrides__key__put",
@@ -6476,6 +7405,380 @@
           }
         },
         "summary": "Schedule a platform flag",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license": {
+      "get": {
+        "operationId": "list_licenses_api_v1_admin_license_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LicenseResponse"
+                  },
+                  "title": "Response List Licenses Api V1 Admin License Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List every tenant's license",
+        "tags": [
+          "Administration"
+        ]
+      },
+      "post": {
+        "operationId": "issue_license_api_v1_admin_license_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueLicenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedLicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue a license for a tenant",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/activate": {
+      "post": {
+        "operationId": "activate_license_api_v1_admin_license_activate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateLicenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate this tenant's license",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices": {
+      "get": {
+        "operationId": "list_linked_devices_api_v1_admin_license_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedDeviceResponse"
+                  },
+                  "title": "Response List Linked Devices Api V1 Admin License Devices Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List this tenant's linked devices",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/devices/{device_id}/revoke": {
+      "patch": {
+        "operationId": "revoke_linked_device_api_v1_admin_license_devices__device_id__revoke_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke a linked device",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/status": {
+      "get": {
+        "operationId": "get_license_status_api_v1_admin_license_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "This tenant's own license status",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/{tenant_id}/device-caps/{app_type}": {
+      "patch": {
+        "operationId": "set_license_device_cap_api_v1_admin_license__tenant_id__device_caps__app_type__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "app_type",
+            "required": true,
+            "schema": {
+              "title": "App Type",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLicenseDeviceCapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant's per-app-type device cap",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/{tenant_id}/feature-overrides/{key}": {
+      "put": {
+        "operationId": "set_license_feature_override_api_v1_admin_license__tenant_id__feature_overrides__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLicenseFeatureOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant's license feature override",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/{tenant_id}/plan-tier": {
+      "patch": {
+        "operationId": "set_license_plan_tier_api_v1_admin_license__tenant_id__plan_tier_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLicensePlanTierRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant's plan tier",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/license/{tenant_id}/revoke": {
+      "patch": {
+        "operationId": "revoke_license_api_v1_admin_license__tenant_id__revoke_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke a tenant's license",
         "tags": [
           "Administration"
         ]
@@ -7914,6 +9217,90 @@
         ]
       }
     },
+    "/api/v1/customers/kyc-attachments": {
+      "post": {
+        "description": "Pre-upload a KYC document image before `POST /{customer_id}/kyc`.\n\nDeliberately customer-agnostic (staged under a tenant-scoped key, not a\ncustomer one): during onboarding the wizard runs OCR and lets staff\nreview/upload the document image *before* `register_customer` has\ncreated the `Customer` row that would give this a `customer_id` to key\noff — same reasoning `upload_pod_attachment`\n(`api/v1/routers/order.py`) uses for pre-dispatch blob uploads.",
+        "operationId": "upload_kyc_attachment_api_v1_customers_kyc_attachments_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_kyc_attachment_api_v1_customers_kyc_attachments_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycAttachmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Kyc Attachment",
+        "tags": [
+          "Customers"
+        ]
+      }
+    },
+    "/api/v1/customers/kyc-attachments/recognize": {
+      "post": {
+        "description": "The backend OCR \"second pass\" — re-reads an already-uploaded document\n(`POST /kyc-attachments`) with a heavier, more accurate model than is\npractical to ship to a browser. See `RecognizeKycDocumentUseCase`'s\ndocstring for why this exists alongside the client's own OCR pass.",
+        "operationId": "recognize_kyc_document_api_v1_customers_kyc_attachments_recognize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecognizeKycDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecognizeKycDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recognize Kyc Document",
+        "tags": [
+          "Customers"
+        ]
+      }
+    },
     "/api/v1/customers/me": {
       "get": {
         "operationId": "get_my_profile_api_v1_customers_me_get",
@@ -7953,6 +9340,144 @@
         "summary": "Peek Next Consumer Number",
         "tags": [
           "Customers"
+        ]
+      }
+    },
+    "/api/v1/customers/onboarding-drafts": {
+      "get": {
+        "operationId": "list_my_onboarding_drafts_api_v1_customers_onboarding_drafts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingDraftListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List My Onboarding Drafts",
+        "tags": [
+          "Customer Onboarding Drafts"
+        ]
+      },
+      "post": {
+        "description": "Create-or-update, keyed by `request.draft_id` — omit it to create a\nnew draft, pass an existing id to overwrite that draft's snapshot.",
+        "operationId": "save_onboarding_draft_api_v1_customers_onboarding_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveOnboardingDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Onboarding Draft",
+        "tags": [
+          "Customer Onboarding Drafts"
+        ]
+      }
+    },
+    "/api/v1/customers/onboarding-drafts/{draft_id}": {
+      "delete": {
+        "operationId": "delete_onboarding_draft_api_v1_customers_onboarding_drafts__draft_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Onboarding Draft",
+        "tags": [
+          "Customer Onboarding Drafts"
+        ]
+      },
+      "get": {
+        "operationId": "get_onboarding_draft_api_v1_customers_onboarding_drafts__draft_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingDraftResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Onboarding Draft",
+        "tags": [
+          "Customer Onboarding Drafts"
         ]
       }
     },
@@ -8705,6 +10230,60 @@
           }
         },
         "summary": "Get Driver",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
+    "/api/v1/drivers/{driver_id}/assignment": {
+      "patch": {
+        "description": "Relink a driver profile to a (possibly different) employee/branch.",
+        "operationId": "update_driver_assignment_api_v1_drivers__driver_id__assignment_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverAssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Driver Assignment",
         "tags": [
           "Delivery"
         ]
@@ -11589,6 +13168,60 @@
         "summary": "Record Delivery",
         "tags": [
           "Inventory"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}/details": {
+      "patch": {
+        "description": "Update a vehicle's make/model/ownership/capacity.",
+        "operationId": "update_vehicle_details_api_v1_vehicles__vehicle_id__details_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Vehicle Details",
+        "tags": [
+          "Delivery"
         ]
       }
     },

@@ -20,7 +20,7 @@ call the audit function."
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -52,7 +52,12 @@ def _jsonable(value: object) -> object:
     """
     if isinstance(value, uuid.UUID):
         return str(value)
+    # `datetime` must be checked before plain `date` — it's a subclass of
+    # `date`, so `isinstance(value, date)` alone would also match `datetime`
+    # values and lose their time component.
     if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
         return str(value)

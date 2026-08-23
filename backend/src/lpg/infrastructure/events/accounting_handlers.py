@@ -35,22 +35,33 @@ async def _generate_invoice_for_delivered_order(
     """Run invoice generation in its own tenant-scoped transaction."""
     from lpg.application.accounting.use_cases import GenerateInvoiceForOrderUseCase
     from lpg.application.common.tenant import RequestTenantContext
+    from lpg.config.settings import get_settings
     from lpg.infrastructure.persistence.repositories.accounting import (
         SqlAlchemyInvoiceRepository,
     )
+    from lpg.infrastructure.persistence.repositories.customer import SqlAlchemyCustomerRepository
     from lpg.infrastructure.persistence.repositories.order import SqlAlchemyOrderRepository
+    from lpg.infrastructure.persistence.repositories.reference_number import (
+        SqlAlchemyReferenceNumberSequence,
+    )
     from lpg.infrastructure.persistence.repositories.tenant import (
         SqlAlchemyTenantConfigurationRepository,
     )
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+    from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
 
     async for session in database.open_session(tenant_id=event.tenant_id):
         tenant_context = RequestTenantContext(tenant_id=event.tenant_id)
         async with SqlAlchemyUnitOfWork(session, tenant_context) as uow:
+            field_encryptor = FernetFieldEncryptor(get_settings())
             use_case = GenerateInvoiceForOrderUseCase(
                 invoice_repository=SqlAlchemyInvoiceRepository(uow),
                 order_repository=SqlAlchemyOrderRepository(uow),
+                customer_repository=SqlAlchemyCustomerRepository(uow, field_encryptor),
                 tenant_config_repository=SqlAlchemyTenantConfigurationRepository(uow),
+                invoice_number_sequence=SqlAlchemyReferenceNumberSequence(
+                    uow, event.tenant_id, entity_type="invoice", prefix="INV", include_year=True
+                ),
             )
             await use_case.execute(
                 tenant_id=event.tenant_id,

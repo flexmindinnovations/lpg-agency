@@ -7,6 +7,7 @@ export interface CashHandoverResponse {
   declared_by: string;
   driver_id: string;
   expected_amount: string;
+  handover_number?: (string | null);
   id: string;
   route_id: string;
   shortfall: string;

@@ -1,5 +1,6 @@
 
 import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { shortId } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, TitleCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { Button, ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -24,6 +25,7 @@ import { Tooltip } from 'primeng/tooltip';
 import {
   AdminBranchService,
   AdminCylinderTypeService,
+  AdminEmployeeService,
   AdminWarehouseService,
   DeliveryService,
   OrderService,
@@ -31,6 +33,7 @@ import {
   type BranchResponse,
   type CylinderTypeResponse,
   type DriverResponse,
+  type EmployeeResponse,
   type OrderResponse,
   type RouteResponse,
   type VehicleResponse,
@@ -101,8 +104,9 @@ function toDateOnlyString(date: Date): string {
 @Component({
   selector: 'lpg-feature-dispatch',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
     DatePipe,
+    TitleCasePipe,
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
@@ -127,16 +131,38 @@ export class FeatureDispatch implements OnInit {
   private readonly orderService = inject(OrderService);
   private readonly branchService = inject(AdminBranchService);
   private readonly warehouseService = inject(AdminWarehouseService);
+  private readonly employeeService = inject(AdminEmployeeService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly router = inject(Router);
 
   protected readonly routes = signal<RouteResponse[]>([]);
+  // Active-only — this backs the Plan Route form's driver picker, which
+  // must never offer a driver who isn't currently available for a new
+  // assignment.
   protected readonly drivers = signal<DriverResponse[]>([]);
+  // Unfiltered by status — a route already on the board can reference a
+  // driver who has since gone on leave, and that driver's name still has
+  // to resolve (not fall back to a raw UUID) wherever the route is shown.
+  protected readonly allDrivers = signal<DriverResponse[]>([]);
+  // Drivers themselves carry no name — DriverResponse only has a FK
+  // (employee_id) into the Employee record where first_name/last_name
+  // actually live, so the driver's display name/code has to be resolved
+  // through this lookup rather than read directly off DriverResponse.
+  protected readonly employees = signal<EmployeeResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
+  // Unfiltered by status, mirroring allDrivers above — a route already on
+  // the board can reference a vehicle now under maintenance.
+  protected readonly allVehicles = signal<VehicleResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly unassignedOrders = signal<OrderResponse[]>([]);
+  // Broader than `unassignedOrders` (not status-filtered) — exists solely to
+  // back `orderNumberById` below, since a route stop's order is by
+  // definition no longer unassigned and would otherwise never resolve.
+  private readonly recentOrders = signal<OrderResponse[]>([]);
+
+  protected readonly shortId = shortId;
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -154,17 +180,51 @@ export class FeatureDispatch implements OnInit {
   protected readonly filterBranchId = signal<string | null>(null);
   protected readonly filterDate = signal<Date | null>(null);
 
-  protected readonly driverNameById = computed(() => {
-    const map = new Map<string, string>();
-    for (const d of this.drivers()) map.set(d.id, d.employee_id);
+  protected readonly employeeById = computed(() => {
+    const map = new Map<string, EmployeeResponse>();
+    for (const e of this.employees()) map.set(e.id, e);
     return map;
   });
 
-  protected readonly vehicleNameById = computed(() => {
+  private driverDisplayName(driver: DriverResponse): string {
+    const employee = this.employeeById().get(driver.employee_id);
+    // Falls back to the raw FK only if the employee record hasn't loaded
+    // yet (or was deleted) — should be rare, never the normal case.
+    return employee ? `${employee.first_name} ${employee.last_name}` : driver.employee_id;
+  }
+
+  protected readonly driverNameById = computed(() => {
     const map = new Map<string, string>();
-    for (const v of this.vehicles()) map.set(v.id, v.registration_number);
+    for (const d of this.allDrivers()) map.set(d.id, this.driverDisplayName(d));
     return map;
   });
+
+  protected readonly driverOptions = computed(() =>
+    this.drivers().map((d) => ({ id: d.id, label: this.driverDisplayName(d) })),
+  );
+
+  protected readonly vehicleNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const v of this.allVehicles()) map.set(v.id, this.vehicleDisplayName(v));
+    return map;
+  });
+
+  private vehicleDisplayName(vehicle: VehicleResponse): string {
+    return `${vehicle.make} ${vehicle.model} (${vehicle.registration_number})`;
+  }
+
+  /** Read directly rather than as a computed() — the form control's
+   * valueChanges is an Observable, not a signal, and the p-select's
+   * (onChange) already drives change detection on selection, so a plain
+   * lookup called from the template stays in sync without extra plumbing. */
+  protected selectedVehicle(): VehicleResponse | null {
+    const id = this.planForm.controls.vehicle_id.value;
+    return this.vehicles().find((v) => v.id === id) ?? null;
+  }
+
+  protected readonly vehicleOptions = computed(() =>
+    this.vehicles().map((v) => ({ id: v.id, label: this.vehicleDisplayName(v) })),
+  );
 
   protected readonly routesByStatus = computed(() => {
     const map = new Map<string, RouteResponse[]>();
@@ -217,6 +277,10 @@ export class FeatureDispatch implements OnInit {
     return !!status && CANCELLABLE_ROUTE_STATUSES.has(status);
   });
   protected readonly canLoadRoute = computed(() => this.selectedRoute()?.status === 'planned');
+  protected readonly canAddStopToSelectedRoute = computed(() => {
+    const status = this.selectedRoute()?.status;
+    return status === 'planned' || status === 'loaded';
+  });
   protected readonly canReconcileRoute = computed(
     () => this.selectedRoute()?.status === 'completed',
   );
@@ -247,6 +311,36 @@ export class FeatureDispatch implements OnInit {
     route_id: ['', [Validators.required]],
   });
 
+  // The reverse direction of the same assign-order-to-route action: picking
+  // an order from *within* an already-open Route Detail drawer (via the
+  // Stops section's "Add Stop" button) rather than starting from an
+  // unassigned order card on the board — same backend call either way.
+  protected readonly showAddStopForm = signal(false);
+  protected readonly addStopForm = this.fb.group({
+    order_id: ['', [Validators.required]],
+  });
+
+  protected readonly unassignedOrderOptions = computed(() =>
+    this.unassignedOrders().map((o) => ({
+      id: o.id,
+      label: `${o.order_number ?? shortId(o.id)} — ${o.delivery_address.address_line}`,
+    })),
+  );
+
+  /** `RouteStopResponse` only carries `order_id`, not the full `Order`
+   * object (unlike the unassigned-orders list/dropdown, which already have
+   * `order_number` directly) — this map lets the stop card resolve the same
+   * readable order number without a backend join. Falls back to `shortId`
+   * for a stop whose order isn't in the currently-loaded unassigned list
+   * (e.g. already assigned elsewhere, loaded on a previous page). */
+  protected readonly orderNumberById = computed(() => {
+    const map = new Map<string, string>();
+    for (const o of this.recentOrders()) {
+      if (o.order_number) map.set(o.id, o.order_number);
+    }
+    return map;
+  });
+
   // ---------------------------------------------------------------------------
   // Init / loaders
   // ---------------------------------------------------------------------------
@@ -275,8 +369,20 @@ export class FeatureDispatch implements OnInit {
       next: (page) => this.drivers.set(page.items),
       error: () => this.errorMessage.set('Failed to load drivers.'),
     });
+    this.deliveryService.listDrivers(0, 200).subscribe({
+      next: (page) => this.allDrivers.set(page.items),
+      error: () => this.errorMessage.set('Failed to load drivers.'),
+    });
+    this.employeeService.listEmployees({ limit: 200, role: 'driver' }).subscribe({
+      next: (page) => this.employees.set(page.items),
+      error: () => this.errorMessage.set('Failed to load driver names.'),
+    });
     this.deliveryService.listVehicles(0, 200, undefined, 'active').subscribe({
       next: (page) => this.vehicles.set(page.items),
+      error: () => this.errorMessage.set('Failed to load vehicles.'),
+    });
+    this.deliveryService.listVehicles(0, 200).subscribe({
+      next: (page) => this.allVehicles.set(page.items),
       error: () => this.errorMessage.set('Failed to load vehicles.'),
     });
   }
@@ -310,10 +416,15 @@ export class FeatureDispatch implements OnInit {
 
   protected loadUnassignedOrders(): void {
     // No backend query filter for "unassigned" exists (`route_stop_id` isn't
-    // a listOrders filter) — fetch confirmed orders and filter client-side.
-    this.orderService.listOrders({ status: 'confirmed', limit: 100 }).subscribe({
+    // a listOrders filter) — fetch recent orders (no status filter, so
+    // `recentOrders`/`orderNumberById` also cover already-assigned ones) and
+    // derive the confirmed-and-unassigned subset client-side.
+    this.orderService.listOrders({ limit: 100 }).subscribe({
       next: (page) => {
-        this.unassignedOrders.set(page.items.filter((o) => o.route_stop_id == null));
+        this.recentOrders.set(page.items);
+        this.unassignedOrders.set(
+          page.items.filter((o) => o.status === 'confirmed' && o.route_stop_id == null),
+        );
       },
       error: (err) => this.errorMessage.set(errorMessageFor(err)),
     });
@@ -371,6 +482,7 @@ export class FeatureDispatch implements OnInit {
 
   protected openRouteDetail(route: RouteResponse): void {
     this.showLoadForm.set(false);
+    this.showAddStopForm.set(false);
     this.showRouteDetail.set(true);
     this.loading.set(true);
     this.deliveryService.getRoute(route.id).subscribe({
@@ -453,6 +565,7 @@ export class FeatureDispatch implements OnInit {
     this.loadForm.reset({ warehouse_id: this.warehouses()[0]?.id ?? '' });
     this.loadLines.clear();
     this.loadLines.push(this.buildLoadLineGroup());
+    this.showAddStopForm.set(false);
     this.showLoadForm.set(true);
   }
 
@@ -509,6 +622,34 @@ export class FeatureDispatch implements OnInit {
       next: () => {
         this.showAssignOrderDrawer.set(false);
         this.selectedOrderForAssign.set(null);
+        this.refreshAfterMutation('Order assigned to route.');
+      },
+      error: (err) => {
+        this.errorMessage.set(errorMessageFor(err));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Add Stop (inline sub-form within the Route Detail drawer)
+  // ---------------------------------------------------------------------------
+
+  protected openAddStopForm(): void {
+    this.addStopForm.reset({ order_id: this.unassignedOrders()[0]?.id ?? '' });
+    this.showLoadForm.set(false);
+    this.showAddStopForm.set(true);
+  }
+
+  protected onSubmitAddStop(): void {
+    const route = this.selectedRoute();
+    if (!route || this.addStopForm.invalid) return;
+    const { order_id } = this.addStopForm.getRawValue();
+    this.loading.set(true);
+    this.deliveryService.assignOrderToRoute(route.id, order_id).subscribe({
+      next: () => {
+        this.showAddStopForm.set(false);
+        this.refreshSelectedRoute();
         this.refreshAfterMutation('Order assigned to route.');
       },
       error: (err) => {

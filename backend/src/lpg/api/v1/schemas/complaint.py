@@ -38,6 +38,7 @@ class ComplaintResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    complaint_number: str | None = None
     customer_id: uuid.UUID
     order_id: uuid.UUID | None = None
     category: ComplaintCategory

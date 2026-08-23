@@ -42,8 +42,20 @@ async def get_tenant_context(request: Request) -> TenantContext:
     log entry carries... correlation_id, tenant_id, user_id"). Bound here,
     not in the middleware, because the middleware runs before authentication
     resolves a tenant — there is nothing to bind yet at that point.
+
+    **Also the per-request license check** — deliberately kept here rather
+    than inside ``JwtTenantResolver`` itself, which stays a pure JWT-
+    verification concern with its own isolated unit tests. This is the
+    *only* place that catches a license expiring mid-access-token-lifetime
+    (~15 minutes) rather than waiting for the next refresh — every other
+    license check (login, OTP verify, refresh) only runs at token issuance.
+    Reads through ``LicenseStatusChecker``'s Redis-backed cache, so this
+    adds no DB round-trip to the common case.
     """
     from lpg.api.v1.dependencies.identity import get_jwt_signer
+    from lpg.api.v1.dependencies.license import get_license_status_checker
+    from lpg.application.common.errors import LicenseExpiredError
+    from lpg.domain.license.license import LicenseLifecycleState
     from lpg.infrastructure.identity.jwt_tenant_resolver import JwtTenantResolver
 
     resolver = JwtTenantResolver(get_jwt_signer())
@@ -52,4 +64,11 @@ async def get_tenant_context(request: Request) -> TenantContext:
         tenant_id=str(context.tenant_id),
         user_id=str(context.user_id) if context.user_id else None,
     )
+
+    status_checker = get_license_status_checker()
+    license_status = await status_checker.get_status(context.tenant_id)
+    if license_status in (LicenseLifecycleState.BLOCKED, LicenseLifecycleState.REVOKED):
+        msg = "This tenant's license has expired."
+        raise LicenseExpiredError(msg, tenant_id=str(context.tenant_id))
+
     return context

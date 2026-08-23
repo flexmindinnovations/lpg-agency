@@ -38,9 +38,12 @@ class InvoiceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     invoice_id: uuid.UUID
+    invoice_number: str | None = None
     tenant_id: uuid.UUID
     customer_id: uuid.UUID
+    customer_consumer_number: str | None = None
     order_id: uuid.UUID
+    order_number: str | None = None
     status: str
     issued_at: datetime
     lines: list[InvoiceLineResponse]
@@ -75,6 +78,7 @@ class CreditNoteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    credit_note_number: str | None = None
     invoice_id: uuid.UUID
     amount: Decimal
     reason: str

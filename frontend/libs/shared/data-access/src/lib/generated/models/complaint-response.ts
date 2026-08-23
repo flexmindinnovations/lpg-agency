@@ -9,6 +9,7 @@ import { ComplaintStatus } from '../models/complaint-status';
 export interface ComplaintResponse {
   assignments?: Array<ComplaintAssignmentResponse>;
   category: ComplaintCategory;
+  complaint_number?: (string | null);
   created_at: string;
   created_by?: (string | null);
   customer_id: string;

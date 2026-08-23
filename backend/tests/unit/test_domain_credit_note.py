@@ -23,6 +23,7 @@ def _request(**kwargs: object) -> CreditNote:
         "amount": Decimal("100.00"),
         "reason": "Damaged cylinder returned.",
         "requested_by": uuid.uuid4(),
+        "credit_note_number": "CRN000001",
     }
     defaults.update(kwargs)
     return CreditNote.request(**defaults)  # type: ignore[arg-type]

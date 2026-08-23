@@ -13,6 +13,7 @@ class ComplaintModel(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.tenant.id"), nullable=False)
+    complaint_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     customer_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
     order_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     category: Mapped[str] = mapped_column(String(50), nullable=False)

@@ -3,23 +3,166 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Customer Onboarding</h1>
-        <p class="page-subtitle">Register a new customer, add their primary delivery address, and submit KYC documents in a few easy steps.</p>
+        <p class="page-subtitle">Onboard a new customer in a few easy steps.</p>
       </div>
     </ng-template>
   </div>
 
+  @if (showResumeBanner()) {
+    <div class="resume-banner">
+      <p>
+        <i class="pi pi-history"></i>
+        You have an unsaved draft from
+        {{ latestDraft()?.updated_at ? (latestDraft()!.updated_at | date: 'medium') : 'earlier' }}.
+        Would you like to resume it?
+      </p>
+      <div class="resume-banner-actions">
+        <p-button label="Discard" icon="pi pi-trash" severity="secondary" (onClick)="discardBannerDraft()"></p-button>
+        <p-button label="Resume Draft" icon="pi pi-play" (onClick)="resumeDraft()"></p-button>
+      </div>
+    </div>
+  }
+
   <div class="wizard-card">
-    <p-stepper [value]="currentStep()">
+    <p-stepper [value]="currentStep()" [linear]="true">
       <p-step-list>
-        <p-step [value]="1">Registration</p-step>
-        <p-step [value]="2">Address</p-step>
-        <p-step [value]="3">KYC Upload</p-step>
-        <p-step [value]="4">Review</p-step>
+        <p-step [value]="1">Get Started</p-step>
+        <p-step [value]="2">Registration</p-step>
+        <p-step [value]="3">Address</p-step>
+        <p-step [value]="4">KYC Upload</p-step>
+        <p-step [value]="5">Review</p-step>
       </p-step-list>
 
       <p-step-panels>
-        <!-- Step 1: Registration Details -->
+        <!-- Step 1: Get Started (auto-fill vs manual) -->
         <p-step-panel [value]="1">
+          <ng-template #content let-activateCallback="activateCallback">
+            <div class="step-content">
+              <div class="step-header">
+                <h2>Get Started</h2>
+                <p>Upload an ID document to auto-fill this form, or enter every detail yourself.</p>
+              </div>
+
+              <div class="kyc-mode-toggle">
+                <p-button
+                  label="Auto-fill from Document"
+                  icon="pi pi-camera"
+                  [outlined]="entryMode() !== 'auto'"
+                  (onClick)="setEntryMode('auto')"
+                ></p-button>
+                <p-button
+                  label="Manual Entry"
+                  icon="pi pi-pencil"
+                  [outlined]="entryMode() !== 'manual'"
+                  (onClick)="setEntryMode('manual')"
+                ></p-button>
+              </div>
+
+              @if (entryMode() === 'auto') {
+                @if (!uploadedFileName()) {
+                  <div
+                    class="upload-dropzone"
+                    [class.dragging]="isDragging()"
+                    (dragover)="onDragOver($event)"
+                    (dragleave)="onDragLeave($event)"
+                    (drop)="onDrop($event)"
+                  >
+                    <i class="pi pi-cloud-upload upload-icon"></i>
+                    <p class="upload-title">Drag &amp; drop your ID document here</p>
+                    <p class="upload-or">or</p>
+                    <input
+                      id="kyc-file-input"
+                      class="visually-hidden"
+                      type="file"
+                      accept="image/*"
+                      (change)="onFileSelected($event)"
+                    />
+                    <label for="kyc-file-input" class="browse-button">
+                      <i class="pi pi-folder-open"></i>
+                      Browse Files
+                    </label>
+                    <p class="upload-hint">Aadhaar or PAN card &middot; JPG or PNG &middot; up to 10 MB</p>
+                  </div>
+                } @else {
+                  <div class="file-preview">
+                    @if (filePreviewUrl()) {
+                      <img [src]="filePreviewUrl()" class="file-thumbnail" alt="Uploaded document preview" />
+                    } @else {
+                      <div class="file-thumbnail file-thumbnail--icon"><i class="pi pi-file"></i></div>
+                    }
+                    <div class="file-info">
+                      <span class="file-name">{{ uploadedFileName() }}</span>
+                      @if (uploadedFileSize()) {
+                        <span class="file-size">{{ formatFileSize(uploadedFileSize()!) }}</span>
+                      }
+                      @if (ocrStage() === 'uploading') {
+                        <span class="status-text"><i class="pi pi-spin pi-spinner"></i> Uploading document…</span>
+                      } @else if (ocrStage() === 'analyzing') {
+                        <span class="status-text"><i class="pi pi-spin pi-spinner"></i> Analyzing document…</span>
+                      } @else if (extractedSummary()) {
+                        <span class="status-text status-text--success"><i class="pi pi-check-circle"></i> Extraction complete</span>
+                      } @else if (ocrError()) {
+                        <span class="status-text status-text--error"><i class="pi pi-exclamation-triangle"></i> Extraction failed</span>
+                      }
+                    </div>
+                    <button type="button" class="remove-file-button" (click)="removeFile()" aria-label="Remove file">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </div>
+                }
+                @if (extractedSummary()) {
+                  <div class="extracted-preview">
+                    <div class="extracted-preview-header">Extracted Details</div>
+                    <div class="review-grid">
+                      <div class="review-item">
+                        <span>Full Name</span>
+                        {{ registrationForm.value.first_name ? (registrationForm.value.first_name + ' ' + registrationForm.value.last_name) : 'Not extracted — please fill in manually' }}
+                      </div>
+                      <div class="review-item">
+                        <span>Date of Birth</span>
+                        {{ registrationForm.value.date_of_birth ? (registrationForm.value.date_of_birth | date: 'mediumDate') : 'Not extracted — please fill in manually' }}
+                      </div>
+                      <div class="review-item">
+                        <span>Document Type</span>
+                        {{ kycForm.value.doc_type === 'aadhaar' ? 'Aadhaar Card' : 'PAN Card' }}
+                      </div>
+                      <div class="review-item">
+                        <span>Document Number</span>
+                        {{ kycForm.value.document_number }}
+                      </div>
+                    </div>
+                    <div class="extracted-preview-footer">
+                      <i class="pi pi-info-circle"></i> {{ extractedSummary() }}
+                    </div>
+                  </div>
+                }
+                @if (ocrError()) {
+                  <div class="ocr-error"><i class="pi pi-exclamation-triangle"></i> {{ ocrError() }}</div>
+                }
+              } @else {
+                <p class="manual-entry-note"><i class="pi pi-info-circle"></i> You'll fill in every field yourself across the next few steps.</p>
+              }
+            </div>
+
+            <div class="step-actions">
+              <div class="step-actions-left"></div>
+              <div class="step-actions-right">
+                <p-button
+                  label="Save & Exit"
+                  icon="pi pi-save"
+                  severity="secondary"
+                  [text]="true"
+                  [loading]="savingDraft()"
+                  (onClick)="onSaveAndExit()"
+                ></p-button>
+                <p-button label="Next" icon="pi pi-arrow-right" iconPos="right" (onClick)="currentStep.set(2)"></p-button>
+              </div>
+            </div>
+          </ng-template>
+        </p-step-panel>
+
+        <!-- Step 2: Registration Details -->
+        <p-step-panel [value]="2">
           <ng-template #content let-activateCallback="activateCallback">
             <div class="step-content">
               <div class="step-header">
@@ -44,12 +187,25 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label for="phone_number">Primary Phone Number <span class="required">*</span></label>
-                    <input pInputText id="phone_number" formControlName="phone_number" placeholder="e.g. +919876543210" />
-                    @if (isInvalid(registrationForm, 'phone_number')) {<span class="field-error">Valid E.164 phone number required.</span>}
+                    <input
+                      pInputText
+                      id="phone_number"
+                      formControlName="phone_number"
+                      placeholder="e.g. 9876543210"
+                      (blur)="normalizePhoneField('phone_number')"
+                    />
+                    @if (isInvalid(registrationForm, 'phone_number')) {<span class="field-error">Enter a valid 10-digit mobile number, or a full number with country code (e.g. +919876543210).</span>}
                   </div>
                   <div class="form-group">
                     <label for="alternate_mobile">Alternate Mobile</label>
-                    <input pInputText id="alternate_mobile" formControlName="alternate_mobile" placeholder="Optional" />
+                    <input
+                      pInputText
+                      id="alternate_mobile"
+                      formControlName="alternate_mobile"
+                      placeholder="Optional"
+                      (blur)="normalizePhoneField('alternate_mobile')"
+                    />
+                    @if (isInvalid(registrationForm, 'alternate_mobile')) {<span class="field-error">Enter a valid 10-digit mobile number, or a full number with country code (e.g. +919876543210).</span>}
                   </div>
                 </div>
 
@@ -89,13 +245,26 @@
             </div>
             
             <div class="step-actions">
-              <p-button label="Next" (onClick)="nextStep(registrationForm, 2)"></p-button>
+              <div class="step-actions-left">
+                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(1)"></p-button>
+              </div>
+              <div class="step-actions-right">
+                <p-button
+                  label="Save & Exit"
+                  icon="pi pi-save"
+                  severity="secondary"
+                  [text]="true"
+                  [loading]="savingDraft()"
+                  (onClick)="onSaveAndExit()"
+                ></p-button>
+                <p-button label="Next" icon="pi pi-arrow-right" iconPos="right" (onClick)="nextStep(registrationForm, 3)"></p-button>
+              </div>
             </div>
           </ng-template>
         </p-step-panel>
 
-        <!-- Step 2: Address -->
-        <p-step-panel [value]="2">
+        <!-- Step 3: Address -->
+        <p-step-panel [value]="3">
           <ng-template #content let-activateCallback="activateCallback">
             <div class="step-content">
               <div class="step-header">
@@ -164,20 +333,39 @@
             </div>
             
             <div class="step-actions">
-              <p-button label="Back" severity="secondary" (onClick)="prevStep(1)"></p-button>
-              <p-button label="Next" (onClick)="nextStep(addressForm, 3)"></p-button>
+              <div class="step-actions-left">
+                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(2)"></p-button>
+              </div>
+              <div class="step-actions-right">
+                <p-button
+                  label="Save & Exit"
+                  icon="pi pi-save"
+                  severity="secondary"
+                  [text]="true"
+                  [loading]="savingDraft()"
+                  (onClick)="onSaveAndExit()"
+                ></p-button>
+                <p-button label="Next" icon="pi pi-arrow-right" iconPos="right" (onClick)="nextStep(addressForm, 4)"></p-button>
+              </div>
             </div>
           </ng-template>
         </p-step-panel>
 
-        <!-- Step 3: KYC Upload -->
-        <p-step-panel [value]="3">
+        <!-- Step 4: KYC Upload -->
+        <p-step-panel [value]="4">
           <ng-template #content let-activateCallback="activateCallback">
             <div class="step-content">
               <div class="step-header">
                 <h2>KYC Documentation</h2>
                 <p>KYC (Know Your Customer) data is mandatory for regulatory compliance and safety auditing.</p>
               </div>
+
+              @if (entryMode() === 'auto' && extractedSummary()) {
+                <div class="info-callout">
+                  <i class="pi pi-check-circle"></i>
+                  <span>Document type and number were pre-filled from the ID you uploaded in Step 1. Review and edit if needed.</span>
+                </div>
+              }
 
               <form [formGroup]="kycForm" class="wizard-form">
                 <div class="form-row">
@@ -192,35 +380,49 @@
                   </div>
                 </div>
 
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="issue_date">Issue Date <span class="required">*</span></label>
-                    <p-datepicker formControlName="issue_date" [showIcon]="true" placeholder="Select Issue Date"></p-datepicker>
-                    @if (isInvalid(kycForm, 'issue_date')) {<span class="field-error">Issue date is required.</span>}
+                @if (kycForm.value.doc_type === 'passport') {
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="issue_date">Issue Date <span class="required">*</span></label>
+                      <p-datepicker formControlName="issue_date" [showIcon]="true" iconDisplay="input" placeholder="Select Issue Date"></p-datepicker>
+                      @if (isInvalid(kycForm, 'issue_date')) {<span class="field-error">Issue date is required.</span>}
+                    </div>
+                    <div class="form-group">
+                      <label for="expiry_date">Expiry Date <span class="required">*</span></label>
+                      <p-datepicker formControlName="expiry_date" [showIcon]="true" iconDisplay="input" placeholder="Select Expiry Date"></p-datepicker>
+                      @if (isInvalid(kycForm, 'expiry_date')) {<span class="field-error">Expiry date is required.</span>}
+                    </div>
                   </div>
-                  <div class="form-group">
-                    <label for="expiry_date">Expiry Date <span class="required">*</span></label>
-                    <p-datepicker formControlName="expiry_date" [showIcon]="true" placeholder="Select Expiry Date"></p-datepicker>
-                    @if (isInvalid(kycForm, 'expiry_date')) {<span class="field-error">Expiry date is required.</span>}
-                  </div>
-                </div>
-                
+                }
+
                 <div class="info-callout">
                   <i class="pi pi-info-circle"></i>
-                  <span>Ensure the document ID and dates strictly match the physical document. The backend service will run a pre-verification check against these inputs.</span>
+                  <span>Ensure the document ID (and dates, where applicable) strictly match the physical document. The backend service will run a pre-verification check against these inputs.</span>
                 </div>
               </form>
             </div>
             
             <div class="step-actions">
-              <p-button label="Back" severity="secondary" (onClick)="prevStep(2)"></p-button>
-              <p-button label="Review" (onClick)="nextStep(kycForm, 4)"></p-button>
+              <div class="step-actions-left">
+                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(3)"></p-button>
+              </div>
+              <div class="step-actions-right">
+                <p-button
+                  label="Save & Exit"
+                  icon="pi pi-save"
+                  severity="secondary"
+                  [text]="true"
+                  [loading]="savingDraft()"
+                  (onClick)="onSaveAndExit()"
+                ></p-button>
+                <p-button label="Review" icon="pi pi-arrow-right" iconPos="right" (onClick)="nextStep(kycForm, 5)"></p-button>
+              </div>
             </div>
           </ng-template>
         </p-step-panel>
 
-        <!-- Step 4: Review -->
-        <p-step-panel [value]="4">
+        <!-- Step 5: Review -->
+        <p-step-panel [value]="5">
           <ng-template #content let-activateCallback="activateCallback">
             <div class="step-content">
               <div class="step-header">
@@ -250,12 +452,39 @@
             </div>
             
             <div class="step-actions">
-              <p-button label="Back" severity="secondary" (onClick)="prevStep(3)"></p-button>
-              <p-button label="Submit & Approve" severity="success" (onClick)="submitWizard()" [loading]="isSubmitting()"></p-button>
+              <div class="step-actions-left">
+                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(4)"></p-button>
+              </div>
+              <div class="step-actions-right">
+                <p-button
+                  label="Save & Exit"
+                  icon="pi pi-save"
+                  severity="secondary"
+                  [text]="true"
+                  [loading]="savingDraft()"
+                  (onClick)="onSaveAndExit()"
+                ></p-button>
+                <p-button label="Submit & Approve" icon="pi pi-check" severity="success" (onClick)="submitWizard()" [loading]="isSubmitting()"></p-button>
+              </div>
             </div>
           </ng-template>
         </p-step-panel>
       </p-step-panels>
     </p-stepper>
   </div>
+
+  <p-dialog
+    header="Unsaved changes"
+    [visible]="showLeaveDialog()"
+    [modal]="true"
+    [closable]="false"
+    [style]="{ width: '420px' }"
+  >
+    <p>You have unsaved changes on this registration. What would you like to do?</p>
+    <div class="leave-dialog-actions">
+      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="onCancelLeave()"></p-button>
+      <p-button label="Discard & Leave" severity="danger" [text]="true" (onClick)="onDiscardAndLeave()"></p-button>
+      <p-button label="Save & Leave" [loading]="savingDraft()" (onClick)="onSaveAndLeave()"></p-button>
+    </div>
+  </p-dialog>
 </div>

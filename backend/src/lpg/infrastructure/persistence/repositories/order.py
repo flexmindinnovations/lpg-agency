@@ -175,6 +175,7 @@ class SqlAlchemyOrderRepository:
         order = Order(
             order_id=row.id,
             tenant_id=row.tenant_id,
+            order_number=row.order_number,
             branch_id=row.branch_id,
             customer_id=row.customer_id,
             address_id=row.address_id,
@@ -205,6 +206,7 @@ class SqlAlchemyOrderRepository:
             row = OrderModel(
                 id=order.id,
                 tenant_id=order.tenant_id,
+                order_number=order.order_number,
                 branch_id=order.branch_id,
                 customer_id=order.customer_id,
                 address_id=order.address_id,

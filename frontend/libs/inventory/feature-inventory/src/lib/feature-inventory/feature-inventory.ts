@@ -26,7 +26,6 @@ import { Textarea } from 'primeng/textarea';
 import {
   AdminCylinderTypeService,
   AdminWarehouseService,
-  AuthService,
   DeliveryService,
   InventoryService,
   type AppError,
@@ -38,7 +37,7 @@ import {
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, StatusChipCell, toSentenceCase } from '@lpg/shared/ui';
 
 const CYLINDER_STATUSES = [
   'filled',
@@ -94,18 +93,13 @@ export class FeatureInventory implements OnInit {
   private readonly inventoryService = inject(InventoryService);
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly deliveryService = inject(DeliveryService);
-  protected readonly auth = inject(AuthService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
 
-  protected readonly hasReconcileOrAdjust = computed(() => {
-    const permissions = this.auth.principal()?.permissions;
-    return (permissions?.has('reconciliation:approve') || permissions?.has('inventory:adjust')) ?? false;
-  });
-  protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({ label: s, value: s }));
+  protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({ label: toSentenceCase(s), value: s }));
 
   protected readonly locationType = signal<InventoryLocationType>('warehouse');
   protected readonly locationRefId = signal<string | null>(null);

@@ -39,6 +39,8 @@ dependencies = [
     "qrcode[pil]>=8.0",
     "python-barcode>=0.15.1",
     "gunicorn>=26.0.0",
+    "rapidocr>=3.9.2",
+    "onnxruntime>=1.29.0",
 ]
 
 [dependency-groups]
@@ -295,6 +297,7 @@ ignore_imports = [
     # Area J (Phase 8): dependencies/customer.py wires customer repository
     "lpg.api.v1.dependencies.customer -> lpg.infrastructure.persistence.repositories.customer",
     "lpg.api.v1.dependencies.customer -> lpg.infrastructure.security.field_encryption",
+    "lpg.api.v1.dependencies.customer -> lpg.infrastructure.persistence.repositories.onboarding_draft",
     # Area K (Phase 9): dependencies/delivery.py wires driver and vehicle repositories
     "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.driver",
     "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.vehicle",
@@ -302,6 +305,7 @@ ignore_imports = [
     # Inventory Management: dependencies/inventory.py wires the location, GRN
     # and reconciliation-record repositories.
     "lpg.api.v1.dependencies.inventory -> lpg.infrastructure.persistence.repositories.inventory",
+    "lpg.api.v1.dependencies.inventory -> lpg.infrastructure.persistence.repositories.reference_number",
     # Order Management: dependencies/order.py wires the order, cancellation-
     # record and proof-of-delivery repositories, plus (for bulk-cancel's
     # fresh-transaction-per-order factory) the inventory location repository.
@@ -310,6 +314,17 @@ ignore_imports = [
     # get_cancel_order_use_case_factory (Phase 12) also needs a fresh route
     # repository per order, same reasoning as the inventory one above.
     "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.route",
+    # Shared reference-number sequence: dependencies/{accounting,complaint,order}.py
+    # each wire the same concrete repository to number invoices/credit notes/
+    # cash handovers/complaints/orders — one seam per module, same
+    # composition-root role as everything else in this list.
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.reference_number",
+    "lpg.api.v1.dependencies.complaint -> lpg.infrastructure.persistence.repositories.reference_number",
+    "lpg.api.v1.dependencies.order -> lpg.infrastructure.persistence.repositories.reference_number",
+    # dependencies/license.py wires the license/linked-device repository and
+    # the Redis-backed license status cache.
+    "lpg.api.v1.dependencies.license -> lpg.infrastructure.persistence.repositories.license",
+    "lpg.api.v1.dependencies.license -> lpg.infrastructure.license.license_status_cache",
     "lpg.api.v1.dependencies.cylinder_ledger -> lpg.infrastructure.persistence.repositories.cylinder_ledger",
     "lpg.api.v1.dependencies.printing -> lpg.infrastructure.printing.engine",
     # R5: dependencies/accounting.py wires the accounting repository and (for

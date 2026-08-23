@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
 from lpg.domain.tenant_admin.employee import Employee
 from lpg.infrastructure.persistence.models.tenant import EmployeeModel
+from lpg.infrastructure.persistence.repositories.reference_number import (
+    SqlAlchemyReferenceNumberSequence,
+)
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -33,11 +36,15 @@ class SqlAlchemyEmployeeRepository:
     def next_id(self) -> uuid.UUID:
         return uuid.uuid4()
 
-    async def next_employee_code(self) -> str:
-        stmt = select(func.nextval("tenant.employee_code_seq"))
-        result = await self._uow.session.execute(stmt)
-        seq_val = result.scalar_one()
-        return f"EMP{seq_val:04d}"
+    async def next_employee_code(self, tenant_id: uuid.UUID) -> str:
+        # Tenant-scoped, unlike the raw global `tenant.employee_code_seq`
+        # this replaced — that sequence had no RLS/tenant predicate at all
+        # (`nextval()` is a plain function call, not a table query), so
+        # employee-code allocation leaked a shared cross-tenant counter.
+        sequence = SqlAlchemyReferenceNumberSequence(
+            self._uow, tenant_id, entity_type="employee", prefix="EMP", pad_width=4
+        )
+        return await sequence.next()
 
     # ------------------------------------------------------------------
     # Mapping helpers

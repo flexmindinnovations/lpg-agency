@@ -85,15 +85,21 @@ class SqlAlchemyReportingRepository(ReportingRepository):
     async def get_customer_consumption(
         self, tenant_id: uuid.UUID
     ) -> list[CustomerConsumptionRecord]:
+        # The materialized view only carries customer_id — joined live
+        # against customer.customer for the display name rather than
+        # baking it into the view, so a renamed customer shows correctly
+        # without waiting on the next materialized-view refresh.
         stmt = sa.text("""
-            SELECT customer_id, avg_refill_interval_days
-            FROM rpt.mv_customer_consumption
-            WHERE tenant_id = :tenant_id
+            SELECT mv.customer_id, c.full_name AS customer_name, mv.avg_refill_interval_days
+            FROM rpt.mv_customer_consumption mv
+            JOIN customer.customer c ON c.id = mv.customer_id
+            WHERE mv.tenant_id = :tenant_id
         """)
         result = await self._session.execute(stmt, {"tenant_id": tenant_id})
         return [
             CustomerConsumptionRecord(
                 customer_id=row.customer_id,
+                customer_name=row.customer_name,
                 avg_refill_interval_days=float(row.avg_refill_interval_days),
             )
             for row in result.all()

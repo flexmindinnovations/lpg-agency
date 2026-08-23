@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { authGuard, permissionGuard } from '@lpg/shared/data-access';
+import { authGuard, licenseGuard, permissionGuard } from '@lpg/shared/data-access';
 
 /**
  * Routing foundation.
@@ -7,12 +7,13 @@ import { authGuard, permissionGuard } from '@lpg/shared/data-access';
  * Feature routes are lazy-loaded per feature library, matching the Nx boundary
  * rule (ADR-018) — so a route boundary and a module boundary are the same line.
  *
- * `/login` is a sibling of the shell-wrapped tree, not a child of it
- * (ADR-036) — it must be reachable without an existing session, and without
- * the sidebar/top-bar chrome `ShellLayout` renders. It is declared first so
- * the router matches it before ever trying `ShellLayout`'s own catch-all
- * child route. Every other route sits under `ShellLayout`, gated by
- * `authGuard`.
+ * `/login` and `/license-required` are siblings of the shell-wrapped tree,
+ * not children of it (ADR-036 for `/login`, same reasoning applies to the
+ * license gate) — both must be reachable without the sidebar/top-bar chrome
+ * `ShellLayout` renders. They are declared first so the router matches them
+ * before ever trying `ShellLayout`'s own catch-all child route. Every other
+ * route sits under `ShellLayout`, gated by `authGuard` then `licenseGuard`
+ * (auth must resolve first — `licenseGuard` needs a resolved principal).
  */
 export const appRoutes: Route[] = [
   {
@@ -20,9 +21,15 @@ export const appRoutes: Route[] = [
     loadChildren: () => import('@lpg/auth/feature-login').then((m) => m.authFeatureLoginRoutes),
   },
   {
+    path: 'license-required',
+    loadComponent: () =>
+      import('./license-required/license-required').then((m) => m.LicenseRequired),
+    title: 'License Required',
+  },
+  {
     path: '',
     loadComponent: () => import('./shell/shell-layout').then((m) => m.ShellLayout),
-    canActivate: [authGuard],
+    canActivate: [authGuard, licenseGuard],
     children: [
       {
         path: '',
@@ -159,6 +166,27 @@ export const appRoutes: Route[] = [
         data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Feature Flags', routerLink: '/admin/feature-flags' }] },
         loadChildren: () =>
           import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
+      },
+      {
+        path: 'admin/license/issuance',
+        canActivate: [permissionGuard('license:manage_platform')],
+        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'License Issuance', routerLink: '/admin/license/issuance' }] },
+        loadChildren: () =>
+          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseIssuanceRoutes),
+      },
+      {
+        path: 'admin/license/devices',
+        canActivate: [permissionGuard('license:manage_tenant')],
+        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Linked Devices', routerLink: '/admin/license/devices' }] },
+        loadChildren: () =>
+          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseDevicesRoutes),
+      },
+      {
+        path: 'admin/license',
+        canActivate: [permissionGuard('license:manage_tenant')],
+        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'License', routerLink: '/admin/license' }] },
+        loadChildren: () =>
+          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseRoutes),
       },
       {
         path: 'admin/users',

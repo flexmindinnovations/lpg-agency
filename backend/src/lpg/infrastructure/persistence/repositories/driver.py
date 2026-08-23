@@ -54,6 +54,7 @@ class SqlAlchemyDriverRepository:
 
     def _sync_row(self, row: DriverModel, driver: Driver) -> None:
         """Apply domain state to an existing ORM row (update path)."""
+        row.branch_id = driver.branch_id
         row.identity_user_id = driver.identity_user_id
         row.employee_id = driver.employee_id
         row.license_number = driver.license_number

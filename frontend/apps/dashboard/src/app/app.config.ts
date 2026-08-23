@@ -38,11 +38,22 @@ export const appConfig: ApplicationConfig = {
     // `API_BASE_URL`'s own docstring.
     { provide: API_BASE_URL, useValue: environment.apiUrl },
     provideHttpClient(
-      // Order matters: correlation ID is attached on the way out, the
-      // bearer token is attached (and a 401 gets one silent
-      // refresh-and-retry) next, and Problem Details is translated on the
-      // way back — after auth has had its chance to recover a request.
-      withInterceptors([correlationIdInterceptor, authInterceptor, problemDetailsInterceptor]),
+      // Order matters, and it's the reverse of what it looks like: Angular's
+      // interceptor chain nests so the *last* array entry sits closest to
+      // the real HTTP call, meaning its response-side operators (catchError
+      // etc.) run FIRST on the way back — before any earlier entry's. So
+      // authInterceptor must be last, not problemDetailsInterceptor: it
+      // needs to see the raw HttpErrorResponse from a 401 to run its
+      // refresh-and-retry / session-expired-dialog logic (the `error
+      // instanceof HttpErrorResponse` check in auth.interceptor.ts).
+      // Putting problemDetailsInterceptor closer to the backend converts
+      // every error to a plain AppError before authInterceptor ever sees
+      // it, silently disabling that check — this was a real, live bug
+      // (verified: a genuine 401 in the network tab produced no
+      // session-expired dialog) caused by exactly this ordering being
+      // backwards. correlationIdInterceptor is request-only (no response
+      // pipe), so its position relative to the other two doesn't matter.
+      withInterceptors([correlationIdInterceptor, problemDetailsInterceptor, authInterceptor]),
     ),
     // Overlay/transition animations (Dialog, Drawer, Toast, dropdowns) need
     // Angular's animation system. Loaded async so it is not in the initial

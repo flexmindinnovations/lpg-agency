@@ -4,4 +4,5 @@
 export interface CustomerConsumptionResponse {
   avg_refill_interval_days: number;
   customer_id: string;
+  customer_name: string;
 }

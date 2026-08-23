@@ -124,8 +124,13 @@ describe('DataGridComponent', () => {
     const fixture = create();
     const readySpy = jest.fn();
     fixture.componentInstance.ready.subscribe(readySpy);
+    const fakeEvent = { api: { refreshCells: jest.fn() } };
 
-    (fixture.componentInstance as unknown as { onGridReady: () => void }).onGridReady();
+    (
+      fixture.componentInstance as unknown as {
+        onGridReady: (event: typeof fakeEvent) => void;
+      }
+    ).onGridReady(fakeEvent);
 
     expect(readySpy).toHaveBeenCalledTimes(1);
   });

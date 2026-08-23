@@ -1,6 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { loginApiV1AuthLoginPost } from './generated/fn/authentication/login-api-v-1-auth-login-post';
 import { logoutApiV1AuthLogoutPost } from './generated/fn/authentication/logout-api-v-1-auth-logout-post';
@@ -10,8 +19,11 @@ import { otpVerifyApiV1AuthOtpVerifyPost } from './generated/fn/authentication/o
 import { passwordForgotApiV1AuthPasswordForgotPost } from './generated/fn/authentication/password-forgot-api-v-1-auth-password-forgot-post';
 import { passwordResetApiV1AuthPasswordResetPost } from './generated/fn/authentication/password-reset-api-v-1-auth-password-reset-post';
 import { refreshApiV1AuthRefreshPost } from './generated/fn/authentication/refresh-api-v-1-auth-refresh-post';
+import type { LicenseStatusResponse } from './generated/models/license-status-response';
 import type { PrincipalResponse } from './generated/models/principal-response';
 import { AuthPrincipal, AuthTokenStore } from './auth-token.store';
+import { LicenseService } from './license.service';
+import { LicenseStatusStore, type LicenseLifecycleState } from './license-status.store';
 import { WebSocketService } from './websocket.service';
 
 function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
@@ -21,6 +33,17 @@ function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
     role: response.role,
     permissions: new Set(response.permissions),
     email: response.email ?? null,
+  };
+}
+
+function toLicenseStatus(response: LicenseStatusResponse) {
+  return {
+    status: response.status as LicenseLifecycleState,
+    planTier: response.plan_tier,
+    keyPrefix: response.key_prefix,
+    activatedAt: response.activated_at,
+    expiresAt: response.expires_at,
+    graceEndsAt: response.grace_ends_at,
   };
 }
 
@@ -39,6 +62,8 @@ export class AuthService {
   private readonly config = inject(ApiConfiguration);
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly wsService = inject(WebSocketService);
+  private readonly licenseService = inject(LicenseService);
+  private readonly licenseStatusStore = inject(LicenseStatusStore);
 
   readonly accessToken = this.tokenStore.accessToken;
   readonly principal = this.tokenStore.principal;
@@ -120,6 +145,7 @@ export class AuthService {
       map(() => true),
       catchError(() => {
         this.tokenStore.clear();
+        this.licenseStatusStore.clear();
         this.wsService.disconnect();
         return of(false);
       }),
@@ -135,6 +161,7 @@ export class AuthService {
       catchError(() => of(undefined)),
       tap(() => {
         this.tokenStore.clear();
+        this.licenseStatusStore.clear();
         this.wsService.disconnect();
       }),
     );
@@ -147,8 +174,20 @@ export class AuthService {
       tap((principal) => {
         this.tokenStore.setSession(accessToken, toAuthPrincipal(principal));
         this.wsService.connect(accessToken);
+        this.fetchLicenseStatus();
       }),
       map(() => undefined),
     );
+  }
+
+  /** Fire-and-forget — see `LicenseStatusStore`'s own docstring for why a
+   * failure here must never block session hydration. */
+  private fetchLicenseStatus(): void {
+    this.licenseService
+      .getStatus()
+      .pipe(catchError(() => of(null)))
+      .subscribe((status) => {
+        if (status) this.licenseStatusStore.set(toLicenseStatus(status));
+      });
   }
 }

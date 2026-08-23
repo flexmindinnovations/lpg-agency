@@ -43,8 +43,6 @@
   </div>
   }
 
-  <p class="grid-hint">Click a vehicle's registration number to update its status.</p>
-
   <div class="grid-wrapper">
     <lpg-data-grid
       [rows]="vehicles()"
@@ -135,44 +133,103 @@
     </form>
   </p-drawer>
 
-  <!-- Update Status Modal -->
+  <!-- Vehicle Details Drawer -->
   <p-drawer
-    header="Update Vehicle Status"
-    [(visible)]="updateStatusModalVisible"
+    header="Vehicle Details"
+    [visible]="showDetailDrawer()"
+    (onHide)="closeDetails()"
     position="right"
     [modal]="true"
     styleClass="w-full"
     [style]="{ width: '100%', maxWidth: '32rem' }"
   >
-    <form id="updateVehicleStatusForm" [formGroup]="statusForm" (ngSubmit)="onSubmitStatus()" class="dialog-form">
-      <div class="form-group">
-        <label for="vehicle_status">Status</label>
-        <p-select
-          id="vehicle_status"
-          formControlName="status"
-          [options]="[
-            { label: 'Active', value: 'active' },
-            { label: 'Maintenance', value: 'maintenance' },
-            { label: 'Inactive', value: 'inactive' }
-          ]"
-          optionLabel="label"
-          optionValue="value"
-        ></p-select>
-      </div>
+    @if (selectedVehicle(); as vehicle) {
+      @if (!editMode()) {
+        <div class="detail-view">
+          <div class="detail-item">
+            <span class="detail-label">Registration Number</span>
+            <span class="detail-value">{{ vehicle.registration_number }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Make</span>
+            <span class="detail-value">{{ vehicle.make }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Model</span>
+            <span class="detail-value">{{ vehicle.model }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Ownership</span>
+            <span class="detail-value">{{ toSentenceCase(vehicle.ownership_type) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Capacity (Cylinders)</span>
+            <span class="detail-value">{{ vehicle.capacity_units }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <p-tag [value]="toSentenceCase(vehicle.status)" [severity]="statusSeverity(vehicle.status)" />
+          </div>
 
-      <div class="modal-actions">
-        <button
-          pButton
-          type="button"
-          severity="secondary"
-          (click)="showUpdateStatusModal.set(false)"
-        >
-          Cancel
-        </button>
-        <button pButton type="submit" [disabled]="statusForm.invalid || loading()">
-          Save Status
-        </button>
-      </div>
-    </form>
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+            <button *lpgHasPermission="'vehicles:manage'" pButton type="button" (click)="startEdit()">
+              <i pButtonIcon class="pi pi-pencil"></i>
+              <span pButtonLabel>Edit</span>
+            </button>
+          </div>
+        </div>
+      } @else {
+        <form id="editVehicleForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+          <div class="form-group">
+            <label for="edit_vehicle_make">Make</label>
+            <input pInputText id="edit_vehicle_make" formControlName="make" />
+          </div>
+
+          <div class="form-group">
+            <label for="edit_vehicle_model">Model</label>
+            <input pInputText id="edit_vehicle_model" formControlName="model" />
+          </div>
+
+          <div class="form-group">
+            <label for="edit_vehicle_ownership_type">Ownership Type</label>
+            <p-select
+              id="edit_vehicle_ownership_type"
+              formControlName="ownership_type"
+              [options]="ownershipOptions"
+              optionLabel="label"
+              optionValue="value"
+            ></p-select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_vehicle_capacity_units">Capacity (Cylinder Units)</label>
+            <input
+              pInputText
+              type="number"
+              id="edit_vehicle_capacity_units"
+              formControlName="capacity_units"
+              min="1"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="edit_vehicle_status">Status</label>
+            <p-select
+              id="edit_vehicle_status"
+              formControlName="status"
+              [options]="statusOptions"
+              optionLabel="label"
+              optionValue="value"
+            ></p-select>
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
+            <button pButton type="submit" [disabled]="editForm.invalid || saving()">Save Changes</button>
+          </div>
+        </form>
+      }
+    }
   </p-drawer>
 </div>

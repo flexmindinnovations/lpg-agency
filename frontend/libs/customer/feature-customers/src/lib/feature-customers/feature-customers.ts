@@ -11,9 +11,13 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { Location } from '@angular/common';
 
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
@@ -38,6 +42,8 @@ import {
   HasPermissionDirective,
   StatusChipCell,
 } from '@lpg/shared/ui';
+
+const MAX_KYC_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -72,6 +78,7 @@ import { TitleCasePipe } from '@angular/common';
     ButtonLabel,
     InputText,
     Drawer,
+    Dialog,
     IconField,
     InputIcon,
     Popover,
@@ -99,6 +106,9 @@ export class FeatureCustomers implements OnInit {
   private readonly messageService = inject(MessageService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
 
   protected readonly customers = signal<CustomerResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
@@ -106,6 +116,18 @@ export class FeatureCustomers implements OnInit {
   protected readonly kycDocuments = signal<KycDocumentResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
+
+  // Document preview — an in-app modal rather than `target="_blank"`, so
+  // there is always a visible close control regardless of what browser
+  // chrome is (or isn't) available in the surrounding environment.
+  protected readonly viewingDocumentUrl = signal<string | null>(null);
+  protected readonly viewingDocumentIsPdf = computed(() =>
+    /\.pdf(\?|$)/i.test(this.viewingDocumentUrl() ?? ''),
+  );
+  protected readonly viewingDocumentSafeUrl = computed<SafeResourceUrl | null>(() => {
+    const url = this.viewingDocumentUrl();
+    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+  });
 
   // Client-side filters — the backend's GET /customers only accepts
   // skip/limit/search (no type/status/kyc_status params), and the whole
@@ -138,6 +160,11 @@ export class FeatureCustomers implements OnInit {
   protected readonly showDetailDrawer = signal(false);
   protected readonly showAddAddressModal = signal(false);
   protected readonly showSubmitKycModal = signal(false);
+  protected readonly submitKycFile = signal<File | null>(null);
+  protected readonly submitKycFilePreviewUrl = signal<string | null>(null);
+  protected readonly submitKycFileError = signal<string | null>(null);
+  protected readonly submitKycDragging = signal(false);
+  protected readonly submitKycUploading = signal(false);
 
   // PrimeNG's Dialog has no built-in "return focus to trigger" behaviour —
   // matches `apps/dashboard/src/app/home/home.ts`'s documented pattern.
@@ -242,8 +269,9 @@ export class FeatureCustomers implements OnInit {
   ngOnInit(): void {
     this.reloadList();
     this.loadBranches();
-    
-    
+    this.openCustomerFromQueryParam();
+
+
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'c',
       alt: true,
@@ -288,6 +316,32 @@ export class FeatureCustomers implements OnInit {
         this.loading.set(false);
         this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load customers.' });
       }
+    });
+  }
+
+  /** Deep-link support for "Customer" links elsewhere in the app (e.g. the
+   * invoice detail drawer) — `?id=<uuid>` opens that customer's detail
+   * drawer directly, fetched by id rather than relying on it being present
+   * in the (paginated/searched) list already loaded on this page. The query
+   * param is then stripped via `Location.replaceState` (not `Router.navigate`,
+   * which re-enters the router pipeline and was found to reset component
+   * state) so a refresh/back-navigation doesn't re-trigger it. */
+  private openCustomerFromQueryParam(): void {
+    const customerId = this.route.snapshot.queryParamMap.get('id');
+    if (!customerId) return;
+
+    this.customerService.get(customerId).subscribe({
+      next: (customer) => {
+        this.viewCustomer(customer);
+        this.location.replaceState(this.location.path().split('?')[0]);
+      },
+      error: () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'That customer could not be found.',
+        });
+      },
     });
   }
 
@@ -376,29 +430,145 @@ export class FeatureCustomers implements OnInit {
     this.kycForm.reset({
       doc_type: 'aadhaar',
     });
+    this.clearSubmitKycFile();
     this.showSubmitKycModal.set(true);
   }
 
   protected closeSubmitKycModal(): void {
     this.showSubmitKycModal.set(false);
+    this.clearSubmitKycFile();
+  }
+
+  /** True when the selected doc_type already has a document on file —
+   * submitting will replace it, not add a duplicate (see `Customer.submit_kyc`
+   * on the backend). Surfaced in the dialog so that isn't a surprise. */
+  protected isReplacingExistingKycDoc(): boolean {
+    const docType = this.kycForm.controls.doc_type.value;
+    return this.kycDocuments().some((doc) => doc.doc_type === docType);
+  }
+
+  protected selectedKycDocTypeLabel(): string {
+    const docType = this.kycForm.controls.doc_type.value;
+    return this.kycDocTypeOptions.find((opt) => opt.value === docType)?.label ?? docType;
+  }
+
+  // Same drag-and-drop dropzone pattern as the onboarding wizard
+  // (customer-onboarding-wizard.component.ts) — visual and behavioral
+  // parity, so KYC upload doesn't look like two different features
+  // depending on which screen it's done from.
+  protected onKycFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.processSubmitKycFile(file);
+  }
+
+  protected onKycDragOver(event: DragEvent): void {
+    event.preventDefault();
+    this.submitKycDragging.set(true);
+  }
+
+  protected onKycDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    this.submitKycDragging.set(false);
+  }
+
+  protected onKycDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.submitKycDragging.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.processSubmitKycFile(file);
+  }
+
+  protected removeSubmitKycFile(): void {
+    this.clearSubmitKycFile();
+  }
+
+  protected formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  private processSubmitKycFile(file: File): void {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      this.submitKycFileError.set('Unsupported file type. Please upload a JPG, PNG, or PDF.');
+      return;
+    }
+    if (file.size > MAX_KYC_UPLOAD_BYTES) {
+      this.submitKycFileError.set('File is too large. Please upload a file under 10 MB.');
+      return;
+    }
+
+    this.submitKycFileError.set(null);
+    const existingPreviewUrl = this.submitKycFilePreviewUrl();
+    if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
+    this.submitKycFile.set(file);
+    this.submitKycFilePreviewUrl.set(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
+  }
+
+  private clearSubmitKycFile(): void {
+    this.submitKycFile.set(null);
+    this.submitKycFileError.set(null);
+    const existingPreviewUrl = this.submitKycFilePreviewUrl();
+    if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
+    this.submitKycFilePreviewUrl.set(null);
   }
 
   protected submitKyc(): void {
     const customer = this.selectedCustomer();
     if (!customer || this.kycForm.invalid) return;
 
+    const file = this.submitKycFile();
+    if (!file) {
+      // Guards against Enter-key form submission, which fires (ngSubmit)
+      // regardless of the submit button's [disabled] state.
+      this.submitKycFileError.set('A document photo or scan is required.');
+      return;
+    }
+
     const { doc_type, doc_reference } = this.kycForm.getRawValue();
-    this.customerService.submitKyc(customer.id, doc_type, doc_reference).subscribe({
+    this.submitKycUploading.set(true);
+    this.customerService.uploadKycAttachment(file).subscribe({
+      next: (res) => this.finishSubmitKyc(customer.id, doc_type, doc_reference, res.blob_ref),
+      error: () => {
+        this.submitKycUploading.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to upload the document. Please try again.',
+        });
+      },
+    });
+  }
+
+  private finishSubmitKyc(
+    customerId: string,
+    docType: string,
+    docReference: string,
+    fileUrl: string | null,
+  ): void {
+    this.customerService.submitKyc(customerId, docType, docReference, fileUrl).subscribe({
       next: () => {
+        this.submitKycUploading.set(false);
         this.messageService.add({ severity: 'success', summary: 'Success', detail: 'KYC Document submitted.' });
         this.closeSubmitKycModal();
-        this.loadKycDocuments(customer.id);
+        this.loadKycDocuments(customerId);
         this.reloadList();
       },
       error: (error: unknown) => {
+        this.submitKycUploading.set(false);
         this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
+  }
+
+  protected viewDocument(url: string): void {
+    this.viewingDocumentUrl.set(url);
+  }
+
+  protected closeDocumentPreview(): void {
+    this.viewingDocumentUrl.set(null);
   }
 
   protected verifyKycDoc(docId: string, status: 'verified' | 'rejected'): void {

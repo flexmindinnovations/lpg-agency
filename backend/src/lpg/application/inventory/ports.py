@@ -56,6 +56,7 @@ class GoodsReceiptNoteEntry:
     source_omc: str | None
     received_by: uuid.UUID
     received_at: datetime
+    grn_number: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +111,16 @@ class InventoryLocationRepository(Protocol):
         ...
 
 
+class GrnNumberSequence(Protocol):
+    """Generates the next tenant-scoped, human-readable GRN number
+    (`GRN000001`). Backed by the shared `SqlAlchemyReferenceNumberSequence`
+    — never manually overridden, so no collision-check is needed by the
+    caller.
+    """
+
+    async def next(self) -> str: ...
+
+
 class GoodsReceiptNoteRepository(Protocol):
     def next_id(self) -> uuid.UUID: ...
 
@@ -123,6 +134,7 @@ class GoodsReceiptNoteRepository(Protocol):
         quantity_received: int,
         source_omc: str | None,
         received_by: uuid.UUID,
+        grn_number: str,
     ) -> GoodsReceiptNoteEntry: ...
 
 

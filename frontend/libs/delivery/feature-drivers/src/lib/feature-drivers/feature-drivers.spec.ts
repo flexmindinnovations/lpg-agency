@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { MessageService } from 'primeng/api';
 import { FeatureDrivers } from './feature-drivers';
 import { ApiConfiguration } from '@lpg/shared/data-access';
 
@@ -15,6 +16,7 @@ describe('FeatureDrivers', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
+        MessageService,
       ],
     }).compileComponents();
 

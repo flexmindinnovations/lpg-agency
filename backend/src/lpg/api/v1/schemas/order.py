@@ -67,6 +67,7 @@ class OrderLineResponse(BaseModel):
 
 class OrderResponse(BaseModel):
     id: uuid.UUID
+    order_number: str | None = None
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
     customer_id: uuid.UUID

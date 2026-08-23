@@ -31,28 +31,20 @@
   [visible]="!!selectedInvoice()"
   (onHide)="clearSelection()"
   position="right"
-  styleClass="w-full md:w-[45vw]"
+  [modal]="true"
+  [style]="{ width: '100%', maxWidth: '55vw', minWidth: '32rem' }"
 >
-  <ng-template pTemplate="header">
+  <ng-template #header>
     <div class="detail-card-title">
       <h2>Invoice Details</h2>
-      <p class="invoice-num">{{ selectedInvoice()?.invoice_id }}</p>
+      <p class="invoice-num">{{ selectedInvoice()?.invoice_number ?? selectedInvoice()?.invoice_id }}</p>
     </div>
   </ng-template>
 
   @if (selectedInvoice(); as inv) {
     <div class="invoice-detail-content">
       <div class="detail-card-header">
-        <p-tag
-          [value]="inv.status"
-          [severity]="
-            inv.status === 'finalized'
-              ? 'success'
-              : inv.status === 'cancelled'
-                ? 'danger'
-                : 'info'
-          "
-        />
+        <p-tag [value]="toSentenceCase(inv.status)" [severity]="statusSeverity(inv.status)" />
       </div>
 
       <div class="detail-info-grid">
@@ -61,12 +53,12 @@
           <span class="info-value">{{ inv.issued_at | date:'mediumDate' }}</span>
         </div>
         <div class="info-item">
-          <span class="info-label">Order ID</span>
-          <span class="info-value">{{ inv.order_id }}</span>
+          <span class="info-label">Order</span>
+          <button type="button" class="info-value info-link" (click)="openOrderPreview(inv.order_id)">{{ inv.order_number ?? inv.order_id }}</button>
         </div>
         <div class="info-item">
           <span class="info-label">Customer</span>
-          <span class="info-value">{{ inv.customer_id }}</span>
+          <button type="button" class="info-value info-link" (click)="openCustomerPreview(inv.customer_id)">{{ inv.customer_consumer_number ?? inv.customer_id }}</button>
         </div>
         <div class="info-item">
           <span class="info-label">Amount</span>
@@ -83,7 +75,7 @@
             @for (line of inv.lines; track line.line_id) {
               <div class="line-item">
                 <div class="line-info">
-                  <span class="line-name">Cylinder Type {{ line.cylinder_type_id }}</span>
+                  <span class="line-name">{{ cylinderTypeNameById().get(line.cylinder_type_id) ?? 'Cylinder Type ' + line.cylinder_type_id }}</span>
                   <span class="line-qty">{{ line.quantity }} &times; {{ line.unit_price | currency:'INR' }}</span>
                 </div>
                 <span class="line-total">{{ line.total_amount | currency:'INR' }}</span>
@@ -134,3 +126,123 @@
     </div>
   }
 </p-drawer>
+
+<p-dialog
+  [visible]="showThermalDialog()"
+  (visibleChange)="!$event && closeThermalDialog()"
+  header="Thermal Receipt Preview"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '32rem' }"
+>
+  @if (thermalReceiptSafeUrl(); as url) {
+    <iframe #thermalFrame class="thermal-preview-frame" [src]="url" title="Thermal receipt preview"></iframe>
+  }
+  <div class="preview-footer">
+    <button pButton type="button" severity="secondary" (click)="openThermalReceiptInNewTab()">
+      <i pButtonIcon class="pi pi-external-link"></i>
+      <span pButtonLabel>Open in New Tab</span>
+    </button>
+    <button pButton type="button" (click)="printThermalReceipt()">
+      <i pButtonIcon class="pi pi-print"></i>
+      <span pButtonLabel>Print Receipt</span>
+    </button>
+  </div>
+</p-dialog>
+
+<p-dialog
+  [visible]="showCustomerPreview()"
+  (visibleChange)="!$event && showCustomerPreview.set(false)"
+  header="Customer"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '28rem' }"
+>
+  @if (customerPreviewLoading()) {
+    <p class="preview-loading">Loading…</p>
+  } @else if (customerPreview(); as c) {
+    <div class="preview-content">
+      <div class="preview-header">
+        <h3>{{ c.full_name }}</h3>
+        <p class="preview-subtitle">Consumer No: {{ c.consumer_number ?? '—' }}</p>
+      </div>
+      <div class="preview-tags">
+        <p-tag [value]="toSentenceCase(c.status)" [severity]="customerStatusSeverity(c.status)" />
+        <p-tag [value]="'KYC: ' + toSentenceCase(c.kyc_status)" [severity]="kycStatusSeverity(c.kyc_status)" />
+      </div>
+      <div class="preview-grid">
+        <div class="info-item">
+          <span class="info-label">Phone</span>
+          <span class="info-value">{{ c.phone_number }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Customer Type</span>
+          <span class="info-value capitalize">{{ c.customer_type }}</span>
+        </div>
+      </div>
+      @if (customerPreviewAddress(c); as address) {
+        <div class="info-item">
+          <span class="info-label">Address</span>
+          <span class="info-value">{{ address }}</span>
+        </div>
+      }
+    </div>
+  }
+</p-dialog>
+
+<p-dialog
+  [visible]="showOrderPreview()"
+  (visibleChange)="!$event && showOrderPreview.set(false)"
+  header="Order"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '32rem' }"
+>
+  @if (orderPreviewLoading()) {
+    <p class="preview-loading">Loading…</p>
+  } @else if (orderPreview(); as o) {
+    <div class="preview-content">
+      <div class="preview-header">
+        <h3>{{ o.order_number ?? o.id }}</h3>
+        <p-tag [value]="toSentenceCase(o.status)" [severity]="orderStatusSeverity(o.status)" />
+      </div>
+      <div class="preview-grid">
+        <div class="info-item">
+          <span class="info-label">Requested Date</span>
+          <span class="info-value">{{ o.requested_date | date:'mediumDate' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Booking Source</span>
+          <span class="info-value">{{ toSentenceCase(o.booking_source) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Payment Method</span>
+          <span class="info-value">{{ o.payment_method_preference ? toSentenceCase(o.payment_method_preference) : '—' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Total Amount</span>
+          <span class="info-value">{{ o.total_amount ? (o.total_amount | currency:'INR') : '—' }}</span>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Delivery Address</span>
+        <span class="info-value">{{ o.delivery_address.address_line }}</span>
+      </div>
+
+      <div class="lines-section">
+        <h3 class="section-heading">Line Items</h3>
+        <div class="line-list">
+          @for (line of o.lines; track line.id) {
+            <div class="line-item">
+              <div class="line-info">
+                <span class="line-name">{{ cylinderTypeNameById().get(line.cylinder_type_id) ?? 'Cylinder Type ' + line.cylinder_type_id }}</span>
+                <span class="line-qty">Ordered {{ line.quantity_ordered }} &middot; Delivered {{ line.quantity_delivered }}</span>
+              </div>
+              <span class="line-total">{{ line.unit_price ? (line.unit_price | currency:'INR') : '—' }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</p-dialog>

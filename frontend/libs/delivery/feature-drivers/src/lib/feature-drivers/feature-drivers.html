@@ -127,44 +127,113 @@
     </form>
   </p-drawer>
 
-  <!-- Update Status Modal -->
+  <!-- Driver Details Drawer -->
   <p-drawer
-    header="Update Driver Status"
-    [(visible)]="updateStatusModalVisible"
+    header="Driver Details"
+    [visible]="showDetailDrawer()"
+    (onHide)="closeDetails()"
     position="right"
     [modal]="true"
     styleClass="w-full"
     [style]="{ width: '100%', maxWidth: '32rem' }"
   >
-    <form id="updateDriverStatusForm" [formGroup]="statusForm" (ngSubmit)="onSubmitStatus()" class="dialog-form">
-      <div class="form-group">
-        <label for="status">Duty Status</label>
-        <p-select
-          id="status"
-          formControlName="status"
-          [options]="[
-            { label: 'Active', value: 'active' },
-            { label: 'On Leave', value: 'on_leave' },
-            { label: 'Inactive', value: 'inactive' }
-          ]"
-          optionLabel="label"
-          optionValue="value"
-        ></p-select>
-      </div>
+    @if (selectedDriver(); as driver) {
+      @if (!editMode()) {
+        <div class="detail-view">
+          <div class="detail-item">
+            <span class="detail-label">Employee Code</span>
+            <span class="detail-value">{{ employeeCodeById().get(driver.employee_id) ?? driver.employee_id }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Branch</span>
+            <span class="detail-value">{{ branchNameById().get(driver.branch_id) ?? driver.branch_id }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">License Number</span>
+            <span class="detail-value">{{ driver.license_number }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">License Expiry</span>
+            <span class="detail-value">{{ driver.license_expiry_date ?? '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Duty Status</span>
+            <p-tag [value]="toSentenceCase(driver.status)" [severity]="statusSeverity(driver.status)" />
+          </div>
 
-      <div class="modal-actions">
-        <button
-          pButton
-          type="button"
-          severity="secondary"
-          (click)="showUpdateStatusModal.set(false)"
-        >
-          Cancel
-        </button>
-        <button pButton type="submit" [disabled]="statusForm.invalid || loading()">
-          Save Status
-        </button>
-      </div>
-    </form>
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+            <button *lpgHasPermission="'drivers:manage'" pButton type="button" (click)="startEdit()">
+              <i pButtonIcon class="pi pi-pencil"></i>
+              <span pButtonLabel>Edit</span>
+            </button>
+          </div>
+        </div>
+      } @else {
+        <form id="editDriverForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+          <div class="form-group">
+            <label for="edit_employee_id">Employee</label>
+            <p-select
+              id="edit_employee_id"
+              formControlName="employee_id"
+              [options]="allEmployeesDisplay()"
+              optionLabel="_displayName"
+              optionValue="id"
+              placeholder="Select an employee"
+              styleClass="w-full"
+              appendTo="body"
+            ></p-select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_branch_id">Branch</label>
+            <p-select
+              id="edit_branch_id"
+              formControlName="branch_id"
+              [options]="branches()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select Branch"
+              appendTo="body"
+            ></p-select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_license_number">License Number</label>
+            <input pInputText id="edit_license_number" formControlName="license_number" />
+          </div>
+
+          <div class="form-group">
+            <label for="edit_license_expiry_date">License Expiry Date</label>
+            <p-datepicker
+              id="edit_license_expiry_date"
+              formControlName="license_expiry_date"
+              [showIcon]="true"
+              iconDisplay="input"
+              dateFormat="dd-mm-yy"
+              placeholder="dd-mm-yyyy"
+              appendTo="body"
+              [fluid]="true"
+            ></p-datepicker>
+          </div>
+
+          <div class="form-group">
+            <label for="edit_status">Duty Status</label>
+            <p-select
+              id="edit_status"
+              formControlName="status"
+              [options]="statusOptions"
+              optionLabel="label"
+              optionValue="value"
+            ></p-select>
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
+            <button pButton type="submit" [disabled]="editForm.invalid || saving()">Save Changes</button>
+          </div>
+        </form>
+      }
+    }
   </p-drawer>
 </div>

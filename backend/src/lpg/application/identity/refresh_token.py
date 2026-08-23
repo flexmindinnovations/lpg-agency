@@ -18,8 +18,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command
-from lpg.application.common.errors import RefreshTokenInvalidError
+from lpg.application.common.errors import (
+    LicenseExpiredError,
+    LicenseNotActivatedError,
+    RefreshTokenInvalidError,
+)
 from lpg.application.identity.tokens import TokenPair, issue_tokens
+from lpg.domain.license.license import LicenseLifecycleState
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -31,6 +36,7 @@ if TYPE_CHECKING:
         RefreshTokenRepository,
         TokenHasher,
     )
+    from lpg.application.license.ports import LicenseStatusChecker
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +52,7 @@ class RefreshTokenUseCase:
         permission_repository: PermissionRepository,
         token_hasher: TokenHasher,
         jwt_signer: JwtSigner,
+        license_status_checker: LicenseStatusChecker,
         *,
         refresh_token_ttl: timedelta,
     ) -> None:
@@ -54,6 +61,7 @@ class RefreshTokenUseCase:
         self._permission_repository = permission_repository
         self._token_hasher = token_hasher
         self._jwt_signer = jwt_signer
+        self._license_status_checker = license_status_checker
         self._refresh_token_ttl = refresh_token_ttl
 
     async def execute(self, command: RefreshTokenCommand) -> TokenPair:
@@ -79,6 +87,17 @@ class RefreshTokenUseCase:
         if user is None or not user.is_active:
             msg = "Session expired or invalid. Please log in again."
             raise RefreshTokenInvalidError(msg)
+
+        # `user.tenant_id is None` is a `super_admin` account (D-01: operates
+        # above tenant scope) — no single tenant's license applies to it.
+        if user.tenant_id is not None:
+            license_status = await self._license_status_checker.get_status(user.tenant_id)
+            if license_status is LicenseLifecycleState.PENDING_ACTIVATION:
+                msg = "This tenant's license has not been activated."
+                raise LicenseNotActivatedError(msg, tenant_id=str(user.tenant_id))
+            if license_status in (LicenseLifecycleState.BLOCKED, LicenseLifecycleState.REVOKED):
+                msg = "This tenant's license has expired."
+                raise LicenseExpiredError(msg, tenant_id=str(user.tenant_id))
 
         new_pair = await issue_tokens(
             user,

@@ -6,13 +6,17 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.accounting.ports import (
+    CashHandoverNumberSequence,
     CashHandoverRepository,
+    CreditNoteNumberSequence,
     CreditNoteRepository,
     InvoiceRepository,
 )
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.identity.ports import AuthenticatedPrincipal
 
 
 def get_invoice_repository(
@@ -61,3 +65,36 @@ def get_credit_note_repository(
 
     uow = typing.cast("SqlAlchemyUnitOfWork", unit_of_work)
     return SqlAlchemyCreditNoteRepository(uow)
+
+
+def get_credit_note_number_sequence(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+) -> CreditNoteNumberSequence:
+    from lpg.infrastructure.persistence.repositories.reference_number import (
+        SqlAlchemyReferenceNumberSequence,
+    )
+
+    return SqlAlchemyReferenceNumberSequence(
+        unit_of_work,  # type: ignore[arg-type]
+        principal.tenant_id,
+        entity_type="credit_note",
+        prefix="CRN",
+        include_year=True,
+    )
+
+
+def get_cash_handover_number_sequence(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+) -> CashHandoverNumberSequence:
+    from lpg.infrastructure.persistence.repositories.reference_number import (
+        SqlAlchemyReferenceNumberSequence,
+    )
+
+    return SqlAlchemyReferenceNumberSequence(
+        unit_of_work,  # type: ignore[arg-type]
+        principal.tenant_id,
+        entity_type="cash_handover",
+        prefix="CSH",
+    )

@@ -34,6 +34,7 @@ class GstFilingRecord:
 @dataclass(frozen=True, slots=True)
 class CustomerConsumptionRecord:
     customer_id: uuid.UUID
+    customer_name: str
     avg_refill_interval_days: float
 
 

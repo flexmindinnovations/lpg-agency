@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal, type Type } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, type Type } from '@angular/core';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { ColDef, GridOptions } from 'ag-grid-community';
+import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
 
 // AG Grid 33+ uses a modular architecture — features (row selection, column
 // filters, etc.) are no-ops unless their module is registered first. This is
@@ -150,7 +150,7 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
       [columnDefs]="columnDefs()"
       [gridOptions]="gridOptions()"
       [attr.aria-label]="ariaLabel()"
-      (gridReady)="onGridReady()"
+      (gridReady)="onGridReady($event)"
       (selectionChanged)="onSelectionChanged($event)"
     />
   `,
@@ -263,12 +263,51 @@ export class DataGridComponent<TRow = unknown> {
 
   readonly selectionChange = output<TRow[]>();
 
-  protected onGridReady(): void {
+  /**
+   * AG Grid creates `cellRenderer` components dynamically via
+   * `ViewContainerRef.createComponent()`, outside this component's own
+   * template — and under zoneless change detection, the very first paint of
+   * those components can silently lose a race against whatever else is in
+   * flight when the grid's row data first arrives (reliably reproduces when
+   * session/auth hydration is still resolving concurrently, e.g. right after
+   * sign-in). No exception is thrown and no instance is even created —
+   * `api.getCellRendererInstances()` reports zero — so there is nothing for
+   * the renderer components themselves to detect or recover from; only a
+   * later `api.refreshCells({ force: true })` can retroactively create them,
+   * and only reliably once whatever was racing it has settled. Fixed once
+   * here, centrally, rather than in every cell-renderer component: every
+   * feature using this grid gets it automatically.
+   */
+  private gridApi: GridApi<TRow> | undefined;
+
+  constructor() {
+    effect(() => {
+      this.rowData();
+      this.scheduleCellRendererRefresh();
+    });
+  }
+
+  protected onGridReady(event: GridReadyEvent<TRow>): void {
+    this.gridApi = event.api;
     this.ready.emit();
+    this.scheduleCellRendererRefresh();
   }
 
   protected onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectionChange.emit(selectedRows as TRow[]);
+  }
+
+  /**
+   * Deferred to a fresh macrotask rather than called synchronously from
+   * whatever signal write triggered it — the whole point is to run *after*
+   * the current burst of concurrent async work has drained, since that's
+   * the condition under which AG Grid's own first-paint attempt was
+   * observed to fail.
+   */
+  private scheduleCellRendererRefresh(): void {
+    const api = this.gridApi;
+    if (!api) return;
+    setTimeout(() => api.refreshCells({ force: true }), 0);
   }
 }

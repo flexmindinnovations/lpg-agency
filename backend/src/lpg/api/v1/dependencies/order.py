@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 
+from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work, get_unit_of_work_factory
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
+from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.order.ports import (
     CancellationRecordRepository,
     CreditLimitEvaluator,
     CylinderCapPolicy,
+    OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryRepository,
 )
@@ -31,6 +34,22 @@ def get_order_repository(
     from lpg.infrastructure.persistence.repositories.order import SqlAlchemyOrderRepository
 
     return SqlAlchemyOrderRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_order_number_sequence(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+) -> OrderNumberSequence:
+    from lpg.infrastructure.persistence.repositories.reference_number import (
+        SqlAlchemyReferenceNumberSequence,
+    )
+
+    return SqlAlchemyReferenceNumberSequence(
+        unit_of_work,  # type: ignore[arg-type]
+        principal.tenant_id,
+        entity_type="order",
+        prefix="ORD",
+    )
 
 
 def get_cancellation_record_repository(

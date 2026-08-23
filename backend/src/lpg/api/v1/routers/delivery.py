@@ -29,8 +29,10 @@ from lpg.api.v1.schemas.delivery import (
     DriverResponse,
     RegisterDriverRequest,
     RegisterVehicleRequest,
+    UpdateDriverAssignmentRequest,
     UpdateDriverLicenseRequest,
     UpdateDriverStatusRequest,
+    UpdateVehicleDetailsRequest,
     UpdateVehicleStatusRequest,
     VehiclePageResponse,
     VehicleResponse,
@@ -51,10 +53,14 @@ from lpg.application.delivery.use_cases import (
     RegisterDriverUseCase,
     RegisterVehicleCommand,
     RegisterVehicleUseCase,
+    UpdateDriverAssignmentCommand,
+    UpdateDriverAssignmentUseCase,
     UpdateDriverLicenseCommand,
     UpdateDriverLicenseUseCase,
     UpdateDriverStatusCommand,
     UpdateDriverStatusUseCase,
+    UpdateVehicleDetailsCommand,
+    UpdateVehicleDetailsUseCase,
     UpdateVehicleStatusCommand,
     UpdateVehicleStatusUseCase,
 )
@@ -242,6 +248,34 @@ async def update_driver_license(
     return _driver_to_response(driver)
 
 
+@router.patch(
+    "/drivers/{driver_id}/assignment",
+    response_model=DriverResponse,
+    dependencies=[Depends(require_permission("drivers:manage"))],
+)
+async def update_driver_assignment(
+    driver_id: uuid.UUID,
+    request: UpdateDriverAssignmentRequest,
+    repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> DriverResponse:
+    """Relink a driver profile to a (possibly different) employee/branch."""
+    use_case = UpdateDriverAssignmentUseCase(repository, unit_of_work)
+    try:
+        driver = await use_case.execute(
+            UpdateDriverAssignmentCommand(
+                driver_id=driver_id,
+                employee_id=request.employee_id,
+                branch_id=request.branch_id,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _driver_to_response(driver)
+
+
 # ==========================================================================
 # Vehicle endpoints
 # ==========================================================================
@@ -347,6 +381,36 @@ async def update_vehicle_status(
             UpdateVehicleStatusCommand(
                 vehicle_id=vehicle_id,
                 new_status=request.status,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _vehicle_to_response(vehicle)
+
+
+@router.patch(
+    "/vehicles/{vehicle_id}/details",
+    response_model=VehicleResponse,
+    dependencies=[Depends(require_permission("vehicles:manage"))],
+)
+async def update_vehicle_details(
+    vehicle_id: uuid.UUID,
+    request: UpdateVehicleDetailsRequest,
+    repository: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> VehicleResponse:
+    """Update a vehicle's make/model/ownership/capacity."""
+    use_case = UpdateVehicleDetailsUseCase(repository, unit_of_work)
+    try:
+        vehicle = await use_case.execute(
+            UpdateVehicleDetailsCommand(
+                vehicle_id=vehicle_id,
+                make=request.make,
+                model=request.model,
+                ownership_type=request.ownership_type,
+                capacity_units=request.capacity_units,
             )
         )
     except NotFoundError as exc:

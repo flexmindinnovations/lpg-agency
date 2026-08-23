@@ -42,6 +42,7 @@ from lpg.api.v1.dependencies.identity import (
 )
 from lpg.api.v1.dependencies.inventory import (
     get_goods_receipt_note_repository,
+    get_grn_number_sequence,
     get_inventory_location_repository,
     get_reconciliation_record_repository,
 )
@@ -68,6 +69,7 @@ from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.inventory.ports import (
     GoodsReceiptNoteEntry,
     GoodsReceiptNoteRepository,
+    GrnNumberSequence,
     InventoryLocationRepository,
     InventoryTransactionEntry,
     ReconciliationRecordEntry,
@@ -145,6 +147,7 @@ def _transaction_to_response(
 def _grn_to_response(entry: GoodsReceiptNoteEntry) -> GoodsReceiptResponse:
     return GoodsReceiptResponse(
         id=entry.id,
+        grn_number=entry.grn_number,
         tenant_id=entry.tenant_id,
         warehouse_id=entry.warehouse_id,
         cylinder_type_id=entry.cylinder_type_id,
@@ -257,11 +260,12 @@ async def record_goods_receipt(
         GoodsReceiptNoteRepository, Depends(get_goods_receipt_note_repository)
     ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    grn_number_sequence: Annotated[GrnNumberSequence, Depends(get_grn_number_sequence)],
 ) -> GoodsReceiptResponse:
     """Record a Goods Receipt Note — credits the warehouse's Filled balance."""
     actor_id = _require_actor(principal)
     use_case = RecordGoodsReceiptUseCase(
-        location_repository, grn_repository, unit_of_work
+        location_repository, grn_repository, unit_of_work, grn_number_sequence
     )
     grn = await use_case.execute(
         RecordGoodsReceiptCommand(

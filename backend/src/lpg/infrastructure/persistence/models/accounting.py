@@ -29,8 +29,11 @@ class InvoiceModel(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
     )
+    invoice_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     customer_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("customer.customer.id"))
+    customer_consumer_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     order_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("orders.order.id"), unique=True)
+    order_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     status: Mapped[str] = mapped_column(String(30))
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
@@ -107,6 +110,7 @@ class CashHandoverModel(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
     )
+    handover_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     driver_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("delivery.driver.id", ondelete="CASCADE")
     )
@@ -137,6 +141,7 @@ class CreditNoteModel(Base):
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("accounting.invoice.id", ondelete="CASCADE")
     )
+    credit_note_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     reason: Mapped[str] = mapped_column(Text())
     requested_by: Mapped[uuid.UUID] = mapped_column(Uuid())

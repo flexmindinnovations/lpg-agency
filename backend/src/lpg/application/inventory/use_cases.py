@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from lpg.application.inventory.ports import (
         GoodsReceiptNoteEntry,
         GoodsReceiptNoteRepository,
+        GrnNumberSequence,
         InventoryLocationRepository,
         InventoryTransactionPage,
         ReconciliationRecordEntry,
@@ -87,10 +88,12 @@ class RecordGoodsReceiptUseCase:
         location_repository: InventoryLocationRepository,
         grn_repository: GoodsReceiptNoteRepository,
         unit_of_work: UnitOfWork,
+        grn_number_sequence: GrnNumberSequence,
     ) -> None:
         self._location_repository = location_repository
         self._grn_repository = grn_repository
         self._unit_of_work = unit_of_work
+        self._grn_number_sequence = grn_number_sequence
         self._get_or_create = GetOrCreateInventoryLocationUseCase(location_repository)
 
     async def execute(self, command: RecordGoodsReceiptCommand) -> GoodsReceiptNoteEntry:
@@ -104,6 +107,7 @@ class RecordGoodsReceiptUseCase:
         )
         await self._location_repository.save(location)
 
+        grn_number = await self._grn_number_sequence.next()
         grn = await self._grn_repository.create(
             grn_id=self._grn_repository.next_id(),
             tenant_id=command.tenant_id,
@@ -112,6 +116,7 @@ class RecordGoodsReceiptUseCase:
             quantity_received=command.quantity_received,
             source_omc=command.source_omc,
             received_by=command.received_by,
+            grn_number=grn_number,
         )
         await self._unit_of_work.commit()
         return grn

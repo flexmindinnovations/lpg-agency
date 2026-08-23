@@ -32,3 +32,30 @@
   color: var(--color-text-secondary);
   margin: 0;
 }
+
+.detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  flex: 1;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: var(--typography-caption-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-value {
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-primary);
+}

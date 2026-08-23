@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
@@ -79,18 +79,30 @@ function errorMessageFor(error: unknown): string {
           </div>
 
           <div class="form-group">
-            <p-floatlabel variant="on" class="login-card__float-label">
-              <input
-                pInputPassword
-                id="login-password"
-                type="password"
-                formControlName="password"
-                autocomplete="current-password"
-                class="login-card__input"
-                [attr.aria-invalid]="passwordInvalid()"
-              />
-              <label for="login-password">Password</label>
-            </p-floatlabel>
+            <div class="password-field">
+              <p-floatlabel variant="on" class="login-card__float-label">
+                <input
+                  #passwordInput
+                  pInputPassword
+                  id="login-password"
+                  type="password"
+                  formControlName="password"
+                  autocomplete="current-password"
+                  class="login-card__input password-field__input"
+                  [attr.aria-invalid]="passwordInvalid()"
+                />
+                <label for="login-password">Password</label>
+              </p-floatlabel>
+              <button
+                type="button"
+                class="password-field__toggle"
+                tabindex="-1"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
+              >
+                <i class="pi" [class.pi-eye]="!passwordVisible()" [class.pi-eye-slash]="passwordVisible()"></i>
+              </button>
+            </div>
             @if (passwordInvalid()) {
               <span class="field-error">Password is required.</span>
             }
@@ -131,6 +143,11 @@ function errorMessageFor(error: unknown): string {
         font-size: var(--typography-body-font-size);
       }
 
+      p-message {
+        display: block;
+        margin-block-end: var(--spacing-lg);
+      }
+
       .login-card__body {
         display: flex;
         flex-direction: column;
@@ -144,6 +161,34 @@ function errorMessageFor(error: unknown): string {
 
       .login-card__input {
         width: 100%;
+      }
+
+      .password-field {
+        position: relative;
+      }
+
+      .password-field__input {
+        padding-inline-end: 2.5rem;
+      }
+
+      .password-field__toggle {
+        position: absolute;
+        inset-inline-end: var(--spacing-sm);
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        padding: 0;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        z-index: 1;
+      }
+
+      .password-field__toggle:hover {
+        color: var(--color-text-primary);
       }
 
       .login-card__footer {
@@ -185,6 +230,12 @@ export class LoginPage {
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
+  // `pInputPassword` is a bare directive with no `exportAs`, so a template
+  // reference variable (`#passwordInput`) resolves to the native element —
+  // `read: InputPassword` is what actually gets the directive instance
+  // (and its `mask`/`toggleMask()` state) off that same element.
+  private readonly passwordInput = viewChild('passwordInput', { read: InputPassword });
+
   protected readonly form = this.formBuilder.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(12)]],
@@ -198,6 +249,14 @@ export class LoginPage {
   protected passwordInvalid(): boolean {
     const control = this.form.controls.password;
     return control.invalid && (control.dirty || control.touched);
+  }
+
+  protected passwordVisible(): boolean {
+    return this.passwordInput()?.mask() === false;
+  }
+
+  protected togglePasswordVisibility(): void {
+    this.passwordInput()?.toggleMask();
   }
 
   protected submit(): void {

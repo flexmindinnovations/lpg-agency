@@ -43,6 +43,8 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   'kyc:read': 'View customer KYC status and uploaded documents.',
   'ledger:read': 'View cylinder ledger and transaction history.',
   'ledger:write': 'Record entries in the cylinder ledger.',
+  'license:manage_platform': 'Issue, revoke, and manage every tenant’s license (Super Admin).',
+  'license:manage_tenant': 'Activate this tenant’s license and manage its linked devices.',
   'orders:manage': 'Create, edit, and cancel customer orders.',
   'orders:read': 'View order details and status.',
   'pricing:manage': 'Update price lists and discounts.',

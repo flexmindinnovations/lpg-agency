@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid  # noqa: TC003
 from datetime import date, datetime  # noqa: TC003
 from decimal import Decimal  # noqa: TC003
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -16,11 +17,13 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     Uuid,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lpg.infrastructure.persistence.database import Base
@@ -174,3 +177,38 @@ class CustomerNumberSequenceModel(Base):
         Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE"), primary_key=True
     )
     next_value: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
+class CustomerOnboardingDraftModel(Base):
+    """A staff user's in-progress onboarding wizard state — see
+    `domain/customer/onboarding_draft.py`'s module docstring for why this is
+    a thin JSON-holding record, not a full aggregate.
+    """
+
+    __tablename__ = "onboarding_draft"
+    __table_args__ = {"schema": "customer"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid())
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("tenant.branch.id", ondelete="SET NULL"), nullable=True
+    )
+    current_step: Mapped[int] = mapped_column(SmallInteger(), server_default=text("1"))
+    registration_data: Mapped[dict[str, Any]] = mapped_column(
+        JSONB(), server_default=text("'{}'::jsonb")
+    )
+    address_data: Mapped[dict[str, Any]] = mapped_column(
+        JSONB(), server_default=text("'{}'::jsonb")
+    )
+    kyc_data: Mapped[dict[str, Any]] = mapped_column(JSONB(), server_default=text("'{}'::jsonb"))
+    kyc_document_blob_ref: Mapped[str | None] = mapped_column(Text(), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )

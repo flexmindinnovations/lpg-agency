@@ -5,6 +5,7 @@ export interface CreditNoteResponse {
   amount: string;
   approved_at: (string | null);
   approved_by: (string | null);
+  credit_note_number?: (string | null);
   id: string;
   invoice_id: string;
   is_approved: boolean;

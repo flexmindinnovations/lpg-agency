@@ -3,7 +3,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from lpg.api.v1.dependencies.complaint import get_complaint_unit_of_work
+from lpg.api.v1.dependencies.complaint import (
+    get_complaint_number_sequence,
+    get_complaint_unit_of_work,
+)
 from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.api.v1.schemas.complaint import (
@@ -14,7 +17,7 @@ from lpg.api.v1.schemas.complaint import (
     ResolveComplaintRequest,
 )
 from lpg.application.common.ports import TenantContext
-from lpg.application.complaint.ports import ComplaintUnitOfWork
+from lpg.application.complaint.ports import ComplaintNumberSequence, ComplaintUnitOfWork
 from lpg.application.complaint.use_cases import (
     AssignComplaintCommand,
     AssignComplaintUseCase,
@@ -32,8 +35,11 @@ async def raise_complaint(
     request: RaiseComplaintRequest,
     uow: Annotated[ComplaintUnitOfWork, Depends(get_complaint_unit_of_work)],
     principal: Annotated[TenantContext, Depends(require_permission("complaints.manage"))],
+    complaint_number_sequence: Annotated[
+        ComplaintNumberSequence, Depends(get_complaint_number_sequence)
+    ],
 ) -> dict[str, uuid.UUID]:
-    use_case = RaiseComplaintUseCase(uow)
+    use_case = RaiseComplaintUseCase(uow, complaint_number_sequence)
     command = RaiseComplaintCommand(
         customer_id=request.customer_id,
         category=request.category,

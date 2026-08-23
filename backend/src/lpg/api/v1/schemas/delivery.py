@@ -62,6 +62,11 @@ class UpdateDriverLicenseRequest(BaseModel):
     license_expiry_date: date | None = None
 
 
+class UpdateDriverAssignmentRequest(BaseModel):
+    employee_id: uuid.UUID
+    branch_id: uuid.UUID
+
+
 # ==========================================================================
 # Vehicle Schemas
 # ==========================================================================
@@ -100,3 +105,10 @@ class RegisterVehicleRequest(BaseModel):
 
 class UpdateVehicleStatusRequest(BaseModel):
     status: str
+
+
+class UpdateVehicleDetailsRequest(BaseModel):
+    make: str = Field(min_length=1, max_length=100)
+    model: str = Field(min_length=1, max_length=100)
+    ownership_type: str
+    capacity_units: int = Field(ge=1)

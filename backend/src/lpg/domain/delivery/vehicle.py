@@ -36,6 +36,15 @@ class VehicleStatusChanged(DomainEvent):
     new_status: str
 
 
+@dataclass(frozen=True, slots=True)
+class VehicleDetailsUpdated(DomainEvent):
+    vehicle_id: uuid.UUID
+    make: str
+    model: str
+    ownership_type: str
+    capacity_units: int
+
+
 # ---------------------------------------------------------------------------
 # Valid status transitions
 # ---------------------------------------------------------------------------
@@ -185,6 +194,37 @@ class Vehicle(AggregateRoot):
                 vehicle_id=self.id,
                 old_status=old_status,
                 new_status=new_status,
+            )
+        )
+
+    def update_details(
+        self,
+        make: str,
+        model: str,
+        ownership_type: str,
+        capacity_units: int,
+    ) -> None:
+        """Update the vehicle's descriptive details.
+
+        Reuses the same validators the constructor applies at registration —
+        an update must satisfy the identical invariants a fresh registration
+        would.
+        """
+        self._validate_make_model(make, model)
+        self._validate_ownership_type(ownership_type)
+        self._validate_capacity_units(capacity_units)
+
+        self._make = make
+        self._model = model
+        self._ownership_type = ownership_type
+        self._capacity_units = capacity_units
+        self.record_event(
+            VehicleDetailsUpdated(
+                vehicle_id=self.id,
+                make=make,
+                model=model,
+                ownership_type=ownership_type,
+                capacity_units=capacity_units,
             )
         )
 

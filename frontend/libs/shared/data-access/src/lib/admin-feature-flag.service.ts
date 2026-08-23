@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { createFeatureFlagApiV1AdminFeatureFlagsPost } from './generated/fn/administration/create-feature-flag-api-v-1-admin-feature-flags-post';
 import { isFeatureFlagEnabledApiV1AdminFeatureFlagsKeyEnabledGet } from './generated/fn/administration/is-feature-flag-enabled-api-v-1-admin-feature-flags-key-enabled-get';
+import { listAvailableFeatureFlagsApiV1AdminFeatureFlagsAvailableGet } from './generated/fn/administration/list-available-feature-flags-api-v-1-admin-feature-flags-available-get';
 import { listFeatureFlagsApiV1AdminFeatureFlagsGet } from './generated/fn/administration/list-feature-flags-api-v-1-admin-feature-flags-get';
 import { scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch } from './generated/fn/administration/schedule-feature-flag-api-v-1-admin-feature-flags-key-schedule-patch';
 import { setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch } from './generated/fn/administration/set-feature-flag-enabled-by-default-api-v-1-admin-feature-flags-key-enabled-by-default-patch';
@@ -12,6 +13,7 @@ import { setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch } 
 import type { FeatureFlagEnabledResponse } from './generated/models/feature-flag-enabled-response';
 import type { FeatureFlagOverrideResponse } from './generated/models/feature-flag-override-response';
 import type { FeatureFlagResponse } from './generated/models/feature-flag-response';
+import type { FeatureFlagSummaryResponse } from './generated/models/feature-flag-summary-response';
 
 /**
  * Thin wrapper over the generated `/admin/feature-flags*` client functions.
@@ -74,6 +76,15 @@ export class AdminFeatureFlagService {
         body: { starts_at: startsAt, ends_at: endsAt },
       },
     ).pipe(map(() => undefined));
+  }
+
+  /** Key + description only, for the tenant override picker — `agency_admin`
+   * can call this even though `listFlags()` (platform-only) is closed to them. */
+  listAvailableFlags(): Observable<FeatureFlagSummaryResponse[]> {
+    return listAvailableFeatureFlagsApiV1AdminFeatureFlagsAvailableGet(
+      this.http,
+      this.config.rootUrl,
+    ).pipe(map((response) => response.body));
   }
 
   isEnabled(key: string): Observable<FeatureFlagEnabledResponse> {

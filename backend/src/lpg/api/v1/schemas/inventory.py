@@ -52,6 +52,7 @@ class GoodsReceiptRequest(BaseModel):
 
 class GoodsReceiptResponse(BaseModel):
     id: uuid.UUID
+    grn_number: str | None = None
     tenant_id: uuid.UUID
     warehouse_id: uuid.UUID
     cylinder_type_id: uuid.UUID

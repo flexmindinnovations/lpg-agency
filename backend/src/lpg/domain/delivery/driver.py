@@ -46,6 +46,15 @@ class DriverLicenseUpdated(DomainEvent):
     license_expiry_date: date | None
 
 
+@dataclass(frozen=True, slots=True)
+class DriverReassigned(DomainEvent):
+    driver_id: uuid.UUID
+    old_employee_id: uuid.UUID
+    new_employee_id: uuid.UUID
+    old_branch_id: uuid.UUID
+    new_branch_id: uuid.UUID
+
+
 # ---------------------------------------------------------------------------
 # Valid status transitions
 # ---------------------------------------------------------------------------
@@ -205,6 +214,31 @@ class Driver(AggregateRoot):
     def link_identity_user(self, identity_user_id: uuid.UUID) -> None:
         """Associate this driver profile with an identity user account."""
         self._identity_user_id = identity_user_id
+
+    def reassign(self, employee_id: uuid.UUID, branch_id: uuid.UUID) -> None:
+        """Relink this driver profile to a (possibly different) employee
+        and branch.
+
+        A structural identity change, not a plain field edit — recorded as
+        its own event (`DriverReassigned`) rather than folded into
+        `DriverLicenseUpdated`/`DriverStatusChanged`, so it reads distinctly
+        in the audit trail. Application-layer uniqueness (the new
+        `employee_id` isn't already linked to a *different* driver) is the
+        caller's responsibility, matching `RegisterDriverUseCase`.
+        """
+        old_employee_id = self._employee_id
+        old_branch_id = self._branch_id
+        self._employee_id = employee_id
+        self._branch_id = branch_id
+        self.record_event(
+            DriverReassigned(
+                driver_id=self.id,
+                old_employee_id=old_employee_id,
+                new_employee_id=employee_id,
+                old_branch_id=old_branch_id,
+                new_branch_id=branch_id,
+            )
+        )
 
     # ------------------------------------------------------------------
     # Private validators

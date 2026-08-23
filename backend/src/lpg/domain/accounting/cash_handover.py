@@ -54,6 +54,7 @@ class CashHandover(AggregateRoot):
         "_declared_by",
         "_driver_id",
         "_expected_amount",
+        "_handover_number",
         "_route_id",
         "_tenant_id",
     )
@@ -68,6 +69,7 @@ class CashHandover(AggregateRoot):
         expected_amount: Decimal,
         actual_amount: Decimal,
         declared_by: uuid.UUID,
+        handover_number: str | None = None,
         declared_at: datetime | None = None,
         version: int = 1,
     ) -> None:
@@ -81,6 +83,7 @@ class CashHandover(AggregateRoot):
 
         self._tenant_id = tenant_id
         self._driver_id = driver_id
+        self._handover_number = handover_number
         self._route_id = route_id
         self._expected_amount = expected_amount
         self._actual_amount = actual_amount
@@ -98,6 +101,7 @@ class CashHandover(AggregateRoot):
         expected_amount: Decimal,
         actual_amount: Decimal,
         declared_by: uuid.UUID,
+        handover_number: str,
     ) -> CashHandover:
         handover = cls(
             cash_handover_id=cash_handover_id,
@@ -107,6 +111,7 @@ class CashHandover(AggregateRoot):
             expected_amount=expected_amount,
             actual_amount=actual_amount,
             declared_by=declared_by,
+            handover_number=handover_number,
         )
         if handover.shortfall > 0:
             handover.record_event(
@@ -133,6 +138,10 @@ class CashHandover(AggregateRoot):
     @property
     def route_id(self) -> uuid.UUID:
         return self._route_id
+
+    @property
+    def handover_number(self) -> str | None:
+        return self._handover_number
 
     @property
     def expected_amount(self) -> Decimal:

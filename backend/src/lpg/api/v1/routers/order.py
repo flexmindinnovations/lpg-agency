@@ -76,6 +76,7 @@ from lpg.api.v1.dependencies.order import (
     get_file_storage,
     get_idempotency_service,
     get_job_queue,
+    get_order_number_sequence,
     get_order_repository,
     get_proof_of_delivery_repository,
 )
@@ -116,6 +117,7 @@ from lpg.application.order.ports import (
     CancellationRecordRepository,
     CreditLimitEvaluator,
     CylinderCapPolicy,
+    OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryEntry,
     ProofOfDeliveryRepository,
@@ -173,6 +175,7 @@ def _order_to_response(order: Order) -> OrderResponse:
     address = order.delivery_address
     return OrderResponse(
         id=order.id,
+        order_number=order.order_number,
         tenant_id=order.tenant_id,
         branch_id=order.branch_id,
         customer_id=order.customer_id,
@@ -299,6 +302,7 @@ async def create_order(
     idempotency_service: Annotated[
         IdempotencyService, Depends(get_idempotency_service)
     ],
+    order_number_sequence: Annotated[OrderNumberSequence, Depends(get_order_number_sequence)],
 ) -> OrderResponse:
     """Create a booking (`draft -> booked`). Idempotency-Key required."""
     idempotency_key = request.headers.get("Idempotency-Key")
@@ -320,7 +324,7 @@ async def create_order(
             )
         customer_id = scoped_id
 
-    use_case = CreateOrderUseCase(order_repository, unit_of_work)
+    use_case = CreateOrderUseCase(order_repository, unit_of_work, order_number_sequence)
 
     async def _operation() -> dict[str, Any]:
         order = await use_case.execute(

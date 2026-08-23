@@ -285,7 +285,8 @@ body {
    FORM UTILITIES — consistent field layout across all dialogs/pages
    ======================================================================== */
 
-.p-drawer-content:has(.dialog-form) {
+.p-drawer-content:has(.dialog-form),
+.p-drawer-content:has(.detail-view) {
   display: flex;
   flex-direction: column;
 }
@@ -440,7 +441,15 @@ textarea {
 .p-inputtext {
   font-size: var(--typography-body-small-font-size) !important;
   border-radius: var(--radius-md) !important;
-  padding: 0.5rem 0.75rem !important;
+  padding-block: 0.5rem !important;
+  padding-inline: 0.75rem !important;
+}
+
+/* Restore PrimeNG's icon-field padding compensation, which the shorthand
+   padding override above would otherwise clobber */
+.p-iconfield .p-inputtext:not(:first-child),
+.p-iconfield .p-inputwrapper:not(:first-child) .p-inputtext {
+  padding-inline-start: calc(0.75rem * 2 + 1rem) !important;
 }
 
 .p-select {

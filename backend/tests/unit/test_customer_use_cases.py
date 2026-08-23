@@ -41,6 +41,13 @@ def mock_repo():
     return repo
 
 
+@pytest.fixture
+def mock_sequence():
+    sequence = MagicMock()
+    sequence.next = AsyncMock(return_value="CN-999")
+    return sequence
+
+
 async def test_register_customer_success(mock_repo, mock_uow):
     use_case = RegisterCustomerUseCase(mock_repo, mock_uow)
     tenant_id = uuid.uuid4()
@@ -132,7 +139,101 @@ async def test_submit_kyc(mock_repo, mock_uow):
     assert customer.kyc_status == "pending"
 
 
-async def test_verify_kyc(mock_repo, mock_uow):
+async def test_verify_kyc_auto_approves_the_account_when_fully_verified(
+    mock_repo, mock_uow, mock_sequence
+):
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        full_name="Jane Doe",
+        phone_number="+1234567890",
+        # status defaults to "onboarding" — no consumer_number yet, matching
+        # a real just-registered customer whose only document is pending.
+    )
+    doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
+    mock_repo.get_by_id.return_value = customer
+    verifier_id = uuid.uuid4()
+    use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
+
+    command = VerifyKycDocumentCommand(
+        customer_id=customer.id,
+        doc_id=doc_id,
+        verified_by=verifier_id,
+        status="verified",
+    )
+
+    await use_case.execute(command)
+
+    assert customer.kyc_status == "verified"
+    # Verifying the last outstanding document also completes onboarding —
+    # there is no separate UI action that ever calls the standalone
+    # approve-customer endpoint, so this is what actually activates the
+    # account in practice.
+    assert customer.status == "active"
+    assert customer.consumer_number == "CN-999"
+    mock_sequence.next.assert_awaited_once()
+
+
+async def test_verify_kyc_does_not_auto_approve_on_rejection(mock_repo, mock_uow, mock_sequence):
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        full_name="Jane Doe",
+        phone_number="+1234567890",
+    )
+    doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
+    mock_repo.get_by_id.return_value = customer
+    use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
+
+    command = VerifyKycDocumentCommand(
+        customer_id=customer.id,
+        doc_id=doc_id,
+        verified_by=uuid.uuid4(),
+        status="rejected",
+        rejection_reason="Blurry photo",
+    )
+
+    await use_case.execute(command)
+
+    assert customer.kyc_status == "rejected"
+    assert customer.status == "onboarding"
+    mock_sequence.next.assert_not_awaited()
+
+
+async def test_verify_kyc_does_not_auto_approve_while_another_document_is_still_pending(
+    mock_repo, mock_uow, mock_sequence
+):
+    customer = Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        full_name="Jane Doe",
+        phone_number="+1234567890",
+    )
+    aadhaar_id = customer.submit_kyc("aadhaar", document_number="AADHAAR-REF")
+    customer.submit_kyc("pan", document_number="PAN-REF")  # still pending
+    mock_repo.get_by_id.return_value = customer
+    use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
+
+    command = VerifyKycDocumentCommand(
+        customer_id=customer.id,
+        doc_id=aadhaar_id,
+        verified_by=uuid.uuid4(),
+        status="verified",
+    )
+
+    await use_case.execute(command)
+
+    assert customer.kyc_status == "pending"
+    assert customer.status == "onboarding"
+    mock_sequence.next.assert_not_awaited()
+
+
+async def test_verify_kyc_does_not_re_approve_an_already_active_customer(
+    mock_repo, mock_uow, mock_sequence
+):
     customer = Customer(
         customer_id=uuid.uuid4(),
         tenant_id=uuid.uuid4(),
@@ -140,10 +241,11 @@ async def test_verify_kyc(mock_repo, mock_uow):
         consumer_number="CN-123",
         full_name="Jane Doe",
         phone_number="+1234567890",
+        status="active",
     )
     doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
     mock_repo.get_by_id.return_value = customer
-    use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow)
+    use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
 
     command = VerifyKycDocumentCommand(
         customer_id=customer.id,
@@ -153,7 +255,10 @@ async def test_verify_kyc(mock_repo, mock_uow):
     )
 
     await use_case.execute(command)
-    assert customer.kyc_status == "verified"
+
+    assert customer.status == "active"
+    assert customer.consumer_number == "CN-123"  # unchanged, not reassigned
+    mock_sequence.next.assert_not_awaited()
 
 
 @pytest.fixture

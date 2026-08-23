@@ -3,27 +3,32 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.customer import (
     get_consumer_number_sequence,
     get_customer_repository,
+    get_document_ocr_port,
 )
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     require_permission,
     require_permission_or_self,
 )
+from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.customer import (
     AddCustomerAddressRequest,
     ApproveCustomerRequest,
     CustomerPageResponse,
     CustomerResponse,
+    KycAttachmentResponse,
     KycDocumentListResponse,
     KycDocumentResponse,
     NextConsumerNumberResponse,
+    RecognizeKycDocumentRequest,
+    RecognizeKycDocumentResponse,
     RegisterCustomerRequest,
     SubmitKycDocumentRequest,
     UpdateCustomerProfileRequest,
@@ -31,8 +36,12 @@ from lpg.api.v1.schemas.customer import (
 )
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.common.errors import NotFoundError
-from lpg.application.common.ports import UnitOfWork
-from lpg.application.customer.ports import ConsumerNumberSequence, CustomerRepository
+from lpg.application.common.ports import FileStorage, UnitOfWork
+from lpg.application.customer.ports import (
+    ConsumerNumberSequence,
+    CustomerRepository,
+    DocumentOcrPort,
+)
 from lpg.application.customer.use_cases import (
     AddCustomerAddressCommand,
     AddCustomerAddressUseCase,
@@ -47,6 +56,8 @@ from lpg.application.customer.use_cases import (
     ListCustomersQuery,
     ListCustomersUseCase,
     PeekNextConsumerNumberUseCase,
+    RecognizeKycDocumentCommand,
+    RecognizeKycDocumentUseCase,
     RegisterCustomerCommand,
     RegisterCustomerUseCase,
     SetPrimaryAddressCommand,
@@ -255,6 +266,66 @@ async def set_primary_address(
     )
 
 
+@router.post(
+    "/kyc-attachments",
+    response_model=KycAttachmentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("kyc:manage"))],
+)
+async def upload_kyc_attachment(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+    file: Annotated[UploadFile, File()],
+) -> KycAttachmentResponse:
+    """Pre-upload a KYC document image before `POST /{customer_id}/kyc`.
+
+    Deliberately customer-agnostic (staged under a tenant-scoped key, not a
+    customer one): during onboarding the wizard runs OCR and lets staff
+    review/upload the document image *before* `register_customer` has
+    created the `Customer` row that would give this a `customer_id` to key
+    off — same reasoning `upload_pod_attachment`
+    (`api/v1/routers/order.py`) uses for pre-dispatch blob uploads.
+    """
+    key = f"tenant/{principal.tenant_id}/kyc-staging/{uuid.uuid4()}_{file.filename}"
+    data = await file.read()
+    await file_storage.upload(key, data, content_type=file.content_type)
+    return KycAttachmentResponse(blob_ref=key)
+
+
+@router.post(
+    "/kyc-attachments/recognize",
+    response_model=RecognizeKycDocumentResponse,
+    dependencies=[Depends(require_permission("kyc:manage"))],
+)
+async def recognize_kyc_document(
+    request: RecognizeKycDocumentRequest,
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+    ocr: Annotated[DocumentOcrPort, Depends(get_document_ocr_port)],
+) -> RecognizeKycDocumentResponse:
+    """The backend OCR "second pass" — re-reads an already-uploaded document
+    (`POST /kyc-attachments`) with a heavier, more accurate model than is
+    practical to ship to a browser. See `RecognizeKycDocumentUseCase`'s
+    docstring for why this exists alongside the client's own OCR pass.
+    """
+    use_case = RecognizeKycDocumentUseCase(file_storage, ocr)
+    result = await use_case.execute(RecognizeKycDocumentCommand(blob_ref=request.blob_ref))
+    return RecognizeKycDocumentResponse(
+        doc_type=result.doc_type,
+        document_number=result.document_number,
+        full_name=result.full_name,
+        date_of_birth=result.date_of_birth,
+        confidence=result.confidence,
+        address_line_1=result.address_line_1,
+        address_line_2=result.address_line_2,
+        address_landmark=result.address_landmark,
+        address_area=result.address_area,
+        address_city=result.address_city,
+        address_district=result.address_district,
+        address_state=result.address_state,
+        address_pincode=result.address_pincode,
+    )
+
+
 @router.get(
     "/{customer_id}/kyc",
     response_model=KycDocumentListResponse,
@@ -263,17 +334,28 @@ async def set_primary_address(
 async def list_kyc_documents(
     customer_id: uuid.UUID,
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
 ) -> KycDocumentListResponse:
     use_case = GetCustomerUseCase(repository)
     customer = await use_case.execute(GetCustomerQuery(customer_id=customer_id))
     if customer is None:
         msg = f"No customer visible with id {customer_id}."
         raise NotFoundError(msg, customer_id=str(customer_id))
-    return KycDocumentListResponse(
-        items=[
-            KycDocumentResponse.model_validate(doc) for doc in customer.kyc_documents
-        ]
-    )
+
+    items = []
+    for doc in customer.kyc_documents:
+        response = KycDocumentResponse.model_validate(doc)
+        if doc.file_url:
+            # `file_url` on the domain object is a raw storage key
+            # (`tenant/{tenant_id}/kyc-staging/...`), not a browser-loadable
+            # link — resolve it to a short-lived presigned URL at read
+            # time, same pattern PrintInvoiceUseCase uses for invoices
+            # (`application/printing/use_cases.py`).
+            response = response.model_copy(
+                update={"file_url": await file_storage.url(doc.file_url)}
+            )
+        items.append(response)
+    return KycDocumentListResponse(items=items)
 
 
 @router.post(
@@ -311,10 +393,11 @@ async def verify_kyc(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    sequence: Annotated[ConsumerNumberSequence, Depends(get_consumer_number_sequence)],
 ) -> None:
     if principal.user_id is None:
         raise HTTPException(status_code=401, detail="User ID is required.")
-    use_case = VerifyKycDocumentUseCase(repository, unit_of_work)
+    use_case = VerifyKycDocumentUseCase(repository, unit_of_work, sequence)
     await use_case.execute(
         VerifyKycDocumentCommand(
             customer_id=customer_id,

@@ -5,11 +5,14 @@ import { InvoiceLineResponse } from '../models/invoice-line-response';
 import { PaymentResponse } from '../models/payment-response';
 export interface InvoiceResponse {
   amount_paid?: string;
+  customer_consumer_number?: (string | null);
   customer_id: string;
   invoice_id: string;
+  invoice_number?: (string | null);
   issued_at: string;
   lines: Array<InvoiceLineResponse>;
   order_id: string;
+  order_number?: (string | null);
   payments?: Array<PaymentResponse>;
   status: string;
   subtotal: string;

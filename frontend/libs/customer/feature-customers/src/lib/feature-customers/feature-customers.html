@@ -244,15 +244,22 @@
             <div class="kyc-doc-list">
               @for (doc of kycDocuments(); track doc.id) {
               <div class="kyc-doc-item">
-                <div>
-                  <span class="text-sm capitalize"
-                    ><strong>{{ doc.doc_type }}</strong>: {{ doc.document_number }}</span
-                  >
-                  <p-tag
-                    class="ml-2"
-                    [severity]="doc.verification_status === 'verified' ? 'success' : 'warn'"
-                    [value]="doc.verification_status | titlecase"
-                  />
+                <div class="kyc-doc-info">
+                  <div>
+                    <span class="text-sm capitalize"
+                      ><strong>{{ doc.doc_type }}</strong>: {{ doc.document_number }}</span
+                    >
+                    <p-tag
+                      class="ml-2"
+                      [severity]="doc.verification_status === 'verified' ? 'success' : 'warn'"
+                      [value]="doc.verification_status | titlecase"
+                    />
+                  </div>
+                  @if (doc.file_url) {
+                    <button type="button" class="text-sm link-button" (click)="viewDocument(doc.file_url)">
+                      View Document
+                    </button>
+                  }
                 </div>
                 @if (doc.verification_status === 'pending') {
                 <div class="flex gap-2">
@@ -356,11 +363,99 @@
         placeholder="Enter reference ID"
       />
     </div>
+    @if (isReplacingExistingKycDoc()) {
+      <p class="text-sm text-muted">
+        A {{ selectedKycDocTypeLabel() }} is already on file — submitting will replace it, not
+        add a duplicate.
+      </p>
+    }
+    <div class="form-group">
+      <span id="kyc-file-label" class="form-group-label">Document Photo/Scan <span class="required">*</span></span>
+      @if (!submitKycFile()) {
+        <div
+          class="upload-dropzone"
+          [class.dragging]="submitKycDragging()"
+          (dragover)="onKycDragOver($event)"
+          (dragleave)="onKycDragLeave($event)"
+          (drop)="onKycDrop($event)"
+        >
+          <i class="pi pi-cloud-upload upload-icon"></i>
+          <p class="upload-title">Drag &amp; drop the document here</p>
+          <p class="upload-or">or</p>
+          <input
+            id="kyc-file"
+            class="visually-hidden"
+            type="file"
+            accept="image/*,.pdf"
+            aria-labelledby="kyc-file-label"
+            (change)="onKycFileSelected($event)"
+          />
+          <label for="kyc-file" class="browse-button">
+            <i class="pi pi-folder-open"></i>
+            Browse Files
+          </label>
+          <p class="upload-hint">JPG, PNG, or PDF &middot; up to 10 MB</p>
+        </div>
+      } @else {
+        <div class="file-preview">
+          @if (submitKycFilePreviewUrl()) {
+            <img [src]="submitKycFilePreviewUrl()" class="file-thumbnail" alt="Selected document preview" />
+          } @else {
+            <div class="file-thumbnail file-thumbnail--icon"><i class="pi pi-file"></i></div>
+          }
+          <div class="file-info">
+            <span class="file-name">{{ submitKycFile()?.name }}</span>
+            <span class="file-size">{{ formatFileSize(submitKycFile()?.size ?? 0) }}</span>
+          </div>
+          <button
+            type="button"
+            class="remove-file-button"
+            (click)="removeSubmitKycFile()"
+            aria-label="Remove file"
+          >
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      }
+      @if (submitKycFileError()) {
+        <span class="field-error">{{ submitKycFileError() }}</span>
+      }
+    </div>
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeSubmitKycModal()">
         Cancel
       </button>
-      <button pButton type="submit" [disabled]="kycForm.invalid">Submit</button>
+      <button
+        pButton
+        type="submit"
+        [disabled]="kycForm.invalid || !submitKycFile() || submitKycUploading()"
+      >
+        {{ submitKycUploading() ? 'Uploading…' : 'Submit' }}
+      </button>
     </div>
   </form>
 </p-drawer>
+
+<!-- Modal 4: KYC Document Preview -->
+<p-dialog
+  header="Document Preview"
+  [visible]="viewingDocumentUrl() !== null"
+  (visibleChange)="!$event && closeDocumentPreview()"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '90vw', maxWidth: '48rem' }"
+  closeAriaLabel="Close document preview"
+>
+  @if (viewingDocumentSafeUrl(); as safeUrl) {
+    @if (viewingDocumentIsPdf()) {
+      <iframe class="document-preview-frame" [src]="safeUrl" title="KYC document preview"></iframe>
+    } @else {
+      <img class="document-preview-image" [src]="viewingDocumentUrl()" alt="KYC document preview" />
+    }
+  }
+  <div class="modal-actions">
+    <button pButton type="button" severity="secondary" (click)="closeDocumentPreview()">
+      Close
+    </button>
+  </div>
+</p-dialog>

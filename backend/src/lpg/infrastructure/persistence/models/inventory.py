@@ -134,6 +134,7 @@ class GoodsReceiptNoteModel(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
     )
+    grn_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     warehouse_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("tenant.warehouse.id"))
     cylinder_type_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(), ForeignKey("tenant.cylinder_type.id")

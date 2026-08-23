@@ -21,6 +21,7 @@ export interface ComplaintResolution {
 
 export interface Complaint {
   id: string;
+  complaint_number?: string;
   customer_id: string;
   order_id?: string;
   category: string;

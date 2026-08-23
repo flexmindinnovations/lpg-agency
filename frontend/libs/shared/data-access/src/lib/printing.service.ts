@@ -37,17 +37,17 @@ export class PrintingService {
   }
 
   /**
-   * Convenience method: render an invoice as a thermal receipt text file.
+   * Convenience method: render an invoice as a thermal receipt (HTML page).
+   * Unlike `printInvoicePdf`, this does NOT open the result itself — the
+   * caller decides how to display it (e.g. embedded in a dialog via an
+   * iframe, with a new-tab fallback), since a thermal receipt is small
+   * enough to preview in-page without losing the caller's context.
    */
   printInvoiceThermal(invoiceId: string): Observable<PrintJobResponse> {
     return this.createPrintJob({
       document_type: 'invoice',
       document_id: invoiceId,
       format: 'thermal',
-    }).pipe(
-      tap((res) => {
-        window.open(res.download_url, '_blank');
-      }),
-    );
+    });
   }
 }

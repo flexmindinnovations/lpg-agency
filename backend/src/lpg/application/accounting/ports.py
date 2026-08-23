@@ -13,6 +13,30 @@ if TYPE_CHECKING:
     from lpg.domain.accounting.invoice import Invoice
 
 
+class InvoiceNumberSequence(Protocol):
+    """Generates the next tenant-scoped, human-readable invoice number
+    (`INV-2026-000001`). Backed by the shared
+    `SqlAlchemyReferenceNumberSequence` — see that class for the upsert
+    mechanic. Unlike `ConsumerNumberSequence`, invoice numbers are never
+    manually overridden, so no collision-check is needed by the caller;
+    the sequence's own atomic upsert is sufficient.
+    """
+
+    async def next(self) -> str: ...
+
+
+class CreditNoteNumberSequence(Protocol):
+    """Generates the next tenant-scoped credit note number (`CRN-2026-000001`)."""
+
+    async def next(self) -> str: ...
+
+
+class CashHandoverNumberSequence(Protocol):
+    """Generates the next tenant-scoped cash handover number (`CSH000001`)."""
+
+    async def next(self) -> str: ...
+
+
 class InvoiceRepository(Protocol):
     """Repository for the `Invoice` aggregate."""
 

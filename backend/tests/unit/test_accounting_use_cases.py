@@ -99,6 +99,34 @@ def mock_tenant_config_repo() -> MagicMock:
     return repo
 
 
+@pytest.fixture
+def mock_customer_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get_by_id = AsyncMock(return_value=None)
+    return repo
+
+
+@pytest.fixture
+def mock_invoice_number_sequence() -> MagicMock:
+    sequence = MagicMock()
+    sequence.next = AsyncMock(return_value="INV-2026-000001")
+    return sequence
+
+
+@pytest.fixture
+def mock_credit_note_number_sequence() -> MagicMock:
+    sequence = MagicMock()
+    sequence.next = AsyncMock(return_value="CRN000001")
+    return sequence
+
+
+@pytest.fixture
+def mock_handover_number_sequence() -> MagicMock:
+    sequence = MagicMock()
+    sequence.next = AsyncMock(return_value="CSH000001")
+    return sequence
+
+
 # ---------------------------------------------------------------------------
 # GenerateInvoiceForOrderUseCase
 # ---------------------------------------------------------------------------
@@ -110,6 +138,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """A delivered order with lines produces one invoice saved via the repo."""
         tenant_id = uuid.uuid4()
@@ -122,6 +152,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=tenant_id,
@@ -144,6 +176,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """GST from tenant configuration is applied to the invoice totals."""
         tenant_id = uuid.uuid4()
@@ -167,6 +201,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=tenant_id,
@@ -186,6 +222,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """Lines where quantity_delivered == 0 are excluded from the invoice."""
         order = _make_order(
@@ -200,6 +238,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -216,6 +256,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """If every line has quantity_delivered == 0, no invoice is persisted."""
         order = _make_order(lines=[_make_order_line(quantity_delivered=0)])
@@ -225,6 +267,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -239,6 +283,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """If an invoice for the order already exists, generation is skipped (idempotency)."""
         mock_invoice_repo.get_by_order_id = AsyncMock(return_value=MagicMock(spec=Invoice))
@@ -247,6 +293,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -263,6 +311,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """If the order is missing (race condition / late event), generation is
         skipped gracefully."""
@@ -272,6 +322,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         # Should not raise; logs an error and returns.
         await use_case.execute(
@@ -287,6 +339,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """When no GST rate is configured, tax_amount is 0 and total equals subtotal."""
         order = _make_order(
@@ -299,6 +353,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -315,6 +371,8 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
         mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
     ) -> None:
         """A line with unit_price=None (unconfirmed order) is treated as zero price."""
         order = _make_order(lines=[_make_order_line(quantity_delivered=3, unit_price=None)])
@@ -324,6 +382,8 @@ class TestGenerateInvoiceForOrderUseCase:
             invoice_repository=mock_invoice_repo,
             order_repository=mock_order_repo,
             tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -380,6 +440,7 @@ def _make_invoice(*, total_amount: Decimal = Decimal("236.00")) -> Invoice:
     return Invoice(
         invoice_id=uuid.uuid4(),
         tenant_id=uuid.uuid4(),
+        invoice_number="INV-2026-000001",
         customer_id=uuid.uuid4(),
         order_id=uuid.uuid4(),
         status="issued",
@@ -512,6 +573,7 @@ class TestDeclareCashHandoverUseCase:
         mock_cash_handover_repo: MagicMock,
         mock_route_repo: MagicMock,
         mock_uow_with_commit: MagicMock,
+        mock_handover_number_sequence: MagicMock,
     ) -> None:
         tenant_id = uuid.uuid4()
         driver_id = uuid.uuid4()
@@ -524,7 +586,10 @@ class TestDeclareCashHandoverUseCase:
         )
 
         use_case = DeclareCashHandoverUseCase(
-            mock_cash_handover_repo, mock_route_repo, mock_uow_with_commit
+            mock_cash_handover_repo,
+            mock_route_repo,
+            mock_uow_with_commit,
+            mock_handover_number_sequence,
         )
         command = DeclareCashHandoverCommand(
             driver_id=driver_id,
@@ -548,10 +613,14 @@ class TestDeclareCashHandoverUseCase:
         mock_cash_handover_repo: MagicMock,
         mock_route_repo: MagicMock,
         mock_uow_with_commit: MagicMock,
+        mock_handover_number_sequence: MagicMock,
     ) -> None:
         mock_route_repo.get_by_id.return_value = None
         use_case = DeclareCashHandoverUseCase(
-            mock_cash_handover_repo, mock_route_repo, mock_uow_with_commit
+            mock_cash_handover_repo,
+            mock_route_repo,
+            mock_uow_with_commit,
+            mock_handover_number_sequence,
         )
         command = DeclareCashHandoverCommand(
             driver_id=uuid.uuid4(),
@@ -571,6 +640,7 @@ class TestDeclareCashHandoverUseCase:
         mock_cash_handover_repo: MagicMock,
         mock_route_repo: MagicMock,
         mock_uow_with_commit: MagicMock,
+        mock_handover_number_sequence: MagicMock,
     ) -> None:
         actual_driver_id = uuid.uuid4()
         someone_elses_driver_id = uuid.uuid4()
@@ -578,7 +648,10 @@ class TestDeclareCashHandoverUseCase:
             tenant_id=uuid.uuid4(), driver_id=actual_driver_id
         )
         use_case = DeclareCashHandoverUseCase(
-            mock_cash_handover_repo, mock_route_repo, mock_uow_with_commit
+            mock_cash_handover_repo,
+            mock_route_repo,
+            mock_uow_with_commit,
+            mock_handover_number_sequence,
         )
         command = DeclareCashHandoverCommand(
             driver_id=someone_elses_driver_id,
@@ -626,12 +699,16 @@ class TestRequestRefundUseCase:
         mock_credit_note_repo: MagicMock,
         mock_invoice_repo: MagicMock,
         mock_uow_with_commit: MagicMock,
+        mock_credit_note_number_sequence: MagicMock,
     ) -> None:
         invoice = _make_paid_invoice(amount_paid=Decimal("236.00"))
         mock_invoice_repo.get_by_id = AsyncMock(return_value=invoice)
 
         use_case = RequestRefundUseCase(
-            mock_credit_note_repo, mock_invoice_repo, mock_uow_with_commit
+            mock_credit_note_repo,
+            mock_invoice_repo,
+            mock_uow_with_commit,
+            mock_credit_note_number_sequence,
         )
         credit_note = await use_case.execute(
             RequestRefundCommand(
@@ -655,10 +732,14 @@ class TestRequestRefundUseCase:
         mock_credit_note_repo: MagicMock,
         mock_invoice_repo: MagicMock,
         mock_uow_with_commit: MagicMock,
+        mock_credit_note_number_sequence: MagicMock,
     ) -> None:
         mock_invoice_repo.get_by_id = AsyncMock(return_value=None)
         use_case = RequestRefundUseCase(
-            mock_credit_note_repo, mock_invoice_repo, mock_uow_with_commit
+            mock_credit_note_repo,
+            mock_invoice_repo,
+            mock_uow_with_commit,
+            mock_credit_note_number_sequence,
         )
 
         with pytest.raises(NotFoundError):
@@ -678,11 +759,15 @@ class TestRequestRefundUseCase:
         mock_credit_note_repo: MagicMock,
         mock_invoice_repo: MagicMock,
         mock_uow_with_commit: MagicMock,
+        mock_credit_note_number_sequence: MagicMock,
     ) -> None:
         invoice = _make_paid_invoice(amount_paid=Decimal("100.00"))
         mock_invoice_repo.get_by_id = AsyncMock(return_value=invoice)
         use_case = RequestRefundUseCase(
-            mock_credit_note_repo, mock_invoice_repo, mock_uow_with_commit
+            mock_credit_note_repo,
+            mock_invoice_repo,
+            mock_uow_with_commit,
+            mock_credit_note_number_sequence,
         )
 
         with pytest.raises(ValidationError, match="exceeds"):
@@ -707,6 +792,7 @@ class TestApproveRefundUseCase:
             credit_note_id=uuid.uuid4(),
             tenant_id=uuid.uuid4(),
             invoice_id=invoice_id,
+            credit_note_number="CRN000001",
             amount=Decimal("100.00"),
             reason="Damaged cylinder.",
             requested_by=uuid.uuid4(),
@@ -751,6 +837,7 @@ class TestApproveRefundUseCase:
             credit_note_id=uuid.uuid4(),
             tenant_id=uuid.uuid4(),
             invoice_id=uuid.uuid4(),
+            credit_note_number="CRN000002",
             amount=Decimal("100.00"),
             reason="Damaged cylinder.",
             requested_by=uuid.uuid4(),

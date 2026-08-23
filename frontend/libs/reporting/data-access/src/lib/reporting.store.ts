@@ -24,6 +24,7 @@ export interface DriverPerformanceRecord {
 
 export interface CustomerConsumptionRecord {
   customer_id: string;
+  customer_name: string;
   avg_refill_interval_days: number;
 }
 

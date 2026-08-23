@@ -40,8 +40,11 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         invoice = Invoice(
             invoice_id=model.id,
             tenant_id=model.tenant_id,
+            invoice_number=model.invoice_number,
             customer_id=model.customer_id,
+            customer_consumer_number=model.customer_consumer_number,
             order_id=model.order_id,
+            order_number=model.order_number,
             status=model.status,
             issued_at=model.issued_at,
             lines=[
@@ -78,8 +81,11 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         model = InvoiceModel(
             id=invoice.id,
             tenant_id=invoice.tenant_id,
+            invoice_number=invoice.invoice_number,
             customer_id=invoice.customer_id,
+            customer_consumer_number=invoice.customer_consumer_number,
             order_id=invoice.order_id,
+            order_number=invoice.order_number,
             status=invoice.status,
             issued_at=invoice.issued_at,
             subtotal=invoice.subtotal,
@@ -243,6 +249,7 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
             CashHandoverModel(
                 id=handover.id,
                 tenant_id=handover.tenant_id,
+                handover_number=handover.handover_number,
                 driver_id=handover.driver_id,
                 route_id=handover.route_id,
                 expected_amount=handover.expected_amount,
@@ -287,6 +294,7 @@ class SqlAlchemyCreditNoteRepository(CreditNoteRepository):
             credit_note_id=model.id,
             tenant_id=model.tenant_id,
             invoice_id=model.invoice_id,
+            credit_note_number=model.credit_note_number,
             amount=model.amount,
             reason=model.reason,
             requested_by=model.requested_by,
@@ -303,6 +311,7 @@ class SqlAlchemyCreditNoteRepository(CreditNoteRepository):
                 id=credit_note.id,
                 tenant_id=credit_note.tenant_id,
                 invoice_id=credit_note.invoice_id,
+                credit_note_number=credit_note.credit_note_number,
                 amount=credit_note.amount,
                 reason=credit_note.reason,
                 requested_by=credit_note.requested_by,

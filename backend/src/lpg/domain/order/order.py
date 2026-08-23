@@ -366,6 +366,7 @@ class Order(AggregateRoot):
         "_delivery_address",
         "_lines",
         "_metadata",
+        "_order_number",
         "_payment_method_preference",
         "_pending_failed_delivery_entries",
         "_pending_status_history",
@@ -388,6 +389,7 @@ class Order(AggregateRoot):
         booking_source: str,
         requested_date: datetime,
         lines: Sequence[OrderLine],
+        order_number: str | None = None,
         payment_method_preference: str | None = None,
         metadata: dict[str, Any] | None = None,
         status: str = "draft",
@@ -424,6 +426,7 @@ class Order(AggregateRoot):
         self._branch_id = branch_id
         self._customer_id = customer_id
         self._address_id = address_id
+        self._order_number = order_number
         self._delivery_address = delivery_address
         self._booking_source = booking_source
         self._payment_method_preference = payment_method_preference
@@ -455,6 +458,10 @@ class Order(AggregateRoot):
     @property
     def address_id(self) -> uuid.UUID:
         return self._address_id
+
+    @property
+    def order_number(self) -> str | None:
+        return self._order_number
 
     @property
     def delivery_address(self) -> DeliveryAddress:

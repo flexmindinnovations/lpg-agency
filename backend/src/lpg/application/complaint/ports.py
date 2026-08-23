@@ -12,3 +12,13 @@ if TYPE_CHECKING:
 class ComplaintUnitOfWork(UnitOfWork, Protocol):
     @property
     def complaints(self) -> ComplaintRepository: ...
+
+
+class ComplaintNumberSequence(Protocol):
+    """Generates the next tenant-scoped, human-readable complaint number
+    (`CMP000001`). Backed by the shared `SqlAlchemyReferenceNumberSequence`
+    — never manually overridden, so no collision-check is needed by the
+    caller.
+    """
+
+    async def next(self) -> str: ...

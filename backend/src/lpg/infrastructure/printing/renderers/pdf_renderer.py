@@ -23,6 +23,15 @@ _env = Environment(
     autoescape=True,
 )
 
+# "Rs. " rather than "₹" (U+20B9) — confirmed via direct reportlab testing
+# that this is an engine-level limitation, not a missing-glyph problem: two
+# different embedded TTF fonts (Windows Arial and Segoe UI) both have a
+# real, simple (non-composite) outline for U+20B9 that reportlab correctly
+# reads the *metrics* for, yet xhtml2pdf's `loadFont()` still renders it as
+# a blank/.notdef box in the output PDF. Not worth chasing further inside
+# reportlab's TTF subsetting internals for a single currency symbol.
+_CURRENCY_SYMBOL = "Rs. "
+
 
 def render_invoice_pdf(payload: InvoicePrintPayload) -> bytes:
     """Render an invoice to PDF bytes via HTML intermediate."""
@@ -36,6 +45,7 @@ def render_invoice_pdf(payload: InvoicePrintPayload) -> bytes:
     html = template.render(
         payload=payload,
         qr_code_b64=qr_b64,
+        currency_symbol=_CURRENCY_SYMBOL,
     )
 
     result = io.BytesIO()

@@ -70,6 +70,17 @@ class ProofOfDeliveryEntry:
     recorded_at: datetime
 
 
+class OrderNumberSequence(Protocol):
+    """Generates the next tenant-scoped, human-readable order number
+    (`ORD000001`). Backed by the shared `SqlAlchemyReferenceNumberSequence`
+    (see `infrastructure/persistence/repositories/reference_number.py`) —
+    never manually overridden, so no collision-check is needed by the
+    caller.
+    """
+
+    async def next(self) -> str: ...
+
+
 class OrderRepository(Protocol):
     def next_id(self) -> uuid.UUID: ...
 

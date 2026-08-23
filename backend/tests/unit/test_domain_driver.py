@@ -15,6 +15,7 @@ from lpg.domain.common.base import InvariantViolation
 from lpg.domain.delivery.driver import (
     Driver,
     DriverLicenseUpdated,
+    DriverReassigned,
     DriverRegistered,
     DriverStatusChanged,
 )
@@ -141,3 +142,41 @@ class TestDriverLicenseUpdate:
         events = driver.events
         assert len(events) == 1
         assert isinstance(events[0], DriverLicenseUpdated)
+
+
+class TestDriverReassignment:
+    def test_updates_employee_and_branch(self) -> None:
+        driver = _make_driver()
+        new_employee_id = uuid.uuid4()
+        new_branch_id = uuid.uuid4()
+        driver.reassign(new_employee_id, new_branch_id)
+        assert driver.employee_id == new_employee_id
+        assert driver.branch_id == new_branch_id
+
+    def test_records_reassigned_event_with_old_and_new_values(self) -> None:
+        old_employee_id = uuid.uuid4()
+        old_branch_id = uuid.uuid4()
+        driver = _make_driver(employee_id=old_employee_id, branch_id=old_branch_id)
+        driver.clear_events()
+
+        new_employee_id = uuid.uuid4()
+        new_branch_id = uuid.uuid4()
+        driver.reassign(new_employee_id, new_branch_id)
+
+        events = driver.events
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, DriverReassigned)
+        assert event.old_employee_id == old_employee_id
+        assert event.new_employee_id == new_employee_id
+        assert event.old_branch_id == old_branch_id
+        assert event.new_branch_id == new_branch_id
+
+    def test_reassigning_to_the_same_branch_still_records_an_event(self) -> None:
+        """Reassign always records — the use case decides whether the call
+        was a no-op, not the aggregate."""
+        branch_id = uuid.uuid4()
+        driver = _make_driver(branch_id=branch_id)
+        driver.clear_events()
+        driver.reassign(driver.employee_id, branch_id)
+        assert len(driver.events) == 1

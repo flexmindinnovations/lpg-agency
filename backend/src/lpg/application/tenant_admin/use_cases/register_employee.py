@@ -64,7 +64,7 @@ class RegisterEmployeeUseCase:
         # matches every other use case built against this same raw,
         # router-owned `UnitOfWork` (e.g. `InviteStaffUserUseCase`).
         employee_id = self._employee_repo.next_id()
-        employee_code = await self._employee_repo.next_employee_code()
+        employee_code = await self._employee_repo.next_employee_code(cmd.tenant_id)
 
         employee = Employee(
             employee_id=employee_id,

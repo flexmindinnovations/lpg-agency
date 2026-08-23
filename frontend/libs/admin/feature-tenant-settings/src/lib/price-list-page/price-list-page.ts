@@ -17,7 +17,7 @@ import {
   type CylinderTypeResponse,
   type PriceListEntryResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
 
@@ -129,6 +129,8 @@ function errorMessageFor(error: unknown): string {
               id="price-customer-type"
               formControlName="customerType"
               [options]="customerTypes"
+              optionLabel="label"
+              optionValue="value"
               placeholder="Select a customer type"
               styleClass="w-full"
               appendTo="body">
@@ -214,7 +216,7 @@ export class PriceListPage implements OnInit {
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
-  protected readonly customerTypes = [...CUSTOMER_TYPES];
+  protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({ label: toSentenceCase(t), value: t }));
 
   protected readonly columns: DataGridColumn<PriceListEntryResponse>[] = [
     {
@@ -226,7 +228,12 @@ export class PriceListPage implements OnInit {
     },
     { field: 'price', header: 'Price', sortable: true, numeric: true },
     { field: 'branch_id', header: 'Branch', filterable: true },
-    { field: 'effective_from', header: 'Effective From', sortable: true },
+    {
+      field: 'effective_from',
+      header: 'Effective From',
+      sortable: true,
+      valueFormatter: (value) => formatTimestamp(value),
+    },
   ];
 
   protected readonly form = this.formBuilder.group({

@@ -8,7 +8,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from lpg.api.v1.dependencies.accounting import get_credit_note_repository, get_invoice_repository
+from lpg.api.v1.dependencies.accounting import (
+    get_credit_note_number_sequence,
+    get_credit_note_repository,
+    get_invoice_repository,
+)
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.invoice import (
@@ -20,7 +24,11 @@ from lpg.api.v1.schemas.invoice import (
     RecordPaymentRequest,
     RequestRefundRequest,
 )
-from lpg.application.accounting.ports import CreditNoteRepository, InvoiceRepository
+from lpg.application.accounting.ports import (
+    CreditNoteNumberSequence,
+    CreditNoteRepository,
+    InvoiceRepository,
+)
 from lpg.application.accounting.use_cases import (
     ApproveRefundCommand,
     ApproveRefundUseCase,
@@ -52,9 +60,12 @@ def _invoice_to_response(invoice: Invoice) -> InvoiceResponse:
     # object.
     return InvoiceResponse(
         invoice_id=invoice.id,
+        invoice_number=invoice.invoice_number,
         tenant_id=invoice.tenant_id,
         customer_id=invoice.customer_id,
+        customer_consumer_number=invoice.customer_consumer_number,
         order_id=invoice.order_id,
+        order_number=invoice.order_number,
         status=invoice.status,
         issued_at=invoice.issued_at,
         lines=[
@@ -187,13 +198,18 @@ async def request_refund(
     credit_note_repository: Annotated[CreditNoteRepository, Depends(get_credit_note_repository)],
     invoice_repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    credit_note_number_sequence: Annotated[
+        CreditNoteNumberSequence, Depends(get_credit_note_number_sequence)
+    ],
 ) -> CreditNoteResponse:
     """Request a refund against an invoice (R10, BR-20). Not yet approved —
     `amount` cannot exceed the invoice's actual `amount_paid`.
     """
     if principal.user_id is None:
         raise HTTPException(status_code=401, detail="User ID is required.")
-    use_case = RequestRefundUseCase(credit_note_repository, invoice_repository, unit_of_work)
+    use_case = RequestRefundUseCase(
+        credit_note_repository, invoice_repository, unit_of_work, credit_note_number_sequence
+    )
     credit_note = await use_case.execute(
         RequestRefundCommand(
             invoice_id=invoice_id,

@@ -159,3 +159,43 @@ class CustomerPageResponse(BaseModel):
 
 class KycDocumentListResponse(BaseModel):
     items: list[KycDocumentResponse]
+
+
+class KycAttachmentResponse(BaseModel):
+    """A pre-uploaded KYC document image blob ref — see
+    `upload_kyc_attachment`'s docstring for why this is a separate,
+    customer-agnostic endpoint from `POST /{customer_id}/kyc`.
+    """
+
+    blob_ref: str
+
+
+class RecognizeKycDocumentRequest(BaseModel):
+    blob_ref: str = Field(min_length=1)
+
+
+class RecognizeKycDocumentResponse(BaseModel):
+    """Result of the backend OCR "second pass" — see
+    `RecognizeKycDocumentUseCase`'s docstring for why this exists.
+
+    The address_* fields are a best-effort split of the Aadhaar address
+    block (see `kyc_document_parser.py::_parse_address`) — freeform,
+    unlabeled text with no fixed structure, so these are meaningfully less
+    reliable than doc_type/document_number/full_name/date_of_birth. The
+    Address step's fields stay required and editable regardless of what
+    auto-fills here.
+    """
+
+    doc_type: str | None
+    document_number: str | None
+    full_name: str | None
+    date_of_birth: date | None
+    confidence: float
+    address_line_1: str | None
+    address_line_2: str | None
+    address_landmark: str | None
+    address_area: str | None
+    address_city: str | None
+    address_district: str | None
+    address_state: str | None
+    address_pincode: str | None

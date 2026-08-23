@@ -26,6 +26,7 @@ def _declare(
         expected_amount=expected_amount,
         actual_amount=actual_amount,
         declared_by=uuid.uuid4(),
+        handover_number="CSH000001",
     )
 
 

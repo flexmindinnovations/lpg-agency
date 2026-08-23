@@ -33,6 +33,7 @@ def _make_complaint(
         "priority": priority,
         "description": "Cylinder arrived two days late.",
         "created_by": uuid.uuid4(),
+        "complaint_number": "CMP000001",
     }
     defaults.update(kwargs)
     return Complaint.create(**defaults)  # type: ignore[arg-type]

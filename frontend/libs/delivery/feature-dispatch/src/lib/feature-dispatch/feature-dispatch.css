@@ -153,9 +153,27 @@
   gap: var(--spacing-md);
 }
 
+.vehicle-summary {
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-raised);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-block-start: var(--spacing-xs);
+}
+
+.vehicle-summary .detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--spacing-sm);
+}
+
 .detail-field {
   display: flex;
   flex-direction: column;
+  /* Without this, the flex column's default `align-items: stretch`
+     stretches a p-tag (Status) to the field's full grid-column width,
+     turning it into a wide rectangle instead of a normal compact pill —
+     plain text fields are unaffected either way. */
+  align-items: flex-start;
   gap: var(--spacing-xs);
 }
 
@@ -163,6 +181,17 @@
   display: flex;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
+}
+
+.stops-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.stops-header .section-title {
+  margin: 0;
 }
 
 .load-form {
@@ -178,8 +207,14 @@
 .load-line {
   display: grid;
   grid-template-columns: 1fr 8rem auto;
-  gap: var(--spacing-xs);
+  /* --spacing-xs (4px) is too tight for the cylinder-type select's focus
+     ring, which visibly overlapped the quantity input next to it. */
+  gap: var(--spacing-sm);
   align-items: center;
+}
+
+.add-line-button {
+  align-self: flex-end;
 }
 
 .stop-card {
