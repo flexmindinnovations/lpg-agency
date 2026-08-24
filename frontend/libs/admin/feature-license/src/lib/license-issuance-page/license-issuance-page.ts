@@ -433,7 +433,7 @@ export class LicenseIssuancePage implements OnInit {
   protected readonly newOrTrialAgencyOptions = () =>
     this.agencies()
       .filter((agency) => agency.status === 'trial')
-      .map((agency) => ({ label: agency.name, value: agency.id }));
+      .map((agency) => ({ label: `${agency.name} (${agency.slug})`, value: agency.id }));
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
   protected readonly formatDate = formatTimestamp;
