@@ -121,6 +121,9 @@ export class ShellLayout {
           route: '/reports',
           condition: can('reports:read'),
         },
+        // No permission guard on this route (any authenticated user's own
+        // notifications) — always shown, matching Dashboard above.
+        { label: 'Notifications', icon: 'pi pi-bell', route: '/notifications' },
       ]),
       ...buildGroup('Operations', [
         {
@@ -201,6 +204,12 @@ export class ShellLayout {
           label: 'Users & Roles',
           icon: 'pi pi-user',
           route: '/admin/users',
+          condition: can('users:manage'),
+        },
+        {
+          label: 'Employees',
+          icon: 'pi pi-briefcase',
+          route: '/admin/employees',
           condition: can('users:manage'),
         },
         {
