@@ -5,6 +5,7 @@ import {
   ElementRef,
   OnInit,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
@@ -39,6 +40,7 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  displayNameFromEmail,
   HasPermissionDirective,
   PreviewDialog,
   type PreviewData,
@@ -117,6 +119,16 @@ export class FeatureComplaints implements OnInit {
     () => this.permissionChecker()?.permissions?.has('users:manage') ?? false,
   );
   private readonly staffUsers = signal<StaffUserResponse[] | null>(null);
+
+  /** id -> display name, so Assigned To/Resolved By can show "Admin" instead
+   * of a raw UUID without waiting for the user to click through first. */
+  protected readonly staffNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const user of this.staffUsers() ?? []) {
+      map.set(user.id, displayNameFromEmail(user.email, toSentenceCase(user.role)));
+    }
+    return map;
+  });
 
   private static readonly CUSTOMER_STATUS_SEVERITY: Record<string, ChipSeverity> = {
     onboarding: 'warn',
@@ -263,6 +275,22 @@ export class FeatureComplaints implements OnInit {
     { label: 'Rejected', value: 'Rejected' },
   ];
 
+  constructor() {
+    // Fetches the staff directory once permission is confirmed, so
+    // Assigned To/Resolved By already show a name on first render instead
+    // of only resolving after the user clicks through. Never attempted for
+    // roles lacking `users:manage` — see `canViewStaffDirectory`.
+    effect(() => {
+      if (this.canViewStaffDirectory() && this.staffUsers() === null) {
+        this.adminStaffUserService.listStaffUsers().subscribe({
+          next: (users) => this.staffUsers.set(users),
+          // Silent — Assigned To/Resolved By just keep showing the raw ID.
+          error: () => undefined,
+        });
+      }
+    });
+  }
+
   ngOnInit() {
     this.loadComplaints();
   }
@@ -408,7 +436,8 @@ export class FeatureComplaints implements OnInit {
       return;
     }
     const data: PreviewData = {
-      title: user.email ?? shortId(user.id),
+      title: this.staffNameById().get(user.id) ?? shortId(user.id),
+      subtitle: user.email ?? undefined,
       tags: [
         {
           label: user.is_active ? 'Active' : 'Inactive',

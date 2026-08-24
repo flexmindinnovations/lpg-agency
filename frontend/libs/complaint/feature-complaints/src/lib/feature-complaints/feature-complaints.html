@@ -112,7 +112,7 @@
                   <span class="history-main">
                     Assigned to
                     @if (canViewStaffDirectory()) {
-                      <button type="button" class="info-link" (click)="openStaffPreview(assignment.assigned_to)">{{ shortId(assignment.assigned_to) }}</button>
+                      <button type="button" class="info-link" (click)="openStaffPreview(assignment.assigned_to)">{{ staffNameById().get(assignment.assigned_to) ?? shortId(assignment.assigned_to) }}</button>
                     } @else {
                       {{ shortId(assignment.assigned_to) }}
                     }
@@ -140,7 +140,7 @@
             <p class="mt-2 text-xs text-surface-500">
               Resolved by:
               @if (canViewStaffDirectory()) {
-                <button type="button" class="info-link" (click)="openStaffPreview(complaint.resolution.resolved_by)">{{ shortId(complaint.resolution.resolved_by) }}</button>
+                <button type="button" class="info-link" (click)="openStaffPreview(complaint.resolution.resolved_by)">{{ staffNameById().get(complaint.resolution.resolved_by) ?? shortId(complaint.resolution.resolved_by) }}</button>
               } @else {
                 {{ shortId(complaint.resolution.resolved_by) }}
               }
