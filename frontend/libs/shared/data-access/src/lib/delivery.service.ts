@@ -21,6 +21,7 @@ import { updateRouteStatusApiV1RoutesRouteIdStatusPatch } from './generated/fn/r
 import { assignOrderApiV1RoutesRouteIdAssignOrderPost } from './generated/fn/routes/assign-order-api-v-1-routes-route-id-assign-order-post';
 import { loadVehicleForRouteApiV1RoutesRouteIdLoadPost } from './generated/fn/routes/load-vehicle-for-route-api-v-1-routes-route-id-load-post';
 import { completeRouteReconciliationApiV1RoutesRouteIdReconcilePost } from './generated/fn/routes/complete-route-reconciliation-api-v-1-routes-route-id-reconcile-post';
+import { declareCashHandoverApiV1CashHandoversPost } from './generated/fn/cash-handovers/declare-cash-handover-api-v-1-cash-handovers-post';
 
 import type { RouteResponse } from './generated/models/route-response';
 import type { RoutePageResponse } from './generated/models/route-page-response';
@@ -36,6 +37,8 @@ import type { RegisterVehicleRequest } from './generated/models/register-vehicle
 import type { UpdateVehicleDetailsRequest } from './generated/models/update-vehicle-details-request';
 import type { UpdateRouteStatusRequest } from './generated/models/update-route-status-request';
 import type { LoadVehicleRequest } from './generated/models/load-vehicle-request';
+import type { DeclareCashHandoverRequest } from './generated/models/declare-cash-handover-request';
+import type { CashHandoverResponse } from './generated/models/cash-handover-response';
 
 @Injectable({ providedIn: 'root' })
 export class DeliveryService {
@@ -206,6 +209,12 @@ export class DeliveryService {
   completeRouteReconciliation(routeId: string): Observable<RouteResponse> {
     return completeRouteReconciliationApiV1RoutesRouteIdReconcilePost(this.http, this.config.rootUrl, {
       route_id: routeId,
+    }).pipe(map((res) => res.body));
+  }
+
+  declareCashHandover(request: DeclareCashHandoverRequest): Observable<CashHandoverResponse> {
+    return declareCashHandoverApiV1CashHandoversPost(this.http, this.config.rootUrl, {
+      body: request,
     }).pipe(map((res) => res.body));
   }
 }

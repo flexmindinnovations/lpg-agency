@@ -308,6 +308,19 @@
             <span pButtonLabel>Reconcile</span>
           </button>
         }
+        @if (canDeclareCashHandover()) {
+          <button
+            *lpgHasPermission="'cash_handovers:declare'"
+            pButton
+            type="button"
+            severity="secondary"
+            [loading]="loading()"
+            (click)="openCashHandoverForm()"
+          >
+            <i pButtonIcon class="pi pi-wallet"></i>
+            <span pButtonLabel>Declare Cash Handover</span>
+          </button>
+        }
       </div>
 
       @if (route.status === 'completed') {
@@ -376,6 +389,51 @@
             </div>
           </form>
         </div>
+      }
+
+      @if (showCashHandoverForm()) {
+        <div class="load-form">
+          <h3 class="section-title">Declare Cash Handover</h3>
+          <form [formGroup]="cashHandoverForm" (ngSubmit)="onSubmitCashHandover()" class="dialog-form">
+            <div class="form-group">
+              <label for="cash_handover_amount">Cash Amount Handed Over</label>
+              <p-inputnumber
+                inputId="cash_handover_amount"
+                formControlName="actual_amount"
+                mode="currency"
+                currency="INR"
+                locale="en-IN"
+                [min]="0"
+                [fluid]="true"
+              />
+            </div>
+
+            <div class="modal-actions">
+              <button pButton type="button" severity="secondary" (click)="showCashHandoverForm.set(false)">
+                Cancel
+              </button>
+              <button pButton type="submit" [disabled]="cashHandoverForm.invalid || loading()">
+                Declare
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      @if (lastCashHandover(); as handover) {
+        <p-message
+          [severity]="handover.shortfall === '0' || handover.shortfall === '0.00' ? 'success' : 'warn'"
+        >
+          <span>
+            Handover {{ handover.handover_number ?? handover.id }}: expected
+            ₹{{ handover.expected_amount }}, collected ₹{{ handover.actual_amount }}
+            @if (handover.shortfall !== '0' && handover.shortfall !== '0.00') {
+              — shortfall of ₹{{ handover.shortfall }}.
+            } @else {
+              — matched in full.
+            }
+          </span>
+        </p-message>
       }
 
       <div class="stops-header">

@@ -1,6 +1,6 @@
 
 import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { shortId } from '@lpg/shared/ui';
+import { HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -31,6 +31,7 @@ import {
   OrderService,
   type AppError,
   type BranchResponse,
+  type CashHandoverResponse,
   type CylinderTypeResponse,
   type DriverResponse,
   type EmployeeResponse,
@@ -120,6 +121,7 @@ function toDateOnlyString(date: Date): string {
     Tag,
     DatePicker,
     Tooltip,
+    HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-dispatch.html',
@@ -284,6 +286,11 @@ export class FeatureDispatch implements OnInit {
   protected readonly canReconcileRoute = computed(
     () => this.selectedRoute()?.status === 'completed',
   );
+  // Declaring the cash collected only makes sense once a route has actually
+  // run — same condition as Reconcile, which also only applies post-completion.
+  protected readonly canDeclareCashHandover = computed(
+    () => this.selectedRoute()?.status === 'completed',
+  );
 
   protected readonly loadForm = this.fb.group({
     warehouse_id: ['', [Validators.required]],
@@ -300,6 +307,16 @@ export class FeatureDispatch implements OnInit {
   protected get loadLines() {
     return this.loadForm.controls.lines;
   }
+
+  // ---------------------------------------------------------------------------
+  // Declare Cash Handover (inline sub-form within the Route Detail drawer)
+  // ---------------------------------------------------------------------------
+
+  protected readonly showCashHandoverForm = signal(false);
+  protected readonly lastCashHandover = signal<CashHandoverResponse | null>(null);
+  protected readonly cashHandoverForm = this.fb.group({
+    actual_amount: [0, [Validators.required, Validators.min(0)]],
+  });
 
   // ---------------------------------------------------------------------------
   // Assign order to route drawer
@@ -483,6 +500,8 @@ export class FeatureDispatch implements OnInit {
   protected openRouteDetail(route: RouteResponse): void {
     this.showLoadForm.set(false);
     this.showAddStopForm.set(false);
+    this.showCashHandoverForm.set(false);
+    this.lastCashHandover.set(null);
     this.showRouteDetail.set(true);
     this.loading.set(true);
     this.deliveryService.getRoute(route.id).subscribe({
@@ -555,6 +574,38 @@ export class FeatureDispatch implements OnInit {
 
   protected goToInventoryReconciliation(): void {
     void this.router.navigate(['/inventory']);
+  }
+
+  protected openCashHandoverForm(): void {
+    this.lastCashHandover.set(null);
+    this.cashHandoverForm.reset({ actual_amount: 0 });
+    this.showCashHandoverForm.set(true);
+  }
+
+  protected onSubmitCashHandover(): void {
+    const route = this.selectedRoute();
+    if (!route || this.cashHandoverForm.invalid) return;
+    const { actual_amount } = this.cashHandoverForm.getRawValue();
+    this.loading.set(true);
+    this.deliveryService
+      .declareCashHandover({
+        driver_id: route.driver_id,
+        route_id: route.id,
+        actual_amount,
+      })
+      .subscribe({
+        next: (handover) => {
+          this.lastCashHandover.set(handover);
+          this.showCashHandoverForm.set(false);
+          this.infoMessage.set('Cash handover declared.');
+          this.errorMessage.set(null);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.errorMessage.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
   }
 
   // ---------------------------------------------------------------------------
