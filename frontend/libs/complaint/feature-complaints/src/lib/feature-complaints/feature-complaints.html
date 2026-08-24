@@ -65,8 +65,8 @@
             <span class="info-label">Customer</span>
             <button
               type="button"
-              class="customer-link"
-              (click)="openCustomerDetails(complaint.customer_id)"
+              class="info-value info-link"
+              (click)="openCustomerPreview(complaint.customer_id)"
             >
               {{ customerById().get(complaint.customer_id)?.consumer_number ?? shortId(complaint.customer_id) }}
             </button>
@@ -335,61 +335,52 @@
   </ng-template>
 </p-drawer>
 
-<!-- Customer Details Dialog -->
 <p-dialog
-  [(visible)]="showCustomerDialog"
+  [visible]="showCustomerPreview()"
+  (visibleChange)="!$event && showCustomerPreview.set(false)"
+  header="Customer"
   [modal]="true"
-  [closeOnEscape]="true"
   [dismissableMask]="true"
-  header="Customer Details"
-  styleClass="customer-details-dialog"
+  [style]="{ width: '28rem' }"
 >
-  @if (customerDialogLoading()) {
-    <div class="customer-dialog-loading">Loading…</div>
-  } @else if (selectedCustomer(); as customer) {
-    <div class="info-grid">
-      <div class="info-item">
-        <span class="info-label">Name</span>
-        <span class="info-value">{{ customer.full_name }}</span>
+  @if (customerPreviewLoading()) {
+    <p class="preview-loading">Loading…</p>
+  } @else if (customerPreview(); as customer) {
+    <div class="preview-content">
+      <div class="preview-header">
+        <h3>{{ customer.full_name }}</h3>
+        <p class="preview-subtitle">Consumer No: {{ customer.consumer_number ?? '—' }}</p>
       </div>
-      <div class="info-item">
-        <span class="info-label">Consumer No.</span>
-        <span class="info-value font-mono">{{ customer.consumer_number ?? '—' }}</span>
+      <div class="preview-tags">
+        <p-tag [value]="toSentenceCase(customer.status)" [severity]="customerStatusSeverity(customer.status)" />
+        <p-tag [value]="'KYC: ' + toSentenceCase(customer.kyc_status)" [severity]="kycStatusSeverity(customer.kyc_status)" />
       </div>
-      <div class="info-item">
-        <span class="info-label">Phone</span>
-        <span class="info-value">{{ customer.phone_number }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Type</span>
-        <span class="info-value">{{ customer.customer_type }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Status</span>
-        <span class="info-value">{{ customer.status }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">KYC Status</span>
-        <span class="info-value">{{ customer.kyc_status }}</span>
-      </div>
-      @if (customer.email) {
+      <div class="preview-grid">
         <div class="info-item">
-          <span class="info-label">Email</span>
-          <span class="info-value">{{ customer.email }}</span>
+          <span class="info-label">Phone</span>
+          <span class="info-value">{{ customer.phone_number }}</span>
         </div>
-      }
-      @if (customer.contact_person) {
         <div class="info-item">
-          <span class="info-label">Contact Person</span>
-          <span class="info-value">{{ customer.contact_person }}</span>
+          <span class="info-label">Customer Type</span>
+          <span class="info-value capitalize">{{ customer.customer_type }}</span>
         </div>
-      }
-      @if (customer.addresses.length > 0) {
-        <div class="info-item col-span-2">
+        @if (customer.email) {
+          <div class="info-item">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ customer.email }}</span>
+          </div>
+        }
+        @if (customer.contact_person) {
+          <div class="info-item">
+            <span class="info-label">Contact Person</span>
+            <span class="info-value">{{ customer.contact_person }}</span>
+          </div>
+        }
+      </div>
+      @if (customerPreviewAddress(customer); as address) {
+        <div class="info-item">
           <span class="info-label">Address</span>
-          <span class="info-value">
-            {{ customer.addresses[0].line_1 }}@if (customer.addresses[0].city) {, {{ customer.addresses[0].city }}}
-          </span>
+          <span class="info-value">{{ address }}</span>
         </div>
       }
     </div>

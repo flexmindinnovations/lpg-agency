@@ -35,7 +35,9 @@ import {
   type DataGridColumn,
   HasPermissionDirective,
   StatusChipCell,
+  type ChipSeverity,
   shortId,
+  toSentenceCase,
 } from '@lpg/shared/ui';
 
 function errorMessageFor(_error: unknown): string {
@@ -84,12 +86,46 @@ export class FeatureComplaints implements OnInit {
 
   /** Complaints only carry `customer_id` (a UUID, meaningless to a user) —
    * resolved to the real `CustomerResponse` (consumer number, name, etc.)
-   * for display, and reused to back the Customer Details dialog so opening
-   * it never needs a second round trip for a customer already on screen. */
+   * purely so the grid can display a real consumer number instead of a raw
+   * UUID; unlike `feature-invoices` this backend doesn't denormalize a
+   * `customer_consumer_number` onto the complaint itself, so there's
+   * nothing to read off the row directly. */
   readonly customerById = signal<Map<string, CustomerResponse>>(new Map());
-  readonly showCustomerDialog = signal(false);
-  readonly selectedCustomer = signal<CustomerResponse | null>(null);
-  readonly customerDialogLoading = signal(false);
+
+  // Customer "quick view" — same pattern as `feature-invoices`'s
+  // `openCustomerPreview`/`customerPreview`/`showCustomerPreview` (that
+  // module is the reference implementation for this; not duplicated as a
+  // shared component since it's a handful of lines wired to
+  // feature-specific severity maps, same as invoices does it inline).
+  protected readonly showCustomerPreview = signal(false);
+  protected readonly customerPreview = signal<CustomerResponse | null>(null);
+  protected readonly customerPreviewLoading = signal(false);
+
+  private static readonly CUSTOMER_STATUS_SEVERITY: Record<string, ChipSeverity> = {
+    onboarding: 'warn',
+    pending_approval: 'warn',
+    active: 'success',
+    inactive: 'secondary',
+    blocked: 'danger',
+    closed: 'danger',
+  };
+
+  private static readonly KYC_STATUS_SEVERITY: Record<string, ChipSeverity> = {
+    pending: 'warn',
+    verified: 'success',
+    rejected: 'danger',
+    expired: 'danger',
+  };
+
+  protected readonly toSentenceCase = toSentenceCase;
+
+  protected customerStatusSeverity(status: string): ChipSeverity {
+    return FeatureComplaints.CUSTOMER_STATUS_SEVERITY[status] ?? 'secondary';
+  }
+
+  protected kycStatusSeverity(status: string): ChipSeverity {
+    return FeatureComplaints.KYC_STATUS_SEVERITY[status] ?? 'secondary';
+  }
 
   // Drawer states
   readonly detailVisible = signal(false);
@@ -154,7 +190,7 @@ export class FeatureComplaints implements OnInit {
       tooltipValueGetter: (val) => String(val),
       valueFormatter: (val) =>
         this.customerById().get(String(val))?.consumer_number ?? shortId(val),
-      onLinkClick: (row) => this.openCustomerDetails(row.customer_id),
+      onLinkClick: (row) => this.openCustomerPreview(row.customer_id),
     },
     {
       field: 'created_at',
@@ -267,40 +303,37 @@ export class FeatureComplaints implements OnInit {
     this.detailVisible.set(true);
   }
 
-  /** Opens the Customer Details dialog for the given ID — reuses the
-   * already-cached lookup from `customerById` (populated before the grid
-   * ever renders, see `resolveCustomers`) when available, and falls back
-   * to a live fetch for the rare case it isn't (e.g. a customer_id that
-   * arrived via some path other than `loadComplaints`). */
-  openCustomerDetails(customerId: string): void {
-    const cached = this.customerById().get(customerId);
-    if (cached) {
-      this.selectedCustomer.set(cached);
-      this.showCustomerDialog.set(true);
-      return;
-    }
-
-    this.selectedCustomer.set(null);
-    this.customerDialogLoading.set(true);
-    this.showCustomerDialog.set(true);
-    const sub = this.customerService.get(customerId).subscribe({
+  /** Same shape as `feature-invoices`'s `openCustomerPreview` — a fresh
+   * fetch on every open rather than reading `customerById`, since that
+   * map exists only to feed the grid's `valueFormatter` and isn't meant
+   * to double as a cache the preview depends on staying in sync with. */
+  protected openCustomerPreview(customerId: string): void {
+    this.showCustomerPreview.set(true);
+    this.customerPreviewLoading.set(true);
+    this.customerPreview.set(null);
+    this.customerService.get(customerId).subscribe({
       next: (customer) => {
-        this.selectedCustomer.set(customer);
-        this.customerDialogLoading.set(false);
-        const next = new Map(this.customerById());
-        next.set(customer.id, customer);
-        this.customerById.set(next);
+        this.customerPreview.set(customer);
+        this.customerPreviewLoading.set(false);
       },
       error: () => {
-        this.customerDialogLoading.set(false);
+        this.customerPreviewLoading.set(false);
+        this.showCustomerPreview.set(false);
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'Failed to load customer details.',
+          detail: 'That customer could not be found.',
         });
       },
     });
-    this.destroyRef.onDestroy(() => sub.unsubscribe());
+  }
+
+  protected customerPreviewAddress(customer: CustomerResponse): string | null {
+    const address = customer.addresses.find((a) => a.is_primary) ?? customer.addresses[0];
+    if (!address) return null;
+    return [address.line_1, address.line_2, address.area, address.city, address.state, address.pincode]
+      .filter(Boolean)
+      .join(', ');
   }
 
   openRaiseModal() {
