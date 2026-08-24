@@ -11,13 +11,14 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { ButtonDirective } from 'primeng/button';
+import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
+import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ComplaintService,
   type Complaint,
@@ -42,15 +43,13 @@ function errorMessageFor(_error: unknown): string {
   selector: 'lib-feature-complaints',
   imports: [
     DatePipe,
-    // HeaderPortalDirective,
-    // HeaderTitlePortalDirective,
+    HeaderPortalDirective,
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
-    // ButtonIcon,
-    // ButtonLabel,
+    ButtonIcon,
+    ButtonLabel,
     Drawer,
-    // IconField,
-    // InputIcon,
     InputText,
     Select,
     Tag,
@@ -98,6 +97,10 @@ export class FeatureComplaints implements OnInit {
       width: 140,
       tooltipValueGetter: (_val, row) => row.id,
       valueFormatter: (val, row) => (val as string | undefined) ?? shortId(row.id),
+      // Without this the Assign/Resolve drawer (built around
+      // `onRowAction`/`selectedComplaint`/`detailVisible` below) was
+      // entirely unreachable — nothing in the grid ever called it.
+      onLinkClick: (row) => this.onRowAction(row),
     },
     { field: 'category', header: 'Category', flex: 1, sortable: true, cellRenderer: StatusChipCell },
     {
@@ -163,11 +166,17 @@ export class FeatureComplaints implements OnInit {
     resolution_notes: ['', [Validators.required, Validators.minLength(5)]],
   });
 
+  // Values must match the backend's `ComplaintCategory` enum exactly
+  // (`domain/complaint/value_objects.py`) — these previously sent
+  // human-readable labels as the raw value (e.g. `'Delivery Delay'`), none
+  // of which matched the real enum, so raising a complaint with any
+  // category but "Other" failed backend validation.
   readonly categoryOptions = [
-    { label: 'Delivery Delay', value: 'Delivery Delay' },
-    { label: 'Defective Cylinder', value: 'Defective Cylinder' },
-    { label: 'Rude Behavior', value: 'Rude Behavior' },
-    { label: 'Overcharging', value: 'Overcharging' },
+    { label: 'Short Delivery', value: 'ShortDelivery' },
+    { label: 'Damaged Cylinder', value: 'DamagedCylinder' },
+    { label: 'Billing Dispute', value: 'BillingDispute' },
+    { label: 'Driver Conduct', value: 'DriverConduct' },
+    { label: 'Late Delivery', value: 'LateDelivery' },
     { label: 'Other', value: 'Other' },
   ];
 

@@ -1,6 +1,14 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
+import {
+  ApiConfiguration,
+  assignComplaintApiV1ComplaintsComplaintIdAssignPost,
+  getComplaintApiV1ComplaintsComplaintIdGet,
+  listComplaintsApiV1ComplaintsGet,
+  raiseComplaintApiV1ComplaintsPost,
+  resolveComplaintApiV1ComplaintsComplaintIdResolvePost,
+} from '@lpg/shared/data-access';
 
 export interface ComplaintAssignment {
   id: string;
@@ -61,12 +69,23 @@ export interface ResolveComplaintRequest {
   resolution_notes: string;
 }
 
+/**
+ * Was a hand-rolled `HttpClient` service with a hardcoded relative
+ * `'/api/v1/complaints'` base — unlike every other feature's service, it
+ * never resolved against `ApiConfiguration.rootUrl` (`http://localhost:8000`
+ * in dev), so every request instead hit the Angular dev server's own origin.
+ * GETs silently came back as the SPA's `index.html` (parsed as an empty
+ * list, no error surfaced), and POSTs 404'd with the dev server's own
+ * "Cannot POST ..." page. The entire feature — list, raise, assign, resolve
+ * — was unreachable from the real backend. Now routed through the same
+ * generated-client + `ApiConfiguration` pattern every other service uses.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class ComplaintService {
-  private http = inject(HttpClient);
-  private apiUrl = '/api/v1/complaints';
+  private readonly http = inject(HttpClient);
+  private readonly config = inject(ApiConfiguration);
 
   listComplaints(
     skip = 0,
@@ -74,33 +93,37 @@ export class ComplaintService {
     status?: string,
     customer_id?: string
   ): Observable<ComplaintListResponse> {
-    let params = new HttpParams()
-      .set('skip', skip.toString())
-      .set('limit', limit.toString());
-
-    if (status) {
-      params = params.set('status', status);
-    }
-    if (customer_id) {
-      params = params.set('customer_id', customer_id);
-    }
-
-    return this.http.get<ComplaintListResponse>(this.apiUrl, { params });
+    return listComplaintsApiV1ComplaintsGet(this.http, this.config.rootUrl, {
+      skip,
+      limit,
+      status,
+      customer_id,
+    }).pipe(map((res) => res.body as unknown as ComplaintListResponse));
   }
 
   getComplaint(id: string): Observable<Complaint> {
-    return this.http.get<Complaint>(`${this.apiUrl}/${id}`);
+    return getComplaintApiV1ComplaintsComplaintIdGet(this.http, this.config.rootUrl, {
+      complaint_id: id,
+    }).pipe(map((res) => res.body as unknown as Complaint));
   }
 
   raiseComplaint(request: RaiseComplaintRequest): Observable<{ id: string }> {
-    return this.http.post<{ id: string }>(this.apiUrl, request);
+    return raiseComplaintApiV1ComplaintsPost(this.http, this.config.rootUrl, {
+      body: request as never,
+    }).pipe(map((res) => res.body as { id: string }));
   }
 
   assignComplaint(id: string, request: AssignComplaintRequest): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${id}/assign`, request);
+    return assignComplaintApiV1ComplaintsComplaintIdAssignPost(this.http, this.config.rootUrl, {
+      complaint_id: id,
+      body: request,
+    }).pipe(map(() => undefined));
   }
 
   resolveComplaint(id: string, request: ResolveComplaintRequest): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/${id}/resolve`, request);
+    return resolveComplaintApiV1ComplaintsComplaintIdResolvePost(this.http, this.config.rootUrl, {
+      complaint_id: id,
+      body: request as never,
+    }).pipe(map(() => undefined));
   }
 }

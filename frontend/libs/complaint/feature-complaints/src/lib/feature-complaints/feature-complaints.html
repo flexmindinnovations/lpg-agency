@@ -7,7 +7,12 @@
 
 <ng-template lpgHeaderPortal>
   <div class="page-header__actions">
-    <button *lpgHasPermission="'complaints:create'"
+    <!-- Backend gates raise/assign/resolve on a single 'complaints.manage'
+         code (routers/complaint.py), not the finer-grained 'complaints:create'/
+         'complaints:assign'/'complaints:resolve' codes this used to check —
+         'complaints:assign' doesn't even exist as a permission row, so that
+         button could never render for anyone. Matching backend reality. -->
+    <button *lpgHasPermission="'complaints.manage'"
       #registerTriggerEl
       pButton
       type="button"
@@ -132,7 +137,7 @@
     @if (selectedComplaint(); as complaint) {
       <div class="drawer-actions">
         <button
-          *lpgHasPermission="'complaints:assign'"
+          *lpgHasPermission="'complaints.manage'"
           pButton
           class="p-button-outlined"
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
@@ -142,7 +147,7 @@
           <span pButtonLabel>Assign</span>
         </button>
         <button
-          *lpgHasPermission="'complaints:resolve'"
+          *lpgHasPermission="'complaints.manage'"
           pButton
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
           (click)="openResolveModal()"
