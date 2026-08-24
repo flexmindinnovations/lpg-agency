@@ -18,7 +18,7 @@ import { Drawer } from 'primeng/drawer';
 import { Dialog } from 'primeng/dialog';
 import { ButtonDirective } from 'primeng/button';
 import { MessageService } from 'primeng/api';
-import { DataGridComponent, type DataGridColumn, StatusChipCell, type ChipSeverity, toSentenceCase, shortId } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, PreviewDialog, type PreviewData, StatusChipCell, type ChipSeverity, toSentenceCase, shortId } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminCylinderTypeService,
@@ -45,6 +45,7 @@ import {
     Tag,
     ButtonDirective,
     DataGridComponent,
+    PreviewDialog,
     DatePipe,
     CurrencyPipe,
   ],
@@ -86,10 +87,11 @@ export class FeatureInvoices implements OnInit {
   // Customer/Order "quick view" — a lightweight read-only preview so
   // clicking a reference number from the invoice drawer doesn't navigate
   // away and lose the invoice context (matches the drawer-not-full-page
-  // pattern used everywhere else in this app).
-  protected readonly showCustomerPreview = signal(false);
-  protected readonly customerPreview = signal<CustomerResponse | null>(null);
-  protected readonly customerPreviewLoading = signal(false);
+  // pattern used everywhere else in this app). Customer preview renders
+  // through the shared `PreviewDialog` (also used by `feature-complaints`);
+  // Order preview keeps its own dialog since it has richer content (a line
+  // item list) that doesn't fit the shared component's simple field-grid shape.
+  protected readonly customerPreviewDialog = viewChild.required<PreviewDialog>('customerPreviewDialog');
 
   protected readonly showOrderPreview = signal(false);
   protected readonly orderPreview = signal<OrderResponse | null>(null);
@@ -264,17 +266,12 @@ export class FeatureInvoices implements OnInit {
   }
 
   protected openCustomerPreview(customerId: string): void {
-    this.showCustomerPreview.set(true);
-    this.customerPreviewLoading.set(true);
-    this.customerPreview.set(null);
+    const dialog = this.customerPreviewDialog();
+    dialog.open();
     this.customerService.get(customerId).subscribe({
-      next: (customer) => {
-        this.customerPreview.set(customer);
-        this.customerPreviewLoading.set(false);
-      },
+      next: (customer) => dialog.showData(this.customerPreviewData(customer)),
       error: () => {
-        this.customerPreviewLoading.set(false);
-        this.showCustomerPreview.set(false);
+        dialog.close();
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
@@ -282,6 +279,23 @@ export class FeatureInvoices implements OnInit {
         });
       },
     });
+  }
+
+  private customerPreviewData(customer: CustomerResponse): PreviewData {
+    const address = this.customerPreviewAddress(customer);
+    return {
+      title: customer.full_name,
+      subtitle: `Consumer No: ${customer.consumer_number ?? '—'}`,
+      tags: [
+        { label: toSentenceCase(customer.status), severity: this.customerStatusSeverity(customer.status) },
+        { label: 'KYC: ' + toSentenceCase(customer.kyc_status), severity: this.kycStatusSeverity(customer.kyc_status) },
+      ],
+      fields: [
+        { label: 'Phone', value: customer.phone_number },
+        { label: 'Customer Type', value: toSentenceCase(customer.customer_type) },
+      ],
+      fullWidthFields: address ? [{ label: 'Address', value: address }] : [],
+    };
   }
 
   protected customerPreviewAddress(customer: CustomerResponse): string | null {

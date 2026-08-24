@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   OnInit,
+  computed,
   inject,
   signal,
   viewChild,
@@ -14,15 +15,20 @@ import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
-import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
+import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { CustomerService, type CustomerResponse } from '@lpg/shared/data-access';
+import {
+  AdminStaffUserService,
+  CustomerService,
+  type CustomerResponse,
+  type StaffUserResponse,
+} from '@lpg/shared/data-access';
 import {
   ComplaintService,
   type Complaint,
@@ -34,6 +40,8 @@ import {
   DataGridComponent,
   type DataGridColumn,
   HasPermissionDirective,
+  PreviewDialog,
+  type PreviewData,
   StatusChipCell,
   type ChipSeverity,
   shortId,
@@ -55,7 +63,6 @@ function errorMessageFor(_error: unknown): string {
     ButtonDirective,
     ButtonIcon,
     ButtonLabel,
-    Dialog,
     Drawer,
     InputText,
     Select,
@@ -63,6 +70,7 @@ function errorMessageFor(_error: unknown): string {
     Textarea,
     DataGridComponent,
     HasPermissionDirective,
+    PreviewDialog,
   ],
   templateUrl: './feature-complaints.html',
   styleUrl: './feature-complaints.css',
@@ -72,9 +80,11 @@ function errorMessageFor(_error: unknown): string {
 export class FeatureComplaints implements OnInit {
   private readonly complaintService = inject(ComplaintService);
   private readonly customerService = inject(CustomerService);
+  private readonly adminStaffUserService = inject(AdminStaffUserService);
   private readonly messageService = inject(MessageService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly permissionChecker = inject(PERMISSION_CHECKER);
 
   readonly registerTriggerEl = viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
@@ -92,14 +102,21 @@ export class FeatureComplaints implements OnInit {
    * nothing to read off the row directly. */
   readonly customerById = signal<Map<string, CustomerResponse>>(new Map());
 
-  // Customer "quick view" — same pattern as `feature-invoices`'s
-  // `openCustomerPreview`/`customerPreview`/`showCustomerPreview` (that
-  // module is the reference implementation for this; not duplicated as a
-  // shared component since it's a handful of lines wired to
-  // feature-specific severity maps, same as invoices does it inline).
-  protected readonly showCustomerPreview = signal(false);
-  protected readonly customerPreview = signal<CustomerResponse | null>(null);
-  protected readonly customerPreviewLoading = signal(false);
+  // Customer/Staff "quick view" — both render through the shared
+  // `PreviewDialog` (also used by `feature-invoices`) so there's one dialog
+  // implementation instead of every feature re-inventing it.
+  protected readonly customerPreviewDialog = viewChild.required<PreviewDialog>('customerPreviewDialog');
+  protected readonly staffPreviewDialog = viewChild.required<PreviewDialog>('staffPreviewDialog');
+
+  /** `AdminStaffUserService.listStaffUsers` requires `users:manage`, which
+   * only `agency_admin`/`super_admin` hold — narrower than `complaints.manage`
+   * (also granted to `manager`/`dispatcher`). Gate the Assigned To/Resolved By
+   * links on that permission so those roles keep seeing the plain (unlinked)
+   * ID they already saw rather than hitting a 403. */
+  protected readonly canViewStaffDirectory = computed(
+    () => this.permissionChecker()?.permissions?.has('users:manage') ?? false,
+  );
+  private readonly staffUsers = signal<StaffUserResponse[] | null>(null);
 
   private static readonly CUSTOMER_STATUS_SEVERITY: Record<string, ChipSeverity> = {
     onboarding: 'warn',
@@ -308,17 +325,30 @@ export class FeatureComplaints implements OnInit {
    * map exists only to feed the grid's `valueFormatter` and isn't meant
    * to double as a cache the preview depends on staying in sync with. */
   protected openCustomerPreview(customerId: string): void {
-    this.showCustomerPreview.set(true);
-    this.customerPreviewLoading.set(true);
-    this.customerPreview.set(null);
+    const dialog = this.customerPreviewDialog();
+    dialog.open();
     this.customerService.get(customerId).subscribe({
       next: (customer) => {
-        this.customerPreview.set(customer);
-        this.customerPreviewLoading.set(false);
+        const address = this.customerPreviewAddress(customer);
+        dialog.showData({
+          title: customer.full_name,
+          subtitle: `Consumer No: ${customer.consumer_number ?? '—'}`,
+          tags: [
+            { label: toSentenceCase(customer.status), severity: this.customerStatusSeverity(customer.status) },
+            {
+              label: 'KYC: ' + toSentenceCase(customer.kyc_status),
+              severity: this.kycStatusSeverity(customer.kyc_status),
+            },
+          ],
+          fields: [
+            { label: 'Phone', value: customer.phone_number },
+            { label: 'Customer Type', value: toSentenceCase(customer.customer_type) },
+          ],
+          fullWidthFields: address ? [{ label: 'Address', value: address }] : [],
+        });
       },
       error: () => {
-        this.customerPreviewLoading.set(false);
-        this.showCustomerPreview.set(false);
+        dialog.close();
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
@@ -334,6 +364,60 @@ export class FeatureComplaints implements OnInit {
     return [address.line_1, address.line_2, address.area, address.city, address.state, address.pincode]
       .filter(Boolean)
       .join(', ');
+  }
+
+  /** `assigned_to`/`resolved_by` are `identity_user.id` values — the only
+   * client-visible endpoint that maps that id space to a name is the admin
+   * staff directory (`AdminStaffUserService.listStaffUsers`, no get-by-id
+   * exists), so the whole list is fetched once and cached rather than
+   * re-fetched per click. Only reachable when `canViewStaffDirectory()` is
+   * true — see that computed's comment for why. */
+  protected openStaffPreview(userId: string): void {
+    const dialog = this.staffPreviewDialog();
+    dialog.open();
+    const cached = this.staffUsers();
+    if (cached) {
+      this.showStaffPreview(dialog, cached, userId);
+      return;
+    }
+    this.adminStaffUserService.listStaffUsers().subscribe({
+      next: (users) => {
+        this.staffUsers.set(users);
+        this.showStaffPreview(dialog, users, userId);
+      },
+      error: () => {
+        dialog.close();
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Could not load the staff directory.',
+        });
+      },
+    });
+  }
+
+  private showStaffPreview(dialog: PreviewDialog, users: StaffUserResponse[], userId: string): void {
+    const user = users.find((u) => u.id === userId);
+    if (!user) {
+      dialog.close();
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'That staff member could not be found.',
+      });
+      return;
+    }
+    const data: PreviewData = {
+      title: user.email ?? shortId(user.id),
+      tags: [
+        {
+          label: user.is_active ? 'Active' : 'Inactive',
+          severity: user.is_active ? 'success' : 'secondary',
+        },
+      ],
+      fields: [{ label: 'Role', value: toSentenceCase(user.role) }],
+    };
+    dialog.showData(data);
   }
 
   openRaiseModal() {

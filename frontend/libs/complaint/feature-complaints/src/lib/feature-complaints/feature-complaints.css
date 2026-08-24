@@ -102,57 +102,6 @@
   color: var(--color-action-primary-hover);
 }
 
-.capitalize {
-  text-transform: capitalize;
-}
-
-/* Customer quick-view dialog */
-
-.preview-loading {
-  color: var(--color-text-secondary);
-  font-size: var(--typography-body-small-font-size);
-  margin: 0;
-}
-
-.preview-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.preview-header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spacing-xs);
-}
-
-.preview-header h3 {
-  margin: 0;
-  font-size: var(--typography-heading3-font-size);
-  font-weight: var(--typography-heading3-font-weight);
-}
-
-.preview-subtitle {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--typography-caption-font-size);
-}
-
-.preview-tags {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.preview-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
-  padding-block: var(--spacing-md);
-  border-block-start: var(--border-width) solid var(--color-border-default);
-  border-block-end: var(--border-width) solid var(--color-border-default);
-}
-
 .history-list {
   display: flex;
   flex-direction: column;

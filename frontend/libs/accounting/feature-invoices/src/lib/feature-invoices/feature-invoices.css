@@ -196,10 +196,6 @@
   padding: var(--spacing-sm) 0;
 }
 
-.capitalize {
-  text-transform: capitalize;
-}
-
 .numeric-value {
   font-variant-numeric: tabular-nums;
 }

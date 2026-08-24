@@ -109,7 +109,14 @@
               <div class="history-item">
                 <i class="pi pi-user text-primary"></i>
                 <div class="history-content">
-                  <span class="history-main">Assigned to {{ shortId(assignment.assigned_to) }}</span>
+                  <span class="history-main">
+                    Assigned to
+                    @if (canViewStaffDirectory()) {
+                      <button type="button" class="info-link" (click)="openStaffPreview(assignment.assigned_to)">{{ shortId(assignment.assigned_to) }}</button>
+                    } @else {
+                      {{ shortId(assignment.assigned_to) }}
+                    }
+                  </span>
                   <span class="history-sub">{{ assignment.assigned_at | date:'short' }}</span>
                 </div>
               </div>
@@ -130,7 +137,14 @@
               <span class="text-sm text-surface-500">{{ complaint.resolution.resolved_at | date:'short' }}</span>
             </div>
             <p class="mt-2 text-sm">{{ complaint.resolution.resolution_notes }}</p>
-            <p class="mt-2 text-xs text-surface-500">Resolved by: {{ shortId(complaint.resolution.resolved_by) }}</p>
+            <p class="mt-2 text-xs text-surface-500">
+              Resolved by:
+              @if (canViewStaffDirectory()) {
+                <button type="button" class="info-link" (click)="openStaffPreview(complaint.resolution.resolved_by)">{{ shortId(complaint.resolution.resolved_by) }}</button>
+              } @else {
+                {{ shortId(complaint.resolution.resolved_by) }}
+              }
+            </p>
           </div>
         } @else {
           <p class="empty-hint">Not resolved yet.</p>
@@ -335,54 +349,5 @@
   </ng-template>
 </p-drawer>
 
-<p-dialog
-  [visible]="showCustomerPreview()"
-  (visibleChange)="!$event && showCustomerPreview.set(false)"
-  header="Customer"
-  [modal]="true"
-  [dismissableMask]="true"
-  [style]="{ width: '28rem' }"
->
-  @if (customerPreviewLoading()) {
-    <p class="preview-loading">Loading…</p>
-  } @else if (customerPreview(); as customer) {
-    <div class="preview-content">
-      <div class="preview-header">
-        <h3>{{ customer.full_name }}</h3>
-        <p class="preview-subtitle">Consumer No: {{ customer.consumer_number ?? '—' }}</p>
-      </div>
-      <div class="preview-tags">
-        <p-tag [value]="toSentenceCase(customer.status)" [severity]="customerStatusSeverity(customer.status)" />
-        <p-tag [value]="'KYC: ' + toSentenceCase(customer.kyc_status)" [severity]="kycStatusSeverity(customer.kyc_status)" />
-      </div>
-      <div class="preview-grid">
-        <div class="info-item">
-          <span class="info-label">Phone</span>
-          <span class="info-value">{{ customer.phone_number }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Customer Type</span>
-          <span class="info-value capitalize">{{ customer.customer_type }}</span>
-        </div>
-        @if (customer.email) {
-          <div class="info-item">
-            <span class="info-label">Email</span>
-            <span class="info-value">{{ customer.email }}</span>
-          </div>
-        }
-        @if (customer.contact_person) {
-          <div class="info-item">
-            <span class="info-label">Contact Person</span>
-            <span class="info-value">{{ customer.contact_person }}</span>
-          </div>
-        }
-      </div>
-      @if (customerPreviewAddress(customer); as address) {
-        <div class="info-item">
-          <span class="info-label">Address</span>
-          <span class="info-value">{{ address }}</span>
-        </div>
-      }
-    </div>
-  }
-</p-dialog>
+<<lpg-preview-dialog #customerPreviewDialog header="Customer" />
+<lpg-preview-dialog #staffPreviewDialog header="Staff Member" />

@@ -150,45 +150,7 @@
   </div>
 </p-dialog>
 
-<p-dialog
-  [visible]="showCustomerPreview()"
-  (visibleChange)="!$event && showCustomerPreview.set(false)"
-  header="Customer"
-  [modal]="true"
-  [dismissableMask]="true"
-  [style]="{ width: '28rem' }"
->
-  @if (customerPreviewLoading()) {
-    <p class="preview-loading">Loading…</p>
-  } @else if (customerPreview(); as c) {
-    <div class="preview-content">
-      <div class="preview-header">
-        <h3>{{ c.full_name }}</h3>
-        <p class="preview-subtitle">Consumer No: {{ c.consumer_number ?? '—' }}</p>
-      </div>
-      <div class="preview-tags">
-        <p-tag [value]="toSentenceCase(c.status)" [severity]="customerStatusSeverity(c.status)" />
-        <p-tag [value]="'KYC: ' + toSentenceCase(c.kyc_status)" [severity]="kycStatusSeverity(c.kyc_status)" />
-      </div>
-      <div class="preview-grid">
-        <div class="info-item">
-          <span class="info-label">Phone</span>
-          <span class="info-value">{{ c.phone_number }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Customer Type</span>
-          <span class="info-value capitalize">{{ c.customer_type }}</span>
-        </div>
-      </div>
-      @if (customerPreviewAddress(c); as address) {
-        <div class="info-item">
-          <span class="info-label">Address</span>
-          <span class="info-value">{{ address }}</span>
-        </div>
-      }
-    </div>
-  }
-</p-dialog>
+<lpg-preview-dialog #customerPreviewDialog header="Customer" />
 
 <p-dialog
   [visible]="showOrderPreview()"
