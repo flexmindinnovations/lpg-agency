@@ -3,13 +3,16 @@
 
 export interface SaveOnboardingDraftRequest {
   address_data?: {
+[key: string]: any;
 };
   branch_id?: (string | null);
   current_step?: number;
   draft_id?: (string | null);
   kyc_data?: {
+[key: string]: any;
 };
   kyc_document_blob_ref?: (string | null);
   registration_data?: {
+[key: string]: any;
 };
 }

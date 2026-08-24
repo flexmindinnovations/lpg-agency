@@ -72,6 +72,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -102,6 +103,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -148,6 +150,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -287,6 +290,7 @@
           "after_state": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -298,6 +302,7 @@
           "before_state": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -580,6 +585,7 @@
       "CashHandoverResponse": {
         "properties": {
           "actual_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Actual Amount",
             "type": "string"
           },
@@ -599,6 +605,7 @@
             "type": "string"
           },
           "expected_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Expected Amount",
             "type": "string"
           },
@@ -624,6 +631,7 @@
             "type": "string"
           },
           "shortfall": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Shortfall",
             "type": "string"
           }
@@ -986,6 +994,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -1161,6 +1170,7 @@
       "CreditNoteResponse": {
         "properties": {
           "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount",
             "type": "string"
           },
@@ -1304,6 +1314,7 @@
           "latitude": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -1330,6 +1341,7 @@
           "longitude": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -1616,6 +1628,7 @@
           "price": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -1625,6 +1638,7 @@
             "title": "Price"
           },
           "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           }
@@ -1654,6 +1668,7 @@
             "type": "string"
           },
           "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Weight Kg",
             "type": "string"
           }
@@ -1691,10 +1706,12 @@
             "type": "integer"
           },
           "total_revenue": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Revenue",
             "type": "string"
           },
           "total_tax": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Tax",
             "type": "string"
           }
@@ -1849,6 +1866,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -2471,6 +2489,7 @@
             "type": "string"
           },
           "total_gst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Gst",
             "type": "string"
           }
@@ -2727,18 +2746,22 @@
             "type": "integer"
           },
           "subtotal": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
           },
           "tax_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Tax Amount",
             "type": "string"
           },
           "total_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Amount",
             "type": "string"
           },
           "unit_price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Unit Price",
             "type": "string"
           }
@@ -2790,6 +2813,7 @@
         "properties": {
           "amount_paid": {
             "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount Paid",
             "type": "string"
           },
@@ -2865,10 +2889,12 @@
             "type": "string"
           },
           "subtotal": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
           },
           "tax_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Tax Amount",
             "type": "string"
           },
@@ -2878,6 +2904,7 @@
             "type": "string"
           },
           "total_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Total Amount",
             "type": "string"
           },
@@ -3627,6 +3654,7 @@
       "OnboardingDraftResponse": {
         "properties": {
           "address_data": {
+            "additionalProperties": true,
             "title": "Address Data",
             "type": "object"
           },
@@ -3664,6 +3692,7 @@
             "type": "string"
           },
           "kyc_data": {
+            "additionalProperties": true,
             "title": "Kyc Data",
             "type": "object"
           },
@@ -3679,6 +3708,7 @@
             "title": "Kyc Document Blob Ref"
           },
           "registration_data": {
+            "additionalProperties": true,
             "title": "Registration Data",
             "type": "object"
           },
@@ -3744,6 +3774,7 @@
           "unit_price": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -3832,6 +3863,7 @@
             "type": "array"
           },
           "metadata": {
+            "additionalProperties": true,
             "title": "Metadata",
             "type": "object"
           },
@@ -3905,6 +3937,7 @@
           "total_amount": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4111,6 +4144,7 @@
       "PaymentResponse": {
         "properties": {
           "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount",
             "type": "string"
           },
@@ -4226,6 +4260,7 @@
             "type": "string"
           },
           "price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Price",
             "type": "string"
           }
@@ -4341,14 +4376,17 @@
       "ProofOfDeliveryResponse": {
         "properties": {
           "amount_collected": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount Collected",
             "type": "string"
           },
           "gps_lat": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lat",
             "type": "string"
           },
           "gps_lng": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lng",
             "type": "string"
           },
@@ -4486,6 +4524,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -4497,6 +4536,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -4508,6 +4548,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -4991,6 +5032,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -5165,6 +5207,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5201,6 +5244,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5488,6 +5532,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -5686,6 +5731,7 @@
       "SaveOnboardingDraftRequest": {
         "properties": {
           "address_data": {
+            "additionalProperties": true,
             "default": {},
             "title": "Address Data",
             "type": "object"
@@ -5720,6 +5766,7 @@
             "title": "Draft Id"
           },
           "kyc_data": {
+            "additionalProperties": true,
             "default": {},
             "title": "Kyc Data",
             "type": "object"
@@ -5736,6 +5783,7 @@
             "title": "Kyc Document Blob Ref"
           },
           "registration_data": {
+            "additionalProperties": true,
             "default": {},
             "title": "Registration Data",
             "type": "object"
@@ -5934,6 +5982,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6432,6 +6481,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [

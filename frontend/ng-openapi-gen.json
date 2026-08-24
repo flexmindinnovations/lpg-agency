@@ -2,5 +2,6 @@
   "$schema": "node_modules/ng-openapi-gen/ng-openapi-gen-schema.json",
   "input": "../backend/openapi/openapi.json",
   "output": "libs/shared/data-access/src/lib/generated",
-  "ignoreUnusedModels": false
+  "ignoreUnusedModels": false,
+  "_comment_binary_fields": "ng-openapi-gen only detects file-upload fields via the OpenAPI 3.0 shape {type: string, format: binary}. FastAPI's UploadFile emits the OpenAPI 3.1 shape {type: string, contentMediaType: ...} instead, which ng-openapi-gen doesn't recognize and would generate as `string` instead of `Blob`. backend/scripts/export_openapi.py normalizes contentMediaType back to format: binary before writing openapi.json, so this should never resurface — but if a generated model for a file-upload endpoint ever comes out typed as `file: string`, check that normalization step first."
 }

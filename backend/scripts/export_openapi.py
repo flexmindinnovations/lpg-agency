@@ -57,6 +57,29 @@ from lpg.config.settings import Settings
 OUTPUT_PATH = Path(__file__).resolve().parent.parent / "openapi" / "openapi.json"
 
 
+def _normalize_binary_schemas(node: object) -> None:
+    """Rewrite JSON Schema 2020-12 binary fields to the OpenAPI 3.0 convention, in place.
+
+    FastAPI's ``UploadFile`` emits ``{"type": "string", "contentMediaType": "..."}``
+    for its JSON Schema (the 2020-12 way to say "binary string"), which is valid
+    OpenAPI 3.1 but is not recognized by ng-openapi-gen's binary-detection logic —
+    that only checks for the older ``{"type": "string", "format": "binary"}`` shape,
+    so file-upload fields silently generate as ``string`` instead of ``Blob`` in the
+    Angular client. Rewriting here keeps the exported contract semantically
+    equivalent while staying compatible with the frontend generator.
+    """
+    if isinstance(node, dict):
+        if node.get("type") == "string" and "contentMediaType" in node:
+            node.pop("contentMediaType", None)
+            node.pop("contentEncoding", None)
+            node["format"] = "binary"
+        for value in node.values():
+            _normalize_binary_schemas(value)
+    elif isinstance(node, list):
+        for item in node:
+            _normalize_binary_schemas(item)
+
+
 def generate_spec() -> str:
     """Return the OpenAPI document as formatted JSON."""
     # `_env_file=None` disables loading a real backend/.env for *this*
@@ -64,6 +87,7 @@ def generate_spec() -> str:
     # metadata and the two safe overrides below — not from anything on disk.
     app = create_app(Settings(environment="local", docs_enabled=True, _env_file=None))
     spec = app.openapi()
+    _normalize_binary_schemas(spec)
     # sort_keys makes the output deterministic, so a diff shows genuine
     # contract changes rather than dictionary ordering noise.
     return json.dumps(spec, indent=2, sort_keys=True, ensure_ascii=False) + "\n"

@@ -3,15 +3,18 @@
 
 export interface OnboardingDraftResponse {
   address_data: {
+[key: string]: any;
 };
   branch_id: (string | null);
   created_at: (string | null);
   current_step: number;
   id: string;
   kyc_data: {
+[key: string]: any;
 };
   kyc_document_blob_ref: (string | null);
   registration_data: {
+[key: string]: any;
 };
   updated_at: (string | null);
 }

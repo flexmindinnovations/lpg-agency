@@ -125,10 +125,7 @@ export class OrderService {
   uploadPodAttachment(orderId: string, file: File): Observable<PodAttachmentResponse> {
     return uploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost(this.http, this.config.rootUrl, {
       order_id: orderId,
-      // The generated model types `file` as `string` — ng-openapi-gen's
-      // known quirk for `binary`-format multipart fields; `RequestBuilder.
-      // formDataValue()` passes a `Blob`/`File` through untouched at runtime.
-      body: { file: file as unknown as Blob },
+      body: { file },
     }).pipe(map((res) => res.body));
   }
 
