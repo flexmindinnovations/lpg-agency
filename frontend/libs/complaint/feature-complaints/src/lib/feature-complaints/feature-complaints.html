@@ -68,7 +68,7 @@
               class="info-value info-link"
               (click)="openCustomerPreview(complaint.customer_id)"
             >
-              {{ customerById().get(complaint.customer_id)?.consumer_number ?? shortId(complaint.customer_id) }}
+              {{ customerById().get(complaint.customer_id)?.full_name ?? shortId(complaint.customer_id) }}
             </button>
           </div>
           <div class="info-item">

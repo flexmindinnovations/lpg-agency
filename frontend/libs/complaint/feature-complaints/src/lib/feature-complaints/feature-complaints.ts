@@ -203,10 +203,10 @@ export class FeatureComplaints implements OnInit {
     {
       field: 'customer_id',
       header: 'Customer',
-      width: 150,
+      width: 190,
       tooltipValueGetter: (val) => String(val),
       valueFormatter: (val) =>
-        this.customerById().get(String(val))?.consumer_number ?? shortId(val),
+        this.customerById().get(String(val))?.full_name ?? shortId(val),
       onLinkClick: (row) => this.openCustomerPreview(row.customer_id),
     },
     {
