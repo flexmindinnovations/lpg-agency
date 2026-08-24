@@ -196,6 +196,12 @@ class TestAdminEndpointsThroughTheRealStack:
         admin_engine_lpg_test: AsyncEngine,
         integration_settings: Settings,
     ) -> None:
+        """Platform feature-flag management lives at `/platform/feature-
+        flags` (Platform Console plan), not `/admin/feature-flags` — an
+        `agency_admin`'s tenant-scoped JWT (a real `tenant_id` claim) is
+        rejected by `JwtPlatformPrincipalResolver` itself (`role !=
+        'super_admin'`), before any permission code is even considered.
+        """
         email = f"{uuid.uuid4().hex}@admin-smoke.example"
         password = "correct horse battery staple 42"
         hasher = Argon2PasswordHasher(integration_settings)
@@ -208,7 +214,7 @@ class TestAdminEndpointsThroughTheRealStack:
         token = await _login(real_lifespan_client, email=email, password=password)
 
         response = await real_lifespan_client.post(
-            "/api/v1/admin/feature-flags",
+            "/api/v1/platform/feature-flags",
             json={"key": f"flag-{uuid.uuid4().hex[:8]}", "description": "Test"},
             headers={"Authorization": f"Bearer {token}"},
         )

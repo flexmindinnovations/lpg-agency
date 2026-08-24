@@ -16,10 +16,39 @@ this avoids (found the hard way, by a failing end-to-end test).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import structlog
 from fastapi import Request
 
 from lpg.application.common.ports import TenantContext
+
+if TYPE_CHECKING:
+    from lpg.application.tenant.status import TenantStatusChecker
+
+
+def get_tenant_status_checker() -> TenantStatusChecker:
+    """Constructed straight from `AppState`, same shape as `dependencies/
+    license.py::get_license_status_checker` and for the identical reason:
+    used by `LoginUseCase`/`RefreshTokenUseCase`/`VerifyOtpUseCase`
+    (pre-tenant-context) as well as `get_tenant_context` below (post-auth,
+    every request), so it deliberately does not depend on
+    `get_unit_of_work`.
+    """
+    from lpg.api.app import get_app_state
+
+    state = get_app_state()
+    if state.redis is None:
+        msg = "RedisClient is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+    if state.database is None:
+        msg = "Database is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+
+    from lpg.infrastructure.redis.cache import RedisCacheClient
+    from lpg.infrastructure.tenant.tenant_status_cache import RedisTenantStatusChecker
+
+    return RedisTenantStatusChecker(RedisCacheClient(state.redis), state.database)
 
 
 async def get_tenant_context(request: Request) -> TenantContext:
@@ -43,18 +72,21 @@ async def get_tenant_context(request: Request) -> TenantContext:
     not in the middleware, because the middleware runs before authentication
     resolves a tenant — there is nothing to bind yet at that point.
 
-    **Also the per-request license check** — deliberately kept here rather
-    than inside ``JwtTenantResolver`` itself, which stays a pure JWT-
-    verification concern with its own isolated unit tests. This is the
-    *only* place that catches a license expiring mid-access-token-lifetime
-    (~15 minutes) rather than waiting for the next refresh — every other
-    license check (login, OTP verify, refresh) only runs at token issuance.
-    Reads through ``LicenseStatusChecker``'s Redis-backed cache, so this
-    adds no DB round-trip to the common case.
+    **Also the per-request license and tenant-suspension checks** —
+    deliberately kept here rather than inside ``JwtTenantResolver`` itself,
+    which stays a pure JWT-verification concern with its own isolated unit
+    tests. This is the *only* place that catches a license expiring or an
+    agency being suspended mid-access-token-lifetime (~15 minutes) rather
+    than waiting for the next refresh — every other check (login, OTP
+    verify, refresh) only runs at token issuance. Both read through a
+    Redis-backed cache, so this adds no DB round-trip to the common case.
+    The two checks are independent (``TenantSuspendedError``'s own
+    docstring has the reasoning) — agency suspension is checked first,
+    since it's the more fundamental block.
     """
     from lpg.api.v1.dependencies.identity import get_jwt_signer
     from lpg.api.v1.dependencies.license import get_license_status_checker
-    from lpg.application.common.errors import LicenseExpiredError
+    from lpg.application.common.errors import LicenseExpiredError, TenantSuspendedError
     from lpg.domain.license.license import LicenseLifecycleState
     from lpg.infrastructure.identity.jwt_tenant_resolver import JwtTenantResolver
 
@@ -64,6 +96,12 @@ async def get_tenant_context(request: Request) -> TenantContext:
         tenant_id=str(context.tenant_id),
         user_id=str(context.user_id) if context.user_id else None,
     )
+
+    tenant_status_checker = get_tenant_status_checker()
+    tenant_status = await tenant_status_checker.get_status(context.tenant_id)
+    if tenant_status in ("suspended", "closed"):
+        msg = "This tenant's agency has been suspended."
+        raise TenantSuspendedError(msg, tenant_id=str(context.tenant_id))
 
     status_checker = get_license_status_checker()
     license_status = await status_checker.get_status(context.tenant_id)

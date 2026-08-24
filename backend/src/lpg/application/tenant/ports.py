@@ -10,6 +10,14 @@ No `add()` here. `tenant.tenant`'s RLS policy makes tenant creation
 impossible through a tenant-scoped connection by design (see the migration
 `0242df1a3871`'s docstring) — provisioning is a platform/admin operation,
 out of Phase 2's scope, not a gap in this port.
+
+`list_all()` is the one method here that is *never* callable through an
+ordinary tenant-scoped session — `tenant.tenant`'s own RLS policy
+(`id = current_setting('app.current_tenant_id')`) would return at most one
+row, the caller's own. It exists for the Platform Console's Agency
+Management page, backed by the `tenant.tenant_list_all()` `SECURITY
+DEFINER` function (migration `fdd3afde337c`), called only through the
+`/platform/*` dependency chain (`api/v1/dependencies/platform.py`).
 """
 
 from __future__ import annotations
@@ -35,6 +43,8 @@ class TenantRepository(Protocol):
     async def get_by_slug(self, slug: str) -> Tenant | None: ...
 
     async def save(self, tenant: Tenant) -> None: ...
+
+    async def list_all(self) -> Sequence[Tenant]: ...
 
 
 @runtime_checkable

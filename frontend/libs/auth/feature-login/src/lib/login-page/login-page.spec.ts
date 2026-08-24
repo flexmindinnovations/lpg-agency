@@ -5,11 +5,11 @@ import { AuthService } from '@lpg/shared/data-access';
 import { LoginPage } from './login-page';
 
 describe('LoginPage', () => {
-  let authServiceMock: { login: jest.Mock };
+  let authServiceMock: { login: jest.Mock; principal: jest.Mock };
   let routerMock: { navigateByUrl: jest.Mock };
 
   beforeEach(async () => {
-    authServiceMock = { login: jest.fn() };
+    authServiceMock = { login: jest.fn(), principal: jest.fn().mockReturnValue(null) };
     routerMock = { navigateByUrl: jest.fn() };
 
     await TestBed.configureTestingModule({
@@ -61,6 +61,20 @@ describe('LoginPage', () => {
       'correct-horse-battery',
     );
     expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/orders');
+  });
+
+  it('defaults a super_admin session to /platform with no redirectTo', () => {
+    authServiceMock.login.mockReturnValue(of(undefined));
+    authServiceMock.principal.mockReturnValue({ role: 'super_admin' });
+
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 's_admin@lpg.com', password: 's_admin_1234' });
+
+    component['submit']();
+
+    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/platform');
   });
 
   it('surfaces a friendly message for invalid credentials', () => {

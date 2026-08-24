@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from lpg.domain.platform.feature_flag import FeatureFlagOverride
 from lpg.domain.tenant.branch import Branch
@@ -93,6 +93,30 @@ class SqlAlchemyTenantRepository:
         row.subscription_plan = tenant.subscription_plan
         row.primary_contact_email = tenant.primary_contact_email
         row.country = tenant.country
+
+    async def list_all(self) -> Sequence[Tenant]:
+        """Every tenant, platform-wide — see `TenantRepository.list_all`'s
+        own docstring for why this can never resolve through the ordinary
+        RLS-scoped path. Reads through `tenant.tenant_list_all()`, a
+        `SECURITY DEFINER` function that bypasses RLS regardless of
+        whatever `app.current_tenant_id` this session happens to have set
+        (migration `fdd3afde337c`) — not a raw `SELECT`, which under RLS
+        would return at most the caller's own tenant.
+        """
+        result = await self._uow.session.execute(text("SELECT * FROM tenant.tenant_list_all()"))
+        return [
+            Tenant(
+                row.id,
+                row.name,
+                row.slug,
+                status=row.status,
+                subscription_plan=row.subscription_plan,
+                primary_contact_email=row.primary_contact_email,
+                country=row.country,
+                version=row.version,
+            )
+            for row in result
+        ]
 
 
 class SqlAlchemyBranchRepository:

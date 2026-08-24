@@ -31,6 +31,7 @@ from lpg.application.common.errors import (
     PermissionDeniedError,
     RefreshTokenInvalidError,
     ResetTokenExpiredError,
+    TenantSuspendedError,
 )
 from lpg.application.identity.login import LoginCommand, LoginUseCase
 from lpg.application.identity.logout import LogoutCommand, LogoutUseCase
@@ -221,6 +222,7 @@ class TestLoginLockout:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=3,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -251,6 +253,7 @@ class TestLoginLockout:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=3,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -293,6 +296,7 @@ class TestRefreshTokenReuseDetection:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -306,6 +310,7 @@ class TestRefreshTokenReuseDetection:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -352,6 +357,7 @@ class TestLicenseGate:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _FixedLicenseStatusChecker(LicenseLifecycleState.PENDING_ACTIVATION),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -375,6 +381,7 @@ class TestLicenseGate:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _FixedLicenseStatusChecker(LicenseLifecycleState.BLOCKED),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -401,6 +408,7 @@ class TestLicenseGate:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -414,10 +422,105 @@ class TestLicenseGate:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _FixedLicenseStatusChecker(LicenseLifecycleState.REVOKED),
+            _AlwaysActiveTenantStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
         with pytest.raises(LicenseExpiredError):
+            await refresh_use_case.execute(RefreshTokenCommand(refresh_token=pair.refresh_token))
+
+
+class TestTenantSuspensionGate:
+    """`LoginUseCase`/`RefreshTokenUseCase` actually raise at the tenant-
+    suspension check (Platform Console plan) — mirrors `TestLicenseGate`
+    exactly, proving the independent second check (`TenantSuspendedError`)
+    fires on its own, not merely alongside a license rejection."""
+
+    async def test_login_raises_suspended_for_a_suspended_tenant(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@tenant-suspend-gate.example"
+        hasher = Argon2PasswordHasher(integration_settings)
+        await _seed_user(admin_engine_lpg_test, email=email, password_hash=hasher.hash("correct"))
+
+        use_case = LoginUseCase(
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            hasher,
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
+            _FixedTenantStatusChecker("suspended"),
+            lockout_threshold=5,
+            lockout_duration=timedelta(minutes=15),
+            refresh_token_ttl=timedelta(days=30),
+        )
+
+        with pytest.raises(TenantSuspendedError):
+            await use_case.execute(LoginCommand(email=email, password="correct"))
+
+    async def test_login_raises_suspended_for_a_closed_tenant(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        email = f"{uuid.uuid4().hex}@tenant-suspend-gate.example"
+        hasher = Argon2PasswordHasher(integration_settings)
+        await _seed_user(admin_engine_lpg_test, email=email, password_hash=hasher.hash("correct"))
+
+        use_case = LoginUseCase(
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            hasher,
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
+            _FixedTenantStatusChecker("closed"),
+            lockout_threshold=5,
+            lockout_duration=timedelta(minutes=15),
+            refresh_token_ttl=timedelta(days=30),
+        )
+
+        with pytest.raises(TenantSuspendedError):
+            await use_case.execute(LoginCommand(email=email, password="correct"))
+
+    async def test_refresh_raises_suspended_once_the_tenant_is_suspended(
+        self, database: Database, admin_engine_lpg_test: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        """A refresh token issued while the tenant was active is still
+        rejected on its next use once the tenant flips to suspended — the
+        check re-runs at every token exchange, not just at initial login."""
+        email = f"{uuid.uuid4().hex}@tenant-suspend-gate.example"
+        hasher = Argon2PasswordHasher(integration_settings)
+        await _seed_user(admin_engine_lpg_test, email=email, password_hash=hasher.hash("correct"))
+
+        login_use_case = LoginUseCase(
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            hasher,
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
+            lockout_threshold=5,
+            lockout_duration=timedelta(minutes=15),
+            refresh_token_ttl=timedelta(days=30),
+        )
+        pair = await login_use_case.execute(LoginCommand(email=email, password="correct"))
+
+        refresh_use_case = RefreshTokenUseCase(
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
+            _FixedTenantStatusChecker("suspended"),
+            refresh_token_ttl=timedelta(days=30),
+        )
+
+        with pytest.raises(TenantSuspendedError):
             await refresh_use_case.execute(RefreshTokenCommand(refresh_token=pair.refresh_token))
 
 
@@ -501,6 +604,7 @@ class TestOtpFlow:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
         pair = await verify_use_case.execute(
@@ -533,6 +637,7 @@ class TestOtpFlow:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -553,6 +658,7 @@ class TestOtpFlow:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -694,6 +800,7 @@ class TestLogoutInvalidatesServerSide:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             lockout_threshold=5,
             lockout_duration=timedelta(minutes=15),
             refresh_token_ttl=timedelta(days=30),
@@ -712,6 +819,7 @@ class TestLogoutInvalidatesServerSide:
             Sha256TokenHasher(),
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
             refresh_token_ttl=timedelta(days=30),
         )
         with pytest.raises(RefreshTokenInvalidError):
@@ -763,6 +871,36 @@ class _FixedLicenseStatusChecker:
         self._status = status
 
     async def get_status(self, tenant_id: uuid.UUID) -> LicenseLifecycleState:
+        del tenant_id
+        return self._status
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id
+
+
+class _AlwaysActiveTenantStatusChecker:
+    """A minimal `TenantStatusChecker` for these tests — none of them
+    exercise tenant-suspension enforcement (that's `TestTenantSuspension
+    Gate`, mirroring `TestLicenseGate`'s own shape), so every tenant here
+    is treated as belonging to an active, unsuspended agency."""
+
+    async def get_status(self, tenant_id: uuid.UUID) -> str:
+        del tenant_id
+        return "active"
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id
+
+
+class _FixedTenantStatusChecker:
+    """A `TenantStatusChecker` stub that always reports one fixed status,
+    for `TestTenantSuspensionGate`'s own coverage of the login/refresh
+    rejection paths themselves."""
+
+    def __init__(self, status: str) -> None:
+        self._status = status
+
+    async def get_status(self, tenant_id: uuid.UUID) -> str:
         del tenant_id
         return self._status
 

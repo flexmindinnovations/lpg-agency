@@ -1,0 +1,21 @@
+{
+  "name": "platform-feature-agencies",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/platform/feature-agencies/src",
+  "prefix": "lpg",
+  "projectType": "library",
+  "tags": ["type:feature", "scope:platform"],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/platform/feature-agencies/jest.config.cts",
+        "tsConfig": "libs/platform/feature-agencies/tsconfig.spec.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

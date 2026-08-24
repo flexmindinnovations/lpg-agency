@@ -76,11 +76,32 @@ class _AlwaysActiveLicenseStatusChecker:
         del tenant_id
 
 
+class _AlwaysActiveTenantStatusChecker:
+    """Stub `TenantStatusChecker` — same reasoning as
+    `_AlwaysActiveLicenseStatusChecker` above, for `get_tenant_context`'s
+    independent tenant-suspension check."""
+
+    async def get_status(self, tenant_id: uuid.UUID) -> str:
+        del tenant_id
+        return "active"
+
+    async def invalidate(self, tenant_id: uuid.UUID) -> None:
+        del tenant_id
+
+
 @pytest.fixture(autouse=True)
 def _stub_license_status_checker(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "lpg.api.v1.dependencies.license.get_license_status_checker",
         lambda: _AlwaysActiveLicenseStatusChecker(),
+    )
+
+
+@pytest.fixture(autouse=True)
+def _stub_tenant_status_checker(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "lpg.api.v1.dependencies.tenant.get_tenant_status_checker",
+        lambda: _AlwaysActiveTenantStatusChecker(),
     )
 
 

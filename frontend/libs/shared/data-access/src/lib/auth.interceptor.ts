@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
-import { catchError, switchMap, throwError, EMPTY } from 'rxjs';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { AuthTokenStore } from './auth-token.store';
 
@@ -20,9 +20,18 @@ function isAuthEndpoint(url: string): boolean {
  *
  * On a 401 from anything other than the token-issuing endpoints themselves,
  * attempts one silent refresh-and-retry before giving up; a second failure
- * (or a 401 from an auth endpoint) clears the session and lets the error
- * flow through to `problemDetailsInterceptor` unchanged, so route guards can
- * react to it. Order in `app.config.ts`:
+ * (or a 401 from an auth endpoint) clears the session, surfaces a
+ * "Session Expired" confirm dialog, and re-throws the error rather than
+ * swallowing it — every caller still gets a normal error notification
+ * (`problemDetailsInterceptor` downstream, and any guard/component's own
+ * `catchError`). Returning `EMPTY` here previously meant those observables
+ * completed with zero emissions instead of erroring, which is exactly what
+ * RxJS/Angular Router's guard-combination logic throws `EmptyError: no
+ * elements in sequence` for — the practical case being a `super_admin`
+ * session hitting a tenant-scoped endpoint like `/admin/license/status`:
+ * refresh always succeeds (the token itself is valid) but the retry always
+ * 401s again too (wrong session type, not an expiry), so this path fires on
+ * every request, not just genuine expiry. Order in `app.config.ts`:
  * `[correlationIdInterceptor, authInterceptor, problemDetailsInterceptor]`.
  */
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
@@ -48,7 +57,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           switchMap((newAccessToken) =>
             next(withAuth.clone({ setHeaders: { Authorization: `Bearer ${newAccessToken}` } })),
           ),
-          catchError(() => {
+          catchError((retryError: unknown) => {
             tokenStore.clear();
             confirmationService.confirm({
               header: 'Session Expired',
@@ -60,7 +69,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
                 void router.navigate(['/login']);
               }
             });
-            return EMPTY; // Suppress further error handling so problemDetails doesn't show a generic toast
+            return throwError(() => retryError);
           }),
         );
       }

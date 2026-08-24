@@ -9,11 +9,11 @@ import { RequestBuilder } from '../../request-builder';
 
 import { FeatureFlagResponse } from '../../models/feature-flag-response';
 
-export interface ListFeatureFlagsApiV1AdminFeatureFlagsGet$Params {
+export interface ListFeatureFlagsApiV1PlatformFeatureFlagsGet$Params {
 }
 
-export function listFeatureFlagsApiV1AdminFeatureFlagsGet(http: HttpClient, rootUrl: string, params?: ListFeatureFlagsApiV1AdminFeatureFlagsGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<FeatureFlagResponse>>> {
-  const rb = new RequestBuilder(rootUrl, listFeatureFlagsApiV1AdminFeatureFlagsGet.PATH, 'get');
+export function listFeatureFlagsApiV1PlatformFeatureFlagsGet(http: HttpClient, rootUrl: string, params?: ListFeatureFlagsApiV1PlatformFeatureFlagsGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<FeatureFlagResponse>>> {
+  const rb = new RequestBuilder(rootUrl, listFeatureFlagsApiV1PlatformFeatureFlagsGet.PATH, 'get');
   if (params) {
   }
 
@@ -27,4 +27,4 @@ export function listFeatureFlagsApiV1AdminFeatureFlagsGet(http: HttpClient, root
   );
 }
 
-listFeatureFlagsApiV1AdminFeatureFlagsGet.PATH = '/api/v1/admin/feature-flags';
+listFeatureFlagsApiV1PlatformFeatureFlagsGet.PATH = '/api/v1/platform/feature-flags';

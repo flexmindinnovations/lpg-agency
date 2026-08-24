@@ -1,13 +1,24 @@
-"""Administration endpoints (Phase 7) — tenant/branch/warehouse/cylinder-type/
-tenant-configuration/price-list/feature-flags/staff-users/audit-log.
+"""Administration endpoints (Phase 7) — tenant self-service/branch/warehouse/
+cylinder-type/tenant-configuration/price-list/feature-flag tenant-overrides/
+license tenant self-service/staff-users/audit-log.
 
 Mounted under `/admin`. Gated by `require_permission("tenant:configure")`
 for master-data CRUD, `require_permission("users:manage")` for staff
 management, `require_permission("feature_flags:manage_tenant")` for tenant
-flag overrides, `require_live_permission("feature_flags:manage_platform")`
-for platform flag management (super_admin only, live-checked — same
-high-sensitivity pattern `reconciliation:approve` uses), and
-`require_permission("audit:read")` for the audit log.
+flag overrides, `require_permission("license:manage_tenant")` for license
+activation/linked-device self-service, and `require_permission("audit:
+read")` for the audit log.
+
+**Platform-tier management (super_admin only, live-checked) lives in
+`routers/platform.py`, not here** — issuing/revoking/listing licenses
+across every tenant, managing plan tiers/device caps/feature overrides,
+creating and managing platform feature flags, and agency (tenant)
+suspend/reactivate/close. Those routes need a `PlatformPrincipal`
+(`application/platform/principal.py`, a verified `super_admin` session with
+no `tenant_id`), which every dependency in this file structurally cannot
+provide — see `dependencies/platform.py`'s own docstring for why they're a
+genuinely separate dependency chain, not just a different permission code
+on the same one.
 
 **Every type used inside `Annotated[X, Depends(...)]` below is a real
 import, never `TYPE_CHECKING`-guarded** — see `api/v1/routers/auth.py`'s
@@ -41,11 +52,9 @@ from lpg.api.v1.dependencies.identity import (
     get_permission_repository,
     get_refresh_token_repository,
     get_token_hasher,
-    require_live_permission,
     require_permission,
 )
 from lpg.api.v1.dependencies.license import (
-    get_license_feature_override_repository,
     get_license_repository,
     get_license_status_checker,
     get_linked_device_repository,
@@ -58,12 +67,10 @@ from lpg.api.v1.schemas.admin import (
     BranchResponse,
     CreateBranchRequest,
     CreateCylinderTypeRequest,
-    CreateFeatureFlagRequest,
     CreateWarehouseRequest,
     CylinderTypeResponse,
     FeatureFlagEnabledResponse,
     FeatureFlagOverrideResponse,
-    FeatureFlagResponse,
     FeatureFlagSummaryResponse,
     InviteStaffUserRequest,
     PriceListEntryResponse,
@@ -73,12 +80,9 @@ from lpg.api.v1.schemas.admin import (
     RenameCylinderTypeRequest,
     RenameTenantRequest,
     RenameWarehouseRequest,
-    ScheduleFeatureFlagRequest,
     SetBranchRegionRequest,
     SetCylinderTypeActiveRequest,
-    SetFeatureFlagEnabledByDefaultRequest,
     SetFeatureFlagOverrideRequest,
-    SetFeatureFlagRolloutPercentageRequest,
     SetPriceRequest,
     SetTenantConfigurationRequest,
     StaffUserResponse,
@@ -89,14 +93,9 @@ from lpg.api.v1.schemas.admin import (
 )
 from lpg.api.v1.schemas.license import (
     ActivateLicenseRequest,
-    IssuedLicenseResponse,
-    IssueLicenseRequest,
     LicenseResponse,
     LicenseStatusResponse,
     LinkedDeviceResponse,
-    SetLicenseDeviceCapRequest,
-    SetLicenseFeatureOverrideRequest,
-    SetLicensePlanTierRequest,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
 from lpg.application.audit.ports import AuditLogRepository
@@ -131,22 +130,6 @@ from lpg.application.license.activate_license import (
     ActivateLicenseCommand,
     ActivateLicenseUseCase,
 )
-from lpg.application.license.entitlement import (
-    SetLicenseFeatureOverrideCommand,
-    SetLicenseFeatureOverrideUseCase,
-)
-from lpg.application.license.issue_license import (
-    IssueLicenseCommand,
-    IssueLicenseUseCase,
-    ListLicensesQuery,
-    ListLicensesUseCase,
-    RevokeLicenseCommand,
-    RevokeLicenseUseCase,
-    SetLicenseDeviceCapCommand,
-    SetLicenseDeviceCapUseCase,
-    SetLicensePlanTierCommand,
-    SetLicensePlanTierUseCase,
-)
 from lpg.application.license.license_status import (
     GetLicenseStatusQuery,
     GetLicenseStatusUseCase,
@@ -158,24 +141,15 @@ from lpg.application.license.manage_devices import (
     RevokeDeviceUseCase,
 )
 from lpg.application.license.ports import (
-    LicenseFeatureOverrideRepository,
     LicenseRepository,
     LicenseStatusChecker,
     LinkedDeviceRepository,
 )
 from lpg.application.platform.feature_flag import (
-    CreateFeatureFlagCommand,
-    CreateFeatureFlagUseCase,
     IsFeatureFlagEnabledQuery,
     IsFeatureFlagEnabledUseCase,
     ListFeatureFlagsQuery,
     ListFeatureFlagsUseCase,
-    ScheduleFeatureFlagCommand,
-    ScheduleFeatureFlagUseCase,
-    SetFeatureFlagEnabledByDefaultCommand,
-    SetFeatureFlagEnabledByDefaultUseCase,
-    SetFeatureFlagRolloutPercentageCommand,
-    SetFeatureFlagRolloutPercentageUseCase,
     SetTenantFeatureFlagOverrideCommand,
     SetTenantFeatureFlagOverrideUseCase,
 )
@@ -682,116 +656,15 @@ async def get_effective_price(
     )
 
 
-# -- Feature Flags (platform) -----------------------------------------------------
-
-
-@router.get(
-    "/feature-flags", response_model=list[FeatureFlagResponse], summary="List platform flags"
-)
-async def list_feature_flags(
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("feature_flags:manage_platform"))
-    ],
-    repository: Annotated[FeatureFlagRepository, Depends(get_feature_flag_repository)],
-) -> list[FeatureFlagResponse]:
-    use_case = ListFeatureFlagsUseCase(repository)
-    flags = await use_case.execute(ListFeatureFlagsQuery())
-    return [
-        FeatureFlagResponse(
-            key=f.key,
-            description=f.description,
-            is_enabled_by_default=f.is_enabled_by_default,
-            rollout_percentage=f.rollout_percentage,
-            starts_at=f.starts_at,
-            ends_at=f.ends_at,
-        )
-        for f in flags
-    ]
-
-
-@router.post(
-    "/feature-flags",
-    response_model=FeatureFlagResponse,
-    status_code=201,
-    summary="Create a platform flag",
-)
-async def create_feature_flag(
-    body: CreateFeatureFlagRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("feature_flags:manage_platform"))
-    ],
-    repository: Annotated[FeatureFlagRepository, Depends(get_feature_flag_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> FeatureFlagResponse:
-    use_case = CreateFeatureFlagUseCase(repository, unit_of_work)
-    flag = await use_case.execute(
-        CreateFeatureFlagCommand(
-            key=body.key,
-            description=body.description,
-            is_enabled_by_default=body.is_enabled_by_default,
-            rollout_percentage=body.rollout_percentage,
-        )
-    )
-    return FeatureFlagResponse(
-        key=flag.key,
-        description=flag.description,
-        is_enabled_by_default=flag.is_enabled_by_default,
-        rollout_percentage=flag.rollout_percentage,
-        starts_at=flag.starts_at,
-        ends_at=flag.ends_at,
-    )
-
-
-@router.patch(
-    "/feature-flags/{key}/enabled-by-default",
-    status_code=204,
-    summary="Toggle a platform flag's default",
-)
-async def set_feature_flag_enabled_by_default(
-    key: str,
-    body: SetFeatureFlagEnabledByDefaultRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("feature_flags:manage_platform"))
-    ],
-    repository: Annotated[FeatureFlagRepository, Depends(get_feature_flag_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = SetFeatureFlagEnabledByDefaultUseCase(repository, unit_of_work)
-    await use_case.execute(SetFeatureFlagEnabledByDefaultCommand(key=key, enabled=body.enabled))
-
-
-@router.patch(
-    "/feature-flags/{key}/rollout", status_code=204, summary="Set a platform flag's rollout %"
-)
-async def set_feature_flag_rollout_percentage(
-    key: str,
-    body: SetFeatureFlagRolloutPercentageRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("feature_flags:manage_platform"))
-    ],
-    repository: Annotated[FeatureFlagRepository, Depends(get_feature_flag_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = SetFeatureFlagRolloutPercentageUseCase(repository, unit_of_work)
-    await use_case.execute(
-        SetFeatureFlagRolloutPercentageCommand(key=key, rollout_percentage=body.rollout_percentage)
-    )
-
-
-@router.patch("/feature-flags/{key}/schedule", status_code=204, summary="Schedule a platform flag")
-async def schedule_feature_flag(
-    key: str,
-    body: ScheduleFeatureFlagRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("feature_flags:manage_platform"))
-    ],
-    repository: Annotated[FeatureFlagRepository, Depends(get_feature_flag_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = ScheduleFeatureFlagUseCase(repository, unit_of_work)
-    await use_case.execute(
-        ScheduleFeatureFlagCommand(key=key, starts_at=body.starts_at, ends_at=body.ends_at)
-    )
+# -- Feature Flags (tenant read) ---------------------------------------------------
+#
+# Platform-tier flag management (create/list/toggle-default/rollout/schedule)
+# relocated to `/platform/feature-flags/*` (`routers/platform.py`) — a
+# super_admin-only, cross-tenant concern with no reason to share a router
+# with tenant-scoped endpoints. This one stays: any authenticated tenant
+# principal needs to know whether a flag is on for its own tenant, which
+# `require_live_platform_permission`'s `PlatformPrincipal` (no `tenant_id`)
+# cannot answer — a genuinely tenant-scoped read, unlike managing the flag.
 
 
 @router.get(
@@ -869,12 +742,15 @@ async def set_feature_flag_override(
     return FeatureFlagOverrideResponse(flag_key=key, is_enabled=body.enabled)
 
 
-# -- License ------------------------------------------------------------------------
+# -- License (tenant self-service) ---------------------------------------------------
 #
-# Mounted under /admin, same as Feature Flags — GET /admin/license/status
-# needs no permission code, mirroring GET /admin/feature-flags/{key}/enabled's
-# own placement precedent: any authenticated principal's client may need to
-# know its own tenant's license status, unlike managing the license itself.
+# Platform-tier license management (issue/list/revoke/plan-tier/device-caps/
+# feature-overrides) relocated to `/platform/license/*` (`routers/
+# platform.py`) — same reasoning as the Feature Flags split above. What
+# stays here is tenant self-service only: GET /admin/license/status needs no
+# permission code (any authenticated principal's client may need to know its
+# own tenant's license status), and activation/linked-device management are
+# `license:manage_tenant`, `agency_admin`-eligible, inherently tenant-scoped.
 
 
 def _license_response(license: License) -> LicenseResponse:
@@ -924,136 +800,6 @@ async def get_license_status(
         activated_at=result.activated_at,
         expires_at=result.expires_at,
         grace_ends_at=result.grace_ends_at,
-    )
-
-
-@router.post(
-    "/license",
-    response_model=IssuedLicenseResponse,
-    status_code=201,
-    summary="Issue a license for a tenant",
-)
-async def issue_license(
-    body: IssueLicenseRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
-    ],
-    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
-    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> IssuedLicenseResponse:
-    use_case = IssueLicenseUseCase(repository, token_hasher, unit_of_work)
-    license_, plaintext_key = await use_case.execute(
-        IssueLicenseCommand(
-            tenant_id=uuid.UUID(body.tenant_id),
-            plan_tier=body.plan_tier,
-            validity_period=timedelta(days=body.validity_days),
-            device_caps=body.device_caps,
-        )
-    )
-    return IssuedLicenseResponse(
-        tenant_id=str(license_.tenant_id),
-        plaintext_key=plaintext_key,
-        key_prefix=license_.key_prefix,
-        plan_tier=license_.plan_tier,
-        issued_at=license_.issued_at,
-    )
-
-
-@router.get("/license", response_model=list[LicenseResponse], summary="List every tenant's license")
-async def list_licenses(
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
-    ],
-    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
-) -> list[LicenseResponse]:
-    use_case = ListLicensesUseCase(repository)
-    licenses = await use_case.execute(ListLicensesQuery())
-    return [_license_response(license_) for license_ in licenses]
-
-
-@router.patch(
-    "/license/{tenant_id}/revoke", status_code=204, summary="Revoke a tenant's license"
-)
-async def revoke_license(
-    tenant_id: str,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
-    ],
-    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
-    status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = RevokeLicenseUseCase(repository, status_checker, unit_of_work)
-    await use_case.execute(RevokeLicenseCommand(tenant_id=uuid.UUID(tenant_id)))
-
-
-@router.patch(
-    "/license/{tenant_id}/plan-tier", status_code=204, summary="Set a tenant's plan tier"
-)
-async def set_license_plan_tier(
-    tenant_id: str,
-    body: SetLicensePlanTierRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
-    ],
-    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = SetLicensePlanTierUseCase(repository, unit_of_work)
-    await use_case.execute(
-        SetLicensePlanTierCommand(tenant_id=uuid.UUID(tenant_id), plan_tier=body.plan_tier)
-    )
-
-
-@router.patch(
-    "/license/{tenant_id}/device-caps/{app_type}",
-    status_code=204,
-    summary="Set a tenant's per-app-type device cap",
-)
-async def set_license_device_cap(
-    tenant_id: str,
-    app_type: str,
-    body: SetLicenseDeviceCapRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
-    ],
-    repository: Annotated[LicenseRepository, Depends(get_license_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = SetLicenseDeviceCapUseCase(repository, unit_of_work)
-    await use_case.execute(
-        SetLicenseDeviceCapCommand(
-            tenant_id=uuid.UUID(tenant_id), app_type=app_type, max_devices=body.max_devices
-        )
-    )
-
-
-@router.put(
-    "/license/{tenant_id}/feature-overrides/{key}",
-    status_code=204,
-    summary="Set a tenant's license feature override",
-)
-async def set_license_feature_override(
-    tenant_id: str,
-    key: str,
-    body: SetLicenseFeatureOverrideRequest,
-    _principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_live_permission("license:manage_platform"))
-    ],
-    override_repository: Annotated[
-        LicenseFeatureOverrideRepository, Depends(get_license_feature_override_repository)
-    ],
-    license_repository: Annotated[LicenseRepository, Depends(get_license_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> None:
-    use_case = SetLicenseFeatureOverrideUseCase(
-        override_repository, license_repository, unit_of_work
-    )
-    await use_case.execute(
-        SetLicenseFeatureOverrideCommand(
-            tenant_id=uuid.UUID(tenant_id), feature_key=key, granted=body.granted
-        )
     )
 
 

@@ -325,6 +325,26 @@ ignore_imports = [
     # the Redis-backed license status cache.
     "lpg.api.v1.dependencies.license -> lpg.infrastructure.persistence.repositories.license",
     "lpg.api.v1.dependencies.license -> lpg.infrastructure.license.license_status_cache",
+    # Platform Console: `routers/platform.py` opens its own `UnitOfWork` per
+    # call (via `get_platform_unit_of_work_factory`) scoped to an explicit
+    # *target* tenant chosen at request time — unlike every other router,
+    # there is no single fixed tenant to build a static Depends() repository
+    # against, so each endpoint constructs its concrete repository from that
+    # call's own UoW directly, the same composition-root role every other
+    # entry in this list plays for its own module. `dependencies/platform.py`
+    # wires the factory itself and needs SqlAlchemyUnitOfWork for the same
+    # reason `dependencies/unit_of_work.py` does above.
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.database",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.license",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.platform",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.tenant",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.redis.cache",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.tenant.tenant_status_cache",
+    "lpg.api.v1.dependencies.platform -> lpg.infrastructure.persistence.unit_of_work",
+    # dependencies/tenant.py wires the Redis-backed tenant-status checker for
+    # the every-request suspend/reactivate/close enforcement in
+    # get_tenant_context.
+    "lpg.api.v1.dependencies.tenant -> lpg.infrastructure.tenant.tenant_status_cache",
     "lpg.api.v1.dependencies.cylinder_ledger -> lpg.infrastructure.persistence.repositories.cylinder_ledger",
     "lpg.api.v1.dependencies.printing -> lpg.infrastructure.printing.engine",
     # R5: dependencies/accounting.py wires the accounting repository and (for

@@ -5,6 +5,8 @@ export * from './lib/auth.service';
 export * from './lib/auth.interceptor';
 export * from './lib/auth.guard';
 export * from './lib/permission.guard';
+export * from './lib/platform-auth.guard';
+export * from './lib/agency.service';
 
 // Phase 7 (Administration) — thin wrappers over the generated
 // `/admin/*` client functions, same pattern as auth.service.ts.

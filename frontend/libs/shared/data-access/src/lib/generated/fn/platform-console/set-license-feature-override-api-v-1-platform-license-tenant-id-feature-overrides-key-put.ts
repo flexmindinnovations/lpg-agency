@@ -9,14 +9,14 @@ import { RequestBuilder } from '../../request-builder';
 
 import { SetLicenseFeatureOverrideRequest } from '../../models/set-license-feature-override-request';
 
-export interface SetLicenseFeatureOverrideApiV1AdminLicenseTenantIdFeatureOverridesKeyPut$Params {
+export interface SetLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut$Params {
   tenant_id: string;
   key: string;
       body: SetLicenseFeatureOverrideRequest
 }
 
-export function setLicenseFeatureOverrideApiV1AdminLicenseTenantIdFeatureOverridesKeyPut(http: HttpClient, rootUrl: string, params: SetLicenseFeatureOverrideApiV1AdminLicenseTenantIdFeatureOverridesKeyPut$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, setLicenseFeatureOverrideApiV1AdminLicenseTenantIdFeatureOverridesKeyPut.PATH, 'put');
+export function setLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut(http: HttpClient, rootUrl: string, params: SetLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, setLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut.PATH, 'put');
   if (params) {
     rb.path('tenant_id', params.tenant_id, {});
     rb.path('key', params.key, {});
@@ -33,4 +33,4 @@ export function setLicenseFeatureOverrideApiV1AdminLicenseTenantIdFeatureOverrid
   );
 }
 
-setLicenseFeatureOverrideApiV1AdminLicenseTenantIdFeatureOverridesKeyPut.PATH = '/api/v1/admin/license/{tenant_id}/feature-overrides/{key}';
+setLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut.PATH = '/api/v1/platform/license/{tenant_id}/feature-overrides/{key}';

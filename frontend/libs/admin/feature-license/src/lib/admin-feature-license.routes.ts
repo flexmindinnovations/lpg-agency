@@ -22,7 +22,8 @@ export const adminFeatureLicenseDevicesRoutes: Route[] = [
   },
 ];
 
-/** Mounted at `/admin/license/issuance`, gated by `license:manage_platform`. */
+/** Mounted at `/platform/licenses` (relocated from `/admin/license/issuance`
+ * by the Platform Console plan), gated by `license:manage_platform`. */
 export const adminFeatureLicenseIssuanceRoutes: Route[] = [
   {
     path: '',

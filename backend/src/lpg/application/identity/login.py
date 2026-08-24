@@ -32,6 +32,7 @@ from lpg.application.common.errors import (
     InvalidCredentialsError,
     LicenseExpiredError,
     LicenseNotActivatedError,
+    TenantSuspendedError,
 )
 from lpg.application.identity.tokens import TokenPair, issue_tokens
 from lpg.domain.license.license import LicenseLifecycleState
@@ -48,6 +49,7 @@ if TYPE_CHECKING:
         TokenHasher,
     )
     from lpg.application.license.ports import LicenseStatusChecker
+    from lpg.application.tenant.status import TenantStatusChecker
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +68,7 @@ class LoginUseCase:
         token_hasher: TokenHasher,
         jwt_signer: JwtSigner,
         license_status_checker: LicenseStatusChecker,
+        tenant_status_checker: TenantStatusChecker,
         *,
         lockout_threshold: int,
         lockout_duration: timedelta,
@@ -78,6 +81,7 @@ class LoginUseCase:
         self._token_hasher = token_hasher
         self._jwt_signer = jwt_signer
         self._license_status_checker = license_status_checker
+        self._tenant_status_checker = tenant_status_checker
         self._lockout_threshold = lockout_threshold
         self._lockout_duration = lockout_duration
         self._refresh_token_ttl = refresh_token_ttl
@@ -113,8 +117,18 @@ class LoginUseCase:
             user.change_password_hash(self._password_hasher.hash(command.password))
 
         # `user.tenant_id is None` is a `super_admin` account (D-01: operates
-        # above tenant scope) — no single tenant's license applies to it.
+        # above tenant scope) — no single tenant's license or suspension
+        # status applies to it.
         if user.tenant_id is not None:
+            # Agency suspension is checked first and independently of the
+            # license — a suspended agency is a more fundamental block than
+            # a license detail, and the two are decided by different actors
+            # (see `TenantSuspendedError`'s own docstring).
+            tenant_status = await self._tenant_status_checker.get_status(user.tenant_id)
+            if tenant_status in ("suspended", "closed"):
+                msg = "This tenant's agency has been suspended."
+                raise TenantSuspendedError(msg, tenant_id=str(user.tenant_id))
+
             license_status = await self._license_status_checker.get_status(user.tenant_id)
             if license_status is LicenseLifecycleState.PENDING_ACTIVATION:
                 msg = "This tenant's license has not been activated."

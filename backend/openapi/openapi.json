@@ -3189,6 +3189,17 @@
           "tenant_id": {
             "title": "Tenant Id",
             "type": "string"
+          },
+          "tenant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Name"
           }
         },
         "required": [
@@ -7090,70 +7101,6 @@
         ]
       }
     },
-    "/api/v1/admin/feature-flags": {
-      "get": {
-        "operationId": "list_feature_flags_api_v1_admin_feature_flags_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/FeatureFlagResponse"
-                  },
-                  "title": "Response List Feature Flags Api V1 Admin Feature Flags Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List platform flags",
-        "tags": [
-          "Administration"
-        ]
-      },
-      "post": {
-        "operationId": "create_feature_flag_api_v1_admin_feature_flags_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFeatureFlagRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeatureFlagResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create a platform flag",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
     "/api/v1/admin/feature-flags/available": {
       "get": {
         "description": "Feeds the override picker on the tenant Feature Flags page. Deliberately\nnarrower than `GET /feature-flags` (platform-only, `manage_platform`):\nrollout %/schedule are rollout mechanics a tenant admin has no reason to\nsee when picking a flag to override for their own tenant.",
@@ -7270,205 +7217,6 @@
           }
         },
         "summary": "Whether a flag is enabled for the current tenant",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/feature-flags/{key}/enabled-by-default": {
-      "patch": {
-        "operationId": "set_feature_flag_enabled_by_default_api_v1_admin_feature_flags__key__enabled_by_default_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key",
-            "required": true,
-            "schema": {
-              "title": "Key",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetFeatureFlagEnabledByDefaultRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Toggle a platform flag's default",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/feature-flags/{key}/rollout": {
-      "patch": {
-        "operationId": "set_feature_flag_rollout_percentage_api_v1_admin_feature_flags__key__rollout_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key",
-            "required": true,
-            "schema": {
-              "title": "Key",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetFeatureFlagRolloutPercentageRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Set a platform flag's rollout %",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/feature-flags/{key}/schedule": {
-      "patch": {
-        "operationId": "schedule_feature_flag_api_v1_admin_feature_flags__key__schedule_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "key",
-            "required": true,
-            "schema": {
-              "title": "Key",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScheduleFeatureFlagRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Schedule a platform flag",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/license": {
-      "get": {
-        "operationId": "list_licenses_api_v1_admin_license_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/LicenseResponse"
-                  },
-                  "title": "Response List Licenses Api V1 Admin License Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List every tenant's license",
-        "tags": [
-          "Administration"
-        ]
-      },
-      "post": {
-        "operationId": "issue_license_api_v1_admin_license_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IssueLicenseRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IssuedLicenseResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Issue a license for a tenant",
         "tags": [
           "Administration"
         ]
@@ -7591,194 +7339,6 @@
           }
         },
         "summary": "This tenant's own license status",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/license/{tenant_id}/device-caps/{app_type}": {
-      "patch": {
-        "operationId": "set_license_device_cap_api_v1_admin_license__tenant_id__device_caps__app_type__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "tenant_id",
-            "required": true,
-            "schema": {
-              "title": "Tenant Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "app_type",
-            "required": true,
-            "schema": {
-              "title": "App Type",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetLicenseDeviceCapRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Set a tenant's per-app-type device cap",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/license/{tenant_id}/feature-overrides/{key}": {
-      "put": {
-        "operationId": "set_license_feature_override_api_v1_admin_license__tenant_id__feature_overrides__key__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "tenant_id",
-            "required": true,
-            "schema": {
-              "title": "Tenant Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "key",
-            "required": true,
-            "schema": {
-              "title": "Key",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetLicenseFeatureOverrideRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Set a tenant's license feature override",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/license/{tenant_id}/plan-tier": {
-      "patch": {
-        "operationId": "set_license_plan_tier_api_v1_admin_license__tenant_id__plan_tier_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "tenant_id",
-            "required": true,
-            "schema": {
-              "title": "Tenant Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetLicensePlanTierRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Set a tenant's plan tier",
-        "tags": [
-          "Administration"
-        ]
-      }
-    },
-    "/api/v1/admin/license/{tenant_id}/revoke": {
-      "patch": {
-        "operationId": "revoke_license_api_v1_admin_license__tenant_id__revoke_patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "tenant_id",
-            "required": true,
-            "schema": {
-              "title": "Tenant Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Revoke a tenant's license",
         "tags": [
           "Administration"
         ]
@@ -12170,6 +11730,662 @@
         "summary": "Reschedule Order",
         "tags": [
           "Orders"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies": {
+      "get": {
+        "operationId": "list_agencies_api_v1_platform_agencies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantResponse"
+                  },
+                  "title": "Response List Agencies Api V1 Platform Agencies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List every agency (tenant)",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/close": {
+      "patch": {
+        "operationId": "close_agency_api_v1_platform_agencies__tenant_id__close_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close an agency permanently",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/reactivate": {
+      "patch": {
+        "operationId": "reactivate_agency_api_v1_platform_agencies__tenant_id__reactivate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reactivate a suspended agency",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/suspend": {
+      "patch": {
+        "operationId": "suspend_agency_api_v1_platform_agencies__tenant_id__suspend_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suspend an agency",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/feature-flags": {
+      "get": {
+        "operationId": "list_feature_flags_api_v1_platform_feature_flags_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeatureFlagResponse"
+                  },
+                  "title": "Response List Feature Flags Api V1 Platform Feature Flags Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List platform flags",
+        "tags": [
+          "Platform Console"
+        ]
+      },
+      "post": {
+        "operationId": "create_feature_flag_api_v1_platform_feature_flags_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeatureFlagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create a platform flag",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/feature-flags/{key}/enabled-by-default": {
+      "patch": {
+        "operationId": "set_feature_flag_enabled_by_default_api_v1_platform_feature_flags__key__enabled_by_default_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeatureFlagEnabledByDefaultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle a platform flag's default",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/feature-flags/{key}/rollout": {
+      "patch": {
+        "operationId": "set_feature_flag_rollout_percentage_api_v1_platform_feature_flags__key__rollout_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeatureFlagRolloutPercentageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a platform flag's rollout %",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/feature-flags/{key}/schedule": {
+      "patch": {
+        "operationId": "schedule_feature_flag_api_v1_platform_feature_flags__key__schedule_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleFeatureFlagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Schedule a platform flag",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license": {
+      "get": {
+        "operationId": "list_licenses_api_v1_platform_license_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LicenseResponse"
+                  },
+                  "title": "Response List Licenses Api V1 Platform License Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List every tenant's license",
+        "tags": [
+          "Platform Console"
+        ]
+      },
+      "post": {
+        "operationId": "issue_license_api_v1_platform_license_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueLicenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedLicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue a license for a tenant",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license/{tenant_id}/activate": {
+      "post": {
+        "description": "The `/platform` sibling of `POST /admin/license/activate`\n(`routers/admin.py`) — same `ActivateLicenseUseCase`, unchanged (D-2:\nit already takes an explicit `tenant_id`, never derived the caller's\nown), just supplied the *target* tenant from the path instead of a\ntenant-scoped principal. Lets a super_admin activate immediately after\nissuing, rather than waiting on the tenant's own self-service flow.",
+        "operationId": "activate_license_api_v1_platform_license__tenant_id__activate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateLicenseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate a tenant's license on its behalf",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license/{tenant_id}/device-caps/{app_type}": {
+      "patch": {
+        "operationId": "set_license_device_cap_api_v1_platform_license__tenant_id__device_caps__app_type__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "app_type",
+            "required": true,
+            "schema": {
+              "title": "App Type",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLicenseDeviceCapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant's per-app-type device cap",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license/{tenant_id}/feature-overrides/{key}": {
+      "put": {
+        "operationId": "set_license_feature_override_api_v1_platform_license__tenant_id__feature_overrides__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLicenseFeatureOverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant's license feature override",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license/{tenant_id}/plan-tier": {
+      "patch": {
+        "operationId": "set_license_plan_tier_api_v1_platform_license__tenant_id__plan_tier_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLicensePlanTierRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a tenant's plan tier",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license/{tenant_id}/revoke": {
+      "patch": {
+        "operationId": "revoke_license_api_v1_platform_license__tenant_id__revoke_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke a tenant's license",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/me": {
+      "get": {
+        "description": "The `/platform` sibling of `GET /auth/me` — the Dashboard's login\nflow calls whichever of the two matches the JWT's `role` claim\n(`AuthService.hydrateSession()`), since `/auth/me` 401s outright for a\ngenuine `tenant_id = NULL` session (`JwtTenantResolver.resolve()`).\n\nClaims-only, same tier as `/auth/me`'s own `get_current_principal` — no\nlive re-check against `identity_user_permission` here either; both\nendpoints exist to describe the session to the UI, not to gate a\nsensitive action.",
+        "operationId": "me_api_v1_platform_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrincipalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The current Super Admin session",
+        "tags": [
+          "Platform Console"
         ]
       }
     },

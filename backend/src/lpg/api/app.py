@@ -37,6 +37,7 @@ from lpg.api.v1.routers import (
     notifications,
     onboarding_draft,
     order,
+    platform,
     printing,
     reporting,
     route,
@@ -290,6 +291,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # API v1
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
+    app.include_router(platform.router, prefix=settings.api_v1_prefix)
     # `onboarding_draft.router`'s literal `/customers/onboarding-drafts` path
     # must be registered before `customer.router`'s `/customers/{customer_id}`
     # — Starlette dispatches to the first *full* (path+method) match, and a

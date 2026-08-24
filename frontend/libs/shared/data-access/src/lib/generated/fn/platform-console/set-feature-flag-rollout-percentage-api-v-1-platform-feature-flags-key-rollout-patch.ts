@@ -9,13 +9,13 @@ import { RequestBuilder } from '../../request-builder';
 
 import { SetFeatureFlagRolloutPercentageRequest } from '../../models/set-feature-flag-rollout-percentage-request';
 
-export interface SetFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch$Params {
+export interface SetFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch$Params {
   key: string;
       body: SetFeatureFlagRolloutPercentageRequest
 }
 
-export function setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch(http: HttpClient, rootUrl: string, params: SetFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch.PATH, 'patch');
+export function setFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch(http: HttpClient, rootUrl: string, params: SetFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, setFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch.PATH, 'patch');
   if (params) {
     rb.path('key', params.key, {});
     rb.body(params.body, 'application/json');
@@ -31,4 +31,4 @@ export function setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutP
   );
 }
 
-setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch.PATH = '/api/v1/admin/feature-flags/{key}/rollout';
+setFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch.PATH = '/api/v1/platform/feature-flags/{key}/rollout';

@@ -2,7 +2,6 @@ import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { map } from 'rxjs';
 import { AuthService } from './auth.service';
-import { AuthTokenStore } from './auth-token.store';
 
 /**
  * Blocks navigation into the shell until a session exists.
@@ -10,22 +9,19 @@ import { AuthTokenStore } from './auth-token.store';
  * An in-memory access token surviving from an earlier navigation is enough
  * to proceed immediately. On a fresh page load there is none — the store
  * lost it on reload by design (`AuthTokenStore`'s docstring) — so this
- * falls back to `AuthService.restoreSession()`, which redeems the
- * `HttpOnly` refresh cookie silently. Only a failure there (no valid
- * cookie either) redirects to `/login`, preserving the attempted URL as a
- * `redirectTo` query param.
+ * falls back to `AuthService.ensureSessionRestored()`, which redeems the
+ * `HttpOnly` refresh cookie silently (deduped against any other guard
+ * doing the same for this same navigation — see that method's own
+ * docstring for why a bare `restoreSession()` call here isn't safe). Only
+ * a failure there (no valid cookie either) redirects to `/login`,
+ * preserving the attempted URL as a `redirectTo` query param.
  */
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
-  const tokenStore = inject(AuthTokenStore);
   const router = inject(Router);
 
-  if (tokenStore.accessToken()) {
-    return true;
-  }
-
   return authService
-    .restoreSession()
+    .ensureSessionRestored()
     .pipe(
       map((restored) =>
         restored

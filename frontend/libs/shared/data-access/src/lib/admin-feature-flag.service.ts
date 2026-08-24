@@ -2,21 +2,22 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
-import { createFeatureFlagApiV1AdminFeatureFlagsPost } from './generated/fn/administration/create-feature-flag-api-v-1-admin-feature-flags-post';
 import { isFeatureFlagEnabledApiV1AdminFeatureFlagsKeyEnabledGet } from './generated/fn/administration/is-feature-flag-enabled-api-v-1-admin-feature-flags-key-enabled-get';
 import { listAvailableFeatureFlagsApiV1AdminFeatureFlagsAvailableGet } from './generated/fn/administration/list-available-feature-flags-api-v-1-admin-feature-flags-available-get';
-import { listFeatureFlagsApiV1AdminFeatureFlagsGet } from './generated/fn/administration/list-feature-flags-api-v-1-admin-feature-flags-get';
-import { scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch } from './generated/fn/administration/schedule-feature-flag-api-v-1-admin-feature-flags-key-schedule-patch';
-import { setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch } from './generated/fn/administration/set-feature-flag-enabled-by-default-api-v-1-admin-feature-flags-key-enabled-by-default-patch';
 import { setFeatureFlagOverrideApiV1AdminFeatureFlagsOverridesKeyPut } from './generated/fn/administration/set-feature-flag-override-api-v-1-admin-feature-flags-overrides-key-put';
-import { setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch } from './generated/fn/administration/set-feature-flag-rollout-percentage-api-v-1-admin-feature-flags-key-rollout-patch';
+import { createFeatureFlagApiV1PlatformFeatureFlagsPost } from './generated/fn/platform-console/create-feature-flag-api-v-1-platform-feature-flags-post';
+import { listFeatureFlagsApiV1PlatformFeatureFlagsGet } from './generated/fn/platform-console/list-feature-flags-api-v-1-platform-feature-flags-get';
+import { scheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch } from './generated/fn/platform-console/schedule-feature-flag-api-v-1-platform-feature-flags-key-schedule-patch';
+import { setFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch } from './generated/fn/platform-console/set-feature-flag-enabled-by-default-api-v-1-platform-feature-flags-key-enabled-by-default-patch';
+import { setFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch } from './generated/fn/platform-console/set-feature-flag-rollout-percentage-api-v-1-platform-feature-flags-key-rollout-patch';
 import type { FeatureFlagEnabledResponse } from './generated/models/feature-flag-enabled-response';
 import type { FeatureFlagOverrideResponse } from './generated/models/feature-flag-override-response';
 import type { FeatureFlagResponse } from './generated/models/feature-flag-response';
 import type { FeatureFlagSummaryResponse } from './generated/models/feature-flag-summary-response';
 
 /**
- * Thin wrapper over the generated `/admin/feature-flags*` client functions.
+ * Thin wrapper over the generated `/admin/feature-flags*` and
+ * `/platform/feature-flags*` client functions.
  *
  * Platform-management methods (`createFlag`, `setEnabledByDefault`,
  * `setRolloutPercentage`, `schedule`) require `super_admin` server-side
@@ -30,7 +31,7 @@ export class AdminFeatureFlagService {
   private readonly config = inject(ApiConfiguration);
 
   listFlags(): Observable<FeatureFlagResponse[]> {
-    return listFeatureFlagsApiV1AdminFeatureFlagsGet(this.http, this.config.rootUrl).pipe(
+    return listFeatureFlagsApiV1PlatformFeatureFlagsGet(this.http, this.config.rootUrl).pipe(
       map((response) => response.body),
     );
   }
@@ -41,7 +42,7 @@ export class AdminFeatureFlagService {
     isEnabledByDefault = false,
     rolloutPercentage: number | null = null,
   ): Observable<FeatureFlagResponse> {
-    return createFeatureFlagApiV1AdminFeatureFlagsPost(this.http, this.config.rootUrl, {
+    return createFeatureFlagApiV1PlatformFeatureFlagsPost(this.http, this.config.rootUrl, {
       body: {
         key,
         description,
@@ -52,7 +53,7 @@ export class AdminFeatureFlagService {
   }
 
   setEnabledByDefault(key: string, enabled: boolean): Observable<void> {
-    return setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch(
+    return setFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch(
       this.http,
       this.config.rootUrl,
       { key, body: { enabled } },
@@ -60,7 +61,7 @@ export class AdminFeatureFlagService {
   }
 
   setRolloutPercentage(key: string, rolloutPercentage: number | null): Observable<void> {
-    return setFeatureFlagRolloutPercentageApiV1AdminFeatureFlagsKeyRolloutPatch(
+    return setFeatureFlagRolloutPercentageApiV1PlatformFeatureFlagsKeyRolloutPatch(
       this.http,
       this.config.rootUrl,
       { key, body: { rollout_percentage: rolloutPercentage } },
@@ -68,7 +69,7 @@ export class AdminFeatureFlagService {
   }
 
   schedule(key: string, startsAt: string | null, endsAt: string | null): Observable<void> {
-    return scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch(
+    return scheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch(
       this.http,
       this.config.rootUrl,
       {

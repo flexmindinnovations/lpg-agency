@@ -7,18 +7,15 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
-import { SetLicensePlanTierRequest } from '../../models/set-license-plan-tier-request';
 
-export interface SetLicensePlanTierApiV1AdminLicenseTenantIdPlanTierPatch$Params {
+export interface CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params {
   tenant_id: string;
-      body: SetLicensePlanTierRequest
 }
 
-export function setLicensePlanTierApiV1AdminLicenseTenantIdPlanTierPatch(http: HttpClient, rootUrl: string, params: SetLicensePlanTierApiV1AdminLicenseTenantIdPlanTierPatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, setLicensePlanTierApiV1AdminLicenseTenantIdPlanTierPatch.PATH, 'patch');
+export function closeAgencyApiV1PlatformAgenciesTenantIdClosePatch(http: HttpClient, rootUrl: string, params: CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, closeAgencyApiV1PlatformAgenciesTenantIdClosePatch.PATH, 'patch');
   if (params) {
     rb.path('tenant_id', params.tenant_id, {});
-    rb.body(params.body, 'application/json');
   }
 
   return http.request(
@@ -31,4 +28,4 @@ export function setLicensePlanTierApiV1AdminLicenseTenantIdPlanTierPatch(http: H
   );
 }
 
-setLicensePlanTierApiV1AdminLicenseTenantIdPlanTierPatch.PATH = '/api/v1/admin/license/{tenant_id}/plan-tier';
+closeAgencyApiV1PlatformAgenciesTenantIdClosePatch.PATH = '/api/v1/platform/agencies/{tenant_id}/close';

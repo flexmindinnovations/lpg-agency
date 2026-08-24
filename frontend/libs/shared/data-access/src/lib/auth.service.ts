@@ -19,6 +19,7 @@ import { otpVerifyApiV1AuthOtpVerifyPost } from './generated/fn/authentication/o
 import { passwordForgotApiV1AuthPasswordForgotPost } from './generated/fn/authentication/password-forgot-api-v-1-auth-password-forgot-post';
 import { passwordResetApiV1AuthPasswordResetPost } from './generated/fn/authentication/password-reset-api-v-1-auth-password-reset-post';
 import { refreshApiV1AuthRefreshPost } from './generated/fn/authentication/refresh-api-v-1-auth-refresh-post';
+import { meApiV1PlatformMeGet } from './generated/fn/platform-console/me-api-v-1-platform-me-get';
 import type { LicenseStatusResponse } from './generated/models/license-status-response';
 import type { PrincipalResponse } from './generated/models/principal-response';
 import { AuthPrincipal, AuthTokenStore } from './auth-token.store';
@@ -34,6 +35,24 @@ function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
     permissions: new Set(response.permissions),
     email: response.email ?? null,
   };
+}
+
+/**
+ * Reads the `role` claim off an access token without verifying its
+ * signature — used only to decide which of `/auth/me`/`/platform/me` to
+ * call next. Never a security boundary: every endpoint re-verifies the
+ * signature itself server-side (`JwtTenantResolver`/
+ * `JwtPlatformPrincipalResolver`), so a forged or malformed token here just
+ * routes to the wrong `/me` endpoint, which then 401s anyway.
+ */
+function decodeRoleClaim(accessToken: string): string | null {
+  try {
+    const [, payload] = accessToken.split('.');
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof decoded?.role === 'string' ? decoded.role : null;
+  } catch {
+    return null;
+  }
 }
 
 function toLicenseStatus(response: LicenseStatusResponse) {
@@ -69,6 +88,7 @@ export class AuthService {
   readonly principal = this.tokenStore.principal;
 
   private refreshInFlight$: Observable<string> | null = null;
+  private restoreInFlight$: Observable<boolean> | null = null;
 
   login(email: string, password: string): Observable<void> {
     return loginApiV1AuthLoginPost(this.http, this.config.rootUrl, {
@@ -152,6 +172,42 @@ export class AuthService {
     );
   }
 
+  /**
+   * The single entry point every route guard (`authGuard`, `platformAuthGuard`,
+   * `permissionGuard`, `licenseGuard`) should call before reading
+   * `tokenStore.principal()` synchronously.
+   *
+   * Guards used to assume `authGuard` running earlier in the same
+   * `canActivate` array was enough to guarantee a hydrated principal by the
+   * time a later guard's own synchronous check ran. It isn't: verified live
+   * that on a hard reload straight into a deep route (e.g.
+   * `/platform/agencies`), `platformAuthGuard` read `tokenStore.principal()`
+   * as `null` — session restore was still in flight — despite sitting right
+   * after `authGuard` in the very same array. Angular Router does not
+   * guarantee that ordering resolves before the next guard's synchronous
+   * body runs. Every guard now calls this instead of relying on array
+   * position: an already-hydrated session resolves immediately (`of(true)`,
+   * no-op); an in-progress or not-yet-started restore is awaited, and
+   * concurrent callers share one in-flight attempt (same `shareReplay(1)`
+   * dedup shape `refreshAccessToken()` already uses, for the same reason —
+   * avoid firing `/auth/refresh` and `/auth/me`|`/platform/me` more than
+   * once for one page load).
+   */
+  ensureSessionRestored(): Observable<boolean> {
+    if (this.tokenStore.accessToken()) {
+      return of(true);
+    }
+    if (!this.restoreInFlight$) {
+      this.restoreInFlight$ = this.restoreSession().pipe(
+        shareReplay(1),
+        finalize(() => {
+          this.restoreInFlight$ = null;
+        }),
+      );
+    }
+    return this.restoreInFlight$;
+  }
+
   logout(): Observable<void> {
     return logoutApiV1AuthLogoutPost(this.http, this.config.rootUrl, { body: {} }).pipe(
       map(() => undefined),
@@ -167,14 +223,30 @@ export class AuthService {
     );
   }
 
+  /**
+   * A genuine `super_admin` session has `tenant_id = null` by design
+   * (D-01) — `/auth/me` is tenant-scoped (`JwtTenantResolver.resolve()`
+   * rejects any JWT with no `tenant_id` claim) and would 401 immediately
+   * after a successful login. `/platform/me` is its no-tenant sibling.
+   * `decodeRoleClaim` picks the right one without an extra failed
+   * round-trip; license status is meaningless for a tenant-less session,
+   * so that fetch is skipped for this branch too.
+   */
   private hydrateSession(accessToken: string): Observable<void> {
     this.tokenStore.setAccessToken(accessToken);
-    return meApiV1AuthMeGet(this.http, this.config.rootUrl).pipe(
+    const isPlatformSession = decodeRoleClaim(accessToken) === 'super_admin';
+    const me$ = isPlatformSession
+      ? meApiV1PlatformMeGet(this.http, this.config.rootUrl)
+      : meApiV1AuthMeGet(this.http, this.config.rootUrl);
+
+    return me$.pipe(
       map((response) => response.body),
       tap((principal) => {
         this.tokenStore.setSession(accessToken, toAuthPrincipal(principal));
         this.wsService.connect(accessToken);
-        this.fetchLicenseStatus();
+        if (!isPlatformSession) {
+          this.fetchLicenseStatus();
+        }
       }),
       map(() => undefined),
     );

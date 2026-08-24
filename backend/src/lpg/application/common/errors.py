@@ -360,3 +360,17 @@ class DeviceLimitReachedError(ConflictError):
 
     error_code = "DEVICE_LIMIT_REACHED"
     title = "The device limit for this app has been reached."
+
+
+class TenantSuspendedError(ConflictError):
+    """The tenant's agency has been suspended by a `super_admin` —
+    deliberately a **second, independent** check from `LicenseExpiredError`,
+    checked at the same three call sites (login, refresh,
+    `get_tenant_context`) but never merged with it: a suspended agency and
+    a revoked/expired license are different facts about a tenant, decided
+    by different actors, and the client should render different guidance
+    for each ("this agency has been suspended, contact support" vs.
+    "activate/renew your license")."""
+
+    error_code = "TENANT_SUSPENDED"
+    title = "This tenant's agency has been suspended."

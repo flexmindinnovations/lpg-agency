@@ -7,13 +7,13 @@ import { filter, map } from 'rxjs/operators';
 import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
-import { LicenseResponse } from '../../models/license-response';
+import { PrincipalResponse } from '../../models/principal-response';
 
-export interface ListLicensesApiV1AdminLicenseGet$Params {
+export interface MeApiV1PlatformMeGet$Params {
 }
 
-export function listLicensesApiV1AdminLicenseGet(http: HttpClient, rootUrl: string, params?: ListLicensesApiV1AdminLicenseGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<LicenseResponse>>> {
-  const rb = new RequestBuilder(rootUrl, listLicensesApiV1AdminLicenseGet.PATH, 'get');
+export function meApiV1PlatformMeGet(http: HttpClient, rootUrl: string, params?: MeApiV1PlatformMeGet$Params, context?: HttpContext): Observable<StrictHttpResponse<PrincipalResponse>> {
+  const rb = new RequestBuilder(rootUrl, meApiV1PlatformMeGet.PATH, 'get');
   if (params) {
   }
 
@@ -22,9 +22,9 @@ export function listLicensesApiV1AdminLicenseGet(http: HttpClient, rootUrl: stri
   ).pipe(
     filter((r: any): r is HttpResponse<any> => r instanceof HttpResponse),
     map((r: HttpResponse<any>) => {
-      return r as StrictHttpResponse<Array<LicenseResponse>>;
+      return r as StrictHttpResponse<PrincipalResponse>;
     })
   );
 }
 
-listLicensesApiV1AdminLicenseGet.PATH = '/api/v1/admin/license';
+meApiV1PlatformMeGet.PATH = '/api/v1/platform/me';

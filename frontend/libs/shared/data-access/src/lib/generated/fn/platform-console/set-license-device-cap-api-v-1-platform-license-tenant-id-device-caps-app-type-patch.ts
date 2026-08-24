@@ -9,14 +9,14 @@ import { RequestBuilder } from '../../request-builder';
 
 import { SetLicenseDeviceCapRequest } from '../../models/set-license-device-cap-request';
 
-export interface SetLicenseDeviceCapApiV1AdminLicenseTenantIdDeviceCapsAppTypePatch$Params {
+export interface SetLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch$Params {
   tenant_id: string;
   app_type: string;
       body: SetLicenseDeviceCapRequest
 }
 
-export function setLicenseDeviceCapApiV1AdminLicenseTenantIdDeviceCapsAppTypePatch(http: HttpClient, rootUrl: string, params: SetLicenseDeviceCapApiV1AdminLicenseTenantIdDeviceCapsAppTypePatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, setLicenseDeviceCapApiV1AdminLicenseTenantIdDeviceCapsAppTypePatch.PATH, 'patch');
+export function setLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch(http: HttpClient, rootUrl: string, params: SetLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, setLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch.PATH, 'patch');
   if (params) {
     rb.path('tenant_id', params.tenant_id, {});
     rb.path('app_type', params.app_type, {});
@@ -33,4 +33,4 @@ export function setLicenseDeviceCapApiV1AdminLicenseTenantIdDeviceCapsAppTypePat
   );
 }
 
-setLicenseDeviceCapApiV1AdminLicenseTenantIdDeviceCapsAppTypePatch.PATH = '/api/v1/admin/license/{tenant_id}/device-caps/{app_type}';
+setLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch.PATH = '/api/v1/platform/license/{tenant_id}/device-caps/{app_type}';

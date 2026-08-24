@@ -61,7 +61,7 @@ describe('authInterceptor', () => {
     httpTesting.expectNone('/api/v1/auth/refresh');
   });
 
-  it('refreshes and retries once on a 401 from an ordinary endpoint, then clears the session and prompts re-login on repeat failure', () => {
+  it('refreshes and retries once on a 401 from an ordinary endpoint, then clears the session, prompts re-login, and still errors the caller on repeat failure', () => {
     tokenStore.setAccessToken('stale-token');
     const confirmationService = TestBed.inject(ConfirmationService);
     const confirmSpy = jest.spyOn(confirmationService, 'confirm');
@@ -82,11 +82,18 @@ describe('authInterceptor', () => {
       .flush(null, { status: 401, statusText: 'Unauthorized' });
 
     // A repeat 401 on the refresh itself clears the session and prompts the
-    // user to log back in, but deliberately does not error the caller's
-    // request — the interceptor returns EMPTY so `problemDetailsInterceptor`
-    // doesn't also show a generic error toast on top of the confirm dialog.
-    expect(observedError).toBeUndefined();
-    expect(completed).toBe(true);
+    // user to log back in — but must still error the caller's request
+    // rather than silently completing. A silent completion here previously
+    // broke any guard/`catchError` relying on normal error semantics (e.g.
+    // `licenseGuard`'s own `catchError(() => of(true))` never ran, and
+    // Angular Router's guard-combination logic threw `EmptyError: no
+    // elements in sequence` instead) — the practical trigger being a
+    // `super_admin` session (whose token is genuinely valid, just wrong
+    // *scope*) hitting a tenant-scoped endpoint: refresh always succeeds,
+    // the retry always 401s again too, so this path fired on every such
+    // request, not just a real expiry.
+    expect(observedError).toBeTruthy();
+    expect(completed).toBe(false);
     expect(tokenStore.accessToken()).toBeNull();
     expect(confirmSpy).toHaveBeenCalledWith(
       expect.objectContaining({ header: 'Session Expired' }),

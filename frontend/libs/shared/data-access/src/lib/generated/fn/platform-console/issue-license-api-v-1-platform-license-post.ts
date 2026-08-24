@@ -10,12 +10,12 @@ import { RequestBuilder } from '../../request-builder';
 import { IssuedLicenseResponse } from '../../models/issued-license-response';
 import { IssueLicenseRequest } from '../../models/issue-license-request';
 
-export interface IssueLicenseApiV1AdminLicensePost$Params {
+export interface IssueLicenseApiV1PlatformLicensePost$Params {
       body: IssueLicenseRequest
 }
 
-export function issueLicenseApiV1AdminLicensePost(http: HttpClient, rootUrl: string, params: IssueLicenseApiV1AdminLicensePost$Params, context?: HttpContext): Observable<StrictHttpResponse<IssuedLicenseResponse>> {
-  const rb = new RequestBuilder(rootUrl, issueLicenseApiV1AdminLicensePost.PATH, 'post');
+export function issueLicenseApiV1PlatformLicensePost(http: HttpClient, rootUrl: string, params: IssueLicenseApiV1PlatformLicensePost$Params, context?: HttpContext): Observable<StrictHttpResponse<IssuedLicenseResponse>> {
+  const rb = new RequestBuilder(rootUrl, issueLicenseApiV1PlatformLicensePost.PATH, 'post');
   if (params) {
     rb.body(params.body, 'application/json');
   }
@@ -30,4 +30,4 @@ export function issueLicenseApiV1AdminLicensePost(http: HttpClient, rootUrl: str
   );
 }
 
-issueLicenseApiV1AdminLicensePost.PATH = '/api/v1/admin/license';
+issueLicenseApiV1PlatformLicensePost.PATH = '/api/v1/platform/license';

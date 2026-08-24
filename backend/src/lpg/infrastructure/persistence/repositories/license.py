@@ -22,7 +22,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from lpg.domain.license.license import License, LicenseFeatureOverride
 from lpg.domain.license.linked_device import LinkedDevice
@@ -96,12 +96,34 @@ class SqlAlchemyLicenseRepository:
         return license_
 
     async def list_all(self) -> Sequence[License]:
+        """Every tenant's license, platform-wide. Was previously a plain
+        `SELECT` — RLS-scoped like every other query in this repository —
+        which meant this always silently returned at most the *caller's*
+        own license, never "every tenant's", despite the endpoint's own
+        name. Reads through `platform.license_list_all()`, a `SECURITY
+        DEFINER` function that bypasses RLS regardless of whatever
+        `app.current_tenant_id` this session has set (migration
+        `fdd3afde337c`) — the actual fix, not just a rename.
+        """
         result = await self._uow.session.execute(
-            select(LicenseModel)
-            .where(LicenseModel.is_deleted.is_(False))
-            .order_by(LicenseModel.issued_at)
+            text("SELECT * FROM platform.license_list_all()")
         )
-        return [license_from_row(row) for row in result.scalars()]
+        return [
+            License(
+                row.id,
+                row.tenant_id,
+                row.key_hash,
+                row.key_prefix,
+                row.plan_tier,
+                timedelta(seconds=row.validity_period_seconds),
+                row.issued_at,
+                device_caps=dict(row.device_caps or {}),
+                activated_at=row.activated_at,
+                revoked_at=row.revoked_at,
+                version=row.version,
+            )
+            for row in result
+        ]
 
     async def add(self, license: License) -> None:
         self._uow.session.add(

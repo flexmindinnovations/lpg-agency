@@ -4,19 +4,28 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
+import { MultiSelect } from 'primeng/multiselect';
 import { Drawer } from 'primeng/drawer';
 import { Dialog } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import {
+  AgencyService,
   LicenseService,
   type AppError,
   type IssuedLicenseResponse,
   type LicenseResponse,
+  type TenantResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, shortId, toSentenceCase } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, formatTimestamp, toSentenceCase } from '@lpg/shared/ui';
+import { forkJoin } from 'rxjs';
 
 const PLAN_TIERS = ['basic', 'standard', 'premium'] as const;
 const APP_TYPES = ['customer_app', 'driver_app', 'warehouse_app'] as const;
+const VALIDITY_OPTIONS = [
+  { label: '1 year', value: 365 },
+  { label: '2 years', value: 730 },
+  { label: '3 years', value: 1095 },
+] as const;
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -46,6 +55,7 @@ function errorMessageFor(error: unknown): string {
     ButtonLabel,
     InputText,
     Select,
+    MultiSelect,
     Drawer,
     Dialog,
     DataGridComponent,
@@ -99,12 +109,43 @@ function errorMessageFor(error: unknown): string {
       >
         <form id="issueLicenseForm" [formGroup]="issueForm" (ngSubmit)="issue()" novalidate class="dialog-form">
           <div class="form-group">
-            <label for="issue-tenant-id">Tenant ID</label>
-            <input pInputText id="issue-tenant-id" type="text" formControlName="tenantId" placeholder="00000000-0000-0000-0000-000000000000" />
+            <label for="issue-tenant-id">Tenant</label>
+            <p-select
+              id="issue-tenant-id"
+              formControlName="tenantId"
+              [options]="newOrTrialAgencyOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select a new or trial tenant"
+              appendTo="body"
+              (onChange)="onIssueTenantChange($event.value)">
+            </p-select>
             @if (issueForm.controls.tenantId.touched && issueForm.controls.tenantId.invalid) {
-              <small class="field-error">Tenant ID is required.</small>
+              <small class="field-error">Select a tenant to issue a license for.</small>
             }
           </div>
+
+          @if (selectedIssueTenant(); as tenant) {
+            <div class="tenant-preview">
+              <div class="detail-item">
+                <span class="detail-label">Slug</span>
+                <span class="detail-value">{{ tenant.slug }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Plan</span>
+                <span class="detail-value">{{ tenant.subscription_plan }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Primary contact</span>
+                <span class="detail-value">{{ tenant.primary_contact_email }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Country</span>
+                <span class="detail-value">{{ tenant.country }}</span>
+              </div>
+            </div>
+          }
+
           <div class="form-group">
             <label for="issue-plan-tier">Plan tier</label>
             <p-select
@@ -117,8 +158,15 @@ function errorMessageFor(error: unknown): string {
             </p-select>
           </div>
           <div class="form-group">
-            <label for="issue-validity-days">Validity (days)</label>
-            <input pInputText id="issue-validity-days" type="number" min="1" formControlName="validityDays" />
+            <label for="issue-validity-days">Validity</label>
+            <p-select
+              id="issue-validity-days"
+              formControlName="validityDays"
+              [options]="validityOptions"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body">
+            </p-select>
           </div>
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="issueDrawerVisible.set(false)">Cancel</button>
@@ -143,11 +191,24 @@ function errorMessageFor(error: unknown): string {
             Copy this key now and share it with the tenant — it will never be shown again.
           </p>
           <div class="issued-key">{{ issued.plaintext_key }}</div>
+
+          @if (activatedLicense(); as activated) {
+            <p class="activation-confirmed">
+              <i class="pi pi-check-circle"></i>
+              Activated — status: {{ statusLabel(activated.status) }}
+            </p>
+          }
+
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="copyIssuedKey(issued.plaintext_key)">
               <i pButtonIcon class="pi pi-copy"></i>
               <span pButtonLabel>Copy</span>
             </button>
+            @if (!activatedLicense()) {
+              <button pButton type="button" severity="success" [loading]="activating()" (click)="activateIssuedLicense(issued)">
+                Activate license
+              </button>
+            }
             <button pButton type="button" (click)="dismissIssuedKey()">Done</button>
           </div>
         }
@@ -167,6 +228,10 @@ function errorMessageFor(error: unknown): string {
           <div class="detail-view">
             <div class="detail-item">
               <span class="detail-label">Tenant</span>
+              <span class="detail-value">{{ license.tenant_name ?? '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Tenant ID</span>
               <span class="detail-value">{{ license.tenant_id }}</span>
             </div>
             <div class="detail-item">
@@ -183,11 +248,11 @@ function errorMessageFor(error: unknown): string {
             </div>
             <div class="detail-item">
               <span class="detail-label">Issued</span>
-              <span class="detail-value">{{ license.issued_at }}</span>
+              <span class="detail-value">{{ formatDate(license.issued_at) }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Expires</span>
-              <span class="detail-value">{{ license.expires_at ?? '—' }}</span>
+              <span class="detail-value">{{ formatDate(license.expires_at) }}</span>
             </div>
 
             <form [formGroup]="planTierForm" (ngSubmit)="savePlanTier(license.tenant_id)" class="dialog-form">
@@ -211,15 +276,17 @@ function errorMessageFor(error: unknown): string {
 
             <form [formGroup]="deviceCapForm" (ngSubmit)="saveDeviceCap(license.tenant_id)" class="dialog-form">
               <div class="form-group">
-                <label for="detail-app-type">App</label>
-                <p-select
+                <label for="detail-app-type">Apps</label>
+                <p-multiselect
                   id="detail-app-type"
-                  formControlName="appType"
+                  formControlName="appTypes"
                   [options]="appTypeOptions"
                   optionLabel="label"
                   optionValue="value"
+                  display="chip"
+                  placeholder="Select apps"
                   appendTo="body">
-                </p-select>
+                </p-multiselect>
               </div>
               <div class="form-group">
                 <label for="detail-max-devices">Device cap (blank = unlimited)</label>
@@ -282,6 +349,25 @@ function errorMessageFor(error: unknown): string {
         margin-block: var(--spacing-md);
       }
 
+      .activation-confirmed {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        color: var(--color-feedback-success, #16a34a);
+        font-size: var(--typography-body-small-font-size);
+        margin-block-end: var(--spacing-md);
+      }
+
+      .tenant-preview {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md);
+        background: var(--color-surface-overlay);
+        border-radius: var(--radius-sm);
+        margin-block-end: var(--spacing-md);
+      }
+
       .detail-view {
         display: flex;
         flex-direction: column;
@@ -314,17 +400,22 @@ function errorMessageFor(error: unknown): string {
 export class LicenseIssuancePage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly licenseService = inject(LicenseService);
+  private readonly agencyService = inject(AgencyService);
   private readonly messageService = inject(MessageService);
 
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly savingPlanTier = signal(false);
   protected readonly savingDeviceCap = signal(false);
+  protected readonly activating = signal(false);
   protected readonly licenses = signal<LicenseResponse[]>([]);
+  protected readonly agencies = signal<TenantResponse[]>([]);
   protected readonly issueDrawerVisible = signal(false);
   protected readonly issuedKey = signal<IssuedLicenseResponse | null>(null);
+  protected readonly activatedLicense = signal<LicenseResponse | null>(null);
   protected readonly showDetailDrawer = signal(false);
   protected readonly selectedLicense = signal<LicenseResponse | null>(null);
+  protected readonly selectedIssueTenant = signal<TenantResponse | null>(null);
 
   protected readonly planTierOptions = PLAN_TIERS.map((tier) => ({
     label: toSentenceCase(tier),
@@ -334,17 +425,26 @@ export class LicenseIssuancePage implements OnInit {
     label: toSentenceCase(appType),
     value: appType,
   }));
+  protected readonly validityOptions = VALIDITY_OPTIONS.map((option) => ({ ...option }));
+
+  /** New/not-yet-onboarded tenants — the natural candidates for a first
+   * license (`domain/tenant/tenant.py`'s lifecycle: `trial` is where every
+   * tenant starts before a license activates it further). */
+  protected readonly newOrTrialAgencyOptions = () =>
+    this.agencies()
+      .filter((agency) => agency.status === 'trial')
+      .map((agency) => ({ label: agency.name, value: agency.id }));
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
+  protected readonly formatDate = formatTimestamp;
 
   protected readonly columns: DataGridColumn<LicenseResponse>[] = [
     {
-      field: 'tenant_id',
+      field: 'tenant_name',
       header: 'Tenant',
       sortable: true,
       filterable: true,
-      valueFormatter: (value) => shortId(value),
-      tooltipValueGetter: (value) => String(value ?? ''),
+      valueFormatter: (value) => String(value ?? '—'),
       onLinkClick: (row) => this.openDetails(row),
     },
     {
@@ -355,8 +455,8 @@ export class LicenseIssuancePage implements OnInit {
     },
     { field: 'plan_tier', header: 'Plan', sortable: true },
     { field: 'key_prefix', header: 'Key' },
-    { field: 'issued_at', header: 'Issued', sortable: true },
-    { field: 'expires_at', header: 'Expires', sortable: true },
+    { field: 'issued_at', header: 'Issued', sortable: true, valueFormatter: formatTimestamp },
+    { field: 'expires_at', header: 'Expires', sortable: true, valueFormatter: formatTimestamp },
   ];
 
   protected readonly issueForm = this.formBuilder.group({
@@ -370,12 +470,13 @@ export class LicenseIssuancePage implements OnInit {
   });
 
   protected readonly deviceCapForm = this.formBuilder.group({
-    appType: ['driver_app', [Validators.required]],
+    appTypes: this.formBuilder.control<string[]>([]),
     maxDevices: this.formBuilder.control<number | null>(null),
   });
 
   ngOnInit(): void {
     this.reload();
+    this.agencyService.listAgencies().subscribe((agencies) => this.agencies.set(agencies));
   }
 
   private reload(): void {
@@ -391,7 +492,12 @@ export class LicenseIssuancePage implements OnInit {
 
   protected openIssueDrawer(): void {
     this.issueForm.reset({ planTier: 'standard', validityDays: 365 });
+    this.selectedIssueTenant.set(null);
     this.issueDrawerVisible.set(true);
+  }
+
+  protected onIssueTenantChange(tenantId: string): void {
+    this.selectedIssueTenant.set(this.agencies().find((agency) => agency.id === tenantId) ?? null);
   }
 
   protected issue(): void {
@@ -410,6 +516,7 @@ export class LicenseIssuancePage implements OnInit {
       next: (issued) => {
         this.submitting.set(false);
         this.issueDrawerVisible.set(false);
+        this.activatedLicense.set(null);
         this.issuedKey.set(issued);
         this.reload();
       },
@@ -425,14 +532,33 @@ export class LicenseIssuancePage implements OnInit {
     this.messageService.add({ severity: 'success', summary: 'Copied', detail: 'Key copied to clipboard.' });
   }
 
+  protected activateIssuedLicense(issued: IssuedLicenseResponse): void {
+    if (this.activating()) return;
+    this.activating.set(true);
+
+    this.licenseService.activateOnBehalfOf(issued.tenant_id, issued.plaintext_key).subscribe({
+      next: (activated) => {
+        this.activating.set(false);
+        this.activatedLicense.set(activated);
+        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'License activated.' });
+        this.reload();
+      },
+      error: (error: unknown) => {
+        this.activating.set(false);
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
+      },
+    });
+  }
+
   protected dismissIssuedKey(): void {
     this.issuedKey.set(null);
+    this.activatedLicense.set(null);
   }
 
   protected openDetails(license: LicenseResponse): void {
     this.selectedLicense.set(license);
     this.planTierForm.reset({ planTier: license.plan_tier });
-    this.deviceCapForm.reset({ appType: 'driver_app', maxDevices: license.device_caps['driver_app'] ?? null });
+    this.deviceCapForm.reset({ appTypes: [], maxDevices: null });
     this.showDetailDrawer.set(true);
   }
 
@@ -461,10 +587,13 @@ export class LicenseIssuancePage implements OnInit {
 
   protected saveDeviceCap(tenantId: string): void {
     if (this.deviceCapForm.invalid) return;
-    this.savingDeviceCap.set(true);
-    const { appType, maxDevices } = this.deviceCapForm.getRawValue();
+    const { appTypes, maxDevices } = this.deviceCapForm.getRawValue();
+    if (appTypes.length === 0) return;
 
-    this.licenseService.setDeviceCap(tenantId, appType, maxDevices).subscribe({
+    this.savingDeviceCap.set(true);
+    forkJoin(
+      appTypes.map((appType) => this.licenseService.setDeviceCap(tenantId, appType, maxDevices)),
+    ).subscribe({
       next: () => {
         this.savingDeviceCap.set(false);
         this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Device cap updated.' });

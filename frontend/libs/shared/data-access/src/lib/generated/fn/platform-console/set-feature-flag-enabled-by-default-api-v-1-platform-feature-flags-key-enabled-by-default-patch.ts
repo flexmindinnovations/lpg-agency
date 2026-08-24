@@ -9,13 +9,13 @@ import { RequestBuilder } from '../../request-builder';
 
 import { SetFeatureFlagEnabledByDefaultRequest } from '../../models/set-feature-flag-enabled-by-default-request';
 
-export interface SetFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch$Params {
+export interface SetFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch$Params {
   key: string;
       body: SetFeatureFlagEnabledByDefaultRequest
 }
 
-export function setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch(http: HttpClient, rootUrl: string, params: SetFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch.PATH, 'patch');
+export function setFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch(http: HttpClient, rootUrl: string, params: SetFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, setFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch.PATH, 'patch');
   if (params) {
     rb.path('key', params.key, {});
     rb.body(params.body, 'application/json');
@@ -31,4 +31,4 @@ export function setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledBy
   );
 }
 
-setFeatureFlagEnabledByDefaultApiV1AdminFeatureFlagsKeyEnabledByDefaultPatch.PATH = '/api/v1/admin/feature-flags/{key}/enabled-by-default';
+setFeatureFlagEnabledByDefaultApiV1PlatformFeatureFlagsKeyEnabledByDefaultPatch.PATH = '/api/v1/platform/feature-flags/{key}/enabled-by-default';

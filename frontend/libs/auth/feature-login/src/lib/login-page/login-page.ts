@@ -19,6 +19,8 @@ function errorMessageFor(error: unknown): string {
       return 'Incorrect email or password.';
     case 'ACCOUNT_LOCKED':
       return 'This account is temporarily locked after too many failed attempts. Try again later.';
+    case 'TENANT_SUSPENDED':
+      return 'This agency has been suspended. Contact support for assistance.';
     default:
       return 'Something went wrong signing in. Please try again.';
   }
@@ -274,7 +276,12 @@ export class LoginPage {
 
     this.authService.login(email, password).subscribe({
       next: () => {
-        const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo') ?? '/';
+        // A genuine `super_admin` session has no tenant dashboard to land
+        // on (D-01) — default it into the Platform Console instead. An
+        // explicit `redirectTo` (e.g. a deep link) still wins either way.
+        const isPlatformSession = this.authService.principal()?.role === 'super_admin';
+        const defaultRoute = isPlatformSession ? '/platform' : '/';
+        const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo') ?? defaultRoute;
         void this.router.navigateByUrl(redirectTo);
       },
       error: (error: unknown) => {

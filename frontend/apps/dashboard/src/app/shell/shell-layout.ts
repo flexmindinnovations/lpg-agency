@@ -34,7 +34,14 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
 @Component({
   selector: 'lpg-shell-layout',
   standalone: true,
-  imports: [RouterOutlet, AppShellComponent, ToastModule, ConfirmDialogModule, NotificationBell, NotificationDrawer],
+  imports: [
+    RouterOutlet,
+    AppShellComponent,
+    ToastModule,
+    ConfirmDialogModule,
+    NotificationBell,
+    NotificationDrawer,
+  ],
   providers: [MessageService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -45,7 +52,10 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
       [role]="role()"
       (signOut)="onSignOut()"
     >
-      <lib-notification-bell shell-top-right-actions (toggled)="isDrawerVisible.set(!isDrawerVisible())" />
+      <lib-notification-bell
+        shell-top-right-actions
+        (toggled)="isDrawerVisible.set(!isDrawerVisible())"
+      />
       <router-outlet />
     </lpg-app-shell>
     <lib-notification-drawer [(visible)]="isDrawerVisible" />
@@ -76,7 +86,8 @@ export class ShellLayout {
           this.messageService.add({
             severity: 'warn',
             summary: 'License expiring soon',
-            detail: 'This tenant’s license is in its grace period. Renew it to avoid losing access.',
+            detail:
+              'This tenant’s license is in its grace period. Renew it to avoid losing access.',
             life: 8000,
           });
         }
@@ -104,35 +115,126 @@ export class ShellLayout {
     return [
       ...buildGroup('Overview', [
         { label: 'Dashboard', icon: 'pi pi-home', route: '/', exact: true },
-        { label: 'Reports', icon: 'pi pi-chart-bar', route: '/reports', condition: can('reports:read') },
+        {
+          label: 'Reports',
+          icon: 'pi pi-chart-bar',
+          route: '/reports',
+          condition: can('reports:read'),
+        },
       ]),
       ...buildGroup('Operations', [
-        { label: 'Customers', icon: 'pi pi-users', route: '/customers', aliases: ['/ledger'], condition: can('customers:read') },
-        { label: 'Orders', icon: 'pi pi-shopping-cart', route: '/orders', condition: can('orders:read') },
+        {
+          label: 'Customers',
+          icon: 'pi pi-users',
+          route: '/customers',
+          aliases: ['/ledger'],
+          condition: can('customers:read'),
+        },
+        {
+          label: 'Orders',
+          icon: 'pi pi-shopping-cart',
+          route: '/orders',
+          condition: can('orders:read'),
+        },
         { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch', condition: can('routes:read') },
-        { label: 'Complaints', icon: 'pi pi-exclamation-circle', route: '/complaints', condition: can('complaints.manage') },
+        {
+          label: 'Complaints',
+          icon: 'pi pi-exclamation-circle',
+          route: '/complaints',
+          condition: can('complaints.manage'),
+        },
       ]),
       ...buildGroup('Accounting', [
-        { label: 'Invoices', icon: 'pi pi-receipt', route: '/invoices', condition: can('invoices:read') },
+        {
+          label: 'Invoices',
+          icon: 'pi pi-receipt',
+          route: '/invoices',
+          condition: can('invoices:read'),
+        },
       ]),
       ...buildGroup('Logistics', [
-        { label: 'Drivers', icon: 'pi pi-id-card', route: '/drivers', condition: can('drivers:read') },
-        { label: 'Vehicles', icon: 'pi pi-truck', route: '/vehicles', condition: can('vehicles:read') },
-        { label: 'Inventory', icon: 'pi pi-database', route: '/inventory', condition: can('inventory:read') },
-        { label: 'Warehouses', icon: 'pi pi-warehouse', route: '/admin/warehouses', condition: can('tenant:configure') },
+        {
+          label: 'Drivers',
+          icon: 'pi pi-id-card',
+          route: '/drivers',
+          condition: can('drivers:read'),
+        },
+        {
+          label: 'Vehicles',
+          icon: 'pi pi-truck',
+          route: '/vehicles',
+          condition: can('vehicles:read'),
+        },
+        {
+          label: 'Inventory',
+          icon: 'pi pi-database',
+          route: '/inventory',
+          condition: can('inventory:read'),
+        },
+        {
+          label: 'Warehouses',
+          icon: 'pi pi-warehouse',
+          route: '/admin/warehouses',
+          condition: can('tenant:configure'),
+        },
       ]),
       ...buildGroup('Administration', [
-        { label: 'Branches', icon: 'pi pi-building', route: '/admin/branches', condition: can('tenant:configure') },
-        { label: 'Cylinder Types', icon: 'pi pi-box', route: '/admin/cylinder-types', condition: can('tenant:configure') },
-        { label: 'Pricing', icon: 'pi pi-tag', route: '/admin/price-lists', condition: can('tenant:configure') },
-        { label: 'Users & Roles', icon: 'pi pi-user', route: '/admin/users', condition: can('users:manage') },
-        { label: 'Tenant Config', icon: 'pi pi-cog', route: '/admin/tenant-config', condition: can('tenant:configure') },
-        { label: 'Feature Flags', icon: 'pi pi-flag', route: '/admin/feature-flags', exact: true, condition: can('feature_flags:manage_tenant') },
-        { label: 'Platform Flags', icon: 'pi pi-globe', route: '/admin/feature-flags/platform', condition: can('feature_flags:manage_platform') },
-        { label: 'License', icon: 'pi pi-key', route: '/admin/license', exact: true, condition: can('license:manage_tenant') },
-        { label: 'Linked Devices', icon: 'pi pi-mobile', route: '/admin/license/devices', condition: can('license:manage_tenant') },
-        { label: 'License Issuance', icon: 'pi pi-shield', route: '/admin/license/issuance', condition: can('license:manage_platform') },
-        { label: 'Audit Log', icon: 'pi pi-history', route: '/admin/audit-log', condition: can('audit:read') },
+        {
+          label: 'Branches',
+          icon: 'pi pi-building',
+          route: '/admin/branches',
+          condition: can('tenant:configure'),
+        },
+        {
+          label: 'Cylinder Types',
+          icon: 'pi pi-box',
+          route: '/admin/cylinder-types',
+          condition: can('tenant:configure'),
+        },
+        {
+          label: 'Pricing',
+          icon: 'pi pi-tag',
+          route: '/admin/price-lists',
+          condition: can('tenant:configure'),
+        },
+        {
+          label: 'Users & Roles',
+          icon: 'pi pi-user',
+          route: '/admin/users',
+          condition: can('users:manage'),
+        },
+        {
+          label: 'Tenant Config',
+          icon: 'pi pi-cog',
+          route: '/admin/tenant-config',
+          condition: can('tenant:configure'),
+        },
+        {
+          label: 'Feature Flags',
+          icon: 'pi pi-flag',
+          route: '/admin/feature-flags',
+          exact: true,
+          condition: can('feature_flags:manage_tenant'),
+        },
+        {
+          label: 'License',
+          icon: 'pi pi-key',
+          route: '/admin/license',
+          exact: true,
+          condition: can('license:manage_tenant'),
+        },
+        {
+          label: 'Linked Devices',
+          icon: 'pi pi-mobile',
+          route: '/admin/license/devices',
+          condition: can('license:manage_tenant'),
+        },
+        {
+          label: 'Audit Log',
+          icon: 'pi pi-history',
+          route: '/admin/audit-log',
+          condition: can('audit:read'),
+        },
       ]),
     ];
   });

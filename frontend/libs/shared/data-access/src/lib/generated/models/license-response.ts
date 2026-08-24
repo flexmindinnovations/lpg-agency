@@ -14,4 +14,5 @@ export interface LicenseResponse {
   revoked_at: (string | null);
   status: string;
   tenant_id: string;
+  tenant_name?: (string | null);
 }

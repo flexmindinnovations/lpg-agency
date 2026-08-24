@@ -10,12 +10,12 @@ import { RequestBuilder } from '../../request-builder';
 import { CreateFeatureFlagRequest } from '../../models/create-feature-flag-request';
 import { FeatureFlagResponse } from '../../models/feature-flag-response';
 
-export interface CreateFeatureFlagApiV1AdminFeatureFlagsPost$Params {
+export interface CreateFeatureFlagApiV1PlatformFeatureFlagsPost$Params {
       body: CreateFeatureFlagRequest
 }
 
-export function createFeatureFlagApiV1AdminFeatureFlagsPost(http: HttpClient, rootUrl: string, params: CreateFeatureFlagApiV1AdminFeatureFlagsPost$Params, context?: HttpContext): Observable<StrictHttpResponse<FeatureFlagResponse>> {
-  const rb = new RequestBuilder(rootUrl, createFeatureFlagApiV1AdminFeatureFlagsPost.PATH, 'post');
+export function createFeatureFlagApiV1PlatformFeatureFlagsPost(http: HttpClient, rootUrl: string, params: CreateFeatureFlagApiV1PlatformFeatureFlagsPost$Params, context?: HttpContext): Observable<StrictHttpResponse<FeatureFlagResponse>> {
+  const rb = new RequestBuilder(rootUrl, createFeatureFlagApiV1PlatformFeatureFlagsPost.PATH, 'post');
   if (params) {
     rb.body(params.body, 'application/json');
   }
@@ -30,4 +30,4 @@ export function createFeatureFlagApiV1AdminFeatureFlagsPost(http: HttpClient, ro
   );
 }
 
-createFeatureFlagApiV1AdminFeatureFlagsPost.PATH = '/api/v1/admin/feature-flags';
+createFeatureFlagApiV1PlatformFeatureFlagsPost.PATH = '/api/v1/platform/feature-flags';

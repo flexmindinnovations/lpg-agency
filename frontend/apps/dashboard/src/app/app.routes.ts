@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { authGuard, licenseGuard, permissionGuard } from '@lpg/shared/data-access';
+import { authGuard, licenseGuard, permissionGuard, platformAuthGuard } from '@lpg/shared/data-access';
 
 /**
  * Routing foundation.
@@ -7,13 +7,16 @@ import { authGuard, licenseGuard, permissionGuard } from '@lpg/shared/data-acces
  * Feature routes are lazy-loaded per feature library, matching the Nx boundary
  * rule (ADR-018) — so a route boundary and a module boundary are the same line.
  *
- * `/login` and `/license-required` are siblings of the shell-wrapped tree,
- * not children of it (ADR-036 for `/login`, same reasoning applies to the
- * license gate) — both must be reachable without the sidebar/top-bar chrome
- * `ShellLayout` renders. They are declared first so the router matches them
- * before ever trying `ShellLayout`'s own catch-all child route. Every other
- * route sits under `ShellLayout`, gated by `authGuard` then `licenseGuard`
- * (auth must resolve first — `licenseGuard` needs a resolved principal).
+ * `/login`, `/license-required`, and `/platform` are siblings of the
+ * tenant-shell-wrapped tree, not children of it (ADR-036 for `/login`, same
+ * reasoning applies to the license gate and the Platform Console — a
+ * `super_admin` session has no tenant to render `ShellLayout`'s nav around).
+ * They are declared first so the router matches them before ever trying
+ * `ShellLayout`'s own catch-all child route. Every tenant-scoped route sits
+ * under `ShellLayout`, gated by `authGuard` then `licenseGuard` (auth must
+ * resolve first — `licenseGuard` needs a resolved principal); `/platform`
+ * is gated by `authGuard` then `platformAuthGuard` instead, with no license
+ * gate at all (`platform-shell.ts`'s own docstring).
  */
 export const appRoutes: Route[] = [
   {
@@ -25,6 +28,32 @@ export const appRoutes: Route[] = [
     loadComponent: () =>
       import('./license-required/license-required').then((m) => m.LicenseRequired),
     title: 'License Required',
+  },
+  {
+    path: 'platform',
+    loadComponent: () => import('./platform-shell/platform-shell').then((m) => m.PlatformShell),
+    canActivate: [authGuard, platformAuthGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'agencies' },
+      {
+        path: 'agencies',
+        canActivate: [permissionGuard('tenant:manage_platform')],
+        loadChildren: () =>
+          import('@lpg/platform/feature-agencies').then((m) => m.platformFeatureAgenciesRoutes),
+      },
+      {
+        path: 'licenses',
+        canActivate: [permissionGuard('license:manage_platform')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseIssuanceRoutes),
+      },
+      {
+        path: 'feature-flags',
+        canActivate: [permissionGuard('feature_flags:manage_platform')],
+        loadChildren: () =>
+          import('@lpg/admin/feature-flags').then((m) => m.adminFeaturePlatformFlagsRoutes),
+      },
+    ],
   },
   {
     path: '',
@@ -154,25 +183,11 @@ export const appRoutes: Route[] = [
           import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeaturePriceListRoutes),
       },
       {
-        path: 'admin/feature-flags/platform',
-        canActivate: [permissionGuard('feature_flags:manage_platform')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Platform Flags', routerLink: '/admin/feature-flags/platform' }] },
-        loadChildren: () =>
-          import('@lpg/admin/feature-flags').then((m) => m.adminFeaturePlatformFlagsRoutes),
-      },
-      {
         path: 'admin/feature-flags',
         canActivate: [permissionGuard('feature_flags:manage_tenant')],
         data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Feature Flags', routerLink: '/admin/feature-flags' }] },
         loadChildren: () =>
           import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
-      },
-      {
-        path: 'admin/license/issuance',
-        canActivate: [permissionGuard('license:manage_platform')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'License Issuance', routerLink: '/admin/license/issuance' }] },
-        loadChildren: () =>
-          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseIssuanceRoutes),
       },
       {
         path: 'admin/license/devices',

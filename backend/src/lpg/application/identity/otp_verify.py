@@ -26,6 +26,7 @@ from lpg.application.common.errors import (
     LicenseExpiredError,
     LicenseNotActivatedError,
     OtpMismatchError,
+    TenantSuspendedError,
 )
 from lpg.application.identity.otp_request import otp_store_key
 from lpg.application.identity.tokens import TokenPair, issue_tokens
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
         TokenHasher,
     )
     from lpg.application.license.ports import LicenseStatusChecker
+    from lpg.application.tenant.status import TenantStatusChecker
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +65,7 @@ class VerifyOtpUseCase:
         token_hasher: TokenHasher,
         jwt_signer: JwtSigner,
         license_status_checker: LicenseStatusChecker,
+        tenant_status_checker: TenantStatusChecker,
         *,
         refresh_token_ttl: timedelta,
     ) -> None:
@@ -73,6 +76,7 @@ class VerifyOtpUseCase:
         self._token_hasher = token_hasher
         self._jwt_signer = jwt_signer
         self._license_status_checker = license_status_checker
+        self._tenant_status_checker = tenant_status_checker
         self._refresh_token_ttl = refresh_token_ttl
 
     async def execute(self, command: VerifyOtpCommand) -> TokenPair:
@@ -88,6 +92,11 @@ class VerifyOtpUseCase:
         if user is None or not user.is_active:
             msg = "No account is associated with this number."
             raise InvalidCredentialsError(msg)
+
+        tenant_status = await self._tenant_status_checker.get_status(command.tenant_id)
+        if tenant_status in ("suspended", "closed"):
+            msg = "This tenant's agency has been suspended."
+            raise TenantSuspendedError(msg, tenant_id=str(command.tenant_id))
 
         license_status = await self._license_status_checker.get_status(command.tenant_id)
         if license_status is LicenseLifecycleState.PENDING_ACTIVATION:

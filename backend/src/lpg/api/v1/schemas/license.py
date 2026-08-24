@@ -27,6 +27,13 @@ class IssuedLicenseResponse(BaseModel):
 
 class LicenseResponse(BaseModel):
     tenant_id: str
+    #: Populated only by `/platform/license` (`routers/platform.py`'s own
+    #: `_license_response()`) — the cross-tenant list view a super_admin
+    #: needs to identify *whose* license each row is, since `tenant_id`
+    #: alone isn't human-readable. Left `None` for the tenant self-service
+    #: `/admin/license` response (`routers/admin.py`) — a tenant already
+    #: knows who it is.
+    tenant_name: str | None = None
     status: str
     plan_tier: str
     key_prefix: str

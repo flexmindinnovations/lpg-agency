@@ -9,13 +9,13 @@ import { RequestBuilder } from '../../request-builder';
 
 import { ScheduleFeatureFlagRequest } from '../../models/schedule-feature-flag-request';
 
-export interface ScheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch$Params {
+export interface ScheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch$Params {
   key: string;
       body: ScheduleFeatureFlagRequest
 }
 
-export function scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch(http: HttpClient, rootUrl: string, params: ScheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
-  const rb = new RequestBuilder(rootUrl, scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch.PATH, 'patch');
+export function scheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch(http: HttpClient, rootUrl: string, params: ScheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
+  const rb = new RequestBuilder(rootUrl, scheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch.PATH, 'patch');
   if (params) {
     rb.path('key', params.key, {});
     rb.body(params.body, 'application/json');
@@ -31,4 +31,4 @@ export function scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch(http: 
   );
 }
 
-scheduleFeatureFlagApiV1AdminFeatureFlagsKeySchedulePatch.PATH = '/api/v1/admin/feature-flags/{key}/schedule';
+scheduleFeatureFlagApiV1PlatformFeatureFlagsKeySchedulePatch.PATH = '/api/v1/platform/feature-flags/{key}/schedule';

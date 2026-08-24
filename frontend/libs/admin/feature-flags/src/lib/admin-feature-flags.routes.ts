@@ -12,7 +12,9 @@ export const adminFeatureFlagsRoutes: Route[] = [
   },
 ];
 
-/** Mounted at `/admin/feature-flags/platform`, gated by `feature_flags:manage_platform`. */
+/** Mounted at `/platform/feature-flags` (relocated from
+ * `/admin/feature-flags/platform` by the Platform Console plan), gated by
+ * `feature_flags:manage_platform`. */
 export const adminFeaturePlatformFlagsRoutes: Route[] = [
   {
     path: '',

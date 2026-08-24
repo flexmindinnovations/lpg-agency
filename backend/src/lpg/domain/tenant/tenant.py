@@ -3,10 +3,13 @@
 Phase 2 introduced this as a Repository/CQRS/Domain-Event proof, deliberately
 minimal (rename only, no lifecycle, no create/delete use case — see
 `0242df1a3871`'s migration docstring for why tenant provisioning stays an
-elevated/seed operation). Phase 7 (Administration) extends it with the real
-lifecycle `03-database-schema.md` always documented — `status`,
-`subscription_plan`, `primary_contact_email`, `country` — reconciled onto the
-table by migration `b1c4a9e7d2f3`.
+elevated/seed operation). The Platform Console plan wires the lifecycle
+methods below (`activate`/`suspend`/`reactivate`/`close`) into real use
+cases (`application/tenant/manage_lifecycle.py`) for the first time — the
+`status`/`subscription_plan`/`primary_contact_email`/`country` columns
+`03-database-schema.md` always documented were reconciled onto the table by
+migration `b1c4a9e7d2f3`, well before anything actually called these
+methods.
 """
 
 from __future__ import annotations
