@@ -68,6 +68,12 @@ export class FeatureInvoices implements OnInit {
   readonly selectedInvoice = signal<InvoiceResponse | null>(null);
   private readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
 
+  /** `InvoiceResponse` only denormalizes `customer_consumer_number`, not a
+   * name, so the drawer's Customer link resolves it on demand (one lookup
+   * per distinct customer, cached here) rather than showing the consumer
+   * number or raw UUID. */
+  protected readonly customerNameById = signal<Map<string, string>>(new Map());
+
   protected readonly cylinderTypeNameById = computed(() => {
     const map = new Map<string, string>();
     for (const ct of this.cylinderTypes()) map.set(ct.id, ct.name);
@@ -202,10 +208,24 @@ export class FeatureInvoices implements OnInit {
 
   onInvoiceSelected(invoice: InvoiceResponse): void {
     this.selectedInvoice.set(invoice);
+    this.resolveCustomerName(invoice.customer_id);
   }
 
   clearSelection(): void {
     this.selectedInvoice.set(null);
+  }
+
+  private resolveCustomerName(customerId: string): void {
+    if (this.customerNameById().has(customerId)) return;
+    this.customerService.get(customerId).subscribe({
+      next: (customer) => {
+        const next = new Map(this.customerNameById());
+        next.set(customerId, customer.full_name);
+        this.customerNameById.set(next);
+      },
+      // Silent — the link just keeps showing the consumer number/id fallback.
+      error: () => undefined,
+    });
   }
 
   printPdf(): void {

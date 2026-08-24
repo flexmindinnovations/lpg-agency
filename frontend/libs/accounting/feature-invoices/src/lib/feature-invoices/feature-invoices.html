@@ -58,7 +58,7 @@
         </div>
         <div class="info-item">
           <span class="info-label">Customer</span>
-          <button type="button" class="info-value info-link" (click)="openCustomerPreview(inv.customer_id)">{{ inv.customer_consumer_number ?? inv.customer_id }}</button>
+          <button type="button" class="info-value info-link" (click)="openCustomerPreview(inv.customer_id)">{{ customerNameById().get(inv.customer_id) ?? inv.customer_consumer_number ?? inv.customer_id }}</button>
         </div>
         <div class="info-item">
           <span class="info-label">Amount</span>
