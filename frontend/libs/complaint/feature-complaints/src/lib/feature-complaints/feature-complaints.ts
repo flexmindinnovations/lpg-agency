@@ -10,8 +10,11 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Observable, forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
@@ -19,6 +22,7 @@ import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { CustomerService, type CustomerResponse } from '@lpg/shared/data-access';
 import {
   ComplaintService,
   type Complaint,
@@ -49,6 +53,7 @@ function errorMessageFor(_error: unknown): string {
     ButtonDirective,
     ButtonIcon,
     ButtonLabel,
+    Dialog,
     Drawer,
     InputText,
     Select,
@@ -64,6 +69,7 @@ function errorMessageFor(_error: unknown): string {
 })
 export class FeatureComplaints implements OnInit {
   private readonly complaintService = inject(ComplaintService);
+  private readonly customerService = inject(CustomerService);
   private readonly messageService = inject(MessageService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -75,6 +81,15 @@ export class FeatureComplaints implements OnInit {
   // State
   readonly complaints = signal<Complaint[]>([]);
   readonly loading = signal(true);
+
+  /** Complaints only carry `customer_id` (a UUID, meaningless to a user) —
+   * resolved to the real `CustomerResponse` (consumer number, name, etc.)
+   * for display, and reused to back the Customer Details dialog so opening
+   * it never needs a second round trip for a customer already on screen. */
+  readonly customerById = signal<Map<string, CustomerResponse>>(new Map());
+  readonly showCustomerDialog = signal(false);
+  readonly selectedCustomer = signal<CustomerResponse | null>(null);
+  readonly customerDialogLoading = signal(false);
 
   // Drawer states
   readonly detailVisible = signal(false);
@@ -137,7 +152,9 @@ export class FeatureComplaints implements OnInit {
       header: 'Customer',
       width: 150,
       tooltipValueGetter: (val) => String(val),
-      valueFormatter: (val) => shortId(val),
+      valueFormatter: (val) =>
+        this.customerById().get(String(val))?.consumer_number ?? shortId(val),
+      onLinkClick: (row) => this.openCustomerDetails(row.customer_id),
     },
     {
       field: 'created_at',
@@ -201,8 +218,15 @@ export class FeatureComplaints implements OnInit {
     this.loading.set(true);
     const sub = this.complaintService.listComplaints().subscribe({
       next: (res) => {
-        this.complaints.set(res.items);
-        this.loading.set(false);
+        // Resolve every complaint's customer before the grid first renders
+        // rather than after — a `valueFormatter` re-run on signal change
+        // isn't guaranteed the moment `customerById` fills in later, so
+        // fetching first avoids ever showing the raw UUID and then
+        // replacing it.
+        this.resolveCustomers(res.items.map((c) => c.customer_id)).subscribe(() => {
+          this.complaints.set(res.items);
+          this.loading.set(false);
+        });
       },
       error: (_err) => {
         this.messageService.add({
@@ -216,9 +240,67 @@ export class FeatureComplaints implements OnInit {
     this.destroyRef.onDestroy(() => sub.unsubscribe());
   }
 
+  /** Fetches any customer IDs not already cached in `customerById` and
+   * merges them in. Never errors the caller — a customer lookup failing
+   * (deleted customer, transient error) falls back to the raw ID via
+   * `shortId` rather than blocking the complaints list from loading. */
+  private resolveCustomers(customerIds: string[]): Observable<void> {
+    const known = this.customerById();
+    const missing = [...new Set(customerIds)].filter((id) => !known.has(id));
+    if (missing.length === 0) return of(undefined);
+
+    return forkJoin(
+      missing.map((id) => this.customerService.get(id).pipe(catchError(() => of(null)))),
+    ).pipe(
+      map((results) => {
+        const next = new Map(this.customerById());
+        for (const customer of results) {
+          if (customer) next.set(customer.id, customer);
+        }
+        this.customerById.set(next);
+      }),
+    );
+  }
+
   onRowAction(complaint: Complaint) {
     this.selectedComplaint.set(complaint);
     this.detailVisible.set(true);
+  }
+
+  /** Opens the Customer Details dialog for the given ID — reuses the
+   * already-cached lookup from `customerById` (populated before the grid
+   * ever renders, see `resolveCustomers`) when available, and falls back
+   * to a live fetch for the rare case it isn't (e.g. a customer_id that
+   * arrived via some path other than `loadComplaints`). */
+  openCustomerDetails(customerId: string): void {
+    const cached = this.customerById().get(customerId);
+    if (cached) {
+      this.selectedCustomer.set(cached);
+      this.showCustomerDialog.set(true);
+      return;
+    }
+
+    this.selectedCustomer.set(null);
+    this.customerDialogLoading.set(true);
+    this.showCustomerDialog.set(true);
+    const sub = this.customerService.get(customerId).subscribe({
+      next: (customer) => {
+        this.selectedCustomer.set(customer);
+        this.customerDialogLoading.set(false);
+        const next = new Map(this.customerById());
+        next.set(customer.id, customer);
+        this.customerById.set(next);
+      },
+      error: () => {
+        this.customerDialogLoading.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to load customer details.',
+        });
+      },
+    });
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
   }
 
   openRaiseModal() {

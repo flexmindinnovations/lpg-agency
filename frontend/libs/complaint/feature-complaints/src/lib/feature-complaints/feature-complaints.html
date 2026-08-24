@@ -63,7 +63,13 @@
           </div>
           <div class="info-item">
             <span class="info-label">Customer</span>
-            <span class="info-value font-mono">{{ shortId(complaint.customer_id) }}</span>
+            <button
+              type="button"
+              class="customer-link"
+              (click)="openCustomerDetails(complaint.customer_id)"
+            >
+              {{ customerById().get(complaint.customer_id)?.consumer_number ?? shortId(complaint.customer_id) }}
+            </button>
           </div>
           <div class="info-item">
             <span class="info-label">Category</span>
@@ -328,3 +334,64 @@
     </div>
   </ng-template>
 </p-drawer>
+
+<!-- Customer Details Dialog -->
+<p-dialog
+  [(visible)]="showCustomerDialog"
+  [modal]="true"
+  [closeOnEscape]="true"
+  [dismissableMask]="true"
+  header="Customer Details"
+  styleClass="customer-details-dialog"
+>
+  @if (customerDialogLoading()) {
+    <div class="customer-dialog-loading">Loading…</div>
+  } @else if (selectedCustomer(); as customer) {
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-label">Name</span>
+        <span class="info-value">{{ customer.full_name }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Consumer No.</span>
+        <span class="info-value font-mono">{{ customer.consumer_number ?? '—' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Phone</span>
+        <span class="info-value">{{ customer.phone_number }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Type</span>
+        <span class="info-value">{{ customer.customer_type }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Status</span>
+        <span class="info-value">{{ customer.status }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">KYC Status</span>
+        <span class="info-value">{{ customer.kyc_status }}</span>
+      </div>
+      @if (customer.email) {
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ customer.email }}</span>
+        </div>
+      }
+      @if (customer.contact_person) {
+        <div class="info-item">
+          <span class="info-label">Contact Person</span>
+          <span class="info-value">{{ customer.contact_person }}</span>
+        </div>
+      }
+      @if (customer.addresses.length > 0) {
+        <div class="info-item col-span-2">
+          <span class="info-label">Address</span>
+          <span class="info-value">
+            {{ customer.addresses[0].line_1 }}@if (customer.addresses[0].city) {, {{ customer.addresses[0].city }}}
+          </span>
+        </div>
+      }
+    </div>
+  }
+</p-dialog>

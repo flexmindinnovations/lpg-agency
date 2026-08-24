@@ -82,6 +82,30 @@
   color: var(--color-text-primary);
 }
 
+.customer-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: var(--typography-body-small-font-size);
+  color: var(--lpg-link-color, var(--color-action-primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.customer-link:hover,
+.customer-link:focus-visible {
+  color: var(--lpg-link-hover-color, var(--color-action-primary-hover, var(--color-action-primary)));
+}
+
+.customer-dialog-loading {
+  padding: var(--spacing-lg) 0;
+  color: var(--color-text-secondary);
+}
+
 .history-list {
   display: flex;
   flex-direction: column;
