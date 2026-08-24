@@ -3,7 +3,13 @@ import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { MessageService } from 'primeng/api';
 import { AgencyService, type AppError } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, toSentenceCase } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  StatusChipCell,
+  type ChipSeverity,
+  type DataGridColumn,
+  toSentenceCase,
+} from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import type { TenantResponse } from '@lpg/shared/data-access';
 
@@ -199,6 +205,23 @@ export class AgencyManagementPage implements OnInit {
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
 
+  /** `domain/tenant/tenant.py`'s lifecycle: `trial` → `active` →
+   * `suspended` ⇄ `active`, `close()` terminal from any of the three. */
+  private static readonly STATUS_SEVERITY: Record<string, ChipSeverity> = {
+    trial: 'info',
+    active: 'success',
+    suspended: 'danger',
+    closed: 'secondary',
+  };
+
+  /** Plan tier catalog (`application/license/entitlement.py`):
+   * basic/standard/premium, read low-to-high as neutral → better. */
+  private static readonly PLAN_SEVERITY: Record<string, ChipSeverity> = {
+    basic: 'secondary',
+    standard: 'info',
+    premium: 'success',
+  };
+
   protected readonly columns: DataGridColumn<TenantResponse>[] = [
     {
       field: 'name',
@@ -212,9 +235,16 @@ export class AgencyManagementPage implements OnInit {
       field: 'status',
       header: 'Status',
       sortable: true,
-      valueFormatter: (value) => toSentenceCase(String(value)),
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: AgencyManagementPage.STATUS_SEVERITY },
     },
-    { field: 'subscription_plan', header: 'Plan', sortable: true },
+    {
+      field: 'subscription_plan',
+      header: 'Plan',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: AgencyManagementPage.PLAN_SEVERITY },
+    },
   ];
 
   ngOnInit(): void {
