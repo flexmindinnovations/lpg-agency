@@ -1,6 +1,8 @@
 # Module Status — Verified Baseline
 
-**Generated:** 2026-08-18 · **Last updated:** after R6 · **Migrations:** `f3c8a56d29e1` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+**Generated:** 2026-08-18 · **Last updated:** 2026-08-24 (see addendum below the master table) · **Migrations:** `f5746de5730e` (local `lpg_dev`/`lpg_test`/`lpg_uat`; Supabase not yet migrated)
+
+**2026-08-24 addendum, read this first:** everything below the master table down to "Cross-cutting issues" is the original 2026-08-18 R0–R13 pass, unchanged, kept for history. Two large features landed after it and are **not** reflected in that original CI-command table above (ruff/mypy/test counts there predate both): a **License** module (commit `f902ced`) and a **Platform Console** / `super_admin` control plane (commit `9fdb3c9`), both independently re-verified in the session that added them, not just trusted from their own commit messages. That same session then live-tested every module in the Angular Dashboard end to end and found — and fixed — real bugs the original R0–R13 pass's automated gates couldn't catch because they never actually clicked through the UI. See the new "24 — License", "25 — Platform Console", and the rewritten "17 — Complaint management" rows, plus **C14** below, for what changed and why.
 
 ## How this was produced
 
@@ -56,18 +58,21 @@ backlog this file tracks.
 | 12 | Delivery & dispatch | ✅ COMPLETE "verified independently" | ✅ | 100% | ✅ | — | Was C10, fixed |
 | 13 | Cylinder ledger | ✅ COMPLETE | ✅ backend + frontend | 100% | ✅ | — | Route `/ledger/:customerId` **confirmed wired** (`app.routes.ts:50`); 7 defects fixed 2026-08-13 |
 | 14 | Accounting / invoicing | ✅ COMPLETE | ✅ smoke + RBAC tested (R7, R10) | ~90% | ✅ | — | See C4/C8 — R7 found+fixed a real `InvoiceResponse` serialization crash; R10 added `Payment`/`CreditNote`/`CashHandover` (partial payments, refund approval, cash-shortfall declaration) and found+fixed a missing `UPDATE` grant on `accounting.invoice` |
-| 15 | Notifications | Backend COMPLETE | 🟡 tested, gates red | 100% | 🔴 | lint + test: `notification-feature-notifications` | Frontend lint and unit tests failing |
-| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | test: `feature-complaints` (pre-existing Jest/ESM gap, unrelated to markup) | See C4 — tests found+fixed 3 real backend bugs (assign/resolve crashed outright); blank buttons fixed (C3/R2); planning dir backfilled 2026-08-19 (R8) |
+| 15 | Notifications | Backend COMPLETE | ✅ | 100% | ✅ | — | The lint/test failures this row used to list are gone as of 2026-08-24's frontend re-verification (28/28 projects pass) — stale, not re-checked between 2026-08-19 and 2026-08-24, so it's not clear which pass actually fixed them. Frontend page route existed but had no sidebar nav link (silent gap, same class as row 16 below) — fixed 2026-08-24. |
+| 17 | Complaint management | ✅ COMPLETE (in `current_phase`) | ✅ now genuinely end-to-end, was not | ~90% | ✅ | — | Backend was fine (R7). The **frontend was completely non-functional** despite green backend gates — see C14. Fixed 2026-08-24: header portal never rendered (imports commented out, so no "Raise Complaint" button existed at all), the service hit the wrong API host for every request (list/create/assign/resolve all silently or loudly failed — "No Rows To Show" looked like empty data, not a broken fetch), the category dropdown sent values that don't match the backend enum, the grid had no click handler so the Assign/Resolve drawer was unreachable, and `complaints:assign` — a permission code checked by the Assign button — doesn't exist in the database, so that button could never render for anyone regardless of role. Live-verified: raised → assigned → resolved a real complaint through the actual UI. |
 | 18 | Printing engine | ✅ COMPLETE | 🟡 partial tests | 100% | 🟡 | ruff: `application/printing` 4 | Unit test only; no integration test |
 | 19 | Customer app V2 | In Progress | 🟡 CI green, feature-incomplete | ~35% | ✅ (CI gates) | — | 16 dart files in `customer_app` — the **only module whose doc status is honest** about feature scope; R9 found and fixed a real `RenderFlex` overflow in `dashboard_screen.dart` plus stale placeholder test assertions (all 3 gates now pass). Still only ~35% of the planned feature surface. See C13 |
 | — | Reporting | folded into 18 | ✅ router mounted + fully tested (R7a, R7) | ~90% built, smoke-tested | 🟡 | lint: `reporting-feature-reports`; ruff `application/reporting` 26 | See C7/C4 — mount fixed (R7a); real-data coverage for gst/drivers/consumption added (R7); `planning/features/reporting/` backfilled 2026-08-19 (R8) |
 | 16 | Employees (tenant-admin) | — | ✅ domain + use-case + smoke/RBAC tested (R7) | ~90% | 🟡 | lint: `feature-employees` | See C4 — tests found+fixed 2 real backend bugs; registration crashed outright; `planning/features/16-employees/` backfilled 2026-08-19 (R8) |
-| — | Dashboard shell | — | 🟡 builds, tests red | 100% | 🔴 | lint + test: `dashboard` | `shell-layout.ts` statically imports 2 lazy libs → breaks lazy boundary **and** `shell-layout.spec.ts` |
-| — | Shared data-access | — | 🟡 | 100% | 🔴 | test: `shared-data-access` | Unit tests failing |
-| 20 | Regulatory & MDG Compliance | *(new)* | 🔵 planned | 0% | — | — | Hard requirements — weighment, TDT rating, cylinder identity, DAC, vouchers, PAHAL/PMUY, compliance calendar, cash settlement |
-| 21 | AI Foundation | *(new)* | 🔵 planned | 0% | — | — | Model gateway, feature store, evaluation harness, guardrails, kill switch |
+| — | Dashboard shell | — | ✅ | 100% | ✅ | — | Stale — the `shell-layout.ts`/`shell-layout.spec.ts` failure this row described is gone as of 2026-08-24's re-verification (28/28 projects pass); not clear which pass between 2026-08-19 and 2026-08-24 actually fixed it. Two silent nav gaps found and fixed 2026-08-24: `/admin/employees` and `/notifications` both existed and worked but had no sidebar link, undiscoverable without typing the URL. |
+| — | Shared data-access | — | ✅ | 100% | ✅ | — | Same as above — stale, tests pass now (28/28). Also gained `DeliveryService.declareCashHandover()` 2026-08-24 (see row 25 note under Cash Handover). |
+| 20 | Regulatory & MDG Compliance | *(new)* | 🔵 planned | 0% | — | — | Hard requirements — weighment, TDT rating, cylinder identity, DAC, vouchers, PAHAL/PMUY, compliance calendar, cash settlement. Confirmed 2026-08-24: zero backend routers exist for this (`ls backend/src/lpg/api/v1/routers/` — 20 real routers, none of them this). Not a dashboard gap, a whole-stack one. |
+| 21 | AI Foundation | *(new)* | 🔵 planned | 0% | — | — | Model gateway, feature store, evaluation harness, guardrails, kill switch. Same confirmation as row 20 — nothing exists yet on the backend to build a frontend against. |
 | 22 | AI Operational Intelligence | *(new)* | 🔵 planned | 0% | — | — | Classical ML — refill prediction, demand forecast, routing, anomaly detection, credit, churn, ETA |
 | 23 | AI Assistive Interfaces | *(new)* | 🔵 planned | 0% | — | — | LLM/hybrid — complaint triage, KYC extraction, conversational ordering, voice, analytics copilot, MDG copilot |
+| 24 | License | *(new, not in original roadmap)* | ✅ | 100% | ✅ | — | Landed 2026-08-23 (`f902ced`), independently re-verified 2026-08-24 rather than trusted from its own commit: platform-level license issuance/activation/plan-tier/device-caps/feature-overrides, tenant-level `license:manage_tenant` vs platform-level `license:manage_platform`. Two real bugs found and fixed in the same pass: Dispatch board showed a raw UUID instead of driver/vehicle name for any route referencing a non-active driver/vehicle (active-only filter used for name lookups); every invoice PDF crashed on generation (`xhtml2pdf` negative-availWidth from a `width:1%` cell smaller than its own padding). |
+| 25 | Platform Console (`super_admin`) | *(new, not in original roadmap)* | ✅ | 100% | ✅ | — | Landed 2026-08-24 (`9fdb3c9`) on top of row 24: a real, architecturally separate control plane at `/platform` for `super_admin` sessions (`PlatformPrincipal`, no `tenant_id` field at all) — Agency lifecycle (suspend/reactivate/close, enforced at login/refresh/**every request** via a Redis-cached tenant-status check, confirmed by reading the actual diff), relocated License + Feature Flags. Two real, previously-undiagnosed frontend bugs fixed in the same session: `authInterceptor` swallowed a failed refresh-retry into `EMPTY` instead of erroring, silently breaking every guard depending on seeing that failure; a genuine guard-ordering race (a later guard in the same `canActivate` array wasn't guaranteed to see a hydrated principal on hard reload) fixed via a deduplicated `ensureSessionRestored()` — this also explains a previously-misdiagnosed bug where hard-reloading any deep tenant route used to bounce to `/`. Also added: a missing test for the new `platform-feature-agencies` lib, 8 `import-linter` `ignore_imports` entries for the router's legitimately-different per-target-tenant `UnitOfWork` pattern (was 4/5 kept, now 5/5). Live-verified as both `super_admin` and a regular tenant admin (confirmed denied access to `/platform/agencies`, no data leak). |
+| — | Cash Handover | *(new, not in original roadmap)* | ✅ | 100% | ✅ | — | `POST /api/v1/cash-handovers` (R10) had **zero frontend consumption anywhere** until 2026-08-24 — the backend endpoint existed and worked, but no driver/dispatcher had any UI to declare a cash handover. There's no list/get endpoint (declare-only by design), so this was added as a contextual action — a "Declare Cash Handover" button in the Dispatch route detail drawer, same completed-route condition as Reconcile — rather than a standalone page that would have nothing to list. Live-verified against a real completed route (`DeliveryService.declareCashHandover()`, `shared/data-access`). |
 
 ## Cross-cutting issues
 
@@ -968,6 +973,97 @@ plus the active branch screen's). Rewrote the 3 assertions to match the
 real, current UI rather than changing working screens to satisfy obsolete
 placeholder text. All 7 packages now pass all 3 gates — full CI-equivalent
 sequence re-run and confirmed green.
+
+### C14 — Complaint management frontend was completely non-functional despite green backend gates ✅ RESOLVED (2026-08-24)
+
+Found during a 2026-08-24 session asked to verify every Angular Dashboard
+module end to end — not by reading STATUS.md, not by running automated
+gates, but by actually clicking through the real UI as a real user would.
+Every automated gate this project runs (ruff, mypy, import-linter, pytest,
+`nx lint`, `nx test`, `nx build`) was green for this module the entire
+time. None of them can catch what was actually broken, because none of
+them load the app in a browser and click "Raise Complaint."
+
+Four independent, compounding defects, found in this order while driving
+the real create → assign → resolve flow:
+
+1. **`HeaderPortalDirective`/`HeaderTitlePortalDirective` (and PrimeNG's
+   `ButtonIcon`/`ButtonLabel`) were commented out of `feature-complaints.ts`'s
+   `imports` array.** Nothing rendered into the shell header for this page
+   at all — no page title, no "Raise Complaint" button — regardless of the
+   viewing user's permissions. `nx build`/`nx lint` don't fail on an unused
+   `ng-template` whose content-projection directive silently isn't
+   recognized; nothing in the test suite renders the header portal target
+   either.
+
+2. **`ComplaintService` was hand-rolled with a hardcoded relative base path**
+   (`'/api/v1/complaints'`) instead of resolving against
+   `ApiConfiguration.rootUrl` the way every other service in this codebase
+   does (confirmed by grepping the rest of `frontend/libs` for the same
+   anti-pattern — this was the only instance). With no dev-server proxy
+   configured, every request resolved against the Angular dev server's own
+   origin instead of the real backend: GETs silently came back as the
+   SPA's own `index.html` (which parses as neither valid JSON nor an
+   error — it just produced an empty list, so "No Rows To Show" read as
+   "no complaints exist" rather than "this call never reached the API"),
+   and POSTs 404'd with the dev server's own "Cannot POST ..." page.
+   Rewired onto the already-generated OpenAPI client functions
+   (`frontend/libs/shared/data-access/src/lib/generated/fn/complaints/*`)
+   + `ApiConfiguration`, same shape as every other feature's service.
+
+3. **The category `<p-select>` sent human-readable labels as the raw form
+   value** (`'Delivery Delay'`, `'Defective Cylinder'`, `'Rude Behavior'`,
+   `'Overcharging'`) instead of the backend's actual `ComplaintCategory`
+   enum (`ShortDelivery`/`DamagedCylinder`/`BillingDispute`/
+   `DriverConduct`/`LateDelivery`/`Other`). Once #2 was fixed, raising a
+   complaint with any category but "Other" would have failed backend
+   validation with a 500 (the backend's own error handling for this path
+   also returns 500, not FastAPI's usual 422, for a separate reason not
+   chased further here — worth a look). Also recovered `ShortDelivery`,
+   which had no UI option at all before this fix (only 5 of 6 real
+   categories were selectable).
+
+4. **The grid's `Complaint #` column had no `onLinkClick`, and nothing else
+   in the template called the component's own `onRowAction` method** —
+   `DataGridComponent` has no generic row-click output; every other grid
+   in this codebase wires its detail view through a link-cell column's
+   `onLinkClick`. Without it, `onRowAction`/`selectedComplaint`/
+   `detailVisible` — the entire Assign/Resolve detail drawer — was dead
+   code, unreachable from anywhere in the UI.
+
+5. **(Found while fixing #1) The Assign and Resolve buttons checked
+   `'complaints:assign'` and `'complaints:resolve'` via
+   `*lpgHasPermission`, but `routers/complaint.py` gates all three
+   mutating endpoints — raise, assign, resolve — on a single
+   `'complaints.manage'` code.** `complaints:assign` doesn't exist as a
+   permission row in `identity.permission` at all (confirmed via direct
+   query) — that button could never render for any user, any role, ever,
+   independent of #1–#4. Aligned all three frontend checks to
+   `complaints.manage`, matching backend reality instead of a
+   fine-grained model the backend was never built to enforce.
+
+**Verified live, not just re-run through CI**: raised a real complaint
+through the actual form, assigned it to a real user ID, resolved it with
+notes — each step re-fetched from the real backend and displayed
+correctly, category rendered as a proper Sentence-case chip
+(`StatusChipCell`/`toSentenceCase` already handles PascalCase splitting
+correctly, so no further UI change was needed once the values matched the
+enum). Then swept the rest of `frontend/libs` for both anti-patterns
+(hand-rolled `HttpClient` calls bypassing `ApiConfiguration`; permission
+codes checked in a template that don't exist in the database) and found
+nothing else like it — this was isolated to Complaints, not systemic.
+
+**Takeaway for this file's own stated purpose**: this is a fifth instance
+of the pattern C-numbers 1 through 13 already document (a "complete"
+claim — this time an all-green *automated-gate* claim, not a self-reported
+STATUS.md claim — that didn't survive actual use), and it's the first one
+where the gates genuinely could not have caught it. `nx test` exercises
+component construction, not "does clicking this specific button in a
+running browser actually do anything." Worth deciding, project-wide,
+whether any of this class of defect (dead template wiring, wrong API
+host, permission-code/backend mismatches) is worth a lint rule or a
+Playwright smoke pass per feature, rather than relying on someone
+periodically doing exactly what this session did by hand.
 
 ## Remediation order
 
