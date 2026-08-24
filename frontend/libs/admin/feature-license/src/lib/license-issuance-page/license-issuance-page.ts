@@ -16,7 +16,14 @@ import {
   type LicenseResponse,
   type TenantResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, formatTimestamp, toSentenceCase } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  StatusChipCell,
+  type ChipSeverity,
+  type DataGridColumn,
+  formatTimestamp,
+  toSentenceCase,
+} from '@lpg/shared/ui';
 import { forkJoin } from 'rxjs';
 
 const PLAN_TIERS = ['basic', 'standard', 'premium'] as const;
@@ -438,6 +445,24 @@ export class LicenseIssuancePage implements OnInit {
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
   protected readonly formatDate = formatTimestamp;
 
+  /** `domain/license/license.py`'s `LicenseLifecycleState`:
+   * pending_activation → active → grace → blocked/revoked. */
+  private static readonly STATUS_SEVERITY: Record<string, ChipSeverity> = {
+    pending_activation: 'warn',
+    active: 'success',
+    grace: 'warn',
+    blocked: 'danger',
+    revoked: 'danger',
+  };
+
+  /** Plan tier catalog: basic/standard/premium, read low-to-high as
+   * neutral → better — same map used on the Agencies grid. */
+  private static readonly PLAN_SEVERITY: Record<string, ChipSeverity> = {
+    basic: 'secondary',
+    standard: 'info',
+    premium: 'success',
+  };
+
   protected readonly columns: DataGridColumn<LicenseResponse>[] = [
     {
       field: 'tenant_name',
@@ -451,9 +476,16 @@ export class LicenseIssuancePage implements OnInit {
       field: 'status',
       header: 'Status',
       sortable: true,
-      valueFormatter: (value) => toSentenceCase(String(value)),
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: LicenseIssuancePage.STATUS_SEVERITY },
     },
-    { field: 'plan_tier', header: 'Plan', sortable: true },
+    {
+      field: 'plan_tier',
+      header: 'Plan',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: { severityMap: LicenseIssuancePage.PLAN_SEVERITY },
+    },
     { field: 'key_prefix', header: 'Key' },
     { field: 'issued_at', header: 'Issued', sortable: true, valueFormatter: formatTimestamp },
     { field: 'expires_at', header: 'Expires', sortable: true, valueFormatter: formatTimestamp },
