@@ -18,21 +18,29 @@ import { AuthTokenStore } from './auth-token.store';
  * before a parent's async `authGuard` finishes hydrating the principal, so
  * every guard reading `tokenStore.principal()` synchronously must ensure
  * that itself. Cheap no-op once a session already exists.
+ *
+ * `excludeRoles` handles a real mismatch: some roles hold a `:read`
+ * permission for a narrow, single-record API need (e.g. `driver` holds
+ * `customers:read` only to resolve the delivery address on their own
+ * order — see the role grants' own code comments in
+ * `fa52b77ec442_create_identity_schema_and_rbac_tables.py` and friends) but
+ * that same coarse permission code also happens to gate the full
+ * staff-facing "browse everything" list page for that resource. Pass the
+ * roles that should be denied this *page* despite holding the permission.
  */
-export function permissionGuard(permissionCode: string): CanActivateFn {
+export function permissionGuard(permissionCode: string, excludeRoles?: readonly string[]): CanActivateFn {
   return () => {
     const authService = inject(AuthService);
     const tokenStore = inject(AuthTokenStore);
     const router = inject(Router);
 
-    return authService
-      .ensureSessionRestored()
-      .pipe(
-        map(() =>
-          tokenStore.principal()?.permissions.has(permissionCode)
-            ? true
-            : router.createUrlTree(['/']),
-        ),
-      );
+    return authService.ensureSessionRestored().pipe(
+      map(() => {
+        const principal = tokenStore.principal();
+        const allowed =
+          !!principal?.permissions.has(permissionCode) && !excludeRoles?.includes(principal.role);
+        return allowed ? true : router.createUrlTree(['/']);
+      }),
+    );
   };
 }

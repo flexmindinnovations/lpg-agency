@@ -102,8 +102,13 @@ export class ShellLayout {
 
   /** Nav tree filtered to routes the current user can actually access. */
   protected readonly navGroups = computed<readonly NavGroup[]>(() => {
-    const permissions = this.tokenStore.principal()?.permissions;
-    const can = (code: string) => permissions?.has(code) ?? false;
+    const principal = this.tokenStore.principal();
+    const can = (code: string) => principal?.permissions.has(code) ?? false;
+    // `driver` holds these permission codes only for narrow, single-record
+    // API calls tied to their own delivery workflow, not to browse the
+    // full staff-facing list/planning page — same reasoning and role list
+    // as `permission.guard.ts`'s route guards for these paths.
+    const canBrowse = (code: string) => can(code) && principal?.role !== 'driver';
 
     const buildGroup = (label: string, items: (any & { condition?: boolean })[]) => {
       const filtered = items.filter((i) => i.condition !== false);
@@ -131,7 +136,7 @@ export class ShellLayout {
           icon: 'pi pi-users',
           route: '/customers',
           aliases: ['/ledger'],
-          condition: can('customers:read'),
+          condition: canBrowse('customers:read'),
         },
         {
           label: 'Orders',
@@ -139,7 +144,7 @@ export class ShellLayout {
           route: '/orders',
           condition: can('orders:read'),
         },
-        { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch', condition: can('routes:read') },
+        { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch', condition: canBrowse('routes:read') },
         {
           label: 'Complaints',
           icon: 'pi pi-exclamation-circle',
@@ -160,13 +165,13 @@ export class ShellLayout {
           label: 'Drivers',
           icon: 'pi pi-id-card',
           route: '/drivers',
-          condition: can('drivers:read'),
+          condition: canBrowse('drivers:read'),
         },
         {
           label: 'Vehicles',
           icon: 'pi pi-truck',
           route: '/vehicles',
-          condition: can('vehicles:read'),
+          condition: canBrowse('vehicles:read'),
         },
         {
           label: 'Inventory',

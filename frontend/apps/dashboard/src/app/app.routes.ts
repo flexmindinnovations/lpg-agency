@@ -1,6 +1,12 @@
 import { Route } from '@angular/router';
 import { authGuard, licenseGuard, permissionGuard, platformAuthGuard } from '@lpg/shared/data-access';
 
+/** `driver` holds `customers:read`/`drivers:read`/`vehicles:read`/`routes:read`
+ * only for narrow, single-record API calls tied to their own delivery
+ * workflow (see `permission.guard.ts`'s `excludeRoles` doc) — not to browse
+ * these full staff-facing list/planning pages. */
+const STAFF_LIST_EXCLUDED_ROLES = ['driver'] as const;
+
 /**
  * Routing foundation.
  *
@@ -77,35 +83,35 @@ export const appRoutes: Route[] = [
       // these regardless (`permission.guard.ts`'s own docstring).
       {
         path: 'customers',
-        canActivate: [permissionGuard('customers:read')],
+        canActivate: [permissionGuard('customers:read', STAFF_LIST_EXCLUDED_ROLES)],
         data: { breadcrumbs: [{ label: 'Customers', routerLink: '/customers' }] },
         loadChildren: () =>
           import('@lpg/customer/feature-customers').then((m) => m.featureCustomersRoutes),
       },
       {
         path: 'ledger/:customerId',
-        canActivate: [permissionGuard('customers:read')],
+        canActivate: [permissionGuard('customers:read', STAFF_LIST_EXCLUDED_ROLES)],
         data: { breadcrumbs: [{ label: 'Customers', routerLink: '/customers' }, { label: 'Customer Ledger' }] },
         loadComponent: () =>
           import('@lpg/ledger/feature-ledger').then((m) => m.FeatureLedger),
       },
       {
         path: 'drivers',
-        canActivate: [permissionGuard('drivers:read')],
+        canActivate: [permissionGuard('drivers:read', STAFF_LIST_EXCLUDED_ROLES)],
         data: { breadcrumbs: [{ label: 'Drivers', routerLink: '/drivers' }] },
         loadChildren: () =>
           import('@lpg/delivery/feature-drivers').then((m) => m.deliveryDriversRoutes),
       },
       {
         path: 'vehicles',
-        canActivate: [permissionGuard('vehicles:read')],
+        canActivate: [permissionGuard('vehicles:read', STAFF_LIST_EXCLUDED_ROLES)],
         data: { breadcrumbs: [{ label: 'Fleet Vehicles', routerLink: '/vehicles' }] },
         loadChildren: () =>
           import('@lpg/delivery/feature-vehicles').then((m) => m.deliveryVehiclesRoutes),
       },
       {
         path: 'dispatch',
-        canActivate: [permissionGuard('routes:read')],
+        canActivate: [permissionGuard('routes:read', STAFF_LIST_EXCLUDED_ROLES)],
         data: { breadcrumbs: [{ label: 'Dispatch', routerLink: '/dispatch' }] },
         loadChildren: () =>
           import('@lpg/delivery/feature-dispatch').then((m) => m.deliveryDispatchRoutes),

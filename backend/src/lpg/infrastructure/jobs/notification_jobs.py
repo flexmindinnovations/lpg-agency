@@ -27,7 +27,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 "delivery_confirmed" | "invoice_generated" | "delivery_failed_staff",
         "tenant_id": str,
         "order_id": str,
-        # plus additional context fields like customer_id, branch_id, route_stop_id
+        # Every type resolves its recipient (customer, the assigned driver
+        # for "driver_assigned", or branch staff for "delivery_failed_staff")
+        # by fetching the order itself — the payload carries nothing else.
     }
     """
     structlog.contextvars.bind_contextvars(
@@ -48,17 +50,17 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
     async for session in database.open_session(tenant_id=tenant_id):
         tenant_context = RequestTenantContext(tenant_id=tenant_id)
         async with SqlAlchemyUnitOfWork(session, tenant_context) as uow:
-            from lpg.core.config import settings  # type: ignore[import-untyped]
+            from lpg.config.settings import get_settings
             from lpg.infrastructure.channels.email_channel import StubEmailChannel
             from lpg.infrastructure.channels.sms_channel import StubSmsChannel
             from lpg.infrastructure.notification.staff_resolver import (
                 EmployeeBranchStaffResolver,
             )
-            from lpg.infrastructure.persistence.encryption import (  # type: ignore[import-untyped]
-                AESGCMFieldEncryptor,
-            )
             from lpg.infrastructure.persistence.repositories.customer import (
                 SqlAlchemyCustomerRepository,
+            )
+            from lpg.infrastructure.persistence.repositories.driver import (
+                SqlAlchemyDriverRepository,
             )
             from lpg.infrastructure.persistence.repositories.employee import (
                 SqlAlchemyEmployeeRepository,
@@ -70,27 +72,54 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 SqlAlchemyInAppNotificationRepository,
                 SqlAlchemyNotificationLogRepository,
             )
+            from lpg.infrastructure.persistence.repositories.order import (
+                SqlAlchemyOrderRepository,
+            )
+            from lpg.infrastructure.persistence.repositories.route import (
+                SqlAlchemyRouteRepository,
+            )
+            from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
 
-            field_encryptor = AESGCMFieldEncryptor(settings.encryption_key.get_secret_value())
+            field_encryptor = FernetFieldEncryptor(get_settings())
 
             in_app_repo = SqlAlchemyInAppNotificationRepository(session)
             log_repo = SqlAlchemyNotificationLogRepository(uow)
             identity_repo = SqlAlchemyIdentityUserRepository(database)
 
-            # Resolve recipients
+            # Resolve recipients. None of the order-lifecycle handlers
+            # (`notification_handlers.py`) put anything but `order_id` on the
+            # payload, so every type below resolves its recipient by fetching
+            # the order itself rather than trusting extra payload fields.
             recipient_user_ids: list[uuid.UUID] = []
 
-            if notification_type == "delivery_failed_staff":
-                branch_id = uuid.UUID(payload["branch_id"])
+            order_repo = SqlAlchemyOrderRepository(uow)
+            order = await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
+            if order is None:
+                _logger.warning("order_not_found", order_id=payload["order_id"])
+            elif notification_type == "delivery_failed_staff":
                 employee_repo = SqlAlchemyEmployeeRepository(uow)
                 resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
                 recipient_user_ids = await resolver.resolve_for_branch(
-                    tenant_id=tenant_id, branch_id=branch_id, eligible_roles=_STAFF_ALERT_ROLES
+                    tenant_id=tenant_id,
+                    branch_id=order.branch_id,
+                    eligible_roles=_STAFF_ALERT_ROLES,
                 )
+            elif notification_type == "driver_assigned":
+                # This one goes to the driver who was just assigned, not the
+                # customer — resolved via the order's `route_stop_id` -> its
+                # `Route`'s `driver_id`, the same path `order.py`'s
+                # `_require_own_driver_order` ownership check uses.
+                if order.route_stop_id is not None:
+                    route_repo = SqlAlchemyRouteRepository(uow)
+                    owner = await route_repo.get_stop_owner(order.route_stop_id)
+                    if owner is not None:
+                        driver_repo = SqlAlchemyDriverRepository(uow)
+                        driver = await driver_repo.get_by_id(owner.driver_id)
+                        if driver and driver.identity_user_id:
+                            recipient_user_ids = [driver.identity_user_id]
             else:
-                customer_id = uuid.UUID(payload["customer_id"])
                 customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
-                customer = await customer_repo.get_by_id(customer_id)
+                customer = await customer_repo.get_by_id(order.customer_id)
                 if customer and customer.identity_user_id:
                     recipient_user_ids = [customer.identity_user_id]
 
@@ -179,7 +208,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 def _get_title(notification_type: str) -> str:
     titles = {
         "booking_confirmed": "Order Confirmed",
-        "driver_assigned": "Driver Assigned",
+        "driver_assigned": "New Delivery Assigned",
         "out_for_delivery": "Out for Delivery",
         "delivery_confirmed": "Delivery Confirmed",
         "invoice_generated": "Invoice Generated",
@@ -192,7 +221,7 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
     order_id_short = payload.get("order_id", "Unknown")[:8].upper()
     bodies = {
         "booking_confirmed": f"Your order #{order_id_short} has been confirmed.",
-        "driver_assigned": f"A driver has been assigned to your order #{order_id_short}.",
+        "driver_assigned": f"You've been assigned to deliver order #{order_id_short}.",
         "out_for_delivery": f"Your order #{order_id_short} is out for delivery.",
         "delivery_confirmed": f"Your order #{order_id_short} has been delivered successfully.",
         "invoice_generated": f"An invoice has been generated for your order #{order_id_short}.",

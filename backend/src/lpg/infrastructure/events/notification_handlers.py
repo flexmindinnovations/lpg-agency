@@ -33,7 +33,6 @@ def register_notification_handlers(
                 "type": "booking_confirmed",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                # no customer_id on OrderAssignedToRoute
             },
         )
 
@@ -45,7 +44,6 @@ def register_notification_handlers(
                 "type": "driver_assigned",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                # no customer_id on OrderAssignedToRoute
             },
         )
 
@@ -78,7 +76,6 @@ def register_notification_handlers(
                 "type": "delivery_confirmed",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                # no customer_id on OrderAssignedToRoute
             },
         )
 
@@ -90,7 +87,6 @@ def register_notification_handlers(
                 "type": "invoice_generated",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
-                # no customer_id on OrderAssignedToRoute
             },
         )
 
@@ -103,7 +99,7 @@ def register_notification_handlers(
             "send_notification",
             {
                 "type": "delivery_failed_staff",
-                "tenant_id": str(event.tenant_id),  # Wait, DeliveryFailed doesn't have tenant_id?
+                "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
             },
         )
