@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from lpg.api.app import AppState
     from lpg.config.settings import Settings
     from lpg.infrastructure.persistence.database import Database
+    from lpg.infrastructure.redis.client import RedisClient
 
 _logger = get_logger(__name__)
 
@@ -249,13 +250,24 @@ def get_otp_store() -> OtpStore:
 
 
 def get_otp_delivery() -> OtpDeliveryPort:
+    state, settings = _get_app_state_and_settings()
     from lpg.infrastructure.identity.otp_delivery import LoggingOtpDelivery
 
-    # Only implementation that exists — a real SMS provider is Phase 14
-    # scope. `Settings.otp_delivery_dev_mode` is rejected outright outside
-    # local/dev by `model_post_init`, so this being reachable at all in a
-    # real environment would already have failed loudly at startup.
-    return LoggingOtpDelivery()
+    # Only implementation that exists — a real SMS provider is Phase 14 scope.
+    if state.redis is None:
+        msg = "RedisClient is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+    return LoggingOtpDelivery(state.redis, settings)
+
+
+def get_redis_client() -> RedisClient:
+    """Only for dev-only endpoints (`routers/dev_tools.py`) that need a raw
+    Redis read — everything else should go through a proper port/service."""
+    state, _settings = _get_app_state_and_settings()
+    if state.redis is None:
+        msg = "RedisClient is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+    return state.redis
 
 
 def get_email_sender() -> EmailSender:
