@@ -9,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DatePipe, CurrencyPipe } from '@angular/common';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
@@ -69,9 +70,9 @@ export class FeatureInvoices implements OnInit {
   private readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
 
   /** `InvoiceResponse` only denormalizes `customer_consumer_number`, not a
-   * name, so the drawer's Customer link resolves it on demand (one lookup
-   * per distinct customer, cached here) rather than showing the consumer
-   * number or raw UUID. */
+   * name, so both the grid's Customer column and the drawer's Customer link
+   * resolve it on demand (one lookup per distinct customer, cached here)
+   * rather than showing the consumer number or raw UUID. */
   protected readonly customerNameById = signal<Map<string, string>>(new Map());
 
   protected readonly cylinderTypeNameById = computed(() => {
@@ -172,7 +173,8 @@ export class FeatureInvoices implements OnInit {
       field: 'customer_consumer_number',
       header: 'Customer',
       sortable: false,
-      valueFormatter: (val, row) => (val as string | null) ?? shortId(row.customer_id),
+      valueFormatter: (val, row) =>
+        this.customerNameById().get(row.customer_id) ?? (val as string | null) ?? shortId(row.customer_id),
     },
     { field: 'total_amount', header: 'Total Amount', sortable: true, numeric: true, valueFormatter: (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(val)) },
     {
@@ -197,8 +199,37 @@ export class FeatureInvoices implements OnInit {
     this.isLoading.set(true);
     this.invoiceService.list(1, 100).subscribe({
       next: (res) => {
-        this.invoices.set(res.items);
-        this.isLoading.set(false);
+        const items = res.items;
+        const distinctIds = [...new Set(items.map((i) => i.customer_id))].filter(
+          (id) => !this.customerNameById().has(id),
+        );
+        // AG Grid's `valueFormatter` only runs when row data is (re)set into
+        // the grid — it isn't an Angular template expression, so it won't
+        // re-run just because `customerNameById` changes afterwards.
+        // Resolve names first so the Customer column's first render already
+        // has them, rather than resolving in the background and never
+        // refreshing the already-rendered cells.
+        if (distinctIds.length === 0) {
+          this.invoices.set(items);
+          this.isLoading.set(false);
+          return;
+        }
+        forkJoin(
+          distinctIds.map((id) =>
+            this.customerService.get(id).pipe(
+              map((customer) => [id, customer.full_name] as const),
+              catchError(() => of(null)),
+            ),
+          ),
+        ).subscribe((pairs) => {
+          const next = new Map(this.customerNameById());
+          for (const pair of pairs) {
+            if (pair) next.set(pair[0], pair[1]);
+          }
+          this.customerNameById.set(next);
+          this.invoices.set(items);
+          this.isLoading.set(false);
+        });
       },
       error: () => {
         this.isLoading.set(false);
