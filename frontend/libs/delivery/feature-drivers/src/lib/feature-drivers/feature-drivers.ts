@@ -216,9 +216,21 @@ export class FeatureDrivers implements OnInit {
 
   ngOnInit(): void {
     this.loadBranches();
-    this.loadDrivers();
+    this.loading.set(true);
+    // Load employees before the first `loadDrivers()` call, not in
+    // parallel with it: the grid's Employee Code column resolves through
+    // AG Grid's `valueFormatter`, which only runs when row data is (re)set
+    // into the grid — it doesn't re-run reactively when `allEmployees`
+    // (and therefore `employeeCodeById`) changes afterward. Firing both
+    // requests at once raced the two responses — whichever landed first
+    // decided whether that column showed the code or the raw employee_id
+    // UUID, until something else (search, a refresh) re-set the rows.
     this.employeeService.listEmployees({}).subscribe({
-      next: (page) => this.allEmployees.set(page.items),
+      next: (page) => {
+        this.allEmployees.set(page.items);
+        this.loadDrivers();
+      },
+      error: () => this.loadDrivers(),
     });
 
 
