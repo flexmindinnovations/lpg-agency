@@ -20,6 +20,7 @@ export type { CancelOrderRequest } from './models/cancel-order-request';
 export type { CancelOrderResponse } from './models/cancel-order-response';
 export type { CashHandoverResponse } from './models/cash-handover-response';
 export type { ChangeCylinderStatusRequest } from './models/change-cylinder-status-request';
+export type { ChangeEmployeeStatusRequest } from './models/change-employee-status-request';
 export type { ComplaintAssignmentResponse } from './models/complaint-assignment-response';
 export type { ComplaintCategory } from './models/complaint-category';
 export type { ComplaintListResponse } from './models/complaint-list-response';
@@ -162,6 +163,7 @@ export type { UpdateCustomerProfileRequest } from './models/update-customer-prof
 export type { UpdateDriverAssignmentRequest } from './models/update-driver-assignment-request';
 export type { UpdateDriverLicenseRequest } from './models/update-driver-license-request';
 export type { UpdateDriverStatusRequest } from './models/update-driver-status-request';
+export type { UpdateEmployeeRequest } from './models/update-employee-request';
 export type { UpdateRouteStatusRequest } from './models/update-route-status-request';
 export type { UpdateStaffUserPermissionsRequest } from './models/update-staff-user-permissions-request';
 export type { UpdateVehicleDetailsRequest } from './models/update-vehicle-details-request';

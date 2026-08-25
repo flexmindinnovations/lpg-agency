@@ -14,6 +14,23 @@ class RegisterEmployeeRequest(BaseModel):
     email: str | None = Field(None, max_length=255)
 
 
+class UpdateEmployeeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    branch_id: str = Field(..., description="Branch UUID")
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    phone_number: str = Field(..., min_length=1, max_length=20)
+    role: str = Field(..., description="Role of the employee")
+    email: str | None = Field(None, max_length=255)
+
+
+class ChangeEmployeeStatusRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: str = Field(..., description="One of: active, on_leave, inactive")
+
+
 class EmployeeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

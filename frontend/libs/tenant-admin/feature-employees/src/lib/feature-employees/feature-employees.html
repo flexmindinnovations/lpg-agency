@@ -1,25 +1,26 @@
-<div class="employee-container">
-  <div class="page-header">
-    <div class="page-header__text">
-      <h1 class="page-title">Employees</h1>
-      <p class="page-subtitle">Manage employee registrations and profiles.</p>
-    </div>
-    <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-        <button
-          *lpgHasPermission="'users:manage'"
-          #registerTriggerEl
-          pButton
-          type="button"
-          (click)="openRegisterModal()"
-        >
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>Register Employee <kbd class="ml-1 text-xs opacity-70">Alt+N</kbd></span>
-        </button>
-      </div>
-</ng-template>
+<ng-template lpgHeaderTitlePortal>
+  <div class="page-header__text">
+    <h1 class="page-title">Employees</h1>
+    <p class="page-subtitle">Manage employee registrations and profiles.</p>
   </div>
+</ng-template>
 
+<ng-template lpgHeaderPortal>
+  <div class="page-header__actions">
+    <button
+      *lpgHasPermission="'users:manage'"
+      #registerTriggerEl
+      pButton
+      type="button"
+      (click)="openRegisterModal()"
+    >
+      <i pButtonIcon class="pi pi-plus"></i>
+      <span pButtonLabel>Register Employee <kbd class="ml-1 text-xs opacity-70">Alt+N</kbd></span>
+    </button>
+  </div>
+</ng-template>
+
+<div class="employee-container">
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
   }
@@ -50,7 +51,7 @@
     />
   </div>
 
-  <!-- Register Employee Modal -->
+  <!-- Register Employee Drawer -->
   <p-drawer
     header="Register Employee"
     [(visible)]="registerModalVisible"
@@ -118,13 +119,10 @@
         <p-select
           id="role"
           formControlName="role"
-          [options]="[
-            { label: 'Employee', value: 'employee' },
-            { label: 'Driver', value: 'driver' },
-            { label: 'Manager', value: 'manager' }
-          ]"
+          [options]="roleOptions"
           optionLabel="label"
           optionValue="value"
+          placeholder="Select a role"
         ></p-select>
       </div>
 
@@ -134,6 +132,136 @@
         </button>
         <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
           Register
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Employee Details Drawer -->
+  <p-drawer
+    [(visible)]="showDetailsDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+  >
+    <ng-template #header>
+      <div class="drawer-header">
+        <h2 class="drawer-title">Employee Details</h2>
+        @if (selectedEmployee(); as e) {
+          <p-tag [severity]="statusSeverity(e.status)" [value]="toSentenceCase(e.status)" />
+        }
+      </div>
+    </ng-template>
+
+    @if (selectedEmployee(); as e) {
+      <div class="detail-grid">
+        <div class="info-item">
+          <span class="info-label">Employee Code</span>
+          <span class="info-value">{{ e.employee_code }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Branch</span>
+          <span class="info-value">{{ branchNameById().get(e.branch_id) ?? e.branch_id }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Role</span>
+          <span class="info-value">{{ toSentenceCase(e.role) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Phone Number</span>
+          <span class="info-value">{{ e.phone_number }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ e.email ?? '—' }}</span>
+        </div>
+      </div>
+    }
+
+    <ng-template #footer>
+      <div class="modal-actions">
+        <button *lpgHasPermission="'users:manage'" pButton type="button" severity="secondary" (click)="openEditDrawer()">
+          <i pButtonIcon class="pi pi-pencil"></i>
+          <span pButtonLabel>Edit</span>
+        </button>
+        @if (canDeactivate()) {
+          <button
+            *lpgHasPermission="'users:manage'"
+            pButton
+            type="button"
+            severity="danger"
+            [loading]="loading()"
+            (click)="confirmDeactivate()"
+          >
+            <i pButtonIcon class="pi pi-user-minus"></i>
+            <span pButtonLabel>Deactivate</span>
+          </button>
+        }
+      </div>
+    </ng-template>
+  </p-drawer>
+
+  <!-- Edit Employee Drawer -->
+  <p-drawer
+    header="Edit Employee"
+    [(visible)]="showEditDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '36rem' }"
+  >
+    <form [formGroup]="editForm" (ngSubmit)="onSubmitEdit()" class="dialog-form">
+      <div class="form-group">
+        <label for="edit_branch_id">Branch</label>
+        <p-select
+          id="edit_branch_id"
+          formControlName="branch_id"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select Branch"
+        ></p-select>
+      </div>
+
+      <div class="form-group">
+        <label for="edit_first_name">First Name</label>
+        <input pInputText id="edit_first_name" formControlName="first_name" />
+      </div>
+
+      <div class="form-group">
+        <label for="edit_last_name">Last Name</label>
+        <input pInputText id="edit_last_name" formControlName="last_name" />
+      </div>
+
+      <div class="form-group">
+        <label for="edit_phone_number">Phone Number</label>
+        <input pInputText id="edit_phone_number" formControlName="phone_number" />
+      </div>
+
+      <div class="form-group">
+        <label for="edit_email">Email (Optional)</label>
+        <input pInputText id="edit_email" formControlName="email" />
+      </div>
+
+      <div class="form-group">
+        <label for="edit_role">Role</label>
+        <p-select
+          id="edit_role"
+          formControlName="role"
+          [options]="roleOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select a role"
+        ></p-select>
+      </div>
+
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showEditDrawer.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="editForm.invalid || loading()">
+          Save
         </button>
       </div>
     </form>

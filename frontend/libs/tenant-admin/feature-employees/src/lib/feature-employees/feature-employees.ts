@@ -1,9 +1,10 @@
-import { HeaderPortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnInit,
+  computed,
   inject,
   signal,
   viewChild,
@@ -12,12 +13,14 @@ import {
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ConfirmationService } from 'primeng/api';
 import { Drawer } from 'primeng/drawer';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
+import { Tag } from 'primeng/tag';
 import {
   AdminEmployeeService,
   AdminBranchService,
@@ -30,7 +33,10 @@ import {
   type DataGridColumn,
   HasPermissionDirective,
   StatusChipCell,
+  type ChipSeverity,
+  toSentenceCase,
 } from '@lpg/shared/ui';
+import { ROLE_OPTIONS } from '../employee-role-options';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -42,15 +48,25 @@ function errorMessageFor(error: unknown): string {
       return 'An employee with this information already exists.';
     case 'PERMISSION_DENIED':
       return "You don't have permission to do that.";
+    case 'RESOURCE_NOT_FOUND':
+      return 'That employee could not be found.';
     default:
       return 'Something went wrong. Please try again.';
   }
 }
 
+const STATUS_SEVERITY: Record<string, ChipSeverity> = {
+  active: 'success',
+  on_leave: 'warn',
+  inactive: 'secondary',
+};
+
 @Component({
   selector: 'lib-feature-employees',
   standalone: true,
-  imports: [HeaderPortalDirective, 
+  imports: [
+    HeaderPortalDirective,
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -59,6 +75,7 @@ function errorMessageFor(error: unknown): string {
     Drawer,
     Message,
     Select,
+    Tag,
     DataGridComponent,
     HasPermissionDirective,
     IconField,
@@ -74,6 +91,7 @@ export class FeatureEmployees implements OnInit {
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly confirmationService = inject(ConfirmationService);
 
   protected readonly employees = signal<EmployeeResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
@@ -81,15 +99,41 @@ export class FeatureEmployees implements OnInit {
   protected readonly searchQuery = signal('');
   protected readonly errorMessage = signal<string | null>(null);
 
-  // Modal Visibility Signals
   protected readonly showRegisterModal = signal(false);
+  protected readonly showDetailsDrawer = signal(false);
+  protected readonly showEditDrawer = signal(false);
+  protected readonly selectedEmployee = signal<EmployeeResponse | null>(null);
 
   protected readonly registerTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
+  protected readonly roleOptions = ROLE_OPTIONS;
+  protected readonly toSentenceCase = toSentenceCase;
+
+  protected readonly branchNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const b of this.branches()) map.set(b.id, b.name);
+    return map;
+  });
+
+  protected readonly canDeactivate = computed(() => {
+    const status = this.selectedEmployee()?.status;
+    return status === 'active' || status === 'on_leave';
+  });
+
+  protected statusSeverity(status: string): ChipSeverity {
+    return STATUS_SEVERITY[status] ?? 'secondary';
+  }
+
   // Column definitions for employees data grid
   protected readonly columns: DataGridColumn<EmployeeResponse>[] = [
-    { field: 'employee_code', header: 'Employee Code', sortable: true, filterable: true },
+    {
+      field: 'employee_code',
+      header: 'Employee Code',
+      sortable: true,
+      filterable: true,
+      onLinkClick: (row) => this.openDetailsDrawer(row),
+    },
     { field: 'first_name', header: 'First Name', sortable: true },
     { field: 'last_name', header: 'Last Name', sortable: true },
     { field: 'role', header: 'Role', sortable: true, cellRenderer: StatusChipCell },
@@ -103,7 +147,16 @@ export class FeatureEmployees implements OnInit {
     last_name: ['', [Validators.required]],
     phone_number: ['', [Validators.required]],
     email: [''],
-    role: ['employee', [Validators.required]],
+    role: ['', [Validators.required]],
+  });
+
+  protected readonly editForm = this.fb.group({
+    branch_id: ['', [Validators.required]],
+    first_name: ['', [Validators.required]],
+    last_name: ['', [Validators.required]],
+    phone_number: ['', [Validators.required]],
+    email: [''],
+    role: ['', [Validators.required]],
   });
 
   protected get registerModalVisible(): boolean {
@@ -117,7 +170,6 @@ export class FeatureEmployees implements OnInit {
     this.loadBranches();
     this.loadEmployees();
 
-
     const unregisterNew = this.keyboardShortcuts.register({
       key: 'n',
       alt: true,
@@ -126,7 +178,7 @@ export class FeatureEmployees implements OnInit {
         if (!this.showRegisterModal()) {
           this.openRegisterModal();
         }
-      }
+      },
     });
 
     const unregisterSearch = this.keyboardShortcuts.register({
@@ -137,7 +189,7 @@ export class FeatureEmployees implements OnInit {
         if (searchInput) {
           searchInput.focus();
         }
-      }
+      },
     });
 
     this.destroyRef.onDestroy(() => {
@@ -180,7 +232,7 @@ export class FeatureEmployees implements OnInit {
       last_name: '',
       phone_number: '',
       email: '',
-      role: 'employee',
+      role: '',
     });
     this.showRegisterModal.set(true);
   }
@@ -202,6 +254,7 @@ export class FeatureEmployees implements OnInit {
       .subscribe({
         next: () => {
           this.showRegisterModal.set(false);
+          this.loading.set(false);
           this.loadEmployees();
         },
         error: (err) => {
@@ -209,5 +262,86 @@ export class FeatureEmployees implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Details drawer
+  // ---------------------------------------------------------------------------
+
+  protected openDetailsDrawer(employee: EmployeeResponse): void {
+    this.errorMessage.set(null);
+    this.selectedEmployee.set(employee);
+    this.showDetailsDrawer.set(true);
+  }
+
+  protected openEditDrawer(): void {
+    const employee = this.selectedEmployee();
+    if (!employee) return;
+    this.editForm.reset({
+      branch_id: employee.branch_id,
+      first_name: employee.first_name,
+      last_name: employee.last_name,
+      phone_number: employee.phone_number,
+      email: employee.email ?? '',
+      role: employee.role,
+    });
+    this.showEditDrawer.set(true);
+  }
+
+  protected onSubmitEdit(): void {
+    const employee = this.selectedEmployee();
+    if (!employee || this.editForm.invalid) return;
+
+    const val = this.editForm.getRawValue();
+    this.loading.set(true);
+    this.employeeService
+      .updateEmployee(employee.id, {
+        branch_id: val.branch_id,
+        first_name: val.first_name,
+        last_name: val.last_name,
+        phone_number: val.phone_number,
+        email: val.email || undefined,
+        role: val.role,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.selectedEmployee.set(updated);
+          this.showEditDrawer.set(false);
+          this.loading.set(false);
+          this.loadEmployees();
+        },
+        error: (err) => {
+          this.errorMessage.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
+  }
+
+  protected confirmDeactivate(): void {
+    const employee = this.selectedEmployee();
+    if (!employee) return;
+    this.confirmationService.confirm({
+      header: 'Deactivate Employee',
+      message: `Deactivate ${employee.first_name} ${employee.last_name}? They will no longer be able to sign in.`,
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonProps: { severity: 'danger' },
+      accept: () => this.deactivate(employee.id),
+    });
+  }
+
+  private deactivate(employeeId: string): void {
+    this.loading.set(true);
+    this.employeeService.changeEmployeeStatus(employeeId, { status: 'inactive' }).subscribe({
+      next: (updated) => {
+        this.selectedEmployee.set(updated);
+        this.loading.set(false);
+        this.loadEmployees();
+      },
+      error: (err) => {
+        this.errorMessage.set(errorMessageFor(err));
+        this.loading.set(false);
+      },
+    });
   }
 }

@@ -679,6 +679,21 @@
         "title": "ChangeCylinderStatusRequest",
         "type": "object"
       },
+      "ChangeEmployeeStatusRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "description": "One of: active, on_leave, inactive",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ChangeEmployeeStatusRequest",
+        "type": "object"
+      },
       "ComplaintAssignmentResponse": {
         "properties": {
           "assigned_at": {
@@ -6400,6 +6415,60 @@
         "title": "UpdateDriverStatusRequest",
         "type": "object"
       },
+      "UpdateEmployeeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "branch_id": {
+            "description": "Branch UUID",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "first_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "phone_number": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Phone Number",
+            "type": "string"
+          },
+          "role": {
+            "description": "Role of the employee",
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_id",
+          "first_name",
+          "last_name",
+          "phone_number",
+          "role"
+        ],
+        "title": "UpdateEmployeeRequest",
+        "type": "object"
+      },
       "UpdateRouteStatusRequest": {
         "properties": {
           "status": {
@@ -10165,6 +10234,153 @@
           }
         },
         "summary": "Register an employee",
+        "tags": [
+          "Employees"
+        ]
+      }
+    },
+    "/api/v1/employees/{employee_id}": {
+      "get": {
+        "operationId": "get_employee_api_v1_employees__employee_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Employee Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Employee",
+        "tags": [
+          "Employees"
+        ]
+      },
+      "patch": {
+        "operationId": "update_employee_api_v1_employees__employee_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Employee Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmployeeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Employee",
+        "tags": [
+          "Employees"
+        ]
+      }
+    },
+    "/api/v1/employees/{employee_id}/status": {
+      "patch": {
+        "operationId": "change_employee_status_api_v1_employees__employee_id__status_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Employee Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmployeeStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Employee Status",
         "tags": [
           "Employees"
         ]

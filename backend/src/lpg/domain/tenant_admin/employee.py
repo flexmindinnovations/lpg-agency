@@ -36,6 +36,17 @@ class EmployeeStatusChanged(DomainEvent):
     new_status: str
 
 
+@dataclass(frozen=True, slots=True)
+class EmployeeDetailsUpdated(DomainEvent):
+    employee_id: uuid.UUID
+    branch_id: uuid.UUID
+    first_name: str
+    last_name: str
+    phone_number: str
+    email: str | None
+    role: str
+
+
 # ---------------------------------------------------------------------------
 # Valid status transitions
 # ---------------------------------------------------------------------------
@@ -186,6 +197,43 @@ class Employee(AggregateRoot):
                 employee_id=self.id,
                 old_status=old_status,
                 new_status=new_status,
+            )
+        )
+
+    def update_details(
+        self,
+        *,
+        branch_id: uuid.UUID,
+        first_name: str,
+        last_name: str,
+        phone_number: str,
+        role: str,
+        email: str | None = None,
+    ) -> None:
+        """Updates the editable HR fields. Does not touch `status` —
+        `change_status` is the only way to (de)activate an employee, kept
+        separate so the two concerns can't be silently conflated in one call.
+        """
+        self._validate_name(first_name, "first_name")
+        self._validate_name(last_name, "last_name")
+        self._validate_phone_number(phone_number)
+
+        self._branch_id = branch_id
+        self._first_name = first_name
+        self._last_name = last_name
+        self._phone_number = phone_number
+        self._email = email
+        self._role = role
+
+        self.record_event(
+            EmployeeDetailsUpdated(
+                employee_id=self.id,
+                branch_id=branch_id,
+                first_name=first_name,
+                last_name=last_name,
+                phone_number=phone_number,
+                email=email,
+                role=role,
             )
         )
 
