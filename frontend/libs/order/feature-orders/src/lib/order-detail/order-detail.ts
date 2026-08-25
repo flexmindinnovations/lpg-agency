@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective } from '@lpg/shared/ui';
+import { HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -17,11 +17,13 @@ import { Textarea } from 'primeng/textarea';
 import { Tooltip } from 'primeng/tooltip';
 import {
   AdminCylinderTypeService,
+  AdminEmployeeService,
   AuthService,
   DeliveryService,
   OrderService,
   type CylinderTypeResponse,
   type DriverResponse,
+  type EmployeeResponse,
   type RecordFailedDeliveryRequest,
   type OrderResponse,
   type OrderStatusHistoryEntryResponse,
@@ -87,6 +89,7 @@ export class OrderDetail implements OnInit {
   private readonly orderService = inject(OrderService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly deliveryService = inject(DeliveryService);
+  private readonly employeeService = inject(AdminEmployeeService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
@@ -96,6 +99,13 @@ export class OrderDetail implements OnInit {
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly drivers = signal<DriverResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
+  /** `DriverResponse` only carries `employee_id` (a UUID) — the Assign
+   * drawer's driver select otherwise rendered every row with a blank label
+   * (`optionLabel="employee_code"` doesn't exist on that type), making
+   * drivers indistinguishable from each other. Resolved here the same way
+   * customer/staff names are resolved elsewhere in this app: fetch once,
+   * build a lookup, join client-side. */
+  private readonly employeeById = signal<Map<string, EmployeeResponse>>(new Map());
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -116,6 +126,18 @@ export class OrderDetail implements OnInit {
     for (const ct of this.cylinderTypes()) map.set(ct.id, ct.name);
     return map;
   });
+
+  protected readonly driverOptions = computed(() =>
+    this.drivers().map((d) => {
+      const employee = this.employeeById().get(d.employee_id);
+      return {
+        ...d,
+        display_label: employee
+          ? `${employee.employee_code} — ${employee.first_name} ${employee.last_name}`
+          : shortId(d.id),
+      };
+    }),
+  );
 
   protected readonly canCancelFree = computed(() => {
     const status = this.order()?.status;
@@ -313,6 +335,13 @@ export class OrderDetail implements OnInit {
     });
     this.deliveryService.listVehicles(0, 200, undefined, 'active', order?.branch_id).subscribe({
       next: (page) => this.vehicles.set(page.items),
+    });
+    this.employeeService.listEmployees({ branch_id: order?.branch_id, limit: 200 }).subscribe({
+      next: (page) => {
+        const map = new Map<string, EmployeeResponse>();
+        for (const employee of page.items) map.set(employee.id, employee);
+        this.employeeById.set(map);
+      },
     });
     this.showAssignDrawer.set(true);
   }

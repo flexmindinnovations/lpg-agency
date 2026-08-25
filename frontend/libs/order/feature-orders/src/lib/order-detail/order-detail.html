@@ -206,8 +206,8 @@
         <p-select
           id="assign_driver"
           formControlName="driver_id"
-          [options]="drivers()"
-          optionLabel="employee_code"
+          [options]="driverOptions()"
+          optionLabel="display_label"
           optionValue="id"
           placeholder="Select a driver"
           [fluid]="true"
