@@ -500,25 +500,61 @@ plan.md`, not part of this document.
 
 ## Where this differs from the original design
 
-`docs/ui/03-user-journeys.md` and the persona docs describe **three**
-separate apps — Dashboard, Driver App, Customer App. As of this session,
-only **one** exists (`frontend/apps/dashboard`). What that means in
-practice:
+**Correction, added after this document was first published:** the first
+version of this section claimed only the Dashboard existed. That was
+wrong — a `mobile/` Flutter monorepo with a Driver App and a Customer App
+is genuinely there, both analyzing and testing clean when run directly
+(`flutter analyze` / `flutter test`, verified live, not just read from a
+status doc). The gap isn't that they don't exist; it's how *feature-
+complete* each one is relative to what this document walks through, all
+of which happens through the Dashboard.
 
 - **Staff** (Agency Admin, Manager, Dispatcher, Warehouse Staff, Accountant)
-  use the Dashboard exactly as designed.
-- **Drivers** also use the Dashboard today, not a dedicated mobile app —
-  logged in with the same email/password flow as staff, just with a
-  drastically narrower sidebar (Dashboard, Notifications, Orders only,
-  fixed this session — see the roles reference doc). The offline-first,
-  large-touch-target Driver App the persona doc describes doesn't exist
-  yet; the delivery-confirmation drawer shown in §7 is a desktop-oriented
-  form, not the mobile-optimized flow specced in `docs/ui/07-wireframe-
-  specifications.md`'s "Worked Example 2."
-- **Customers** have no interface at all yet. The `/login` screen is
-  email/password only — there's no phone/OTP flow for the `customer` role
-  to actually use, even though the backend permissions and domain logic
-  (self-booking, self-cancel, own-ledger read, own-complaint management)
-  are already live. Every "goes to the customer" notification in this
-  document is real on the backend and inert in practice, because there's
-  no app for a customer to receive it in.
+  use the Dashboard exactly as designed — nothing to correct here.
+
+- **Drivers** have a real app (`mobile/apps/driver_app`) with working OTP
+  phone sign-in and a genuinely SQLCipher-encrypted local database wired
+  in (Phase 5, ADR-034) — but no delivery features built on top of either
+  yet. Its one screen past login is a literal placeholder; the code's own
+  comment says so: *"The app shell, theme and routing are in place.
+  Business features have not been built yet."* No assigned-route list, no
+  stop navigation, no proof-of-delivery capture — every driver action in
+  §6–§7 of this document, and the drawer shown there, is the *web
+  Dashboard's* driver experience, which is what's actually reachable
+  today, not the mobile-optimized flow `docs/ui/07-wireframe-
+  specifications.md`'s "Worked Example 2" describes. Given D-24 marks the
+  offline-first Driver App a Must-have, this is the widest gap between
+  spec and reality in the whole platform.
+
+- **Customers** have a real, partially-built app
+  (`mobile/apps/customer_app`) — OTP phone sign-in, a Dashboard, Orders,
+  Profile (view/edit + add address), Support, all wired to the same
+  backend this document's examples run against. Per the project's own
+  `planning/MODULE_STATUS.md`, it's about **35%** of its planned feature
+  surface (Phase 19, in progress) — no KYC upload, no invoice view, no
+  live tracking, and a notification bell icon in the app bar whose tap
+  handler is a literal `// TODO: Navigate to notifications screen` — no
+  notification center exists in the app yet, even for a customer account
+  with a properly linked login.
+
+  **Booking a new order through the app doesn't actually reach the
+  backend, verified by reading the code and confirming live.** The
+  Orders screen's *list* is real — it calls the same `GET /orders` this
+  document's examples use, correctly scoped to the signed-in customer. But
+  "Confirm Order" in the new-order sheet doesn't call the order-creation
+  API at all — it enqueues a generic offline-sync operation
+  (`syncCoordinator.enqueueOperation('order_gas', ...)`), and
+  `sync_engine`'s processor has no case for that operation type, so it
+  falls through to a hardcoded generic path, `POST /sync/order_gas` — an
+  endpoint that doesn't exist anywhere in the backend (confirmed: no route
+  for it in the API source, and a live request against the running
+  backend 404s). The app shows a "queued for synchronization" toast that
+  reads as success; the operation actually just sits in the local queue
+  retrying against a URL that will never resolve. This is a real gap
+  worth its own fix, separate from everything else in this document.
+
+  So: every "goes to the customer" notification in this document is real
+  on the backend, and *would* reach a real Flutter app if a customer
+  account had a linked login — but has no notification center to render
+  in even then, and the one write path this document walks through
+  (placing an order) can't currently be exercised from that app at all.
