@@ -231,6 +231,53 @@ class AddCustomerAddressUseCase:
 
 
 @dataclass(frozen=True, slots=True)
+class UpdateCustomerAddressCommand(Command):
+    customer_id: uuid.UUID
+    address_id: uuid.UUID
+    line_1: str
+    line_2: str | None = None
+    landmark: str | None = None
+    area: str | None = None
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    address_type: str = "delivery"
+    latitude: float | None = None
+    longitude: float | None = None
+
+
+class UpdateCustomerAddressUseCase:
+    def __init__(self, repository: CustomerRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: UpdateCustomerAddressCommand) -> None:
+        customer = await self._repository.get_by_id(command.customer_id)
+        if customer is None:
+            msg = f"No customer visible with id {command.customer_id}."
+            raise NotFoundError(msg, customer_id=str(command.customer_id))
+
+        customer.update_address(
+            address_id=command.address_id,
+            line_1=command.line_1,
+            line_2=command.line_2,
+            landmark=command.landmark,
+            area=command.area,
+            city=command.city,
+            district=command.district,
+            state=command.state,
+            pincode=command.pincode,
+            address_type=command.address_type,
+            latitude=command.latitude,
+            longitude=command.longitude,
+        )
+
+        await self._repository.save(customer)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
 class SetPrimaryAddressCommand(Command):
     customer_id: uuid.UUID
     address_id: uuid.UUID

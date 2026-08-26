@@ -51,6 +51,12 @@ class PrimaryAddressSet(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class AddressUpdated(DomainEvent):
+    customer_id: uuid.UUID
+    address_id: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
 class KycDocumentSubmitted(DomainEvent):
     customer_id: uuid.UUID
     document_id: uuid.UUID
@@ -462,6 +468,49 @@ class Customer(AggregateRoot):
             AddressAdded(customer_id=self.id, address_id=address_id, address_line=line_1)
         )
         return address_id
+
+    def update_address(
+        self,
+        address_id: uuid.UUID,
+        line_1: str,
+        address_type: str = "delivery",
+        line_2: str | None = None,
+        landmark: str | None = None,
+        area: str | None = None,
+        city: str | None = None,
+        district: str | None = None,
+        state: str | None = None,
+        pincode: str | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> None:
+        index = next(
+            (i for i, a in enumerate(self._addresses) if a.id == address_id), None
+        )
+        if index is None:
+            msg = f"Address {address_id} not found."
+            raise InvariantViolation(msg, customer_id=str(self.id))
+
+        # Rebuild via `CustomerAddress.__init__` rather than mutating fields
+        # in place, so this reuses the same validation `add_address` gets
+        # (non-empty line_1, a valid address_type) instead of duplicating it.
+        was_primary = self._addresses[index].is_primary
+        self._addresses[index] = CustomerAddress(
+            address_id=address_id,
+            line_1=line_1,
+            address_type=address_type,
+            line_2=line_2,
+            landmark=landmark,
+            area=area,
+            city=city,
+            district=district,
+            state=state,
+            pincode=pincode,
+            latitude=latitude,
+            longitude=longitude,
+            is_primary=was_primary,
+        )
+        self.record_event(AddressUpdated(customer_id=self.id, address_id=address_id))
 
     def set_primary_address(self, address_id: uuid.UUID) -> None:
         target = next((a for a in self._addresses if a.id == address_id), None)

@@ -135,6 +135,20 @@ class AddCustomerAddressRequest(BaseModel):
     longitude: Decimal | None = None
 
 
+class UpdateCustomerAddressRequest(BaseModel):
+    line_1: str = Field(min_length=1)
+    line_2: str | None = None
+    landmark: str | None = None
+    area: str | None = None
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    address_type: str = "delivery"
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
+
+
 class SubmitKycDocumentRequest(BaseModel):
     doc_type: str = Field(min_length=1, max_length=50)
     document_number: str = Field(min_length=1)

@@ -11,11 +11,7 @@ from lpg.api.v1.dependencies.customer import (
     get_customer_repository,
     get_document_ocr_port,
 )
-from lpg.api.v1.dependencies.identity import (
-    get_current_principal,
-    require_permission,
-    require_permission_or_self,
-)
+from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.customer import (
@@ -31,6 +27,7 @@ from lpg.api.v1.schemas.customer import (
     RecognizeKycDocumentResponse,
     RegisterCustomerRequest,
     SubmitKycDocumentRequest,
+    UpdateCustomerAddressRequest,
     UpdateCustomerProfileRequest,
     VerifyKycDocumentRequest,
 )
@@ -64,6 +61,8 @@ from lpg.application.customer.use_cases import (
     SetPrimaryAddressUseCase,
     SubmitKycDocumentCommand,
     SubmitKycDocumentUseCase,
+    UpdateCustomerAddressCommand,
+    UpdateCustomerAddressUseCase,
     UpdateCustomerProfileCommand,
     UpdateCustomerProfileUseCase,
     VerifyKycDocumentCommand,
@@ -72,6 +71,38 @@ from lpg.application.customer.use_cases import (
 from lpg.application.identity.ports import AuthenticatedPrincipal
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
+
+
+async def _require_self_or_permission(
+    principal: AuthenticatedPrincipal,
+    customer_id: uuid.UUID,
+    permission_code: str,
+    customer_repository: CustomerRepository,
+) -> None:
+    """Correctly-scoped replacement for the old `require_permission_or_self`
+    dependency on these endpoints. That helper compares the `customer_id`
+    path parameter against `principal.user_id` — always false for a real
+    customer, since `Customer.id` is its own independently generated
+    primary key, never equal to `identity_user_id`
+    (`RegisterCustomerUseCase`, confirmed live: every self-access attempt
+    403'd with "must be the owner" even for a customer's own record).
+    Resolves real ownership via `CustomerRepository.get_by_identity_user_id`
+    instead, same pattern this session's ledger/KYC/invoice/complaint fixes
+    already established. 403, not 404, here — unlike those read endpoints,
+    every caller of this one already knows the specific `customer_id` (it's
+    their own account or a staff action on a known record), so there's no
+    existence-enumeration concern (OWASP API1) to hide behind a 404.
+    """
+    if permission_code in principal.permission_codes:
+        return
+    if principal.user_id is not None:
+        own_customer = await customer_repository.get_by_identity_user_id(principal.user_id)
+        if own_customer is not None and own_customer.id == customer_id:
+            return
+    raise HTTPException(
+        status_code=403,
+        detail=f"Missing required permission: {permission_code!r} or must be the owner.",
+    )
 
 
 @router.post(
@@ -174,12 +205,13 @@ async def get_my_profile(
 @router.get(
     "/{customer_id}",
     response_model=CustomerResponse,
-    dependencies=[Depends(require_permission_or_self("customers:read"))],
 )
 async def get_customer(
     customer_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
 ) -> CustomerResponse:
+    await _require_self_or_permission(principal, customer_id, "customers:read", repository)
     use_case = GetCustomerUseCase(repository)
     customer = await use_case.execute(GetCustomerQuery(customer_id=customer_id))
     if customer is None:
@@ -191,14 +223,15 @@ async def get_customer(
 @router.put(
     "/{customer_id}",
     response_model=CustomerResponse,
-    dependencies=[Depends(require_permission_or_self("customers:update"))],
 )
 async def update_customer_profile(
     customer_id: uuid.UUID,
     request: UpdateCustomerProfileRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> CustomerResponse:
+    await _require_self_or_permission(principal, customer_id, "customers:update", repository)
     use_case = UpdateCustomerProfileUseCase(repository, unit_of_work)
     customer = await use_case.execute(
         UpdateCustomerProfileCommand(
@@ -221,14 +254,15 @@ async def update_customer_profile(
 @router.post(
     "/{customer_id}/addresses",
     response_model=uuid.UUID,
-    dependencies=[Depends(require_permission_or_self("customers:update"))],
 )
 async def add_address(
     customer_id: uuid.UUID,
     request: AddCustomerAddressRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> uuid.UUID:
+    await _require_self_or_permission(principal, customer_id, "customers:update", repository)
     use_case = AddCustomerAddressUseCase(repository, unit_of_work)
     return await use_case.execute(
         AddCustomerAddressCommand(
@@ -250,16 +284,47 @@ async def add_address(
     )
 
 
-@router.put(
-    "/{customer_id}/addresses/{address_id}/primary",
-    dependencies=[Depends(require_permission_or_self("customers:update"))],
-)
-async def set_primary_address(
+@router.put("/{customer_id}/addresses/{address_id}")
+async def update_address(
     customer_id: uuid.UUID,
     address_id: uuid.UUID,
+    request: UpdateCustomerAddressRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> None:
+    await _require_self_or_permission(principal, customer_id, "customers:update", repository)
+    use_case = UpdateCustomerAddressUseCase(repository, unit_of_work)
+    await use_case.execute(
+        UpdateCustomerAddressCommand(
+            customer_id=customer_id,
+            address_id=address_id,
+            line_1=request.line_1,
+            line_2=request.line_2,
+            landmark=request.landmark,
+            area=request.area,
+            city=request.city,
+            district=request.district,
+            state=request.state,
+            pincode=request.pincode,
+            address_type=request.address_type,
+            latitude=float(request.latitude) if request.latitude is not None else None,
+            longitude=(
+                float(request.longitude) if request.longitude is not None else None
+            ),
+        )
+    )
+
+
+@router.put("/{customer_id}/addresses/{address_id}/primary")
+async def set_primary_address(
+    customer_id: uuid.UUID,
+    address_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    await _require_self_or_permission(principal, customer_id, "customers:update", repository)
     use_case = SetPrimaryAddressUseCase(repository, unit_of_work)
     await use_case.execute(
         SetPrimaryAddressCommand(customer_id=customer_id, address_id=address_id)
