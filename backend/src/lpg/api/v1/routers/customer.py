@@ -326,6 +326,27 @@ async def recognize_kyc_document(
     )
 
 
+async def _resolve_own_customer_id(
+    principal: AuthenticatedPrincipal,
+    customer_id: uuid.UUID,
+    repository: CustomerRepository,
+) -> uuid.UUID:
+    """`kyc:read`/`kyc:manage` are held broadly (staff *and* `customer`, for
+    self-service) -- a `customer` principal must additionally be scoped to
+    their own record, the same way `cylinder_ledger.py`'s `get_ledger`
+    forces `customer_id` for a customer's own ledger reads rather than
+    trusting whatever the caller passed.
+    """
+    if principal.role != "customer":
+        return customer_id
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="No customer profile linked to this account.")
+    own_customer = await repository.get_by_identity_user_id(principal.user_id)
+    if own_customer is None or own_customer.id != customer_id:
+        raise HTTPException(status_code=403, detail="Cannot access another customer's KYC records.")
+    return own_customer.id
+
+
 @router.get(
     "/{customer_id}/kyc",
     response_model=KycDocumentListResponse,
@@ -333,9 +354,11 @@ async def recognize_kyc_document(
 )
 async def list_kyc_documents(
     customer_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     file_storage: Annotated[FileStorage, Depends(get_file_storage)],
 ) -> KycDocumentListResponse:
+    customer_id = await _resolve_own_customer_id(principal, customer_id, repository)
     use_case = GetCustomerUseCase(repository)
     customer = await use_case.execute(GetCustomerQuery(customer_id=customer_id))
     if customer is None:
@@ -366,9 +389,11 @@ async def list_kyc_documents(
 async def submit_kyc(
     customer_id: uuid.UUID,
     request: SubmitKycDocumentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> uuid.UUID:
+    customer_id = await _resolve_own_customer_id(principal, customer_id, repository)
     use_case = SubmitKycDocumentUseCase(repository, unit_of_work)
     return await use_case.execute(
         SubmitKycDocumentCommand(
@@ -397,6 +422,13 @@ async def verify_kyc(
 ) -> None:
     if principal.user_id is None:
         raise HTTPException(status_code=401, detail="User ID is required.")
+    # `kyc:manage` is held by `customer` too (self-service upload/submit),
+    # but verifying a document is a staff decision by definition — a
+    # customer approving/rejecting their own document defeats the point of
+    # verification. Block by role, not by withholding the permission code
+    # `submit_kyc`/`list_kyc_documents` legitimately share with this.
+    if principal.role == "customer":
+        raise HTTPException(status_code=403, detail="Customers cannot verify KYC documents.")
     use_case = VerifyKycDocumentUseCase(repository, unit_of_work, sequence)
     await use_case.execute(
         VerifyKycDocumentCommand(
