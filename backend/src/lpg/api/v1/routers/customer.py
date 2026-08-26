@@ -335,15 +335,17 @@ async def _resolve_own_customer_id(
     self-service) -- a `customer` principal must additionally be scoped to
     their own record, the same way `cylinder_ledger.py`'s `get_ledger`
     forces `customer_id` for a customer's own ledger reads rather than
-    trusting whatever the caller passed.
+    trusting whatever the caller passed. 404, not 403, on a mismatch —
+    matches `_require_own_driver_order`'s documented convention (OWASP
+    API1: never let a caller distinguish "not yours" from "doesn't exist").
     """
     if principal.role != "customer":
         return customer_id
     if principal.user_id is None:
-        raise HTTPException(status_code=403, detail="No customer profile linked to this account.")
+        raise HTTPException(status_code=404, detail="Customer not found.")
     own_customer = await repository.get_by_identity_user_id(principal.user_id)
     if own_customer is None or own_customer.id != customer_id:
-        raise HTTPException(status_code=403, detail="Cannot access another customer's KYC records.")
+        raise HTTPException(status_code=404, detail="Customer not found.")
     return own_customer.id
 
 

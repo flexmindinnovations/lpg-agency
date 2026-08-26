@@ -44,15 +44,16 @@ async def get_ledger(
     # -- a `customer` principal must additionally be scoped to their own
     # record, the same way `order.py`'s `_resolve_scope` forces `customer_id`
     # for order reads rather than trusting whatever the caller passed.
+    # 404, not 403, on a mismatch — matches `_require_own_driver_order`'s
+    # documented convention (OWASP API1: never let a caller distinguish
+    # "not yours" from "doesn't exist").
     effective_customer_id = customer_id
     if principal.role == "customer":
         if principal.user_id is None:
-            raise HTTPException(
-                status_code=403, detail="No customer profile linked to this account."
-            )
+            raise HTTPException(status_code=404, detail="Customer not found.")
         own_customer = await customer_repository.get_by_identity_user_id(principal.user_id)
         if own_customer is None or own_customer.id != customer_id:
-            raise HTTPException(status_code=403, detail="Cannot read another customer's ledger.")
+            raise HTTPException(status_code=404, detail="Customer not found.")
         effective_customer_id = own_customer.id
 
     async with unit_of_work:

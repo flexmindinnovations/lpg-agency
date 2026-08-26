@@ -13,6 +13,7 @@ from lpg.api.v1.dependencies.accounting import (
     get_credit_note_repository,
     get_invoice_repository,
 )
+from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.invoice import (
@@ -42,11 +43,45 @@ from lpg.application.accounting.use_cases import (
     RequestRefundUseCase,
 )
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.customer.ports import CustomerRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import Invoice
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
+
+
+class _InvoiceScope:
+    """Row-scoping for a `customer` principal, same shape and reasoning as
+    `order.py`'s `_OrderScope`/`_resolve_scope` -- `invoices:read` is held
+    broadly (staff *and* `customer`, for self-service), so a `customer`
+    principal must additionally be forced onto their own `customer_id`
+    rather than trusting whatever filter/path value was passed. `blocked`
+    (no linked customer profile) yields an empty list / 404 downstream,
+    never 403 -- matches `_require_own_driver_order`'s documented
+    convention (OWASP API1: never let a caller distinguish "not yours"
+    from "doesn't exist").
+    """
+
+    __slots__ = ("blocked", "customer_id")
+
+    def __init__(self, *, customer_id: uuid.UUID | None = None, blocked: bool = False) -> None:
+        self.customer_id = customer_id
+        self.blocked = blocked
+
+
+async def _resolve_scope(
+    principal: AuthenticatedPrincipal,
+    customer_repository: CustomerRepository,
+) -> _InvoiceScope:
+    if principal.role != "customer":
+        return _InvoiceScope()
+    if principal.user_id is None:
+        return _InvoiceScope(blocked=True)
+    own_customer = await customer_repository.get_by_identity_user_id(principal.user_id)
+    if own_customer is None:
+        return _InvoiceScope(blocked=True)
+    return _InvoiceScope(customer_id=own_customer.id)
 
 
 def _invoice_to_response(invoice: Invoice) -> InvoiceResponse:
@@ -104,7 +139,9 @@ def _invoice_to_response(invoice: Invoice) -> InvoiceResponse:
     dependencies=[Depends(require_permission("invoices:read"))],
 )
 async def list_invoices(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     customer_id: uuid.UUID | None = None,
@@ -112,6 +149,12 @@ async def list_invoices(
     status: str | None = None,
 ) -> InvoicePageResponse:
     """List invoices with optional filters."""
+    scope = await _resolve_scope(principal, customer_repository)
+    if scope.blocked:
+        return InvoicePageResponse(items=[], total=0, page=page, page_size=page_size)
+    if scope.customer_id is not None:
+        customer_id = scope.customer_id
+
     use_case = ListInvoicesUseCase(repository)
     skip = (page - 1) * page_size
     items, total = await use_case.execute(
@@ -139,12 +182,21 @@ async def list_invoices(
 )
 async def get_invoice(
     invoice_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
 ) -> InvoiceResponse:
     """Get a specific invoice by ID."""
+    scope = await _resolve_scope(principal, customer_repository)
+    if scope.blocked:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
     use_case = GetInvoiceUseCase(repository)
     invoice = await use_case.execute(GetInvoiceQuery(invoice_id=invoice_id))
     if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if scope.customer_id is not None and invoice.customer_id != scope.customer_id:
+        # 404, not 403 — see `_InvoiceScope`'s docstring.
         raise HTTPException(status_code=404, detail="Invoice not found")
     return _invoice_to_response(invoice)
 
