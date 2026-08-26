@@ -19,47 +19,63 @@ class LpgColors extends ThemeExtension<LpgColors> {
   const LpgColors({
     required this.textPrimary,
     required this.textSecondary,
+    required this.textInverse,
     required this.surfaceBase,
     required this.surfaceRaised,
+    required this.surfaceOverlay,
     required this.borderDefault,
+    required this.borderStrong,
     required this.actionPrimary,
     required this.statusSuccess,
     required this.statusWarning,
     required this.statusDanger,
+    required this.statusInfo,
   });
 
   final Color textPrimary;
   final Color textSecondary;
+  final Color textInverse;
   final Color surfaceBase;
   final Color surfaceRaised;
+  final Color surfaceOverlay;
   final Color borderDefault;
+  final Color borderStrong;
   final Color actionPrimary;
   final Color statusSuccess;
   final Color statusWarning;
   final Color statusDanger;
+  final Color statusInfo;
 
   @override
   LpgColors copyWith({
     Color? textPrimary,
     Color? textSecondary,
+    Color? textInverse,
     Color? surfaceBase,
     Color? surfaceRaised,
+    Color? surfaceOverlay,
     Color? borderDefault,
+    Color? borderStrong,
     Color? actionPrimary,
     Color? statusSuccess,
     Color? statusWarning,
     Color? statusDanger,
+    Color? statusInfo,
   }) {
     return LpgColors(
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
+      textInverse: textInverse ?? this.textInverse,
       surfaceBase: surfaceBase ?? this.surfaceBase,
       surfaceRaised: surfaceRaised ?? this.surfaceRaised,
+      surfaceOverlay: surfaceOverlay ?? this.surfaceOverlay,
       borderDefault: borderDefault ?? this.borderDefault,
+      borderStrong: borderStrong ?? this.borderStrong,
       actionPrimary: actionPrimary ?? this.actionPrimary,
       statusSuccess: statusSuccess ?? this.statusSuccess,
       statusWarning: statusWarning ?? this.statusWarning,
       statusDanger: statusDanger ?? this.statusDanger,
+      statusInfo: statusInfo ?? this.statusInfo,
     );
   }
 
@@ -69,13 +85,17 @@ class LpgColors extends ThemeExtension<LpgColors> {
     return LpgColors(
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textInverse: Color.lerp(textInverse, other.textInverse, t)!,
       surfaceBase: Color.lerp(surfaceBase, other.surfaceBase, t)!,
       surfaceRaised: Color.lerp(surfaceRaised, other.surfaceRaised, t)!,
+      surfaceOverlay: Color.lerp(surfaceOverlay, other.surfaceOverlay, t)!,
       borderDefault: Color.lerp(borderDefault, other.borderDefault, t)!,
+      borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       actionPrimary: Color.lerp(actionPrimary, other.actionPrimary, t)!,
       statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,
       statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
       statusDanger: Color.lerp(statusDanger, other.statusDanger, t)!,
+      statusInfo: Color.lerp(statusInfo, other.statusInfo, t)!,
     );
   }
 }
@@ -85,37 +105,49 @@ abstract final class LpgTheme {
   static const _light = LpgColors(
     textPrimary: LpgTokensLight.colorTextPrimary,
     textSecondary: LpgTokensLight.colorTextSecondary,
+    textInverse: LpgTokensLight.colorTextInverse,
     surfaceBase: LpgTokensLight.colorSurfaceBase,
     surfaceRaised: LpgTokensLight.colorSurfaceRaised,
+    surfaceOverlay: LpgTokensLight.colorSurfaceOverlay,
     borderDefault: LpgTokensLight.colorBorderDefault,
+    borderStrong: LpgTokensLight.colorBorderStrong,
     actionPrimary: LpgTokensLight.colorActionPrimary,
     statusSuccess: LpgTokensLight.colorStatusSuccess,
     statusWarning: LpgTokensLight.colorStatusWarning,
     statusDanger: LpgTokensLight.colorStatusDanger,
+    statusInfo: LpgTokensLight.colorStatusInfo,
   );
 
   static const _dark = LpgColors(
     textPrimary: LpgTokensDark.colorTextPrimary,
     textSecondary: LpgTokensDark.colorTextSecondary,
+    textInverse: LpgTokensDark.colorTextInverse,
     surfaceBase: LpgTokensDark.colorSurfaceBase,
     surfaceRaised: LpgTokensDark.colorSurfaceRaised,
+    surfaceOverlay: LpgTokensDark.colorSurfaceOverlay,
     borderDefault: LpgTokensDark.colorBorderDefault,
+    borderStrong: LpgTokensDark.colorBorderStrong,
     actionPrimary: LpgTokensDark.colorActionPrimary,
     statusSuccess: LpgTokensDark.colorStatusSuccess,
     statusWarning: LpgTokensDark.colorStatusWarning,
     statusDanger: LpgTokensDark.colorStatusDanger,
+    statusInfo: LpgTokensDark.colorStatusInfo,
   );
 
   static const _highContrast = LpgColors(
     textPrimary: LpgTokensHighContrast.colorTextPrimary,
     textSecondary: LpgTokensHighContrast.colorTextSecondary,
+    textInverse: LpgTokensHighContrast.colorTextInverse,
     surfaceBase: LpgTokensHighContrast.colorSurfaceBase,
     surfaceRaised: LpgTokensHighContrast.colorSurfaceRaised,
+    surfaceOverlay: LpgTokensHighContrast.colorSurfaceOverlay,
     borderDefault: LpgTokensHighContrast.colorBorderDefault,
+    borderStrong: LpgTokensHighContrast.colorBorderStrong,
     actionPrimary: LpgTokensHighContrast.colorActionPrimary,
     statusSuccess: LpgTokensHighContrast.colorStatusSuccess,
     statusWarning: LpgTokensHighContrast.colorStatusWarning,
     statusDanger: LpgTokensHighContrast.colorStatusDanger,
+    statusInfo: LpgTokensHighContrast.colorStatusInfo,
   );
 
   static LpgColors colorsFor(LpgThemeVariant variant) => switch (variant) {

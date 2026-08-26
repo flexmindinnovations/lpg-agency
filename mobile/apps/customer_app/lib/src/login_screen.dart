@@ -48,13 +48,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    if (!RegExp(r'^[A-Za-z]{2}\d{4,6}$').hasMatch(tenantId)) {
-      setState(
-        () => _errorMessage = 'Invalid Agency Code format (e.g. AB123456).',
-      );
-      return;
-    }
-
+    // No format check on the Agency Code beyond non-empty: `tenant.slug`
+    // has no format constraint server-side (just a uniqueness one,
+    // `uq_tenant_slug`) -- it's whatever human-readable string the tenant
+    // was created with (e.g. `dev-tenant`), not a fixed pattern. An
+    // earlier version of this screen validated against an invented
+    // `AB123456`-style regex that no real tenant's slug would ever match.
     if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(phone)) {
       setState(() => _errorMessage = 'Please enter a valid phone number.');
       return;
@@ -111,27 +110,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
-
-    final inputDecoration = InputDecoration(
-      filled: true,
-      fillColor: colors.surfaceRaised,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: colors.borderDefault),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: colors.actionPrimary, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      labelStyle: theme.textTheme.bodyMedium?.copyWith(
-        color: colors.textSecondary,
-      ),
-    );
 
     return Scaffold(
       backgroundColor: colors.surfaceBase,
@@ -206,56 +184,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 24),
               ],
 
-              TextField(
+              LpgTextField(
+                label: 'Agency Code',
                 controller: _tenantIdController,
                 enabled: !_codeRequested,
-                decoration: inputDecoration.copyWith(labelText: 'Agency Code'),
-                style: TextStyle(color: colors.textPrimary),
               ),
               const SizedBox(height: 16),
 
-              TextField(
+              LpgTextField(
+                label: 'Phone number',
                 controller: _phoneController,
                 enabled: !_codeRequested,
                 keyboardType: TextInputType.phone,
-                decoration: inputDecoration.copyWith(labelText: 'Phone number'),
-                style: TextStyle(color: colors.textPrimary),
               ),
 
               if (_codeRequested) ...[
                 const SizedBox(height: 16),
-                TextField(
+                LpgTextField(
+                  label: 'Verification code',
                   controller: _codeController,
                   keyboardType: TextInputType.number,
-                  decoration: inputDecoration.copyWith(
-                    labelText: 'Verification code',
-                  ),
-                  style: TextStyle(color: colors.textPrimary),
                   autofocus: true,
                 ),
               ],
 
               const SizedBox(height: 32),
 
-              SizedBox(
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _submitting
-                      ? null
-                      : (_codeRequested ? _verifyCode : _requestCode),
-                  child: _submitting
-                      ? SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              LpgTokens.primitiveColorWhite,
-                            ),
-                          ),
-                        )
-                      : Text(_codeRequested ? 'Verify Code' : 'Send Code'),
-                ),
+              LpgButton(
+                label: _codeRequested ? 'Verify Code' : 'Send Code',
+                isLoading: _submitting,
+                expand: true,
+                onPressed: _codeRequested ? _verifyCode : _requestCode,
               ),
 
               const SizedBox(height: 48),
