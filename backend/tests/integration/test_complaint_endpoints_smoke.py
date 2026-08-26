@@ -313,16 +313,23 @@ class TestComplaintLifecycleThroughTheRealStack:
         )
         assert response.status_code == 403, response.text
 
-    async def test_get_and_list_reachable_without_complaints_manage(
+    async def test_get_and_list_denied_without_complaints_manage(
         self,
         real_lifespan_client: AsyncClient,
         admin_engine_lpg_test: AsyncEngine,
         integration_settings: Settings,
     ) -> None:
-        """Documents observed behavior, not asserts it's correct: the two GET
-        endpoints have no `require_permission` dependency, so any
-        authenticated staff member of the tenant — including one without
-        `complaints.manage` — can read complaints.
+        """Was `test_get_and_list_reachable_without_complaints_manage`,
+        which documented (its own docstring said so explicitly) rather than
+        asserted the old behavior was correct: the two GET endpoints had no
+        `require_permission` dependency at all, so any authenticated tenant
+        member — including one without `complaints.manage`, like
+        `warehouse_staff` here — could read any complaint. Fixed alongside
+        adding `customer`-role ownership scoping to the same two endpoints
+        (a `customer` principal forced onto their own `customer_id`,
+        mirroring `order.py`'s `_resolve_scope` pattern) — same permission
+        `raise_complaint`/`assign_complaint`/`resolve_complaint` already
+        required, now consistently required for read too.
         """
         hasher = Argon2PasswordHasher(integration_settings)
         email = f"{uuid.uuid4().hex}@complaint-smoke.example"
@@ -332,15 +339,15 @@ class TestComplaintLifecycleThroughTheRealStack:
             email=email,
             password_hash=hasher.hash(password),
             role="warehouse_staff",
-            tenant_name="Complaint Smoke Tenant (get/list reachable)",
+            tenant_name="Complaint Smoke Tenant (get/list denied)",
         )
         token = await _login(real_lifespan_client, email=email, password=password)
         headers = {"Authorization": f"Bearer {token}"}
 
         list_response = await real_lifespan_client.get("/api/v1/complaints", headers=headers)
-        assert list_response.status_code == 200, list_response.text
+        assert list_response.status_code == 403, list_response.text
 
         get_response = await real_lifespan_client.get(
             f"/api/v1/complaints/{uuid.uuid4()}", headers=headers
         )
-        assert get_response.status_code == 404, get_response.text
+        assert get_response.status_code == 403, get_response.text
