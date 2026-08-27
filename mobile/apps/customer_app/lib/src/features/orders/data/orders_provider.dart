@@ -21,3 +21,16 @@ final ordersProvider = FutureProvider<List<OrderResponse>>((ref) async {
 
   return [];
 });
+
+/// Provides a single order by its ID.
+final orderDetailProvider = FutureProvider.family<OrderResponse, String>((
+  ref,
+  id,
+) async {
+  final api = ref.watch(orderApiProvider);
+  final result = await api.getOrder(id);
+  return result.when(
+    onSuccess: (data) => data,
+    onFailure: (failure) => throw Exception(failure.message),
+  );
+});

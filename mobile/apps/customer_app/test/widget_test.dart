@@ -73,7 +73,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('LPG Flow'), findsOneWidget);
-    expect(find.text('Current Gas Balance'), findsOneWidget);
+    // Not asserting on the balance card's own text: it's driven by
+    // `ledgerAsync` (a real, unmocked network call in this test), so
+    // whether it's showing loading/data/error copy at the moment
+    // `pumpAndSettle` returns isn't deterministic here. The primary action
+    // button is static regardless of that card's state.
+    expect(find.text('Order Gas Refill'), findsOneWidget);
   });
 
   testWidgets('shell has a Material scaffold', (tester) async {
@@ -99,6 +104,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Sign in'), findsWidgets);
-    expect(find.text('Current Gas Balance'), findsNothing);
+    expect(find.text('Order Gas Refill'), findsNothing);
   });
 }

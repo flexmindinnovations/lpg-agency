@@ -2,7 +2,7 @@ import 'package:core/core.dart';
 import 'package:dio/dio.dart';
 
 import 'failure_mapper.dart';
-import 'models.dart';
+import 'models/models.dart';
 
 /// Hand-written wrapper for the backend's `/auth/*` routes (ADR-037) —
 /// spec-generation isn't justified yet for ~8 endpoints. Every method
@@ -76,6 +76,8 @@ final class AuthApi {
       return Success(TokenPair.fromJson(response.data!));
     } on DioException catch (error) {
       return FailureResult(mapDioError(error));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
     }
   }
 
@@ -85,6 +87,8 @@ final class AuthApi {
       return const Success(null);
     } on DioException catch (error) {
       return FailureResult(mapDioError(error));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
     }
   }
 }

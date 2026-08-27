@@ -27,14 +27,26 @@ class LpgEmptyState extends StatelessWidget {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
 
+    final isHighContrast =
+        theme.brightness == Brightness.light &&
+        colors.shadowLight == Colors.transparent;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(LpgTokens.spacingXl * 1.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: colors.textSecondary),
-            const SizedBox(height: LpgTokens.spacingMd * 1.0),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: colors.surfaceBase,
+                shape: BoxShape.circle,
+                boxShadow: isHighContrast ? null : colors.neumorphicShadows,
+              ),
+              child: Icon(icon, size: 48, color: colors.textSecondary),
+            ),
+            const SizedBox(height: 32),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -43,7 +55,7 @@ class LpgEmptyState extends StatelessWidget {
               ),
             ),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: LpgTokens.spacingLg * 1.0),
+              const SizedBox(height: 32),
               LpgButton(
                 label: actionLabel!,
                 onPressed: onAction,

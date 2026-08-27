@@ -12,6 +12,8 @@ dependencies:
   dio: ^5.9.0
   flutter:
     sdk: flutter
+  http_parser: ^4.1.2
+  uuid: ^4.5.1
   core:
     path: ../core
 

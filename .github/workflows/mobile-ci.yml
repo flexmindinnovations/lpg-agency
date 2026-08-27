@@ -26,6 +26,8 @@ jobs:
           - mobile/packages/core
           - mobile/packages/design_system
           - mobile/packages/local_storage
+          - mobile/packages/realtime
+          - mobile/packages/sync_engine
           - mobile/apps/customer_app
           - mobile/apps/driver_app
 

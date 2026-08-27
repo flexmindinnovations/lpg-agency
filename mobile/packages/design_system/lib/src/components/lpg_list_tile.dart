@@ -31,17 +31,40 @@ class LpgListTile extends StatelessWidget {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
 
+    final isHighContrast =
+        theme.brightness == Brightness.light &&
+        colors.shadowLight == Colors.transparent;
+
     final row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: LpgTokens.spacingSm * 1.0),
+      padding: const EdgeInsets.symmetric(
+        horizontal: LpgTokens.spacingMd * 1.0,
+        vertical: LpgTokens.spacingSm * 1.0,
+      ),
       child: Row(
         children: [
           if (leadingIcon != null) ...[
             Container(
               padding: const EdgeInsets.all(LpgTokens.spacingSm * 1.0),
               decoration: BoxDecoration(
-                color: colors.surfaceRaised,
+                color: colors.surfaceBase,
                 shape: BoxShape.circle,
-                border: Border.all(color: colors.borderDefault),
+                border: isHighContrast
+                    ? Border.all(color: colors.borderDefault)
+                    : null,
+                boxShadow: isHighContrast
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: colors.shadowLight,
+                          offset: const Offset(-2, -2),
+                          blurRadius: 4,
+                        ),
+                        BoxShadow(
+                          color: colors.shadowDark,
+                          offset: const Offset(2, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
               ),
               child: Icon(leadingIcon, size: 16, color: colors.textSecondary),
             ),
@@ -56,7 +79,7 @@ class LpgListTile extends StatelessWidget {
                   title,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colors.textPrimary,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

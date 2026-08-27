@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/dashboard/presentation/notifications_screen.dart';
+import 'features/orders/presentation/invoice_list_screen.dart';
+import 'features/orders/presentation/order_tracking_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'package:api_client/api_client.dart';
 import 'features/profile/presentation/add_address_screen.dart';
@@ -70,6 +73,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/',
                 name: 'dashboard',
                 builder: (context, state) => const DashboardScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    name: 'notifications',
+                    builder: (context, state) => const NotificationsScreen(),
+                  ),
+                ],
               ),
             ],
           ),
@@ -79,6 +89,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/orders',
                 name: 'orders',
                 builder: (context, state) => const OrdersScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'invoices',
+                    name: 'invoices',
+                    builder: (context, state) => const InvoiceListScreen(),
+                  ),
+                  GoRoute(
+                    path: ':orderId/track',
+                    name: 'order_tracking',
+                    builder: (context, state) => OrderTrackingScreen(
+                      orderId: state.pathParameters['orderId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

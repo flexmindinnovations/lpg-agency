@@ -1,42 +1,16 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:api_client/api_client.dart';
 import 'package:core/core.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _FakeHttpClientAdapter implements HttpClientAdapter {
-  _FakeHttpClientAdapter(this.handler);
-
-  final ResponseBody Function(RequestOptions options) handler;
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async => handler(options);
-
-  @override
-  void close({bool force = false}) {}
-}
-
-ResponseBody _jsonResponse(Object body, int statusCode) =>
-    ResponseBody.fromString(
-      jsonEncode(body),
-      statusCode,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+import 'support/fake_http_client_adapter.dart';
 
 void main() {
   group('AuthApi', () {
     test('login maps a 200 into a Success(TokenPair)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = _FakeHttpClientAdapter(
-        (options) => _jsonResponse({
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
           'access_token': 'the-access-token',
           'refresh_token': 'the-refresh-token',
         }, 200),
@@ -61,8 +35,8 @@ void main() {
       'login maps a 401 Problem Details body into a Failure with the error_code',
       () async {
         final client = ApiClient(baseUrl: 'https://api.test');
-        client.dio.httpClientAdapter = _FakeHttpClientAdapter(
-          (options) => _jsonResponse({
+        client.dio.httpClientAdapter = FakeHttpClientAdapter(
+          (options) => jsonResponse({
             'error_code': 'INVALID_CREDENTIALS',
             'title': 'Invalid credentials',
             'detail': 'Incorrect email or password.',
@@ -87,8 +61,8 @@ void main() {
 
     test('me maps a 200 into a Success(Principal)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = _FakeHttpClientAdapter(
-        (options) => _jsonResponse({
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({
           'user_id': 'user-1',
           'tenant_id': 'tenant-1',
           'role': 'driver',
@@ -110,7 +84,7 @@ void main() {
 
     test('a network failure maps to NETWORK_UNAVAILABLE', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = _FakeHttpClientAdapter((options) {
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
         throw DioException.connectionError(
           requestOptions: options,
           reason: 'connection refused',

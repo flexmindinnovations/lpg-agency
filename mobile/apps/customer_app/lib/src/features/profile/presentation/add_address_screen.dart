@@ -166,63 +166,55 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    TextFormField(
+                    LpgTextField(
+                      label: 'Address Line 1*',
                       controller: _line1Controller,
-                      decoration: const InputDecoration(
-                        labelText: 'Address Line 1*',
-                      ),
                       validator: (value) =>
                           value == null || value.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Address Line 2',
                       controller: _line2Controller,
-                      decoration: const InputDecoration(
-                        labelText: 'Address Line 2',
-                      ),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Landmark',
                       controller: _landmarkController,
-                      decoration: const InputDecoration(labelText: 'Landmark'),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _areaController,
-                      decoration: const InputDecoration(labelText: 'Area'),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+                    LpgTextField(label: 'Area', controller: _areaController),
+                    const SizedBox(height: 20),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: LpgTextField(
+                            label: 'City',
                             controller: _cityController,
-                            decoration: const InputDecoration(
-                              labelText: 'City',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextFormField(
+                          child: LpgTextField(
+                            label: 'State',
                             controller: _stateController,
-                            decoration: const InputDecoration(
-                              labelText: 'State',
-                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Pincode',
                       controller: _pincodeController,
-                      decoration: const InputDecoration(labelText: 'Pincode'),
                       keyboardType: TextInputType.number,
                     ),
-                    const SizedBox(height: 32),
-                    ElevatedButton(
+                    const SizedBox(height: 40),
+                    LpgButton(
+                      label: 'Save Address',
                       onPressed: _save,
-                      child: const Text('Save Address'),
+                      isLoading: _isLoading,
+                      expand: true,
                     ),
                   ],
                 ),

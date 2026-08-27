@@ -30,6 +30,8 @@ class LpgColors extends ThemeExtension<LpgColors> {
     required this.statusWarning,
     required this.statusDanger,
     required this.statusInfo,
+    required this.shadowLight,
+    required this.shadowDark,
   });
 
   final Color textPrimary;
@@ -45,6 +47,14 @@ class LpgColors extends ThemeExtension<LpgColors> {
   final Color statusWarning;
   final Color statusDanger;
   final Color statusInfo;
+  final Color shadowLight;
+  final Color shadowDark;
+
+  /// Neumorphic "extruded" shadows (convex)
+  List<BoxShadow> get neumorphicShadows => [
+    BoxShadow(color: shadowLight, offset: const Offset(-4, -4), blurRadius: 10),
+    BoxShadow(color: shadowDark, offset: const Offset(4, 4), blurRadius: 10),
+  ];
 
   @override
   LpgColors copyWith({
@@ -61,6 +71,8 @@ class LpgColors extends ThemeExtension<LpgColors> {
     Color? statusWarning,
     Color? statusDanger,
     Color? statusInfo,
+    Color? shadowLight,
+    Color? shadowDark,
   }) {
     return LpgColors(
       textPrimary: textPrimary ?? this.textPrimary,
@@ -76,6 +88,8 @@ class LpgColors extends ThemeExtension<LpgColors> {
       statusWarning: statusWarning ?? this.statusWarning,
       statusDanger: statusDanger ?? this.statusDanger,
       statusInfo: statusInfo ?? this.statusInfo,
+      shadowLight: shadowLight ?? this.shadowLight,
+      shadowDark: shadowDark ?? this.shadowDark,
     );
   }
 
@@ -96,6 +110,8 @@ class LpgColors extends ThemeExtension<LpgColors> {
       statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
       statusDanger: Color.lerp(statusDanger, other.statusDanger, t)!,
       statusInfo: Color.lerp(statusInfo, other.statusInfo, t)!,
+      shadowLight: Color.lerp(shadowLight, other.shadowLight, t)!,
+      shadowDark: Color.lerp(shadowDark, other.shadowDark, t)!,
     );
   }
 }
@@ -116,6 +132,8 @@ abstract final class LpgTheme {
     statusWarning: LpgTokensLight.colorStatusWarning,
     statusDanger: LpgTokensLight.colorStatusDanger,
     statusInfo: LpgTokensLight.colorStatusInfo,
+    shadowLight: Color(0xFFFFFFFF), // pure white for light highlight
+    shadowDark: Color(0xFFD1D9E6), // soft grey-blue for light shadow
   );
 
   static const _dark = LpgColors(
@@ -132,6 +150,8 @@ abstract final class LpgTheme {
     statusWarning: LpgTokensDark.colorStatusWarning,
     statusDanger: LpgTokensDark.colorStatusDanger,
     statusInfo: LpgTokensDark.colorStatusInfo,
+    shadowLight: Color(0xFF1B1F27), // slightly lighter than surfaceBase
+    shadowDark: Color(0xFF040609), // slightly darker than surfaceBase
   );
 
   static const _highContrast = LpgColors(
@@ -148,6 +168,8 @@ abstract final class LpgTheme {
     statusWarning: LpgTokensHighContrast.colorStatusWarning,
     statusDanger: LpgTokensHighContrast.colorStatusDanger,
     statusInfo: LpgTokensHighContrast.colorStatusInfo,
+    shadowLight: Colors.transparent,
+    shadowDark: Colors.transparent,
   );
 
   static LpgColors colorsFor(LpgThemeVariant variant) => switch (variant) {

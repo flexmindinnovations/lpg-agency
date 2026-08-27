@@ -27,12 +27,28 @@ class SyncOperations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [SchemaMetadata, SyncOperations])
+/// Generic offline read cache — one row per `(resourceType, resourceId)`
+/// pair, e.g. `('order', '<uuid>')` or `('ledger_balance', '<customerId>')`.
+/// A single table instead of one per domain (orders/profile/invoices/...)
+/// keeps schema churn low: every screen's provider reads this cache-first,
+/// then overwrites the row on a successful API refresh, and adding a new
+/// cached resource type never needs a migration.
+class CachedResources extends Table {
+  TextColumn get resourceType => text()();
+  TextColumn get resourceId => text()();
+  TextColumn get jsonPayload => text()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {resourceType, resourceId};
+}
+
+@DriftDatabase(tables: [SchemaMetadata, SyncOperations, CachedResources])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +58,9 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.createTable(syncOperations);
+      }
+      if (from < 3) {
+        await m.createTable(cachedResources);
       }
     },
   );

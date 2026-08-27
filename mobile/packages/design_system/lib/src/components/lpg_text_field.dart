@@ -44,7 +44,12 @@ class LpgTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
     final radius = BorderRadius.circular(LpgTokens.radiusMd * 1.0);
+
+    final isHighContrast =
+        theme.brightness == Brightness.light &&
+        colors.shadowLight == Colors.transparent;
 
     OutlineInputBorder border(Color color, {double width = 1}) =>
         OutlineInputBorder(
@@ -52,38 +57,75 @@ class LpgTextField extends StatelessWidget {
           borderSide: BorderSide(color: color, width: width),
         );
 
-    return TextFormField(
-      controller: controller,
-      initialValue: controller == null ? initialValue : null,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      maxLines: obscureText ? 1 : maxLines,
-      enabled: enabled,
-      validator: validator,
-      onChanged: onChanged,
-      autofocus: autofocus,
-      style: TextStyle(color: colors.textPrimary),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        errorText: errorText,
-        helperText: helperText,
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: colors.surfaceRaised,
-        labelStyle: TextStyle(color: colors.textSecondary),
-        hintStyle: TextStyle(color: colors.textSecondary),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: LpgTokens.spacingMd * 1.0,
-          vertical: LpgTokens.spacingMd * 1.0,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              label.toUpperCase(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.textSecondary,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
+        ],
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: isHighContrast
+                ? null
+                : [
+                    BoxShadow(
+                      color: colors.shadowDark.withValues(alpha: 0.5),
+                      offset: const Offset(1, 1),
+                      blurRadius: 2,
+                      spreadRadius: -1,
+                    ),
+                    BoxShadow(
+                      color: colors.shadowLight.withValues(alpha: 0.5),
+                      offset: const Offset(-1, -1),
+                      blurRadius: 2,
+                      spreadRadius: -1,
+                    ),
+                  ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            initialValue: controller == null ? initialValue : null,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            maxLines: obscureText ? 1 : maxLines,
+            enabled: enabled,
+            validator: validator,
+            onChanged: onChanged,
+            autofocus: autofocus,
+            style: TextStyle(color: colors.textPrimary),
+            decoration: InputDecoration(
+              hintText: hintText,
+              errorText: errorText,
+              helperText: helperText,
+              suffixIcon: suffixIcon,
+              filled: true,
+              fillColor: colors.surfaceBase,
+              hintStyle: TextStyle(color: colors.textSecondary),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: LpgTokens.spacingMd * 1.0,
+                vertical: LpgTokens.spacingMd * 1.0,
+              ),
+              border: border(colors.borderDefault),
+              enabledBorder: border(colors.borderDefault),
+              disabledBorder: border(colors.borderDefault),
+              focusedBorder: border(colors.actionPrimary, width: 2),
+              errorBorder: border(colors.statusDanger),
+              focusedErrorBorder: border(colors.statusDanger, width: 2),
+            ),
+          ),
         ),
-        border: border(colors.borderDefault),
-        enabledBorder: border(colors.borderDefault),
-        disabledBorder: border(colors.borderDefault),
-        focusedBorder: border(colors.actionPrimary, width: 2),
-        errorBorder: border(colors.statusDanger),
-        focusedErrorBorder: border(colors.statusDanger, width: 2),
-      ),
+      ],
     );
   }
 }

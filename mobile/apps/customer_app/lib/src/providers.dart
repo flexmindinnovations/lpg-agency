@@ -27,8 +27,32 @@ final customerApiProvider = Provider<CustomerApi>((ref) {
   return CustomerApi(apiClient.dio);
 });
 
+/// Provides the [CylinderLedgerApi] client.
+final cylinderLedgerApiProvider = Provider<CylinderLedgerApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return CylinderLedgerApi(apiClient.dio);
+});
+
 /// Provides the [OrderApi] client.
 final orderApiProvider = Provider<OrderApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return OrderApi(apiClient.dio);
+});
+
+/// Provides the [NotificationApi] client.
+final notificationApiProvider = Provider<NotificationApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return NotificationApi(apiClient.dio);
+});
+
+/// Provides the [ComplaintApi] client.
+final complaintApiProvider = Provider<ComplaintApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return ComplaintApi(apiClient.dio);
+});
+
+/// Provides the [InvoiceApi] client.
+final invoiceApiProvider = Provider<InvoiceApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return InvoiceApi(apiClient.dio);
 });

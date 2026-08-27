@@ -19,21 +19,30 @@ class SplashScreen extends StatelessWidget {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                color: colors.surfaceBase,
+                borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: colors.actionPrimary.withValues(alpha: 0.2),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
+                    color: colors.shadowLight,
+                    offset: const Offset(-8, -8),
+                    blurRadius: 16,
+                  ),
+                  BoxShadow(
+                    color: colors.shadowDark,
+                    offset: const Offset(8, 8),
+                    blurRadius: 16,
                   ),
                 ],
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/lpg_app_logo.jpg'),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Image.asset(
+                  'assets/images/lpg_app_logo.jpg',
                   fit: BoxFit.cover,
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 48),
             Text(
               'LPG Agency',
               style: theme.textTheme.headlineMedium?.copyWith(

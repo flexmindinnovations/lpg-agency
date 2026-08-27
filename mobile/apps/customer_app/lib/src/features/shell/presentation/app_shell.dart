@@ -19,42 +19,72 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: colors.borderDefault, width: 1),
-          ),
+        margin: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).padding.bottom + 10,
         ),
-        child: BottomNavigationBar(
-          backgroundColor: colors.surfaceRaised,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: colors.textPrimary,
-          unselectedItemColor: colors.textSecondary,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          currentIndex: navigationShell.currentIndex,
-          onTap: (int index) => _onTap(context, index),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
+        decoration: BoxDecoration(
+          color: colors.surfaceBase,
+          borderRadius: BorderRadius.circular(LpgTokens.radiusFull * 1.0),
+          boxShadow: [
+            BoxShadow(
+              color: colors.shadowLight,
+              offset: const Offset(-4, -4),
+              blurRadius: 10,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long),
-              label: 'Orders',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.support_agent_outlined),
-              activeIcon: Icon(Icons.support_agent),
-              label: 'Support',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
+            BoxShadow(
+              color: colors.shadowDark,
+              offset: const Offset(4, 4),
+              blurRadius: 10,
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(LpgTokens.radiusFull * 1.0),
+          child: NavigationBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            height: 64,
+            indicatorColor: colors.actionPrimary.withValues(alpha: 0.12),
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: (int index) => _onTap(context, index),
+            destinations: [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined, color: colors.textSecondary),
+                selectedIcon: Icon(Icons.home, color: colors.actionPrimary),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(
+                  Icons.receipt_long_outlined,
+                  color: colors.textSecondary,
+                ),
+                selectedIcon: Icon(
+                  Icons.receipt_long,
+                  color: colors.actionPrimary,
+                ),
+                label: 'Orders',
+              ),
+              NavigationDestination(
+                icon: Icon(
+                  Icons.support_agent_outlined,
+                  color: colors.textSecondary,
+                ),
+                selectedIcon: Icon(
+                  Icons.support_agent,
+                  color: colors.actionPrimary,
+                ),
+                label: 'Support',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline, color: colors.textSecondary),
+                selectedIcon: Icon(Icons.person, color: colors.actionPrimary),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );

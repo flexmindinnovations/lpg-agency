@@ -141,46 +141,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       ),
                       const SizedBox(height: 24),
                     ],
-                    TextFormField(
+                    LpgTextField(
+                      label: 'Full Name',
                       controller: _fullNameController,
-                      decoration: const InputDecoration(labelText: 'Full Name'),
                       validator: (value) =>
                           value == null || value.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Phone Number',
                       controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone Number',
-                      ),
                       validator: (value) =>
                           value == null || value.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Email Address',
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                      ),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Alternate Mobile',
                       controller: _altMobileController,
-                      decoration: const InputDecoration(
-                        labelText: 'Alternate Mobile',
-                      ),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    LpgTextField(
+                      label: 'Contact Person',
                       controller: _contactPersonController,
-                      decoration: const InputDecoration(
-                        labelText: 'Contact Person',
-                      ),
                     ),
-                    const SizedBox(height: 32),
-                    ElevatedButton(
+                    const SizedBox(height: 40),
+                    LpgButton(
+                      label: 'Save Changes',
                       onPressed: _save,
-                      child: const Text('Save Changes'),
+                      isLoading: _isLoading,
+                      expand: true,
                     ),
                   ],
                 ),

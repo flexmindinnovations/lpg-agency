@@ -16,7 +16,7 @@ import 'src/router.dart';
 /// with `--dart-define=API_BASE_URL=http://10.0.2.2:8000`.
 const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://192.168.1.15:8000',
+  defaultValue: 'http://localhost:8000',
 );
 
 /// Customer App entry point.

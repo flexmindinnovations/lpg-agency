@@ -18,6 +18,7 @@ dependencies:
     path: ../core
   uuid: ^4.5.1
   dio: ^5.9.0
+  drift: ^2.34.3
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,13 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/order_bottom_sheet.dart';
+import '../data/ledger_provider.dart';
+import '../data/notifications_provider.dart';
 
 /// The main dashboard for the Customer App.
 ///
@@ -15,6 +20,10 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
+
+    final ledgerAsync = ref.watch(ledgerProvider);
+    final ordersAsync = ref.watch(ordersProvider);
+    final unreadCountAsync = ref.watch(unreadNotificationCountProvider);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -30,157 +39,205 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: colors.textPrimary),
-            onPressed: () {
-              // TODO: Navigate to notifications screen
-            },
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.notifications_outlined,
+                  color: colors.textPrimary,
+                ),
+                onPressed: () => context.push('/notifications'),
+              ),
+              unreadCountAsync.when(
+                data: (count) => count > 0
+                    ? Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: colors.statusDanger,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.statusDanger.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+                loading: () => const SizedBox.shrink(),
+                error: (error, stack) => const SizedBox.shrink(),
+              ),
+            ],
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 24),
-            // Location Header
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: colors.textSecondary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'HOME',
-                  style: theme.textTheme.labelSmall?.copyWith(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(ledgerProvider);
+          ref.invalidate(ordersProvider);
+          ref.invalidate(unreadNotificationCountProvider);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 24),
+              // Location Header
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
                     color: colors.textSecondary,
-                    letterSpacing: 1.2,
                   ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PRIMARY ADDRESS',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colors.textSecondary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Main Balance Card
+              ledgerAsync.when(
+                data: (ledger) {
+                  final totalBalance =
+                      ledger?.balances.fold<int>(
+                        0,
+                        (sum, item) => sum + item.quantity,
+                      ) ??
+                      0;
+                  return LpgCard(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Outstanding Empty Cylinders',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '$totalBalance',
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          ledger != null && ledger.balances.isNotEmpty
+                              ? 'Across ${ledger.balances.length} cylinder types'
+                              : 'No outstanding cylinders',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const LpgCard(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: LpgLoadingIndicator()),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Main Balance Card
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: colors.surfaceRaised,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: colors.borderDefault),
+                error: (err, _) => LpgCard(
+                  padding: const EdgeInsets.all(32),
+                  child: Text('Failed to load balance: $err'),
+                ),
               ),
-              child: Column(
-                children: [
-                  Text(
-                    'Current Gas Balance',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '24.5 kg',
-                    style: theme.textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Full: 40 kg | Standard Connection',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
+
+              const SizedBox(height: 32),
+
+              // Primary Action Button (Pill shaped)
+              LpgButton(
+                label: 'Order Gas Refill',
+                onPressed: () => _showOrderSheet(context),
+                icon: Icons.local_gas_station_outlined,
+                expand: true,
               ),
-            ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 48),
 
-            // Primary Action Button (Pill shaped)
-            ElevatedButton(
-              onPressed: () => _showOrderSheet(context),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Order Gas'),
-                  SizedBox(width: 8),
-                  Icon(Icons.local_gas_station_outlined, size: 20),
-                ],
+              // Recent Activity Section
+              Text(
+                'Recent Orders',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 48),
-
-            // Recent Activity Section
-            Text(
-              'Recent Activity',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
+              ordersAsync.when(
+                data: (orders) {
+                  if (orders.isEmpty) {
+                    return Text(
+                      'No recent orders',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    );
+                  }
+                  final recentOrders = orders.take(3).toList();
+                  return Column(
+                    children: recentOrders.map((order) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: LpgListTile(
+                          leadingIcon: Icons.receipt_long_outlined,
+                          title:
+                              'Order #${order.id.substring(0, 8).toUpperCase()}',
+                          subtitle: order.status
+                              .replaceAll('_', ' ')
+                              .toUpperCase(),
+                          trailing: Text(
+                            DateFormat('MMM dd').format(order.requestedDate),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          onTap: () => context.push('/orders'),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+                loading: () => const Center(child: LpgLoadingIndicator()),
+                error: (error, stack) =>
+                    const Text('Failed to load recent orders'),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            _buildActivityItem(
-              context: context,
-              icon: Icons.local_gas_station_outlined,
-              title: 'Ordered 14 kg',
-              date: 'Oct 12',
-            ),
-            const SizedBox(height: 12),
-            _buildActivityItem(
-              context: context,
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Balance Refilled',
-              date: 'Oct 01',
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _buildActivityItem({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String date,
-  }) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: colors.surfaceRaised,
-            shape: BoxShape.circle,
-            border: Border.all(color: colors.borderDefault),
-          ),
-          child: Icon(icon, size: 16, color: colors.textSecondary),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            title,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colors.textPrimary,
-            ),
-          ),
-        ),
-        Text(
-          date,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colors.textSecondary,
-          ),
-        ),
-      ],
     );
   }
 

@@ -99,7 +99,9 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
 
           const SizedBox(height: 48),
 
-          ElevatedButton(
+          LpgButton(
+            label: 'Confirm Order',
+            expand: true,
             onPressed: () {
               final syncCoordinator = ref.read(syncCoordinatorProvider);
               syncCoordinator.enqueueOperation(
@@ -117,7 +119,6 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
                 context.pop();
               }
             },
-            child: const Text('Confirm Order'),
           ),
         ],
       ),
@@ -129,25 +130,36 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
     required VoidCallback? onPressed,
     required LpgColors colors,
   }) {
-    return InkWell(
+    final disabled = onPressed == null;
+    return GestureDetector(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: onPressed == null ? colors.surfaceBase : colors.surfaceRaised,
+          color: colors.surfaceBase,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: onPressed == null
-                ? colors.borderDefault.withValues(alpha: 0.5)
-                : colors.borderDefault,
-          ),
+          boxShadow: disabled
+              ? null
+              : [
+                  BoxShadow(
+                    color: colors.shadowLight,
+                    offset: const Offset(-2, -2),
+                    blurRadius: 4,
+                  ),
+                  BoxShadow(
+                    color: colors.shadowDark,
+                    offset: const Offset(2, 2),
+                    blurRadius: 4,
+                  ),
+                ],
         ),
         child: Icon(
           icon,
-          color: onPressed == null
-              ? colors.textSecondary.withValues(alpha: 0.5)
-              : colors.textPrimary,
+          size: 20,
+          color: disabled
+              ? colors.textSecondary.withValues(alpha: 0.3)
+              : colors.actionPrimary,
         ),
       ),
     );

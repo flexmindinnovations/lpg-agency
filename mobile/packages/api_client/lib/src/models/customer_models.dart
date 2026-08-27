@@ -1,43 +1,3 @@
-/// The `/auth/login`, `/auth/otp/verify`, `/auth/refresh` response shape —
-/// mirrors the backend's `TokenResponse` schema
-/// (`backend/src/lpg/api/v1/schemas/identity.py`).
-class TokenPair {
-  const TokenPair({required this.accessToken, this.refreshToken});
-
-  factory TokenPair.fromJson(Map<String, dynamic> json) => TokenPair(
-    accessToken: json['access_token'] as String,
-    refreshToken: json['refresh_token'] as String?,
-  );
-
-  final String accessToken;
-
-  /// Always present for mobile clients — the backend only omits it for the
-  /// Dashboard's `HttpOnly` cookie flow (`TokenResponse`'s own docstring).
-  final String? refreshToken;
-}
-
-/// `GET /auth/me` — mirrors the backend's `PrincipalResponse`.
-class Principal {
-  const Principal({
-    required this.userId,
-    required this.tenantId,
-    required this.role,
-    required this.permissions,
-  });
-
-  factory Principal.fromJson(Map<String, dynamic> json) => Principal(
-    userId: json['user_id'] as String,
-    tenantId: json['tenant_id'] as String?,
-    role: json['role'] as String,
-    permissions: (json['permissions'] as List<dynamic>).cast<String>().toSet(),
-  );
-
-  final String userId;
-  final String? tenantId;
-  final String role;
-  final Set<String> permissions;
-}
-
 /// Mirrors the backend's `CustomerAddressResponse`.
 class CustomerAddressResponse {
   const CustomerAddressResponse({
@@ -152,6 +112,9 @@ class CustomerResponse {
   final List<CustomerAddressResponse> addresses;
 }
 
+/// Mirrors the backend's `DeliveryAddressPayload` — the free-text address
+/// snapshot stored on an order at booking time (distinct from
+/// [CustomerAddressResponse], the customer's saved address book entry).
 class DeliveryAddressPayload {
   const DeliveryAddressPayload({
     required this.addressLine,
@@ -169,110 +132,12 @@ class DeliveryAddressPayload {
   final String addressLine;
   final double? latitude;
   final double? longitude;
-}
 
-class OrderLineResponse {
-  const OrderLineResponse({
-    required this.id,
-    required this.cylinderTypeId,
-    required this.quantityOrdered,
-    required this.quantityDelivered,
-    required this.quantityPending,
-    required this.quantityCollectedEmpty,
-    required this.isBackordered,
-    this.unitPrice,
-  });
-
-  factory OrderLineResponse.fromJson(Map<String, dynamic> json) =>
-      OrderLineResponse(
-        id: json['id'] as String,
-        cylinderTypeId: json['cylinder_type_id'] as String,
-        quantityOrdered: json['quantity_ordered'] as int,
-        quantityDelivered: json['quantity_delivered'] as int,
-        quantityPending: json['quantity_pending'] as int,
-        quantityCollectedEmpty: json['quantity_collected_empty'] as int,
-        isBackordered: json['is_backordered'] as bool,
-        unitPrice: (json['unit_price'] as num?)?.toDouble(),
-      );
-
-  final String id;
-  final String cylinderTypeId;
-  final int quantityOrdered;
-  final int quantityDelivered;
-  final int quantityPending;
-  final int quantityCollectedEmpty;
-  final bool isBackordered;
-  final double? unitPrice;
-}
-
-class OrderResponse {
-  const OrderResponse({
-    required this.id,
-    required this.tenantId,
-    required this.branchId,
-    required this.customerId,
-    required this.addressId,
-    required this.deliveryAddress,
-    required this.status,
-    required this.bookingSource,
-    this.paymentMethodPreference,
-    required this.requestedDate,
-    required this.metadata,
-    this.routeStopId,
-    this.totalAmount,
-    required this.lines,
-  });
-
-  factory OrderResponse.fromJson(Map<String, dynamic> json) => OrderResponse(
-    id: json['id'] as String,
-    tenantId: json['tenant_id'] as String,
-    branchId: json['branch_id'] as String,
-    customerId: json['customer_id'] as String,
-    addressId: json['address_id'] as String,
-    deliveryAddress: DeliveryAddressPayload.fromJson(
-      json['delivery_address'] as Map<String, dynamic>,
-    ),
-    status: json['status'] as String,
-    bookingSource: json['booking_source'] as String,
-    paymentMethodPreference: json['payment_method_preference'] as String?,
-    requestedDate: DateTime.parse(json['requested_date'] as String),
-    metadata: json['metadata'] as Map<String, dynamic>,
-    routeStopId: json['route_stop_id'] as String?,
-    totalAmount: (json['total_amount'] as num?)?.toDouble(),
-    lines: (json['lines'] as List<dynamic>)
-        .map((e) => OrderLineResponse.fromJson(e as Map<String, dynamic>))
-        .toList(),
-  );
-
-  final String id;
-  final String tenantId;
-  final String branchId;
-  final String customerId;
-  final String addressId;
-  final DeliveryAddressPayload deliveryAddress;
-  final String status;
-  final String bookingSource;
-  final String? paymentMethodPreference;
-  final DateTime requestedDate;
-  final Map<String, dynamic> metadata;
-  final String? routeStopId;
-  final double? totalAmount;
-  final List<OrderLineResponse> lines;
-}
-
-class OrderPageResponse {
-  const OrderPageResponse({required this.items, required this.total});
-
-  factory OrderPageResponse.fromJson(Map<String, dynamic> json) =>
-      OrderPageResponse(
-        items: (json['items'] as List<dynamic>)
-            .map((e) => OrderResponse.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        total: json['total'] as int,
-      );
-
-  final List<OrderResponse> items;
-  final int total;
+  Map<String, dynamic> toJson() => {
+    'address_line': addressLine,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
+  };
 }
 
 /// Request to update a customer profile.
@@ -318,6 +183,52 @@ class UpdateCustomerProfileRequest {
 /// Request to add a customer address.
 class AddCustomerAddressRequest {
   const AddCustomerAddressRequest({
+    required this.line1,
+    this.line2,
+    this.landmark,
+    this.area,
+    this.city,
+    this.district,
+    this.state,
+    this.pincode,
+    this.addressType = 'delivery',
+    this.latitude,
+    this.longitude,
+  });
+
+  final String line1;
+  final String? line2;
+  final String? landmark;
+  final String? area;
+  final String? city;
+  final String? district;
+  final String? state;
+  final String? pincode;
+  final String addressType;
+  final double? latitude;
+  final double? longitude;
+
+  Map<String, dynamic> toJson() => {
+    'line_1': line1,
+    if (line2 != null) 'line_2': line2,
+    if (landmark != null) 'landmark': landmark,
+    if (area != null) 'area': area,
+    if (city != null) 'city': city,
+    if (district != null) 'district': district,
+    if (state != null) 'state': state,
+    if (pincode != null) 'pincode': pincode,
+    'address_type': addressType,
+    if (latitude != null) 'latitude': latitude,
+    if (longitude != null) 'longitude': longitude,
+  };
+}
+
+/// Request to update an existing customer address (`PUT
+/// /customers/{customer_id}/addresses/{address_id}`) — mirrors the backend's
+/// `UpdateCustomerAddressRequest`. Same field set as [AddCustomerAddressRequest]
+/// (a full replace, not a partial patch).
+class UpdateCustomerAddressRequest {
+  const UpdateCustomerAddressRequest({
     required this.line1,
     this.line2,
     this.landmark,

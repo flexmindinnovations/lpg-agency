@@ -27,6 +27,7 @@ class LpgStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
     final color = switch (severity) {
       LpgStatusSeverity.success => colors.statusSuccess,
       LpgStatusSeverity.warning => colors.statusWarning,
@@ -35,22 +36,57 @@ class LpgStatusBadge extends StatelessWidget {
       LpgStatusSeverity.neutral => colors.textSecondary,
     };
 
+    final isHighContrast =
+        theme.brightness == Brightness.light &&
+        colors.shadowLight == Colors.transparent;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: LpgTokens.spacingSm * 1.0,
         vertical: LpgTokens.spacingXs * 1.0,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: isHighContrast
+            ? color.withValues(alpha: 0.12)
+            : colors.surfaceBase,
         borderRadius: BorderRadius.circular(LpgTokens.radiusFull * 1.0),
+        border: isHighContrast ? Border.all(color: color, width: 1) : null,
+        boxShadow: isHighContrast
+            ? null
+            : [
+                BoxShadow(
+                  color: colors.shadowLight,
+                  offset: const Offset(-2, -2),
+                  blurRadius: 4,
+                ),
+                BoxShadow(
+                  color: colors.shadowDark,
+                  offset: const Offset(2, 2),
+                  blurRadius: 4,
+                ),
+              ],
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: LpgTokens.typographyCaptionFontSize.toDouble(),
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isHighContrast) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: isHighContrast ? color : colors.textPrimary,
+              fontSize: LpgTokens.typographyCaptionFontSize.toDouble() - 1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }

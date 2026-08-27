@@ -24,14 +24,28 @@ class LpgCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final radius = BorderRadius.circular(LpgTokens.radiusLg * 1.0);
+    final isHighContrast =
+        Theme.of(context).brightness == Brightness.light &&
+        colors.shadowLight == Colors.transparent;
 
     final content = Padding(padding: padding, child: child);
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.surfaceRaised,
+        color: colors.surfaceBase,
         borderRadius: radius,
-        border: Border.all(color: colors.borderDefault),
+        border: isHighContrast ? Border.all(color: colors.borderDefault) : null,
+        boxShadow: isHighContrast ? null : colors.neumorphicShadows,
+        gradient: isHighContrast
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colors.surfaceBase,
+                  colors.surfaceBase.withValues(alpha: 0.95),
+                ],
+              ),
       ),
       clipBehavior: Clip.antiAlias,
       child: onTap == null

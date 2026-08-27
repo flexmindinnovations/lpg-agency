@@ -38,6 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _requestCode() async {
+    debugPrint('LoginScreen: _requestCode called');
     final tenantId = _tenantIdController.text.trim();
     final phone = _phoneController.text.trim();
 
@@ -64,6 +65,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
+    debugPrint('LoginScreen: Requesting OTP for $phone in tenant $tenantId');
+
     final result = await ref
         .read(authControllerProvider)
         .requestOtp(tenantId: tenantId, phoneNumber: phone);
@@ -72,8 +75,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _submitting = false;
       result.when(
-        onSuccess: (_) => _codeRequested = true,
-        onFailure: (failure) => _errorMessage = failure.message,
+        onSuccess: (_) {
+          debugPrint('LoginScreen: OTP requested successfully');
+          _codeRequested = true;
+        },
+        onFailure: (failure) {
+          debugPrint('LoginScreen: OTP request failed: ${failure.message}');
+          _errorMessage = failure.message;
+        },
       );
     });
   }
@@ -88,6 +97,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
+    debugPrint(
+      'LoginScreen: Verifying OTP for ${_phoneController.text.trim()}',
+    );
+
     final result = await ref
         .read(authControllerProvider)
         .verifyOtp(
@@ -100,8 +113,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _submitting = false;
       result.when(
-        onSuccess: (_) => null,
-        onFailure: (failure) => _errorMessage = failure.message,
+        onSuccess: (_) => debugPrint('LoginScreen: OTP verified successfully'),
+        onFailure: (failure) {
+          debugPrint(
+            'LoginScreen: OTP verification failed: ${failure.message}',
+          );
+          _errorMessage = failure.message;
+        },
       );
     });
   }
@@ -184,37 +202,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 24),
               ],
 
-              LpgTextField(
-                label: 'Agency Code',
-                controller: _tenantIdController,
-                enabled: !_codeRequested,
-              ),
-              const SizedBox(height: 16),
-
-              LpgTextField(
-                label: 'Phone number',
-                controller: _phoneController,
-                enabled: !_codeRequested,
-                keyboardType: TextInputType.phone,
-              ),
-
-              if (_codeRequested) ...[
-                const SizedBox(height: 16),
-                LpgTextField(
-                  label: 'Verification code',
-                  controller: _codeController,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
+              LpgCard(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    LpgTextField(
+                      label: 'Agency Code',
+                      controller: _tenantIdController,
+                      enabled: !_codeRequested,
+                    ),
+                    const SizedBox(height: 24),
+                    LpgTextField(
+                      label: 'Phone number',
+                      controller: _phoneController,
+                      enabled: !_codeRequested,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    if (_codeRequested) ...[
+                      const SizedBox(height: 24),
+                      LpgTextField(
+                        label: 'Verification code',
+                        controller: _codeController,
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                      ),
+                    ],
+                    const SizedBox(height: 40),
+                    LpgButton(
+                      label: _codeRequested ? 'Verify Code' : 'Send Code',
+                      isLoading: _submitting,
+                      expand: true,
+                      onPressed: _codeRequested ? _verifyCode : _requestCode,
+                    ),
+                  ],
                 ),
-              ],
-
-              const SizedBox(height: 32),
-
-              LpgButton(
-                label: _codeRequested ? 'Verify Code' : 'Send Code',
-                isLoading: _submitting,
-                expand: true,
-                onPressed: _codeRequested ? _verifyCode : _requestCode,
               ),
 
               const SizedBox(height: 48),

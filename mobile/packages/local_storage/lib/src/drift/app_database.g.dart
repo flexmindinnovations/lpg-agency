@@ -680,11 +680,345 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
   }
 }
 
+class $CachedResourcesTable extends CachedResources
+    with TableInfo<$CachedResourcesTable, CachedResource> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedResourcesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _resourceTypeMeta = const VerificationMeta(
+    'resourceType',
+  );
+  @override
+  late final GeneratedColumn<String> resourceType = GeneratedColumn<String>(
+    'resource_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resourceIdMeta = const VerificationMeta(
+    'resourceId',
+  );
+  @override
+  late final GeneratedColumn<String> resourceId = GeneratedColumn<String>(
+    'resource_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jsonPayloadMeta = const VerificationMeta(
+    'jsonPayload',
+  );
+  @override
+  late final GeneratedColumn<String> jsonPayload = GeneratedColumn<String>(
+    'json_payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    resourceType,
+    resourceId,
+    jsonPayload,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_resources';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedResource> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('resource_type')) {
+      context.handle(
+        _resourceTypeMeta,
+        resourceType.isAcceptableOrUnknown(
+          data['resource_type']!,
+          _resourceTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resourceTypeMeta);
+    }
+    if (data.containsKey('resource_id')) {
+      context.handle(
+        _resourceIdMeta,
+        resourceId.isAcceptableOrUnknown(data['resource_id']!, _resourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resourceIdMeta);
+    }
+    if (data.containsKey('json_payload')) {
+      context.handle(
+        _jsonPayloadMeta,
+        jsonPayload.isAcceptableOrUnknown(
+          data['json_payload']!,
+          _jsonPayloadMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_jsonPayloadMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {resourceType, resourceId};
+  @override
+  CachedResource map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedResource(
+      resourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_type'],
+      )!,
+      resourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_id'],
+      )!,
+      jsonPayload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}json_payload'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedResourcesTable createAlias(String alias) {
+    return $CachedResourcesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedResource extends DataClass implements Insertable<CachedResource> {
+  final String resourceType;
+  final String resourceId;
+  final String jsonPayload;
+  final DateTime updatedAt;
+  const CachedResource({
+    required this.resourceType,
+    required this.resourceId,
+    required this.jsonPayload,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['resource_type'] = Variable<String>(resourceType);
+    map['resource_id'] = Variable<String>(resourceId);
+    map['json_payload'] = Variable<String>(jsonPayload);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CachedResourcesCompanion toCompanion(bool nullToAbsent) {
+    return CachedResourcesCompanion(
+      resourceType: Value(resourceType),
+      resourceId: Value(resourceId),
+      jsonPayload: Value(jsonPayload),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CachedResource.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedResource(
+      resourceType: serializer.fromJson<String>(json['resourceType']),
+      resourceId: serializer.fromJson<String>(json['resourceId']),
+      jsonPayload: serializer.fromJson<String>(json['jsonPayload']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'resourceType': serializer.toJson<String>(resourceType),
+      'resourceId': serializer.toJson<String>(resourceId),
+      'jsonPayload': serializer.toJson<String>(jsonPayload),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CachedResource copyWith({
+    String? resourceType,
+    String? resourceId,
+    String? jsonPayload,
+    DateTime? updatedAt,
+  }) => CachedResource(
+    resourceType: resourceType ?? this.resourceType,
+    resourceId: resourceId ?? this.resourceId,
+    jsonPayload: jsonPayload ?? this.jsonPayload,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CachedResource copyWithCompanion(CachedResourcesCompanion data) {
+    return CachedResource(
+      resourceType: data.resourceType.present
+          ? data.resourceType.value
+          : this.resourceType,
+      resourceId: data.resourceId.present
+          ? data.resourceId.value
+          : this.resourceId,
+      jsonPayload: data.jsonPayload.present
+          ? data.jsonPayload.value
+          : this.jsonPayload,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedResource(')
+          ..write('resourceType: $resourceType, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('jsonPayload: $jsonPayload, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(resourceType, resourceId, jsonPayload, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedResource &&
+          other.resourceType == this.resourceType &&
+          other.resourceId == this.resourceId &&
+          other.jsonPayload == this.jsonPayload &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CachedResourcesCompanion extends UpdateCompanion<CachedResource> {
+  final Value<String> resourceType;
+  final Value<String> resourceId;
+  final Value<String> jsonPayload;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CachedResourcesCompanion({
+    this.resourceType = const Value.absent(),
+    this.resourceId = const Value.absent(),
+    this.jsonPayload = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedResourcesCompanion.insert({
+    required String resourceType,
+    required String resourceId,
+    required String jsonPayload,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : resourceType = Value(resourceType),
+       resourceId = Value(resourceId),
+       jsonPayload = Value(jsonPayload);
+  static Insertable<CachedResource> custom({
+    Expression<String>? resourceType,
+    Expression<String>? resourceId,
+    Expression<String>? jsonPayload,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (resourceType != null) 'resource_type': resourceType,
+      if (resourceId != null) 'resource_id': resourceId,
+      if (jsonPayload != null) 'json_payload': jsonPayload,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedResourcesCompanion copyWith({
+    Value<String>? resourceType,
+    Value<String>? resourceId,
+    Value<String>? jsonPayload,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedResourcesCompanion(
+      resourceType: resourceType ?? this.resourceType,
+      resourceId: resourceId ?? this.resourceId,
+      jsonPayload: jsonPayload ?? this.jsonPayload,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (resourceType.present) {
+      map['resource_type'] = Variable<String>(resourceType.value);
+    }
+    if (resourceId.present) {
+      map['resource_id'] = Variable<String>(resourceId.value);
+    }
+    if (jsonPayload.present) {
+      map['json_payload'] = Variable<String>(jsonPayload.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedResourcesCompanion(')
+          ..write('resourceType: $resourceType, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('jsonPayload: $jsonPayload, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SchemaMetadataTable schemaMetadata = $SchemaMetadataTable(this);
   late final $SyncOperationsTable syncOperations = $SyncOperationsTable(this);
+  late final $CachedResourcesTable cachedResources = $CachedResourcesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -692,6 +1026,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     schemaMetadata,
     syncOperations,
+    cachedResources,
   ];
 }
 
@@ -1085,6 +1420,199 @@ typedef $$SyncOperationsTableProcessedTableManager =
       SyncOperation,
       PrefetchHooks Function()
     >;
+typedef $$CachedResourcesTableCreateCompanionBuilder =
+    CachedResourcesCompanion Function({
+      required String resourceType,
+      required String resourceId,
+      required String jsonPayload,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedResourcesTableUpdateCompanionBuilder =
+    CachedResourcesCompanion Function({
+      Value<String> resourceType,
+      Value<String> resourceId,
+      Value<String> jsonPayload,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedResourcesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedResourcesTable> {
+  $$CachedResourcesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get resourceType => $composableBuilder(
+    column: $table.resourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jsonPayload => $composableBuilder(
+    column: $table.jsonPayload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedResourcesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedResourcesTable> {
+  $$CachedResourcesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get resourceType => $composableBuilder(
+    column: $table.resourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jsonPayload => $composableBuilder(
+    column: $table.jsonPayload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedResourcesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedResourcesTable> {
+  $$CachedResourcesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get resourceType => $composableBuilder(
+    column: $table.resourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get jsonPayload => $composableBuilder(
+    column: $table.jsonPayload,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CachedResourcesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedResourcesTable,
+          CachedResource,
+          $$CachedResourcesTableFilterComposer,
+          $$CachedResourcesTableOrderingComposer,
+          $$CachedResourcesTableAnnotationComposer,
+          $$CachedResourcesTableCreateCompanionBuilder,
+          $$CachedResourcesTableUpdateCompanionBuilder,
+          (
+            CachedResource,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedResourcesTable,
+              CachedResource
+            >,
+          ),
+          CachedResource,
+          PrefetchHooks Function()
+        > {
+  $$CachedResourcesTableTableManager(
+    _$AppDatabase db,
+    $CachedResourcesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedResourcesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedResourcesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedResourcesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> resourceType = const Value.absent(),
+                Value<String> resourceId = const Value.absent(),
+                Value<String> jsonPayload = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedResourcesCompanion(
+                resourceType: resourceType,
+                resourceId: resourceId,
+                jsonPayload: jsonPayload,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String resourceType,
+                required String resourceId,
+                required String jsonPayload,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedResourcesCompanion.insert(
+                resourceType: resourceType,
+                resourceId: resourceId,
+                jsonPayload: jsonPayload,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedResourcesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedResourcesTable,
+      CachedResource,
+      $$CachedResourcesTableFilterComposer,
+      $$CachedResourcesTableOrderingComposer,
+      $$CachedResourcesTableAnnotationComposer,
+      $$CachedResourcesTableCreateCompanionBuilder,
+      $$CachedResourcesTableUpdateCompanionBuilder,
+      (
+        CachedResource,
+        BaseReferences<_$AppDatabase, $CachedResourcesTable, CachedResource>,
+      ),
+      CachedResource,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1093,4 +1621,6 @@ class $AppDatabaseManager {
       $$SchemaMetadataTableTableManager(_db, _db.schemaMetadata);
   $$SyncOperationsTableTableManager get syncOperations =>
       $$SyncOperationsTableTableManager(_db, _db.syncOperations);
+  $$CachedResourcesTableTableManager get cachedResources =>
+      $$CachedResourcesTableTableManager(_db, _db.cachedResources);
 }
