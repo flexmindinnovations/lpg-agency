@@ -29,7 +29,7 @@ class LpgCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(LpgTokens.radiusLg * 1.5),
       side: colors.isHighContrast
           ? BorderSide(color: colors.borderStrong, width: 2)
-          : BorderSide.none,
+          : BorderSide(color: colors.borderDefault),
     );
 
     final content = Padding(padding: padding, child: child);

@@ -1,6 +1,7 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/complaints_provider.dart';
@@ -56,9 +57,7 @@ class SupportScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   LpgButton(
                     label: 'Raise a Complaint',
-                    onPressed: () {
-                      // TODO: Navigate to raise complaint screen
-                    },
+                    onPressed: () => context.push('/support/raise'),
                     expand: true,
                   ),
                 ],
@@ -118,6 +117,7 @@ class SupportScreen extends ConsumerWidget {
 
                       return LpgCard(
                         padding: EdgeInsets.zero,
+                        onTap: () => context.push('/support/${item.id}'),
                         child: LpgListTile(
                           title: item.category,
                           subtitle:
@@ -126,9 +126,6 @@ class SupportScreen extends ConsumerWidget {
                             label: item.status.toUpperCase(),
                             severity: severity,
                           ),
-                          onTap: () {
-                            // TODO: Navigate to complaint detail
-                          },
                         ),
                       );
                     },

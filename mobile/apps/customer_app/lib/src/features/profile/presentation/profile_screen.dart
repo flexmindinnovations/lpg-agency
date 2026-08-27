@@ -95,50 +95,43 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: 32),
 
               // KYC Status Card
-              LpgCard(
-                child: Row(
-                  children: [
-                    Icon(
-                      profile.kycStatus == 'VERIFIED'
-                          ? Icons.verified
-                          : Icons.pending_actions,
-                      color: profile.kycStatus == 'VERIFIED'
-                          ? colors.statusSuccess
-                          : colors.statusWarning,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'KYC Status',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colors.textSecondary,
-                            ),
+              Builder(
+                builder: (context) {
+                  final kyc = _kycDisplay(profile.kycStatus);
+                  final kycColor = _severityColor(colors, kyc.severity);
+                  return LpgCard(
+                    child: Row(
+                      children: [
+                        Icon(kyc.icon, color: kycColor),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'KYC Status',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                kyc.label,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: kycColor,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            profile.kycStatus,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: profile.kycStatus == 'VERIFIED'
-                                  ? colors.statusSuccess
-                                  : colors.statusWarning,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        LpgStatusBadge(
+                          label: kyc.label.toUpperCase(),
+                          severity: kyc.severity,
+                        ),
+                      ],
                     ),
-                    LpgStatusBadge(
-                      label: profile.kycStatus == 'VERIFIED'
-                          ? 'SECURE'
-                          : 'PENDING',
-                      severity: profile.kycStatus == 'VERIFIED'
-                          ? LpgStatusSeverity.success
-                          : LpgStatusSeverity.warning,
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const SizedBox(height: 32),
@@ -276,3 +269,45 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Maps the backend's raw `kyc_status` (`domain/customer/customer.py`:
+/// `"pending"`/`"verified"`/`"rejected"`/`"expired"`, always lowercase) to
+/// display copy. Comparing against the raw value directly — the bug this
+/// replaces — compared it to `'VERIFIED'` (uppercase), which could never
+/// match a backend value that's never anything but lowercase: the status
+/// badge and icon always fell back to "pending" styling regardless of the
+/// real status, while the plain-text label right next to them printed the
+/// unstyled raw backend string, so the two visibly disagreed.
+({String label, IconData icon, LpgStatusSeverity severity}) _kycDisplay(
+  String status,
+) => switch (status.toLowerCase()) {
+  'verified' => (
+    label: 'Verified',
+    icon: Icons.verified,
+    severity: LpgStatusSeverity.success,
+  ),
+  'rejected' => (
+    label: 'Rejected',
+    icon: Icons.error_outline,
+    severity: LpgStatusSeverity.danger,
+  ),
+  'expired' => (
+    label: 'Expired',
+    icon: Icons.schedule_outlined,
+    severity: LpgStatusSeverity.warning,
+  ),
+  _ => (
+    label: 'Pending',
+    icon: Icons.pending_actions,
+    severity: LpgStatusSeverity.warning,
+  ),
+};
+
+Color _severityColor(LpgColors colors, LpgStatusSeverity severity) =>
+    switch (severity) {
+      LpgStatusSeverity.success => colors.statusSuccess,
+      LpgStatusSeverity.warning => colors.statusWarning,
+      LpgStatusSeverity.danger => colors.statusDanger,
+      LpgStatusSeverity.info => colors.statusInfo,
+      LpgStatusSeverity.neutral => colors.textSecondary,
+    };

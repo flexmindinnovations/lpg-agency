@@ -39,9 +39,9 @@ class AppShell extends StatelessWidget {
           child: NavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            height: 64,
+            height: 72,
             indicatorColor: colors.actionPrimary.withValues(alpha: 0.12),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             selectedIndex: navigationShell.currentIndex,
             onDestinationSelected: (int index) => _onTap(context, index),
             destinations: [

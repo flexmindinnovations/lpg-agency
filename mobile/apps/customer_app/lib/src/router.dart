@@ -7,6 +7,7 @@ import 'auth_provider.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/dashboard/presentation/notifications_screen.dart';
 import 'features/orders/presentation/invoice_list_screen.dart';
+import 'features/orders/presentation/order_detail_screen.dart';
 import 'features/orders/presentation/order_tracking_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'package:api_client/api_client.dart';
@@ -14,6 +15,8 @@ import 'features/profile/presentation/add_address_screen.dart';
 import 'features/profile/presentation/edit_profile_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
+import 'features/support/presentation/complaint_detail_screen.dart';
+import 'features/support/presentation/raise_complaint_screen.dart';
 import 'features/support/presentation/support_screen.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
@@ -96,6 +99,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const InvoiceListScreen(),
                   ),
                   GoRoute(
+                    path: ':orderId',
+                    name: 'order_detail',
+                    builder: (context, state) => OrderDetailScreen(
+                      orderId: state.pathParameters['orderId']!,
+                    ),
+                  ),
+                  GoRoute(
                     path: ':orderId/track',
                     name: 'order_tracking',
                     builder: (context, state) => OrderTrackingScreen(
@@ -112,6 +122,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/support',
                 name: 'support',
                 builder: (context, state) => const SupportScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'raise',
+                    name: 'raise_complaint',
+                    builder: (context, state) => const RaiseComplaintScreen(),
+                  ),
+                  GoRoute(
+                    path: ':complaintId',
+                    name: 'complaint_detail',
+                    builder: (context, state) => ComplaintDetailScreen(
+                      complaintId: state.pathParameters['complaintId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

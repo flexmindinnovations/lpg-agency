@@ -81,9 +81,7 @@ class OrdersScreen extends ConsumerWidget {
                 };
 
                 return LpgCard(
-                  onTap: () {
-                    // Navigate to order details / tracking
-                  },
+                  onTap: () => context.push('/orders/${order.id}'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -161,7 +159,8 @@ class OrdersScreen extends ConsumerWidget {
                           else
                             LpgButton(
                               label: 'Details',
-                              onPressed: () {},
+                              onPressed: () =>
+                                  context.push('/orders/${order.id}'),
                               variant: LpgButtonVariant.text,
                             ),
                         ],

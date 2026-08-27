@@ -21,3 +21,14 @@ final complaintsProvider = FutureProvider<List<ComplaintResponse>>((ref) async {
 
   return [];
 });
+
+/// Provides a single complaint by its ID.
+final complaintDetailProvider =
+    FutureProvider.family<ComplaintResponse, String>((ref, id) async {
+      final api = ref.watch(complaintApiProvider);
+      final result = await api.getComplaint(id);
+      return result.when(
+        onSuccess: (data) => data,
+        onFailure: (failure) => throw Exception(failure.message),
+      );
+    });

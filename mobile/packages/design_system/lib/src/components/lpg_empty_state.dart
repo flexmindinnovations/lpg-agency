@@ -38,9 +38,12 @@ class LpgEmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.surfaceRaised,
                 shape: BoxShape.circle,
-                border: colors.isHighContrast
-                    ? Border.all(color: colors.borderDefault)
-                    : null,
+                border: Border.all(
+                  color: colors.isHighContrast
+                      ? colors.borderStrong
+                      : colors.borderDefault,
+                  width: colors.isHighContrast ? 2 : 1,
+                ),
               ),
               child: Icon(icon, size: 48, color: colors.textSecondary),
             ),

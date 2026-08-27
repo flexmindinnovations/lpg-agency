@@ -224,7 +224,7 @@ class DashboardScreen extends ConsumerWidget {
                               color: colors.textSecondary,
                             ),
                           ),
-                          onTap: () => context.push('/orders'),
+                          onTap: () => context.push('/orders/${order.id}'),
                         ),
                       );
                     }).toList(),
