@@ -30,8 +30,7 @@ class LpgColors extends ThemeExtension<LpgColors> {
     required this.statusWarning,
     required this.statusDanger,
     required this.statusInfo,
-    required this.shadowLight,
-    required this.shadowDark,
+    required this.isHighContrast,
   });
 
   final Color textPrimary;
@@ -47,14 +46,11 @@ class LpgColors extends ThemeExtension<LpgColors> {
   final Color statusWarning;
   final Color statusDanger;
   final Color statusInfo;
-  final Color shadowLight;
-  final Color shadowDark;
 
-  /// Neumorphic "extruded" shadows (convex)
-  List<BoxShadow> get neumorphicShadows => [
-    BoxShadow(color: shadowLight, offset: const Offset(-4, -4), blurRadius: 10),
-    BoxShadow(color: shadowDark, offset: const Offset(4, 4), blurRadius: 10),
-  ];
+  /// Explicit variant flag — components branch on this instead of
+  /// back-computing "is this high contrast?" from some other field's
+  /// value, which was the previous (fragile) approach here.
+  final bool isHighContrast;
 
   @override
   LpgColors copyWith({
@@ -71,8 +67,7 @@ class LpgColors extends ThemeExtension<LpgColors> {
     Color? statusWarning,
     Color? statusDanger,
     Color? statusInfo,
-    Color? shadowLight,
-    Color? shadowDark,
+    bool? isHighContrast,
   }) {
     return LpgColors(
       textPrimary: textPrimary ?? this.textPrimary,
@@ -88,8 +83,7 @@ class LpgColors extends ThemeExtension<LpgColors> {
       statusWarning: statusWarning ?? this.statusWarning,
       statusDanger: statusDanger ?? this.statusDanger,
       statusInfo: statusInfo ?? this.statusInfo,
-      shadowLight: shadowLight ?? this.shadowLight,
-      shadowDark: shadowDark ?? this.shadowDark,
+      isHighContrast: isHighContrast ?? this.isHighContrast,
     );
   }
 
@@ -110,8 +104,9 @@ class LpgColors extends ThemeExtension<LpgColors> {
       statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
       statusDanger: Color.lerp(statusDanger, other.statusDanger, t)!,
       statusInfo: Color.lerp(statusInfo, other.statusInfo, t)!,
-      shadowLight: Color.lerp(shadowLight, other.shadowLight, t)!,
-      shadowDark: Color.lerp(shadowDark, other.shadowDark, t)!,
+      // Not a continuous value — jump partway through the transition
+      // rather than pretending a boolean can be interpolated.
+      isHighContrast: t < 0.5 ? isHighContrast : other.isHighContrast,
     );
   }
 }
@@ -132,8 +127,7 @@ abstract final class LpgTheme {
     statusWarning: LpgTokensLight.colorStatusWarning,
     statusDanger: LpgTokensLight.colorStatusDanger,
     statusInfo: LpgTokensLight.colorStatusInfo,
-    shadowLight: Color(0xFFFFFFFF), // pure white for light highlight
-    shadowDark: Color(0xFFD1D9E6), // soft grey-blue for light shadow
+    isHighContrast: false,
   );
 
   static const _dark = LpgColors(
@@ -150,8 +144,7 @@ abstract final class LpgTheme {
     statusWarning: LpgTokensDark.colorStatusWarning,
     statusDanger: LpgTokensDark.colorStatusDanger,
     statusInfo: LpgTokensDark.colorStatusInfo,
-    shadowLight: Color(0xFF1B1F27), // slightly lighter than surfaceBase
-    shadowDark: Color(0xFF040609), // slightly darker than surfaceBase
+    isHighContrast: false,
   );
 
   static const _highContrast = LpgColors(
@@ -168,8 +161,7 @@ abstract final class LpgTheme {
     statusWarning: LpgTokensHighContrast.colorStatusWarning,
     statusDanger: LpgTokensHighContrast.colorStatusDanger,
     statusInfo: LpgTokensHighContrast.colorStatusInfo,
-    shadowLight: Colors.transparent,
-    shadowDark: Colors.transparent,
+    isHighContrast: true,
   );
 
   static LpgColors colorsFor(LpgThemeVariant variant) => switch (variant) {
@@ -178,11 +170,93 @@ abstract final class LpgTheme {
     LpgThemeVariant.highContrast => _highContrast,
   };
 
+  /// The full M3 role set, built from `LpgTokens.typography*` — every size/
+  /// weight/line-height here traces back to a real generated token instead
+  /// of Flutter's default Roboto-metric `TextTheme`, which is what actually
+  /// rendered before (the typography tokens existed but nothing wired them
+  /// into `ThemeData.textTheme`, so components reading e.g.
+  /// `theme.textTheme.bodyMedium` were silently getting Material's
+  /// defaults). `letterSpacing` on the two largest roles is the one
+  /// Flutter-only addition — a deliberate slight tightening on big type,
+  /// not a value backed by a token, called out here so it reads as a
+  /// choice rather than an oversight.
+  /// `LpgTokens.typography*FontWeight` values are plain ints (100-900,
+  /// mirroring CSS `font-weight`, since that's the shared source with the
+  /// web app) — `FontWeight.values` is the same 100-900 scale in the same
+  /// order, so `value ~/ 100 - 1` is the index (700 -> values[6] -> w700).
+  static FontWeight _weight(int value) => FontWeight.values[value ~/ 100 - 1];
+
+  static TextTheme _textTheme(LpgColors colors) => TextTheme(
+    displayMedium: TextStyle(
+      fontSize: LpgTokens.typographyDisplayFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyDisplayFontWeight),
+      height: LpgTokens.typographyDisplayLineHeight.toDouble(),
+      letterSpacing: -0.5,
+      color: colors.textPrimary,
+    ),
+    headlineSmall: TextStyle(
+      fontSize: LpgTokens.typographyHeading1FontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyHeading1FontWeight),
+      height: LpgTokens.typographyHeading1LineHeight.toDouble(),
+      letterSpacing: -0.25,
+      color: colors.textPrimary,
+    ),
+    titleMedium: TextStyle(
+      fontSize: LpgTokens.typographyHeading2FontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyHeading2FontWeight),
+      height: LpgTokens.typographyHeading2LineHeight.toDouble(),
+      color: colors.textPrimary,
+    ),
+    titleSmall: TextStyle(
+      fontSize: LpgTokens.typographyHeading3FontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyHeading3FontWeight),
+      height: LpgTokens.typographyHeading3LineHeight.toDouble(),
+      color: colors.textPrimary,
+    ),
+    bodyLarge: TextStyle(
+      fontSize: LpgTokens.typographyBodyFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyBodyFontWeight),
+      height: LpgTokens.typographyBodyLineHeight.toDouble(),
+      color: colors.textPrimary,
+    ),
+    bodyMedium: TextStyle(
+      fontSize: LpgTokens.typographyBodyFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyBodyFontWeight),
+      height: LpgTokens.typographyBodyLineHeight.toDouble(),
+      color: colors.textPrimary,
+    ),
+    bodySmall: TextStyle(
+      fontSize: LpgTokens.typographyBodySmallFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyBodySmallFontWeight),
+      height: LpgTokens.typographyBodySmallLineHeight.toDouble(),
+      color: colors.textSecondary,
+    ),
+    labelLarge: TextStyle(
+      fontSize: LpgTokens.typographyLabelFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyLabelFontWeight),
+      height: LpgTokens.typographyLabelLineHeight.toDouble(),
+      color: colors.textPrimary,
+    ),
+    labelMedium: TextStyle(
+      fontSize: LpgTokens.typographyLabelFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyLabelFontWeight),
+      height: LpgTokens.typographyLabelLineHeight.toDouble(),
+      color: colors.textSecondary,
+    ),
+    labelSmall: TextStyle(
+      fontSize: LpgTokens.typographyCaptionFontSize.toDouble(),
+      fontWeight: _weight(LpgTokens.typographyCaptionFontWeight),
+      height: LpgTokens.typographyCaptionLineHeight.toDouble(),
+      color: colors.textSecondary,
+    ),
+  );
+
   static ThemeData build(LpgThemeVariant variant) {
     final colors = colorsFor(variant);
     final brightness = variant == LpgThemeVariant.dark
         ? Brightness.dark
         : Brightness.light;
+    final textTheme = _textTheme(colors);
 
     return ThemeData(
       useMaterial3: true,
@@ -193,6 +267,7 @@ abstract final class LpgTheme {
         brightness: brightness,
       ).copyWith(surface: colors.surfaceBase, error: colors.statusDanger),
       fontFamily: 'Inter', // clean sans-serif typography
+      textTheme: textTheme,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.actionPrimary,
@@ -203,9 +278,8 @@ abstract final class LpgTheme {
             vertical: LpgTokens.spacingMd * 1.0,
           ),
           elevation: 0,
-          textStyle: const TextStyle(
-            fontSize: LpgTokens.typographyBodyFontSize * 1.0,
-            fontWeight: FontWeight.w600,
+          textStyle: textTheme.labelLarge?.copyWith(
+            color: LpgTokens.primitiveColorWhite,
             letterSpacing: 0.5,
           ),
         ),
@@ -213,9 +287,16 @@ abstract final class LpgTheme {
       cardTheme: CardThemeData(
         color: colors.surfaceRaised,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(LpgTokens.radiusLg * 1.0),
-          side: BorderSide(color: colors.borderDefault),
+        // A "squircle" (continuous corners), not a plain rounded rect —
+        // shape carrying visual identity is one of Material 3 Expressive's
+        // stated pillars, and `ContinuousRectangleBorder` is Flutter's
+        // built-in superellipse curve for exactly this, no custom path
+        // drawing required.
+        shape: ContinuousRectangleBorder(
+          borderRadius: BorderRadius.circular(LpgTokens.radiusLg * 1.5),
+          side: colors.isHighContrast
+              ? BorderSide(color: colors.borderStrong, width: 2)
+              : BorderSide.none,
         ),
         margin: EdgeInsets.zero,
       ),

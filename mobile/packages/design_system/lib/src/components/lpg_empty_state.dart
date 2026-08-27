@@ -27,10 +27,6 @@ class LpgEmptyState extends StatelessWidget {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
 
-    final isHighContrast =
-        theme.brightness == Brightness.light &&
-        colors.shadowLight == Colors.transparent;
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(LpgTokens.spacingXl * 1.0),
@@ -40,9 +36,11 @@ class LpgEmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colors.surfaceBase,
+                color: colors.surfaceRaised,
                 shape: BoxShape.circle,
-                boxShadow: isHighContrast ? null : colors.neumorphicShadows,
+                border: colors.isHighContrast
+                    ? Border.all(color: colors.borderDefault)
+                    : null,
               ),
               child: Icon(icon, size: 48, color: colors.textSecondary),
             ),

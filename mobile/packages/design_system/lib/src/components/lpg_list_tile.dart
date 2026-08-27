@@ -31,10 +31,6 @@ class LpgListTile extends StatelessWidget {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
 
-    final isHighContrast =
-        theme.brightness == Brightness.light &&
-        colors.shadowLight == Colors.transparent;
-
     final row = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: LpgTokens.spacingMd * 1.0,
@@ -46,25 +42,11 @@ class LpgListTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(LpgTokens.spacingSm * 1.0),
               decoration: BoxDecoration(
-                color: colors.surfaceBase,
+                color: colors.surfaceRaised,
                 shape: BoxShape.circle,
-                border: isHighContrast
+                border: colors.isHighContrast
                     ? Border.all(color: colors.borderDefault)
                     : null,
-                boxShadow: isHighContrast
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: colors.shadowLight,
-                          offset: const Offset(-2, -2),
-                          blurRadius: 4,
-                        ),
-                        BoxShadow(
-                          color: colors.shadowDark,
-                          offset: const Offset(2, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
               ),
               child: Icon(leadingIcon, size: 16, color: colors.textSecondary),
             ),

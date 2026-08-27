@@ -7,4 +7,5 @@ library;
 
 export 'src/tokens.dart';
 export 'src/theme.dart';
+export 'src/motion.dart';
 export 'src/components/components.dart';

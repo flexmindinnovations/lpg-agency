@@ -240,20 +240,13 @@ class OrderTrackingScreen extends ConsumerWidget {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: colors.surfaceBase,
+                  color: colors.surfaceRaised,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.shadowLight,
-                      offset: const Offset(-2, -2),
-                      blurRadius: 4,
-                    ),
-                    BoxShadow(
-                      color: colors.shadowDark,
-                      offset: const Offset(2, 2),
-                      blurRadius: 4,
-                    ),
-                  ],
+                  border: Border.all(
+                    color: isCompleted
+                        ? colors.actionPrimary
+                        : colors.borderDefault,
+                  ),
                 ),
                 child: Center(
                   child: Container(

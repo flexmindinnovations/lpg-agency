@@ -27,7 +27,6 @@ class LpgStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
     final color = switch (severity) {
       LpgStatusSeverity.success => colors.statusSuccess,
       LpgStatusSeverity.warning => colors.statusWarning,
@@ -36,40 +35,25 @@ class LpgStatusBadge extends StatelessWidget {
       LpgStatusSeverity.neutral => colors.textSecondary,
     };
 
-    final isHighContrast =
-        theme.brightness == Brightness.light &&
-        colors.shadowLight == Colors.transparent;
-
+    // Flat tonal pill — the severity colour itself carries the surface
+    // (12% tint) and the border, high contrast just pushes both harder;
+    // no separate shadow-driven "chip" look to keep in sync with it.
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: LpgTokens.spacingSm * 1.0,
         vertical: LpgTokens.spacingXs * 1.0,
       ),
       decoration: BoxDecoration(
-        color: isHighContrast
-            ? color.withValues(alpha: 0.12)
-            : colors.surfaceBase,
+        color: color.withValues(alpha: colors.isHighContrast ? 0.12 : 0.14),
         borderRadius: BorderRadius.circular(LpgTokens.radiusFull * 1.0),
-        border: isHighContrast ? Border.all(color: color, width: 1) : null,
-        boxShadow: isHighContrast
-            ? null
-            : [
-                BoxShadow(
-                  color: colors.shadowLight,
-                  offset: const Offset(-2, -2),
-                  blurRadius: 4,
-                ),
-                BoxShadow(
-                  color: colors.shadowDark,
-                  offset: const Offset(2, 2),
-                  blurRadius: 4,
-                ),
-              ],
+        border: colors.isHighContrast
+            ? Border.all(color: color, width: 1)
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!isHighContrast) ...[
+          if (!colors.isHighContrast) ...[
             Container(
               width: 6,
               height: 6,
@@ -80,7 +64,7 @@ class LpgStatusBadge extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: isHighContrast ? color : colors.textPrimary,
+              color: colors.isHighContrast ? color : colors.textPrimary,
               fontSize: LpgTokens.typographyCaptionFontSize.toDouble() - 1,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,

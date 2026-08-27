@@ -137,22 +137,11 @@ class _OrderBottomSheetState extends ConsumerState<OrderBottomSheet> {
         duration: const Duration(milliseconds: 100),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colors.surfaceBase,
+          color: colors.surfaceRaised,
           shape: BoxShape.circle,
-          boxShadow: disabled
-              ? null
-              : [
-                  BoxShadow(
-                    color: colors.shadowLight,
-                    offset: const Offset(-2, -2),
-                    blurRadius: 4,
-                  ),
-                  BoxShadow(
-                    color: colors.shadowDark,
-                    offset: const Offset(2, 2),
-                    blurRadius: 4,
-                  ),
-                ],
+          border: Border.all(
+            color: disabled ? colors.borderDefault : colors.actionPrimary,
+          ),
         ),
         child: Icon(
           icon,

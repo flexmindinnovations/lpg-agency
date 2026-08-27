@@ -47,10 +47,6 @@ class LpgTextField extends StatelessWidget {
     final theme = Theme.of(context);
     final radius = BorderRadius.circular(LpgTokens.radiusMd * 1.0);
 
-    final isHighContrast =
-        theme.brightness == Brightness.light &&
-        colors.shadowLight == Colors.transparent;
-
     OutlineInputBorder border(Color color, {double width = 1}) =>
         OutlineInputBorder(
           borderRadius: radius,
@@ -73,56 +69,35 @@ class LpgTextField extends StatelessWidget {
             ),
           ),
         ],
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: isHighContrast
-                ? null
-                : [
-                    BoxShadow(
-                      color: colors.shadowDark.withValues(alpha: 0.5),
-                      offset: const Offset(1, 1),
-                      blurRadius: 2,
-                      spreadRadius: -1,
-                    ),
-                    BoxShadow(
-                      color: colors.shadowLight.withValues(alpha: 0.5),
-                      offset: const Offset(-1, -1),
-                      blurRadius: 2,
-                      spreadRadius: -1,
-                    ),
-                  ],
-          ),
-          child: TextFormField(
-            controller: controller,
-            initialValue: controller == null ? initialValue : null,
-            keyboardType: keyboardType,
-            obscureText: obscureText,
-            maxLines: obscureText ? 1 : maxLines,
-            enabled: enabled,
-            validator: validator,
-            onChanged: onChanged,
-            autofocus: autofocus,
-            style: TextStyle(color: colors.textPrimary),
-            decoration: InputDecoration(
-              hintText: hintText,
-              errorText: errorText,
-              helperText: helperText,
-              suffixIcon: suffixIcon,
-              filled: true,
-              fillColor: colors.surfaceBase,
-              hintStyle: TextStyle(color: colors.textSecondary),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: LpgTokens.spacingMd * 1.0,
-                vertical: LpgTokens.spacingMd * 1.0,
-              ),
-              border: border(colors.borderDefault),
-              enabledBorder: border(colors.borderDefault),
-              disabledBorder: border(colors.borderDefault),
-              focusedBorder: border(colors.actionPrimary, width: 2),
-              errorBorder: border(colors.statusDanger),
-              focusedErrorBorder: border(colors.statusDanger, width: 2),
+        TextFormField(
+          controller: controller,
+          initialValue: controller == null ? initialValue : null,
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          maxLines: obscureText ? 1 : maxLines,
+          enabled: enabled,
+          validator: validator,
+          onChanged: onChanged,
+          autofocus: autofocus,
+          style: TextStyle(color: colors.textPrimary),
+          decoration: InputDecoration(
+            hintText: hintText,
+            errorText: errorText,
+            helperText: helperText,
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: colors.surfaceBase,
+            hintStyle: TextStyle(color: colors.textSecondary),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: LpgTokens.spacingMd * 1.0,
+              vertical: LpgTokens.spacingMd * 1.0,
             ),
+            border: border(colors.borderDefault),
+            enabledBorder: border(colors.borderDefault),
+            disabledBorder: border(colors.borderDefault),
+            focusedBorder: border(colors.actionPrimary, width: 2),
+            errorBorder: border(colors.statusDanger),
+            focusedErrorBorder: border(colors.statusDanger, width: 2),
           ),
         ),
       ],

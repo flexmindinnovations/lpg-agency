@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../tokens.dart';
 
-/// The bordered, flat-elevation container every screen already reaches for
+/// The flat, tonal-surface container every screen already reaches for
 /// (`dashboard_screen.dart`'s balance card, `login_screen.dart`'s form
-/// panel) — reuses `CardTheme`'s own colour/radius/border rather than
-/// hand-building a `Container`/`BoxDecoration` per screen, and adds a tap
-/// target and padding override for the cases that need one.
+/// panel). A "squircle" (continuous-corner) shape rather than a plain
+/// rounded rectangle — Material 3 Expressive treats shape as part of a
+/// component's identity, not just a corner radius — and a real `Material`/
+/// `InkWell` underneath instead of a decorated `Container`, so a tappable
+/// card gets a genuine M3 ripple instead of nothing.
 class LpgCard extends StatelessWidget {
   const LpgCard({
     super.key,
@@ -23,34 +25,23 @@ class LpgCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
-    final radius = BorderRadius.circular(LpgTokens.radiusLg * 1.0);
-    final isHighContrast =
-        Theme.of(context).brightness == Brightness.light &&
-        colors.shadowLight == Colors.transparent;
+    final shape = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(LpgTokens.radiusLg * 1.5),
+      side: colors.isHighContrast
+          ? BorderSide(color: colors.borderStrong, width: 2)
+          : BorderSide.none,
+    );
 
     final content = Padding(padding: padding, child: child);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceBase,
-        borderRadius: radius,
-        border: isHighContrast ? Border.all(color: colors.borderDefault) : null,
-        boxShadow: isHighContrast ? null : colors.neumorphicShadows,
-        gradient: isHighContrast
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  colors.surfaceBase,
-                  colors.surfaceBase.withValues(alpha: 0.95),
-                ],
-              ),
-      ),
+    return Material(
+      color: colors.surfaceRaised,
+      shape: shape,
       clipBehavior: Clip.antiAlias,
+      elevation: 0,
       child: onTap == null
           ? content
-          : InkWell(onTap: onTap, borderRadius: radius, child: content),
+          : InkWell(onTap: onTap, customBorder: shape, child: content),
     );
   }
 }

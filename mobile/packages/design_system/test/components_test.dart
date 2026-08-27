@@ -28,12 +28,61 @@ void main() {
     });
 
     testWidgets('disables the button while loading', (tester) async {
+      var tapped = false;
       await tester.pumpWidget(
-        _wrap(LpgButton(label: 'Go', isLoading: true, onPressed: () {})),
+        _wrap(
+          LpgButton(
+            label: 'Go',
+            isLoading: true,
+            onPressed: () => tapped = true,
+          ),
+        ),
       );
-      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
-      expect(button.onPressed, isNull);
+      // isLoading swaps the label for a spinner, so tap the whole button
+      // area (its InkWell) rather than looking for the label text.
+      await tester.tap(find.byType(InkWell));
+      expect(tapped, isFalse);
     });
+
+    testWidgets(
+      'scales down on press and back up on release (spring press feedback)',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(LpgButton(label: 'Go', onPressed: () {})),
+        );
+
+        // `Transform.scale`'s matrix leaves the Z column untouched (it's a
+        // 2D visual transform), so `Matrix4.getMaxScaleOnAxis()` always
+        // reports 1.0 regardless of the real X/Y factor — read the m00
+        // entry directly instead, which is exactly the `scale:` value
+        // `Transform.scale` was built with.
+        double scaleOf() => tester
+            .widget<Transform>(
+              find.ancestor(
+                of: find.byType(InkWell),
+                matching: find.byType(Transform),
+              ),
+            )
+            .transform
+            .storage[0];
+
+        expect(scaleOf(), 1.0);
+
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byType(InkWell)),
+        );
+        // One frame for InkWell's own tap recognizer to resolve
+        // onTapDown, then partway into the spring simulation — not the
+        // full settle, just needs to have moved away from 1.0.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(scaleOf(), lessThan(1.0));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(scaleOf(), closeTo(1.0, 0.001));
+      },
+    );
   });
 
   testWidgets('LpgCard renders its child', (tester) async {
@@ -54,7 +103,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Phone'), findsOneWidget);
+    // The label renders uppercase (a deliberate LpgTextField style choice).
+    expect(find.text('PHONE'), findsOneWidget);
     formKey.currentState!.validate();
     await tester.pump();
     expect(find.text('Required'), findsOneWidget);

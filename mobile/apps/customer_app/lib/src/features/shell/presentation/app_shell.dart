@@ -24,24 +24,18 @@ class AppShell extends StatelessWidget {
           right: 20,
           bottom: MediaQuery.of(context).padding.bottom + 10,
         ),
-        decoration: BoxDecoration(
-          color: colors.surfaceBase,
-          borderRadius: BorderRadius.circular(LpgTokens.radiusFull * 1.0),
-          boxShadow: [
-            BoxShadow(
-              color: colors.shadowLight,
-              offset: const Offset(-4, -4),
-              blurRadius: 10,
-            ),
-            BoxShadow(
-              color: colors.shadowDark,
-              offset: const Offset(4, 4),
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(LpgTokens.radiusFull * 1.0),
+        // A floating pill genuinely wants to read as lifted off the page —
+        // real Material elevation (with M3's surface tint) rather than a
+        // hand-rolled dual shadow.
+        child: Material(
+          color: colors.surfaceRaised,
+          elevation: colors.isHighContrast ? 0 : 3,
+          shape: StadiumBorder(
+            side: colors.isHighContrast
+                ? BorderSide(color: colors.borderStrong, width: 2)
+                : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
           child: NavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
