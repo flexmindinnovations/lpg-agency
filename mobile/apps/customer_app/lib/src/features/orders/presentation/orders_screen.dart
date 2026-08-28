@@ -5,19 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/orders_provider.dart';
-import 'order_bottom_sheet.dart';
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
-
-  void _showOrderSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const OrderBottomSheet(),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,7 +49,7 @@ class OrdersScreen extends ConsumerWidget {
               message: 'No orders yet',
               icon: Icons.receipt_long_outlined,
               actionLabel: 'Book Cylinder',
-              onAction: () => _showOrderSheet(context),
+              onAction: () => context.push('/orders/new'),
             );
           }
 

@@ -1,3 +1,5 @@
+import 'decimal_json.dart';
+
 /// Mirrors the backend's `CustomerAddressResponse`.
 class CustomerAddressResponse {
   const CustomerAddressResponse({
@@ -28,8 +30,8 @@ class CustomerAddressResponse {
         state: json['state'] as String?,
         pincode: json['pincode'] as String?,
         addressType: json['address_type'] as String,
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
+        latitude: asDoubleOrNull(json['latitude']),
+        longitude: asDoubleOrNull(json['longitude']),
         isPrimary: json['is_primary'] as bool,
       );
 

@@ -8,6 +8,7 @@ import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/dashboard/presentation/notifications_screen.dart';
 import 'features/orders/presentation/invoice_list_screen.dart';
 import 'features/orders/presentation/order_detail_screen.dart';
+import 'features/orders/presentation/order_placement_screen.dart';
 import 'features/orders/presentation/order_tracking_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'package:api_client/api_client.dart';
@@ -97,6 +98,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'invoices',
                     name: 'invoices',
                     builder: (context, state) => const InvoiceListScreen(),
+                  ),
+                  GoRoute(
+                    path: 'new',
+                    name: 'order_new',
+                    builder: (context, state) => const OrderPlacementScreen(),
                   ),
                   GoRoute(
                     path: ':orderId',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
+import '../../../widgets/form_field_widgets.dart';
 import '../../orders/data/orders_provider.dart';
 import '../../profile/data/profile_provider.dart';
 import '../data/complaints_provider.dart';
@@ -153,31 +154,27 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
               const SizedBox(height: 24),
             ],
 
-            _FieldLabel('Category', colors: colors, theme: theme),
-            _Dropdown(
+            const FieldLabel('Category'),
+            FormDropdownField(
               value: _category,
               items: _categories,
               onChanged: (v) => setState(() => _category = v!),
             ),
             const SizedBox(height: 20),
 
-            _FieldLabel('Priority', colors: colors, theme: theme),
-            _Dropdown(
+            const FieldLabel('Priority'),
+            FormDropdownField(
               value: _priority,
               items: _priorities,
               onChanged: (v) => setState(() => _priority = v!),
             ),
             const SizedBox(height: 20),
 
-            _FieldLabel(
-              'Related order (optional)',
-              colors: colors,
-              theme: theme,
-            ),
+            const FieldLabel('Related order (optional)'),
             ordersAsync.when(
               loading: () => const LinearProgressIndicator(),
               error: (_, _) => const SizedBox.shrink(),
-              data: (orders) => _Dropdown<String?>(
+              data: (orders) => FormDropdownField<String?>(
                 value: _orderId,
                 items: {
                   for (final order in orders)
@@ -208,77 +205,6 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
               onPressed: _submit,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text, {required this.colors, required this.theme});
-
-  final String text;
-  final LpgColors colors;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 4, bottom: 8),
-    child: Text(
-      text.toUpperCase(),
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: colors.textSecondary,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.1,
-      ),
-    ),
-  );
-}
-
-/// A bordered dropdown matching [LpgTextField]'s visual language — no
-/// dropdown component exists in `design_system` yet, so this stays local
-/// to the one screen that needs it rather than a speculative addition to
-/// the shared package.
-class _Dropdown<T> extends StatelessWidget {
-  const _Dropdown({
-    super.key,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-    this.placeholder,
-  });
-
-  final T value;
-  final Map<T, String> items;
-  final String? placeholder;
-  final void Function(T?) onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.borderDefault),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButtonFormField<T>(
-          initialValue: value,
-          isExpanded: true,
-          decoration: const InputDecoration(border: InputBorder.none),
-          icon: Icon(Icons.expand_more, color: colors.textSecondary),
-          style: TextStyle(color: colors.textPrimary, fontSize: 16),
-          dropdownColor: colors.surfaceRaised,
-          items: [
-            if (placeholder != null)
-              DropdownMenuItem<T>(value: null, child: Text(placeholder!)),
-            ...items.entries.map(
-              (e) => DropdownMenuItem<T>(value: e.key, child: Text(e.value)),
-            ),
-          ],
-          onChanged: onChanged,
         ),
       ),
     );

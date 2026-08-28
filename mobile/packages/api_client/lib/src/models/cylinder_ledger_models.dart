@@ -24,7 +24,10 @@ class CylinderLedgerResponse {
       CylinderLedgerResponse(
         customerId: json['customer_id'] as String,
         balances: (json['balances'] as List<dynamic>)
-            .map((e) => CylinderLedgerBalanceItem.fromJson(e as Map<String, dynamic>))
+            .map(
+              (e) =>
+                  CylinderLedgerBalanceItem.fromJson(e as Map<String, dynamic>),
+            )
             .toList(),
       );
 

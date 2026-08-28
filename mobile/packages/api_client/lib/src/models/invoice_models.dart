@@ -1,3 +1,5 @@
+import 'decimal_json.dart';
+
 /// Mirrors the backend's `InvoiceLineResponse`.
 class InvoiceLineResponse {
   const InvoiceLineResponse({
@@ -15,10 +17,10 @@ class InvoiceLineResponse {
         lineId: json['line_id'] as String,
         cylinderTypeId: json['cylinder_type_id'] as String,
         quantity: json['quantity'] as int,
-        unitPrice: (json['unit_price'] as num).toDouble(),
-        subtotal: (json['subtotal'] as num).toDouble(),
-        taxAmount: (json['tax_amount'] as num).toDouble(),
-        totalAmount: (json['total_amount'] as num).toDouble(),
+        unitPrice: asDouble(json['unit_price']),
+        subtotal: asDouble(json['subtotal']),
+        taxAmount: asDouble(json['tax_amount']),
+        totalAmount: asDouble(json['total_amount']),
       );
 
   final String lineId;
@@ -45,7 +47,7 @@ class PaymentResponse {
       PaymentResponse(
         paymentId: json['payment_id'] as String,
         method: json['method'] as String,
-        amount: (json['amount'] as num).toDouble(),
+        amount: asDouble(json['amount']),
         collectedBy: json['collected_by'] as String,
         collectedAt: DateTime.parse(json['collected_at'] as String),
       );
@@ -95,9 +97,9 @@ class InvoiceResponse {
         lines: (json['lines'] as List<dynamic>)
             .map((e) => InvoiceLineResponse.fromJson(e as Map<String, dynamic>))
             .toList(),
-        subtotal: (json['subtotal'] as num).toDouble(),
-        taxAmount: (json['tax_amount'] as num).toDouble(),
-        totalAmount: (json['total_amount'] as num).toDouble(),
+        subtotal: asDouble(json['subtotal']),
+        taxAmount: asDouble(json['tax_amount']),
+        totalAmount: asDouble(json['total_amount']),
         version: json['version'] as int,
         payments:
             (json['payments'] as List<dynamic>?)
@@ -106,7 +108,7 @@ class InvoiceResponse {
                 )
                 .toList() ??
             const [],
-        amountPaid: (json['amount_paid'] as num?)?.toDouble() ?? 0,
+        amountPaid: asDoubleOrNull(json['amount_paid']) ?? 0,
       );
 
   final String invoiceId;

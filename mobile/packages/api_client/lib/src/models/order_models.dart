@@ -1,4 +1,5 @@
 import 'customer_models.dart';
+import 'decimal_json.dart';
 
 class OrderLineResponse {
   const OrderLineResponse({
@@ -21,7 +22,7 @@ class OrderLineResponse {
         quantityPending: json['quantity_pending'] as int,
         quantityCollectedEmpty: json['quantity_collected_empty'] as int,
         isBackordered: json['is_backordered'] as bool,
-        unitPrice: (json['unit_price'] as num?)?.toDouble(),
+        unitPrice: asDoubleOrNull(json['unit_price']),
       );
 
   final String id;
@@ -37,6 +38,7 @@ class OrderLineResponse {
 class OrderResponse {
   const OrderResponse({
     required this.id,
+    this.orderNumber,
     required this.tenantId,
     required this.branchId,
     required this.customerId,
@@ -54,6 +56,7 @@ class OrderResponse {
 
   factory OrderResponse.fromJson(Map<String, dynamic> json) => OrderResponse(
     id: json['id'] as String,
+    orderNumber: json['order_number'] as String?,
     tenantId: json['tenant_id'] as String,
     branchId: json['branch_id'] as String,
     customerId: json['customer_id'] as String,
@@ -67,13 +70,20 @@ class OrderResponse {
     requestedDate: DateTime.parse(json['requested_date'] as String),
     metadata: json['metadata'] as Map<String, dynamic>,
     routeStopId: json['route_stop_id'] as String?,
-    totalAmount: (json['total_amount'] as num?)?.toDouble(),
+    totalAmount: asDoubleOrNull(json['total_amount']),
     lines: (json['lines'] as List<dynamic>)
         .map((e) => OrderLineResponse.fromJson(e as Map<String, dynamic>))
         .toList(),
   );
 
   final String id;
+  // Sequential, zero-padded (e.g. "ORD000044") — sorts correctly as a plain
+  // string and, unlike `requestedDate` (an operational delivery-scheduling
+  // field customers can set arbitrarily far in the future or leave in the
+  // past), actually reflects when the order was *placed*. Nullable only
+  // because the backend schema allows it; every order booked through this
+  // app has one.
+  final String? orderNumber;
   final String tenantId;
   final String branchId;
   final String customerId;

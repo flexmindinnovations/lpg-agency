@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../orders/data/orders_provider.dart';
-import '../../orders/presentation/order_bottom_sheet.dart';
 import '../data/ledger_provider.dart';
 import '../data/notifications_provider.dart';
 
@@ -179,7 +178,7 @@ class DashboardScreen extends ConsumerWidget {
               // Primary Action Button (Pill shaped)
               LpgButton(
                 label: 'Order Gas Refill',
-                onPressed: () => _showOrderSheet(context),
+                onPressed: () => context.push('/orders/new'),
                 icon: Icons.local_gas_station_outlined,
                 expand: true,
               ),
@@ -206,9 +205,22 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     );
                   }
-                  final recentOrders = orders.take(3).toList();
+                  // `orders` arrives sorted by `requestedDate` (the
+                  // backend's own list order, tuned for an operational
+                  // "what's coming up" view) — that's not what "recent"
+                  // means here, since a customer can set a requested date
+                  // arbitrarily far in the future or in the past. Sort by
+                  // `orderNumber` instead: it's sequential and zero-padded,
+                  // so it reflects the order the orders were actually
+                  // placed in.
+                  final recentOrders = [...orders]
+                    ..sort(
+                      (a, b) =>
+                          (b.orderNumber ?? '').compareTo(a.orderNumber ?? ''),
+                    );
+                  final displayedOrders = recentOrders.take(3).toList();
                   return Column(
-                    children: recentOrders.map((order) {
+                    children: displayedOrders.map((order) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: LpgListTile(
@@ -238,15 +250,6 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showOrderSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const OrderBottomSheet(),
     );
   }
 }

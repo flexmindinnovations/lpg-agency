@@ -33,6 +33,12 @@ final cylinderLedgerApiProvider = Provider<CylinderLedgerApi>((ref) {
   return CylinderLedgerApi(apiClient.dio);
 });
 
+/// Provides the [CylinderTypeApi] client.
+final cylinderTypeApiProvider = Provider<CylinderTypeApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return CylinderTypeApi(apiClient.dio);
+});
+
 /// Provides the [OrderApi] client.
 final orderApiProvider = Provider<OrderApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
