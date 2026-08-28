@@ -22,7 +22,7 @@ class AppShell extends StatelessWidget {
         margin: EdgeInsets.only(
           left: 20,
           right: 20,
-          bottom: MediaQuery.of(context).padding.bottom + 10,
+          bottom: MediaQuery.of(context).padding.bottom,
         ),
         // A floating pill genuinely wants to read as lifted off the page —
         // real Material elevation (with M3's surface tint) rather than a
