@@ -87,6 +87,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
   }
 
+  /// Backs out of the "code requested" state — re-enables Agency Code /
+  /// Phone number and drops the (possibly now-expired, or simply wrong)
+  /// code, so a customer isn't stuck re-submitting a code that can never
+  /// work with no way to fix a typo'd number or request a fresh one.
+  void _editDetails() {
+    setState(() {
+      _codeRequested = false;
+      _codeController.clear();
+      _errorMessage = null;
+    });
+  }
+
   Future<void> _verifyCode() async {
     if (_codeController.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Please enter the verification code.');
@@ -227,8 +239,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         keyboardType: TextInputType.number,
                         autofocus: true,
                       ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: LpgButton(
+                          label: 'Edit Agency Code / Phone Number',
+                          variant: LpgButtonVariant.text,
+                          onPressed: _submitting ? null : _editDetails,
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 28),
                     LpgButton(
                       label: _codeRequested ? 'Verify Code' : 'Send Code',
                       isLoading: _submitting,

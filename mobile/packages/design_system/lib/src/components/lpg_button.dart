@@ -70,10 +70,17 @@ class _LpgButtonState extends State<LpgButton>
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
-    final disabled = widget.onPressed == null || widget.isLoading;
+    // Loading isn't the same as disabled: a genuinely disabled button fades
+    // to signal "not available", but a loading one is actively doing what
+    // it was asked to do — fading it to the same 50% as "unavailable" reads
+    // as the button breaking rather than working. Keep full color and just
+    // swap the label for a spinner; only actual unavailability (no
+    // onPressed) dims it. `unpressable` still blocks taps in both cases.
+    final unpressable = widget.onPressed == null || widget.isLoading;
+    final visuallyDisabled = widget.onPressed == null && !widget.isLoading;
 
     if (widget.variant == LpgButtonVariant.text || colors.isHighContrast) {
-      return _buildFlatButton(context, colors, theme, disabled);
+      return _buildFlatButton(context, colors, theme, unpressable);
     }
 
     final baseColor = widget.variant == LpgButtonVariant.primary
@@ -118,21 +125,21 @@ class _LpgButtonState extends State<LpgButton>
     );
 
     final button = Material(
-      color: disabled ? baseColor.withValues(alpha: 0.5) : baseColor,
+      color: visuallyDisabled ? baseColor.withValues(alpha: 0.5) : baseColor,
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: disabled ? null : widget.onPressed,
-        onTapDown: disabled ? null : (_) => _animateTo(_pressedScale),
-        onTapUp: disabled ? null : (_) => _animateTo(1.0),
-        onTapCancel: disabled ? null : () => _animateTo(1.0),
+        onTap: unpressable ? null : widget.onPressed,
+        onTapDown: unpressable ? null : (_) => _animateTo(_pressedScale),
+        onTapUp: unpressable ? null : (_) => _animateTo(1.0),
+        onTapCancel: unpressable ? null : () => _animateTo(1.0),
         customBorder: shape,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: LpgTokens.spacingLg * 1.0,
             vertical: LpgTokens.spacingMd * 1.0,
           ),
-          child: content,
+          child: Center(child: content),
         ),
       ),
     );
