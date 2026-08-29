@@ -1,9 +1,11 @@
+import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth_provider.dart';
+import '../../../providers.dart';
 import '../data/profile_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -206,10 +208,20 @@ class ProfileScreen extends ConsumerWidget {
                   (address) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: LpgListTile(
-                      onTap: () {}, // For selecting/editing in future
-                      leadingIcon: address.addressType.toUpperCase() == 'HOME'
-                          ? Icons.home_outlined
-                          : Icons.business_outlined,
+                      onTap: () => _showAddressActions(
+                        context,
+                        ref,
+                        profile.id,
+                        address,
+                      ),
+                      // Real values are 'delivery'/'billing'/'both'
+                      // (domain/customer/customer.py:133) -- 'home' was
+                      // never one of them, so this never actually matched.
+                      leadingIcon: switch (address.addressType.toLowerCase()) {
+                        'billing' => Icons.receipt_long_outlined,
+                        'both' => Icons.done_all,
+                        _ => Icons.local_shipping_outlined,
+                      },
                       title: address.addressType,
                       subtitle:
                           '${address.line1}${address.line2 != null ? ', ${address.line2}' : ''}\n'
@@ -302,6 +314,93 @@ class ProfileScreen extends ConsumerWidget {
     severity: LpgStatusSeverity.warning,
   ),
 };
+
+/// Bottom-sheet action menu for a saved address — Edit always, "Set as
+/// Primary" only when this isn't already the primary address. No delete
+/// action here: the backend has no `DELETE /customers/{id}/addresses/{id}`
+/// route (only `PUT` update and `PUT .../primary` exist), so there's
+/// nothing for a delete action to call yet.
+Future<void> _showAddressActions(
+  BuildContext context,
+  WidgetRef ref,
+  String customerId,
+  CustomerAddressResponse address,
+) async {
+  final colors = Theme.of(context).extension<LpgColors>()!;
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => Container(
+      decoration: BoxDecoration(
+        color: Theme.of(sheetContext).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.borderDefault,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          LpgListTile(
+            leadingIcon: Icons.edit_outlined,
+            title: 'Edit Address',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              context.push(
+                '/profile/addresses/${address.id}/edit',
+                extra: (customerId: customerId, address: address),
+              );
+            },
+          ),
+          if (!address.isPrimary) ...[
+            const SizedBox(height: 8),
+            LpgListTile(
+              leadingIcon: Icons.star_outline,
+              title: 'Set as Primary',
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _setPrimaryAddress(context, ref, customerId, address.id);
+              },
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+Future<void> _setPrimaryAddress(
+  BuildContext context,
+  WidgetRef ref,
+  String customerId,
+  String addressId,
+) async {
+  final result = await ref
+      .read(customerApiProvider)
+      .setPrimaryAddress(customerId, addressId);
+  if (!context.mounted) return;
+  result.when(
+    onSuccess: (_) {
+      ref.invalidate(profileProvider);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Primary address updated.')));
+    },
+    onFailure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not update: ${failure.message}')),
+    ),
+  );
+}
 
 Color _severityColor(LpgColors colors, LpgStatusSeverity severity) =>
     switch (severity) {

@@ -14,6 +14,7 @@ import 'features/orders/presentation/order_tracking_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'package:api_client/api_client.dart';
 import 'features/profile/presentation/add_address_screen.dart';
+import 'features/profile/presentation/edit_address_screen.dart';
 import 'features/profile/presentation/edit_profile_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
@@ -174,6 +175,22 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'profile_address_new',
                     builder: (context, state) =>
                         AddAddressScreen(customerId: state.extra as String),
+                  ),
+                  GoRoute(
+                    path: 'addresses/:addressId/edit',
+                    name: 'profile_address_edit',
+                    builder: (context, state) {
+                      final extra =
+                          state.extra
+                              as ({
+                                String customerId,
+                                CustomerAddressResponse address,
+                              });
+                      return EditAddressScreen(
+                        customerId: extra.customerId,
+                        address: extra.address,
+                      );
+                    },
                   ),
                 ],
               ),

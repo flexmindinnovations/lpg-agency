@@ -2,36 +2,53 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
 
-class AddAddressScreen extends ConsumerStatefulWidget {
-  const AddAddressScreen({super.key, required this.customerId});
+/// Edits an existing saved address — mirrors `AddAddressScreen`'s form
+/// exactly (same fields, same `UpdateCustomerAddressRequest`/
+/// `AddCustomerAddressRequest` shape), pre-filled from [address] and
+/// PUTting via `CustomerApi.updateAddress` instead of POSTing a new one.
+class EditAddressScreen extends ConsumerStatefulWidget {
+  const EditAddressScreen({
+    super.key,
+    required this.customerId,
+    required this.address,
+  });
 
   final String customerId;
+  final CustomerAddressResponse address;
 
   @override
-  ConsumerState<AddAddressScreen> createState() => _AddAddressScreenState();
+  ConsumerState<EditAddressScreen> createState() => _EditAddressScreenState();
 }
 
-class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
+class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _line1Controller = TextEditingController();
-  final _line2Controller = TextEditingController();
-  final _landmarkController = TextEditingController();
-  final _areaController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _stateController = TextEditingController();
-  final _pincodeController = TextEditingController();
+  late final _line1Controller = TextEditingController(
+    text: widget.address.line1,
+  );
+  late final _line2Controller = TextEditingController(
+    text: widget.address.line2 ?? '',
+  );
+  late final _landmarkController = TextEditingController(
+    text: widget.address.landmark ?? '',
+  );
+  late final _areaController = TextEditingController(
+    text: widget.address.area ?? '',
+  );
+  late final _cityController = TextEditingController(
+    text: widget.address.city ?? '',
+  );
+  late final _stateController = TextEditingController(
+    text: widget.address.state ?? '',
+  );
+  late final _pincodeController = TextEditingController(
+    text: widget.address.pincode ?? '',
+  );
 
-  // 'home'/'work'/'other' would look natural here, but the backend's
-  // Address domain object only accepts ("delivery", "billing", "both")
-  // (domain/customer/customer.py:133) and rejects anything else with a
-  // 400 -- confirmed live, this screen could never successfully add an
-  // address before this fix.
-  String _addressType = 'delivery';
+  late String _addressType = widget.address.addressType.toLowerCase();
   bool _isLoading = false;
   String? _error;
 
@@ -56,7 +73,7 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
     });
 
     final api = ref.read(customerApiProvider);
-    final request = AddCustomerAddressRequest(
+    final request = UpdateCustomerAddressRequest(
       line1: _line1Controller.text.trim(),
       line2: _line2Controller.text.trim().isEmpty
           ? null
@@ -79,23 +96,29 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
       addressType: _addressType,
     );
 
-    final result = await api.addCustomerAddress(widget.customerId, request);
+    final result = await api.updateAddress(
+      widget.customerId,
+      widget.address.id,
+      request,
+    );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      result.when(
-        onSuccess: (data) {
-          ref.invalidate(profileProvider);
-          context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Address added successfully')),
-          );
-        },
-        onFailure: (failure) {
-          setState(() => _error = failure.message);
-        },
-      );
-    }
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    result.when(
+      onSuccess: (_) {
+        // Pop before invalidating -- matches the crash-fix pattern
+        // elsewhere in this app (order_detail_screen.dart's cancel flow):
+        // invalidate only after the screen that would otherwise be
+        // rebuilt mid-navigation is off the stack.
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.of(context).pop();
+        ref.invalidate(profileProvider);
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Address updated successfully')),
+        );
+      },
+      onFailure: (failure) => setState(() => _error = failure.message),
+    );
   }
 
   @override
@@ -110,7 +133,7 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          'Add New Address',
+          'Edit Address',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
             color: colors.textPrimary,
@@ -216,7 +239,7 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                     ),
                     const SizedBox(height: 40),
                     LpgButton(
-                      label: 'Save Address',
+                      label: 'Save Changes',
                       onPressed: _save,
                       isLoading: _isLoading,
                       expand: true,
