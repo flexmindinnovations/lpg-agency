@@ -1,6 +1,7 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../data/invoices_provider.dart';
@@ -55,9 +56,8 @@ class InvoiceListScreen extends ConsumerWidget {
                 final isPaid = invoice.status == 'paid';
 
                 return LpgCard(
-                  onTap: () {
-                    // TODO: Navigate to invoice detail
-                  },
+                  onTap: () =>
+                      context.push('/orders/invoices/${invoice.invoiceId}'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -122,7 +122,9 @@ class InvoiceListScreen extends ConsumerWidget {
                           ),
                           LpgButton(
                             label: 'View',
-                            onPressed: () {},
+                            onPressed: () => context.push(
+                              '/orders/invoices/${invoice.invoiceId}',
+                            ),
                             variant: LpgButtonVariant.text,
                           ),
                         ],

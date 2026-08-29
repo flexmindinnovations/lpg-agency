@@ -1,12 +1,44 @@
+import 'dart:async';
+
+import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../providers.dart';
 import '../data/notifications_provider.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
+
+  Future<void> _handleTap(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationResponse item,
+  ) async {
+    if (!item.isRead) {
+      // Fire-and-forget: don't block navigation on this, and a failure
+      // here shouldn't stop the customer from opening what they tapped.
+      // Invalidate afterwards regardless, so the unread dot/badge catch up
+      // next time this list or the dashboard bell is looked at.
+      unawaited(
+        ref.read(notificationApiProvider).markRead(item.id).then((_) {
+          ref.invalidate(notificationsProvider);
+          ref.invalidate(unreadNotificationCountProvider);
+        }),
+      );
+    }
+
+    // Only "order" reference notifications are produced by the backend
+    // today (notification_jobs.py) -- nothing else to route to yet.
+    if (item.referenceType == 'order' && item.referenceId != null) {
+      if (context.mounted) {
+        context.push('/orders/${item.referenceId}');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,9 +121,7 @@ class NotificationsScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    onTap: () {
-                      // TODO: Mark as read and navigate if reference exists
-                    },
+                    onTap: () => _handleTap(context, ref, item),
                   ),
                 );
               },
