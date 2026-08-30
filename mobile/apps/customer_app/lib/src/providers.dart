@@ -70,3 +70,9 @@ final invoiceApiProvider = Provider<InvoiceApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return InvoiceApi(apiClient.dio);
 });
+
+/// Provides the [KycApi] client.
+final kycApiProvider = Provider<KycApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return KycApi(apiClient.dio);
+});

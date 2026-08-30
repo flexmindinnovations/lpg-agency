@@ -14,6 +14,8 @@ import 'features/orders/presentation/order_tracking_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'package:api_client/api_client.dart';
 import 'features/profile/presentation/add_address_screen.dart';
+import 'features/kyc/presentation/kyc_screen.dart';
+import 'features/kyc/presentation/submit_kyc_screen.dart';
 import 'features/profile/presentation/edit_address_screen.dart';
 import 'features/profile/presentation/edit_profile_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
@@ -191,6 +193,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                         address: extra.address,
                       );
                     },
+                  ),
+                  GoRoute(
+                    path: 'kyc',
+                    name: 'profile_kyc',
+                    builder: (context, state) => const KycScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        name: 'profile_kyc_new',
+                        builder: (context, state) => const SubmitKycScreen(),
+                      ),
+                    ],
                   ),
                 ],
               ),

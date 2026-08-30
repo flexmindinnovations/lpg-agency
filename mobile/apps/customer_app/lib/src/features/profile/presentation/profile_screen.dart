@@ -102,6 +102,7 @@ class ProfileScreen extends ConsumerWidget {
                   final kyc = _kycDisplay(profile.kycStatus);
                   final kycColor = _severityColor(colors, kyc.severity);
                   return LpgCard(
+                    onTap: () => context.push('/profile/kyc'),
                     child: Row(
                       children: [
                         Icon(kyc.icon, color: kycColor),
@@ -130,6 +131,8 @@ class ProfileScreen extends ConsumerWidget {
                           label: kyc.label.toUpperCase(),
                           severity: kyc.severity,
                         ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right, color: colors.textSecondary),
                       ],
                     ),
                   );
@@ -222,7 +225,10 @@ class ProfileScreen extends ConsumerWidget {
                         'both' => Icons.done_all,
                         _ => Icons.local_shipping_outlined,
                       },
-                      title: address.addressType.isEmpty ? '' : address.addressType[0].toUpperCase() + address.addressType.substring(1),
+                      title: address.addressType.isEmpty
+                          ? ''
+                          : address.addressType[0].toUpperCase() +
+                                address.addressType.substring(1),
                       subtitle:
                           '${address.line1}${address.line2 != null ? ', ${address.line2}' : ''}\n'
                           '${address.city ?? ''}, ${address.state ?? ''} ${address.pincode ?? ''}',
