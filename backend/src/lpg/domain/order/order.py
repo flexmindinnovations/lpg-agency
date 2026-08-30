@@ -61,6 +61,7 @@ class BookingConfirmed(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class BookingCancelled(DomainEvent):
     order_id: uuid.UUID
+    tenant_id: uuid.UUID
     cancelled_by: uuid.UUID
     approved_by: uuid.UUID | None
     reason: str
@@ -126,6 +127,7 @@ class OrderClosed(DomainEvent):
     """
 
     order_id: uuid.UUID
+    tenant_id: uuid.UUID
     closed_by: uuid.UUID
 
 
@@ -696,6 +698,7 @@ class Order(AggregateRoot):
         self.record_event(
             BookingCancelled(
                 order_id=self.id,
+                tenant_id=self._tenant_id,
                 cancelled_by=cancelled_by,
                 approved_by=None,
                 reason=reason,
@@ -734,6 +737,7 @@ class Order(AggregateRoot):
         self.record_event(
             BookingCancelled(
                 order_id=self.id,
+                tenant_id=self._tenant_id,
                 cancelled_by=approved_by,
                 approved_by=approved_by,
                 reason=reason,
@@ -746,7 +750,9 @@ class Order(AggregateRoot):
         automatic invoice-settlement trigger.
         """
         self._transition("closed", changed_by=closed_by)
-        self.record_event(OrderClosed(order_id=self.id, closed_by=closed_by))
+        self.record_event(
+            OrderClosed(order_id=self.id, tenant_id=self._tenant_id, closed_by=closed_by)
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -37,3 +37,15 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
 
   return 0;
 });
+
+/// Live `notification.new` events for the signed-in user, over the
+/// backend's `/ws` (`RealtimeClient.subscribeToNotifications`). The message
+/// itself only carries the new notification's id (`realtime_handlers.py`'s
+/// `on_notification_created`), not its content -- callers refetch via
+/// [notificationsProvider]/[unreadNotificationCountProvider] rather than
+/// trying to read a notification out of the event.
+final notificationsRealtimeProvider =
+    StreamProvider.autoDispose<Map<String, dynamic>>((ref) {
+      final client = ref.watch(realtimeClientProvider);
+      return client.subscribeToNotifications();
+    });

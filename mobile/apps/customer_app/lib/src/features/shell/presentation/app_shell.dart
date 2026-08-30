@@ -1,19 +1,33 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../dashboard/data/notifications_provider.dart';
 
 /// The main application shell for the Customer App.
 ///
 /// Provides a persistent bottom navigation bar across the four main tabs:
-/// Dashboard, Orders, Support, and Profile.
-class AppShell extends StatelessWidget {
+/// Dashboard, Orders, Support, and Profile. Also the one place that's
+/// always mounted while the app is in use, so it's where the app-wide
+/// `notification.new` real-time subscription lives -- every screen's
+/// unread badge/list should reflect a new notification without a manual
+/// refresh, not just the Notifications screen itself.
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
   /// The navigation shell and state for the branches.
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(notificationsRealtimeProvider, (previous, next) {
+      next.whenData((_) {
+        ref.invalidate(notificationsProvider);
+        ref.invalidate(unreadNotificationCountProvider);
+      });
+    });
+
     final colors = Theme.of(context).extension<LpgColors>()!;
 
     return Scaffold(

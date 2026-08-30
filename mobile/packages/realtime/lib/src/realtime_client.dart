@@ -58,8 +58,15 @@ final class RealtimeClient {
     _reconnectTimer?.cancel();
 
     final token = _getAccessToken();
+    // The backend mounts ws.py's router under its versioned API prefix
+    // like every other route (`app.include_router(ws.router,
+    // prefix=settings.api_v1_prefix)`, api.app.py) -- there's no bare
+    // `/ws` at the origin root. Confirmed live: connecting to `/ws`
+    // instead of `/api/v1/ws` got an HTTP 403 on the upgrade request,
+    // silently breaking every subscription with no visible error beyond
+    // a WebSocketChannelException logged to stderr.
     final uri = Uri.parse(
-      '$_wsBaseUrl/ws',
+      '$_wsBaseUrl/api/v1/ws',
     ).replace(queryParameters: {'token': ?token});
 
     final socket = _connect(uri);

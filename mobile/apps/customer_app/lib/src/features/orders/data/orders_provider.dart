@@ -34,3 +34,15 @@ final orderDetailProvider = FutureProvider.family<OrderResponse, String>((
     onFailure: (failure) => throw Exception(failure.message),
   );
 });
+
+/// Live `order.status_changed` events for one order, over the backend's
+/// `/ws` (`RealtimeClient.subscribeToOrder`). `autoDispose` so the
+/// underlying subscription (and the intent it registers on the shared
+/// socket) goes away once no screen is watching this order anymore --
+/// there's no explicit "unsubscribe" on `RealtimeClient` itself, this is
+/// how a per-order subscription's lifetime is actually bounded.
+final orderRealtimeProvider = StreamProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, orderId) {
+      final client = ref.watch(realtimeClientProvider);
+      return client.subscribeToOrder(orderId);
+    });

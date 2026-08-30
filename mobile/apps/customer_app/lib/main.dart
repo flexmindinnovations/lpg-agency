@@ -4,6 +4,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
+import 'package:realtime/realtime.dart';
 import 'package:sync_engine/sync_engine.dart';
 
 import 'src/auth_provider.dart';
@@ -18,6 +19,13 @@ const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://localhost:8000',
 );
+
+/// `RealtimeClient` wants a `ws(s)://` origin, not `http(s)://` --
+/// `_apiBaseUrl` stays the single source of truth (one `--dart-define` for
+/// both) rather than adding a second override to keep in sync.
+String _wsBaseUrl(String apiBaseUrl) => apiBaseUrl
+    .replaceFirst('https://', 'wss://')
+    .replaceFirst('http://', 'ws://');
 
 /// Customer App entry point.
 ///
@@ -62,6 +70,11 @@ void main() async {
   );
   syncCoordinator.start();
 
+  final realtimeClient = RealtimeClient(
+    wsBaseUrl: _wsBaseUrl(_apiBaseUrl),
+    getAccessToken: () => authRepository.accessToken,
+  );
+
   runApp(
     ProviderScope(
       overrides: [
@@ -69,6 +82,7 @@ void main() async {
         syncCoordinatorProvider.overrideWithValue(syncCoordinator),
         authControllerProvider.overrideWithValue(authController),
         apiClientProvider.overrideWithValue(apiClient),
+        realtimeClientProvider.overrideWithValue(realtimeClient),
       ],
       child: const CustomerApp(),
     ),

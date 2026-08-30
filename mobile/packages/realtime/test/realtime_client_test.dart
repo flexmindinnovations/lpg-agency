@@ -131,7 +131,10 @@ void main() {
         client.subscribeToNotifications();
         await Future<void>.delayed(Duration.zero);
 
-        expect(capturedUri!.toString(), 'wss://api.test/ws?token=jwt-123');
+        expect(
+          capturedUri!.toString(),
+          'wss://api.test/api/v1/ws?token=jwt-123',
+        );
         await client.disconnect();
       },
     );

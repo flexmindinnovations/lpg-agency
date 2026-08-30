@@ -579,6 +579,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  realtime:
+    dependency: "direct main"
+    description:
+      path: "../../packages/realtime"
+      relative: true
+    source: path
+    version: "0.0.1"
   record_use:
     dependency: transitive
     description:

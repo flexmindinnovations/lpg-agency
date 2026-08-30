@@ -21,6 +21,21 @@ class OrderDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Live status updates over /ws (RealtimeClient.subscribeToOrder) --
+    // confirmed/assigned/out-for-delivery/delivered land here without a
+    // manual refresh. The event itself carries no order data
+    // (realtime_handlers.py's on_order_status_changed sends only
+    // order_id/event/status), so refetch via orderDetailProvider rather
+    // than trying to patch state from the message.
+    ref.listen(orderRealtimeProvider(orderId), (previous, next) {
+      next.whenData((_) {
+        ref.invalidate(orderDetailProvider(orderId));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Order status updated')));
+      });
+    });
+
     final orderAsync = ref.watch(orderDetailProvider(orderId));
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
