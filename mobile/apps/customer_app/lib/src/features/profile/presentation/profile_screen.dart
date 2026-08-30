@@ -222,7 +222,7 @@ class ProfileScreen extends ConsumerWidget {
                         'both' => Icons.done_all,
                         _ => Icons.local_shipping_outlined,
                       },
-                      title: address.addressType,
+                      title: address.addressType.isEmpty ? '' : address.addressType[0].toUpperCase() + address.addressType.substring(1),
                       subtitle:
                           '${address.line1}${address.line2 != null ? ', ${address.line2}' : ''}\n'
                           '${address.city ?? ''}, ${address.state ?? ''} ${address.pincode ?? ''}',
