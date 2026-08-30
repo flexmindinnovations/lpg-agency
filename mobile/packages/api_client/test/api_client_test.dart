@@ -16,6 +16,11 @@ class _FakeHttpClientAdapter implements HttpClientAdapter {
   final ResponseBody Function(RequestOptions options) handler;
   final List<RequestOptions> requests = [];
 
+  /// The serialized request body seen per call, in order — lets a test
+  /// assert that a retried multipart upload still carries its payload
+  /// rather than an empty (already-consumed) stream.
+  final List<int> requestBodyLengths = [];
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -23,6 +28,13 @@ class _FakeHttpClientAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    var length = 0;
+    if (requestStream != null) {
+      await for (final chunk in requestStream) {
+        length += chunk.length;
+      }
+    }
+    requestBodyLengths.add(length);
     return handler(options);
   }
 
@@ -139,6 +151,48 @@ void main() {
         expect(response.data, {'ok': true});
         expect(callCount, 2);
         expect(sessionExpired, isFalse);
+      },
+    );
+
+    test(
+      'replays the multipart body when retrying an upload after a 401',
+      () async {
+        var callCount = 0;
+        final adapter = _FakeHttpClientAdapter((options) {
+          callCount++;
+          if (callCount == 1) {
+            return _jsonResponse({
+              'error_code': 'AUTHENTICATION_REQUIRED',
+            }, 401);
+          }
+          return _jsonResponse({'blob_ref': 'k'}, 201);
+        });
+        var currentToken = 'stale-token';
+        final client = ApiClient(
+          baseUrl: 'https://api.test',
+          getAccessToken: () => currentToken,
+          refreshAccessToken: () async {
+            currentToken = 'refreshed-token';
+            return currentToken;
+          },
+        );
+        client.dio.httpClientAdapter = adapter;
+
+        final formData = FormData.fromMap({
+          'file': MultipartFile.fromBytes(
+            List<int>.filled(2048, 7),
+            filename: 'doc.jpg',
+          ),
+        });
+        await client.dio.post<Map<String, dynamic>>(
+          '/api/v1/customers/kyc-attachments',
+          data: formData,
+        );
+
+        expect(callCount, 2);
+        // The retry must carry the file, not an empty stream left behind by
+        // the first (consumed) attempt.
+        expect(adapter.requestBodyLengths[1], greaterThan(2048));
       },
     );
 

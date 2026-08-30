@@ -61,6 +61,17 @@ final class ApiClient {
           try {
             final retryOptions = error.requestOptions
               ..headers['Authorization'] = 'Bearer $newToken';
+            // A `FormData` body is a single-use stream — the original
+            // (failed) request already consumed it, so replaying
+            // `error.requestOptions` as-is would send an empty body and the
+            // server would reject it with a validation error. This bit
+            // multipart uploads (`KycApi.uploadAttachment`) specifically:
+            // the very first call after a cold start races session-restore,
+            // 401s, and then "succeeds" the refresh only to retry with
+            // nothing attached. `FormData.clone()` re-materialises it.
+            if (retryOptions.data is FormData) {
+              retryOptions.data = (retryOptions.data as FormData).clone();
+            }
             final response = await dio.fetch<dynamic>(retryOptions);
             handler.resolve(response);
           } on DioException catch (retryError) {
