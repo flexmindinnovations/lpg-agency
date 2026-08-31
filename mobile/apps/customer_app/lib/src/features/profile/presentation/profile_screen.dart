@@ -275,7 +275,15 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: 48),
               LpgButton(
                 label: 'Log Out',
-                onPressed: () => ref.read(authControllerProvider).logout(),
+                onPressed: () async {
+                  // Drop the FCM token first, while the session is still
+                  // valid — a shared device shouldn't keep getting this
+                  // user's notifications.
+                  await ref
+                      .read(pushNotificationServiceProvider)
+                      .unregister();
+                  await ref.read(authControllerProvider).logout();
+                },
                 variant: LpgButtonVariant.secondary,
                 expand: true,
               ),

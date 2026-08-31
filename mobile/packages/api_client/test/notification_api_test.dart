@@ -83,5 +83,50 @@ void main() {
         isTrue,
       );
     });
+
+    test('registerDevice POSTs the token and platform', () async {
+      RequestOptions? capturedOptions;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        capturedOptions = options;
+        return emptyResponse(204);
+      });
+      final notificationApi = NotificationApi(client.dio);
+
+      final result = await notificationApi.registerDevice(
+        token: 'fcm-abc',
+        platform: 'android',
+      );
+
+      expect(capturedOptions!.method, 'POST');
+      expect(capturedOptions!.path, '/api/v1/notifications/devices');
+      expect(capturedOptions!.data, {'token': 'fcm-abc', 'platform': 'android'});
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+
+    test('unregisterDevice POSTs the token to the unregister sub-path', () async {
+      RequestOptions? capturedOptions;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        capturedOptions = options;
+        return emptyResponse(204);
+      });
+      final notificationApi = NotificationApi(client.dio);
+
+      final result = await notificationApi.unregisterDevice('fcm-abc');
+
+      expect(
+        capturedOptions!.path,
+        '/api/v1/notifications/devices/unregister',
+      );
+      expect(capturedOptions!.data, {'token': 'fcm-abc'});
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
+    });
   });
 }

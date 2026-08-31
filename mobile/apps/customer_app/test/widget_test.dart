@@ -3,6 +3,9 @@ import 'package:auth/auth.dart';
 import 'package:core/core.dart';
 import 'package:customer_app/main.dart';
 import 'package:customer_app/src/auth_provider.dart';
+import 'package:customer_app/src/providers.dart';
+import 'package:customer_app/src/push/push_notification_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -63,7 +66,14 @@ class _FakeAuthRepository implements AuthRepository {
 }
 
 Widget _appWith(AuthController authController) => ProviderScope(
-  overrides: [authControllerProvider.overrideWithValue(authController)],
+  overrides: [
+    authControllerProvider.overrideWithValue(authController),
+    // Never `init()`ed here, so no Firebase is touched — the widget only
+    // reads `takeInitialRoute()` (null) and subscribes to `taps`.
+    pushNotificationServiceProvider.overrideWithValue(
+      PushNotificationService(NotificationApi(Dio())),
+    ),
+  ],
   child: const CustomerApp(),
 );
 

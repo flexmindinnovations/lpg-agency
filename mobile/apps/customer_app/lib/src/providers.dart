@@ -4,6 +4,8 @@ import 'package:local_storage/local_storage.dart';
 import 'package:realtime/realtime.dart';
 import 'package:sync_engine/sync_engine.dart';
 
+import 'push/push_notification_service.dart';
+
 /// Provides the singleton [DriftLocalDatabase] instance.
 /// Must be overridden in `main.dart` with the initialized instance.
 final localDatabaseProvider = Provider<DriftLocalDatabase>((ref) {
@@ -75,4 +77,11 @@ final invoiceApiProvider = Provider<InvoiceApi>((ref) {
 final kycApiProvider = Provider<KycApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return KycApi(apiClient.dio);
+});
+
+/// Provides the singleton [PushNotificationService]. Overridden in
+/// `main.dart` with the instance whose FCM handlers are already wired;
+/// throws if that override is missed.
+final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
+  throw UnimplementedError('pushNotificationServiceProvider was not overridden');
 });

@@ -53,6 +53,14 @@ dependencies:
   intl: ^0.20.3
   image_picker: ^1.2.3
 
+  # Push notifications. `Firebase.initializeApp()` reads
+  # android/app/google-services.json (and ios GoogleService-Info.plist) at
+  # runtime — see README "Push notifications setup". flutter_local_notifications
+  # renders foreground messages, which FCM does not surface on its own.
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^18.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

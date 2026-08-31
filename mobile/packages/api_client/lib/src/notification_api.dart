@@ -77,4 +77,42 @@ final class NotificationApi {
       return FailureResult(Failure(message: e.toString()));
     }
   }
+
+  /// Register (or refresh) this device's FCM token so the backend can push
+  /// order/invoice updates. Idempotent server-side — safe to call on every
+  /// launch and on every `onTokenRefresh`. [platform] is `android` / `ios`
+  /// / `web`.
+  Future<Result<void>> registerDevice({
+    required String token,
+    required String platform,
+  }) async {
+    try {
+      await _dio.post<void>(
+        '/api/v1/notifications/devices',
+        data: {'token': token, 'platform': platform},
+      );
+      return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// Drop this device's token — call on logout so a shared device stops
+  /// receiving the previous user's notifications. A no-op if the token was
+  /// never registered.
+  Future<Result<void>> unregisterDevice(String token) async {
+    try {
+      await _dio.post<void>(
+        '/api/v1/notifications/devices/unregister',
+        data: {'token': token},
+      );
+      return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 }
