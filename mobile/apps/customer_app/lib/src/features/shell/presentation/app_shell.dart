@@ -32,24 +32,19 @@ class AppShell extends ConsumerWidget {
 
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: Container(
-        margin: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          bottom: MediaQuery.of(context).padding.bottom,
+      // Edge-to-edge bar, flush with the screen — no floating-pill margin.
+      // Real Material elevation (with M3's surface tint) lifts it off the
+      // content; high-contrast mode swaps that for an explicit top border
+      // since elevation tint alone isn't a strong enough separator there.
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: colors.isHighContrast
+              ? Border(top: BorderSide(color: colors.borderStrong, width: 2))
+              : null,
         ),
-        // A floating pill genuinely wants to read as lifted off the page —
-        // real Material elevation (with M3's surface tint) rather than a
-        // hand-rolled dual shadow.
         child: Material(
           color: colors.surfaceRaised,
           elevation: colors.isHighContrast ? 0 : 3,
-          shape: StadiumBorder(
-            side: colors.isHighContrast
-                ? BorderSide(color: colors.borderStrong, width: 2)
-                : BorderSide.none,
-          ),
-          clipBehavior: Clip.antiAlias,
           child: NavigationBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
