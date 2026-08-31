@@ -1,5 +1,6 @@
 import { HeaderPortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, forwardRef } from '@angular/core';
+import { Router } from '@angular/router';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { ButtonModule } from 'primeng/button';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
@@ -59,12 +60,23 @@ export class NotificationActionCell {
 export class NotificationFeatureNotifications implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly messageService = inject(MessageService);
+  private readonly router = inject(Router);
 
   protected readonly notifications = signal<NotificationResponse[]>([]);
   protected readonly loading = signal(false);
 
   protected readonly columns: DataGridColumn<NotificationResponse>[] = [
-    { field: 'title', header: 'Title', sortable: true, flex: 2 },
+    {
+      field: 'title',
+      header: 'Title',
+      sortable: true,
+      flex: 2,
+      // Click the title to open what the notification is about (and mark
+      // it read). Rows with no linkable reference just mark read.
+      onLinkClick: (row) => this.open(row),
+      tooltipValueGetter: (_v, row) =>
+        this.notificationService.routeFor(row) ? 'Open' : row.title,
+    },
     { field: 'body', header: 'Message', sortable: true, flex: 3 },
     { 
       field: 'is_read', 
@@ -87,6 +99,21 @@ export class NotificationFeatureNotifications implements OnInit {
 
   ngOnInit(): void {
     this.loadNotifications();
+    // Keep the shared bell badge in sync with what this page shows.
+    this.notificationService.refreshUnreadCount();
+  }
+
+  /** Mark a notification read and navigate to what it references. */
+  open(notification: NotificationResponse): void {
+    const route = this.notificationService.routeFor(notification);
+    if (!notification.is_read) {
+      this.notificationService.markRead(notification.id).subscribe({
+        next: () => this.loadNotifications(),
+      });
+    }
+    if (route) {
+      void this.router.navigate(route);
+    }
   }
 
   loadNotifications(): void {

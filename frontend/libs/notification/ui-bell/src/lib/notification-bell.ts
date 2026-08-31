@@ -1,7 +1,7 @@
-import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NotificationService, WebSocketService } from '@lpg/shared/data-access';
-import { interval, startWith, switchMap } from 'rxjs';
+import { interval, startWith } from 'rxjs';
 import { BadgeModule } from 'primeng/badge';
 import { ButtonModule } from 'primeng/button';
 
@@ -13,33 +13,28 @@ import { ButtonModule } from 'primeng/button';
 })
 export class NotificationBell {
   private readonly notificationService = inject(NotificationService);
-
   private readonly wsService = inject(WebSocketService);
 
   @Output() toggled = new EventEmitter<void>();
 
-  unreadCount = signal<number>(0);
+  /** Shared with the drawer and the notifications page — marking anything
+   *  read anywhere updates this badge instantly. */
+  readonly unreadCount = this.notificationService.unreadCount;
 
   constructor() {
     this.wsService.subscribeTo('notifications');
 
-    // Real-time updates
+    // A new notification arrived — bump immediately, then reconcile.
     this.wsService.on('notification.new')
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
-        // Optimistic update
-        this.unreadCount.update(c => c + 1);
+        this.notificationService.adjustUnreadCount(1);
+        this.notificationService.refreshUnreadCount();
       });
 
-    // Fallback polling (less frequent now, every 5 mins) and initial fetch
+    // Initial load + a slow safety-net poll (real-time paths cover the rest).
     interval(300000)
-      .pipe(
-        startWith(0),
-        switchMap(() => this.notificationService.getUnreadCount()),
-        takeUntilDestroyed()
-      )
-      .subscribe((res) => {
-        this.unreadCount.set(res.count ?? 0);
-      });
+      .pipe(startWith(0), takeUntilDestroyed())
+      .subscribe(() => this.notificationService.refreshUnreadCount());
   }
 }

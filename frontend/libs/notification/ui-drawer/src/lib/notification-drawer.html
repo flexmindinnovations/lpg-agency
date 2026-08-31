@@ -16,7 +16,13 @@
 
     @for (notification of notifications(); track notification.id) {
     <div class="notification-item"
-         [class.notification-item--unread]="!notification.is_read">
+         [class.notification-item--unread]="!notification.is_read"
+         [class.notification-item--linked]="hasLink(notification)"
+         [attr.role]="hasLink(notification) ? 'button' : null"
+         [attr.tabindex]="hasLink(notification) ? 0 : null"
+         (click)="open(notification)"
+         (keydown.enter)="open(notification)"
+         (keydown.space)="open(notification)">
 
       <div class="notification-header">
         <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
@@ -30,7 +36,7 @@
                     severity="secondary"
                     size="small"
                     pTooltip="Mark as read"
-                    (onClick)="markAsRead(notification.id)">
+                    (onClick)="markAsRead(notification.id); $event.stopPropagation()">
           </p-button>
           }
         </div>
@@ -42,6 +48,9 @@
 
       <span class="notification-time">
         {{ notification.created_at | date:'short' }}
+        @if (hasLink(notification)) {
+        <span class="notification-open-hint">· Open</span>
+        }
       </span>
     </div>
     }
