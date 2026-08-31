@@ -289,6 +289,14 @@ class SqlAlchemyOrderRepository:
 
         await self._uow.session.flush()
 
+        # Track the aggregate so `UnitOfWork.commit()` dispatches its domain
+        # events. `_to_domain` already does this for orders loaded via
+        # `get_by_id`/`list` (state transitions), but a brand-new order only
+        # ever passes through `save()` — without this, `BookingCreated` was
+        # never dispatched, so no notification/realtime handler ran when a
+        # customer placed an order.
+        self._uow.register_aggregate(order)
+
 
 class SqlAlchemyCancellationRecordRepository:
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:

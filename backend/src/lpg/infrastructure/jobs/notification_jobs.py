@@ -58,7 +58,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 
     async for session in database.open_session(tenant_id=tenant_id):
         tenant_context = RequestTenantContext(tenant_id=tenant_id)
-        async with SqlAlchemyUnitOfWork(session, tenant_context) as uow:
+        async with SqlAlchemyUnitOfWork(
+            session, tenant_context, event_dispatcher=ctx.get("event_dispatcher")
+        ) as uow:
             from lpg.config.settings import get_settings
             from lpg.infrastructure.channels.email_channel import StubEmailChannel
             from lpg.infrastructure.channels.sms_channel import StubSmsChannel
@@ -194,6 +196,11 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     reference_id=reference_id,
                 )
                 await in_app_repo.add(in_app)
+                # `SqlAlchemyInAppNotificationRepository.add` is raw SQL and
+                # doesn't track the aggregate — register it so
+                # `InAppNotificationCreated` reaches the realtime handler on
+                # commit and the client's unread badge updates live.
+                uow.register_aggregate(in_app)
 
                 # Retrieve IdentityUser for external channels
                 user = await identity_repo.get(user_id)

@@ -212,6 +212,23 @@ class TestEventCollection:
             events = uow.collect_events()
             assert len(events) == 1
 
+    async def test_registering_the_same_aggregate_twice_does_not_double_events(
+        self, database: Database, tenant_context: RequestTenantContext
+    ) -> None:
+        # A use case that loads an aggregate (get_by_id registers it) then
+        # saves it (registers again) must not have its events dispatched
+        # twice.
+        async for session in database.open_session(tenant_id=tenant_context.tenant_id):
+            uow = SqlAlchemyUnitOfWork(session, tenant_context)
+
+            aggregate = _ProbeAggregate(uuid.uuid4())
+            aggregate.touch("only-once")
+
+            uow.register_aggregate(aggregate)
+            uow.register_aggregate(aggregate)
+
+            assert len(uow.collect_events()) == 1
+
 
 class TestSessionExposure:
     async def test_session_property_is_the_scoped_session(

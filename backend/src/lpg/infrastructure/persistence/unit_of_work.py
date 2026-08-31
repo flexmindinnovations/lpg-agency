@@ -80,7 +80,14 @@ class SqlAlchemyUnitOfWork:
         business knowing a Unit of Work exists (``03-backend-architecture.md``
         §5: application code receives collaborators as constructor arguments,
         it does not reach for a global).
+
+        Idempotent by object identity: a use case that loads an aggregate
+        (``get_by_id`` registers it) and then ``save``s it (registers again)
+        must not have that aggregate's events collected — and dispatched —
+        twice.
         """
+        if any(tracked is aggregate for tracked in self._tracked_aggregates):
+            return
         self._tracked_aggregates.append(aggregate)
 
     def collect_events(self) -> Sequence[DomainEvent]:

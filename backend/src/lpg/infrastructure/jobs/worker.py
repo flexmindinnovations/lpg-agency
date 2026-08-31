@@ -153,6 +153,23 @@ async def startup(ctx: dict[str, Any]) -> None:
 
     ctx["push_channel"] = build_push_channel(settings)
 
+    # A domain-event dispatcher wired to the realtime publisher, so an
+    # `InAppNotification` created inside a job still emits `notification.new`
+    # over the Pub/Sub backplane — otherwise a notification only ever
+    # reaches a client on its next poll, never live. Mirrors the API
+    # lifespan's `register_realtime_handlers` wiring.
+    from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
+    from lpg.infrastructure.events.realtime_handlers import register_realtime_handlers
+    from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
+    from lpg.infrastructure.redis.client import RedisClient
+
+    redis_client = RedisClient(settings)
+    redis_client.connect()
+    ctx["redis"] = redis_client
+    dispatcher = DomainEventDispatcher()
+    register_realtime_handlers(dispatcher, RedisRealtimePublisher(redis_client))
+    ctx["event_dispatcher"] = dispatcher
+
     _logger.info("worker_started", environment=settings.environment)
 
 
@@ -160,6 +177,9 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     database: Database | None = ctx.get("database")
     if database is not None:
         await database.disconnect()
+    redis_client = ctx.get("redis")
+    if redis_client is not None:
+        await redis_client.disconnect()
     push_channel = ctx.get("push_channel")
     if push_channel is not None and hasattr(push_channel, "aclose"):
         await push_channel.aclose()
