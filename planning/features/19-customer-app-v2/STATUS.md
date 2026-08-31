@@ -41,9 +41,25 @@ Firebase project `lpg-erp-2b143`, service-account key via
   coming-soon sheets)
 - `device_token` migration `f3a9c1e07b42` applied to local dev DB
 
+## Staff new-order alerts (2026-08-31, commits d0cf9bf + 936e22c)
+
+A customer / phone / walk-in / whatsapp / api order now raises an
+`order_placed_staff` in-app notification to every active
+agency_admin / manager / dispatcher (tenant-wide). Staff-created orders
+(`booking_source='staff'`) are skipped. **Verified live in the dashboard**
+— bell count + Notifications page both show "New Order". Fixed a
+pre-existing bug: `_STAFF_ALERT_ROLES` used `branch_manager` (never a real
+role), so `delivery_failed_staff` never reached managers either.
+
 ## Outstanding
 
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
+- **Frontend bug (pre-existing):** the notification *drawer* (bell popup)
+  doesn't reload when opened — `NotificationDrawer.visible` is a plain
+  `@Input`, so its `effect(() => if (visible) load())` never re-runs. The
+  full `/notifications` page and the bell count work fine.
+- The dashboard Order Queue list doesn't live-refresh on a new order (no
+  WS subscription); home KPIs do.
 - Test coverage still thin on feature screens — `kyc_screen` and
   `payment_methods_screen` have widget tests; orders / invoices / complaints
   / addresses do not.
