@@ -72,9 +72,12 @@ def register_realtime_handlers(
             "status": status,
         }
 
-        await publisher.publish(
-            f"tenant:{getattr(event, 'tenant_id', 'global')}:order:{order_id}", message
-        )
+        tenant = getattr(event, "tenant_id", "global")
+        # Per-order channel: whoever has that order's detail screen open.
+        await publisher.publish(f"tenant:{tenant}:order:{order_id}", message)
+        # Tenant-wide order feed: list screens (Order Queue) that need to
+        # know *an* order changed without subscribing per row.
+        await publisher.publish(f"tenant:{tenant}:orders", message)
         await publish_dashboard_update(event)
 
     async def on_notification_created(event: InAppNotificationCreated) -> None:

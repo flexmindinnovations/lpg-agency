@@ -49,6 +49,14 @@ def _resolve_subscription_intent(intent: str, claims: dict[str, Any]) -> str | N
     if intent == "notifications":
         return f"tenant:{tenant_id}:user:{user_id}"
 
+    if intent == "orders":
+        # Tenant-wide order-status feed for list screens. Same permission
+        # gate as `GET /orders` (`orders:read`); a customer only ever sees
+        # their own orders and subscribes per-order instead.
+        if "orders:read" in permissions:
+            return f"tenant:{tenant_id}:orders"
+        return None
+
     if intent == "dispatch":
         if "orders:read" in permissions or "routes:read" in permissions:
             return f"tenant:{tenant_id}:dispatch"
