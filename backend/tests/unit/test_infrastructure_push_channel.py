@@ -63,6 +63,22 @@ def test_build_returns_fcm_channel_with_valid_credentials() -> None:
     assert isinstance(channel, FcmHttpV1PushChannel)
 
 
+def test_build_reads_credentials_from_a_file_path(tmp_path) -> None:
+    key_file = tmp_path / "sa.json"
+    key_file.write_text(json.dumps(_service_account()), encoding="utf-8")
+    channel = build_push_channel(
+        _settings(fcm_credentials_path=str(key_file))
+    )
+    assert isinstance(channel, FcmHttpV1PushChannel)
+
+
+def test_build_returns_stub_when_the_path_is_missing() -> None:
+    channel = build_push_channel(
+        _settings(fcm_credentials_path="/no/such/key.json")
+    )
+    assert isinstance(channel, StubPushChannel)
+
+
 # -- StubPushChannel -------------------------------------------------------
 
 

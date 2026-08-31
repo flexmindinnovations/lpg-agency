@@ -21,6 +21,12 @@
 secrets/
 !scripts/**/secrets.example.*
 
+# Firebase Admin SDK / service-account keys (FCM push) — full-privilege
+# credentials, supplied via LPG_FCM_CREDENTIALS_PATH, never committed
+*-firebase-adminsdk-*.json
+*serviceAccountKey*.json
+google-application-credentials*.json
+
 # AG Grid Enterprise licence key (ADR-020) — supplied via environment, never committed
 ag-grid-license*
 *.aggrid-license

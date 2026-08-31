@@ -142,7 +142,24 @@ class FcmHttpV1PushChannel:
 
 
 def build_push_channel(settings: Settings) -> StubPushChannel | FcmHttpV1PushChannel:
-    raw = settings.fcm_credentials_json.get_secret_value().strip()
+    from pathlib import Path
+
+    raw = ""
+    path = settings.fcm_credentials_path.strip()
+    if path:
+        try:
+            raw = Path(path).read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            _logger.error(
+                "fcm_credentials_path_unreadable",
+                path=path,
+                error=str(exc),
+                falling_back="StubPushChannel",
+            )
+            return StubPushChannel()
+    else:
+        raw = settings.fcm_credentials_json.get_secret_value().strip()
+
     if not raw:
         return StubPushChannel()
 
@@ -157,4 +174,5 @@ def build_push_channel(settings: Settings) -> StubPushChannel | FcmHttpV1PushCha
         _logger.error("fcm_credentials_incomplete", falling_back="StubPushChannel")
         return StubPushChannel()
 
+    _logger.info("fcm_push_channel_enabled", project_id=project_id)
     return FcmHttpV1PushChannel(service_account=service_account, project_id=project_id)

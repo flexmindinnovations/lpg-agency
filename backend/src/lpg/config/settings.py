@@ -175,9 +175,13 @@ class Settings(BaseSettings):
     # Firebase Cloud Messaging HTTP v1. Left empty by default: the
     # notification job falls back to `StubPushChannel` (logs, sends
     # nothing), so every environment works without Firebase wired up.
-    # Set `fcm_credentials_json` to the *contents* of a Firebase service-
-    # account key file (not a path) to activate real delivery;
-    # `fcm_project_id` is read from that JSON if not set explicitly.
+    #
+    # Supply the service-account key either as a filesystem path
+    # (`fcm_credentials_path`, convenient in local dev — the downloaded
+    # JSON file) or inline (`fcm_credentials_json`, the file's *contents*,
+    # better for secret managers). Path wins if both are set.
+    # `fcm_project_id` is read from the key JSON if not set explicitly.
+    fcm_credentials_path: str = ""
     fcm_credentials_json: SecretStr = SecretStr("")
     fcm_project_id: str = ""
 
