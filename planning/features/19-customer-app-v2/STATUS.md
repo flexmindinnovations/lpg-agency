@@ -41,25 +41,44 @@ Firebase project `lpg-erp-2b143`, service-account key via
   coming-soon sheets)
 - `device_token` migration `f3a9c1e07b42` applied to local dev DB
 
-## Staff new-order alerts (2026-08-31, commits d0cf9bf + 936e22c)
+## Staff new-order alerts + realtime pipeline (2026-08-31)
 
 A customer / phone / walk-in / whatsapp / api order now raises an
 `order_placed_staff` in-app notification to every active
 agency_admin / manager / dispatcher (tenant-wide). Staff-created orders
-(`booking_source='staff'`) are skipped. **Verified live in the dashboard**
-— bell count + Notifications page both show "New Order". Fixed a
-pre-existing bug: `_STAFF_ALERT_ROLES` used `branch_manager` (never a real
-role), so `delivery_failed_staff` never reached managers either.
+(`booking_source='staff'`) are skipped.
+
+Commits `d0cf9bf` + `936e22c` + `051a3c2`. Four pre-existing bugs fixed to
+make the full flow actually work:
+
+- `_STAFF_ALERT_ROLES` used `branch_manager` (never a real role string), so
+  even `delivery_failed_staff` never reached managers.
+- `EmployeeBranchStaffResolver` needs an employee↔identity phone link the
+  demo seed never creates — `order_placed_staff` resolves off
+  `identity_user.role` instead.
+- **`SqlAlchemyOrderRepository.save()` never called `register_aggregate()`**
+  — so a brand-new order's `BookingCreated` was *never dispatched*. No
+  handler (notification or realtime) ran on customer order placement.
+  `register_aggregate` is now idempotent by identity.
+- **The ARQ worker built its UoW with no `event_dispatcher`** — an
+  `InAppNotification` created in a job never emitted `notification.new`, so
+  the unread badge only updated on its poll. Worker now wires a dispatcher
+  + realtime publisher.
 
 ## Dashboard realtime fixes (2026-08-31, commits 2d0fee9 + 2e06f15)
 
 - **Notification drawer** now reloads every time it opens —
   `NotificationDrawer.visible` is a `model()` signal, so its `effect()`
   re-runs (was a plain `@Input`, fetched once at construction while
-  closed). Verified: drawer shows the staff new-order notifications.
+  closed).
 - **Order Queue** live-refreshes on `order.status_changed` — new
   tenant-wide `orders` WS channel + intent (`orders:read`-gated), silent
-  debounced refetch. Verified: count 52 → 53 on a new booking, no reload.
+  debounced refetch.
+
+**Full flow verified live end-to-end (2026-08-31):** customer places order
+in the emulator → `BookingCreated` dispatched → 3 staff get "New Order" →
+dashboard **Order Queue 55→56** and **bell 1→2**, both live over the
+WebSocket with no reload; drawer opens and shows the notifications.
 
 ## Outstanding
 
