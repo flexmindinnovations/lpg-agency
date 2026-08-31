@@ -26,20 +26,24 @@ package's widget tests:
   (commit `4bbe6d6`), client `PushNotificationService` (commit `0de0dee`)
   — permission, token registration, foreground display, tap deep-linking
 
+## Verified live (2026-08-31, Android emulator)
+
+- App builds + runs against Firebase project `lpg-erp-2b143`
+- Notification permission prompt → FCM token → `POST /notifications/devices`
+  → row in `notification.device_token`
+- Edge-to-edge bottom nav bar; Payment Methods screen (empty state +
+  coming-soon sheets)
+- `device_token` migration `f3a9c1e07b42` applied to local dev DB
+
 ## Outstanding
 
-- **Live end-to-end verification** — the Android build requires
-  `android/app/google-services.json` (see `mobile/apps/customer_app/README.md`);
-  until it's added the app can't be run on a device/emulator, so the newest
-  changes (edge-to-edge nav, payments screen, push) are verified only by
-  `flutter analyze` + widget tests.
-- The `device_token` migration (`f3a9c1e07b42`) hasn't been applied to a
-  live database yet.
-- Test coverage is still thin on the feature screens — `kyc_screen` and
+- **Real push delivery untested** — `LPG_FCM_CREDENTIALS_JSON` not set, so
+  the backend still uses `StubPushChannel` (logs, sends nothing). Need the
+  service-account key to test an actual tray notification + tap deep-link.
+- **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
+- Test coverage still thin on feature screens — `kyc_screen` and
   `payment_methods_screen` have widget tests; orders / invoices / complaints
   / addresses do not.
-- FCM service-account key (`LPG_FCM_CREDENTIALS_JSON`) not configured, so
-  the backend uses `StubPushChannel` (logs, sends nothing).
 
 ## Issues
 
