@@ -5,7 +5,6 @@ import 'package:customer_app/main.dart';
 import 'package:customer_app/src/auth_provider.dart';
 import 'package:customer_app/src/providers.dart';
 import 'package:customer_app/src/push/push_notification_service.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,7 +70,9 @@ Widget _appWith(AuthController authController) => ProviderScope(
     // Never `init()`ed here, so no Firebase is touched — the widget only
     // reads `takeInitialRoute()` (null) and subscribes to `taps`.
     pushNotificationServiceProvider.overrideWithValue(
-      PushNotificationService(NotificationApi(Dio())),
+      PushNotificationService(
+        NotificationApi(ApiClient(baseUrl: 'https://api.test').dio),
+      ),
     ),
   ],
   child: const CustomerApp(),

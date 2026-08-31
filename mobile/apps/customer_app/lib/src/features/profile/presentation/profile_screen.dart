@@ -253,22 +253,15 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               LpgCard(
                 padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    LpgListTile(
-                      leadingIcon: Icons.credit_card_outlined,
-                      title: 'Saved Cards',
-                      subtitle: 'No cards saved',
-                      onTap: () {},
-                    ),
-                    Divider(height: 1, indent: 56, color: colors.borderDefault),
-                    LpgListTile(
-                      leadingIcon: Icons.account_balance_wallet_outlined,
-                      title: 'UPI / Wallet',
-                      subtitle: 'Manage digital payments',
-                      onTap: () {},
-                    ),
-                  ],
+                child: LpgListTile(
+                  leadingIcon: Icons.credit_card_outlined,
+                  title: 'Cards & UPI',
+                  subtitle: 'No payment methods saved',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: colors.textSecondary,
+                  ),
+                  onTap: () => context.push('/profile/payments'),
                 ),
               ),
 

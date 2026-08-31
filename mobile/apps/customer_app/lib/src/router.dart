@@ -16,6 +16,7 @@ import 'package:api_client/api_client.dart';
 import 'features/profile/presentation/add_address_screen.dart';
 import 'features/kyc/presentation/kyc_screen.dart';
 import 'features/kyc/presentation/submit_kyc_screen.dart';
+import 'features/payments/presentation/payment_methods_screen.dart';
 import 'features/profile/presentation/edit_address_screen.dart';
 import 'features/profile/presentation/edit_profile_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
@@ -205,6 +206,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                         builder: (context, state) => const SubmitKycScreen(),
                       ),
                     ],
+                  ),
+                  GoRoute(
+                    path: 'payments',
+                    name: 'profile_payments',
+                    builder: (context, state) => const PaymentMethodsScreen(),
                   ),
                 ],
               ),
