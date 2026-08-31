@@ -78,7 +78,11 @@ class SqlAlchemyOrderRepository:
             .where(*self._filters(status, branch_id, customer_id, from_date, to_date))
         )
         stmt = self._apply_driver_filter(stmt, driver_id)
-        stmt = stmt.order_by(OrderModel.requested_date.desc(), OrderModel.id.desc())
+        # Newest booking first — the operational default for an order queue
+        # ("what just came in"). `id` is the tiebreaker for orders created in
+        # the same tick, not a `requested_date` sort — a future-dated
+        # delivery shouldn't outrank an order booked seconds ago.
+        stmt = stmt.order_by(OrderModel.created_at.desc(), OrderModel.id.desc())
         stmt = stmt.offset(skip).limit(limit)
         rows = (await self._uow.session.execute(stmt)).scalars().all()
         return [self._to_domain(row) for row in rows]
