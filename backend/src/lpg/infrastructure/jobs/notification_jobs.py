@@ -69,6 +69,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 SqlAlchemyIdentityUserRepository,
             )
             from lpg.infrastructure.persistence.repositories.notification import (
+                SqlAlchemyDeviceTokenRepository,
                 SqlAlchemyInAppNotificationRepository,
                 SqlAlchemyNotificationLogRepository,
             )
@@ -84,6 +85,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 
             in_app_repo = SqlAlchemyInAppNotificationRepository(session)
             log_repo = SqlAlchemyNotificationLogRepository(uow)
+            device_repo = SqlAlchemyDeviceTokenRepository(session)
             identity_repo = SqlAlchemyIdentityUserRepository(database)
 
             # Resolve recipients. None of the order-lifecycle handlers
@@ -135,6 +137,20 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 
             email_channel = StubEmailChannel()
             sms_channel = StubSmsChannel()
+            # Built once at worker startup (holds an OAuth token + httpx
+            # client); `StubPushChannel` when Firebase isn't configured.
+            from lpg.infrastructure.channels.push_channel import build_push_channel
+
+            push_channel = ctx.get("push_channel") or build_push_channel(get_settings())
+
+            push_data = {
+                "type": notification_type,
+                **(
+                    {"reference_type": reference_type, "reference_id": str(reference_id)}
+                    if reference_id is not None
+                    else {}
+                ),
+            }
 
             for user_id in recipient_user_ids:
                 # 1. In-App Notification (Always)
@@ -202,6 +218,46 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 
                     await log_repo.save(sms_log)
 
+                # 4. Push Channel — one FCM request per registered device.
+                if _should_send_push(notification_type):
+                    from lpg.application.notification.ports import PushTokenInvalidError
+
+                    for device in await device_repo.list_for_user(user_id):
+                        push_log = NotificationLog.create(
+                            tenant_id=tenant_id,
+                            recipient_user_id=user_id,
+                            notification_type=notification_type,
+                            channel="push",
+                            recipient_address=f"{device.platform}:...{device.token[-8:]}",
+                            subject=title,
+                            body=body,
+                            reference_type=reference_type,
+                            reference_id=reference_id,
+                        )
+                        await log_repo.add(push_log)
+
+                        try:
+                            await push_channel.send(
+                                token=device.token,
+                                platform=device.platform,
+                                title=title,
+                                body=body,
+                                data=push_data,
+                            )
+                            push_log.mark_sent()
+                        except PushTokenInvalidError:
+                            # Dead token — prune it so we stop trying.
+                            await device_repo.delete_by_token(device.token)
+                            push_log.mark_failed("token unregistered")
+                            _logger.info(
+                                "push_token_pruned", token_suffix=device.token[-8:]
+                            )
+                        except Exception as e:
+                            push_log.mark_failed(str(e))
+                            _logger.exception("push_send_failed", user_id=str(user_id))
+
+                        await log_repo.save(push_log)
+
             _logger.info("notification_job_completed", recipients_count=len(recipient_user_ids))
 
 
@@ -242,4 +298,17 @@ def _should_send_sms(notification_type: str) -> bool:
         "driver_assigned",
         "out_for_delivery",
         "delivery_confirmed",
+    }
+
+
+def _should_send_push(notification_type: str) -> bool:
+    # Every customer- and driver-facing lifecycle event. `delivery_failed_
+    # staff` is intentionally excluded — staff use the dashboard, not the
+    # mobile apps that register device tokens.
+    return notification_type in {
+        "booking_confirmed",
+        "driver_assigned",
+        "out_for_delivery",
+        "delivery_confirmed",
+        "invoice_generated",
     }

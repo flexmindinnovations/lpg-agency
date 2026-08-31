@@ -147,6 +147,12 @@ async def startup(ctx: dict[str, Any]) -> None:
     database.connect()
     ctx["database"] = database
 
+    # Built once per worker process — the FCM channel caches an OAuth token
+    # and holds an httpx client, both wasteful to recreate per job.
+    from lpg.infrastructure.channels.push_channel import build_push_channel
+
+    ctx["push_channel"] = build_push_channel(settings)
+
     _logger.info("worker_started", environment=settings.environment)
 
 
@@ -154,6 +160,9 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     database: Database | None = ctx.get("database")
     if database is not None:
         await database.disconnect()
+    push_channel = ctx.get("push_channel")
+    if push_channel is not None and hasattr(push_channel, "aclose"):
+        await push_channel.aclose()
     _logger.info("worker_stopped")
 
 

@@ -4,8 +4,23 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class RegisterDeviceRequest(BaseModel):
+    """Body for `POST /notifications/devices` — an FCM registration token
+    plus the platform it came from."""
+
+    token: str = Field(min_length=1, max_length=4096)
+    platform: Literal["android", "ios", "web"]
+
+
+class UnregisterDeviceRequest(BaseModel):
+    """Body for `DELETE /notifications/devices` — the token to drop."""
+
+    token: str = Field(min_length=1, max_length=4096)
 
 
 class NotificationResponse(BaseModel):

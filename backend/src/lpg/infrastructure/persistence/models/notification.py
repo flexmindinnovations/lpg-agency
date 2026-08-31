@@ -29,6 +29,19 @@ class InAppNotificationModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class DeviceTokenModel(Base):
+    __tablename__ = "device_token"
+    __table_args__ = {"schema": "notification"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid(), nullable=False)
+    recipient_user_id: Mapped[uuid.UUID] = mapped_column(Uuid(), nullable=False)
+    token: Mapped[str] = mapped_column(String(), nullable=False, unique=True)
+    platform: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class NotificationLogModel(Base):
     __tablename__ = "notification_log"
     __table_args__ = {"schema": "notification"}  # noqa: RUF012

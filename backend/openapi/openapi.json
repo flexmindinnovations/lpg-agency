@@ -5317,6 +5317,32 @@
         "title": "RegisterCustomerRequest",
         "type": "object"
       },
+      "RegisterDeviceRequest": {
+        "description": "Body for `POST /notifications/devices` — an FCM registration token\nplus the platform it came from.",
+        "properties": {
+          "platform": {
+            "enum": [
+              "android",
+              "ios",
+              "web"
+            ],
+            "title": "Platform",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ],
+        "title": "RegisterDeviceRequest",
+        "type": "object"
+      },
       "RegisterDriverRequest": {
         "properties": {
           "branch_id": {
@@ -6255,6 +6281,148 @@
           "count"
         ],
         "title": "UnreadCountResponse",
+        "type": "object"
+      },
+      "UnregisterDeviceRequest": {
+        "description": "Body for `DELETE /notifications/devices` — the token to drop.",
+        "properties": {
+          "token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "UnregisterDeviceRequest",
+        "type": "object"
+      },
+      "UpdateCustomerAddressRequest": {
+        "properties": {
+          "address_type": {
+            "default": "delivery",
+            "title": "Address Type",
+            "type": "string"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "landmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landmark"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "line_1": {
+            "minLength": 1,
+            "title": "Line 1",
+            "type": "string"
+          },
+          "line_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line 2"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "pincode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pincode"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          }
+        },
+        "required": [
+          "line_1"
+        ],
+        "title": "UpdateCustomerAddressRequest",
         "type": "object"
       },
       "UpdateCustomerProfileRequest": {
@@ -9315,6 +9483,67 @@
         ]
       }
     },
+    "/api/v1/customers/{customer_id}/addresses/{address_id}": {
+      "put": {
+        "operationId": "update_address_api_v1_customers__customer_id__addresses__address_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "address_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Address Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerAddressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Address",
+        "tags": [
+          "Customers"
+        ]
+      }
+    },
     "/api/v1/customers/{customer_id}/addresses/{address_id}/primary": {
       "put": {
         "operationId": "set_primary_address_api_v1_customers__customer_id__addresses__address_id__primary_put",
@@ -11144,6 +11373,76 @@
           }
         },
         "summary": "List Notifications",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/devices": {
+      "post": {
+        "description": "Register (or refresh) this device's FCM token for push delivery.\n\nIdempotent — the app calls this on every launch and on token refresh.",
+        "operationId": "register_device_api_v1_notifications_devices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Device",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/devices/unregister": {
+      "post": {
+        "description": "Drop this device's token — called on logout. A no-op if the token\nisn't registered (already gone, or never was). RLS scopes the delete to\nthe caller's tenant; POST (not DELETE) so the 4 KB token rides in the\nbody rather than the URL.",
+        "operationId": "unregister_device_api_v1_notifications_devices_unregister_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnregisterDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unregister Device",
         "tags": [
           "Notifications"
         ]

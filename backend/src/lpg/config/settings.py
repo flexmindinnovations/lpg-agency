@@ -171,6 +171,16 @@ class Settings(BaseSettings):
     # use one — any non-empty string satisfies the client-side validation.
     storage_region: str = "us-east-1"
 
+    # -- Push notifications (FCM, Phase 19) ------------------------------
+    # Firebase Cloud Messaging HTTP v1. Left empty by default: the
+    # notification job falls back to `StubPushChannel` (logs, sends
+    # nothing), so every environment works without Firebase wired up.
+    # Set `fcm_credentials_json` to the *contents* of a Firebase service-
+    # account key file (not a path) to activate real delivery;
+    # `fcm_project_id` is read from that JSON if not set explicitly.
+    fcm_credentials_json: SecretStr = SecretStr("")
+    fcm_project_id: str = ""
+
     # -- Observability ----------------------------------------------------
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_json: bool = True

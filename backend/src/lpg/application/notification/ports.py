@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     import uuid
 
+    from lpg.domain.notification.device_token import DeviceToken
     from lpg.domain.notification.in_app_notification import InAppNotification
     from lpg.domain.notification.notification_log import NotificationLog
 
@@ -67,6 +68,49 @@ class SmsChannel(Protocol):
     async def send(self, *, to: str, body: str) -> None:
         """Send an SMS."""
         ...
+
+
+class DeviceTokenRepository(Protocol):
+    """Port for DeviceToken persistence."""
+
+    async def upsert(self, token: DeviceToken) -> None:
+        """Register a token, or refresh `last_seen_at` (and reassign the
+        owning user) if this exact token string already exists."""
+        ...
+
+    async def delete_by_token(self, token: str) -> None:
+        """Remove a token — called on logout / when FCM reports it stale."""
+        ...
+
+    async def list_for_user(self, user_id: uuid.UUID) -> list[DeviceToken]:
+        """Every registered token for a user, across their devices."""
+        ...
+
+
+class PushChannel(Protocol):
+    """Port for sending a push notification to one device token."""
+
+    async def send(
+        self,
+        *,
+        token: str,
+        platform: str,
+        title: str,
+        body: str,
+        data: dict[str, str],
+    ) -> None:
+        """Deliver to a single device. Raises on a hard failure; raises
+        `PushTokenInvalidError` specifically when the provider reports the
+        token is permanently unregistered so the caller can prune it."""
+        ...
+
+
+class PushTokenInvalidError(Exception):
+    """The push provider rejected the token as permanently invalid."""
+
+    def __init__(self, token: str) -> None:
+        super().__init__(f"Push token no longer valid: ...{token[-8:]}")
+        self.token = token
 
 
 class BranchStaffResolver(Protocol):

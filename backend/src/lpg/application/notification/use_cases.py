@@ -10,7 +10,10 @@ if TYPE_CHECKING:
     import uuid
 
     from lpg.application.common.ports import UnitOfWork
-    from lpg.application.notification.ports import InAppNotificationRepository
+    from lpg.application.notification.ports import (
+        DeviceTokenRepository,
+        InAppNotificationRepository,
+    )
     from lpg.domain.notification.in_app_notification import InAppNotification
 
 
@@ -57,3 +60,43 @@ class MarkAllReadUseCase:
     async def execute(self, user_id: uuid.UUID) -> None:
         async with self._uow:
             await self._repository.mark_all_read(user_id)
+
+
+class RegisterDeviceUseCase:
+    """Register (or refresh) an FCM token for the current user's device."""
+
+    def __init__(self, uow: UnitOfWork, repository: DeviceTokenRepository) -> None:
+        self._uow = uow
+        self._repository = repository
+
+    async def execute(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        user_id: uuid.UUID,
+        token: str,
+        platform: str,
+    ) -> None:
+        from lpg.domain.notification.device_token import DeviceToken
+
+        async with self._uow:
+            await self._repository.upsert(
+                DeviceToken(
+                    tenant_id=tenant_id,
+                    recipient_user_id=user_id,
+                    token=token.strip(),
+                    platform=platform,
+                )
+            )
+
+
+class UnregisterDeviceUseCase:
+    """Drop a token — on logout, or when the app is told the token is stale."""
+
+    def __init__(self, uow: UnitOfWork, repository: DeviceTokenRepository) -> None:
+        self._uow = uow
+        self._repository = repository
+
+    async def execute(self, *, token: str) -> None:
+        async with self._uow:
+            await self._repository.delete_by_token(token.strip())

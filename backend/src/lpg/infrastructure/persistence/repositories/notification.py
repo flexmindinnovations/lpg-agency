@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lpg.domain.notification.device_token import DeviceToken
 from lpg.domain.notification.in_app_notification import InAppNotification
 
 if TYPE_CHECKING:
@@ -232,3 +233,77 @@ class SqlAlchemyNotificationLogRepository:
                 "updated_at": log.updated_at,
             },
         )
+
+
+class SqlAlchemyDeviceTokenRepository:
+    """SQLAlchemy implementation of DeviceTokenRepository — raw SQL, same
+    style as `SqlAlchemyInAppNotificationRepository`."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def upsert(self, token: DeviceToken) -> None:
+        from sqlalchemy import text
+
+        # ON CONFLICT (token): FCM can hand the same token to a new app
+        # instance, so a re-register moves ownership to the current user and
+        # bumps `last_seen_at`. `tenant_id` moves too — a device that
+        # switched agencies should stop receiving the old tenant's pushes.
+        stmt = text("""
+            INSERT INTO notification.device_token (
+                id, tenant_id, recipient_user_id, token, platform,
+                created_at, last_seen_at
+            ) VALUES (
+                :id, :tenant_id, :recipient_user_id, :token, :platform,
+                :created_at, :last_seen_at
+            )
+            ON CONFLICT (token) DO UPDATE SET
+                tenant_id = EXCLUDED.tenant_id,
+                recipient_user_id = EXCLUDED.recipient_user_id,
+                platform = EXCLUDED.platform,
+                last_seen_at = EXCLUDED.last_seen_at
+        """)
+        await self._session.execute(
+            stmt,
+            {
+                "id": token.id,
+                "tenant_id": token.tenant_id,
+                "recipient_user_id": token.recipient_user_id,
+                "token": token.token,
+                "platform": token.platform,
+                "created_at": token.created_at,
+                "last_seen_at": token.last_seen_at,
+            },
+        )
+
+    async def delete_by_token(self, token: str) -> None:
+        from sqlalchemy import text
+
+        # No tenant/user predicate: logout clears the token the caller holds,
+        # and the unique constraint means it's theirs. RLS still scopes the
+        # statement to the caller's tenant.
+        stmt = text("DELETE FROM notification.device_token WHERE token = :token")
+        await self._session.execute(stmt, {"token": token})
+
+    async def list_for_user(self, user_id: uuid.UUID) -> list[DeviceToken]:
+        from sqlalchemy import text
+
+        stmt = text("""
+            SELECT id, tenant_id, recipient_user_id, token, platform,
+                   created_at, last_seen_at
+            FROM notification.device_token
+            WHERE recipient_user_id = :user_id
+        """)
+        result = await self._session.execute(stmt, {"user_id": user_id})
+        return [
+            DeviceToken(
+                id=row["id"],
+                tenant_id=row["tenant_id"],
+                recipient_user_id=row["recipient_user_id"],
+                token=row["token"],
+                platform=row["platform"],
+                created_at=row["created_at"],
+                last_seen_at=row["last_seen_at"],
+            )
+            for row in result.mappings()
+        ]

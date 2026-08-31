@@ -16,7 +16,10 @@ from fastapi import Depends
 
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.ports import UnitOfWork
-from lpg.application.notification.ports import InAppNotificationRepository
+from lpg.application.notification.ports import (
+    DeviceTokenRepository,
+    InAppNotificationRepository,
+)
 
 
 def get_notification_repository(
@@ -29,3 +32,15 @@ def get_notification_repository(
 
     assert isinstance(unit_of_work, SqlAlchemyUnitOfWork)
     return SqlAlchemyInAppNotificationRepository(unit_of_work.session)
+
+
+def get_device_token_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> DeviceTokenRepository:
+    from lpg.infrastructure.persistence.repositories.notification import (
+        SqlAlchemyDeviceTokenRepository,
+    )
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    assert isinstance(unit_of_work, SqlAlchemyUnitOfWork)
+    return SqlAlchemyDeviceTokenRepository(unit_of_work.session)
