@@ -26,24 +26,31 @@ package's widget tests:
   (commit `4bbe6d6`), client `PushNotificationService` (commit `0de0dee`)
   — permission, token registration, foreground display, tap deep-linking
 
-## Verified live (2026-08-31, Android emulator)
+## Verified live end-to-end (2026-08-31, Android emulator)
 
-- App builds + runs against Firebase project `lpg-erp-2b143`
-- Notification permission prompt → FCM token → `POST /notifications/devices`
+Firebase project `lpg-erp-2b143`, service-account key via
+`LPG_FCM_CREDENTIALS_PATH`:
+
+- Launch → permission prompt → FCM token → `POST /notifications/devices`
   → row in `notification.device_token`
+- `send_notification` job → real FCM v1 API (`200 OK`) → **notification
+  shown on device** with correct title/body (`booking_confirmed`,
+  `delivery_confirmed`, `out_for_delivery` all tested)
+- **Notification tap → deep-links to Order Details** for the right order
 - Edge-to-edge bottom nav bar; Payment Methods screen (empty state +
   coming-soon sheets)
 - `device_token` migration `f3a9c1e07b42` applied to local dev DB
 
 ## Outstanding
 
-- **Real push delivery untested** — `LPG_FCM_CREDENTIALS_JSON` not set, so
-  the backend still uses `StubPushChannel` (logs, sends nothing). Need the
-  service-account key to test an actual tray notification + tap deep-link.
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
 - Test coverage still thin on feature screens — `kyc_screen` and
   `payment_methods_screen` have widget tests; orders / invoices / complaints
   / addresses do not.
+- `booking_confirmed` fires on staff *confirm* (`booked → confirmed`), not
+  customer placement — so a customer only gets that push once the agency
+  confirms the order. Working as designed; noted so it isn't mistaken for
+  a bug.
 
 ## Issues
 
