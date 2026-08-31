@@ -51,15 +51,19 @@ agency_admin / manager / dispatcher (tenant-wide). Staff-created orders
 pre-existing bug: `_STAFF_ALERT_ROLES` used `branch_manager` (never a real
 role), so `delivery_failed_staff` never reached managers either.
 
+## Dashboard realtime fixes (2026-08-31, commits 2d0fee9 + 2e06f15)
+
+- **Notification drawer** now reloads every time it opens —
+  `NotificationDrawer.visible` is a `model()` signal, so its `effect()`
+  re-runs (was a plain `@Input`, fetched once at construction while
+  closed). Verified: drawer shows the staff new-order notifications.
+- **Order Queue** live-refreshes on `order.status_changed` — new
+  tenant-wide `orders` WS channel + intent (`orders:read`-gated), silent
+  debounced refetch. Verified: count 52 → 53 on a new booking, no reload.
+
 ## Outstanding
 
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
-- **Frontend bug (pre-existing):** the notification *drawer* (bell popup)
-  doesn't reload when opened — `NotificationDrawer.visible` is a plain
-  `@Input`, so its `effect(() => if (visible) load())` never re-runs. The
-  full `/notifications` page and the bell count work fine.
-- The dashboard Order Queue list doesn't live-refresh on a new order (no
-  WS subscription); home KPIs do.
 - Test coverage still thin on feature screens — `kyc_screen` and
   `payment_methods_screen` have widget tests; orders / invoices / complaints
   / addresses do not.
