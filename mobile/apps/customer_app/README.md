@@ -32,66 +32,39 @@ Re-run that after an emulator cold boot or `adb kill-server`. Production
 uses a real S3-compatible endpoint reachable from anywhere, so this step
 is local-only.
 
-## Push notifications setup (Firebase) — from scratch
+## Push notifications setup (Firebase)
 
-The app uses Firebase Cloud Messaging (FCM). The code is already wired
-(`lib/src/push/push_notification_service.dart`, backend
-`infrastructure/channels/push_channel.py`); this section is the one-time
-environment setup. **Until step 2 is done the Android build fails** — the
-`com.google.gms.google-services` Gradle plugin errors on a missing
-`google-services.json`.
+The app uses Firebase Cloud Messaging (FCM), wired to a dev Firebase
+project **`lpg-erp-2b143`**. Its client config *is committed* —
+`android/app/google-services.json`, `lib/firebase_options.dart`,
+`firebase.json` — so a fresh clone builds and runs on Android with no extra
+setup. These aren't secrets (Firebase enforces access server-side); for a
+separate prod project, swap them in CI.
 
-Identifiers you'll need:
+Verified working 2026-08-31: launch → permission prompt → FCM token →
+`POST /notifications/devices` → row in `notification.device_token`.
 
-| | value |
+What's *not* committed / still needed:
+
+| item | why |
 |---|---|
-| Android package name | `com.lpgagency.customer_app` |
-| iOS bundle id | `com.lpgagency.customerApp` |
-| Firebase config → Android | `android/app/google-services.json` |
-| Firebase config → iOS | `ios/Runner/GoogleService-Info.plist` |
+| `ios/Runner/GoogleService-Info.plist` | iOS not set up yet — run `flutterfire configure` again with `ios` when needed, plus an APNs key |
+| `LPG_FCM_CREDENTIALS_JSON` (backend) | without it the backend uses `StubPushChannel` (logs, sends nothing) — see step 2 |
 
-All three generated files (`google-services.json`,
-`GoogleService-Info.plist`, `lib/firebase_options.dart`) are gitignored —
-per-project, added out of band.
+### 1. (Only for a NEW Firebase project) regenerate the client config
 
-### 1. Create the Firebase project
-
-1. <https://console.firebase.google.com> → **Add project**. Name it
-   (e.g. `lpg-agency`), Google Analytics optional.
-2. Once created, note the **Project ID** (Project settings → General) —
-   the backend needs it.
-
-### 2. Android app
-
-**Option A — FlutterFire CLI (does Android + iOS at once):**
+Skip unless you're moving off `lpg-erp-2b143`.
 
 ```bash
-dart pub global activate flutterfire_cli
+firebase login
 cd mobile/apps/customer_app
-flutterfire configure --project=<your-project-id>
+flutterfire configure --project=<project-id> --platforms=android,ios --yes
 ```
 
-Pick the Android + iOS platforms when prompted. This writes
-`android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`,
-and `lib/firebase_options.dart`. Then skip to step 4.
-
-**Option B — Firebase console, by hand:**
-
-1. Console → Project overview → **Add app** → Android.
-2. Package name: `com.lpgagency.customer_app`. Nickname/SHA-1 optional
-   (SHA-1 only needed for Dynamic Links / phone auth, not FCM).
-3. **Download `google-services.json`** → place at
-   `mobile/apps/customer_app/android/app/google-services.json`.
-4. Skip the "add SDK" gradle snippets — this repo already has the
-   `com.google.gms.google-services` plugin in `android/settings.gradle.kts`
-   and `android/app/build.gradle.kts`.
-
-Then bump the Android `minSdk` — `firebase_core` 3.x needs API 23+. In
-`android/app/build.gradle.kts`, change `minSdk = flutter.minSdkVersion` to:
-
-```kotlin
-minSdk = maxOf(flutter.minSdkVersion, 23)
-```
+Identifiers: Android package `com.lpgagency.customer_app`, iOS bundle
+`com.lpgagency.customerApp`. The `com.google.gms.google-services` Gradle
+plugin, `minSdk = maxOf(flutter.minSdkVersion, 23)`, and core-library
+desugaring are already in `android/app/build.gradle.kts`.
 
 ### 3. iOS app (skip if not shipping iOS yet)
 
@@ -106,23 +79,21 @@ minSdk = maxOf(flutter.minSdkVersion, 23)
 
 ### 4. Backend — service account key
 
-1. Firebase console → Project settings → **Service accounts** → **Generate
-   new private key**. Downloads a JSON file.
+1. [Firebase console](https://console.firebase.google.com/project/lpg-erp-2b143/settings/serviceaccounts/adminsdk)
+   → Project settings → **Service accounts** → **Generate new private key**.
+   Downloads a JSON file.
 2. Give its **entire contents** to the backend as a single-line env var:
 
    ```bash
    # backend/.env
-   LPG_FCM_CREDENTIALS_JSON={"type":"service_account","project_id":"lpg-agency",...}
-   LPG_FCM_PROJECT_ID=lpg-agency   # optional; read from the JSON otherwise
+   LPG_FCM_CREDENTIALS_JSON={"type":"service_account","project_id":"lpg-erp-2b143",...}
+   LPG_FCM_PROJECT_ID=lpg-erp-2b143   # optional; read from the JSON otherwise
    ```
 
    Without this the backend runs `StubPushChannel` — logs each push, sends
    nothing. Restart the ARQ worker after setting it.
-3. Apply the device-token migration:
-
-   ```bash
-   cd backend && uv run alembic upgrade head   # brings in f3a9c1e07b42
-   ```
+3. The device-token migration (`f3a9c1e07b42`) is already applied to local
+   dev. For a fresh DB: `cd backend && uv run alembic upgrade head`.
 
 ### 5. Verify end to end
 
