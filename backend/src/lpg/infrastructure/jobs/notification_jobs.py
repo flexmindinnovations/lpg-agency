@@ -17,6 +17,10 @@ _logger = structlog.get_logger(__name__)
 
 _STAFF_ALERT_ROLES = frozenset({"agency_admin", "branch_manager", "dispatcher"})
 
+# Notification types whose recipients are "the branch staff for this order's
+# branch" rather than the customer or the assigned driver.
+_STAFF_BRANCH_TYPES = frozenset({"delivery_failed_staff", "order_placed_staff"})
+
 
 async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
     """ARQ job to process and send a notification.
@@ -98,7 +102,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             order = await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
             if order is None:
                 _logger.warning("order_not_found", order_id=payload["order_id"])
-            elif notification_type == "delivery_failed_staff":
+            elif notification_type in _STAFF_BRANCH_TYPES:
                 employee_repo = SqlAlchemyEmployeeRepository(uow)
                 resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
                 recipient_user_ids = await resolver.resolve_for_branch(
@@ -269,6 +273,7 @@ def _get_title(notification_type: str) -> str:
         "delivery_confirmed": "Delivery Confirmed",
         "invoice_generated": "Invoice Generated",
         "delivery_failed_staff": "Delivery Failed Alert",
+        "order_placed_staff": "New Order",
     }
     return titles.get(notification_type, "Notification")
 
@@ -283,6 +288,9 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         "invoice_generated": f"An invoice has been generated for your order #{order_id_short}.",
         "delivery_failed_staff": (
             f"Delivery failed for order #{order_id_short}. Please check the system."
+        ),
+        "order_placed_staff": (
+            f"Order #{order_id_short} was just placed and is awaiting confirmation."
         ),
     }
     return bodies.get(notification_type, "You have a new notification.")

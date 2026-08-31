@@ -7,6 +7,7 @@ from lpg.domain.common.base import DomainEvent
 from lpg.domain.delivery.route import OrderAssignedToRoute, RouteStatusChanged
 from lpg.domain.order.order import (
     BookingConfirmed,
+    BookingCreated,
     CylinderDelivered,
     DeliveryFailed,
 )
@@ -24,6 +25,26 @@ def register_notification_handlers(
 
     Handlers are intentionally thin — no DB access here. They only enqueue an ARQ job.
     """
+
+    async def _on_booking_created(event: DomainEvent) -> None:
+        assert isinstance(event, BookingCreated)
+        # Skip orders the staff created themselves in the dashboard — they
+        # already know. Everything else (mobile_app, phone, walk_in,
+        # whatsapp, api) is an order that arrived and needs someone to
+        # confirm it.
+        if event.booking_source == "staff":
+            return
+        # In-app only (see `_should_send_*` in `notification_jobs.py`) —
+        # staff live in the dashboard, not the mobile apps that register
+        # push tokens.
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "order_placed_staff",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+            },
+        )
 
     async def _on_booking_confirmed(event: DomainEvent) -> None:
         assert isinstance(event, BookingConfirmed)
@@ -104,6 +125,7 @@ def register_notification_handlers(
             },
         )
 
+    dispatcher.register(BookingCreated, _on_booking_created)
     dispatcher.register(BookingConfirmed, _on_booking_confirmed)
     dispatcher.register(OrderAssignedToRoute, _on_order_assigned)
     dispatcher.register(RouteStatusChanged, _on_route_status_changed)
