@@ -15,11 +15,16 @@ if TYPE_CHECKING:
 
 _logger = structlog.get_logger(__name__)
 
-_STAFF_ALERT_ROLES = frozenset({"agency_admin", "branch_manager", "dispatcher"})
+# Roles that receive operational alerts. `manager` is the actual role
+# string used everywhere (`order.py` / `route.py`'s own
+# `principal.role in ("dispatcher", "manager")` checks, the seed data, the
+# `tenant.employee` table) — it was previously `branch_manager`, which no
+# code path ever produces, so managers silently never got
+# `delivery_failed_staff` alerts.
+_STAFF_ALERT_ROLES = frozenset({"agency_admin", "manager", "dispatcher"})
 
-# Notification types whose recipients are "the branch staff for this order's
-# branch" rather than the customer or the assigned driver.
-_STAFF_BRANCH_TYPES = frozenset({"delivery_failed_staff", "order_placed_staff"})
+# Never an alert recipient regardless of type.
+_NON_STAFF_ROLES = frozenset({"customer", "driver"})
 
 
 async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
@@ -102,7 +107,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             order = await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
             if order is None:
                 _logger.warning("order_not_found", order_id=payload["order_id"])
-            elif notification_type in _STAFF_BRANCH_TYPES:
+            elif notification_type == "delivery_failed_staff":
                 employee_repo = SqlAlchemyEmployeeRepository(uow)
                 resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
                 recipient_user_ids = await resolver.resolve_for_branch(
@@ -110,6 +115,27 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     branch_id=order.branch_id,
                     eligible_roles=_STAFF_ALERT_ROLES,
                 )
+            elif notification_type == "order_placed_staff":
+                # Whole ops team, tenant-wide — resolved straight off the
+                # `identity.identity_user` role (not the employee ->
+                # phone -> identity hop `EmployeeBranchStaffResolver`
+                # does, which the demo seed doesn't wire up). A new order
+                # is everyone's business at a small agency; branch scoping
+                # can come back if a tenant actually runs branches
+                # independently.
+                from lpg.infrastructure.persistence.repositories.identity import (
+                    SqlAlchemyStaffUserRepository,
+                )
+
+                staff_repo = SqlAlchemyStaffUserRepository(database, tenant_id)
+                staff = await staff_repo.list_for_tenant(
+                    tenant_id, exclude_roles=_NON_STAFF_ROLES
+                )
+                recipient_user_ids = [
+                    u.id
+                    for u in staff
+                    if u.role in _STAFF_ALERT_ROLES and u.is_active
+                ]
             elif notification_type == "driver_assigned":
                 # This one goes to the driver who was just assigned, not the
                 # customer — resolved via the order's `route_stop_id` -> its

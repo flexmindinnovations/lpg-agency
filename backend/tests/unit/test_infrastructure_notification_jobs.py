@@ -6,7 +6,7 @@ lookups over the notification type.
 """
 
 from lpg.infrastructure.jobs.notification_jobs import (
-    _STAFF_BRANCH_TYPES,
+    _STAFF_ALERT_ROLES,
     _get_body,
     _get_title,
     _should_send_email,
@@ -45,8 +45,10 @@ def test_order_placed_staff_is_in_app_only() -> None:
     assert _should_send_push("order_placed_staff") is False
 
 
-def test_staff_branch_types_route_to_branch_staff() -> None:
-    assert {"delivery_failed_staff", "order_placed_staff"} == _STAFF_BRANCH_TYPES
+def test_staff_alert_roles_use_the_real_role_strings() -> None:
+    # `manager`, not `branch_manager` (the old value, which no code path
+    # ever produced).
+    assert set(_STAFF_ALERT_ROLES) == {"agency_admin", "manager", "dispatcher"}
 
 
 def test_order_placed_staff_has_title_and_body() -> None:
