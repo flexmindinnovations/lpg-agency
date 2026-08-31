@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, model, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DrawerModule } from 'primeng/drawer';
@@ -17,14 +17,16 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
 export class NotificationDrawer {
   private readonly notificationService = inject(NotificationService);
 
-  @Input() visible = false;
-  @Output() visibleChange = new EventEmitter<boolean>();
+  /** Two-way bound from the shell. A signal (not a plain `@Input`) so the
+   *  `effect` below actually re-runs when the drawer is opened — otherwise
+   *  it only ever loaded once, at construction, while closed. */
+  readonly visible = model(false);
 
   notifications = signal<NotificationResponse[]>([]);
 
   constructor() {
     effect(() => {
-      if (this.visible) {
+      if (this.visible()) {
         this.loadNotifications();
       }
     });
@@ -47,6 +49,6 @@ export class NotificationDrawer {
   }
 
   onHide() {
-    this.visibleChange.emit(false);
+    this.visible.set(false);
   }
 }

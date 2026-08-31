@@ -1,6 +1,6 @@
-<p-drawer 
-  [visible]="visible" 
-  (visibleChange)="visibleChange.emit($event)" 
+<p-drawer
+  [visible]="visible()"
+  (visibleChange)="visible.set($event)"
   (onHide)="onHide()"
   position="right"
   [modal]="true"

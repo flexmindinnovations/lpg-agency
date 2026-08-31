@@ -1,7 +1,9 @@
 import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { debounceTime } from 'rxjs';
 import { Button, ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
@@ -11,6 +13,7 @@ import { Select } from 'primeng/select';
 import {
   AdminCylinderTypeService,
   OrderService,
+  WebSocketService,
   type CustomerAddressResponse,
   type CustomerResponse,
   type CylinderTypeResponse,
@@ -77,6 +80,19 @@ export class OrderQueue implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly wsService = inject(WebSocketService);
+
+  constructor() {
+    // Live-refresh the list when any order in the tenant changes state
+    // (new booking, confirmation, delivery, cancellation). Debounced so a
+    // burst — e.g. a bulk cancel — triggers one refetch, and silent so it
+    // doesn't flash the loading spinner over a populated grid.
+    this.wsService.subscribeTo('orders');
+    this.wsService
+      .on('order.status_changed')
+      .pipe(debounceTime(500), takeUntilDestroyed())
+      .subscribe(() => this.loadOrders({ silent: true }));
+  }
 
   protected readonly orders = signal<OrderResponse[]>([]);
   protected readonly total = signal(0);
@@ -157,8 +173,10 @@ export class OrderQueue implements OnInit {
     });
   }
 
-  protected loadOrders(): void {
-    this.loading.set(true);
+  protected loadOrders(opts: { silent?: boolean } = {}): void {
+    if (!opts.silent) {
+      this.loading.set(true);
+    }
     this.orderService.listOrders({ status: this.statusFilter() ?? undefined, limit: 100 }).subscribe({
       next: (page) => {
         this.orders.set(page.items);
@@ -166,7 +184,9 @@ export class OrderQueue implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
+        if (!opts.silent) {
+          this.errorMessage.set(errorMessageFor(err));
+        }
         this.loading.set(false);
       },
     });
