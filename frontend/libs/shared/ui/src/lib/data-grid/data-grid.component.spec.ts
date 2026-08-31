@@ -17,7 +17,7 @@ const rows: readonly Row[] = [
 ];
 
 describe('DataGridComponent', () => {
-  function create(overrides: Partial<{ selectionMode: string }> = {}) {
+  function create(overrides: Partial<{ selectionMode: string; pageSize: number }> = {}) {
     const fixture = TestBed.createComponent(DataGridComponent<Row>);
     fixture.componentRef.setInput('rows', rows);
     fixture.componentRef.setInput('columns', columns);
@@ -25,9 +25,23 @@ describe('DataGridComponent', () => {
     if (overrides.selectionMode) {
       fixture.componentRef.setInput('selectionMode', overrides.selectionMode);
     }
+    if (overrides.pageSize !== undefined) {
+      fixture.componentRef.setInput('pageSize', overrides.pageSize);
+    }
     fixture.detectChanges();
     return fixture;
   }
+
+  const gridOptionsOf = (fixture: ReturnType<typeof create>) =>
+    (
+      fixture.componentInstance as unknown as {
+        gridOptions: () => {
+          pagination?: boolean;
+          paginationPageSize?: number;
+          paginationPageSizeSelector?: number[];
+        };
+      }
+    ).gridOptions();
 
   it('renders the AG Grid wrapper with an accessible name', () => {
     // ADR-020: this is the one place AG Grid is used. Rendering cleanly here
@@ -95,6 +109,21 @@ describe('DataGridComponent', () => {
     const result = columnDefs[0].valueFormatter?.({ value: 3, data: rows[0] });
     expect(result).toBe('#3');
     expect(formatter).toHaveBeenCalledWith(3, rows[0]);
+  });
+
+  it('paginates by default at 25 rows per page', () => {
+    const options = gridOptionsOf(create());
+    expect(options.pagination).toBe(true);
+    expect(options.paginationPageSize).toBe(25);
+    expect(options.paginationPageSizeSelector).toEqual([10, 25, 50, 100]);
+  });
+
+  it('honours a custom page size', () => {
+    expect(gridOptionsOf(create({ pageSize: 50 })).paginationPageSize).toBe(50);
+  });
+
+  it('disables pagination when pageSize is 0', () => {
+    expect(gridOptionsOf(create({ pageSize: 0 })).pagination).toBe(false);
   });
 
   it('leaves row selection disabled by default', () => {

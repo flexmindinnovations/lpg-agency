@@ -205,6 +205,10 @@ export class DataGridComponent<TRow = unknown> {
   readonly loading = input(false);
   /** Required: a grid without an accessible name is unusable with a screen reader. */
   readonly ariaLabel = input.required<string>();
+  /** Client-side pagination. `0` disables it (single scrolling list);
+   *  anything else is the initial page size, with a [10, 25, 50, 100]
+   *  selector. Defaults on — a long list is unusable without it. */
+  readonly pageSize = input(25);
 
   readonly ready = output<void>();
 
@@ -259,6 +263,10 @@ export class DataGridComponent<TRow = unknown> {
     // is supplied. A 600ms delay avoids flashing on quick mouse-overs.
     tooltipShowDelay: 600,
     tooltipHideDelay: 4000,
+    // Client-side pagination — `pageSize()` of 0 turns it off.
+    pagination: this.pageSize() > 0,
+    paginationPageSize: this.pageSize() || 25,
+    paginationPageSizeSelector: [10, 25, 50, 100],
   }));
 
   readonly selectionChange = output<TRow[]>();

@@ -121,8 +121,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
             <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
           </div>
           <div class="shell__header-actions">
-            <ng-content select="[shell-top-right-actions]" />
+            <!-- Page-specific actions render left of the always-present
+                 notification bell, which stays pinned to the far right. -->
             <ng-template [cdkPortalOutlet]="headerPortalService.portal()"></ng-template>
+            <ng-content select="[shell-top-right-actions]" />
           </div>
         </header>
 
