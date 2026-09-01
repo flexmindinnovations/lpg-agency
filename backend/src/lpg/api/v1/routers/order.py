@@ -692,70 +692,6 @@ async def dispatch_order(
     return _order_to_response(order)
 
 
-@router.post(
-    "/orders/{order_id}/depart",
-    response_model=OrderResponse,
-    dependencies=[Depends(require_permission("orders:dispatch"))],
-)
-async def depart_order(
-    order_id: uuid.UUID,
-    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
-    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
-    otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> OrderResponse:
-    """`ready_for_dispatch -> out_for_delivery` ("driver departs"). Issues
-    the delivery OTP to the customer's phone post-commit.
-    """
-    actor_id = _require_actor(principal)
-    use_case = DepartOrderUseCase(
-        order_repository,
-        route_repository,
-        customer_repository,
-        otp_store,
-        otp_delivery,
-        unit_of_work,
-    )
-    order = await use_case.execute(
-        DepartOrderCommand(order_id=order_id, changed_by=actor_id)
-    )
-    return _order_to_response(order)
-
-
-@router.post(
-    "/orders/{order_id}/reschedule",
-    response_model=OrderResponse,
-    dependencies=[Depends(require_permission("orders:dispatch"))],
-)
-async def reschedule_order(
-    order_id: uuid.UUID,
-    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-) -> OrderResponse:
-    """`failed_delivery -> ready_for_dispatch`. Also resets the paired
-    `RouteStop` back to `pending` so the retry can reach `delivered` (see
-    `RescheduleOrderUseCase`'s docstring).
-    """
-    actor_id = _require_actor(principal)
-    use_case = RescheduleOrderUseCase(order_repository, route_repository, unit_of_work)
-    order = await use_case.execute(
-        RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
-    )
-    return _order_to_response(order)
-
-
-# ==========================================================================
-# Proof of Delivery attachments / Deliver / Failed delivery
-# ==========================================================================
-
-
 async def _require_own_driver_order(
     order_id: uuid.UUID,
     principal: AuthenticatedPrincipal,
@@ -781,6 +717,98 @@ async def _require_own_driver_order(
     if driver is None or order is None or owner is None or owner.driver_id != driver.id:
         msg = f"No order visible with id {order_id}."
         raise NotFoundError(msg, order_id=str(order_id))
+
+
+async def _require_own_driver_order_when_driver(
+    order_id: uuid.UUID,
+    principal: AuthenticatedPrincipal,
+    order_repository: OrderRepository,
+    driver_repository: DriverRepository,
+    route_repository: RouteRepository,
+) -> None:
+    """`orders:dispatch` folds dispatch/depart/reschedule and is granted to
+    both dispatch staff and the `driver` role (`7c3f1a9e2b4d`). For a driver
+    principal, additionally confirm the order is *this* driver's own
+    assignment — the same 404-not-403 ownership rule the `orders:deliver`
+    endpoints apply. Staff principals are scoped by tenant/RLS alone.
+    """
+    if principal.role != "driver":
+        return
+    await _require_own_driver_order(
+        order_id, principal, order_repository, driver_repository, route_repository
+    )
+
+
+@router.post(
+    "/orders/{order_id}/depart",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("orders:dispatch"))],
+)
+async def depart_order(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
+    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
+    otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OrderResponse:
+    """`ready_for_dispatch -> out_for_delivery` ("driver departs"). Issues
+    the delivery OTP to the customer's phone post-commit.
+    """
+    await _require_own_driver_order_when_driver(
+        order_id, principal, order_repository, driver_repository, route_repository
+    )
+    actor_id = _require_actor(principal)
+    use_case = DepartOrderUseCase(
+        order_repository,
+        route_repository,
+        customer_repository,
+        otp_store,
+        otp_delivery,
+        unit_of_work,
+    )
+    order = await use_case.execute(
+        DepartOrderCommand(order_id=order_id, changed_by=actor_id)
+    )
+    return _order_to_response(order)
+
+
+@router.post(
+    "/orders/{order_id}/reschedule",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("orders:dispatch"))],
+)
+async def reschedule_order(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OrderResponse:
+    """`failed_delivery -> ready_for_dispatch`. Also resets the paired
+    `RouteStop` back to `pending` so the retry can reach `delivered` (see
+    `RescheduleOrderUseCase`'s docstring).
+    """
+    await _require_own_driver_order_when_driver(
+        order_id, principal, order_repository, driver_repository, route_repository
+    )
+    actor_id = _require_actor(principal)
+    use_case = RescheduleOrderUseCase(order_repository, route_repository, unit_of_work)
+    order = await use_case.execute(
+        RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
+    )
+    return _order_to_response(order)
+
+
+# ==========================================================================
+# Proof of Delivery attachments / Deliver / Failed delivery
+# ==========================================================================
 
 
 @router.post(

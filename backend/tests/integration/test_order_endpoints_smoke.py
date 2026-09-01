@@ -821,9 +821,35 @@ class TestOrderFullLifecycle:
         assert dispatch_response.status_code == 200, dispatch_response.text
         assert dispatch_response.json()["status"] == "ready_for_dispatch"
 
-        # 5. Depart -> out_for_delivery; OTP captured via the dependency override.
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+
+        # 4b. A *different* driver cannot depart this order — the `orders:dispatch`
+        # grant is shared, but the ownership guard 404s (never 403) on a stop
+        # that belongs to someone else's route.
+        hasher = Argon2PasswordHasher(_settings_for_hasher())
+        other_driver_email = f"{uuid.uuid4().hex}@order-smoke.example"
+        other_driver_password = "correct horse battery staple 45"
+        await _seed_driver(
+            admin_engine_lpg_test,
+            tenant_id=fixtures.tenant_id,
+            branch_id=fixtures.branch_id,
+            email=other_driver_email,
+            password_hash=hasher.hash(other_driver_password),
+        )
+        other_driver_token = await _login(
+            client, email=other_driver_email, password=other_driver_password
+        )
+        not_yours_response = await client.post(
+            f"/api/v1/orders/{order_id}/depart",
+            headers={"Authorization": f"Bearer {other_driver_token}"},
+        )
+        assert not_yours_response.status_code == 404, not_yours_response.text
+        assert len(stack.otp_delivery.sent) == 0
+
+        # 5. The assigned driver departs their own order -> out_for_delivery;
+        # OTP captured via the dependency override.
         depart_response = await client.post(
-            f"/api/v1/orders/{order_id}/depart", headers=admin_headers
+            f"/api/v1/orders/{order_id}/depart", headers=driver_headers
         )
         assert depart_response.status_code == 200, depart_response.text
         assert depart_response.json()["status"] == "out_for_delivery"
@@ -831,7 +857,6 @@ class TestOrderFullLifecycle:
         otp_code = stack.otp_delivery.sent[-1][1]
 
         # 6. Driver's own scoped queue shows this order.
-        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
         driver_list_response = await client.get("/api/v1/orders", headers=driver_headers)
         assert driver_list_response.status_code == 200, driver_list_response.text
         driver_orders = driver_list_response.json()
