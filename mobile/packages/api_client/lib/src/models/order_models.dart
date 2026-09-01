@@ -99,6 +99,76 @@ class OrderResponse {
   final List<OrderLineResponse> lines;
 }
 
+/// One driver GPS reading, from the order-tracking read model or a live
+/// `driver.location` real-time message.
+class DriverLocationSnapshot {
+  const DriverLocationSnapshot({
+    required this.latitude,
+    required this.longitude,
+    this.heading,
+    this.speedKph,
+    this.accuracyM,
+    required this.recordedAt,
+  });
+
+  factory DriverLocationSnapshot.fromJson(Map<String, dynamic> json) =>
+      DriverLocationSnapshot(
+        latitude: (json['latitude'] as num).toDouble(),
+        longitude: (json['longitude'] as num).toDouble(),
+        heading: (json['heading'] as num?)?.toDouble(),
+        speedKph: (json['speed_kph'] as num?)?.toDouble(),
+        accuracyM: (json['accuracy_m'] as num?)?.toDouble(),
+        recordedAt: DateTime.parse(json['recorded_at'] as String),
+      );
+
+  final double latitude;
+  final double longitude;
+  final double? heading;
+  final double? speedKph;
+  final double? accuracyM;
+  final DateTime recordedAt;
+}
+
+/// Mirrors the backend's `OrderTrackingResponse` — what the tracking map
+/// needs beyond the order itself: the resolved route status and the
+/// driver's last-known position (`driverLocation` is null until the driver
+/// starts sharing).
+class OrderTrackingResponse {
+  const OrderTrackingResponse({
+    required this.orderId,
+    required this.status,
+    this.destinationLatitude,
+    this.destinationLongitude,
+    required this.destinationLabel,
+    this.routeStatus,
+    this.driverLocation,
+  });
+
+  factory OrderTrackingResponse.fromJson(Map<String, dynamic> json) =>
+      OrderTrackingResponse(
+        orderId: json['order_id'] as String,
+        status: json['status'] as String,
+        destinationLatitude: (json['destination_latitude'] as num?)?.toDouble(),
+        destinationLongitude: (json['destination_longitude'] as num?)
+            ?.toDouble(),
+        destinationLabel: json['destination_label'] as String,
+        routeStatus: json['route_status'] as String?,
+        driverLocation: json['driver_location'] == null
+            ? null
+            : DriverLocationSnapshot.fromJson(
+                json['driver_location'] as Map<String, dynamic>,
+              ),
+      );
+
+  final String orderId;
+  final String status;
+  final double? destinationLatitude;
+  final double? destinationLongitude;
+  final String destinationLabel;
+  final String? routeStatus;
+  final DriverLocationSnapshot? driverLocation;
+}
+
 class OrderPageResponse {
   const OrderPageResponse({required this.items, required this.total});
 

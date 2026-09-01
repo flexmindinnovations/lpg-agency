@@ -49,6 +49,26 @@ final class OrderApi {
     }
   }
 
+  /// Fetch the order-tracking view: delivery destination, route status, and
+  /// the driver's last-known position (`driverLocation` null until sharing
+  /// starts). Live movement arrives separately over `/ws`
+  /// (`RealtimeClient.subscribeToDriverLocation`).
+  Future<Result<OrderTrackingResponse>> getOrderTracking(String orderId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/orders/$orderId/tracking',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(OrderTrackingResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Create (book) a new order. The backend requires an `Idempotency-Key`
   /// header on this route — a fresh v4 UUID is generated per call, so a
   /// caller that retries after a network failure should reuse the same

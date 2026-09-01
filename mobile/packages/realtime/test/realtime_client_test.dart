@@ -80,6 +80,59 @@ void main() {
     );
 
     test(
+      'subscribeToDriverLocation reuses the order channel and filters by type',
+      () async {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'the-token',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        final events = <Map<String, dynamic>>[];
+        final sub = client
+            .subscribeToDriverLocation('order-1')
+            .listen(events.add);
+        await Future<void>.delayed(Duration.zero);
+
+        // Same intent as subscribeToOrder — no separate subscription.
+        expect(sockets.single.sent, [
+          jsonEncode({
+            'subscribe': ['order:order-1'],
+          }),
+        ]);
+
+        sockets.single.emit({
+          'type': 'driver.location',
+          'order_id': 'order-1',
+          'latitude': 9.93,
+          'longitude': 76.26,
+        });
+        sockets.single.emit({
+          'type': 'driver.location',
+          'order_id': 'order-2',
+          'latitude': 1.0,
+          'longitude': 2.0,
+        });
+        sockets.single.emit({
+          'type': 'order.status_changed',
+          'order_id': 'order-1',
+        });
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, hasLength(1));
+        expect(events.single['latitude'], 9.93);
+
+        await sub.cancel();
+        await client.disconnect();
+      },
+    );
+
+    test(
       'subscribeToNotifications filters to notification.new messages',
       () async {
         final sockets = <_FakeSocket>[];

@@ -108,6 +108,17 @@ final class RealtimeClient {
     return _messages.stream.where((m) => m['type'] == 'notification.new');
   }
 
+  /// The delivery driver's live position for one order — the backend's
+  /// `driver.location` messages, published on the same `order:{orderId}`
+  /// channel as [subscribeToOrder]'s status events (so this adds no new
+  /// subscription intent when a screen already watches the order).
+  Stream<Map<String, dynamic>> subscribeToDriverLocation(String orderId) {
+    _addIntent('order:$orderId');
+    return _messages.stream.where(
+      (m) => m['type'] == 'driver.location' && m['order_id'] == orderId,
+    );
+  }
+
   void _addIntent(String intent) {
     if (!_activeIntents.add(intent)) return;
     if (_socket == null) {

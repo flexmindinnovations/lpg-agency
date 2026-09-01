@@ -13,6 +13,8 @@ import 'package:latlong2/latlong.dart';
 import '../../support/fake_tiles.dart';
 import '../../support/pump_screen.dart';
 
+const _destination = LatLng(9.9312, 76.2673);
+
 OrderResponse _order() => OrderResponse(
   id: 'abcdef01aaaabbbb',
   orderNumber: 'ORD000042',
@@ -30,19 +32,27 @@ OrderResponse _order() => OrderResponse(
 );
 
 OrderTrackingView _view({
-  LatLng? destination = const LatLng(9.9312, 76.2673),
+  LatLng? destination = _destination,
   bool approximate = false,
+  String? routeStatus,
+  DriverLocationSnapshot? lastKnown,
 }) => OrderTrackingView(
   destination: destination,
   destinationLabel: '12 Baker Street',
   destinationIsApproximate: approximate,
   status: 'out_for_delivery',
+  routeStatus: routeStatus,
+  lastKnownDriverLocation: lastKnown,
 );
 
-Widget _screen({OrderTrackingView? view}) => ProviderScope(
+Widget _screen({
+  OrderTrackingView? view,
+  DriverPosition? driver,
+}) => ProviderScope(
   overrides: [
     orderDetailProvider.overrideWith((ref, id) async => _order()),
     orderTrackingProvider.overrideWith((ref, id) async => view ?? _view()),
+    driverLocationProvider.overrideWith((ref, id) => Stream.value(driver)),
     mapTileProviderProvider.overrideWithValue(FakeTileProvider()),
   ],
   child: MaterialApp(
@@ -78,8 +88,39 @@ void main() {
       expect(find.byType(LocationMap), findsNothing);
       expect(find.byType(MapUnavailable), findsOneWidget);
       expect(find.textContaining('map pin has not been set'), findsOneWidget);
-      // Milestones still render below the placeholder.
       expect(find.text('Order Placed'), findsOneWidget);
+    });
+
+    testWidgets('waits for the driver location while the route is active', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(view: _view(routeStatus: 'in_progress')),
+      );
+
+      expect(find.textContaining("Waiting for the driver's location"),
+          findsOneWidget);
+    });
+
+    testWidgets('shows the driver en route once a position arrives', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(
+          view: _view(routeStatus: 'in_progress'),
+          driver: DriverPosition(
+            point: const LatLng(9.94, 76.27),
+            heading: 90,
+            at: DateTime.now(),
+          ),
+        ),
+      );
+
+      expect(find.text('Driver en route'), findsOneWidget);
+      // destination pin + driver marker
+      expect(find.byIcon(Icons.local_shipping), findsWidgets);
     });
   });
 }
