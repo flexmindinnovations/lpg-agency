@@ -3,18 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-/// OpenStreetMap tile URL. `tile.openstreetmap.org` is the round-robin CDN
-/// endpoint the OSM tile-usage policy points third parties at.
+/// Raw OpenStreetMap tile CDN — the dev/demo fallback. Its usage policy
+/// forbids production traffic, which is why we prefer LocationIQ below.
 const _osmTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+/// LocationIQ's hosted tiles (`light` style — a clean, low-chroma basemap so
+/// the delivery pin and route stand out), keyed with the same
+/// `LOCATIONIQ_API_KEY` the geocoder uses. `{key}` is substituted here, not
+/// by flutter_map.
+const _locationIqTileUrl =
+    'https://tiles.locationiq.com/v3/light/r/{z}/{x}/{y}.png?key={key}';
+
+/// LocationIQ API key, supplied at build time — see the customer app's
+/// `dart_defines.local.json` (gitignored). Empty by default → OSM tiles.
+const _locationIqApiKey = String.fromEnvironment('LOCATIONIQ_API_KEY');
 
 /// The app's identifier, sent as the tile requests' `User-Agent` per the OSM
 /// tile-usage policy.
 const _userAgent = 'com.lpgagency.customer_app';
 
-/// A small non-interactive-by-default OSM map with a set of markers.
+/// A small non-interactive-by-default map with a set of markers.
 ///
-/// [tileProvider] is injectable so widget tests can supply a provider that
-/// doesn't hit the network.
+/// Tiles come from LocationIQ when a `LOCATIONIQ_API_KEY` is configured,
+/// otherwise from the raw OSM CDN. [tileProvider] is injectable so widget
+/// tests can supply a provider that doesn't hit the network; [tileApiKey]
+/// defaults to the build-time key but can be overridden in tests.
 class LocationMap extends StatelessWidget {
   const LocationMap({
     super.key,
@@ -25,6 +38,7 @@ class LocationMap extends StatelessWidget {
     this.interactive = false,
     this.onTap,
     this.tileProvider,
+    this.tileApiKey = _locationIqApiKey,
   });
 
   final LatLng center;
@@ -34,6 +48,13 @@ class LocationMap extends StatelessWidget {
   final bool interactive;
   final void Function(LatLng point)? onTap;
   final TileProvider? tileProvider;
+  final String tileApiKey;
+
+  bool get _usesLocationIq => tileApiKey.isNotEmpty;
+
+  String get _tileUrl => _usesLocationIq
+      ? _locationIqTileUrl.replaceFirst('{key}', tileApiKey)
+      : _osmTileUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -51,15 +72,17 @@ class LocationMap extends StatelessWidget {
       ),
       children: [
         TileLayer(
-          urlTemplate: _osmTileUrl,
+          urlTemplate: _tileUrl,
           userAgentPackageName: _userAgent,
           tileProvider: tileProvider,
         ),
         if (markers.isNotEmpty) MarkerLayer(markers: markers),
-        const RichAttributionWidget(
+        RichAttributionWidget(
           alignment: AttributionAlignment.bottomLeft,
+          showFlutterMapAttribution: false,
           attributions: [
-            TextSourceAttribution('© OpenStreetMap contributors'),
+            const TextSourceAttribution('© OpenStreetMap contributors'),
+            if (_usesLocationIq) const TextSourceAttribution('© LocationIQ'),
           ],
         ),
       ],

@@ -166,13 +166,19 @@ App's phone-OTP sign-in works with the seeded account.
 - **Driver-app background location** — DONE (commit `f57658e`): geolocator
   runs an Android foreground service / iOS background updates, so sharing
   continues when the Active Delivery screen closes or the app is backgrounded.
-- **Geocoder swap (Step E) — DONE.** `GeocodingService` now calls
-  [LocationIQ](https://locationiq.com) (hosted, Nominatim-compatible, 5,000
-  req/day free tier) whenever a `LOCATIONIQ_API_KEY` dart-define is supplied,
-  and falls back to raw Nominatim when it isn't. Key is passed via
-  `--dart-define` / `--dart-define-from-file=dart_defines.local.json`
-  (gitignored; see `dart_defines.local.json.example`) — never committed.
-  5 unit tests cover both request paths + caching.
+- **LocationIQ maps (Step E) — DONE.** Both the geocoder *and* the map tiles
+  now use [LocationIQ](https://locationiq.com) (hosted, higher-limit, keyed
+  with the same `LOCATIONIQ_API_KEY`), with OSM/Nominatim as the no-key
+  fallback:
+  - `GeocodingService` → LocationIQ forward-geocoding (Nominatim-compatible),
+    else raw Nominatim.
+  - `LocationMap` `TileLayer` → LocationIQ `light` basemap (clean greyscale so
+    the pin/route pop), else the raw OSM tile CDN. The "Made with flutter_map"
+    promo is turned off (`showFlutterMapAttribution: false`); a minimal
+    `© OpenStreetMap · © LocationIQ` legal attribution stays.
+  - Key passed via `--dart-define-from-file=dart_defines.local.json`
+    (gitignored; see `dart_defines.local.json.example`) — never committed.
+  - 5 geocoding + 5 map-widget unit tests cover the keyed vs fallback paths.
 
 ## Issues
 
