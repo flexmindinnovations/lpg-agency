@@ -17,6 +17,7 @@ from lpg.infrastructure.jobs.notification_jobs import (
 
 def test_push_covers_every_customer_and_driver_facing_type() -> None:
     for notification_type in (
+        "order_placed",
         "booking_confirmed",
         "driver_assigned",
         "out_for_delivery",
@@ -24,6 +25,18 @@ def test_push_covers_every_customer_and_driver_facing_type() -> None:
         "invoice_generated",
     ):
         assert _should_send_push(notification_type) is True
+
+
+def test_order_placed_acknowledges_the_customer_immediately() -> None:
+    # Fires on order placement, before the agency confirms — push + in-app,
+    # no email/SMS noise (same restraint as the staff alert).
+    assert _get_title("order_placed") == "Order Received"
+    body = _get_body("order_placed", {"order_id": "abcd1234-0000"})
+    assert "ABCD1234" in body
+    assert "once the agency confirms" in body
+    assert _should_send_push("order_placed") is True
+    assert _should_send_email("order_placed") is False
+    assert _should_send_sms("order_placed") is False
 
 
 def test_push_excludes_staff_only_alerts() -> None:

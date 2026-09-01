@@ -58,7 +58,26 @@ async def test_customer_placed_order_enqueues_a_staff_alert() -> None:
 
 
 @pytest.mark.asyncio
-async def test_staff_placed_order_does_not_alert_staff() -> None:
+async def test_customer_placed_order_acknowledges_the_customer() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = _booking_created("mobile_app")
+    await dispatcher.dispatch([event])
+
+    assert (
+        "send_notification",
+        {
+            "type": "order_placed",
+            "tenant_id": str(event.tenant_id),
+            "order_id": str(event.order_id),
+        },
+    ) in queue.enqueued
+
+
+@pytest.mark.asyncio
+async def test_staff_placed_order_notifies_no_one_on_creation() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
     register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
@@ -66,7 +85,7 @@ async def test_staff_placed_order_does_not_alert_staff() -> None:
     await dispatcher.dispatch([_booking_created("staff")])
 
     assert not any(
-        payload.get("type") == "order_placed_staff"
+        payload.get("type") in {"order_placed_staff", "order_placed"}
         for _, payload in queue.enqueued
     )
 
@@ -82,10 +101,9 @@ async def test_every_non_staff_source_alerts_staff(source: str) -> None:
 
     await dispatcher.dispatch([_booking_created(source)])
 
-    assert any(
-        payload.get("type") == "order_placed_staff"
-        for _, payload in queue.enqueued
-    )
+    enqueued_types = {payload.get("type") for _, payload in queue.enqueued}
+    assert "order_placed_staff" in enqueued_types
+    assert "order_placed" in enqueued_types
 
 
 @pytest.mark.asyncio

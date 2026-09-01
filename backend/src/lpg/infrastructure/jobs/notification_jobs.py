@@ -32,8 +32,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 
     Payload format:
     {
-        "type": "booking_confirmed" | "driver_assigned" | "out_for_delivery" |
-                "delivery_confirmed" | "invoice_generated" | "delivery_failed_staff",
+        "type": "order_placed" | "booking_confirmed" | "driver_assigned" |
+                "out_for_delivery" | "delivery_confirmed" | "invoice_generated" |
+                "delivery_failed_staff" | "order_placed_staff",
         "tenant_id": str,
         "order_id": str,
         # Every type resolves its recipient (customer, the assigned driver
@@ -300,6 +301,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
 
 def _get_title(notification_type: str) -> str:
     titles = {
+        "order_placed": "Order Received",
         "booking_confirmed": "Order Confirmed",
         "driver_assigned": "New Delivery Assigned",
         "out_for_delivery": "Out for Delivery",
@@ -314,6 +316,10 @@ def _get_title(notification_type: str) -> str:
 def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
     order_id_short = payload.get("order_id", "Unknown")[:8].upper()
     bodies = {
+        "order_placed": (
+            f"We've received your order #{order_id_short}. "
+            "You'll be notified once the agency confirms it."
+        ),
         "booking_confirmed": f"Your order #{order_id_short} has been confirmed.",
         "driver_assigned": f"You've been assigned to deliver order #{order_id_short}.",
         "out_for_delivery": f"Your order #{order_id_short} is out for delivery.",
@@ -347,6 +353,7 @@ def _should_send_push(notification_type: str) -> bool:
     # staff` is intentionally excluded — staff use the dashboard, not the
     # mobile apps that register device tokens.
     return notification_type in {
+        "order_placed",
         "booking_confirmed",
         "driver_assigned",
         "out_for_delivery",

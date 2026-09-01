@@ -45,6 +45,17 @@ def register_notification_handlers(
                 "order_id": str(event.order_id),
             },
         )
+        # Acknowledge the customer immediately — `booking_confirmed` only
+        # fires once the agency confirms, which can be minutes to hours
+        # later. This closes the loop at the moment the order is placed.
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "order_placed",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+            },
+        )
 
     async def _on_booking_confirmed(event: DomainEvent) -> None:
         assert isinstance(event, BookingConfirmed)
