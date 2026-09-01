@@ -163,11 +163,16 @@ App's phone-OTP sign-in works with the seeded account.
   (mark departed, record delivery + proof-of-delivery, collect payment) still
   lives only in the dashboard/API.
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
-- **Driver-app background location** — deliberately out of scope; sharing works
-  only while the Active Delivery screen is open.
-- Nominatim geocoding is dev/demo-grade (rate-limited, ToS-restricted) — swap
-  for a paid geocoder before production. The map-picker avoids it for new
-  addresses.
+- **Driver-app background location** — DONE (commit `f57658e`): geolocator
+  runs an Android foreground service / iOS background updates, so sharing
+  continues when the Active Delivery screen closes or the app is backgrounded.
+- **Geocoder swap (Step E) — deferred until the driver app is feature-complete.**
+  `GeocodingService` still uses OpenStreetMap Nominatim, which is dev/demo-grade
+  (≤1 req/s, ToS-restricted). Before production, swap it for a paid geocoder
+  (Google / Mapbox / LocationIQ) behind an API key from app config. The address
+  map-picker already avoids geocoding for all new addresses, so this only
+  affects tracking of legacy pin-less addresses. Marked with a `TODO(step-e)`
+  in `mobile/apps/customer_app/lib/src/features/orders/data/geocoding_service.dart`.
 
 ## Issues
 

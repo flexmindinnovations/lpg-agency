@@ -13,6 +13,11 @@ import 'package:latlong2/latlong.dart';
 /// should move to a paid geocoder before any bulk use. Results are cached per
 /// query string for the lifetime of the provider so reopening a screen doesn't
 /// re-hit the service.
+///
+/// TODO(step-e / production hardening): replace Nominatim with a paid geocoder
+/// (Google / Mapbox / LocationIQ) behind an API key from app config. Deferred
+/// until the driver app is feature-complete — tracked in
+/// planning/features/19-customer-app-v2/STATUS.md ("Outstanding").
 class GeocodingService {
   GeocodingService({http.Client? client}) : _client = client ?? http.Client();
 
