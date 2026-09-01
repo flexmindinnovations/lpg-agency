@@ -16,3 +16,9 @@ final apiClientProvider = Provider<ApiClient>(
 final routeApiProvider = Provider<RouteApi>(
   (ref) => RouteApi(ref.watch(apiClientProvider).dio),
 );
+
+/// The `/orders/*` API — used by the Driver App for the per-stop delivery
+/// workflow (view, depart, record delivery, failed delivery).
+final orderApiProvider = Provider<OrderApi>(
+  (ref) => OrderApi(ref.watch(apiClientProvider).dio),
+);

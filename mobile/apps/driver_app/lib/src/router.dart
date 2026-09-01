@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
 import 'features/delivery/presentation/active_delivery_screen.dart';
+import 'features/delivery/presentation/stop_detail_screen.dart';
 import 'login_screen.dart';
 
 /// Routing foundation, with Phase 6's route guards now wired in.
@@ -39,6 +40,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/',
         name: 'home',
         builder: (context, state) => const ActiveDeliveryScreen(),
+        routes: [
+          GoRoute(
+            path: 'stops/:orderId',
+            name: 'stop',
+            builder: (context, state) =>
+                StopDetailScreen(orderId: state.pathParameters['orderId']!),
+          ),
+        ],
       ),
       GoRoute(
         path: '/login',

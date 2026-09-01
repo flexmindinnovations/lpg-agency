@@ -97,6 +97,41 @@ final class OrderApi {
     }
   }
 
+  /// `ready_for_dispatch -> out_for_delivery` — the driver departs with the
+  /// vehicle. The backend issues the delivery OTP to the customer.
+  Future<Result<OrderResponse>> departOrder(String orderId) =>
+      _postOrderAction('/api/v1/orders/$orderId/depart');
+
+  /// `out_for_delivery -> failed_delivery`. `reasonCode` is one of
+  /// `customer_unavailable` / `wrong_address` / `payment_refused` /
+  /// `vehicle_issue` / `safety_issue`; `resolutionAction` is optional
+  /// (`reschedule` / `cancel` / `return_stock`).
+  Future<Result<OrderResponse>> recordFailedDelivery(
+    String orderId, {
+    required String reasonCode,
+    String? resolutionAction,
+  }) => _postOrderAction(
+    '/api/v1/orders/$orderId/failed-delivery',
+    data: {'reason_code': reasonCode, 'resolution_action': ?resolutionAction},
+  );
+
+  Future<Result<OrderResponse>> _postOrderAction(
+    String path, {
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(path, data: data);
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(OrderResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Cancel an order. Returns [CancelOrderResponse.pendingApproval] `true`
   /// when the order had already been dispatched — the order itself stays in
   /// its current status pending Manager approval (D-19), rather than moving

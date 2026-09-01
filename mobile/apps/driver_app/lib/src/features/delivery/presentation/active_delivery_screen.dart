@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/active_route_provider.dart';
 import '../data/location_sharing.dart';
@@ -60,7 +61,14 @@ class ActiveDeliveryScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                for (final stop in route.stops) _StopTile(stop: stop),
+                for (final stop in route.stops)
+                  _StopTile(
+                    stop: stop,
+                    onTap: () => context.pushNamed(
+                      'stop',
+                      pathParameters: {'orderId': stop.orderId},
+                    ),
+                  ),
               ],
             );
           },
@@ -197,15 +205,17 @@ class _LocationSharingCard extends ConsumerWidget {
 }
 
 class _StopTile extends StatelessWidget {
-  const _StopTile({required this.stop});
+  const _StopTile({required this.stop, this.onTap});
 
   final RouteStopSummary stop;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final done = stop.status == 'delivered' || stop.status == 'failed';
     return LpgCard(
       padding: EdgeInsets.zero,
+      onTap: onTap,
       child: LpgListTile(
         leadingIcon: done ? Icons.check_circle_outline : Icons.circle_outlined,
         title: 'Stop ${stop.sequenceNumber + 1}',

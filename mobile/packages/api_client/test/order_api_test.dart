@@ -179,6 +179,60 @@ void main() {
       expect(tracking.driver!.vehicleNumber, 'TS07UB4412');
     });
 
+    test('departOrder posts to the depart action', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse(_orderJson(status: 'out_for_delivery'), 200);
+      });
+
+      final result = await OrderApi(client.dio).departOrder('order-1');
+
+      expect(captured!.method, 'POST');
+      expect(captured!.path, '/api/v1/orders/order-1/depart');
+      expect(
+        result.when(onSuccess: (o) => o.status, onFailure: (_) => null),
+        'out_for_delivery',
+      );
+    });
+
+    test('recordFailedDelivery sends the reason and optional action', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse(_orderJson(status: 'failed_delivery'), 200);
+      });
+
+      await OrderApi(client.dio).recordFailedDelivery(
+        'order-1',
+        reasonCode: 'customer_unavailable',
+        resolutionAction: 'reschedule',
+      );
+
+      expect(captured!.path, '/api/v1/orders/order-1/failed-delivery');
+      expect(captured!.data, {
+        'reason_code': 'customer_unavailable',
+        'resolution_action': 'reschedule',
+      });
+    });
+
+    test('recordFailedDelivery omits a null action', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse(_orderJson(status: 'failed_delivery'), 200);
+      });
+
+      await OrderApi(
+        client.dio,
+      ).recordFailedDelivery('order-1', reasonCode: 'wrong_address');
+
+      expect(captured!.data, {'reason_code': 'wrong_address'});
+    });
+
     test('getOrderTracking allows a null driver location', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
