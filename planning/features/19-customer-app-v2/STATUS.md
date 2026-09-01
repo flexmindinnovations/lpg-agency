@@ -137,11 +137,22 @@ Fresh Pixel emulator, customer app rebuilt from `main`
 - **"Order Received"** notification appears in the notifications list after an
   order is placed (Stage A).
 - **Track Order** renders a real OpenStreetMap map with the delivery-address
-  pin + the milestone timeline (Stage B).
-- Driver pings (`POST /routes/{id}/location`) → the customer map shows the
-  **blue driver marker** and a **"Driver en route"** chip, and the marker moves
-  between pings (Stage C3). Full path exercised: driver POST → Redis publish →
-  `RedisSubscriber` → WebSocket → `driverLocationProvider` → map marker.
+  pin + the milestone timeline (Stage B). Order + Tracking ID rows copy on tap.
+- Driver pings → the customer map shows the **blue driver marker** and a
+  **"Driver en route"** chip, and the marker moves between pings (Stage C3).
+  Full path exercised: driver POST → Redis publish → `RedisSubscriber` →
+  WebSocket → `driverLocationProvider` → map marker.
+- Driver row + details sheet (name, vehicle, tap-to-copy / **Call**).
+
+**Driver app, same emulator** (`e2e.driver@example.com`, OTP sign-in):
+`ActiveDeliveryScreen` shows the IN PROGRESS route + stops; flipping **"Share
+live location"** triggers the geolocator permission flow and then
+`POST /routes/{id}/location → 204` from the real app (`user_id` = the e2e
+driver), with the card updating to "Customers can see your location.". Both
+apps' halves of the live-tracking loop verified on-device.
+
+`seed_e2e_driver.py` now sets the identity-user phone number so the Driver
+App's phone-OTP sign-in works with the seeded account.
 
 ## Outstanding
 

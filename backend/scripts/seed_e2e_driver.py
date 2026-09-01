@@ -84,11 +84,17 @@ async def main() -> None:
                 await conn.execute(
                     text(
                         "INSERT INTO identity.identity_user "
-                        "(id, tenant_id, email, password_hash, role) "
-                        "VALUES (gen_random_uuid(), :tenant_id, :email, :password_hash, 'driver') "
+                        "(id, tenant_id, email, phone_number, password_hash, role) "
+                        "VALUES (gen_random_uuid(), :tenant_id, :email, :phone, "
+                        ":password_hash, 'driver') "
                         "RETURNING id"
                     ),
-                    {"tenant_id": tenant_id, "email": EMAIL, "password_hash": pw_hash},
+                    {
+                        "tenant_id": tenant_id,
+                        "email": EMAIL,
+                        "phone": PHONE_NUMBER,
+                        "password_hash": pw_hash,
+                    },
                 )
             ).scalar_one()
             await conn.execute(
@@ -100,6 +106,15 @@ async def main() -> None:
             )
         else:
             print(f"identity_user {EMAIL!r} already exists.")
+            # The Driver App signs in by phone OTP, not password — backfill the
+            # number so an already-seeded user works there too.
+            await conn.execute(
+                text(
+                    "UPDATE identity.identity_user SET phone_number = :phone "
+                    "WHERE id = :id AND phone_number IS DISTINCT FROM :phone"
+                ),
+                {"phone": PHONE_NUMBER, "id": user_id},
+            )
 
         # `SqlAlchemyIdentityUserRepository.add()` materializes a user's
         # `role_permission` set into `identity_user_permission` at creation
