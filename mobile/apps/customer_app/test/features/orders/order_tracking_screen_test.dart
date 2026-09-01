@@ -6,6 +6,7 @@ import 'package:customer_app/src/widgets/location_map.dart';
 import 'package:customer_app/src/widgets/map_tile_provider.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -70,6 +71,36 @@ void main() {
       expect(find.byType(LocationMap), findsOneWidget);
       expect(find.text('Order Placed'), findsOneWidget);
       expect(find.text('Out for Delivery'), findsOneWidget);
+    });
+
+    testWidgets('shows the order number and a copyable tracking id', (
+      tester,
+    ) async {
+      final copied = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied.add((call.arguments as Map)['text'] as String);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+
+      await pumpScreen(tester, _screen(view: _view()));
+
+      expect(find.text('ORD000042'), findsOneWidget);
+      expect(find.text('ABCDEF01'), findsOneWidget); // shortened id
+
+      await tester.tap(find.text('ABCDEF01'));
+      await tester.pump();
+
+      expect(copied, ['abcdef01aaaabbbb']); // the full id is copied
+      expect(find.text('Tracking ID copied'), findsOneWidget);
     });
 
     testWidgets('shows an "approximate location" banner when geocoded', (

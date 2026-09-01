@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -99,6 +100,30 @@ class OrderTrackingScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Order + tracking reference — tap either to copy.
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CopyableRef(
+                              label: 'Order',
+                              display: order.orderNumber ??
+                                  '#${order.id.substring(0, 8).toUpperCase()}',
+                              value: order.orderNumber ?? order.id,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _CopyableRef(
+                              label: 'Tracking ID',
+                              display: order.id.substring(0, 8).toUpperCase(),
+                              value: order.id,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Divider(height: 1, color: colors.borderDefault),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -126,7 +151,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
                       Expanded(
                         child: ListView(
                           children: [
@@ -472,6 +497,79 @@ class _ApproximateBanner extends StatelessWidget {
                   color: colors.textSecondary,
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A labelled reference (order number, tracking id) that copies its full
+/// value to the clipboard when tapped.
+class _CopyableRef extends StatelessWidget {
+  const _CopyableRef({
+    required this.label,
+    required this.display,
+    required this.value,
+  });
+
+  /// Caption above the value, e.g. "Order" / "Tracking ID".
+  final String label;
+
+  /// What's shown — may be shortened for display.
+  final String display;
+
+  /// The full string put on the clipboard.
+  final String value;
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('$label copied'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => _copy(context),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    display,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(Icons.copy_rounded, size: 14, color: colors.textSecondary),
+              ],
             ),
           ],
         ),
