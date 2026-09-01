@@ -3,6 +3,7 @@ import 'package:auth/auth.dart';
 import 'package:core/core.dart';
 import 'package:driver_app/main.dart';
 import 'package:driver_app/src/auth_provider.dart';
+import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/local_database_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,17 +69,20 @@ Widget _appWith(AuthController authController) => ProviderScope(
   overrides: [
     localDatabaseProvider.overrideWithValue(NoopLocalDatabase()),
     authControllerProvider.overrideWithValue(authController),
+    activeRouteProvider.overrideWith((ref) async => null),
   ],
   child: const DriverApp(),
 );
 
 void main() {
-  testWidgets('an authenticated session shows the home shell', (tester) async {
+  testWidgets('an authenticated session shows the active-delivery screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.text('LPG Agency'), findsWidgets);
-    expect(find.text('Repository foundation'), findsOneWidget);
+    expect(find.text('Today’s Deliveries'), findsOneWidget);
+    expect(find.text('No active route right now.'), findsOneWidget);
   });
 
   testWidgets('shell has a Material scaffold', (tester) async {
@@ -101,6 +105,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in'), findsWidgets);
-    expect(find.text('Repository foundation'), findsNothing);
+    expect(find.text('Today’s Deliveries'), findsNothing);
   });
 }

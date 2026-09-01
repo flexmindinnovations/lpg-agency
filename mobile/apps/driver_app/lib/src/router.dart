@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
-import 'home_screen.dart';
+import 'features/delivery/presentation/active_delivery_screen.dart';
 import 'login_screen.dart';
 
 /// Routing foundation, with Phase 6's route guards now wired in.
@@ -38,7 +38,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         name: 'home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const ActiveDeliveryScreen(),
       ),
       GoRoute(
         path: '/login',

@@ -670,6 +670,14 @@ class TestRouteEndpointsThroughRealStack:
         # 7b. The driver reports a live GPS position while the route is in
         # progress -> 204. A non-driver (admin lacks `routes:deliver`) -> 403.
         driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+
+        # The Driver App resolves its own active route from the token.
+        my_route_response = await client.get(
+            "/api/v1/routes/active", headers=driver_headers
+        )
+        assert my_route_response.status_code == 200, my_route_response.text
+        assert my_route_response.json()["id"] == route_id
+
         loc_response = await client.post(
             f"/api/v1/routes/{route_id}/location",
             json={"latitude": 12.9611, "longitude": 77.6387, "heading": 42},

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:sync_engine/sync_engine.dart';
 
+import 'src/api_provider.dart';
 import 'src/auth_provider.dart';
 import 'src/local_database_provider.dart';
 import 'src/router.dart';
@@ -66,6 +67,7 @@ void main() async {
       overrides: [
         localDatabaseProvider.overrideWithValue(localDatabase),
         authControllerProvider.overrideWithValue(authController),
+        apiClientProvider.overrideWithValue(apiClient),
       ],
       child: const DriverApp(),
     ),

@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.lpgagency.driver_app"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage (via local_storage) requires compiling against
+    // API 37+ — matches the customer app.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

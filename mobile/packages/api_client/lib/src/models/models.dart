@@ -7,3 +7,4 @@ export 'invoice_models.dart';
 export 'kyc_models.dart';
 export 'notification_models.dart';
 export 'order_models.dart';
+export 'route_models.dart';

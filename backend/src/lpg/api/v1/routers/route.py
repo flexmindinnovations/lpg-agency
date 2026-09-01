@@ -163,6 +163,31 @@ async def list_routes(
 
 
 @router.get(
+    "/active",
+    response_model=RouteResponse,
+    summary="The calling driver's own active route",
+    dependencies=[Depends(require_permission("routes:read"))],
+)
+async def get_my_active_route(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+) -> RouteResponse:
+    """The Driver App's entry point — resolves the driver from the token, so
+    the app never needs to know its own `driver_id`. `404` if the caller
+    isn't a driver or has no active route.
+    """
+    scoped_driver_id, _ = await _resolve_read_scope(principal, driver_repository)
+    if scoped_driver_id is None:
+        msg = "No active route for this account."
+        raise NotFoundError(msg)
+    query = GetActiveRouteForDriverQuery(driver_id=scoped_driver_id)
+    use_case = GetActiveRouteForDriverUseCase(repository)
+    route = await use_case.execute(query)
+    return RouteResponse.model_validate(route)
+
+
+@router.get(
     "/active-for-driver/{driver_id}",
     response_model=RouteResponse,
     summary="Get active route for driver",
