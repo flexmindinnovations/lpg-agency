@@ -71,6 +71,16 @@ class UpdateRouteStatusRequest(BaseModel):
     status: Literal["in_progress", "cancelled"]
 
 
+class DriverLocationPingRequest(BaseModel):
+    """A single GPS reading from the Driver App while a route is in progress."""
+
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    heading: float | None = Field(default=None, ge=0, lt=360)
+    speed_kph: float | None = Field(default=None, ge=0)
+    accuracy_m: float | None = Field(default=None, ge=0)
+
+
 class LoadVehicleLineRequest(BaseModel):
     cylinder_type_id: uuid.UUID
     quantity: int = Field(gt=0)

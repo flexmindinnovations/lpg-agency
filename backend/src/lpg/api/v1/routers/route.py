@@ -36,6 +36,7 @@ from lpg.api.v1.dependencies.identity import get_current_principal, require_perm
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.route import (
     AssignOrderRequest,
+    DriverLocationPingRequest,
     LoadVehicleRequest,
     PlanRouteRequest,
     RoutePageResponse,
@@ -285,6 +286,56 @@ async def complete_route_reconciliation(
     """
     route = await use_case.execute(CompleteRouteReconciliationCommand(route_id=route_id))
     return RouteResponse.model_validate(route)
+
+
+@router.post(
+    "/{route_id}/location",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Report the driver's live location",
+    dependencies=[Depends(require_permission("routes:deliver"))],
+)
+async def report_driver_location(
+    route_id: uuid.UUID,
+    ping: DriverLocationPingRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+) -> None:
+    """Transient telemetry, not a domain event: the ping is cached as the
+    route's last-known position (short TTL) and published on each of the
+    route's per-order real-time channels. `404` unless the caller is the
+    route's own driver; `409` unless the route is `in_progress`.
+    """
+    from lpg.api.app import get_app_state
+    from lpg.application.delivery.driver_location import (
+        DriverLocationPing,
+        publish_driver_location,
+    )
+    from lpg.infrastructure.realtime.driver_location import RedisDriverLocationStore
+
+    scoped_driver_id, _ = await _resolve_read_scope(principal, driver_repository)
+    route = await GetRouteUseCase(repository).execute(GetRouteQuery(route_id=route_id))
+
+    state = get_app_state()
+    if state.redis is None or state.realtime_publisher is None:
+        from lpg.application.common.errors import ServiceUnavailableError
+
+        msg = "Real-time infrastructure is not available."
+        raise ServiceUnavailableError(msg)
+
+    await publish_driver_location(
+        route=route,
+        acting_driver_id=scoped_driver_id,
+        ping=DriverLocationPing(
+            latitude=ping.latitude,
+            longitude=ping.longitude,
+            heading=ping.heading,
+            speed_kph=ping.speed_kph,
+            accuracy_m=ping.accuracy_m,
+        ),
+        store=RedisDriverLocationStore(state.redis),
+        publisher=state.realtime_publisher,
+    )
 
 
 @router.patch(

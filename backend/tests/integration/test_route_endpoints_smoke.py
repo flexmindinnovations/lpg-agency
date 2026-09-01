@@ -667,6 +667,34 @@ class TestRouteEndpointsThroughRealStack:
         assert route_after_depart["status"] == "in_progress"
         otp_code = stack.otp_delivery.sent[-1][1]
 
+        # 7b. The driver reports a live GPS position while the route is in
+        # progress -> 204. A non-driver (admin lacks `routes:deliver`) -> 403.
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+        loc_response = await client.post(
+            f"/api/v1/routes/{route_id}/location",
+            json={"latitude": 12.9611, "longitude": 77.6387, "heading": 42},
+            headers=driver_headers,
+        )
+        assert loc_response.status_code == 204, loc_response.text
+
+        admin_loc_response = await client.post(
+            f"/api/v1/routes/{route_id}/location",
+            json={"latitude": 12.9611, "longitude": 77.6387},
+            headers=admin_headers,
+        )
+        assert admin_loc_response.status_code == 403, admin_loc_response.text
+
+        # ...and the customer-facing tracking read model now returns the
+        # route status and that last-known position.
+        tracking_response = await client.get(
+            f"/api/v1/orders/{order['id']}/tracking", headers=admin_headers
+        )
+        assert tracking_response.status_code == 200, tracking_response.text
+        tracking = tracking_response.json()
+        assert tracking["route_status"] == "in_progress"
+        assert tracking["driver_location"]["latitude"] == 12.9611
+        assert tracking["driver_location"]["heading"] == 42
+
         # 8. Attempting reconciliation before any approved reconciliation
         # record exists -> 409 ROUTE_RECONCILIATION_PENDING (route isn't
         # even "completed" yet at this point, which alone would 409 the

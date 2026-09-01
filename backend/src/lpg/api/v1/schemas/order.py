@@ -65,6 +65,30 @@ class OrderLineResponse(BaseModel):
     unit_price: Decimal | None
 
 
+class DriverLocationSnapshot(BaseModel):
+    latitude: float
+    longitude: float
+    heading: float | None = None
+    speed_kph: float | None = None
+    accuracy_m: float | None = None
+    recorded_at: datetime
+
+
+class OrderTrackingResponse(BaseModel):
+    """Everything the customer app's order-tracking map needs beyond what it
+    already has from the order itself: the resolved route status and the
+    driver's last-known position (``None`` until the driver starts sharing).
+    """
+
+    order_id: uuid.UUID
+    status: OrderStatus
+    destination_latitude: float | None
+    destination_longitude: float | None
+    destination_label: str
+    route_status: str | None
+    driver_location: DriverLocationSnapshot | None
+
+
 class OrderResponse(BaseModel):
     id: uuid.UUID
     order_number: str | None = None

@@ -93,11 +93,13 @@ from lpg.api.v1.schemas.order import (
     DeliverOrderRequest,
     DeliverOrderResponse,
     DeliveryAddressPayload,
+    DriverLocationSnapshot,
     OrderLineResponse,
     OrderPageResponse,
     OrderResponse,
     OrderStatus,
     OrderStatusHistoryEntryResponse,
+    OrderTrackingResponse,
     PaymentMethod,
     PodAttachmentResponse,
     ProofOfDeliveryResponse,
@@ -433,6 +435,75 @@ async def get_order(
         )
     )
     return _order_to_response(order)
+
+
+@router.get(
+    "/orders/{order_id}/tracking",
+    response_model=OrderTrackingResponse,
+    dependencies=[Depends(require_permission("orders:read"))],
+)
+async def get_order_tracking(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[
+        CustomerRepository, Depends(get_customer_repository)
+    ],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+) -> OrderTrackingResponse:
+    """The order-tracking map's data: the delivery destination, the route's
+    status, and the driver's last-known position (from the short-TTL cache
+    the Driver App's location pings write). Same row-scoping as
+    `GET /orders/{order_id}` — a customer only sees their own order.
+    """
+    scope = await _resolve_scope(
+        principal, customer_repository, driver_repository, route_repository
+    )
+    if scope.blocked:
+        msg = f"No order visible with id {order_id}."
+        raise NotFoundError(msg, order_id=str(order_id))
+
+    order = await GetOrderUseCase(order_repository).execute(
+        GetOrderQuery(
+            order_id=order_id,
+            scoped_customer_id=scope.customer_id,
+            scoped_route_stop_ids=scope.route_stop_ids,
+            scoped_branch_id=scope.branch_id,
+        )
+    )
+
+    route_status: str | None = None
+    driver_location: DriverLocationSnapshot | None = None
+    if order.route_stop_id is not None:
+        owner = await route_repository.get_stop_owner(order.route_stop_id)
+        if owner is not None:
+            route = await route_repository.get_by_id(owner.route_id)
+            route_status = route.status if route is not None else None
+
+            from lpg.api.app import get_app_state
+            from lpg.infrastructure.realtime.driver_location import (
+                RedisDriverLocationStore,
+            )
+
+            state = get_app_state()
+            if state.redis is not None:
+                raw = await RedisDriverLocationStore(state.redis).read(
+                    order.tenant_id, owner.route_id
+                )
+                if raw is not None:
+                    driver_location = DriverLocationSnapshot.model_validate(raw)
+
+    address = order.delivery_address
+    return OrderTrackingResponse(
+        order_id=order.id,
+        status=cast("OrderStatus", order.status),
+        destination_latitude=address.latitude,
+        destination_longitude=address.longitude,
+        destination_label=address.address_line,
+        route_status=route_status,
+        driver_location=driver_location,
+    )
 
 
 @router.get(
