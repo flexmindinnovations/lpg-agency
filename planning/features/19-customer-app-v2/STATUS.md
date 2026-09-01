@@ -128,15 +128,29 @@ Ran against the live server + ARQ worker + Redis with real seeded data
 
 Verification script: `scripts`-adjacent, kept in the session scratchpad.
 
+## Stage D — emulator walkthrough verified (2026-09-01)
+
+Fresh Pixel emulator, customer app rebuilt from `main`
+(`--dart-define=API_BASE_URL=http://10.0.2.2:8000`), signed in as
+`e2e.customer@example.com`:
+
+- **"Order Received"** notification appears in the notifications list after an
+  order is placed (Stage A).
+- **Track Order** renders a real OpenStreetMap map with the delivery-address
+  pin + the milestone timeline (Stage B).
+- Driver pings (`POST /routes/{id}/location`) → the customer map shows the
+  **blue driver marker** and a **"Driver en route"** chip, and the marker moves
+  between pings (Stage C3). Full path exercised: driver POST → Redis publish →
+  `RedisSubscriber` → WebSocket → `driverLocationProvider` → map marker.
+
 ## Outstanding
 
-- **Emulator UI walkthrough** (the "watch the pixels" pass) still to do: rebuild
-  + install the customer app, place an order (see the push), open the tracking
-  map; with the driver app on a second emulator sharing location against an
-  `in_progress` route, watch the marker move. Backend contract is proven; this
-  is visual confirmation only.
-- Re-verify invoices / support / profile / address CRUD screens against a live
-  backend (widget tests pass; not yet exercised on-device post-rebuild).
+- Re-verify invoices / support / profile / address CRUD screens on-device
+  post-rebuild (widget tests pass; not walked through the emulator).
+- iOS Firebase (`GoogleService-Info.plist` + APNs key).
+- Driver app only *views* a route + shares location — the delivery workflow
+  (mark departed, record delivery + proof-of-delivery, collect payment) still
+  lives only in the dashboard/API.
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
 - **Driver-app background location** — deliberately out of scope; sharing works
   only while the Active Delivery screen is open.
