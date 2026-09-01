@@ -80,16 +80,48 @@ in the emulator → `BookingCreated` dispatched → 3 staff get "New Order" →
 dashboard **Order Queue 55→56** and **bell 1→2**, both live over the
 WebSocket with no reload; drawer opens and shows the notifications.
 
+## Order-placed acknowledgement + tracking map + live driver tracking (2026-09-01)
+
+Four follow-ups from the previous "Outstanding" list, built and unit/widget
+tested (live emulator walkthrough — Stage D below — still pending):
+
+- **`order_placed` customer notification** (commit `114fcc3`) — `BookingCreated`
+  now also enqueues a customer-facing "Order Received" push + in-app for every
+  non-staff source, so the customer hears back at placement rather than only on
+  agency confirm.
+- **Feature-screen widget tests** (commit `3ae3adf`) — orders list/detail,
+  invoice list/detail, support list + complaint detail, raise-complaint,
+  profile, edit-profile. Customer-app suite 10 → 46.
+- **Real order-tracking map** (commit `d63eaca`) — `flutter_map` (OpenStreetMap,
+  no API key). Destination from the saved address pin, else a Nominatim geocode
+  of the address text. New map-pin picker on the add/edit address forms
+  (`geolocator` "use my location").
+- **Live driver tracking** (commits `e0b56a6` backend, `da5d422` customer,
+  `c7a8b2d` driver):
+  - `POST /routes/{id}/location` (`routes:deliver`, `in_progress` only) —
+    transient telemetry: Redis last-known (120s TTL) + `driver.location` fan-out
+    on each per-order channel. `GET /orders/{id}/tracking` read model.
+    `GET /routes/active` resolves the caller's route from the token.
+  - Driver App's **first business feature**: `ActiveDeliveryScreen` + a
+    foreground `LocationSharingController` (geolocator, throttled 1 POST/15s).
+  - Customer tracking map shows an animated driver marker seeded from the
+    last-known position, "waiting → en route → paused" status.
+  - Driver-app Android `compileSdk` → 37, `kotlin.incremental=false` (matches
+    customer app). Debug APKs for both apps build clean.
+
 ## Outstanding
 
+- **Stage D — live emulator walkthrough** not yet run: place an order (expect
+  "Order Received" push), open the tracking map, and with a dispatcher-planned
+  `in_progress` route on a second emulator confirm the customer sees the moving
+  driver marker. Also re-verify invoices / support / profile / address CRUD
+  against a live backend.
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
-- Test coverage still thin on feature screens — `kyc_screen` and
-  `payment_methods_screen` have widget tests; orders / invoices / complaints
-  / addresses do not.
-- `booking_confirmed` fires on staff *confirm* (`booked → confirmed`), not
-  customer placement — so a customer only gets that push once the agency
-  confirms the order. Working as designed; noted so it isn't mistaken for
-  a bug.
+- **Driver-app background location** — deliberately out of scope; sharing works
+  only while the Active Delivery screen is open.
+- Nominatim geocoding is dev/demo-grade (rate-limited, ToS-restricted) — swap
+  for a paid geocoder before production. The map-picker avoids it for new
+  addresses.
 
 ## Issues
 
