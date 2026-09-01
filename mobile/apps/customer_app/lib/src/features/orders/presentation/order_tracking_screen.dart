@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../widgets/location_map.dart';
 import '../../../widgets/map_tile_provider.dart';
@@ -634,14 +635,90 @@ class _DriverSheet extends StatelessWidget {
                     .join(' · '),
               ),
             if ((driver.phoneNumber ?? '').isNotEmpty)
-              _DriverDetailTile(
-                icon: Icons.phone_outlined,
-                label: 'Phone',
-                value: driver.phoneNumber!,
-                onCopy: driver.phoneNumber!,
-              ),
+              _DriverPhoneTile(phone: driver.phoneNumber!),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The driver's phone row in the details sheet — dial it or copy it.
+class _DriverPhoneTile extends StatelessWidget {
+  const _DriverPhoneTile({required this.phone});
+
+  final String phone;
+
+  Future<void> _call(BuildContext context) async {
+    final dialable = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final launched = await launchUrl(Uri(scheme: 'tel', path: dialable));
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Could not open the dialer')),
+        );
+    }
+  }
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: phone));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Phone copied'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(Icons.phone_outlined, size: 20, color: colors.textSecondary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Phone',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                Text(
+                  phone,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _copy(context),
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            tooltip: 'Copy',
+            visualDensity: VisualDensity.compact,
+            color: colors.textSecondary,
+          ),
+          const SizedBox(width: 4),
+          FilledButton.tonalIcon(
+            onPressed: () => _call(context),
+            icon: const Icon(Icons.call, size: 18),
+            label: const Text('Call'),
+          ),
+        ],
       ),
     );
   }
@@ -652,66 +729,43 @@ class _DriverDetailTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.onCopy,
   });
 
   final IconData icon;
   final String label;
   final String value;
 
-  /// When set, the tile is tappable and copies this to the clipboard.
-  final String? onCopy;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
 
-    Future<void> copy() async {
-      await Clipboard.setData(ClipboardData(text: onCopy!));
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('$label copied'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-    }
-
-    return InkWell(
-      onTap: onCopy == null ? null : copy,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: colors.textSecondary),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: colors.textSecondary),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colors.textSecondary,
                   ),
-                  Text(
-                    value,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.textPrimary,
-                    ),
+                ),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.textPrimary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            if (onCopy != null)
-              Icon(Icons.copy_rounded, size: 16, color: colors.textSecondary),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

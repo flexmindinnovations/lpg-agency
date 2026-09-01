@@ -136,9 +136,27 @@ void main() {
           findsOneWidget);
     });
 
-    testWidgets('shows the driver name + vehicle, with a details sheet', (
+    testWidgets('driver details sheet — vehicle, copy phone, call phone', (
       tester,
     ) async {
+      final launched = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/url_launcher'),
+        (call) async {
+          if (call.method == 'launch') {
+            launched.add((call.arguments as Map)['url'] as String);
+            return true;
+          }
+          return true;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/url_launcher'),
+          null,
+        ),
+      );
+
       await pumpScreen(
         tester,
         _screen(
@@ -163,6 +181,10 @@ void main() {
       // Details sheet
       expect(find.text('+91 90000 11111'), findsOneWidget);
       expect(find.textContaining('Tata Ace'), findsWidgets);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Call'));
+      await tester.pump();
+      expect(launched, ['tel:+919000011111']); // stripped to digits + '+'
     });
 
     testWidgets('shows the driver en route once a position arrives', (
