@@ -1,10 +1,52 @@
 import 'dart:async';
 
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../api_provider.dart';
+
+/// Location settings for continuous route sharing.
+///
+/// On Android this attaches a foreground-service notification so updates keep
+/// flowing while the app is backgrounded or the screen is off; on iOS it opts
+/// into background location updates. Other platforms (and the widget tester)
+/// fall back to plain [LocationSettings].
+LocationSettings buildRouteLocationSettings() {
+  const accuracy = LocationAccuracy.high;
+  const distanceFilter = 25;
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.android:
+      return AndroidSettings(
+        accuracy: accuracy,
+        distanceFilter: distanceFilter,
+        intervalDuration: const Duration(seconds: 15),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Sharing your delivery location',
+          notificationText: 'Customers on your route can see where you are.',
+          notificationChannelName: 'Delivery location sharing',
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    case TargetPlatform.iOS:
+      return AppleSettings(
+        accuracy: accuracy,
+        distanceFilter: distanceFilter,
+        activityType: ActivityType.automotiveNavigation,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      );
+    default:
+      return const LocationSettings(
+        accuracy: accuracy,
+        distanceFilter: distanceFilter,
+      );
+  }
+}
 
 /// Rate-limits location POSTs. `geolocator`'s position stream fires on
 /// movement (a distance filter), which can be far more often than every
@@ -65,10 +107,7 @@ class DriverGeolocator {
   }
 
   Stream<Position> positions() => Geolocator.getPositionStream(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 25,
-    ),
+    locationSettings: buildRouteLocationSettings(),
   );
 
   /// A single fix — used to stamp a proof of delivery.
@@ -81,9 +120,13 @@ final driverGeolocatorProvider = Provider<DriverGeolocator>(
   (ref) => const DriverGeolocator(),
 );
 
-/// Foreground-only location sharing for the current delivery route. Runs
-/// while the Active Delivery screen is open and the driver has turned
-/// sharing on. Background/foreground-service sharing is a follow-up.
+/// Location sharing for the current delivery route. The driver turns it on
+/// from the Active Delivery screen; from then on it is driven by
+/// [buildRouteLocationSettings] — an Android foreground service (persistent
+/// notification) / iOS background updates — so it keeps reporting when the
+/// driver navigates to a stop, backgrounds the app, or locks the screen. It
+/// stops on the manual toggle, when the route is no longer `in_progress`
+/// (the backend answers `409`), or when the app process is torn down.
 class LocationSharingController {
   LocationSharingController({
     required this.routeApi,
@@ -165,12 +208,26 @@ class LocationSharingController {
           lastSentAt: DateTime.now(),
         ),
       ),
-      onFailure: (failure) => _emit(
-        _state.copyWith(
-          status: LocationSharingStatus.sharing,
-          message: failure.message,
-        ),
-      ),
+      onFailure: (failure) {
+        // The route has ended (or isn't in progress) — nothing more to share.
+        if (failure.errorCode == 'CONFLICT') {
+          stop();
+          _emit(
+            LocationSharingState(
+              status: LocationSharingStatus.off,
+              lastSentAt: _state.lastSentAt,
+              message: 'Sharing stopped — this route is no longer active.',
+            ),
+          );
+          return;
+        }
+        _emit(
+          _state.copyWith(
+            status: LocationSharingStatus.sharing,
+            message: failure.message,
+          ),
+        );
+      },
     );
   }
 
@@ -180,6 +237,8 @@ class LocationSharingController {
   }
 }
 
+/// Kept alive for the whole session (not `autoDispose`) on purpose: sharing
+/// must outlive the Active Delivery screen that starts it.
 final locationSharingControllerProvider = Provider<LocationSharingController>((
   ref,
 ) {

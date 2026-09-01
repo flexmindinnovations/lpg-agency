@@ -145,9 +145,10 @@ class _LocationSharingCard extends ConsumerWidget {
       _ when !canShare =>
         'Available once you depart with the vehicle.',
       _ when isSharing && sharingState?.lastSentAt != null =>
-        'Customers can see your location. Last update '
-            '${_ago(sharingState!.lastSentAt!)}.',
-      _ when isSharing => 'Customers can see your location.',
+        'Customers can see your location, even in the background. '
+            'Last update ${_ago(sharingState!.lastSentAt!)}.',
+      _ when isSharing =>
+        'Customers can see your location, even in the background.',
       _ => 'Let customers track their delivery on the map.',
     };
 
