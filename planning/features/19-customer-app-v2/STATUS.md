@@ -172,9 +172,10 @@ App's phone-OTP sign-in works with the seeded account.
   fallback:
   - `GeocodingService` → LocationIQ forward-geocoding (Nominatim-compatible),
     else raw Nominatim.
-  - `LocationMap` `TileLayer` → LocationIQ `light` basemap (clean greyscale so
-    the pin/route pop), else the raw OSM tile CDN. The "Made with flutter_map"
-    promo is turned off (`showFlutterMapAttribution: false`); a minimal
+  - `LocationMap` `TileLayer` → LocationIQ `streets` basemap (standard
+    full-colour street map; `light`/`dark` also available), else the raw OSM
+    tile CDN. The "Made with flutter_map" promo is turned off
+    (`showFlutterMapAttribution: false`); a minimal
     `© OpenStreetMap · © LocationIQ` legal attribution stays.
   - Key passed via `--dart-define-from-file=dart_defines.local.json`
     (gitignored; see `dart_defines.local.json.example`) — never committed.

@@ -52,7 +52,7 @@ void main() {
       expect(map.options.interactionOptions.flags, InteractiveFlag.none);
     });
 
-    testWidgets('uses LocationIQ light tiles when an API key is configured', (
+    testWidgets('uses LocationIQ street tiles when an API key is configured', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -67,7 +67,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       final tiles = tester.widget<TileLayer>(find.byType(TileLayer));
-      expect(tiles.urlTemplate, contains('tiles.locationiq.com/v3/light'));
+      expect(tiles.urlTemplate, contains('tiles.locationiq.com/v3/streets'));
       expect(tiles.urlTemplate, contains('key=pk.test-key'));
       expect(_attributionTexts(tester), contains('© LocationIQ'));
     });

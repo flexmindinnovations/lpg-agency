@@ -7,12 +7,12 @@ import 'package:latlong2/latlong.dart';
 /// forbids production traffic, which is why we prefer LocationIQ below.
 const _osmTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-/// LocationIQ's hosted tiles (`light` style — a clean, low-chroma basemap so
-/// the delivery pin and route stand out), keyed with the same
-/// `LOCATIONIQ_API_KEY` the geocoder uses. `{key}` is substituted here, not
-/// by flutter_map.
+/// LocationIQ's hosted tiles (`streets` style — the standard full-colour
+/// street basemap), keyed with the same `LOCATIONIQ_API_KEY` the geocoder
+/// uses. `{key}` is substituted here, not by flutter_map. Other valid raster
+/// styles: `light`, `dark`.
 const _locationIqTileUrl =
-    'https://tiles.locationiq.com/v3/light/r/{z}/{x}/{y}.png?key={key}';
+    'https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key={key}';
 
 /// LocationIQ API key, supplied at build time — see the customer app's
 /// `dart_defines.local.json` (gitignored). Empty by default → OSM tiles.
