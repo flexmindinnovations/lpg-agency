@@ -71,9 +71,7 @@ class _RouteStatusCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.extension<LpgColors>()!;
     final total = route.stops.length;
-    final delivered = route.stops
-        .where((s) => s.status == 'delivered')
-        .length;
+    final delivered = route.stops.where((s) => s.status == 'delivered').length;
 
     return LpgCard(
       child: Column(
@@ -161,10 +159,8 @@ class _NextStopCard extends StatelessWidget {
 
     return LpgCard(
       padding: EdgeInsets.zero,
-      onTap: () => context.pushNamed(
-        'stop',
-        pathParameters: {'orderId': next.orderId},
-      ),
+      onTap: () =>
+          context.pushNamed('stop', pathParameters: {'orderId': next.orderId}),
       child: LpgListTile(
         leadingIcon: Icons.navigation_outlined,
         title: 'Next stop · Stop ${next.sequenceNumber + 1}',

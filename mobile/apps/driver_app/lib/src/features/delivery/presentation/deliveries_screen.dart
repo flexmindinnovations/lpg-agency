@@ -112,7 +112,8 @@ class _HistoryRow extends StatelessWidget {
       child: LpgListTile(
         leadingIcon: Icons.history,
         title: dateLabel,
-        subtitle: '$n stop${n == 1 ? '' : 's'} · '
+        subtitle:
+            '$n stop${n == 1 ? '' : 's'} · '
             '${route.status.replaceAll('_', ' ')}',
         trailing: Icon(
           route.status == 'cancelled'
@@ -142,7 +143,9 @@ class _MutedNote extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Text(
         text,
-        style: theme.textTheme.bodyMedium?.copyWith(color: colors.textSecondary),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: colors.textSecondary,
+        ),
       ),
     );
   }

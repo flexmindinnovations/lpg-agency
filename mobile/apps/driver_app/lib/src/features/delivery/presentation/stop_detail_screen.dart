@@ -9,6 +9,7 @@ import '../../../api_provider.dart';
 import '../data/active_route_provider.dart';
 import '../data/stop_order_provider.dart';
 import 'failed_delivery_sheet.dart';
+import 'widgets/stop_map_card.dart';
 
 /// One delivery stop: the order summary + the actions available at its
 /// current status (depart, record delivery, mark failed).
@@ -85,6 +86,8 @@ class StopDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              StopMapCard(orderId: order.id),
               const SizedBox(height: 24),
               ..._actions(context, ref, order),
             ],
@@ -134,7 +137,8 @@ class StopDetailScreen extends ConsumerWidget {
       default:
         return [
           LpgEmptyState(
-            message: 'Nothing to do here — this stop is '
+            message:
+                'Nothing to do here — this stop is '
                 '${order.status.replaceAll('_', ' ')}.',
             icon: Icons.done_all,
           ),
@@ -158,11 +162,13 @@ class StopDetailScreen extends ConsumerWidget {
     await _run(
       context,
       ref,
-      () => ref.read(orderApiProvider).recordFailedDelivery(
-        id,
-        reasonCode: choice.reason,
-        resolutionAction: choice.action,
-      ),
+      () => ref
+          .read(orderApiProvider)
+          .recordFailedDelivery(
+            id,
+            reasonCode: choice.reason,
+            resolutionAction: choice.action,
+          ),
     );
   }
 
@@ -180,9 +186,8 @@ class StopDetailScreen extends ConsumerWidget {
         ref.invalidate(activeRouteProvider);
         messenger.showSnackBar(const SnackBar(content: Text('Done.')));
       },
-      onFailure: (failure) => messenger.showSnackBar(
-        SnackBar(content: Text(failure.message)),
-      ),
+      onFailure: (failure) =>
+          messenger.showSnackBar(SnackBar(content: Text(failure.message))),
     );
   }
 

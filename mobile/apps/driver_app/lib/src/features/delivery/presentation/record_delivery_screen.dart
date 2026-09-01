@@ -145,9 +145,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           ref.invalidate(stopOrderProvider(widget.orderId));
           ref.invalidate(activeRouteProvider);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Delivery recorded.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Delivery recorded.')));
           Navigator.of(context).pop();
         },
         onFailure: (failure) => setState(() => _error = failure.message),
@@ -193,9 +193,8 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   ordered: line.quantityOrdered,
                   delivered: _quantities[line.cylinderTypeId]?.$1 ?? 0,
                   collected: _quantities[line.cylinderTypeId]?.$2 ?? 0,
-                  onChanged: (d, c) => setState(
-                    () => _quantities[line.cylinderTypeId] = (d, c),
-                  ),
+                  onChanged: (d, c) =>
+                      setState(() => _quantities[line.cylinderTypeId] = (d, c)),
                 ),
               const SizedBox(height: 24),
               _section('Payment'),
@@ -267,9 +266,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               OutlinedButton.icon(
                 onPressed: _pickPhoto,
                 icon: const Icon(Icons.camera_alt_outlined),
-                label: Text(
-                  _photoBytes == null ? 'Take a photo' : 'Retake',
-                ),
+                label: Text(_photoBytes == null ? 'Take a photo' : 'Retake'),
               ),
               const SizedBox(height: 32),
               LpgButton(
@@ -290,9 +287,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
       title,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -365,10 +362,7 @@ class _Stepper extends StatelessWidget {
           onPressed: value > 0 ? () => onChanged(value - 1) : null,
           icon: const Icon(Icons.remove_circle_outline),
         ),
-        SizedBox(
-          width: 24,
-          child: Text('$value', textAlign: TextAlign.center),
-        ),
+        SizedBox(width: 24, child: Text('$value', textAlign: TextAlign.center)),
         IconButton(
           onPressed: value < max ? () => onChanged(value + 1) : null,
           icon: const Icon(Icons.add_circle_outline),
@@ -398,10 +392,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(Icons.error_outline, color: colors.statusDanger),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: colors.statusDanger),
-            ),
+            child: Text(message, style: TextStyle(color: colors.statusDanger)),
           ),
         ],
       ),

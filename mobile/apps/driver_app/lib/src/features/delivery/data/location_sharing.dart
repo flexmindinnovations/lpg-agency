@@ -67,7 +67,13 @@ class LocationThrottle {
   }
 }
 
-enum LocationSharingStatus { off, requesting, sharing, permissionBlocked, error }
+enum LocationSharingStatus {
+  off,
+  requesting,
+  sharing,
+  permissionBlocked,
+  error,
+}
 
 class LocationSharingState {
   const LocationSharingState({
@@ -128,10 +134,7 @@ final driverGeolocatorProvider = Provider<DriverGeolocator>(
 /// stops on the manual toggle, when the route is no longer `in_progress`
 /// (the backend answers `409`), or when the app process is torn down.
 class LocationSharingController {
-  LocationSharingController({
-    required this.routeApi,
-    required this.geolocator,
-  });
+  LocationSharingController({required this.routeApi, required this.geolocator});
 
   final RouteApi routeApi;
   final DriverGeolocator geolocator;
@@ -180,10 +183,12 @@ class LocationSharingController {
     _sub?.cancel();
     _sub = null;
     if (_state.status != LocationSharingStatus.off) {
-      _emit(LocationSharingState(
-        status: LocationSharingStatus.off,
-        lastSentAt: _state.lastSentAt,
-      ));
+      _emit(
+        LocationSharingState(
+          status: LocationSharingStatus.off,
+          lastSentAt: _state.lastSentAt,
+        ),
+      );
     }
   }
 

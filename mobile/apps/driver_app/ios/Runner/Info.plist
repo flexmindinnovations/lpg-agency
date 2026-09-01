@@ -14,6 +14,11 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of the delivery as proof.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+		<string>maps</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

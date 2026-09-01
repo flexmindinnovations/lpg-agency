@@ -2,14 +2,19 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
+import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:driver_app/src/api_provider.dart';
+import 'package:driver_app/src/features/delivery/data/driver_position_provider.dart';
+import 'package:driver_app/src/features/delivery/data/stop_destination_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
 import 'package:driver_app/src/features/delivery/presentation/stop_detail_screen.dart';
-import 'package:design_system/design_system.dart';
+import 'package:driver_app/src/features/delivery/presentation/widgets/stop_map_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maps/maps.dart';
+import 'package:maps/maps_testing.dart';
 
 OrderResponse _order({String status = 'out_for_delivery'}) => OrderResponse(
   id: 'abcdef01aaaabbbb',
@@ -81,6 +86,19 @@ class _RecordingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Keeps the stop-detail map card off the network/geolocator in these tests.
+final _mapOverrides = [
+  stopDestinationProvider.overrideWith(
+    (ref, id) async => const StopDestination(
+      point: LatLng(51.52, -0.15),
+      label: '12 Baker Street',
+      isApproximate: false,
+    ),
+  ),
+  driverPositionProvider.overrideWith((ref) async => null),
+  mapTileProviderProvider.overrideWithValue(FakeTileProvider()),
+];
+
 Widget _host(ProviderContainer container) => UncontrolledProviderScope(
   container: container,
   child: MaterialApp(
@@ -89,23 +107,35 @@ Widget _host(ProviderContainer container) => UncontrolledProviderScope(
   ),
 );
 
+/// The stop-detail list is now tall (map card + actions) — give the tester a
+/// tall viewport so nothing lands off-screen in the lazy `ListView`.
+Future<void> _pump(WidgetTester tester, ProviderContainer container) async {
+  tester.view.physicalSize = const Size(1000, 2600);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(_host(container));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('StopDetailScreen', () {
     testWidgets('shows the order summary and delivery actions', (tester) async {
       final container = ProviderContainer(
         overrides: [
+          ..._mapOverrides,
           stopOrderProvider.overrideWith((ref, id) async => _order()),
         ],
       );
       addTearDown(container.dispose);
 
-      await tester.pumpWidget(_host(container));
-      await tester.pumpAndSettle();
+      await _pump(tester, container);
 
       expect(find.text('ORD000042'), findsOneWidget);
       expect(find.text('12 Baker Street'), findsOneWidget);
       expect(find.textContaining('2 cylinders'), findsOneWidget);
       expect(find.textContaining('Collect ₹950'), findsOneWidget);
+      expect(find.byType(StopMapCard), findsOneWidget);
+      expect(find.widgetWithText(LpgButton, 'Navigate'), findsOneWidget);
       expect(find.text('Record delivery'), findsOneWidget);
       expect(find.text('Delivery failed'), findsOneWidget);
     });
@@ -118,6 +148,7 @@ void main() {
         ..dio.httpClientAdapter = adapter;
       final container = ProviderContainer(
         overrides: [
+          ..._mapOverrides,
           apiClientProvider.overrideWithValue(client),
           stopOrderProvider.overrideWith(
             (ref, id) async => _order(status: 'ready_for_dispatch'),
@@ -126,8 +157,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      await tester.pumpWidget(_host(container));
-      await tester.pumpAndSettle();
+      await _pump(tester, container);
 
       await tester.tap(find.text('Start this delivery'));
       await tester.pumpAndSettle();
@@ -144,14 +174,14 @@ void main() {
         ..dio.httpClientAdapter = adapter;
       final container = ProviderContainer(
         overrides: [
+          ..._mapOverrides,
           apiClientProvider.overrideWithValue(client),
           stopOrderProvider.overrideWith((ref, id) async => _order()),
         ],
       );
       addTearDown(container.dispose);
 
-      await tester.pumpWidget(_host(container));
-      await tester.pumpAndSettle();
+      await _pump(tester, container);
 
       await tester.tap(find.text('Delivery failed'));
       await tester.pumpAndSettle();
@@ -165,10 +195,7 @@ void main() {
       final failedCall = adapter.calls.firstWhere(
         (c) => c.path.endsWith('/failed-delivery'),
       );
-      expect(
-        (failedCall.data as Map)['reason_code'],
-        'customer_unavailable',
-      );
+      expect((failedCall.data as Map)['reason_code'], 'customer_unavailable');
     });
   });
 }

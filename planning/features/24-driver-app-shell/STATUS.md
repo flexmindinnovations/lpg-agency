@@ -20,12 +20,25 @@ screen, **no way to log out at all**, no delivery history.
 | C2 — Profile tab enrichment | ✅ Done — `DriverApi.getMe` + `DriverMe`/`DriverMeVehicle` models + `driverProfileProvider`; `ProfileScreen` shows name / phone / licence / vehicle / status + Log Out + version; `main.dart` docstring refreshed. 34 driver + 48 api_client tests pass, analyze clean |
 | D — Emulator verification | ✅ Done — full shell verified live on emulator-5554 against real backend data: **Today** (active route "1 of 2 delivered" + progress bar, next-stop card, location-sharing), **Deliveries** (current stops with status icons + "Past routes" history — completed ×2, cancelled), **Profile** (name/phone/licence/vehicle "TS07UB4412 · Tata Ace Gold"/status from `GET /drivers/me`, Log Out). Splash + themed login verified in Stage A. The dev backend had to be restarted first — `uvicorn --reload` was serving pre-Stage-C1 code (known Windows flakiness). |
 
+## Follow-ups landed after the shell
+
+- **Route map on Stop Detail** (`16d822c` extract `packages/maps`, next commit
+  the driver feature): `LocationMap` + LocationIQ `GeocodingService` moved into
+  a shared `mobile/packages/maps`; the driver Stop Detail screen now shows a
+  `StopMapCard` — destination pin (pinned coords, else geocoded with an
+  "approximate" banner), the driver's own position marker, a recenter FAB, and
+  a **Navigate** button that opens Google/Apple Maps. Verified on the emulator
+  (map renders LocationIQ tiles; Navigate launches Google Maps).
+
 ## Notes
 
 - Plan: [PLAN.md](./PLAN.md) · Tasks: [TASKS.md](./TASKS.md)
 - Delivery feature screens (Active Delivery, Stop Detail, Record Delivery) were
   already design-system-themed before this phase.
 - Driver push notifications remain out of scope.
+- Driver app now needs a `dart_defines.local.json` (gitignored; see the
+  `.example`) with `LOCATIONIQ_API_KEY` for production-grade map tiles +
+  geocoding — degrades to OSM/Nominatim without it.
 
 ## Last Updated
 

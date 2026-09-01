@@ -16,7 +16,9 @@ void main() {
     });
 
     test('rejects a second reading inside the minimum interval', () {
-      final throttle = LocationThrottle(minInterval: const Duration(seconds: 15));
+      final throttle = LocationThrottle(
+        minInterval: const Duration(seconds: 15),
+      );
       final t0 = DateTime(2026, 9, 1, 12, 0, 0);
 
       expect(throttle.accept(t0), isTrue);
@@ -25,7 +27,9 @@ void main() {
     });
 
     test('accepts again once the interval has elapsed', () {
-      final throttle = LocationThrottle(minInterval: const Duration(seconds: 15));
+      final throttle = LocationThrottle(
+        minInterval: const Duration(seconds: 15),
+      );
       final t0 = DateTime(2026, 9, 1, 12, 0, 0);
 
       expect(throttle.accept(t0), isTrue);
@@ -99,28 +103,33 @@ void main() {
       expect(controller.state.status, LocationSharingStatus.sharing);
     });
 
-    test('stops sharing when the backend says the route is not active',
-        () async {
-      final adapter = _StubAdapter(
-        (_) => _json({'error_code': 'CONFLICT', 'detail': 'route not active'}, 409),
-      );
-      final controller = LocationSharingController(
-        routeApi: RouteApi(_dio(adapter)),
-        geolocator: _FakeGeolocator([fix()]),
-      );
-      addTearDown(controller.dispose);
+    test(
+      'stops sharing when the backend says the route is not active',
+      () async {
+        final adapter = _StubAdapter(
+          (_) => _json({
+            'error_code': 'CONFLICT',
+            'detail': 'route not active',
+          }, 409),
+        );
+        final controller = LocationSharingController(
+          routeApi: RouteApi(_dio(adapter)),
+          geolocator: _FakeGeolocator([fix()]),
+        );
+        addTearDown(controller.dispose);
 
-      final seen = <LocationSharingStatus>[];
-      final sub = controller.states.listen((s) => seen.add(s.status));
+        final seen = <LocationSharingStatus>[];
+        final sub = controller.states.listen((s) => seen.add(s.status));
 
-      await controller.start('route-1');
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      await sub.cancel();
+        await controller.start('route-1');
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await sub.cancel();
 
-      expect(controller.state.status, LocationSharingStatus.off);
-      expect(controller.state.message, contains('no longer active'));
-      expect(seen, contains(LocationSharingStatus.off));
-    });
+        expect(controller.state.status, LocationSharingStatus.off);
+        expect(controller.state.message, contains('no longer active'));
+        expect(seen, contains(LocationSharingStatus.off));
+      },
+    );
   });
 }
 

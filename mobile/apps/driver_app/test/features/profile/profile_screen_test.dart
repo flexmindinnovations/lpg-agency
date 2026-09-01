@@ -67,16 +67,14 @@ class _RecordingAuthRepository implements AuthRepository {
   }) async => const Success(null);
 }
 
-Widget _host(
-  AuthController controller,
-  Future<DriverMe> Function() profile,
-) => ProviderScope(
-  overrides: [
-    authControllerProvider.overrideWithValue(controller),
-    driverProfileProvider.overrideWith((ref) => profile()),
-  ],
-  child: MaterialApp(theme: LpgTheme.light, home: const ProfileScreen()),
-);
+Widget _host(AuthController controller, Future<DriverMe> Function() profile) =>
+    ProviderScope(
+      overrides: [
+        authControllerProvider.overrideWithValue(controller),
+        driverProfileProvider.overrideWith((ref) => profile()),
+      ],
+      child: MaterialApp(theme: LpgTheme.light, home: const ProfileScreen()),
+    );
 
 void main() {
   group('Driver ProfileScreen', () {
@@ -117,9 +115,7 @@ void main() {
 
     testWidgets('Log Out calls the auth controller', (tester) async {
       final repo = _RecordingAuthRepository();
-      await tester.pumpWidget(
-        _host(AuthController(repo), () async => _me()),
-      );
+      await tester.pumpWidget(_host(AuthController(repo), () async => _me()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Log Out'));

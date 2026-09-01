@@ -27,16 +27,14 @@ RouteSummary _route({
   stops: stops,
 );
 
-Widget _screen({
-  RouteSummary? active,
-  List<RouteSummary> history = const [],
-}) => ProviderScope(
-  overrides: [
-    activeRouteProvider.overrideWith((ref) async => active),
-    routeHistoryProvider.overrideWith((ref) async => history),
-  ],
-  child: MaterialApp(theme: LpgTheme.light, home: const DeliveriesScreen()),
-);
+Widget _screen({RouteSummary? active, List<RouteSummary> history = const []}) =>
+    ProviderScope(
+      overrides: [
+        activeRouteProvider.overrideWith((ref) async => active),
+        routeHistoryProvider.overrideWith((ref) async => history),
+      ],
+      child: MaterialApp(theme: LpgTheme.light, home: const DeliveriesScreen()),
+    );
 
 void main() {
   group('DeliveriesScreen', () {

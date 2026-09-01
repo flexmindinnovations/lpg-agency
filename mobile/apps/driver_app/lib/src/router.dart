@@ -69,9 +69,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'deliver',
             name: 'deliver',
-            builder: (context, state) => RecordDeliveryScreen(
-              orderId: state.pathParameters['orderId']!,
-            ),
+            builder: (context, state) =>
+                RecordDeliveryScreen(orderId: state.pathParameters['orderId']!),
           ),
         ],
       ),

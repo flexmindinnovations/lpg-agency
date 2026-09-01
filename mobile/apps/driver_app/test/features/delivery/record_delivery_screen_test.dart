@@ -121,11 +121,8 @@ class _FakePicker implements ImagePicker {
     int? imageQuality,
     CameraDevice preferredCameraDevice = CameraDevice.rear,
     bool requestFullMetadata = true,
-  }) async => XFile.fromData(
-    _pngPixel,
-    name: 'photo.png',
-    mimeType: 'image/png',
-  );
+  }) async =>
+      XFile.fromData(_pngPixel, name: 'photo.png', mimeType: 'image/png');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -94,27 +94,28 @@ void main() {
       expect(find.text('Send Code'), findsOneWidget);
     });
 
-    testWidgets('an empty submit shows a validation message and calls nothing', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository();
-      await _pump(tester, AuthController(repo));
+    testWidgets(
+      'an empty submit shows a validation message and calls nothing',
+      (tester) async {
+        final repo = _RecordingAuthRepository();
+        await _pump(tester, AuthController(repo));
 
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Send Code'));
+        await tester.pumpAndSettle();
 
-      expect(find.textContaining('Agency Code and Phone number'), findsOneWidget);
-      expect(repo.requestOtpArgs, isNull);
-    });
+        expect(
+          find.textContaining('Agency Code and Phone number'),
+          findsOneWidget,
+        );
+        expect(repo.requestOtpArgs, isNull);
+      },
+    );
 
     testWidgets('rejects a malformed phone number', (tester) async {
       final repo = _RecordingAuthRepository();
       await _pump(tester, AuthController(repo));
 
-      await tester.enterText(
-        find.byType(LpgTextField).first,
-        'demo-agency',
-      );
+      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
       await tester.enterText(find.byType(LpgTextField).last, '123');
       await tester.tap(find.text('Send Code'));
       await tester.pumpAndSettle();
