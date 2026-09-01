@@ -166,13 +166,13 @@ App's phone-OTP sign-in works with the seeded account.
 - **Driver-app background location** — DONE (commit `f57658e`): geolocator
   runs an Android foreground service / iOS background updates, so sharing
   continues when the Active Delivery screen closes or the app is backgrounded.
-- **Geocoder swap (Step E) — deferred until the driver app is feature-complete.**
-  `GeocodingService` still uses OpenStreetMap Nominatim, which is dev/demo-grade
-  (≤1 req/s, ToS-restricted). Before production, swap it for a paid geocoder
-  (Google / Mapbox / LocationIQ) behind an API key from app config. The address
-  map-picker already avoids geocoding for all new addresses, so this only
-  affects tracking of legacy pin-less addresses. Marked with a `TODO(step-e)`
-  in `mobile/apps/customer_app/lib/src/features/orders/data/geocoding_service.dart`.
+- **Geocoder swap (Step E) — DONE.** `GeocodingService` now calls
+  [LocationIQ](https://locationiq.com) (hosted, Nominatim-compatible, 5,000
+  req/day free tier) whenever a `LOCATIONIQ_API_KEY` dart-define is supplied,
+  and falls back to raw Nominatim when it isn't. Key is passed via
+  `--dart-define` / `--dart-define-from-file=dart_defines.local.json`
+  (gitignored; see `dart_defines.local.json.example`) — never committed.
+  5 unit tests cover both request paths + caching.
 
 ## Issues
 

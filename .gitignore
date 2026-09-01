@@ -13,6 +13,10 @@
 !.env.*.example
 !*.env.example
 
+# Flutter --dart-define-from-file configs holding real keys (LocationIQ, etc.)
+dart_defines.local.json
+!dart_defines.local.json.example
+
 *.pem
 *.key
 *.p12
