@@ -157,6 +157,12 @@ void main() {
             'heading': 90.0,
             'recorded_at': '2026-09-01T10:00:00Z',
           },
+          'driver': {
+            'name': 'Ramesh Kumar',
+            'phone_number': '+919000011111',
+            'vehicle_number': 'TS07UB4412',
+            'vehicle_model': 'Tata Ace',
+          },
         }, 200);
       });
 
@@ -169,6 +175,8 @@ void main() {
       expect(tracking!.routeStatus, 'in_progress');
       expect(tracking.destinationLatitude, 9.9312);
       expect(tracking.driverLocation!.heading, 90.0);
+      expect(tracking.driver!.name, 'Ramesh Kumar');
+      expect(tracking.driver!.vehicleNumber, 'TS07UB4412');
     });
 
     test('getOrderTracking allows a null driver location', () async {

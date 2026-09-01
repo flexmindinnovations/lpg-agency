@@ -14,6 +14,7 @@ class OrderTrackingView {
     required this.status,
     required this.routeStatus,
     required this.lastKnownDriverLocation,
+    required this.driver,
   });
 
   /// Delivery location. `null` when the address had no stored pin and
@@ -36,6 +37,9 @@ class OrderTrackingView {
   /// location at the time the screen opened. `null` until the driver starts
   /// sharing.
   final DriverLocationSnapshot? lastKnownDriverLocation;
+
+  /// The assigned driver + vehicle. `null` until the order is on a route.
+  final TrackingDriver? driver;
 
   bool get hasLocation => destination != null;
   bool get isRouteActive => routeStatus == 'in_progress';
@@ -75,6 +79,7 @@ final orderTrackingProvider = FutureProvider.autoDispose
         status: tracking.status,
         routeStatus: tracking.routeStatus,
         lastKnownDriverLocation: tracking.driverLocation,
+        driver: tracking.driver,
       );
     });
 

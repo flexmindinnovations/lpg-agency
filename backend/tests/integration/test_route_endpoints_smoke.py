@@ -702,6 +702,10 @@ class TestRouteEndpointsThroughRealStack:
         assert tracking["route_status"] == "in_progress"
         assert tracking["driver_location"]["latitude"] == 12.9611
         assert tracking["driver_location"]["heading"] == 42
+        assert tracking["driver"] is not None
+        assert tracking["driver"]["name"] == "Test Driver"
+        assert tracking["driver"]["vehicle_number"].startswith("MH-")
+        assert tracking["driver"]["vehicle_model"] == "Tata Ace"
 
         # 8. Attempting reconciliation before any approved reconciliation
         # record exists -> 409 ROUTE_RECONCILIATION_PENDING (route isn't

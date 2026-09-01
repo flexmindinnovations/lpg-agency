@@ -37,6 +37,7 @@ OrderTrackingView _view({
   bool approximate = false,
   String? routeStatus,
   DriverLocationSnapshot? lastKnown,
+  TrackingDriver? driver,
 }) => OrderTrackingView(
   destination: destination,
   destinationLabel: '12 Baker Street',
@@ -44,6 +45,7 @@ OrderTrackingView _view({
   status: 'out_for_delivery',
   routeStatus: routeStatus,
   lastKnownDriverLocation: lastKnown,
+  driver: driver,
 );
 
 Widget _screen({
@@ -132,6 +134,35 @@ void main() {
 
       expect(find.textContaining("Waiting for the driver's location"),
           findsOneWidget);
+    });
+
+    testWidgets('shows the driver name + vehicle, with a details sheet', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(
+          view: _view(
+            routeStatus: 'in_progress',
+            driver: const TrackingDriver(
+              name: 'Ramesh Kumar',
+              phoneNumber: '+91 90000 11111',
+              vehicleNumber: 'TS07UB4412',
+              vehicleModel: 'Tata Ace',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Ramesh Kumar'), findsOneWidget);
+      expect(find.textContaining('TS07UB4412'), findsOneWidget);
+
+      await tester.tap(find.text('Ramesh Kumar'));
+      await tester.pumpAndSettle();
+
+      // Details sheet
+      expect(find.text('+91 90000 11111'), findsOneWidget);
+      expect(find.textContaining('Tata Ace'), findsWidgets);
     });
 
     testWidgets('shows the driver en route once a position arrives', (

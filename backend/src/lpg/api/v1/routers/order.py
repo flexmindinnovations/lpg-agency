@@ -55,11 +55,16 @@ from fastapi import (
 )
 
 from lpg.api.v1.dependencies.admin import (
+    get_employee_repository,
     get_price_list_repository,
     get_tenant_configuration_repository,
 )
 from lpg.api.v1.dependencies.customer import get_customer_repository
-from lpg.api.v1.dependencies.delivery import get_driver_repository, get_route_repository
+from lpg.api.v1.dependencies.delivery import (
+    get_driver_repository,
+    get_route_repository,
+    get_vehicle_repository,
+)
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_otp_delivery,
@@ -104,11 +109,16 @@ from lpg.api.v1.schemas.order import (
     PodAttachmentResponse,
     ProofOfDeliveryResponse,
     RecordFailedDeliveryRequest,
+    TrackingDriverInfo,
 )
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
-from lpg.application.delivery.ports import DriverRepository, RouteRepository
+from lpg.application.delivery.ports import (
+    DriverRepository,
+    RouteRepository,
+    VehicleRepository,
+)
 from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
     OtpDeliveryPort,
@@ -161,6 +171,7 @@ from lpg.application.tenant.ports import (
     PriceListRepository,
     TenantConfigurationRepository,
 )
+from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order
 from lpg.infrastructure.idempotency.service import IdempotencyService, fingerprint
 
@@ -451,11 +462,16 @@ async def get_order_tracking(
     ],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    vehicle_repository: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
+    employee_repository: Annotated[
+        EmployeeRepository, Depends(get_employee_repository)
+    ],
 ) -> OrderTrackingResponse:
     """The order-tracking map's data: the delivery destination, the route's
-    status, and the driver's last-known position (from the short-TTL cache
-    the Driver App's location pings write). Same row-scoping as
-    `GET /orders/{order_id}` — a customer only sees their own order.
+    status, the driver's last-known position (from the short-TTL cache the
+    Driver App's location pings write), and the assigned driver + vehicle.
+    Same row-scoping as `GET /orders/{order_id}` — a customer only sees their
+    own order.
     """
     scope = await _resolve_scope(
         principal, customer_repository, driver_repository, route_repository
@@ -475,11 +491,34 @@ async def get_order_tracking(
 
     route_status: str | None = None
     driver_location: DriverLocationSnapshot | None = None
+    driver_info: TrackingDriverInfo | None = None
     if order.route_stop_id is not None:
         owner = await route_repository.get_stop_owner(order.route_stop_id)
         if owner is not None:
             route = await route_repository.get_by_id(owner.route_id)
             route_status = route.status if route is not None else None
+
+            driver = await driver_repository.get_by_id(owner.driver_id)
+            employee = (
+                await employee_repository.get_by_id(driver.employee_id)
+                if driver is not None
+                else None
+            )
+            vehicle = await vehicle_repository.get_by_id(owner.vehicle_id)
+            if employee is not None:
+                vehicle_model = (
+                    f"{vehicle.make} {vehicle.model}".strip()
+                    if vehicle is not None
+                    else None
+                )
+                driver_info = TrackingDriverInfo(
+                    name=f"{employee.first_name} {employee.last_name}".strip(),
+                    phone_number=employee.phone_number,
+                    vehicle_number=(
+                        vehicle.registration_number if vehicle is not None else None
+                    ),
+                    vehicle_model=vehicle_model or None,
+                )
 
             from lpg.api.app import get_app_state
             from lpg.infrastructure.realtime.driver_location import (
@@ -503,6 +542,7 @@ async def get_order_tracking(
         destination_label=address.address_line,
         route_status=route_status,
         driver_location=driver_location,
+        driver=driver_info,
     )
 
 

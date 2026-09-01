@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -151,6 +152,10 @@ class OrderTrackingScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (trackingAsync.value?.driver case final driver?) ...[
+                        const SizedBox(height: 16),
+                        _DriverRow(driver: driver),
+                      ],
                       const SizedBox(height: 24),
                       Expanded(
                         child: ListView(
@@ -498,6 +503,213 @@ class _ApproximateBanner extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The assigned-driver line under the order status. Tap it to open the
+/// driver details sheet.
+class _DriverRow extends StatelessWidget {
+  const _DriverRow({required this.driver});
+
+  final TrackingDriver driver;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+    final vehicle = [
+      driver.vehicleModel,
+      driver.vehicleNumber,
+    ].where((s) => s != null && s.isNotEmpty).join(' · ');
+
+    return InkWell(
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => _DriverSheet(driver: driver),
+      ),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: colors.surfaceOverlay,
+              child: Icon(
+                Icons.person_outline,
+                size: 20,
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your driver',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    driver.name,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  if (vehicle.isNotEmpty)
+                    Text(
+                      vehicle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: colors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DriverSheet extends StatelessWidget {
+  const _DriverSheet({required this.driver});
+
+  final TrackingDriver driver;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: colors.actionPrimary,
+                  child: Text(
+                    driver.name.isNotEmpty ? driver.name[0].toUpperCase() : '?',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colors.textInverse,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    driver.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            if ((driver.vehicleNumber ?? '').isNotEmpty)
+              _DriverDetailTile(
+                icon: Icons.local_shipping_outlined,
+                label: 'Vehicle',
+                value: [driver.vehicleModel, driver.vehicleNumber]
+                    .where((s) => s != null && s.isNotEmpty)
+                    .join(' · '),
+              ),
+            if ((driver.phoneNumber ?? '').isNotEmpty)
+              _DriverDetailTile(
+                icon: Icons.phone_outlined,
+                label: 'Phone',
+                value: driver.phoneNumber!,
+                onCopy: driver.phoneNumber!,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DriverDetailTile extends StatelessWidget {
+  const _DriverDetailTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onCopy,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  /// When set, the tile is tappable and copies this to the clipboard.
+  final String? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+
+    Future<void> copy() async {
+      await Clipboard.setData(ClipboardData(text: onCopy!));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('$label copied'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+    }
+
+    return InkWell(
+      onTap: onCopy == null ? null : copy,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: colors.textSecondary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onCopy != null)
+              Icon(Icons.copy_rounded, size: 16, color: colors.textSecondary),
           ],
         ),
       ),

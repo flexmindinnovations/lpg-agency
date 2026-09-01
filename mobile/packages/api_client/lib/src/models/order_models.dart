@@ -129,10 +129,32 @@ class DriverLocationSnapshot {
   final DateTime recordedAt;
 }
 
+/// The assigned driver + vehicle — mirrors the backend's `TrackingDriverInfo`.
+class TrackingDriver {
+  const TrackingDriver({
+    required this.name,
+    this.phoneNumber,
+    this.vehicleNumber,
+    this.vehicleModel,
+  });
+
+  factory TrackingDriver.fromJson(Map<String, dynamic> json) => TrackingDriver(
+    name: json['name'] as String,
+    phoneNumber: json['phone_number'] as String?,
+    vehicleNumber: json['vehicle_number'] as String?,
+    vehicleModel: json['vehicle_model'] as String?,
+  );
+
+  final String name;
+  final String? phoneNumber;
+  final String? vehicleNumber;
+  final String? vehicleModel;
+}
+
 /// Mirrors the backend's `OrderTrackingResponse` — what the tracking map
-/// needs beyond the order itself: the resolved route status and the
-/// driver's last-known position (`driverLocation` is null until the driver
-/// starts sharing).
+/// needs beyond the order itself: the resolved route status, the driver's
+/// last-known position (`driverLocation` is null until the driver starts
+/// sharing), and the assigned driver + vehicle.
 class OrderTrackingResponse {
   const OrderTrackingResponse({
     required this.orderId,
@@ -142,6 +164,7 @@ class OrderTrackingResponse {
     required this.destinationLabel,
     this.routeStatus,
     this.driverLocation,
+    this.driver,
   });
 
   factory OrderTrackingResponse.fromJson(Map<String, dynamic> json) =>
@@ -158,6 +181,9 @@ class OrderTrackingResponse {
             : DriverLocationSnapshot.fromJson(
                 json['driver_location'] as Map<String, dynamic>,
               ),
+        driver: json['driver'] == null
+            ? null
+            : TrackingDriver.fromJson(json['driver'] as Map<String, dynamic>),
       );
 
   final String orderId;
@@ -167,6 +193,7 @@ class OrderTrackingResponse {
   final String destinationLabel;
   final String? routeStatus;
   final DriverLocationSnapshot? driverLocation;
+  final TrackingDriver? driver;
 }
 
 class OrderPageResponse {

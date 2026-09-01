@@ -74,10 +74,21 @@ class DriverLocationSnapshot(BaseModel):
     recorded_at: datetime
 
 
+class TrackingDriverInfo(BaseModel):
+    """The assigned driver + vehicle, shown on the tracking screen. Present
+    once the order is on a route."""
+
+    name: str
+    phone_number: str | None = None
+    vehicle_number: str | None = None
+    vehicle_model: str | None = None
+
+
 class OrderTrackingResponse(BaseModel):
     """Everything the customer app's order-tracking map needs beyond what it
-    already has from the order itself: the resolved route status and the
-    driver's last-known position (``None`` until the driver starts sharing).
+    already has from the order itself: the resolved route status, the driver's
+    last-known position (``None`` until the driver starts sharing), and the
+    assigned driver + vehicle.
     """
 
     order_id: uuid.UUID
@@ -87,6 +98,7 @@ class OrderTrackingResponse(BaseModel):
     destination_label: str
     route_status: str | None
     driver_location: DriverLocationSnapshot | None
+    driver: TrackingDriverInfo | None = None
 
 
 class OrderResponse(BaseModel):
