@@ -272,9 +272,7 @@ class ProfileScreen extends ConsumerWidget {
                   // Drop the FCM token first, while the session is still
                   // valid — a shared device shouldn't keep getting this
                   // user's notifications.
-                  await ref
-                      .read(pushNotificationServiceProvider)
-                      .unregister();
+                  await ref.read(pushNotificationServiceProvider).unregister();
                   await ref.read(authControllerProvider).logout();
                 },
                 variant: LpgButtonVariant.secondary,

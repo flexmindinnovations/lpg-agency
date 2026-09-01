@@ -1,0 +1,23 @@
+name: maps
+description: "Shared map widget + LocationIQ geocoding for the customer and driver apps."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.0.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  http: ^1.6.0
+  design_system:
+    path: ../design_system
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

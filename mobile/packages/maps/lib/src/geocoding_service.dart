@@ -6,10 +6,10 @@ import 'package:latlong2/latlong.dart';
 
 /// LocationIQ API key, supplied at build/run time — never commit a real key.
 /// `flutter run --dart-define=LOCATIONIQ_API_KEY=...`, or
-/// `--dart-define-from-file=dart_defines.local.json` (gitignored — see
-/// `dart_defines.local.json.example`). Empty by default: [GeocodingService]
-/// then falls back to calling Nominatim directly, so geocoding still works
-/// (just rate-limited) for anyone building without a key.
+/// `--dart-define-from-file=dart_defines.local.json` (gitignored — see each
+/// app's `dart_defines.local.json.example`). Empty by default:
+/// [GeocodingService] then falls back to calling Nominatim directly, so
+/// geocoding still works (just rate-limited) for anyone building without a key.
 const _locationIqApiKey = String.fromEnvironment('LOCATIONIQ_API_KEY');
 
 /// Forward geocoding for delivery-address strings that were saved before the
@@ -21,10 +21,9 @@ const _locationIqApiKey = String.fromEnvironment('LOCATIONIQ_API_KEY');
 /// it falls back to calling OpenStreetMap's own Nominatim directly, which
 /// caps callers at ~1 request/second and requires an identifying
 /// `User-Agent`; fine for low-volume dev/demo use, not for production
-/// traffic — this is why Step E existed. Both responses share the same JSON
-/// shape, so only the request side branches. Results are cached per query
-/// string for the lifetime of the provider so reopening a screen doesn't
-/// re-hit the service.
+/// traffic. Both responses share the same JSON shape, so only the request
+/// side branches. Results are cached per query string for the lifetime of the
+/// provider so reopening a screen doesn't re-hit the service.
 class GeocodingService {
   GeocodingService({http.Client? client, this.apiKey = _locationIqApiKey})
     : _client = client ?? http.Client();
@@ -46,25 +45,31 @@ class GeocodingService {
     if (_cache.containsKey(trimmed)) return _cache[trimmed];
 
     try {
-      final res = await (apiKey.isNotEmpty
-          ? _client.get(
-              _locationIqBase.replace(
-                queryParameters: {
-                  'key': apiKey,
-                  'q': trimmed,
-                  'format': 'json',
-                  'limit': '1',
-                },
-              ),
-            )
-          : _client.get(
-              _nominatimBase.replace(
-                queryParameters: {'q': trimmed, 'format': 'jsonv2', 'limit': '1'},
-              ),
-              headers: const {
-                'User-Agent': 'lpg-agency-customer-app/1.0 (delivery tracking)',
-              },
-            )).timeout(const Duration(seconds: 8));
+      final res =
+          await (apiKey.isNotEmpty
+                  ? _client.get(
+                      _locationIqBase.replace(
+                        queryParameters: {
+                          'key': apiKey,
+                          'q': trimmed,
+                          'format': 'json',
+                          'limit': '1',
+                        },
+                      ),
+                    )
+                  : _client.get(
+                      _nominatimBase.replace(
+                        queryParameters: {
+                          'q': trimmed,
+                          'format': 'jsonv2',
+                          'limit': '1',
+                        },
+                      ),
+                      headers: const {
+                        'User-Agent': 'lpg-agency/1.0 (delivery tracking)',
+                      },
+                    ))
+              .timeout(const Duration(seconds: 8));
 
       if (res.statusCode != 200) return _cache[trimmed] = null;
 

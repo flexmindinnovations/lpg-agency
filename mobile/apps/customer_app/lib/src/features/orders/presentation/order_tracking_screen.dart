@@ -4,13 +4,10 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maps/maps.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../widgets/location_map.dart';
-import '../../../widgets/map_tile_provider.dart';
 import '../data/order_tracking_provider.dart';
 import '../data/orders_provider.dart';
 
@@ -108,7 +105,8 @@ class OrderTrackingScreen extends ConsumerWidget {
                           Expanded(
                             child: _CopyableRef(
                               label: 'Order',
-                              display: order.orderNumber ??
+                              display:
+                                  order.orderNumber ??
                                   '#${order.id.substring(0, 8).toUpperCase()}',
                               value: order.orderNumber ?? order.id,
                             ),
@@ -367,8 +365,7 @@ class _TrackingMapState extends ConsumerState<_TrackingMap> {
     final driver = driverAsync.value;
 
     final isStale =
-        driver != null &&
-        DateTime.now().difference(driver.at) > _staleAfter;
+        driver != null && DateTime.now().difference(driver.at) > _staleAfter;
 
     return Stack(
       children: [
@@ -630,9 +627,10 @@ class _DriverSheet extends StatelessWidget {
               _DriverDetailTile(
                 icon: Icons.local_shipping_outlined,
                 label: 'Vehicle',
-                value: [driver.vehicleModel, driver.vehicleNumber]
-                    .where((s) => s != null && s.isNotEmpty)
-                    .join(' · '),
+                value: [
+                  driver.vehicleModel,
+                  driver.vehicleNumber,
+                ].where((s) => s != null && s.isNotEmpty).join(' · '),
               ),
             if ((driver.phoneNumber ?? '').isNotEmpty)
               _DriverPhoneTile(phone: driver.phoneNumber!),

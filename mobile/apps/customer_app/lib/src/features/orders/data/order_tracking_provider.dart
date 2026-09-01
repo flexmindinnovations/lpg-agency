@@ -1,9 +1,8 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maps/maps.dart';
 
 import '../../../providers.dart';
-import 'geocoding_service.dart';
 
 /// Static context the tracking screen needs beyond the order itself.
 class OrderTrackingView {
@@ -50,7 +49,9 @@ class OrderTrackingView {
 /// the tracking screen closes.
 final orderTrackingProvider = FutureProvider.autoDispose
     .family<OrderTrackingView, String>((ref, orderId) async {
-      final result = await ref.watch(orderApiProvider).getOrderTracking(orderId);
+      final result = await ref
+          .watch(orderApiProvider)
+          .getOrderTracking(orderId);
       final tracking = result.when(
         onSuccess: (data) => data,
         onFailure: (failure) => throw Exception(failure.message),

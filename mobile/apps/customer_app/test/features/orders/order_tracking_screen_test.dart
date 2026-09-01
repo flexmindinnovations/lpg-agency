@@ -2,16 +2,14 @@ import 'package:api_client/api_client.dart';
 import 'package:customer_app/src/features/orders/data/order_tracking_provider.dart';
 import 'package:customer_app/src/features/orders/data/orders_provider.dart';
 import 'package:customer_app/src/features/orders/presentation/order_tracking_screen.dart';
-import 'package:customer_app/src/widgets/location_map.dart';
-import 'package:customer_app/src/widgets/map_tile_provider.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maps/maps.dart';
+import 'package:maps/maps_testing.dart';
 
-import '../../support/fake_tiles.dart';
 import '../../support/pump_screen.dart';
 
 const _destination = LatLng(9.9312, 76.2673);

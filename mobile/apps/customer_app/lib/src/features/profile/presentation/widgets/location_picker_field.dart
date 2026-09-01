@@ -1,10 +1,7 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
-
-import '../../../../widgets/location_map.dart';
+import 'package:maps/maps.dart';
 
 /// Roughly the geographic centre of India — the picker's starting view when
 /// there's no existing pin and the device location isn't available.

@@ -2,10 +2,9 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maps/maps.dart';
 
 import '../../../providers.dart';
-import '../../../widgets/map_tile_provider.dart';
 import '../data/profile_provider.dart';
 import 'widgets/location_picker_field.dart';
 
@@ -250,8 +249,7 @@ class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
                     LocationPickerField(
                       value: _pinnedLocation,
                       tileProvider: ref.watch(mapTileProviderProvider),
-                      onChanged: (loc) =>
-                          setState(() => _pinnedLocation = loc),
+                      onChanged: (loc) => setState(() => _pinnedLocation = loc),
                     ),
                     const SizedBox(height: 40),
                     LpgButton(

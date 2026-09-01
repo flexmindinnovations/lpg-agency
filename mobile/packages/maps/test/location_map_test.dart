@@ -1,11 +1,8 @@
-import 'package:customer_app/src/widgets/location_map.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latlong2/latlong.dart';
-
-import '../support/fake_tiles.dart';
+import 'package:maps/maps.dart';
+import 'package:maps/maps_testing.dart';
 
 const _kochi = LatLng(9.9312, 76.2673);
 
@@ -86,7 +83,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       final tiles = tester.widget<TileLayer>(find.byType(TileLayer));
-      expect(tiles.urlTemplate, 'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+      expect(
+        tiles.urlTemplate,
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      );
 
       final attribution = tester.widget<RichAttributionWidget>(
         find.byType(RichAttributionWidget),

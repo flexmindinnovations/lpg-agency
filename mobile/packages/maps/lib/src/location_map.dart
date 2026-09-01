@@ -14,13 +14,13 @@ const _osmTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const _locationIqTileUrl =
     'https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key={key}';
 
-/// LocationIQ API key, supplied at build time — see the customer app's
-/// `dart_defines.local.json` (gitignored). Empty by default → OSM tiles.
+/// LocationIQ API key, supplied at build time via a `LOCATIONIQ_API_KEY`
+/// dart-define (see each app's gitignored `dart_defines.local.json`). Empty
+/// by default → OSM tiles.
 const _locationIqApiKey = String.fromEnvironment('LOCATIONIQ_API_KEY');
 
-/// The app's identifier, sent as the tile requests' `User-Agent` per the OSM
-/// tile-usage policy.
-const _userAgent = 'com.lpgagency.customer_app';
+/// Sent as the tile requests' `User-Agent` per the OSM tile-usage policy.
+const _userAgent = 'com.lpgagency';
 
 /// A small non-interactive-by-default map with a set of markers.
 ///
