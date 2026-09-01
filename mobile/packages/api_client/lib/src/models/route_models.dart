@@ -31,6 +31,7 @@ class RouteSummary {
     required this.driverId,
     required this.vehicleId,
     required this.stops,
+    this.date,
   });
 
   factory RouteSummary.fromJson(Map<String, dynamic> json) => RouteSummary(
@@ -38,6 +39,9 @@ class RouteSummary {
     status: json['status'] as String,
     driverId: json['driver_id'] as String,
     vehicleId: json['vehicle_id'] as String,
+    date: json['date'] == null
+        ? null
+        : DateTime.tryParse(json['date'] as String),
     stops:
         (json['stops'] as List<dynamic>?)
             ?.map((e) => RouteStopSummary.fromJson(e as Map<String, dynamic>))
@@ -49,6 +53,7 @@ class RouteSummary {
   final String status;
   final String driverId;
   final String vehicleId;
+  final DateTime? date;
   final List<RouteStopSummary> stops;
 
   /// `true` once the vehicle has departed — the only state in which the

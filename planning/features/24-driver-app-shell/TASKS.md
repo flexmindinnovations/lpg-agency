@@ -1,21 +1,22 @@
 # Driver App Shell — Tasks
 
-## Stage A — Splash + themed login
-- [ ] `splash_screen.dart` (ported from customer app, "Driver" subtitle)
-- [ ] Copy `assets/images/lpg_app_logo.jpg`; wire `flutter: assets:` in pubspec
-- [ ] `router.dart`: `/splash` route, `initialLocation`, `AuthStatus.unknown` redirect
-- [ ] Rewrite `login_screen.dart` widget tree (LpgCard/LpgTextField/LpgButton, branding, validation, version footer); keep OTP logic
-- [ ] `login_screen_test.dart` (new); update `widget_test.dart`
+## Stage A — Splash + themed login ✅
+- [x] `splash_screen.dart` (ported from customer app, "Driver" subtitle)
+- [x] Copy `assets/images/lpg_app_logo.jpg`; wire `flutter: assets:` in pubspec
+- [x] `router.dart`: `/splash` route, `initialLocation`, `AuthStatus.unknown` redirect
+- [x] Rewrite `login_screen.dart` widget tree (LpgCard/LpgTextField/LpgButton, branding, validation, version footer); keep OTP logic
+- [x] `login_screen_test.dart` (new); update `widget_test.dart`
 
-## Stage B — Shell + tabs
-- [ ] `app_shell.dart` (3-tab `NavigationBar`)
-- [ ] `today_screen.dart` (route summary + next stop + location-sharing card)
-- [ ] `deliveries_screen.dart` (stop list + "Past routes")
-- [ ] Extract `LocationSharingCard` + `StopTile` shared widgets
-- [ ] Delete `active_delivery_screen.dart`
-- [ ] `router.dart`: `StatefulShellRoute`, move `stops/:orderId` + `deliver` under `/deliveries` (keep route names)
-- [ ] `routeHistoryProvider`; `RouteApi.listRoutes({status})` + model parse
-- [ ] Tests: `app_shell_test`, `today_screen_test`, `deliveries_screen_test`; rework `active_delivery_screen_test`; update `widget_test`; `route_api_test`
+## Stage B — Shell + tabs ✅
+- [x] `app_shell.dart` (3-tab `NavigationBar`)
+- [x] `today_screen.dart` (route summary + next stop + location-sharing card)
+- [x] `deliveries_screen.dart` (stop list + "Past routes")
+- [x] Extract `LocationSharingCard` + `StopTile` shared widgets
+- [x] Delete `active_delivery_screen.dart`
+- [x] `router.dart`: `StatefulShellRoute`; `stops/:orderId` + `deliver` moved **above** the shell (full-screen drill-in reachable from any tab), route names kept
+- [x] `routeHistoryProvider`; `RouteApi.listRoutes({status})` + `RouteSummary.date`
+- [x] Minimal Profile tab (`profile_screen.dart`) with Log Out — enriched in C2
+- [x] Tests: `app_shell_test`, `today_screen_test`, `deliveries_screen_test`; deleted `active_delivery_screen_test`; updated `widget_test`; `route_api_test`
 
 ## Stage C1 — Backend `GET /drivers/me`
 - [ ] `DriverMeResponse` / `DriverMeVehicle` schema

@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
-import 'features/delivery/presentation/active_delivery_screen.dart';
+import 'features/delivery/presentation/deliveries_screen.dart';
 import 'features/delivery/presentation/record_delivery_screen.dart';
 import 'features/delivery/presentation/stop_detail_screen.dart';
+import 'features/delivery/presentation/today_screen.dart';
+import 'features/profile/presentation/profile_screen.dart';
+import 'features/shell/presentation/app_shell.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
 
@@ -49,31 +52,61 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (context, state) => const ActiveDeliveryScreen(),
+        path: '/login',
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      // The delivery drill-in (stop detail → record delivery) is a
+      // full-screen task pushed over the shell, so it can be reached the
+      // same way from the Today "next stop" card and the Deliveries list
+      // regardless of which tab is active.
+      GoRoute(
+        path: '/stops/:orderId',
+        name: 'stop',
+        builder: (context, state) =>
+            StopDetailScreen(orderId: state.pathParameters['orderId']!),
         routes: [
           GoRoute(
-            path: 'stops/:orderId',
-            name: 'stop',
-            builder: (context, state) =>
-                StopDetailScreen(orderId: state.pathParameters['orderId']!),
+            path: 'deliver',
+            name: 'deliver',
+            builder: (context, state) => RecordDeliveryScreen(
+              orderId: state.pathParameters['orderId']!,
+            ),
+          ),
+        ],
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: 'deliver',
-                name: 'deliver',
-                builder: (context, state) => RecordDeliveryScreen(
-                  orderId: state.pathParameters['orderId']!,
-                ),
+                path: '/',
+                name: 'home',
+                builder: (context, state) => const TodayScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/deliveries',
+                name: 'deliveries',
+                builder: (context, state) => const DeliveriesScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                name: 'profile',
+                builder: (context, state) => const ProfileScreen(),
               ),
             ],
           ),
         ],
-      ),
-      GoRoute(
-        path: '/login',
-        name: 'login',
-        builder: (context, state) => const LoginScreen(),
       ),
     ],
     errorBuilder: (context, state) =>

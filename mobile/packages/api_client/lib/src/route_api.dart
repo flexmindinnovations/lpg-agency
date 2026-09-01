@@ -33,6 +33,29 @@ final class RouteApi {
     }
   }
 
+  /// The calling driver's routes, newest first, already scoped server-side to
+  /// their own (`GET /routes`). Used for the delivery-history list; pass a
+  /// `status` to narrow it (e.g. `completed`).
+  Future<Result<List<RouteSummary>>> listRoutes({
+    String? status,
+    int pageSize = 20,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/routes',
+        queryParameters: {'page_size': pageSize, 'status': ?status},
+      );
+      final items = (response.data?['items'] as List<dynamic>? ?? const [])
+          .map((e) => RouteSummary.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return Success(items);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Report the driver's current position. Only accepted while the route is
   /// `in_progress` (else the backend answers `409`).
   Future<Result<void>> reportLocation(

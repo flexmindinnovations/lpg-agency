@@ -55,6 +55,49 @@ void main() {
       expect(route, isNull);
     });
 
+    test('listRoutes parses the page items and forwards status', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({
+          'items': [
+            _routeJson(status: 'completed'),
+            _routeJson(status: 'reconciled'),
+          ],
+          'total': 2,
+          'page': 1,
+          'page_size': 20,
+        }, 200);
+      });
+
+      final result = await RouteApi(client.dio).listRoutes(status: 'completed');
+
+      expect(captured!.path, '/api/v1/routes');
+      expect(captured!.queryParameters['status'], 'completed');
+      final routes = result.when(onSuccess: (r) => r, onFailure: (_) => null);
+      expect(routes, hasLength(2));
+      expect(routes!.first.status, 'completed');
+    });
+
+    test('listRoutes omits status when not given', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({
+          'items': <dynamic>[],
+          'total': 0,
+          'page': 1,
+          'page_size': 20,
+        }, 200);
+      });
+
+      await RouteApi(client.dio).listRoutes();
+
+      expect(captured!.queryParameters.containsKey('status'), isFalse);
+    });
+
     test('reportLocation posts the ping body and succeeds on 204', () async {
       RequestOptions? captured;
       final client = ApiClient(baseUrl: 'https://api.test');

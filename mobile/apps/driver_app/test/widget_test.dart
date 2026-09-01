@@ -97,24 +97,33 @@ void main() {
 
     expect(find.text('LPG Agency'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Today’s Deliveries'), findsNothing);
+    expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('an authenticated session shows the active-delivery screen', (
+  testWidgets('an authenticated session lands on the Today tab in the shell', (
     tester,
   ) async {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.text('Today’s Deliveries'), findsOneWidget);
-    expect(find.text('No active route right now.'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Today'), findsOneWidget);
+    expect(find.text('No route assigned yet.'), findsOneWidget);
   });
 
-  testWidgets('shell has a Material scaffold', (tester) async {
+  testWidgets('the shell exposes the three tabs', (tester) async {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.widgetWithText(NavigationDestination, 'Today'), findsOneWidget);
+    expect(
+      find.widgetWithText(NavigationDestination, 'Deliveries'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(NavigationDestination, 'Profile'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an unauthenticated session is redirected to sign-in', (
@@ -130,6 +139,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Driver Sign In'), findsOneWidget);
-    expect(find.text('Today’s Deliveries'), findsNothing);
+    expect(find.byType(NavigationBar), findsNothing);
   });
 }

@@ -19,3 +19,26 @@ final activeRouteProvider = FutureProvider<RouteSummary?>((ref) async {
     onFailure: (failure) => throw Exception(failure.message),
   );
 });
+
+/// The driver's finished routes (completed / reconciled / cancelled), newest
+/// first — the delivery-history list on the Deliveries tab. Capped at the
+/// most recent ~20; pagination is a follow-up.
+final routeHistoryProvider = FutureProvider<List<RouteSummary>>((ref) async {
+  final authController = ref.watch(authControllerProvider);
+  if (authController.state.status != AuthStatus.authenticated) {
+    return const [];
+  }
+
+  final result = await ref.watch(routeApiProvider).listRoutes();
+  return result.when(
+    onSuccess: (routes) {
+      const finished = {'completed', 'reconciled', 'cancelled'};
+      final done = routes.where((r) => finished.contains(r.status)).toList()
+        ..sort(
+          (a, b) => (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0)),
+        );
+      return done;
+    },
+    onFailure: (failure) => throw Exception(failure.message),
+  );
+});
