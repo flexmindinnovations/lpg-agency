@@ -70,6 +70,11 @@ class DriverGeolocator {
       distanceFilter: 25,
     ),
   );
+
+  /// A single fix — used to stamp a proof of delivery.
+  Future<Position> currentPosition() => Geolocator.getCurrentPosition(
+    locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+  );
 }
 
 final driverGeolocatorProvider = Provider<DriverGeolocator>(

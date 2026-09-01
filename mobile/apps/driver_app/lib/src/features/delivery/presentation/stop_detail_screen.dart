@@ -3,6 +3,7 @@ import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../api_provider.dart';
 import '../data/active_route_provider.dart';
@@ -117,12 +118,9 @@ class StopDetailScreen extends ConsumerWidget {
             label: 'Record delivery',
             expand: true,
             icon: Icons.check_circle_outline,
-            // The full proof-of-delivery flow (quantities, OTP, payment,
-            // signature, photo) is the next slice of work.
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Recording delivery is coming next.'),
-              ),
+            onPressed: () => context.pushNamed(
+              'deliver',
+              pathParameters: {'orderId': order.id},
             ),
           ),
           const SizedBox(height: 12),

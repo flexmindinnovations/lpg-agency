@@ -196,6 +196,96 @@ class OrderTrackingResponse {
   final TrackingDriver? driver;
 }
 
+/// One line of a `POST /orders/{id}/deliver` submission — mirrors the
+/// backend's `DeliveredLineRequest`.
+class DeliveredLineRequest {
+  const DeliveredLineRequest({
+    required this.cylinderTypeId,
+    required this.quantityDelivered,
+    this.quantityCollectedEmpty = 0,
+  });
+
+  final String cylinderTypeId;
+  final int quantityDelivered;
+  final int quantityCollectedEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'cylinder_type_id': cylinderTypeId,
+    'quantity_delivered': quantityDelivered,
+    'quantity_collected_empty': quantityCollectedEmpty,
+  };
+}
+
+/// Proof-of-delivery payload — mirrors the backend's
+/// `ProofOfDeliverySubmission`. Every field is required.
+class ProofOfDeliverySubmission {
+  const ProofOfDeliverySubmission({
+    required this.signatureBlobRef,
+    required this.photoBlobRef,
+    required this.gpsLat,
+    required this.gpsLng,
+    required this.paymentMethod,
+    required this.amountCollected,
+  });
+
+  final String signatureBlobRef;
+  final String photoBlobRef;
+  final double gpsLat;
+  final double gpsLng;
+  final String paymentMethod;
+  final double amountCollected;
+
+  Map<String, dynamic> toJson() => {
+    'signature_blob_ref': signatureBlobRef,
+    'photo_blob_ref': photoBlobRef,
+    'gps_lat': gpsLat,
+    'gps_lng': gpsLng,
+    'payment_method': paymentMethod,
+    'amount_collected': amountCollected,
+  };
+}
+
+/// `POST /orders/{id}/deliver` body — mirrors `DeliverOrderRequest`.
+class DeliverOrderRequest {
+  const DeliverOrderRequest({
+    required this.lines,
+    required this.otpCode,
+    required this.proofOfDelivery,
+  });
+
+  final List<DeliveredLineRequest> lines;
+  final String otpCode;
+  final ProofOfDeliverySubmission proofOfDelivery;
+
+  Map<String, dynamic> toJson() => {
+    'lines': lines.map((l) => l.toJson()).toList(),
+    'otp_code': otpCode,
+    'proof_of_delivery': proofOfDelivery.toJson(),
+  };
+}
+
+/// `POST /orders/{id}/pod-attachments` response.
+class PodAttachmentResponse {
+  const PodAttachmentResponse({required this.blobRef});
+
+  factory PodAttachmentResponse.fromJson(Map<String, dynamic> json) =>
+      PodAttachmentResponse(blobRef: json['blob_ref'] as String);
+
+  final String blobRef;
+}
+
+/// `POST /orders/{id}/deliver` response — mirrors `DeliverOrderResponse`.
+class DeliverOrderResponse {
+  const DeliverOrderResponse({required this.order});
+
+  factory DeliverOrderResponse.fromJson(Map<String, dynamic> json) =>
+      DeliverOrderResponse(
+        order: OrderResponse.fromJson(json['order'] as Map<String, dynamic>),
+      );
+
+  final OrderResponse order;
+}
+
 class OrderPageResponse {
   const OrderPageResponse({required this.items, required this.total});
 

@@ -102,6 +102,65 @@ final class OrderApi {
   Future<Result<OrderResponse>> departOrder(String orderId) =>
       _postOrderAction('/api/v1/orders/$orderId/depart');
 
+  /// Pre-upload a signature/photo blob for a proof of delivery. Returns the
+  /// `blob_ref` to pass into [deliverOrder].
+  Future<Result<PodAttachmentResponse>> uploadPodAttachment(
+    String orderId, {
+    required List<int> bytes,
+    required String filename,
+    String contentType = 'image/png',
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: DioMediaType.parse(contentType),
+        ),
+      });
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/orders/$orderId/pod-attachments',
+        data: form,
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(PodAttachmentResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// `out_for_delivery -> delivered`. Idempotency-Key required (a fresh v4
+  /// UUID per call; a retry after a network failure should reuse the same
+  /// [idempotencyKey]). A wrong/expired OTP is a `409`; incomplete proof of
+  /// delivery is a `400`.
+  Future<Result<DeliverOrderResponse>> deliverOrder(
+    String orderId,
+    DeliverOrderRequest request, {
+    String? idempotencyKey,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/orders/$orderId/deliver',
+        data: request.toJson(),
+        options: Options(
+          headers: {'Idempotency-Key': idempotencyKey ?? const Uuid().v4()},
+        ),
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(DeliverOrderResponse.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// `out_for_delivery -> failed_delivery`. `reasonCode` is one of
   /// `customer_unavailable` / `wrong_address` / `payment_refused` /
   /// `vehicle_issue` / `safety_issue`; `resolutionAction` is optional

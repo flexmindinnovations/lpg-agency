@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
 import 'features/delivery/presentation/active_delivery_screen.dart';
+import 'features/delivery/presentation/record_delivery_screen.dart';
 import 'features/delivery/presentation/stop_detail_screen.dart';
 import 'login_screen.dart';
 
@@ -46,6 +47,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'stop',
             builder: (context, state) =>
                 StopDetailScreen(orderId: state.pathParameters['orderId']!),
+            routes: [
+              GoRoute(
+                path: 'deliver',
+                name: 'deliver',
+                builder: (context, state) => RecordDeliveryScreen(
+                  orderId: state.pathParameters['orderId']!,
+                ),
+              ),
+            ],
           ),
         ],
       ),

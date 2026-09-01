@@ -233,6 +233,73 @@ void main() {
       expect(captured!.data, {'reason_code': 'wrong_address'});
     });
 
+    test('uploadPodAttachment posts multipart and parses the blob ref', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({'blob_ref': 'tenant/x/orders/o1/pod/abc.png'}, 201);
+      });
+
+      final result = await OrderApi(client.dio).uploadPodAttachment(
+        'o1',
+        bytes: const [1, 2, 3],
+        filename: 'signature.png',
+      );
+
+      expect(captured!.path, '/api/v1/orders/o1/pod-attachments');
+      expect(captured!.data, isA<FormData>());
+      expect(
+        result.when(onSuccess: (r) => r.blobRef, onFailure: (_) => null),
+        'tenant/x/orders/o1/pod/abc.png',
+      );
+    });
+
+    test('deliverOrder sends lines, otp and PoD with an Idempotency-Key',
+        () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({
+          'order': _orderJson(status: 'delivered'),
+        }, 200);
+      });
+
+      final result = await OrderApi(client.dio).deliverOrder(
+        'o1',
+        const DeliverOrderRequest(
+          lines: [
+            DeliveredLineRequest(
+              cylinderTypeId: 'ct1',
+              quantityDelivered: 2,
+              quantityCollectedEmpty: 2,
+            ),
+          ],
+          otpCode: '123456',
+          proofOfDelivery: ProofOfDeliverySubmission(
+            signatureBlobRef: 'sig',
+            photoBlobRef: 'photo',
+            gpsLat: 17.44,
+            gpsLng: 78.35,
+            paymentMethod: 'cash',
+            amountCollected: 905.5,
+          ),
+        ),
+        idempotencyKey: 'key-1',
+      );
+
+      expect(captured!.path, '/api/v1/orders/o1/deliver');
+      expect(captured!.headers['Idempotency-Key'], 'key-1');
+      final body = captured!.data as Map;
+      expect(body['otp_code'], '123456');
+      expect((body['proof_of_delivery'] as Map)['payment_method'], 'cash');
+      expect(
+        result.when(onSuccess: (r) => r.order.status, onFailure: (_) => null),
+        'delivered',
+      );
+    });
+
     test('getOrderTracking allows a null driver location', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
