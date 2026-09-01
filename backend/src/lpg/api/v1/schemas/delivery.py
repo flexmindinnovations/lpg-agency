@@ -45,6 +45,29 @@ class DriverPageResponse(BaseModel):
     page_size: int
 
 
+class DriverMeVehicle(BaseModel):
+    """The vehicle a driver is currently out with (from their active route)."""
+
+    registration_number: str
+    make: str
+    model: str
+
+
+class DriverMeResponse(BaseModel):
+    """`GET /drivers/me` — the calling driver's own profile for the Driver
+    App's Profile tab. `name`/`phone_number` come from the linked employee;
+    `vehicle` is `null` when the driver has no active route.
+    """
+
+    driver_id: uuid.UUID
+    name: str
+    phone_number: str
+    license_number: str
+    license_expiry_date: date | None
+    status: str
+    vehicle: DriverMeVehicle | None = None
+
+
 class RegisterDriverRequest(BaseModel):
     branch_id: uuid.UUID
     employee_id: uuid.UUID

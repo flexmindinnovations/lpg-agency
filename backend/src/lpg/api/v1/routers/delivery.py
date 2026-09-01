@@ -18,13 +18,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from lpg.api.v1.dependencies.admin import get_employee_repository
 from lpg.api.v1.dependencies.delivery import (
     get_driver_repository,
+    get_route_repository,
     get_vehicle_repository,
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.delivery import (
+    DriverMeResponse,
+    DriverMeVehicle,
     DriverPageResponse,
     DriverResponse,
     RegisterDriverRequest,
@@ -39,7 +43,11 @@ from lpg.api.v1.schemas.delivery import (
 )
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
-from lpg.application.delivery.ports import DriverRepository, VehicleRepository
+from lpg.application.delivery.ports import (
+    DriverRepository,
+    RouteRepository,
+    VehicleRepository,
+)
 from lpg.application.delivery.use_cases import (
     GetDriverQuery,
     GetDriverUseCase,
@@ -65,6 +73,7 @@ from lpg.application.delivery.use_cases import (
     UpdateVehicleStatusUseCase,
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
+from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.domain.common.base import DomainError
 
 router = APIRouter(tags=["Delivery"])
@@ -110,6 +119,69 @@ def _vehicle_to_response(vehicle: object) -> VehicleResponse:
 # ==========================================================================
 # Driver endpoints
 # ==========================================================================
+
+
+@router.get(
+    "/drivers/me",
+    response_model=DriverMeResponse,
+    summary="The calling driver's own profile",
+    dependencies=[Depends(require_permission("drivers:read"))],
+)
+async def get_my_driver_profile(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    employee_repository: Annotated[
+        EmployeeRepository, Depends(get_employee_repository)
+    ],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    vehicle_repository: Annotated[
+        VehicleRepository, Depends(get_vehicle_repository)
+    ],
+) -> DriverMeResponse:
+    """The Driver App's Profile tab. Resolves the driver from the token (the
+    same "no `driver_id` needed client-side" pattern as `GET /routes/active`):
+    name/phone come from the linked employee, the current vehicle from the
+    driver's active route (`null` when they have none). `404` if the caller
+    isn't a driver. Declared before `GET /drivers/{driver_id}` so `me` isn't
+    parsed as a UUID.
+    """
+    actor_id = principal.user_id
+    driver = (
+        await driver_repository.get_by_identity_user_id(actor_id)
+        if actor_id is not None
+        else None
+    )
+    if driver is None:
+        raise HTTPException(
+            status_code=404, detail="No driver profile for this account."
+        )
+
+    employee = await employee_repository.get_by_id(driver.employee_id)
+
+    vehicle_info: DriverMeVehicle | None = None
+    active_route = await route_repository.get_active_route_for_driver(driver.id)
+    if active_route is not None:
+        vehicle = await vehicle_repository.get_by_id(active_route.vehicle_id)
+        if vehicle is not None:
+            vehicle_info = DriverMeVehicle(
+                registration_number=vehicle.registration_number,
+                make=vehicle.make,
+                model=vehicle.model,
+            )
+
+    return DriverMeResponse(
+        driver_id=driver.id,
+        name=(
+            f"{employee.first_name} {employee.last_name}".strip()
+            if employee is not None
+            else "Driver"
+        ),
+        phone_number=employee.phone_number if employee is not None else "",
+        license_number=driver.license_number,
+        license_expiry_date=driver.license_expiry_date,
+        status=driver.status,
+        vehicle=vehicle_info,
+    )
 
 
 @router.post(

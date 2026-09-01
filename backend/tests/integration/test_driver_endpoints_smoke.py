@@ -157,6 +157,49 @@ async def _login(client: AsyncClient, *, email: str, password: str) -> str:
     return access_token
 
 
+async def _seed_identity_user(
+    engine: AsyncEngine,
+    *,
+    tenant_id: uuid.UUID,
+    email: str,
+    password_hash: str,
+    role: str,
+) -> uuid.UUID:
+    """A second identity user inside an *existing* tenant (unlike
+    `_seed_staff_user`, which always creates a fresh tenant). Copies the
+    role's permission grants onto the user, as login would.
+    """
+    async with engine.begin() as conn:
+        user_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO identity.identity_user "
+                    "(id, tenant_id, email, password_hash, role) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :email, :password_hash, :role) "
+                    "RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "email": email,
+                    "password_hash": password_hash,
+                    "role": role,
+                },
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
+                "FROM identity.role_permission rp "
+                "JOIN identity.role r ON r.id = rp.role_id "
+                "WHERE r.code = :role"
+            ),
+            {"user_id": user_id, "role": role},
+        )
+    return uuid.UUID(str(user_id))
+
+
 class TestDriverEndpointsThroughRealStack:
     async def test_driver_lifecycle_smoke(
         self,
@@ -281,3 +324,76 @@ class TestDriverEndpointsThroughRealStack:
         list_response = await real_lifespan_client.get("/api/v1/vehicles", headers=headers)
         assert list_response.status_code == 200, list_response.text
         assert list_response.json()["total"] >= 1
+
+
+class TestDriverMe:
+    async def test_driver_reads_their_own_profile(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        client = real_lifespan_client
+        hasher = Argon2PasswordHasher(integration_settings)
+
+        admin_email = f"{uuid.uuid4().hex}@drv-me.example"
+        admin_password = "correct horse battery staple 42"
+        tenant_id, _ = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=admin_email,
+            password_hash=hasher.hash(admin_password),
+            role="agency_admin",
+        )
+        branch_id = await _seed_branch(
+            admin_engine_lpg_test, tenant_id=tenant_id, name="Depot"
+        )
+        employee_id = await _seed_employee(
+            admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
+        )
+        driver_email = f"{uuid.uuid4().hex}@drv-me.example"
+        driver_password = "correct horse battery staple 43"
+        driver_user_id = await _seed_identity_user(
+            admin_engine_lpg_test,
+            tenant_id=tenant_id,
+            email=driver_email,
+            password_hash=hasher.hash(driver_password),
+            role="driver",
+        )
+
+        admin_token = await _login(
+            client, email=admin_email, password=admin_password
+        )
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        register = await client.post(
+            "/api/v1/drivers",
+            json={
+                "branch_id": str(branch_id),
+                "employee_id": str(employee_id),
+                "license_number": "DL-ME-9001",
+                "identity_user_id": str(driver_user_id),
+            },
+            headers=admin_headers,
+        )
+        assert register.status_code == 201, register.text
+
+        # The driver reads their own profile — resolved from the token.
+        driver_token = await _login(
+            client, email=driver_email, password=driver_password
+        )
+        me = await client.get(
+            "/api/v1/drivers/me",
+            headers={"Authorization": f"Bearer {driver_token}"},
+        )
+        assert me.status_code == 200, me.text
+        body = me.json()
+        assert body["name"] == "Test Driver"
+        assert body["phone_number"] == "1234567890"
+        assert body["license_number"] == "DL-ME-9001"
+        assert body["status"] == "active"
+        assert body["vehicle"] is None  # no active route
+
+        # A non-driver principal has no /drivers/me.
+        not_a_driver = await client.get(
+            "/api/v1/drivers/me", headers=admin_headers
+        )
+        assert not_a_driver.status_code == 404, not_a_driver.text
