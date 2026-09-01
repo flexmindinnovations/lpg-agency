@@ -102,4 +102,32 @@ describe('NotificationDrawer', () => {
     expect(markRead).toHaveBeenCalledWith('n1');
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  it('clearAll() hides every notification from the drawer without touching the server', async () => {
+    list.mockReturnValue(of({ items: [item({ id: 'a' }), item({ id: 'b' })] }));
+    component.visible.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.visibleNotifications()).toHaveLength(2);
+
+    component.clearAll();
+
+    expect(component.visibleNotifications()).toHaveLength(0);
+    // The raw list is untouched; nothing was marked read on the server.
+    expect(component.notifications()).toHaveLength(2);
+    expect(markRead).not.toHaveBeenCalled();
+  });
+
+  it('a genuinely new notification still shows after clearAll()', async () => {
+    list.mockReturnValue(of({ items: [item({ id: 'a' })] }));
+    component.visible.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    component.clearAll();
+    expect(component.visibleNotifications()).toHaveLength(0);
+
+    list.mockReturnValue(of({ items: [item({ id: 'a' }), item({ id: 'new' })] }));
+    component.loadNotifications();
+    expect(component.visibleNotifications().map((n) => n.id)).toEqual(['new']);
+  });
 });

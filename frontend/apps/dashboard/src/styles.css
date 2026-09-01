@@ -420,6 +420,16 @@ textarea {
   padding: var(--spacing-xs) var(--spacing-lg) var(--spacing-lg) !important;
 }
 
+/* Notification drawer: the content is a flex column with its own padding
+   removed, so the notification list scrolls independently while the
+   toolbar and the "View All Notifications" footer stay pinned in view. */
+.lpg-notification-drawer .p-drawer-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
 /* Button refinements */
 .p-button {
   font-weight: var(--typography-label-font-weight) !important;

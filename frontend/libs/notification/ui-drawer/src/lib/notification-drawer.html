@@ -8,52 +8,62 @@
   styleClass="lpg-notification-drawer"
 >
   <div class="drawer-content">
-    @if (notifications().length === 0) {
-    <div class="empty-state">
-      No recent notifications.
+    @if (visibleNotifications().length > 0) {
+    <div class="drawer-toolbar">
+      <button type="button" class="drawer-clear" (click)="clearAll()">
+        Clear all
+      </button>
     </div>
     }
 
-    @for (notification of notifications(); track notification.id) {
-    <div class="notification-item"
-         [class.notification-item--unread]="!notification.is_read"
-         [class.notification-item--linked]="hasLink(notification)"
-         [attr.role]="hasLink(notification) ? 'button' : null"
-         [attr.tabindex]="hasLink(notification) ? 0 : null"
-         (click)="open(notification)"
-         (keydown.enter)="open(notification)"
-         (keydown.space)="open(notification)">
-
-      <div class="notification-header">
-        <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
-          {{ notification.title }}
-        </h4>
-        <div class="notification-actions">
-          @if (!notification.is_read) {
-          <p-button icon="pi pi-check"
-                    [text]="true"
-                    [rounded]="true"
-                    severity="secondary"
-                    size="small"
-                    pTooltip="Mark as read"
-                    (onClick)="markAsRead(notification.id); $event.stopPropagation()">
-          </p-button>
-          }
-        </div>
+    <div class="notification-list">
+      @if (visibleNotifications().length === 0) {
+      <div class="empty-state">
+        No recent notifications.
       </div>
+      }
 
-      <p class="notification-body">
-        {{ notification.body }}
-      </p>
+      @for (notification of visibleNotifications(); track notification.id) {
+      <div class="notification-item"
+           [class.notification-item--unread]="!notification.is_read"
+           [class.notification-item--linked]="hasLink(notification)"
+           [attr.role]="hasLink(notification) ? 'button' : null"
+           [attr.tabindex]="hasLink(notification) ? 0 : null"
+           (click)="open(notification)"
+           (keydown.enter)="open(notification)"
+           (keydown.space)="open(notification)">
 
-      <span class="notification-time">
-        {{ notification.created_at | date:'short' }}
-        @if (hasLink(notification)) {
-        <span class="notification-open-hint">· Open</span>
-        }
-      </span>
+        <div class="notification-header">
+          <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
+            {{ notification.title }}
+          </h4>
+          <div class="notification-actions">
+            @if (!notification.is_read) {
+            <p-button icon="pi pi-check"
+                      [text]="true"
+                      [rounded]="true"
+                      severity="secondary"
+                      size="small"
+                      pTooltip="Mark as read"
+                      (onClick)="markAsRead(notification.id); $event.stopPropagation()">
+            </p-button>
+            }
+          </div>
+        </div>
+
+        <p class="notification-body">
+          {{ notification.body }}
+        </p>
+
+        <span class="notification-time">
+          {{ notification.created_at | date:'short' }}
+          @if (hasLink(notification)) {
+          <span class="notification-open-hint">· Open</span>
+          }
+        </span>
+      </div>
+      }
     </div>
-    }
 
     <div class="drawer-footer">
       <a routerLink="/notifications" class="view-all-link" (click)="onHide()">

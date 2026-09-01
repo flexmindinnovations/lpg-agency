@@ -1,4 +1,4 @@
-import { Component, effect, inject, model, signal } from '@angular/core';
+import { Component, computed, effect, inject, model, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { DrawerModule } from 'primeng/drawer';
@@ -25,8 +25,28 @@ export class NotificationDrawer {
 
   notifications = signal<NotificationResponse[]>([]);
 
+  /** IDs the user has cleared from *this* drawer view. Never sent to the
+   *  server — the notifications still exist and still show on the
+   *  /notifications page; they're just hidden here until a page reload or
+   *  a genuinely new notification arrives. */
+  private readonly dismissed = signal<ReadonlySet<string>>(new Set());
+
+  readonly visibleNotifications = computed(() =>
+    this.notifications().filter((n) => !this.dismissed().has(n.id)),
+  );
+
   protected hasLink(n: NotificationResponse): boolean {
     return this.notificationService.routeFor(n) !== null;
+  }
+
+  /** Hide every notification currently in the drawer. View-only — the
+   *  server list is untouched. */
+  clearAll(): void {
+    const next = new Set(this.dismissed());
+    for (const n of this.notifications()) {
+      next.add(n.id);
+    }
+    this.dismissed.set(next);
   }
 
   constructor() {

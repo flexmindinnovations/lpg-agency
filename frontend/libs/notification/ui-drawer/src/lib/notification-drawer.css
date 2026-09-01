@@ -1,7 +1,42 @@
 .drawer-content {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.drawer-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-lg, 1.5rem);
+}
+
+.drawer-clear {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--typography-body-small-font-size, 0.875rem);
+  font-weight: var(--typography-label-font-weight, 500);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.drawer-clear:hover {
+  color: var(--color-status-danger);
+  background-color: var(--color-surface-overlay);
+}
+
+/* The only scrolling region — the toolbar and footer stay pinned. */
+.notification-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-md, 1rem);
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-lg, 1.5rem) var(--spacing-md, 1rem);
 }
 
 .empty-state {
@@ -86,11 +121,12 @@
 }
 
 .drawer-footer {
-  padding-top: var(--spacing-md, 1rem);
-  margin-top: var(--spacing-sm, 0.5rem);
+  flex: 0 0 auto;
+  padding: var(--spacing-md, 1rem) var(--spacing-lg, 1.5rem);
   border-top: var(--border-width, 1px) solid var(--color-border-default);
   display: flex;
   justify-content: center;
+  background-color: var(--color-surface-base);
 }
 
 .view-all-link {
