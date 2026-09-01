@@ -22,3 +22,8 @@ final routeApiProvider = Provider<RouteApi>(
 final orderApiProvider = Provider<OrderApi>(
   (ref) => OrderApi(ref.watch(apiClientProvider).dio),
 );
+
+/// The `/drivers/*` API — the Profile tab's `GET /drivers/me`.
+final driverApiProvider = Provider<DriverApi>(
+  (ref) => DriverApi(ref.watch(apiClientProvider).dio),
+);

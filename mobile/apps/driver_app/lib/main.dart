@@ -22,8 +22,11 @@ const _apiBaseUrl = String.fromEnvironment(
 
 /// Driver App entry point.
 ///
-/// Shell only. Assigned deliveries, route, vehicle inventory, proof of
-/// delivery and payment collection each arrive in their own phase.
+/// Covers the active route (Today), the stop list + delivery history
+/// (Deliveries), the driver's profile + logout (Profile), the per-stop
+/// workflow (depart → record delivery / proof-of-delivery → payment) and
+/// background live-location sharing. Offline-first sync of the delivery
+/// workflow is still a future phase.
 ///
 /// The on-device database and the auth session are both established here,
 /// before the first frame, so the rest of the app can assume both are

@@ -18,19 +18,20 @@
 - [x] Minimal Profile tab (`profile_screen.dart`) with Log Out — enriched in C2
 - [x] Tests: `app_shell_test`, `today_screen_test`, `deliveries_screen_test`; deleted `active_delivery_screen_test`; updated `widget_test`; `route_api_test`
 
-## Stage C1 — Backend `GET /drivers/me`
-- [ ] `DriverMeResponse` / `DriverMeVehicle` schema
-- [ ] `GET /drivers/me` endpoint (before `/drivers/{driver_id}`), `drivers:read`
-- [ ] `test_driver_endpoints_smoke.py` + `test_driver_rbac.py` coverage
-- [ ] ruff / mypy / lint-imports green
+## Stage C1 — Backend `GET /drivers/me` ✅
+- [x] `DriverMeResponse` / `DriverMeVehicle` schema
+- [x] `GET /drivers/me` endpoint (before `/drivers/{driver_id}`), `drivers:read`
+- [x] `test_driver_endpoints_smoke.py::TestDriverMe` (own profile; non-driver → 404)
+- [x] ruff / mypy / lint-imports green
 
-## Stage C2 — Profile tab
-- [ ] `driver_api.dart` (`DriverApi.getMe`) + `driver_models.dart` + barrel export
-- [ ] `driverApiProvider`, `driverProfileProvider`
-- [ ] `profile_screen.dart` (identity, vehicle, status, Log Out, version)
-- [ ] `main.dart` docstring refresh
-- [ ] `profile_screen_test.dart`
+## Stage C2 — Profile tab ✅
+- [x] `driver_api.dart` (`DriverApi.getMe`) + `driver_models.dart` + barrel export
+- [x] `driverApiProvider`, `driverProfileProvider`
+- [x] `profile_screen.dart` (identity, vehicle, status, Log Out, version)
+- [x] `main.dart` docstring refresh
+- [x] `profile_screen_test.dart` + `driver_api_test.dart`
 
-## Stage D — Verification
-- [ ] Emulator walkthrough (splash → login → Today → Deliveries → Profile → Log Out)
-- [ ] Screenshots; STATUS.md + MODULE_STATUS.md
+## Stage D — Verification ✅
+- [x] Emulator walkthrough — Today / Deliveries / Profile all verified live against real backend data
+- [x] Screenshots captured
+- [ ] Broader on-device regression of the delivery workflow (depart / record delivery) post-restructure

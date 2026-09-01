@@ -2,6 +2,7 @@ export 'auth_models.dart';
 export 'complaint_models.dart';
 export 'customer_models.dart';
 export 'cylinder_ledger_models.dart';
+export 'driver_models.dart';
 export 'cylinder_type_models.dart';
 export 'invoice_models.dart';
 export 'kyc_models.dart';

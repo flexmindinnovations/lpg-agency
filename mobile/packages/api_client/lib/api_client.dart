@@ -12,6 +12,7 @@ export 'src/auth_api.dart';
 export 'src/complaint_api.dart';
 export 'src/customer_api.dart';
 export 'src/cylinder_ledger_api.dart';
+export 'src/driver_api.dart';
 export 'src/cylinder_type_api.dart';
 export 'src/invoice_api.dart';
 export 'src/kyc_api.dart';
