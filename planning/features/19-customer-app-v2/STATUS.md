@@ -109,13 +109,34 @@ tested (live emulator walkthrough — Stage D below — still pending):
   - Driver-app Android `compileSdk` → 37, `kotlin.incremental=false` (matches
     customer app). Debug APKs for both apps build clean.
 
+## Stage D — backend E2E verified (2026-09-01)
+
+Ran against the live server + ARQ worker + Redis with real seeded data
+(`seed_e2e_customer.py` / `seed_e2e_driver.py`):
+
+- Customer `POST /orders` → the running worker creates an **"Order Received"**
+  in-app notification with `reference_type=order` (deep-links to the order).
+- `GET /orders/{id}/tracking` → destination coords (from the order's pinned
+  `delivery_address`), `route_status`, and `driver_location`.
+- `GET /routes/active` → the driver's own route, resolved from the token.
+- `POST /routes/{id}/location`: driver on an `in_progress` route → **204**;
+  dispatcher → **403**; route not `in_progress` → **409**.
+- Redis `tenant:*:route:{id}:driver_pos` last-known key written (120s TTL).
+- One ping → **one `driver.location` message per order on the route**, on
+  `tenant:{t}:order:{order_id}` (the channel the customer app subscribes to).
+- `tracking.driver_location` reflects the last ping.
+
+Verification script: `scripts`-adjacent, kept in the session scratchpad.
+
 ## Outstanding
 
-- **Stage D — live emulator walkthrough** not yet run: place an order (expect
-  "Order Received" push), open the tracking map, and with a dispatcher-planned
-  `in_progress` route on a second emulator confirm the customer sees the moving
-  driver marker. Also re-verify invoices / support / profile / address CRUD
-  against a live backend.
+- **Emulator UI walkthrough** (the "watch the pixels" pass) still to do: rebuild
+  + install the customer app, place an order (see the push), open the tracking
+  map; with the driver app on a second emulator sharing location against an
+  `in_progress` route, watch the marker move. Backend contract is proven; this
+  is visual confirmation only.
+- Re-verify invoices / support / profile / address CRUD screens against a live
+  backend (widget tests pass; not yet exercised on-device post-rebuild).
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
 - **Driver-app background location** — deliberately out of scope; sharing works
   only while the Active Delivery screen is open.
