@@ -1,0 +1,68 @@
+import 'package:design_system/design_system.dart';
+import 'package:flutter/material.dart';
+
+/// Shown while `main()`'s startup session restore runs — the router holds
+/// here on `AuthStatus.unknown`, then redirects to `/` or `/login`. Mirrors
+/// the Customer App's splash so both apps feel like one product.
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: colors.surfaceBase,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: colors.surfaceRaised,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: colors.borderDefault),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: Image.asset(
+                  'assets/images/lpg_app_logo.jpg',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: 48),
+            Text(
+              'LPG Agency',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: colors.textPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Driver',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 64),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colors.actionPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

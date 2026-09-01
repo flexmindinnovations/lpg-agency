@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:core/core.dart';
@@ -22,9 +24,16 @@ const _principal = Principal(
 /// tests use. `routerProvider` now watches `authControllerProvider` at
 /// build time (Phase 6's route guards), so every widget test needs one.
 class _FakeAuthRepository implements AuthRepository {
-  _FakeAuthRepository({this.restoreSessionResult = const Success(_principal)});
+  _FakeAuthRepository({
+    this.restoreSessionResult = const Success(_principal),
+    this.hangRestore = false,
+  });
 
   final Result<Principal> restoreSessionResult;
+
+  /// When true, `restoreSession()` never completes — the app stays on the
+  /// splash screen (`AuthStatus.unknown`).
+  final bool hangRestore;
 
   @override
   String? accessToken = 'fake-access-token';
@@ -49,7 +58,10 @@ class _FakeAuthRepository implements AuthRepository {
   }) async => const Success(_principal);
 
   @override
-  Future<Result<Principal>> restoreSession() async => restoreSessionResult;
+  Future<Result<Principal>> restoreSession() {
+    if (hangRestore) return Completer<Result<Principal>>().future;
+    return Future.value(restoreSessionResult);
+  }
 
   @override
   Future<Result<void>> requestPasswordReset({required String email}) async =>
@@ -75,6 +87,19 @@ Widget _appWith(AuthController authController) => ProviderScope(
 );
 
 void main() {
+  testWidgets('holds on the splash screen while the session restores', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _appWith(AuthController(_FakeAuthRepository(hangRestore: true))),
+    );
+    await tester.pump();
+
+    expect(find.text('LPG Agency'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Today’s Deliveries'), findsNothing);
+  });
+
   testWidgets('an authenticated session shows the active-delivery screen', (
     tester,
   ) async {
@@ -104,7 +129,7 @@ void main() {
     await tester.pumpWidget(_appWith(AuthController(repository)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in'), findsWidgets);
+    expect(find.text('Driver Sign In'), findsOneWidget);
     expect(find.text('Today’s Deliveries'), findsNothing);
   });
 }

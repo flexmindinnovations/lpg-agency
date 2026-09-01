@@ -8,6 +8,7 @@ import 'features/delivery/presentation/active_delivery_screen.dart';
 import 'features/delivery/presentation/record_delivery_screen.dart';
 import 'features/delivery/presentation/stop_detail_screen.dart';
 import 'login_screen.dart';
+import 'splash_screen.dart';
 
 /// Routing foundation, with Phase 6's route guards now wired in.
 ///
@@ -22,21 +23,31 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authController = ref.watch(authControllerProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: authController,
     redirect: (context, state) {
       final status = authController.state.status;
       final loggingIn = state.matchedLocation == '/login';
+      final splashing = state.matchedLocation == '/splash';
 
-      // Still resolving the startup session restore — hold position rather
-      // than bouncing to /login and immediately back once it resolves.
-      if (status == AuthStatus.unknown) return null;
+      // Still resolving the startup session restore — stay on the splash
+      // screen rather than flashing /login and immediately bouncing back.
+      if (status == AuthStatus.unknown) {
+        return splashing ? null : '/splash';
+      }
 
       if (status != AuthStatus.authenticated && !loggingIn) return '/login';
-      if (status == AuthStatus.authenticated && loggingIn) return '/';
+      if (status == AuthStatus.authenticated && (loggingIn || splashing)) {
+        return '/';
+      }
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/',
         name: 'home',
