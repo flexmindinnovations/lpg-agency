@@ -3,9 +3,12 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../providers.dart';
+import '../../../widgets/map_tile_provider.dart';
 import '../data/profile_provider.dart';
+import 'widgets/location_picker_field.dart';
 
 class AddAddressScreen extends ConsumerStatefulWidget {
   const AddAddressScreen({super.key, required this.customerId});
@@ -32,6 +35,7 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
   // 400 -- confirmed live, this screen could never successfully add an
   // address before this fix.
   String _addressType = 'delivery';
+  LatLng? _pinnedLocation;
   bool _isLoading = false;
   String? _error;
 
@@ -77,6 +81,8 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
           ? null
           : _pincodeController.text.trim(),
       addressType: _addressType,
+      latitude: _pinnedLocation?.latitude,
+      longitude: _pinnedLocation?.longitude,
     );
 
     final result = await api.addCustomerAddress(widget.customerId, request);
@@ -213,6 +219,13 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                       label: 'Pincode',
                       controller: _pincodeController,
                       keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 24),
+                    LocationPickerField(
+                      value: _pinnedLocation,
+                      tileProvider: ref.watch(mapTileProviderProvider),
+                      onChanged: (loc) =>
+                          setState(() => _pinnedLocation = loc),
                     ),
                     const SizedBox(height: 40),
                     LpgButton(

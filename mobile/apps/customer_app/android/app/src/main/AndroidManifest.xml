@@ -4,6 +4,11 @@
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <!-- Push notifications (Android 13+ prompts at runtime; PushNotificationService asks). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- "Use my current location" when pinning a delivery address on the map
+         (geolocator; prompted at runtime). Coarse is enough — the customer
+         drags the pin to the exact spot. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <application
         android:usesCleartextTraffic="true"
         android:label="customer_app"

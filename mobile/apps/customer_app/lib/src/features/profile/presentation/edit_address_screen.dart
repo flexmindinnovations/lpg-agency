@@ -2,9 +2,12 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../providers.dart';
+import '../../../widgets/map_tile_provider.dart';
 import '../data/profile_provider.dart';
+import 'widgets/location_picker_field.dart';
 
 /// Edits an existing saved address — mirrors `AddAddressScreen`'s form
 /// exactly (same fields, same `UpdateCustomerAddressRequest`/
@@ -49,6 +52,10 @@ class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
   );
 
   late String _addressType = widget.address.addressType.toLowerCase();
+  late LatLng? _pinnedLocation =
+      widget.address.latitude != null && widget.address.longitude != null
+      ? LatLng(widget.address.latitude!, widget.address.longitude!)
+      : null;
   bool _isLoading = false;
   String? _error;
 
@@ -94,6 +101,8 @@ class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
           ? null
           : _pincodeController.text.trim(),
       addressType: _addressType,
+      latitude: _pinnedLocation?.latitude,
+      longitude: _pinnedLocation?.longitude,
     );
 
     final result = await api.updateAddress(
@@ -236,6 +245,13 @@ class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
                       label: 'Pincode',
                       controller: _pincodeController,
                       keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 24),
+                    LocationPickerField(
+                      value: _pinnedLocation,
+                      tileProvider: ref.watch(mapTileProviderProvider),
+                      onChanged: (loc) =>
+                          setState(() => _pinnedLocation = loc),
                     ),
                     const SizedBox(height: 40),
                     LpgButton(

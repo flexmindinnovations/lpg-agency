@@ -2,6 +2,9 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../widgets/location_map.dart';
+import '../../../widgets/map_tile_provider.dart';
+import '../data/order_tracking_provider.dart';
 import '../data/orders_provider.dart';
 
 class OrderTrackingScreen extends ConsumerWidget {
@@ -12,6 +15,7 @@ class OrderTrackingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderAsync = ref.watch(orderDetailProvider(orderId));
+    final trackingAsync = ref.watch(orderTrackingProvider(orderId));
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
 
@@ -42,65 +46,49 @@ class OrderTrackingScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // Map Placeholder
+              // Delivery-location map
               Expanded(
                 flex: 3,
-                child: Container(
-                  width: double.infinity,
-                  color: colors.surfaceOverlay,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.map_outlined,
-                              size: 64,
-                              color: colors.textSecondary.withValues(
-                                alpha: 0.3,
+                child: trackingAsync.when(
+                  loading: () => ColoredBox(
+                    color: colors.surfaceOverlay,
+                    child: const Center(child: LpgLoadingIndicator()),
+                  ),
+                  error: (_, _) => const MapUnavailable(
+                    message: 'The map is unavailable right now.',
+                  ),
+                  data: (tracking) {
+                    if (!tracking.hasLocation) {
+                      return const MapUnavailable(
+                        message:
+                            'A map pin has not been set for this delivery '
+                            'address yet. Add one when editing the address.',
+                      );
+                    }
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: LocationMap(
+                            center: tracking.destination!,
+                            tileProvider: ref.watch(mapTileProviderProvider),
+                            markers: [
+                              pinMarker(
+                                point: tracking.destination!,
+                                color: colors.actionPrimary,
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              status == 'out_for_delivery'
-                                  ? 'Driver is on the way'
-                                  : 'Map available when out for delivery',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (status == 'out_for_delivery')
-                        Positioned(
-                          top: 100,
-                          left: 150,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: colors.actionPrimary,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colors.actionPrimary.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                  blurRadius: 12,
-                                  spreadRadius: 4,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.local_shipping,
-                              color: Colors.white,
-                              size: 24,
-                            ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
+                        if (tracking.destinationIsApproximate)
+                          const Positioned(
+                            top: 12,
+                            left: 12,
+                            right: 12,
+                            child: _ApproximateBanner(),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
 
@@ -302,6 +290,43 @@ class OrderTrackingScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown over the map when the pin was derived from geocoding the address
+/// text rather than a location the customer set themselves.
+class _ApproximateBanner extends StatelessWidget {
+  const _ApproximateBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaceBase.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.borderDefault),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline, size: 16, color: colors.textSecondary),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Approximate location, based on the delivery address.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
