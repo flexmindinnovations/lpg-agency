@@ -1,7 +1,7 @@
 # Plan: Driver cash-handover screen
 
 **Phase:** 24 (increment — follows the shell + Stage-D2 regression work)
-**Status:** Stages 1–3 done 2026-09-02 · Stages 4–5 (entry points + emulator) pending
+**Status:** ✅ Complete — all 5 stages done 2026-09-02
 **Drafted:** 2026-09-02
 
 ---
@@ -175,38 +175,67 @@ emulator walkthrough deferred to Stage 5 (needs the entry points).
 
 ---
 
-## Stage 4 — Entry points
+## Stage 4 — Entry points  ✅ DONE 2026-09-02
 
 - **Today tab** ([today_screen.dart](../../../mobile/apps/driver_app/lib/src/features/delivery/presentation/today_screen.dart))
-  — watch `pendingCashHandoverProvider`; when non-null, render a card (below the
-  route section / empty state): *"Cash reconciliation pending — declare the cash
-  for your {date} route"* →
-  `context.pushNamed('cashHandover', pathParameters: {'routeId': …})`. Main
-  discoverable path.
-- **Deliveries tab → "Past routes"**
+  — `ref.watch(pendingCashHandoverProvider).value`; when non-null, a
+  `_PendingCashCard` renders above the route section (present whether or not
+  there's an active route now): "Cash reconciliation pending — Declare ₹X from
+  your {date} route" → `pushNamed('cashHandover')`.
+- **Deliveries → "Past routes"**
   ([deliveries_screen.dart](../../../mobile/apps/driver_app/lib/src/features/delivery/presentation/deliveries_screen.dart))
-  — make `_HistoryRow` tappable for `completed` routes → the same route. Add a
-  trailing chip: "Cash pending" (warning) / "Cash ✓" (success). Requires the row
-  to know handover status — prefer widening `routeHistoryProvider` (or a batch
-  `GET /cash-handovers?route_ids=`) over an N+1 of per-row GETs.
-- *(Not doing:* a Profile "Cash handovers" history list — overkill for v1.)*
+  — `_HistoryRow` gained `onTap` (set for `completed` routes →
+  `pushNamed('cashHandover')`) and a `cashPending` flag → a `CASH PENDING`
+  warning badge. `cashPending` is driven off the **same
+  `pendingCashHandoverProvider`** (matches its `routeId`) — so it flags only
+  the latest completed route, no per-row N+1. Older completed routes are
+  still tappable to review their receipt.
+- *(Not done:* per-row "declared/pending" chip for every past route — needs a
+  batch endpoint or a widened list response; the single-latest flag covers
+  the actionable case.)*
+- **Tests**: `today_screen_test.dart` +1 (nudge renders for a pending view),
+  `deliveries_screen_test.dart` +1 (`CASH PENDING` flags the matching row);
+  both `_screen` helpers now override `pendingCashHandoverProvider`.
 
 ---
 
-## Stage 5 — Tests + emulator verification
+## Stage 5 — Emulator verification  ✅ DONE 2026-09-02
 
-- `cash_handover_screen_test.dart` — (a) pending view → enter amount → delta
-  line → confirm → declare called → receipt renders; (b) already-declared →
-  receipt, no input; (c) `expected = 0` → still declarable; (d) 409 → recovers.
-- `deliveries_screen_test.dart` / `today_screen_test.dart` — new entry-point
-  rendering with overridden providers.
-- **Emulator** (`emulator-5554`, seeded e2e driver): deliver a cash order →
-  complete the route → Today shows the nudge → open screen → expected matches
-  the POD amount → declare short by ₹50 → receipt shows ₹50 shortfall → reopen
-  from Deliveries → read-only receipt. Screenshot; note in
-  [STATUS.md](./STATUS.md).
+`emulator-5554`, seeded e2e driver, live backend. Full walkthrough:
 
-Gate: `driver_app` + `api_client` `flutter test` + `flutter analyze` clean.
+1. **Today** shows "Cash reconciliation pending — Declare ₹1811.00 from your
+   2026-09-01 route" (route `d9cfd7b3`, from `GET .../for-route`).
+2. Tap → **CashHandoverScreen**: "Expected cash ₹1811.00 / from 2 cash
+   deliveries", amount field.
+3. Type `1800` → delta line "Short by ₹11.00" (red).
+4. "Declare handover" → confirm dialog ("Hand over ₹1800.00 for the
+   2026-09-01 route? This cannot be undone.") → Confirm.
+5. Screen flips to the **receipt**: `CSH000004`, `SHORT` badge, Expected
+   ₹1811.00 / Handed over ₹1800.00 / **Shortfall ₹11.00**, "Declared
+   2026-09-02". Snackbar "Cash handover recorded."
+6. Back to **Today** → nudge is **gone** (`pendingCashHandoverProvider`
+   invalidated).
+7. **Deliveries → Past routes** → tap the 2026-09-01 completed row → the
+   same receipt (provider cache reused, instant).
+
+Backend 409 double-declare guard + `for-route` 404 scoping were verified
+live in Stage 1.
+
+## Test totals
+
+- `packages/api_client`: 53 (+5 in Stage 2)
+- `apps/driver_app`: 44 (+5 Stage 3, +2 Stage 4)
+- backend: 757 unit + 7 cash-handover / 4 driver integration
+- `flutter analyze` clean for api_client + driver_app; ruff / mypy /
+  lint-imports clean for backend.
+
+## Known follow-ups (not blocking)
+
+- Today nudge subtitle truncates the trailing " route" on narrow screens —
+  cosmetic.
+- `CashShortfallDeclared` still has no consumer — a shortfall doesn't alert
+  the office (flagged in Stage 1).
+- No per-past-route cash chip beyond the latest — needs a batch read.
 
 ---
 

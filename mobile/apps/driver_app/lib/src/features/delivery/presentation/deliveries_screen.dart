@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../cash_handover/data/cash_handover_provider.dart';
 import '../data/active_route_provider.dart';
 import 'widgets/stop_tile.dart';
 
@@ -74,8 +75,24 @@ class DeliveriesScreen extends ConsumerWidget {
                 if (routes.isEmpty) {
                   return const _MutedNote('No finished routes yet.');
                 }
+                final pendingCashRouteId = ref
+                    .watch(pendingCashHandoverProvider)
+                    .value
+                    ?.routeId;
                 return Column(
-                  children: [for (final r in routes) _HistoryRow(route: r)],
+                  children: [
+                    for (final r in routes)
+                      _HistoryRow(
+                        route: r,
+                        cashPending: r.id == pendingCashRouteId,
+                        onTap: r.status == 'completed'
+                            ? () => context.pushNamed(
+                                'cashHandover',
+                                pathParameters: {'routeId': r.id},
+                              )
+                            : null,
+                      ),
+                  ],
                 );
               },
             ),
@@ -95,9 +112,11 @@ class DeliveriesScreen extends ConsumerWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.route});
+  const _HistoryRow({required this.route, this.cashPending = false, this.onTap});
 
   final RouteSummary route;
+  final bool cashPending;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -109,20 +128,26 @@ class _HistoryRow extends StatelessWidget {
     final n = route.stops.length;
     return LpgCard(
       padding: EdgeInsets.zero,
+      onTap: onTap,
       child: LpgListTile(
         leadingIcon: Icons.history,
         title: dateLabel,
         subtitle:
             '$n stop${n == 1 ? '' : 's'} · '
             '${route.status.replaceAll('_', ' ')}',
-        trailing: Icon(
-          route.status == 'cancelled'
-              ? Icons.cancel_outlined
-              : Icons.check_circle_outline,
-          color: route.status == 'cancelled'
-              ? colors.statusDanger
-              : colors.statusSuccess,
-        ),
+        trailing: cashPending
+            ? const LpgStatusBadge(
+                label: 'CASH PENDING',
+                severity: LpgStatusSeverity.warning,
+              )
+            : Icon(
+                route.status == 'cancelled'
+                    ? Icons.cancel_outlined
+                    : Icons.check_circle_outline,
+                color: route.status == 'cancelled'
+                    ? colors.statusDanger
+                    : colors.statusSuccess,
+              ),
       ),
     );
   }

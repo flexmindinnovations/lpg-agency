@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../cash_handover/data/cash_handover_provider.dart';
 import '../data/active_route_provider.dart';
 import 'widgets/location_sharing_card.dart';
 
@@ -33,25 +34,31 @@ class TodayScreen extends ConsumerWidget {
             ],
           ),
           data: (route) {
-            if (route == null) {
-              return ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  LpgEmptyState(
-                    message: 'No route assigned yet.',
-                    icon: Icons.local_shipping_outlined,
-                  ),
-                ],
-              );
-            }
+            final pendingCash = ref
+                .watch(pendingCashHandoverProvider)
+                .value;
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _RouteStatusCard(route: route),
-                const SizedBox(height: 16),
-                _NextStopCard(route: route),
-                const SizedBox(height: 16),
-                LocationSharingCard(route: route),
+                if (pendingCash != null) ...[
+                  _PendingCashCard(view: pendingCash),
+                  const SizedBox(height: 16),
+                ],
+                if (route == null)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 80),
+                    child: LpgEmptyState(
+                      message: 'No route assigned yet.',
+                      icon: Icons.local_shipping_outlined,
+                    ),
+                  )
+                else ...[
+                  _RouteStatusCard(route: route),
+                  const SizedBox(height: 16),
+                  _NextStopCard(route: route),
+                  const SizedBox(height: 16),
+                  LocationSharingCard(route: route),
+                ],
               ],
             );
           },
@@ -165,6 +172,40 @@ class _NextStopCard extends StatelessWidget {
         leadingIcon: Icons.navigation_outlined,
         title: 'Next stop · Stop ${next.sequenceNumber}',
         subtitle: 'Order ${next.orderId.substring(0, 8).toUpperCase()}',
+        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+      ),
+    );
+  }
+}
+
+/// Nudge shown once a route finishes and its cash still needs declaring —
+/// the route is gone from `activeRouteProvider` by then, so this is the
+/// driver's way back to it.
+class _PendingCashCard extends StatelessWidget {
+  const _PendingCashCard({required this.view});
+
+  final RouteCashHandover view;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final d = view.routeDate;
+    final date =
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+
+    return LpgCard(
+      padding: EdgeInsets.zero,
+      onTap: () => context.pushNamed(
+        'cashHandover',
+        pathParameters: {'routeId': view.routeId},
+      ),
+      child: LpgListTile(
+        leadingIcon: Icons.account_balance_wallet_outlined,
+        title: 'Cash reconciliation pending',
+        subtitle:
+            'Declare ₹${view.expectedAmount.toStringAsFixed(2)} from your '
+            '$date route',
         trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
       ),
     );

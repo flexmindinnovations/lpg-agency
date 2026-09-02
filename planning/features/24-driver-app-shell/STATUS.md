@@ -50,12 +50,15 @@ two bugs, both caught by the D2 on-device run and fixed:
   a **Navigate** button that opens Google/Apple Maps. Verified on the emulator
   (map renders LocationIQ tiles; Navigate launches Google Maps).
 
-## Follow-on work (planned, not started)
+## Follow-on work
 
-- **Cash-handover screen** — [CASH_HANDOVER.md](./CASH_HANDOVER.md). Driver
-  end-of-route cash declaration; needs a backend read endpoint +
-  double-declare guard first. The largest remaining gap in the driver
-  delivery workflow after the shell.
+- **Cash-handover screen** — ✅ done 2026-09-02, see
+  [CASH_HANDOVER.md](./CASH_HANDOVER.md). Backend read endpoint +
+  one-per-route guard + migration; `CashHandoverApi`; `CashHandoverScreen`
+  (expected cash, live short/over delta, declare → receipt); Today nudge +
+  Deliveries "Past routes" entry points. Verified end-to-end on
+  emulator-5554. Commits `9890e0e` (backend), `0643d42` (api_client),
+  `6e50c8c` (screen), + the entry-points commit.
 
 ## Notes
 
