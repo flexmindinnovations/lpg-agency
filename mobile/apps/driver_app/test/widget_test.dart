@@ -4,9 +4,11 @@ import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:core/core.dart';
 import 'package:driver_app/main.dart';
+import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/auth_provider.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/local_database_provider.dart';
+import 'package:driver_app/src/push/push_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,6 +84,13 @@ Widget _appWith(AuthController authController) => ProviderScope(
     localDatabaseProvider.overrideWithValue(NoopLocalDatabase()),
     authControllerProvider.overrideWithValue(authController),
     activeRouteProvider.overrideWith((ref) async => null),
+    // Never `init()`ed here, so no Firebase is touched — `DriverApp` only
+    // reads `takeInitialRoute()` (null) and subscribes to `taps`.
+    pushNotificationServiceProvider.overrideWithValue(
+      PushNotificationService(
+        NotificationApi(ApiClient(baseUrl: 'https://api.test').dio),
+      ),
+    ),
   ],
   child: const DriverApp(),
 );

@@ -2,6 +2,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api_provider.dart';
 import '../../../auth_provider.dart';
 import '../data/profile_provider.dart';
 
@@ -102,7 +103,12 @@ class ProfileScreen extends ConsumerWidget {
             label: 'Log Out',
             variant: LpgButtonVariant.secondary,
             expand: true,
-            onPressed: () => ref.read(authControllerProvider).logout(),
+            onPressed: () async {
+              // Drop this device's FCM token first so a shared handset stops
+              // getting the previous driver's delivery alerts.
+              await ref.read(pushNotificationServiceProvider).unregister();
+              await ref.read(authControllerProvider).logout();
+            },
           ),
           const SizedBox(height: 24),
           Text(

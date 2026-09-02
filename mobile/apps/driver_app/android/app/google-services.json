@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "173792123388",
+    "project_id": "lpg-erp-2b143",
+    "storage_bucket": "lpg-erp-2b143.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:173792123388:android:c36717db2ce7225c7b3a79",
+        "android_client_info": {
+          "package_name": "com.lpgagency.customer_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANOiF8CarWQw5_mupbP43PrHwuxvq9lQQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:173792123388:android:a78bb96bb3efecf97b3a79",
+        "android_client_info": {
+          "package_name": "com.lpgagency.driver_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANOiF8CarWQw5_mupbP43PrHwuxvq9lQQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
