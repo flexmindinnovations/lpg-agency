@@ -3,20 +3,59 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// The Driver App shell: a persistent bottom `NavigationBar` across the three
-/// tabs (Today / Deliveries / Profile). Mirrors the Customer App's
+import '../../notifications/data/notifications_provider.dart';
+
+/// The Driver App shell: a persistent bottom `NavigationBar` across the four
+/// tabs (Today / Deliveries / Alerts / Profile). Mirrors the Customer App's
 /// `AppShell` — same edge-to-edge bar and high-contrast treatment.
-class AppShell extends ConsumerWidget {
+///
+/// It's the always-mounted widget, so it owns the Alerts-tab unread badge:
+/// refetched on app resume and whenever a foreground push lands (no realtime
+/// WebSocket — the push itself is the signal).
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.invalidate(unreadNotificationCountProvider),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(pushMessagesProvider, (_, _) {
+      ref.invalidate(unreadNotificationCountProvider);
+      ref.invalidate(driverNotificationsProvider);
+    });
+
     final colors = Theme.of(context).extension<LpgColors>()!;
+    final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
+
+    Widget alertsIcon(IconData icon, Color color) => Badge(
+      isLabelVisible: unread > 0,
+      label: Text('$unread'),
+      child: Icon(icon, color: color),
+    );
 
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           border: colors.isHighContrast
@@ -31,7 +70,7 @@ class AppShell extends ConsumerWidget {
             elevation: 0,
             indicatorColor: colors.actionPrimary.withValues(alpha: 0.12),
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            selectedIndex: navigationShell.currentIndex,
+            selectedIndex: widget.navigationShell.currentIndex,
             onDestinationSelected: _onTap,
             destinations: [
               NavigationDestination(
@@ -51,6 +90,17 @@ class AppShell extends ConsumerWidget {
                 label: 'Deliveries',
               ),
               NavigationDestination(
+                icon: alertsIcon(
+                  Icons.notifications_outlined,
+                  colors.textSecondary,
+                ),
+                selectedIcon: alertsIcon(
+                  Icons.notifications,
+                  colors.actionPrimary,
+                ),
+                label: 'Alerts',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.person_outline, color: colors.textSecondary),
                 selectedIcon: Icon(Icons.person, color: colors.actionPrimary),
                 label: 'Profile',
@@ -63,9 +113,11 @@ class AppShell extends ConsumerWidget {
   }
 
   void _onTap(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
+    // Opening the Alerts tab is the moment to sync the badge.
+    if (index == 2) ref.invalidate(unreadNotificationCountProvider);
   }
 }

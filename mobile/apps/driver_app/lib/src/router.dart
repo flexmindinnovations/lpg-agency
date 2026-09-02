@@ -9,6 +9,7 @@ import 'features/delivery/presentation/deliveries_screen.dart';
 import 'features/delivery/presentation/record_delivery_screen.dart';
 import 'features/delivery/presentation/stop_detail_screen.dart';
 import 'features/delivery/presentation/today_screen.dart';
+import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
 import 'login_screen.dart';
@@ -102,6 +103,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/deliveries',
                 name: 'deliveries',
                 builder: (context, state) => const DeliveriesScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/alerts',
+                name: 'alerts',
+                builder: (context, state) => const NotificationsScreen(),
               ),
             ],
           ),

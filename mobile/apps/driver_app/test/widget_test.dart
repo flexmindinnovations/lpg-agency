@@ -7,6 +7,7 @@ import 'package:driver_app/main.dart';
 import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/auth_provider.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
+import 'package:driver_app/src/features/notifications/data/notifications_provider.dart';
 import 'package:driver_app/src/local_database_provider.dart';
 import 'package:driver_app/src/push/push_notification_service.dart';
 import 'package:flutter/material.dart';
@@ -84,6 +85,7 @@ Widget _appWith(AuthController authController) => ProviderScope(
     localDatabaseProvider.overrideWithValue(NoopLocalDatabase()),
     authControllerProvider.overrideWithValue(authController),
     activeRouteProvider.overrideWith((ref) async => null),
+    unreadNotificationCountProvider.overrideWith((ref) async => 0),
     // Never `init()`ed here, so no Firebase is touched — `DriverApp` only
     // reads `takeInitialRoute()` (null) and subscribes to `taps`.
     pushNotificationServiceProvider.overrideWithValue(
@@ -120,19 +122,16 @@ void main() {
     expect(find.text('No route assigned yet.'), findsOneWidget);
   });
 
-  testWidgets('the shell exposes the three tabs', (tester) async {
+  testWidgets('the shell exposes the four tabs', (tester) async {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(NavigationDestination, 'Today'), findsOneWidget);
-    expect(
-      find.widgetWithText(NavigationDestination, 'Deliveries'),
-      findsOneWidget,
-    );
-    expect(
-      find.widgetWithText(NavigationDestination, 'Profile'),
-      findsOneWidget,
-    );
+    for (final label in ['Today', 'Deliveries', 'Alerts', 'Profile']) {
+      expect(
+        find.widgetWithText(NavigationDestination, label),
+        findsOneWidget,
+      );
+    }
   });
 
   testWidgets('an unauthenticated session is redirected to sign-in', (

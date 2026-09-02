@@ -1,7 +1,7 @@
 # Plan: Driver app push notifications
 
 **Phase:** 25
-**Status:** Phases A–C done 2026-09-02 (verified end-to-end on emulator) · Phase D (optional polish) pending
+**Status:** Phases A–C + D (inbox + badge) done 2026-09-02, verified on emulator · only D-iOS remains (blocked: needs a paid Apple Developer account)
 **Drafted:** 2026-09-02
 
 ---
@@ -251,17 +251,34 @@ on `emulator-5554`. `reference_type: order`.
 
 ---
 
-## Phase D — Polish (optional)
+## Phase D — Polish
 
-- **Notifications inbox screen** in the driver app — `NotificationApi` list
-  methods already exist; a 4th tab or a Profile entry. Gives the tap-fallback
-  somewhere to land and a history. Not needed for v1 (every push deep-links
-  to a stop or the Today tab).
+**Inbox + badge ✅ DONE 2026-09-02** (verified on `emulator-5554`: Alerts
+tab shows a red "6" badge → tapped "Route Ready" → Today tab + badge → 5 →
+"Mark all read" → badge gone). **iOS still pending** (blocked — needs a
+paid Apple Developer account for the APNs key, same as customer_app).
+
+- **Notifications inbox** — a 4th shell tab **Alerts** (Today / Deliveries /
+  Alerts / Profile). `NotificationsScreen` lists
+  `NotificationApi.getMyNotifications()` with a per-type icon, title/body,
+  date, and an unread dot; tap → `markRead` (fire-and-forget) + deep-link
+  (`reference_type: order` → `/stops/$id`, `route` → Today); "Mark all read"
+  AppBar action. `driver_app` has no `intl` dep so dates are `yyyy-MM-dd`.
+- **Unread badge** — `AppShell` is now `ConsumerStatefulWidget`; the Alerts
+  `NavigationDestination` icon is wrapped in a `Badge` driven by
+  `unreadNotificationCountProvider`. **No realtime WebSocket** (the driver
+  app doesn't have the `realtime` package): the badge refetches on app
+  resume (`AppLifecycleListener.onResume`), when the Alerts tab is opened,
+  and when a foreground FCM message lands — `PushNotificationService` gained
+  a `messages` stream that `_showForeground` ticks, surfaced as
+  `pushMessagesProvider`, which the shell listens to.
+- **Tests** — `notifications_screen_test.dart` (+2: empty state; list +
+  mark-all-read POSTs `/notifications/read-all`), `app_shell_test.dart`
+  rewritten for 4 branches + a badge test, `widget_test.dart` updated.
+  driver_app 52 tests pass, analyze clean.
 - **iOS** — `flutterfire configure` with `ios`, `GoogleService-Info.plist`,
   APNs `.p8` key, Xcode Push Notifications + Background Modes capability.
   Same blocker as customer_app's pending iOS push.
-- **Unread badge** on the shell / a tab (via `getUnreadCount` +
-  `realtime` `InAppNotificationCreated`).
 
 ---
 
