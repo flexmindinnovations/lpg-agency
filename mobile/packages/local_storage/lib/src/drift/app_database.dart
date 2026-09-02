@@ -14,6 +14,12 @@ class SchemaMetadata extends Table {
 
 /// Stores offline mutations to be synchronized with the backend.
 /// Enforces ordered execution and idempotency for offline operations.
+///
+/// `status` lifecycle: `pending` → `syncing` → `synced`, or on failure
+/// `error` (retryable, backed off by `retryCount`), `failed` (retries
+/// exhausted or a permanent 4xx — needs the driver's attention) or
+/// `conflict` (the server rejected a stale transition — server is
+/// authoritative, so the driver acknowledges and discards).
 class SyncOperations extends Table {
   TextColumn get id => text()();
   TextColumn get type => text()();
@@ -22,6 +28,14 @@ class SyncOperations extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   TextColumn get errorMessage => text().nullable()();
   TextColumn get idempotencyKey => text().unique()();
+
+  /// How many times `SyncCoordinator` has attempted this op. Drives the
+  /// backoff between retries and the cut-over to `failed`.
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+
+  /// When the last attempt ran — `null` until the first. Combined with
+  /// `retryCount` to decide whether the backoff window has elapsed.
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -48,7 +62,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +75,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.createTable(cachedResources);
+      }
+      if (from < 4) {
+        await m.addColumn(syncOperations, syncOperations.retryCount);
+        await m.addColumn(syncOperations, syncOperations.lastAttemptAt);
       }
     },
   );

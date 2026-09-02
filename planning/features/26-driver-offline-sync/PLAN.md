@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Stage 1 done 2026-09-02 (`uv run pytest` 1130 pass, ruff / mypy src / lint-imports clean) · Stages 2–7 pending
+**Status:** Stages 1–2 done 2026-09-02 · Stages 3–7 pending
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -200,6 +200,56 @@ Differences from `deliver_order`:
 - Migration v3 → v4 adds `retry_count` with existing rows defaulted to 0.
 
 **Commit:** `feat(mobile): real offline mutation queue in sync_engine (driver ops + retry + connectivity)`
+
+### ✅ DONE 2026-09-02
+
+- **Schema v4** (`local_storage/lib/src/drift/app_database.dart`) —
+  `SyncOperations` gained `retryCount` (int, default 0) + `lastAttemptAt`
+  (nullable datetime); `schemaVersion` 3 → 4 with an `addColumn` migration
+  step; `.g.dart` regenerated via `dart run build_runner build`.
+- **`sync_engine/lib/src/connectivity_monitor.dart`** (new) —
+  `ConnectivityMonitor` interface + `PluginConnectivityMonitor`
+  (`connectivity_plus: ^6.1.0`), `onConnectivityChanged → Stream<bool>`
+  (distinct). Interface so tests inject a controllable stream.
+- **`SyncCoordinator` rewrite:**
+  - `_dispatch` — dropped the dead `delivery_confirmation`/`\/deliveries\/sync`
+    case; kept `order_gas`; added `order_depart` / `order_deliver` /
+    `order_failed_delivery` / `order_reschedule` / `cash_handover_declare`,
+    all reading a `{"path", "body"}` payload and POSTing with
+    `Idempotency-Key: op.idempotencyKey`.
+  - **409 branching:** `error_code == "IDEMPOTENCY_KEY_CONFLICT"` → `failed`
+    (**deviation from plan** — `failed`, not `synced`; it will never succeed
+    on replay and `failed` surfaces it in Stage 6 rather than hiding it).
+    Other 409 → `conflict`. Non-409 4xx (422/404/…) → `failed` immediately
+    (permanent bad request). 5xx / network / timeout → `error` + `retryCount++`,
+    flipping to `failed` at `maxRetries` (default 8). A non-Dio throw
+    (unknown op type, bad payload) → `failed`.
+  - **Backoff:** `_backoff(retryCount)` = 5s, 10s, 20s … capped 10 min;
+    `syncNow()` skips an `error` op still inside its window.
+    `syncNow(ignoreBackoff: true)` — used by the connectivity-regained drain,
+    since a fresh connectivity event outranks the per-op backoff.
+  - **Connectivity:** `start()` subscribes to `ConnectivityMonitor` and
+    drains on `true`; the periodic `Timer` (now **30 s**) is the fallback.
+    `stop()` cancels both.
+  - **Read/repair API** (used by Stage 3/6, **not** riverpod providers — the
+    driver app owns those, matching how `customer_app/providers.dart` owns
+    `syncCoordinatorProvider`): `watchPendingCount() → Stream<int>`,
+    `watchIssues() → Stream<List<SyncOperation>>`, `retryOperation(id)`,
+    `discardOperation(id)`.
+- **`sync_engine.dart`** exports `connectivity_monitor.dart`.
+- Tests: `sync_coordinator_test.dart` rewritten — 12 tests (structured-path
+  dispatch + header, stable key across retries, `order_gas` unchanged,
+  conflict vs. idempotency-conflict vs. permanent-4xx vs. retryable-5xx,
+  retry cap → failed, backoff skip, unknown type → failed, connectivity
+  drain, `watchPendingCount`/`watchIssues`/`discard`).
+- Gate: `sync_engine` 12 pass + analyze clean; `local_storage` 12 pass;
+  `customer_app` 45 pass + analyze clean (its `SyncCoordinator(database:,
+  apiClient:)` call is unchanged — the new ctor params are optional);
+  `driver_app` 52 pass + analyze clean. `connectivity_plus` added
+  `connectivity_plus` to `customer_app/windows/flutter/generated_plugins.*`.
+- **Providers deferred to Stage 3** — `syncCoordinatorProvider`,
+  `pendingSyncCountProvider`, `syncIssuesProvider`, `connectivityProvider`
+  land in the driver app when the write path is wired.
 
 ---
 

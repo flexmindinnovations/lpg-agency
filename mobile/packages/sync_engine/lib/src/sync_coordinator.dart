@@ -6,6 +6,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:api_client/api_client.dart';
 import 'package:dio/dio.dart';
@@ -13,29 +14,64 @@ import 'package:drift/drift.dart' as drift;
 import 'package:local_storage/local_storage.dart';
 import 'package:uuid/uuid.dart';
 
-/// Coordinator that handles offline-first synchronization with the backend API.
+import 'connectivity_monitor.dart';
+
+/// Statuses a [SyncOperation] can be `error`-retried from vs. the terminal
+/// ones the driver has to look at.
+const _retryableStatuses = ['pending', 'error'];
+
+/// The driver-app mutation queue: every offline write is a durable, ordered
+/// [SyncOperation] with a client-generated idempotency key, drained here
+/// against the real backend when connectivity allows.
+///
+/// `_dispatch` hits `_apiClient.dio` directly rather than the `api_client`
+/// wrapper classes: those return a `Result`, swallowing the `DioException`
+/// (and its status code) into a plain `Failure`, and [_processOperation]
+/// needs the real status to tell a 409 conflict from a retryable network
+/// error.
 class SyncCoordinator {
-  SyncCoordinator({required AppDatabase database, required ApiClient apiClient})
-    : _db = database,
-      _apiClient = apiClient;
+  SyncCoordinator({
+    required AppDatabase database,
+    required ApiClient apiClient,
+    ConnectivityMonitor? connectivity,
+    Duration pollInterval = const Duration(seconds: 30),
+    int maxRetries = 8,
+  }) : _db = database,
+       _apiClient = apiClient,
+       _connectivity = connectivity,
+       _pollInterval = pollInterval,
+       _maxRetries = maxRetries;
 
   final AppDatabase _db;
   final ApiClient _apiClient;
+  final ConnectivityMonitor? _connectivity;
+  final Duration _pollInterval;
+  final int _maxRetries;
+
   bool _isSyncing = false;
   Timer? _syncTimer;
+  StreamSubscription<bool>? _connSub;
 
-  /// Starts the background sync loop.
+  /// Starts the background sync loop: a periodic poll (the fallback) plus an
+  /// immediate drain whenever connectivity is regained (the common case).
   void start() {
     _syncTimer?.cancel();
-    // Poll every 10 seconds for simplicity. In production, this should also
-    // trigger on connectivity restoration events via connectivity_plus.
-    _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) => syncNow());
+    _syncTimer = Timer.periodic(_pollInterval, (_) => syncNow());
+
+    _connSub?.cancel();
+    _connSub = _connectivity?.onConnectivityChanged.listen((online) {
+      // A connectivity transition is fresh evidence the network is back, so
+      // drain everything now rather than waiting out each op's backoff.
+      if (online) syncNow(ignoreBackoff: true);
+    });
   }
 
   /// Stops the background sync loop.
   void stop() {
     _syncTimer?.cancel();
     _syncTimer = null;
+    _connSub?.cancel();
+    _connSub = null;
   }
 
   /// Enqueues a new sync operation and immediately attempts to sync.
@@ -54,21 +90,24 @@ class SyncCoordinator {
     syncNow();
   }
 
-  /// Manually triggers a synchronization of all pending operations.
-  Future<void> syncNow() async {
+  /// Manually triggers a synchronization of all pending operations, oldest
+  /// first (which preserves per-aggregate ordering). Ops in an `error` state
+  /// whose backoff window hasn't elapsed are skipped this pass unless
+  /// [ignoreBackoff] is set (a connectivity-regained drain).
+  Future<void> syncNow({bool ignoreBackoff = false}) async {
     if (_isSyncing) return;
     _isSyncing = true;
 
     try {
-      final pendingOps =
+      final ops =
           await (_db.select(_db.syncOperations)
-                ..where(
-                  (t) => t.status.equals('pending') | t.status.equals('error'),
-                )
+                ..where((t) => t.status.isIn(_retryableStatuses))
                 ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
               .get();
 
-      for (final op in pendingOps) {
+      final now = DateTime.now();
+      for (final op in ops) {
+        if (!ignoreBackoff && _isBackingOff(op, now)) continue;
         await _processOperation(op);
       }
     } finally {
@@ -76,90 +115,200 @@ class SyncCoordinator {
     }
   }
 
+  /// A `Stream` of the count of operations still working through the queue
+  /// (`pending` / `error` / `syncing`) — drives the shell's sync badge.
+  Stream<int> watchPendingCount() {
+    final count = _db.syncOperations.id.count();
+    final query = _db.selectOnly(_db.syncOperations)
+      ..addColumns([count])
+      ..where(
+        _db.syncOperations.status.isIn(['pending', 'error', 'syncing']),
+      );
+    return query.map((row) => row.read(count) ?? 0).watchSingle();
+  }
+
+  /// A `Stream` of the operations that need the driver's attention —
+  /// `failed` (retries exhausted or a permanent 4xx) and `conflict` (the
+  /// server rejected a stale transition). Newest first.
+  Stream<List<SyncOperation>> watchIssues() {
+    return (_db.select(_db.syncOperations)
+          ..where((t) => t.status.isIn(['failed', 'conflict']))
+          ..orderBy([(t) => drift.OrderingTerm.desc(t.createdAt)]))
+        .watch();
+  }
+
+  /// Puts a `failed` operation back in the queue (the driver tapped
+  /// "retry"), clearing its attempt history.
+  Future<void> retryOperation(String id) async {
+    await (_db.update(_db.syncOperations)..where((t) => t.id.equals(id))).write(
+      const SyncOperationsCompanion(
+        status: drift.Value('pending'),
+        retryCount: drift.Value(0),
+        errorMessage: drift.Value(null),
+      ),
+    );
+    syncNow();
+  }
+
+  /// Drops an operation from the queue (the driver acknowledged a `conflict`
+  /// or gave up on a `failed` one). The server is authoritative, so the
+  /// local optimistic state is reconciled separately by invalidating the
+  /// affected read providers.
+  Future<void> discardOperation(String id) async {
+    await (_db.delete(_db.syncOperations)..where((t) => t.id.equals(id))).go();
+  }
+
+  bool _isBackingOff(SyncOperation op, DateTime now) {
+    if (op.status != 'error' || op.lastAttemptAt == null) return false;
+    return now.isBefore(op.lastAttemptAt!.add(_backoff(op.retryCount)));
+  }
+
+  /// Capped exponential backoff: 5s, 10s, 20s, … up to 10 minutes.
+  Duration _backoff(int retryCount) {
+    final seconds = math.min(600, 5 * math.pow(2, math.max(0, retryCount - 1)));
+    return Duration(seconds: seconds.toInt());
+  }
+
   Future<void> _processOperation(SyncOperation op) async {
+    await _write(
+      op.id,
+      const SyncOperationsCompanion(status: drift.Value('syncing')),
+    );
+
     try {
-      // Mark as syncing
-      await (_db.update(_db.syncOperations)..where((t) => t.id.equals(op.id)))
-          .write(const SyncOperationsCompanion(status: drift.Value('syncing')));
-
       await _dispatch(op);
-
-      // Mark as synced on success
-      await (_db.update(_db.syncOperations)..where((t) => t.id.equals(op.id)))
-          .write(const SyncOperationsCompanion(status: drift.Value('synced')));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 409) {
-        // Optimistic concurrency conflict - mark for manual review
-        await (_db.update(
-          _db.syncOperations,
-        )..where((t) => t.id.equals(op.id))).write(
-          SyncOperationsCompanion(
-            status: const drift.Value('conflict'),
-            errorMessage: drift.Value(e.message ?? 'Conflict occurred'),
-          ),
-        );
-      } else {
-        // Network or other error - mark as error to retry later
-        await (_db.update(
-          _db.syncOperations,
-        )..where((t) => t.id.equals(op.id))).write(
-          SyncOperationsCompanion(
-            status: const drift.Value('error'),
-            errorMessage: drift.Value(e.message ?? 'Unknown error'),
-          ),
-        );
-      }
-    } catch (e) {
-      await (_db.update(
-        _db.syncOperations,
-      )..where((t) => t.id.equals(op.id))).write(
+      await _write(
+        op.id,
         SyncOperationsCompanion(
-          status: const drift.Value('error'),
+          status: const drift.Value('synced'),
+          lastAttemptAt: drift.Value(DateTime.now()),
+        ),
+      );
+    } on DioException catch (e) {
+      await _handleDioFailure(op, e);
+    } catch (e) {
+      // A non-HTTP failure — an unknown op type, a malformed payload. It
+      // will never succeed on replay, so surface it rather than retry.
+      await _write(
+        op.id,
+        SyncOperationsCompanion(
+          status: const drift.Value('failed'),
           errorMessage: drift.Value(e.toString()),
+          lastAttemptAt: drift.Value(DateTime.now()),
         ),
       );
     }
   }
 
+  Future<void> _handleDioFailure(SyncOperation op, DioException e) async {
+    final status = e.response?.statusCode;
+    final code = _errorCode(e.response?.data);
+
+    if (status == 409 && code == 'IDEMPOTENCY_KEY_CONFLICT') {
+      // The same key was replayed with a different body — a client bug, not
+      // a network retry. Nothing to do but surface it.
+      await _write(
+        op.id,
+        SyncOperationsCompanion(
+          status: const drift.Value('failed'),
+          errorMessage: const drift.Value(
+            'Idempotency key reused with a different request.',
+          ),
+          lastAttemptAt: drift.Value(DateTime.now()),
+        ),
+      );
+      return;
+    }
+
+    if (status == 409) {
+      // A genuinely stale transition — another device or the office already
+      // moved this aggregate. The server is authoritative; the driver
+      // acknowledges and discards.
+      await _write(
+        op.id,
+        SyncOperationsCompanion(
+          status: const drift.Value('conflict'),
+          errorMessage: drift.Value(e.response?.data.toString() ?? e.message),
+          lastAttemptAt: drift.Value(DateTime.now()),
+        ),
+      );
+      return;
+    }
+
+    if (status != null && status >= 400 && status < 500) {
+      // A permanent bad request (422 validation, 404, …) — replaying the
+      // identical payload will keep failing.
+      await _write(
+        op.id,
+        SyncOperationsCompanion(
+          status: const drift.Value('failed'),
+          errorMessage: drift.Value('HTTP $status: ${e.message}'),
+          lastAttemptAt: drift.Value(DateTime.now()),
+        ),
+      );
+      return;
+    }
+
+    // Network error, timeout or 5xx — retryable. Back off, or give up once
+    // the attempts are exhausted.
+    final attempts = op.retryCount + 1;
+    await _write(
+      op.id,
+      SyncOperationsCompanion(
+        status: drift.Value(attempts >= _maxRetries ? 'failed' : 'error'),
+        retryCount: drift.Value(attempts),
+        errorMessage: drift.Value(e.message ?? 'Network error'),
+        lastAttemptAt: drift.Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> _write(String id, SyncOperationsCompanion values) async {
+    await (_db.update(_db.syncOperations)..where((t) => t.id.equals(id))).write(
+      values,
+    );
+  }
+
+  static String? _errorCode(Object? data) {
+    if (data is Map && data['error_code'] is String) {
+      return data['error_code'] as String;
+    }
+    return null;
+  }
+
   /// Routes a queued operation to its real backend endpoint by `op.type`.
   ///
-  /// Each case hits `_apiClient.dio` directly rather than going through the
-  /// matching `api_client` wrapper class (e.g. `OrderApi.createOrder`) even
-  /// though that class exists and builds the identical request — those
-  /// wrappers return a `Result`, swallowing `DioException` (including the
-  /// HTTP status code) into a plain `Failure`. `_processOperation`'s
-  /// catch blocks above need the real exception to tell a 409 conflict
-  /// apart from a retryable network error, so the request is built here
-  /// with the same shape instead.
-  ///
   /// `op.idempotencyKey` (persisted per queued operation, unique in
-  /// `SyncOperations`) is reused as the `Idempotency-Key` header — a retry
+  /// `SyncOperations`) is sent as the `Idempotency-Key` header — a retry
   /// after a dropped connection must replay the *same* key, or the backend
-  /// sees it as a brand new booking rather than a resend of this one.
+  /// applies it twice.
+  ///
+  /// Driver ops carry a `{"path": "...", "body": {...}}` payload so this
+  /// method stays a thin router; the payload is built app-side next to the
+  /// screen that knows the real request shape. (`order_deliver`'s media
+  /// upload sequence is layered on in a later stage.)
   Future<void> _dispatch(SyncOperation op) async {
-    final headers = {'Idempotency-Key': op.idempotencyKey};
+    final options = Options(headers: {'Idempotency-Key': op.idempotencyKey});
 
     switch (op.type) {
-      case 'delivery_confirmation':
-        // Driver App's proof-of-delivery flow. `/deliveries/sync` is not a
-        // real backend route either (out of scope for this fix — tracked
-        // separately from the Customer App order-placement bug this
-        // dispatch was rewritten for); left exactly as it was.
-        await _apiClient.dio.post(
-          '/deliveries/sync',
-          data: op.payload,
-          options: Options(headers: headers),
-        );
       case 'order_gas':
-        // Payload is a `CreateOrderRequest.toJson()` body — Customer App's
-        // order-placement flow (`order_bottom_sheet.dart`). Previously this
-        // fell through to a nonexistent `POST /sync/order_gas` (confirmed
-        // 404 live); this is the real endpoint `OrderApi.createOrder`
-        // itself calls.
+        // Customer App order placement — payload is a `CreateOrderRequest`
+        // body, posted to the same endpoint `OrderApi.createOrder` uses.
         await _apiClient.dio.post(
           '/api/v1/orders',
           data: jsonDecode(op.payload),
-          options: Options(headers: headers),
+          options: options,
+        );
+      case 'order_depart':
+      case 'order_deliver':
+      case 'order_failed_delivery':
+      case 'order_reschedule':
+      case 'cash_handover_declare':
+        final decoded = jsonDecode(op.payload) as Map<String, dynamic>;
+        await _apiClient.dio.post(
+          decoded['path'] as String,
+          data: decoded['body'],
+          options: options,
         );
       default:
         throw StateError(

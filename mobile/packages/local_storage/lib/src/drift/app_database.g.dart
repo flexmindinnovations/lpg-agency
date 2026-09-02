@@ -292,6 +292,30 @@ class $SyncOperationsTable extends SyncOperations
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
+  static const VerificationMeta _retryCountMeta = const VerificationMeta(
+    'retryCount',
+  );
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+    'retry_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -301,6 +325,8 @@ class $SyncOperationsTable extends SyncOperations
     createdAt,
     errorMessage,
     idempotencyKey,
+    retryCount,
+    lastAttemptAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -367,6 +393,21 @@ class $SyncOperationsTable extends SyncOperations
     } else if (isInserting) {
       context.missing(_idempotencyKeyMeta);
     }
+    if (data.containsKey('retry_count')) {
+      context.handle(
+        _retryCountMeta,
+        retryCount.isAcceptableOrUnknown(data['retry_count']!, _retryCountMeta),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -404,6 +445,14 @@ class $SyncOperationsTable extends SyncOperations
         DriftSqlType.string,
         data['${effectivePrefix}idempotency_key'],
       )!,
+      retryCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retry_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
     );
   }
 
@@ -421,6 +470,14 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
   final DateTime createdAt;
   final String? errorMessage;
   final String idempotencyKey;
+
+  /// How many times `SyncCoordinator` has attempted this op. Drives the
+  /// backoff between retries and the cut-over to `failed`.
+  final int retryCount;
+
+  /// When the last attempt ran — `null` until the first. Combined with
+  /// `retryCount` to decide whether the backoff window has elapsed.
+  final DateTime? lastAttemptAt;
   const SyncOperation({
     required this.id,
     required this.type,
@@ -429,6 +486,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     required this.createdAt,
     this.errorMessage,
     required this.idempotencyKey,
+    required this.retryCount,
+    this.lastAttemptAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -442,6 +501,10 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       map['error_message'] = Variable<String>(errorMessage);
     }
     map['idempotency_key'] = Variable<String>(idempotencyKey);
+    map['retry_count'] = Variable<int>(retryCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
     return map;
   }
 
@@ -456,6 +519,10 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           ? const Value.absent()
           : Value(errorMessage),
       idempotencyKey: Value(idempotencyKey),
+      retryCount: Value(retryCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
     );
   }
 
@@ -472,6 +539,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       errorMessage: serializer.fromJson<String?>(json['errorMessage']),
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
     );
   }
   @override
@@ -485,6 +554,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'errorMessage': serializer.toJson<String?>(errorMessage),
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
+      'retryCount': serializer.toJson<int>(retryCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
     };
   }
 
@@ -496,6 +567,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     DateTime? createdAt,
     Value<String?> errorMessage = const Value.absent(),
     String? idempotencyKey,
+    int? retryCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
   }) => SyncOperation(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -504,6 +577,10 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     createdAt: createdAt ?? this.createdAt,
     errorMessage: errorMessage.present ? errorMessage.value : this.errorMessage,
     idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+    retryCount: retryCount ?? this.retryCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
   );
   SyncOperation copyWithCompanion(SyncOperationsCompanion data) {
     return SyncOperation(
@@ -518,6 +595,12 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
       idempotencyKey: data.idempotencyKey.present
           ? data.idempotencyKey.value
           : this.idempotencyKey,
+      retryCount: data.retryCount.present
+          ? data.retryCount.value
+          : this.retryCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
     );
   }
 
@@ -530,7 +613,9 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('errorMessage: $errorMessage, ')
-          ..write('idempotencyKey: $idempotencyKey')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt')
           ..write(')'))
         .toString();
   }
@@ -544,6 +629,8 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
     createdAt,
     errorMessage,
     idempotencyKey,
+    retryCount,
+    lastAttemptAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -555,7 +642,9 @@ class SyncOperation extends DataClass implements Insertable<SyncOperation> {
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.errorMessage == this.errorMessage &&
-          other.idempotencyKey == this.idempotencyKey);
+          other.idempotencyKey == this.idempotencyKey &&
+          other.retryCount == this.retryCount &&
+          other.lastAttemptAt == this.lastAttemptAt);
 }
 
 class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
@@ -566,6 +655,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
   final Value<DateTime> createdAt;
   final Value<String?> errorMessage;
   final Value<String> idempotencyKey;
+  final Value<int> retryCount;
+  final Value<DateTime?> lastAttemptAt;
   final Value<int> rowid;
   const SyncOperationsCompanion({
     this.id = const Value.absent(),
@@ -575,6 +666,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     this.createdAt = const Value.absent(),
     this.errorMessage = const Value.absent(),
     this.idempotencyKey = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncOperationsCompanion.insert({
@@ -585,6 +678,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     this.createdAt = const Value.absent(),
     this.errorMessage = const Value.absent(),
     required String idempotencyKey,
+    this.retryCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        type = Value(type),
@@ -598,6 +693,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     Expression<DateTime>? createdAt,
     Expression<String>? errorMessage,
     Expression<String>? idempotencyKey,
+    Expression<int>? retryCount,
+    Expression<DateTime>? lastAttemptAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -608,6 +705,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
       if (createdAt != null) 'created_at': createdAt,
       if (errorMessage != null) 'error_message': errorMessage,
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
+      if (retryCount != null) 'retry_count': retryCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -620,6 +719,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     Value<DateTime>? createdAt,
     Value<String?>? errorMessage,
     Value<String>? idempotencyKey,
+    Value<int>? retryCount,
+    Value<DateTime?>? lastAttemptAt,
     Value<int>? rowid,
   }) {
     return SyncOperationsCompanion(
@@ -630,6 +731,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
       createdAt: createdAt ?? this.createdAt,
       errorMessage: errorMessage ?? this.errorMessage,
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      retryCount: retryCount ?? this.retryCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -658,6 +761,12 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
     if (idempotencyKey.present) {
       map['idempotency_key'] = Variable<String>(idempotencyKey.value);
     }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -674,6 +783,8 @@ class SyncOperationsCompanion extends UpdateCompanion<SyncOperation> {
           ..write('createdAt: $createdAt, ')
           ..write('errorMessage: $errorMessage, ')
           ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1185,6 +1296,8 @@ typedef $$SyncOperationsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String?> errorMessage,
       required String idempotencyKey,
+      Value<int> retryCount,
+      Value<DateTime?> lastAttemptAt,
       Value<int> rowid,
     });
 typedef $$SyncOperationsTableUpdateCompanionBuilder =
@@ -1196,6 +1309,8 @@ typedef $$SyncOperationsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String?> errorMessage,
       Value<String> idempotencyKey,
+      Value<int> retryCount,
+      Value<DateTime?> lastAttemptAt,
       Value<int> rowid,
     });
 
@@ -1240,6 +1355,16 @@ class $$SyncOperationsTableFilterComposer
 
   ColumnFilters<String> get idempotencyKey => $composableBuilder(
     column: $table.idempotencyKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1287,6 +1412,16 @@ class $$SyncOperationsTableOrderingComposer
     column: $table.idempotencyKey,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncOperationsTableAnnotationComposer
@@ -1320,6 +1455,16 @@ class $$SyncOperationsTableAnnotationComposer
 
   GeneratedColumn<String> get idempotencyKey => $composableBuilder(
     column: $table.idempotencyKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get retryCount => $composableBuilder(
+    column: $table.retryCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
     builder: (column) => column,
   );
 }
@@ -1364,6 +1509,8 @@ class $$SyncOperationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> errorMessage = const Value.absent(),
                 Value<String> idempotencyKey = const Value.absent(),
+                Value<int> retryCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncOperationsCompanion(
                 id: id,
@@ -1373,6 +1520,8 @@ class $$SyncOperationsTableTableManager
                 createdAt: createdAt,
                 errorMessage: errorMessage,
                 idempotencyKey: idempotencyKey,
+                retryCount: retryCount,
+                lastAttemptAt: lastAttemptAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1384,6 +1533,8 @@ class $$SyncOperationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String?> errorMessage = const Value.absent(),
                 required String idempotencyKey,
+                Value<int> retryCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncOperationsCompanion.insert(
                 id: id,
@@ -1393,6 +1544,8 @@ class $$SyncOperationsTableTableManager
                 createdAt: createdAt,
                 errorMessage: errorMessage,
                 idempotencyKey: idempotencyKey,
+                retryCount: retryCount,
+                lastAttemptAt: lastAttemptAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
