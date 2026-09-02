@@ -100,16 +100,37 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             device_repo = SqlAlchemyDeviceTokenRepository(session)
             identity_repo = SqlAlchemyIdentityUserRepository(database)
 
-            # Resolve recipients. None of the order-lifecycle handlers
-            # (`notification_handlers.py`) put anything but `order_id` on the
-            # payload, so every type below resolves its recipient by fetching
-            # the order itself rather than trusting extra payload fields.
+            # Resolve recipients. The order-lifecycle handlers
+            # (`notification_handlers.py`) put nothing but `order_id` on the
+            # payload and resolve their recipient by fetching the order;
+            # `cash_shortfall_staff` is route-scoped and carries no order.
             recipient_user_ids: list[uuid.UUID] = []
 
             order_repo = SqlAlchemyOrderRepository(uow)
-            order = await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
-            if order is None:
-                _logger.warning("order_not_found", order_id=payload["order_id"])
+            order = (
+                await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
+                if "order_id" in payload
+                else None
+            )
+            if notification_type == "cash_shortfall_staff":
+                # Tenant-wide ops team — a cash discrepancy is the office's
+                # problem, not one branch's. Same identity-role resolution as
+                # `order_placed_staff` (the demo seed doesn't wire the
+                # employee -> phone -> identity hop `EmployeeBranchStaffResolver`
+                # needs).
+                from lpg.infrastructure.persistence.repositories.identity import (
+                    SqlAlchemyStaffUserRepository,
+                )
+
+                staff_repo = SqlAlchemyStaffUserRepository(database, tenant_id)
+                staff = await staff_repo.list_for_tenant(
+                    tenant_id, exclude_roles=_NON_STAFF_ROLES
+                )
+                recipient_user_ids = [
+                    u.id for u in staff if u.role in _STAFF_ALERT_ROLES and u.is_active
+                ]
+            elif order is None:
+                _logger.warning("order_not_found", order_id=payload.get("order_id"))
             elif notification_type == "delivery_failed_staff":
                 employee_repo = SqlAlchemyEmployeeRepository(uow)
                 resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
@@ -165,8 +186,16 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             # Format content
             title = _get_title(notification_type)
             body = _get_body(notification_type, payload)
-            reference_type = "order"
-            reference_id = uuid.UUID(payload["order_id"]) if "order_id" in payload else None
+            reference_type: str
+            reference_id: uuid.UUID | None
+            if notification_type == "cash_shortfall_staff":
+                reference_type = "cash_handover"
+                reference_id = uuid.UUID(payload["cash_handover_id"])
+            else:
+                reference_type = "order"
+                reference_id = (
+                    uuid.UUID(payload["order_id"]) if "order_id" in payload else None
+                )
 
             email_channel = StubEmailChannel()
             sms_channel = StubSmsChannel()
@@ -309,12 +338,20 @@ def _get_title(notification_type: str) -> str:
         "invoice_generated": "Invoice Generated",
         "delivery_failed_staff": "Delivery Failed Alert",
         "order_placed_staff": "New Order",
+        "cash_shortfall_staff": "Cash Shortfall Declared",
     }
     return titles.get(notification_type, "Notification")
 
 
 def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
     order_id_short = payload.get("order_id", "Unknown")[:8].upper()
+    if notification_type == "cash_shortfall_staff":
+        route_short = payload.get("route_id", "Unknown")[:8].upper()
+        return (
+            f"Cash shortfall of ₹{payload.get('shortfall', '?')} on route "
+            f"#{route_short}: expected ₹{payload.get('expected_amount', '?')}, "
+            f"driver handed over ₹{payload.get('actual_amount', '?')}."
+        )
     bodies = {
         "order_placed": (
             f"We've received your order #{order_id_short}. "
@@ -336,7 +373,14 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
 
 
 def _should_send_email(notification_type: str) -> bool:
-    return notification_type in {"booking_confirmed", "delivery_confirmed", "invoice_generated"}
+    # `cash_shortfall_staff` also goes to email — a money discrepancy wants a
+    # written trail the office can forward, not just a dashboard badge.
+    return notification_type in {
+        "booking_confirmed",
+        "delivery_confirmed",
+        "invoice_generated",
+        "cash_shortfall_staff",
+    }
 
 
 def _should_send_sms(notification_type: str) -> bool:
@@ -349,9 +393,10 @@ def _should_send_sms(notification_type: str) -> bool:
 
 
 def _should_send_push(notification_type: str) -> bool:
-    # Every customer- and driver-facing lifecycle event. `delivery_failed_
-    # staff` is intentionally excluded — staff use the dashboard, not the
-    # mobile apps that register device tokens.
+    # Every customer- and driver-facing lifecycle event. The `*_staff` alerts
+    # (`delivery_failed_staff`, `order_placed_staff`, `cash_shortfall_staff`)
+    # are intentionally excluded — staff use the dashboard, not the mobile
+    # apps that register device tokens.
     return notification_type in {
         "order_placed",
         "booking_confirmed",

@@ -74,3 +74,26 @@ def test_order_placed_staff_has_title_and_body() -> None:
 def test_title_and_body_have_a_safe_fallback() -> None:
     assert _get_title("unmapped") == "Notification"
     assert _get_body("unmapped", {}) == "You have a new notification."
+
+
+def test_cash_shortfall_staff_title_and_body() -> None:
+    assert _get_title("cash_shortfall_staff") == "Cash Shortfall Declared"
+    body = _get_body(
+        "cash_shortfall_staff",
+        {
+            "route_id": "d9cfd7b3-3333-4444-5555-666677778888",
+            "expected_amount": "1811.00",
+            "actual_amount": "1800.00",
+            "shortfall": "11.00",
+        },
+    )
+    assert "D9CFD7B3" in body
+    assert "₹11.00" in body
+    assert "₹1811.00" in body
+    assert "₹1800.00" in body
+
+
+def test_cash_shortfall_staff_goes_to_dashboard_and_email_but_not_push() -> None:
+    assert _should_send_email("cash_shortfall_staff") is True
+    assert _should_send_sms("cash_shortfall_staff") is False
+    assert _should_send_push("cash_shortfall_staff") is False

@@ -2,6 +2,7 @@
 
 import structlog
 
+from lpg.domain.accounting.cash_handover import CashShortfallDeclared
 from lpg.domain.accounting.invoice import InvoiceGenerated
 from lpg.domain.common.base import DomainEvent
 from lpg.domain.delivery.route import OrderAssignedToRoute, RouteStatusChanged
@@ -122,6 +123,25 @@ def register_notification_handlers(
             },
         )
 
+    async def _on_cash_shortfall_declared(event: DomainEvent) -> None:
+        assert isinstance(event, CashShortfallDeclared)
+        # The office needs to know a driver handed over less cash than the
+        # route's deliveries collected (BR-32). Fires only on a genuine
+        # shortfall — `CashHandover.declare` records no event when the
+        # amounts match or the driver hands over more.
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "cash_shortfall_staff",
+                "tenant_id": str(event.tenant_id),
+                "cash_handover_id": str(event.cash_handover_id),
+                "route_id": str(event.route_id),
+                "expected_amount": str(event.expected_amount),
+                "actual_amount": str(event.actual_amount),
+                "shortfall": str(event.shortfall),
+            },
+        )
+
     async def _on_delivery_failed(event: DomainEvent) -> None:
         assert isinstance(event, DeliveryFailed)
         # We need branch_id for staff resolution, which isn't on DeliveryFailed.
@@ -143,3 +163,4 @@ def register_notification_handlers(
     dispatcher.register(CylinderDelivered, _on_cylinder_delivered)
     dispatcher.register(InvoiceGenerated, _on_invoice_generated)
     dispatcher.register(DeliveryFailed, _on_delivery_failed)
+    dispatcher.register(CashShortfallDeclared, _on_cash_shortfall_declared)

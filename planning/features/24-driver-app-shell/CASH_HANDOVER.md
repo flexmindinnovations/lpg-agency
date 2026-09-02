@@ -233,9 +233,20 @@ live in Stage 1.
 
 - Today nudge subtitle truncates the trailing " route" on narrow screens —
   cosmetic.
-- `CashShortfallDeclared` still has no consumer — a shortfall doesn't alert
-  the office (flagged in Stage 1).
 - No per-past-route cash chip beyond the latest — needs a batch read.
+
+## Post-completion additions
+
+- **`CashShortfallDeclared` → office notification** (2026-09-02) —
+  `_on_cash_shortfall_declared` in `notification_handlers.py` enqueues a
+  `cash_shortfall_staff` job; `notification_jobs.py` resolves the tenant's
+  ops team (`agency_admin` / `manager` / `dispatcher`) and sends an in-app
+  notification + email ("Cash shortfall of ₹X on route #Y: expected ₹A,
+  driver handed over ₹B", `reference_type: cash_handover`). No push (staff
+  use the dashboard). Fires only on a real shortfall. Verified live: a
+  ₹55.50 shortfall on the seeded route produced 3 in-app rows + 3 email
+  logs. Tests: `test_infrastructure_notification_handlers.py` +1,
+  `test_infrastructure_notification_jobs.py` +2.
 
 ---
 

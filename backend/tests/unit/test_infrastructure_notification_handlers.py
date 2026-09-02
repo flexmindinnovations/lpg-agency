@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
 
+from lpg.domain.accounting.cash_handover import CashShortfallDeclared
 from lpg.domain.order.order import BookingConfirmed, BookingCreated
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.events.notification_handlers import (
@@ -104,6 +106,37 @@ async def test_every_non_staff_source_alerts_staff(source: str) -> None:
     enqueued_types = {payload.get("type") for _, payload in queue.enqueued}
     assert "order_placed_staff" in enqueued_types
     assert "order_placed" in enqueued_types
+
+
+@pytest.mark.asyncio
+async def test_cash_shortfall_enqueues_a_staff_alert() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = CashShortfallDeclared(
+        cash_handover_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        driver_id=uuid.uuid4(),
+        route_id=uuid.uuid4(),
+        expected_amount=Decimal("1811.00"),
+        actual_amount=Decimal("1800.00"),
+        shortfall=Decimal("11.00"),
+    )
+    await dispatcher.dispatch([event])
+
+    assert (
+        "send_notification",
+        {
+            "type": "cash_shortfall_staff",
+            "tenant_id": str(event.tenant_id),
+            "cash_handover_id": str(event.cash_handover_id),
+            "route_id": str(event.route_id),
+            "expected_amount": "1811.00",
+            "actual_amount": "1800.00",
+            "shortfall": "11.00",
+        },
+    ) in queue.enqueued
 
 
 @pytest.mark.asyncio
