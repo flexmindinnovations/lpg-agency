@@ -7,6 +7,7 @@ from lpg.domain.accounting.invoice import InvoiceGenerated
 from lpg.domain.common.base import DomainEvent
 from lpg.domain.delivery.route import OrderAssignedToRoute, RouteStatusChanged
 from lpg.domain.order.order import (
+    BookingCancelled,
     BookingConfirmed,
     BookingCreated,
     CylinderDelivered,
@@ -143,6 +144,20 @@ def register_notification_handlers(
             },
         )
 
+    async def _on_booking_cancelled(event: DomainEvent) -> None:
+        assert isinstance(event, BookingCancelled)
+        # Only matters to a driver who's already out running the route the
+        # cancelled order was on — the job resolves the stop -> route ->
+        # driver and drops it unless the route is `in_progress`.
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "stop_cancelled",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+            },
+        )
+
     async def _on_delivery_failed(event: DomainEvent) -> None:
         assert isinstance(event, DeliveryFailed)
         # We need branch_id for staff resolution, which isn't on DeliveryFailed.
@@ -165,3 +180,4 @@ def register_notification_handlers(
     dispatcher.register(InvoiceGenerated, _on_invoice_generated)
     dispatcher.register(DeliveryFailed, _on_delivery_failed)
     dispatcher.register(CashShortfallDeclared, _on_cash_shortfall_declared)
+    dispatcher.register(BookingCancelled, _on_booking_cancelled)

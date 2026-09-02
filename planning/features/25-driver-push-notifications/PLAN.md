@@ -1,7 +1,7 @@
 # Plan: Driver app push notifications
 
 **Phase:** 25
-**Status:** Phases A–B done 2026-09-02 (verified end-to-end on emulator) · Phases C–D pending
+**Status:** Phases A–C done 2026-09-02 (verified end-to-end on emulator) · Phase D (optional polish) pending
 **Drafted:** 2026-09-02
 
 ---
@@ -226,14 +226,28 @@ sent for an `in_progress` one.
 
 ---
 
-## Phase C — Backend: stop-cancelled push
+## Phase C — Backend: stop-cancelled push  ✅ DONE 2026-09-02
 
-`BookingCancelled` (`{order_id, tenant_id, cancelled_by, ...}`) → new
-notification handler → if the order is on an active route (`route_stop_id`
-set, route `in_progress`) → `stop_cancelled` job → push the route's driver:
-*"Stop #X was cancelled — skip it."*, `reference_type: order`. Lower
-priority; a driver arriving at a cancelled stop is annoying but recoverable
-(the stop detail already shows a non-actionable status).
+**Verified live**: manager cancelled an order on the e2e driver's
+`in_progress` route (`POST /orders/{id}/cancel`) → `BookingCancelled` →
+`stop_cancelled` job → in-app *"Order #F6C8A720 was cancelled — you can skip
+that stop."* + push `sent` to `e2e.driver@example.com` → tray notification
+on `emulator-5554`. `reference_type: order`.
+
+- **Handler** — `_on_booking_cancelled` in `notification_handlers.py`
+  enqueues `{type: "stop_cancelled", tenant_id, order_id}`. Fires for every
+  `BookingCancelled` (both `cancel_free` and manager `approve_cancellation`);
+  the job does the filtering.
+- **Job** — `stop_cancelled` branch: fetch the order, and only if
+  `order.route_stop_id` is set **and** `route.status == "in_progress"`
+  resolve `driver.identity_user_id`. A cancellation before the driver leaves
+  the depot → no push (they see the stop's status when they next open the
+  app). In-app + push only; `reference_type: order` → the tap deep-links to
+  the stop detail (which already shows the "nothing to do — cancelled"
+  state).
+- **Tests** — `test_infrastructure_notification_handlers.py` +1
+  (`BookingCancelled` → `stop_cancelled`), `test_infrastructure_notification_jobs.py`
+  +1 (title/body/channels). 768 unit pass.
 
 ---
 

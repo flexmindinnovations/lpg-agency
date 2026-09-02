@@ -192,6 +192,21 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                         driver_assigned_live = (
                             route is not None and route.status == "in_progress"
                         )
+            elif notification_type == "stop_cancelled":
+                # Only reaches the driver if they're already out running the
+                # route — a cancellation before they leave the depot needs no
+                # push (they'll see the stop's status when they open the app).
+                if order.route_stop_id is not None:
+                    route_repo = SqlAlchemyRouteRepository(uow)
+                    owner = await route_repo.get_stop_owner(order.route_stop_id)
+                    if owner is not None:
+                        route = await route_repo.get_by_id(owner.route_id)
+                        if route is not None and route.status == "in_progress":
+                            driver = await SqlAlchemyDriverRepository(uow).get_by_id(
+                                owner.driver_id
+                            )
+                            if driver and driver.identity_user_id:
+                                recipient_user_ids = [driver.identity_user_id]
             else:
                 customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
                 customer = await customer_repo.get_by_id(order.customer_id)
@@ -370,6 +385,7 @@ def _get_title(notification_type: str) -> str:
         "order_placed_staff": "New Order",
         "cash_shortfall_staff": "Cash Shortfall Declared",
         "route_ready": "Route Ready",
+        "stop_cancelled": "Stop Cancelled",
     }
     return titles.get(notification_type, "Notification")
 
@@ -402,6 +418,9 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         ),
         "order_placed_staff": (
             f"Order #{order_id_short} was just placed and is awaiting confirmation."
+        ),
+        "stop_cancelled": (
+            f"Order #{order_id_short} was cancelled — you can skip that stop."
         ),
     }
     return bodies.get(notification_type, "You have a new notification.")
@@ -442,4 +461,5 @@ def _should_send_push(notification_type: str) -> bool:
         "delivery_confirmed",
         "invoice_generated",
         "route_ready",
+        "stop_cancelled",
     }

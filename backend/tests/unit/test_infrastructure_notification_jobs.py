@@ -48,6 +48,16 @@ def test_route_ready_is_push_plus_in_app_only() -> None:
     assert _should_send_email("route_ready") is False
 
 
+def test_stop_cancelled_is_push_plus_in_app_only() -> None:
+    assert _get_title("stop_cancelled") == "Stop Cancelled"
+    body = _get_body("stop_cancelled", {"order_id": "abcd1234-0000"})
+    assert "ABCD1234" in body
+    assert "skip that stop" in body
+    assert _should_send_push("stop_cancelled") is True
+    assert _should_send_sms("stop_cancelled") is False
+    assert _should_send_email("stop_cancelled") is False
+
+
 def test_order_placed_acknowledges_the_customer_immediately() -> None:
     # Fires on order placement, before the agency confirms — push + in-app,
     # no email/SMS noise (same restraint as the staff alert).

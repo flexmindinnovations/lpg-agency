@@ -16,7 +16,7 @@ import pytest
 
 from lpg.domain.accounting.cash_handover import CashShortfallDeclared
 from lpg.domain.delivery.route import RouteStatusChanged
-from lpg.domain.order.order import BookingConfirmed, BookingCreated
+from lpg.domain.order.order import BookingCancelled, BookingConfirmed, BookingCreated
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.events.notification_handlers import (
     register_notification_handlers,
@@ -186,6 +186,32 @@ async def test_route_status_other_than_loaded_enqueues_nothing(new_status: str) 
     )
 
     assert not any(p.get("type") == "route_ready" for _, p in queue.enqueued)
+
+
+@pytest.mark.asyncio
+async def test_booking_cancelled_enqueues_a_stop_cancelled_job() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = BookingCancelled(
+        order_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        cancelled_by=uuid.uuid4(),
+        approved_by=None,
+        reason="customer changed their mind",
+        cancellation_charge=None,
+    )
+    await dispatcher.dispatch([event])
+
+    assert (
+        "send_notification",
+        {
+            "type": "stop_cancelled",
+            "tenant_id": str(event.tenant_id),
+            "order_id": str(event.order_id),
+        },
+    ) in queue.enqueued
 
 
 @pytest.mark.asyncio
