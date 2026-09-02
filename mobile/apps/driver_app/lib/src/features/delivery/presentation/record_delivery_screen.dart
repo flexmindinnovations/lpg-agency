@@ -5,6 +5,7 @@ import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
@@ -142,13 +143,17 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
       result.when(
         onSuccess: (_) {
-          ref.invalidate(stopOrderProvider(widget.orderId));
           ref.invalidate(activeRouteProvider);
+          ref.invalidate(routeHistoryProvider);
           if (!mounted) return;
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Delivery recorded.')));
-          Navigator.of(context).pop();
+          // Back to the route view rather than the stop detail: a delivered
+          // order drops out of the driver's visibility (and their last stop
+          // completes the route), so popping to `StopDetailScreen` would
+          // strand them on a "stop not found" error.
+          context.go('/');
         },
         onFailure: (failure) => setState(() => _error = failure.message),
       );

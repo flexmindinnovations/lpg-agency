@@ -163,7 +163,7 @@ class _NextStopCard extends StatelessWidget {
           context.pushNamed('stop', pathParameters: {'orderId': next.orderId}),
       child: LpgListTile(
         leadingIcon: Icons.navigation_outlined,
-        title: 'Next stop · Stop ${next.sequenceNumber + 1}',
+        title: 'Next stop · Stop ${next.sequenceNumber}',
         subtitle: 'Order ${next.orderId.substring(0, 8).toUpperCase()}',
         trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
       ),

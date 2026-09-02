@@ -1,7 +1,7 @@
 # Status: Driver App Shell & Design-System Parity
 
 **Phase:** 24
-**Status:** Feature-complete — Stages A–D done; pending broader on-device regression
+**Status:** Feature-complete — Stages A–D2 done, delivery workflow regression-tested on device
 
 ## Context
 
@@ -19,6 +19,26 @@ screen, **no way to log out at all**, no delivery history.
 | C1 — Backend `GET /drivers/me` | ✅ Done — `DriverMeResponse` / `DriverMeVehicle`; endpoint resolves driver from token → employee (name/phone) + active route → vehicle; declared before `/drivers/{driver_id}`. Integration test (driver reads own profile; non-driver → 404). ruff / mypy / lint-imports clean; 752 unit + driver/route smoke pass |
 | C2 — Profile tab enrichment | ✅ Done — `DriverApi.getMe` + `DriverMe`/`DriverMeVehicle` models + `driverProfileProvider`; `ProfileScreen` shows name / phone / licence / vehicle / status + Log Out + version; `main.dart` docstring refreshed. 34 driver + 48 api_client tests pass, analyze clean |
 | D — Emulator verification | ✅ Done — full shell verified live on emulator-5554 against real backend data: **Today** (active route "1 of 2 delivered" + progress bar, next-stop card, location-sharing), **Deliveries** (current stops with status icons + "Past routes" history — completed ×2, cancelled), **Profile** (name/phone/licence/vehicle "TS07UB4412 · Tata Ace Gold"/status from `GET /drivers/me`, Log Out). Splash + themed login verified in Stage A. The dev backend had to be restarted first — `uvicorn --reload` was serving pre-Stage-C1 code (known Windows flakiness). |
+| D2 — Delivery-workflow regression | ✅ Done 2026-09-02 — full **depart → record delivery** run on emulator-5554 against seeded e2e driver (`e2e.driver@example.com`, route `5d5bf7a9`): tap next-stop from **Today** → StopDetail (top-level route, no bottom nav) → "Start this delivery" (`ready_for_dispatch → out_for_delivery`) → "Record delivery" (`/stops/:id/deliver`) → cylinders/payment/OTP (read from `dev:otp-inbox`)/signature/photo → "Confirm delivery" → **lands back on Today, "2 of 7 delivered"**, next stop advances. Also verified: Deliveries-list → StopDetail nav, failed-delivery bottom sheet (`out_for_delivery → failed_delivery`, screen shows the "nothing to do" state), StopMapCard renders LocationIQ `streets` tiles + geocoded "approximate" banner. **Two restructure bugs found & fixed** — see below. |
+
+## Regression fixes (2026-09-02)
+
+The Stage-B restructure (stop/deliver routes lifted above the shell) introduced
+two bugs, both caught by the D2 on-device run and fixed:
+
+1. **Stranded after recording a delivery.** `RecordDeliveryScreen` popped back to
+   `StopDetailScreen`, which re-fetched the now-`delivered` order — but a
+   delivered order drops out of the driver's `_resolve_scope` visibility (and
+   the last stop completes the route), so the screen showed "Could not load this
+   stop — No order visible". Fix: on success `RecordDeliveryScreen` now
+   `context.go('/')` (back to the route view) instead of `Navigator.pop()`, and
+   invalidates `routeHistoryProvider` too.
+   [`record_delivery_screen.dart`](../../../mobile/apps/driver_app/lib/src/features/delivery/presentation/record_delivery_screen.dart)
+2. **Stop-number off-by-one.** `today_screen.dart` and `stop_tile.dart` rendered
+   `Stop ${sequenceNumber + 1}` — but `RouteStop.sequence_number` is 1-based
+   (`route.py:313`, `len(stops) + 1`), so stop 1 showed as "Stop 2". Fixed to
+   `Stop ${sequenceNumber}`; test fixtures corrected from the bogus 0-based
+   assumption.
 
 ## Follow-ups landed after the shell
 
@@ -42,4 +62,5 @@ screen, **no way to log out at all**, no delivery history.
 
 ## Last Updated
 
-2026-09-01 — phase opened, Stage A started.
+2026-09-02 — Stage D2 delivery-workflow regression on emulator; fixed the
+post-delivery navigation strand + the stop-number off-by-one.

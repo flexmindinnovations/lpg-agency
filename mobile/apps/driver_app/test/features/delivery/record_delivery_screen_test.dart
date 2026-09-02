@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
@@ -130,13 +131,21 @@ class _FakePicker implements ImagePicker {
 
 Widget _host(ProviderContainer c) => UncontrolledProviderScope(
   container: c,
-  child: MaterialApp(
+  child: MaterialApp.router(
     theme: LpgTheme.light,
-    initialRoute: '/deliver',
-    routes: {
-      '/': (_) => const Scaffold(body: SizedBox()),
-      '/deliver': (_) => const RecordDeliveryScreen(orderId: 'order-1'),
-    },
+    routerConfig: GoRouter(
+      initialLocation: '/deliver',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(body: Text('home')),
+        ),
+        GoRoute(
+          path: '/deliver',
+          builder: (_, _) => const RecordDeliveryScreen(orderId: 'order-1'),
+        ),
+      ],
+    ),
   ),
 );
 
@@ -237,6 +246,11 @@ void main() {
       expect(pod['gps_lat'], 17.44);
       expect(pod['payment_method'], 'cash');
       expect(adapter.deliverBody!['otp_code'], '123456');
+
+      // On success it leaves the stop entirely (a delivered order drops out
+      // of the driver's visibility) and lands back on the route view.
+      expect(find.byType(RecordDeliveryScreen), findsNothing);
+      expect(find.text('home'), findsOneWidget);
     });
   });
 }

@@ -34,4 +34,4 @@
 ## Stage D — Verification ✅
 - [x] Emulator walkthrough — Today / Deliveries / Profile all verified live against real backend data
 - [x] Screenshots captured
-- [ ] Broader on-device regression of the delivery workflow (depart / record delivery) post-restructure
+- [x] Broader on-device regression of the delivery workflow (depart / record delivery) post-restructure — 2026-09-02; found & fixed the post-delivery navigation strand + stop-number off-by-one (see STATUS "Regression fixes")

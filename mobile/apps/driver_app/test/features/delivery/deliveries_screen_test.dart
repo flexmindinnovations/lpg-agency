@@ -14,7 +14,7 @@ RouteSummary _route({
     RouteStopSummary(
       id: 's1',
       orderId: 'aaaa1111bbbb',
-      sequenceNumber: 0,
+      sequenceNumber: 1,
       status: 'pending',
     ),
   ],
@@ -66,13 +66,13 @@ void main() {
                 RouteStopSummary(
                   id: 's1',
                   orderId: 'aaaa1111bbbb',
-                  sequenceNumber: 0,
+                  sequenceNumber: 1,
                   status: 'delivered',
                 ),
                 RouteStopSummary(
                   id: 's2',
                   orderId: 'cccc2222dddd',
-                  sequenceNumber: 1,
+                  sequenceNumber: 2,
                   status: 'delivered',
                 ),
               ],

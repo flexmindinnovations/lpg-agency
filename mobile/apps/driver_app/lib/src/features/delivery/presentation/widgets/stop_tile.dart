@@ -19,7 +19,7 @@ class StopTile extends StatelessWidget {
       onTap: onTap,
       child: LpgListTile(
         leadingIcon: done ? Icons.check_circle_outline : Icons.circle_outlined,
-        title: 'Stop ${stop.sequenceNumber + 1}',
+        title: 'Stop ${stop.sequenceNumber}',
         subtitle: 'Order ${stop.orderId.substring(0, 8).toUpperCase()}',
         trailing: Text(stop.status.replaceAll('_', ' ')),
       ),
