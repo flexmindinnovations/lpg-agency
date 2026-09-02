@@ -106,13 +106,28 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             # `cash_shortfall_staff` is route-scoped and carries no order.
             recipient_user_ids: list[uuid.UUID] = []
 
+            # `route_ready` is a mid-route addition the driver must know about
+            # now; `driver_assigned` for a still-being-built route is covered
+            # by the one `route_ready` push, so its push/SMS is suppressed.
+            driver_assigned_live = False
+
             order_repo = SqlAlchemyOrderRepository(uow)
             order = (
                 await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
                 if "order_id" in payload
                 else None
             )
-            if notification_type == "cash_shortfall_staff":
+            if notification_type == "route_ready":
+                driver = await SqlAlchemyDriverRepository(uow).get_by_id(
+                    uuid.UUID(payload["driver_id"])
+                )
+                if driver is not None and driver.identity_user_id is not None:
+                    recipient_user_ids = [driver.identity_user_id]
+                route = await SqlAlchemyRouteRepository(uow).get_by_id(
+                    uuid.UUID(payload["route_id"])
+                )
+                payload["stop_count"] = str(len(route.stops)) if route is not None else "?"
+            elif notification_type == "cash_shortfall_staff":
                 # Tenant-wide ops team — a cash discrepancy is the office's
                 # problem, not one branch's. Same identity-role resolution as
                 # `order_placed_staff` (the demo seed doesn't wire the
@@ -173,6 +188,10 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                         driver = await driver_repo.get_by_id(owner.driver_id)
                         if driver and driver.identity_user_id:
                             recipient_user_ids = [driver.identity_user_id]
+                        route = await route_repo.get_by_id(owner.route_id)
+                        driver_assigned_live = (
+                            route is not None and route.status == "in_progress"
+                        )
             else:
                 customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
                 customer = await customer_repo.get_by_id(order.customer_id)
@@ -191,11 +210,22 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             if notification_type == "cash_shortfall_staff":
                 reference_type = "cash_handover"
                 reference_id = uuid.UUID(payload["cash_handover_id"])
+            elif notification_type == "route_ready":
+                reference_type = "route"
+                reference_id = uuid.UUID(payload["route_id"])
             else:
                 reference_type = "order"
                 reference_id = (
                     uuid.UUID(payload["order_id"]) if "order_id" in payload else None
                 )
+
+            # Channels — per instance, not just per type: a `driver_assigned`
+            # only pushes for a live mid-route addition.
+            send_email = _should_send_email(notification_type)
+            send_sms = _should_send_sms(notification_type)
+            send_push = _should_send_push(notification_type)
+            if notification_type == "driver_assigned":
+                send_push = driver_assigned_live
 
             email_channel = StubEmailChannel()
             sms_channel = StubSmsChannel()
@@ -238,7 +268,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     continue
 
                 # 2. Email Channel
-                if _should_send_email(notification_type) and user.email:
+                if send_email and user.email:
                     email_log = NotificationLog.create(
                         tenant_id=tenant_id,
                         recipient_user_id=user_id,
@@ -262,7 +292,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     await log_repo.save(email_log)
 
                 # 3. SMS Channel
-                if _should_send_sms(notification_type) and user.phone_number:
+                if send_sms and user.phone_number:
                     sms_log = NotificationLog.create(
                         tenant_id=tenant_id,
                         recipient_user_id=user_id,
@@ -286,7 +316,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     await log_repo.save(sms_log)
 
                 # 4. Push Channel — one FCM request per registered device.
-                if _should_send_push(notification_type):
+                if send_push:
                     from lpg.application.notification.ports import PushTokenInvalidError
 
                     for device in await device_repo.list_for_user(user_id):
@@ -339,6 +369,7 @@ def _get_title(notification_type: str) -> str:
         "delivery_failed_staff": "Delivery Failed Alert",
         "order_placed_staff": "New Order",
         "cash_shortfall_staff": "Cash Shortfall Declared",
+        "route_ready": "Route Ready",
     }
     return titles.get(notification_type, "Notification")
 
@@ -352,6 +383,10 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
             f"#{route_short}: expected ₹{payload.get('expected_amount', '?')}, "
             f"driver handed over ₹{payload.get('actual_amount', '?')}."
         )
+    if notification_type == "route_ready":
+        stops = payload.get("stop_count", "?")
+        plural = "" if stops == "1" else "s"
+        return f"Your route is ready — {stops} stop{plural}."
     bodies = {
         "order_placed": (
             f"We've received your order #{order_id_short}. "
@@ -384,9 +419,10 @@ def _should_send_email(notification_type: str) -> bool:
 
 
 def _should_send_sms(notification_type: str) -> bool:
+    # `driver_assigned` dropped SMS with Phase 25-B — the driver app has push
+    # now, and an SMS per stop assigned is expensive noise.
     return notification_type in {
         "booking_confirmed",
-        "driver_assigned",
         "out_for_delivery",
         "delivery_confirmed",
     }
@@ -396,12 +432,14 @@ def _should_send_push(notification_type: str) -> bool:
     # Every customer- and driver-facing lifecycle event. The `*_staff` alerts
     # (`delivery_failed_staff`, `order_placed_staff`, `cash_shortfall_staff`)
     # are intentionally excluded — staff use the dashboard, not the mobile
-    # apps that register device tokens.
+    # apps that register device tokens. `driver_assigned` isn't here either:
+    # the job decides per instance (only a live mid-route addition pushes;
+    # the initial batch is covered by one `route_ready`).
     return notification_type in {
         "order_placed",
         "booking_confirmed",
-        "driver_assigned",
         "out_for_delivery",
         "delivery_confirmed",
         "invoice_generated",
+        "route_ready",
     }

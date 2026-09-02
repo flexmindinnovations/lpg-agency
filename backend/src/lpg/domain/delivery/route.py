@@ -48,6 +48,10 @@ class RouteStatusChanged(DomainEvent):
     route_id: uuid.UUID
     old_status: str
     new_status: str
+    # Carried so thin notification/realtime handlers can resolve the driver
+    # without a DB lookup (e.g. the `route_ready` push on `-> loaded`).
+    tenant_id: uuid.UUID
+    driver_id: uuid.UUID
 
 
 @dataclass(frozen=True, slots=True)
@@ -286,6 +290,8 @@ class Route(AggregateRoot):
                 route_id=self.id,
                 old_status=old_status,
                 new_status=new_status,
+                tenant_id=self._tenant_id,
+                driver_id=self._driver_id,
             )
         )
 
@@ -373,7 +379,11 @@ class Route(AggregateRoot):
             self._status = "in_progress"
             self.record_event(
                 RouteStatusChanged(
-                    route_id=self.id, old_status=old_status, new_status="in_progress"
+                    route_id=self.id,
+                    old_status=old_status,
+                    new_status="in_progress",
+                    tenant_id=self._tenant_id,
+                    driver_id=self._driver_id,
                 )
             )
 

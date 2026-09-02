@@ -121,12 +121,17 @@ class TestRouteStatusTransitions:
         assert route.status == to_status
 
     def test_records_route_status_changed_event(self) -> None:
-        route = _make_route(status="planned")
+        tenant_id = uuid.uuid4()
+        driver_id = uuid.uuid4()
+        route = _make_route(status="planned", tenant_id=tenant_id, driver_id=driver_id)
         route.change_status("loaded")
         events = [e for e in route.events if isinstance(e, RouteStatusChanged)]
         assert len(events) == 1
         assert events[0].old_status == "planned"
         assert events[0].new_status == "loaded"
+        # Carried for the thin notification handler (`route_ready` push).
+        assert events[0].tenant_id == tenant_id
+        assert events[0].driver_id == driver_id
 
     def test_loaded_also_records_vehicle_loaded_event(self) -> None:
         route = _make_route(status="planned")

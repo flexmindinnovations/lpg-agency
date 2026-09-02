@@ -82,24 +82,25 @@ def register_notification_handlers(
 
     async def _on_route_status_changed(event: DomainEvent) -> None:
         assert isinstance(event, RouteStatusChanged)
-        if event.new_status != "in_progress":
+        # `planned -> loaded` = the vehicle's packed and the driver should
+        # head out. One push per route (the job resolves the stop count),
+        # replacing the per-order `driver_assigned` push while the route was
+        # still being built.
+        if event.new_status != "loaded":
             return
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "route_ready",
+                "tenant_id": str(event.tenant_id),
+                "driver_id": str(event.driver_id),
+                "route_id": str(event.route_id),
+            },
+        )
 
-        # The event payload only gives us route_id. The job needs order details.
-        # But wait, RouteStatusChanged doesn't have order_id!
-        # It's better to iterate over the route's stops and enqueue a job per order.
-        # However, we're in the event handler (no DB access).
-        # We must enqueue a job that resolves the orders, OR the event must carry them.
-        # Let's pass the route_id to a new specialized job or let the `send_notification`
-        # handle a `route_in_progress` type which resolves and spawns individual notifications.
-        # For now, let's just enqueue `route_in_progress` and we will fix it later if needed,
-        # but the plan says "Out for Delivery" is triggered by RouteStatusChanged.
-        # I'll enqueue a single job `send_route_notifications` if needed,
-        # or just enqueue it with type `route_in_progress`.
-        # Actually, let's skip out_for_delivery for now if it requires extra jobs not in plan,
-        # or implement it safely. The plan didn't specify modifying RouteStatusChanged.
-        # Let's pass `route_id`.
-        pass  # TODO: implement out_for_delivery when route context is clear.
+        # TODO: a customer-facing "out for delivery" per order on
+        # `-> in_progress` still isn't wired (the `out_for_delivery` type's
+        # title/body/push flags exist but nothing enqueues it).
 
     async def _on_cylinder_delivered(event: DomainEvent) -> None:
         assert isinstance(event, CylinderDelivered)

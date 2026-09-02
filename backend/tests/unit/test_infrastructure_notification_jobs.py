@@ -19,12 +19,33 @@ def test_push_covers_every_customer_and_driver_facing_type() -> None:
     for notification_type in (
         "order_placed",
         "booking_confirmed",
-        "driver_assigned",
         "out_for_delivery",
         "delivery_confirmed",
         "invoice_generated",
+        "route_ready",
     ):
         assert _should_send_push(notification_type) is True
+
+
+def test_driver_assigned_push_and_sms_are_decided_per_instance() -> None:
+    # Phase 25-B: the initial route build is covered by one `route_ready`
+    # push, so `driver_assigned` is neither a blanket push nor SMS type —
+    # the job only pushes it for a live mid-route addition.
+    assert _should_send_push("driver_assigned") is False
+    assert _should_send_sms("driver_assigned") is False
+
+
+def test_route_ready_is_push_plus_in_app_only() -> None:
+    assert _get_title("route_ready") == "Route Ready"
+    assert _get_body("route_ready", {"stop_count": "5"}) == (
+        "Your route is ready — 5 stops."
+    )
+    assert _get_body("route_ready", {"stop_count": "1"}) == (
+        "Your route is ready — 1 stop."
+    )
+    assert _should_send_push("route_ready") is True
+    assert _should_send_sms("route_ready") is False
+    assert _should_send_email("route_ready") is False
 
 
 def test_order_placed_acknowledges_the_customer_immediately() -> None:

@@ -1,7 +1,7 @@
 # Plan: Driver app push notifications
 
 **Phase:** 25
-**Status:** Phase A done 2026-09-02 (verified end-to-end on emulator) · Phases B–D pending
+**Status:** Phases A–B done 2026-09-02 (verified end-to-end on emulator) · Phases C–D pending
 **Drafted:** 2026-09-02
 
 ---
@@ -153,10 +153,41 @@ Check `notification.notification_log` has a `channel='push'` `sent` row.
 
 ---
 
-## Phase B — Backend: route-level "route ready" push
+## Phase B — Backend: route-level "route ready" push  ✅ DONE 2026-09-02
 
-One clean push when the route is actually ready to run, instead of N noisy
-per-stop ones during planning.
+**Verified live** (backend + arq restarted with the change, driver app from
+Phase A still on `emulator-5554`): enqueued a `route_ready` job for the e2e
+driver's route → in-app *"Route Ready — Your route is ready — 7 stops."*
+(`reference_type: route`) + push `sent`, no SMS → tapped the tray
+notification → landed on the Today tab. Enqueued a `driver_assigned` for an
+order on that (`in_progress`) route → push `sent`, **no SMS row** (the
+demotion).
+
+- **B1** — `RouteStatusChanged` gained `tenant_id` + `driver_id` (from the
+  `Route` aggregate); both `record_event(RouteStatusChanged(...))` sites in
+  `route.py` updated. The realtime handler only reads `event.route_id`, so
+  untouched. Domain test asserts the fields propagate.
+- **B2** — `_on_route_status_changed` (was a stub): on `new_status ==
+  "loaded"` → enqueue `{type: "route_ready", tenant_id, driver_id,
+  route_id}`. **Trigger is `loaded`, not `in_progress`** — the office loads
+  the van (`POST /routes/{id}/load`), then the driver's first `depart` moves
+  it `loaded → in_progress` (`DepartOrderUseCase`), so `loaded` is exactly
+  "ready, waiting for the driver". `notification_jobs.py` `route_ready`
+  branch resolves `driver.identity_user_id`, counts stops (job stuffs
+  `stop_count` into the payload for `_get_body`), sends in-app + push only.
+- **B3** — `driver_assigned` dropped from `_should_send_sms` entirely and
+  from `_should_send_push`; the job now computes `send_email/sms/push` once
+  before the recipient loop, and for `driver_assigned` sets
+  `send_push = (route.status == "in_progress")`. A still-planned/loaded
+  route's assignments are in-app only — the one `route_ready` push covers
+  them.
+- **B4** — `test_infrastructure_notification_handlers.py` +2 (`loaded`
+  enqueues `route_ready`; other statuses enqueue nothing).
+  `test_infrastructure_notification_jobs.py` +2 (`route_ready` title/body/
+  channels; `driver_assigned` push/SMS both `False` now).
+  `test_domain_route.py` asserts the new event fields. 766 unit pass.
+
+<details><summary>Original Phase B plan (for reference)</summary>
 
 ### B1. `RouteStatusChanged` carries tenant + driver
 
@@ -190,6 +221,8 @@ in the `driver_assigned` branch.
 Handler enqueues `route_ready` with the right payload on `loaded`; job
 title/body/channels; `driver_assigned` push suppressed for a `planned` route,
 sent for an `in_progress` one.
+
+</details>
 
 ---
 
