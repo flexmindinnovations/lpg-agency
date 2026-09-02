@@ -50,6 +50,13 @@ two bugs, both caught by the D2 on-device run and fixed:
   a **Navigate** button that opens Google/Apple Maps. Verified on the emulator
   (map renders LocationIQ tiles; Navigate launches Google Maps).
 
+## Follow-on work (planned, not started)
+
+- **Cash-handover screen** — [CASH_HANDOVER.md](./CASH_HANDOVER.md). Driver
+  end-of-route cash declaration; needs a backend read endpoint +
+  double-declare guard first. The largest remaining gap in the driver
+  delivery workflow after the shell.
+
 ## Notes
 
 - Plan: [PLAN.md](./PLAN.md) · Tasks: [TASKS.md](./TASKS.md)
