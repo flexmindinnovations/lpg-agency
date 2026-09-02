@@ -116,7 +116,11 @@ async def _seed_staff_user(
 
 
 async def _seed_route_with_cash_delivery(
-    engine: AsyncEngine, *, tenant_id: uuid.UUID, amount_collected: str
+    engine: AsyncEngine,
+    *,
+    tenant_id: uuid.UUID,
+    amount_collected: str,
+    route_status: str = "completed",
 ) -> tuple[uuid.UUID, uuid.UUID]:
     """Branch -> employee -> driver -> vehicle -> customer -> order ->
     route -> one delivered route_stop with a real cash-payment
@@ -231,13 +235,14 @@ async def _seed_route_with_cash_delivery(
                     "INSERT INTO delivery.route "
                     "(id, tenant_id, branch_id, driver_id, vehicle_id, route_date, status) "
                     "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :driver_id, :vehicle_id, "
-                    "now(), 'completed') RETURNING id"
+                    "now(), :route_status) RETURNING id"
                 ),
                 {
                     "tenant_id": str(tenant_id),
                     "branch_id": str(branch_id),
                     "driver_id": str(driver_id),
                     "vehicle_id": str(vehicle_id),
+                    "route_status": route_status,
                 },
             )
         ).scalar_one()
@@ -417,3 +422,133 @@ class TestCashHandoverEndpointsThroughTheRealStack:
             },
         )
         assert response.status_code == 403, response.text
+
+    async def test_for_route_view_before_and_after_declaring(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@cash-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Cash Handover Smoke Tenant (view)",
+        )
+        driver_id, route_id = await _seed_route_with_cash_delivery(
+            admin_engine_lpg_test, tenant_id=tenant_id, amount_collected="750.00"
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        before = await real_lifespan_client.get(
+            f"/api/v1/cash-handovers/for-route/{route_id}", headers=headers
+        )
+        assert before.status_code == 200, before.text
+        body = before.json()
+        assert body["expected_amount"] == "750.00"
+        assert body["cash_stop_count"] == 1
+        assert body["route_status"] == "completed"
+        assert body["handover"] is None
+
+        declared = await real_lifespan_client.post(
+            "/api/v1/cash-handovers",
+            headers=headers,
+            json={
+                "driver_id": str(driver_id),
+                "route_id": str(route_id),
+                "actual_amount": "750.00",
+            },
+        )
+        assert declared.status_code == 201, declared.text
+
+        after = await real_lifespan_client.get(
+            f"/api/v1/cash-handovers/for-route/{route_id}", headers=headers
+        )
+        assert after.status_code == 200, after.text
+        handover = after.json()["handover"]
+        assert handover is not None
+        assert handover["actual_amount"] == "750.00"
+        assert handover["shortfall"] in ("0", "0.00")
+        assert handover["handover_number"] is not None
+
+    async def test_second_declaration_for_a_route_is_a_conflict(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@cash-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Cash Handover Smoke Tenant (dup)",
+        )
+        driver_id, route_id = await _seed_route_with_cash_delivery(
+            admin_engine_lpg_test, tenant_id=tenant_id, amount_collected="300.00"
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+        payload = {
+            "driver_id": str(driver_id),
+            "route_id": str(route_id),
+            "actual_amount": "300.00",
+        }
+
+        first = await real_lifespan_client.post(
+            "/api/v1/cash-handovers", headers=headers, json=payload
+        )
+        assert first.status_code == 201, first.text
+
+        second = await real_lifespan_client.post(
+            "/api/v1/cash-handovers", headers=headers, json=payload
+        )
+        assert second.status_code == 409, second.text
+        assert second.json()["error_code"] == "CONFLICT"
+
+    async def test_declaration_rejected_while_route_is_in_progress(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@cash-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Cash Handover Smoke Tenant (early)",
+        )
+        driver_id, route_id = await _seed_route_with_cash_delivery(
+            admin_engine_lpg_test,
+            tenant_id=tenant_id,
+            amount_collected="300.00",
+            route_status="in_progress",
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await real_lifespan_client.post(
+            "/api/v1/cash-handovers",
+            headers=headers,
+            json={
+                "driver_id": str(driver_id),
+                "route_id": str(route_id),
+                "actual_amount": "300.00",
+            },
+        )
+        assert response.status_code == 422, response.text

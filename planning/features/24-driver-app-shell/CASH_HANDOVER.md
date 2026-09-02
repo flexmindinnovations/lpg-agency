@@ -1,7 +1,7 @@
 # Plan: Driver cash-handover screen
 
 **Phase:** 24 (increment — follows the shell + Stage-D2 regression work)
-**Status:** Planned, not started
+**Status:** Stage 1 (backend) done 2026-09-02 · Stages 2–5 (mobile) pending
 **Drafted:** 2026-09-02
 
 ---
@@ -47,14 +47,25 @@ delivery workflow just ends.
 
 ---
 
-## Stage 1 — Backend: read endpoint + double-declare guard
+## Stage 1 — Backend: read endpoint + double-declare guard  ✅ DONE 2026-09-02
 
-### 1a. `GET /api/v1/cash-handovers/for-route/{route_id}`
+Commit: *(pending)*. 757 unit + 7 cash-handover / 4 driver integration tests
+pass; ruff / mypy / lint-imports clean. Verified live against the dev DB with
+the seeded e2e driver (declare → 201 `CSH000003` shortfall computed
+server-side → re-GET shows the handover → second declare → 409).
+
+**Deviation from the draft:** the GET is **not** driver-only. A `driver`
+principal is scoped to their own routes; dispatch staff (who also hold
+`cash_handovers:declare`, per `c039189dfbdc`) can read any route in their
+tenant — the same "or dispatcher/manager on their behalf" split the POST
+already has. RLS on `route_repository.get_by_id` keeps it tenant-scoped.
+
+### 1a. `GET /api/v1/cash-handovers/for-route/{route_id}`  ✅
 
 New, in [cash_handover.py](../../../backend/src/lpg/api/v1/routers/cash_handover.py).
-`require_permission("cash_handovers:declare")` (or `routes:read`), driver-scoped
-exactly like the POST (`route.driver_id != caller's driver → 404`,
-indistinguishable from not-found).
+`require_permission("cash_handovers:declare")`. Driver principal → scoped to
+their routes; staff → any in-tenant route. `404` for a route the caller
+can't see (indistinguishable from not-found).
 
 Response — one call, everything the screen needs:
 
@@ -69,31 +80,39 @@ class RouteCashHandoverView(BaseModel):
     handover: CashHandoverResponse | None   # null = not yet declared
 ```
 
-New use case `GetRouteCashHandoverViewUseCase` in `application/accounting`; new
-port method `CashHandoverRepository.get_by_route(route_id) -> CashHandover | None`.
+Use case `GetRouteCashHandoverViewUseCase` + `RouteCashHandoverView` dataclass
+in `application/accounting/use_cases.py`; port methods
+`CashHandoverRepository.get_by_route()` and `.count_cash_stops_for_route()`
+(the latter feeds `cash_stop_count` — "you should have ₹X from N cash
+deliveries"). Schema `RouteCashHandoverResponse` in `schemas/cash_handover.py`.
 
-### 1b. Guard the POST
+### 1b. Guard the POST  ✅
 
-In `DeclareCashHandoverUseCase.execute`, after the route check: if
-`get_by_route()` is not None → raise
-`ConflictError("Cash handover already declared for this route.")`
-(`error_code: "CONFLICT"`). Also require `route.status == "completed"` (BR-32
-says "completed route") → `ValidationError` otherwise (**decision 1**).
+In `DeclareCashHandoverUseCase.execute`, after the route check:
+`get_by_route()` not None → `ConflictError` (409 `CONFLICT`); then
+`route.status != "completed"` → `ValidationError` (422).
 
-### 1c. Migration
+### 1c. Migration  ✅
 
-Unique index `uq_cash_handover_route ON accounting.cash_handover (route_id)` —
-DB-level backstop for 1b.
+[`a7f1c93e6b20_cash_handover_route_unique.py`](../../../backend/migrations/versions/a7f1c93e6b20_cash_handover_route_unique.py)
+— collapses any pre-existing duplicates (keep earliest per route), then
+`ADD CONSTRAINT uq_cash_handover_route UNIQUE (route_id)`. The dev DB *had*
+a dupe (the bug); test DB migrated clean.
 
-### 1d. Tests
+### 1d. Tests  ✅
 
-- unit: `get_by_route` None → declare succeeds; row present → `ConflictError`.
-- integration smoke (seeded e2e driver): completed route + one cash POD →
-  `GET .../for-route` shows `expected_amount`, `handover: null` → `POST` → 201 →
-  `GET` now shows the handover → second `POST` → 409. Another driver's
-  `GET`/`POST` → 404.
+- unit (`test_accounting_use_cases.py`): declare → `ConflictError` when a
+  handover exists; `ValidationError` when route not `completed`; new
+  `TestGetRouteCashHandoverViewUseCase` (undeclared → expected + null handover;
+  declared → handover included; other driver's route → `NotFoundError`).
+  `_make_route` / `mock_cash_handover_repo` fixtures updated.
+- integration (`test_cash_handover_endpoints_smoke.py`): `for-route` view
+  before/after declare (expected `750.00`, `cash_stop_count 1`, then handover
+  populated); second declare → 409 `CONFLICT`; declare while `in_progress`
+  → 422. `_seed_route_with_cash_delivery` gained a `route_status` param.
 
-Gate: `uv run pytest`, `ruff check src tests`, `mypy src`, `lint-imports`.
+Gate: `pytest tests/unit` (757 pass), cash-handover + driver integration
+(11 pass), `ruff check src tests`, `mypy src`, `lint-imports` — all clean.
 
 ---
 

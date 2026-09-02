@@ -14,6 +14,7 @@ from lpg.application.accounting.ports import (
     CreditNoteRepository,
     InvoiceRepository,
 )
+from lpg.domain.accounting.cash_handover import CashHandover
 from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import Invoice, InvoiceLine, Payment
 from lpg.infrastructure.persistence.models.accounting import (
@@ -25,7 +26,6 @@ from lpg.infrastructure.persistence.models.accounting import (
 )
 
 if TYPE_CHECKING:
-    from lpg.domain.accounting.cash_handover import CashHandover
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -260,6 +260,19 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
         )
         self._uow.register_aggregate(handover)
 
+    def _to_domain(self, model: CashHandoverModel) -> CashHandover:
+        return CashHandover(
+            cash_handover_id=model.id,
+            tenant_id=model.tenant_id,
+            driver_id=model.driver_id,
+            route_id=model.route_id,
+            expected_amount=model.expected_amount,
+            actual_amount=model.actual_amount,
+            declared_by=model.declared_by,
+            handover_number=model.handover_number,
+            declared_at=model.declared_at,
+        )
+
     async def get_expected_cash_for_route(self, route_id: uuid.UUID) -> Decimal:
         from sqlalchemy import text
 
@@ -277,6 +290,24 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
         """)
         result = await self._session.scalar(stmt, {"route_id": route_id})
         return Decimal(result) if result is not None else Decimal("0")
+
+    async def count_cash_stops_for_route(self, route_id: uuid.UUID) -> int:
+        from sqlalchemy import text
+
+        stmt = text("""
+            SELECT COUNT(*)
+            FROM delivery.route_stop rs
+            JOIN orders.proof_of_delivery pod ON pod.order_id = rs.order_id
+            WHERE rs.route_id = :route_id AND pod.payment_method = 'cash'
+        """)
+        result = await self._session.scalar(stmt, {"route_id": route_id})
+        return int(result) if result is not None else 0
+
+    async def get_by_route(self, route_id: uuid.UUID) -> CashHandover | None:
+        model = await self._session.scalar(
+            select(CashHandoverModel).where(CashHandoverModel.route_id == route_id)
+        )
+        return self._to_domain(model) if model is not None else None
 
 
 class SqlAlchemyCreditNoteRepository(CreditNoteRepository):

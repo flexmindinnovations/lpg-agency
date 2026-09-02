@@ -20,6 +20,8 @@ from lpg.application.accounting.use_cases import (
     GenerateInvoiceForOrderUseCase,
     GetInvoiceQuery,
     GetInvoiceUseCase,
+    GetRouteCashHandoverViewQuery,
+    GetRouteCashHandoverViewUseCase,
     ListInvoicesQuery,
     ListInvoicesUseCase,
     RecordPaymentCommand,
@@ -27,7 +29,7 @@ from lpg.application.accounting.use_cases import (
     RequestRefundCommand,
     RequestRefundUseCase,
 )
-from lpg.application.common.errors import NotFoundError, ValidationError
+from lpg.application.common.errors import ConflictError, NotFoundError, ValidationError
 from lpg.domain.accounting.cash_handover import CashHandover
 from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import Invoice, InvoiceLine
@@ -537,10 +539,14 @@ class TestListInvoicesUseCase:
 # ---------------------------------------------------------------------------
 
 
-def _make_route(*, tenant_id: uuid.UUID, driver_id: uuid.UUID) -> MagicMock:
+def _make_route(
+    *, tenant_id: uuid.UUID, driver_id: uuid.UUID, status: str = "completed"
+) -> MagicMock:
     route = MagicMock()
     route.tenant_id = tenant_id
     route.driver_id = driver_id
+    route.status = status
+    route.date = datetime(2026, 9, 1, tzinfo=UTC)
     return route
 
 
@@ -550,6 +556,8 @@ def mock_cash_handover_repo() -> MagicMock:
     repo.next_id = MagicMock(return_value=uuid.uuid4())
     repo.add = AsyncMock()
     repo.get_expected_cash_for_route = AsyncMock(return_value=Decimal("0"))
+    repo.count_cash_stops_for_route = AsyncMock(return_value=0)
+    repo.get_by_route = AsyncMock(return_value=None)
     return repo
 
 
@@ -664,6 +672,129 @@ class TestDeclareCashHandoverUseCase:
             await use_case.execute(command)
 
         mock_cash_handover_repo.add.assert_not_called()
+
+    async def test_raises_conflict_when_already_declared(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+        mock_handover_number_sequence: MagicMock,
+    ) -> None:
+        driver_id = uuid.uuid4()
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=uuid.uuid4(), driver_id=driver_id
+        )
+        mock_cash_handover_repo.get_by_route = AsyncMock(return_value=MagicMock())
+
+        use_case = DeclareCashHandoverUseCase(
+            mock_cash_handover_repo,
+            mock_route_repo,
+            mock_uow_with_commit,
+            mock_handover_number_sequence,
+        )
+        command = DeclareCashHandoverCommand(
+            driver_id=driver_id,
+            route_id=uuid.uuid4(),
+            actual_amount=Decimal("100.00"),
+            declared_by=driver_id,
+        )
+
+        with pytest.raises(ConflictError):
+            await use_case.execute(command)
+
+        mock_cash_handover_repo.add.assert_not_called()
+        mock_uow_with_commit.commit.assert_not_called()
+
+    async def test_raises_validation_when_route_not_completed(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow_with_commit: MagicMock,
+        mock_handover_number_sequence: MagicMock,
+    ) -> None:
+        driver_id = uuid.uuid4()
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=uuid.uuid4(), driver_id=driver_id, status="in_progress"
+        )
+
+        use_case = DeclareCashHandoverUseCase(
+            mock_cash_handover_repo,
+            mock_route_repo,
+            mock_uow_with_commit,
+            mock_handover_number_sequence,
+        )
+        command = DeclareCashHandoverCommand(
+            driver_id=driver_id,
+            route_id=uuid.uuid4(),
+            actual_amount=Decimal("100.00"),
+            declared_by=driver_id,
+        )
+
+        with pytest.raises(ValidationError):
+            await use_case.execute(command)
+
+        mock_cash_handover_repo.add.assert_not_called()
+
+
+class TestGetRouteCashHandoverViewUseCase:
+    async def test_returns_expected_amount_and_no_handover_when_undeclared(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+    ) -> None:
+        driver_id = uuid.uuid4()
+        route_id = uuid.uuid4()
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=uuid.uuid4(), driver_id=driver_id
+        )
+        mock_cash_handover_repo.get_expected_cash_for_route = AsyncMock(
+            return_value=Decimal("1811.00")
+        )
+        mock_cash_handover_repo.count_cash_stops_for_route = AsyncMock(return_value=3)
+
+        use_case = GetRouteCashHandoverViewUseCase(mock_cash_handover_repo, mock_route_repo)
+        view = await use_case.execute(
+            GetRouteCashHandoverViewQuery(route_id=route_id, driver_id=driver_id)
+        )
+
+        assert view.route_status == "completed"
+        assert view.expected_amount == Decimal("1811.00")
+        assert view.cash_stop_count == 3
+        assert view.handover is None
+
+    async def test_includes_the_handover_once_declared(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+    ) -> None:
+        driver_id = uuid.uuid4()
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=uuid.uuid4(), driver_id=driver_id
+        )
+        declared = MagicMock()
+        mock_cash_handover_repo.get_by_route = AsyncMock(return_value=declared)
+
+        use_case = GetRouteCashHandoverViewUseCase(mock_cash_handover_repo, mock_route_repo)
+        view = await use_case.execute(
+            GetRouteCashHandoverViewQuery(route_id=uuid.uuid4(), driver_id=driver_id)
+        )
+
+        assert view.handover is declared
+
+    async def test_raises_not_found_for_another_drivers_route(
+        self,
+        mock_cash_handover_repo: MagicMock,
+        mock_route_repo: MagicMock,
+    ) -> None:
+        mock_route_repo.get_by_id.return_value = _make_route(
+            tenant_id=uuid.uuid4(), driver_id=uuid.uuid4()
+        )
+        use_case = GetRouteCashHandoverViewUseCase(mock_cash_handover_repo, mock_route_repo)
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                GetRouteCashHandoverViewQuery(route_id=uuid.uuid4(), driver_id=uuid.uuid4())
+            )
 
 
 # ---------------------------------------------------------------------------

@@ -101,6 +101,17 @@ class CashHandoverRepository(Protocol):
         delivery records. Returns `Decimal("0")` if there are none.
         """
 
+    async def count_cash_stops_for_route(self, route_id: uuid.UUID) -> int:
+        """How many of this route's stops were paid in cash — the count that
+        pairs with `get_expected_cash_for_route`, so the driver can sanity-
+        check the total against the number of collections.
+        """
+
+    async def get_by_route(self, route_id: uuid.UUID) -> CashHandover | None:
+        """The declared handover for a route, or `None`. At most one per
+        route (BR-32) — the caller relies on that.
+        """
+
 
 class CreditNoteRepository(Protocol):
     """Repository for the `CreditNote` aggregate."""

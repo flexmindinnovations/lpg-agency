@@ -30,3 +30,20 @@ class CashHandoverResponse(BaseModel):
     shortfall: Decimal
     declared_by: uuid.UUID
     declared_at: datetime
+
+
+class RouteCashHandoverResponse(BaseModel):
+    """`GET /cash-handovers/for-route/{route_id}` — the Driver App reads this
+    before declaring (to show `expected_amount`) and after (to show the
+    receipt). `handover` is null until the driver has declared.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    route_id: uuid.UUID
+    driver_id: uuid.UUID
+    route_status: str
+    route_date: datetime
+    expected_amount: Decimal
+    cash_stop_count: int
+    handover: CashHandoverResponse | None = None

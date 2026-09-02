@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
-from lpg.application.common.errors import NotFoundError, ValidationError
+from lpg.application.common.errors import ConflictError, NotFoundError, ValidationError
 from lpg.config.logging import get_logger
 from lpg.domain.accounting.cash_handover import CashHandover
 from lpg.domain.accounting.credit_note import CreditNote
@@ -247,6 +247,20 @@ class DeclareCashHandoverUseCase:
             msg = f"No route visible with id {command.route_id} for this driver."
             raise NotFoundError(msg, route_id=str(command.route_id))
 
+        # One handover per route — the `cash_handover` table has no `save`,
+        # and `uq_cash_handover_route` enforces this at the DB. Check here so
+        # a retry gets a clean 409 rather than a raw IntegrityError.
+        existing = await self._cash_handover_repository.get_by_route(command.route_id)
+        if existing is not None:
+            msg = "Cash has already been handed over for this route."
+            raise ConflictError(msg, route_id=str(command.route_id))
+
+        # BR-32: the handover reconciles a *completed* route. `expected_amount`
+        # is only meaningful once every stop has a final proof-of-delivery.
+        if route.status != "completed":
+            msg = "Cash can only be handed over once the route is completed."
+            raise ValidationError(msg, route_id=str(command.route_id))
+
         expected_amount = await self._cash_handover_repository.get_expected_cash_for_route(
             command.route_id
         )
@@ -266,6 +280,66 @@ class DeclareCashHandoverUseCase:
         await self._cash_handover_repository.add(handover)
         await self._unit_of_work.commit()
         return handover
+
+
+@dataclass(frozen=True, slots=True)
+class GetRouteCashHandoverViewQuery(Query):
+    route_id: uuid.UUID
+    # `None` for dispatch staff — they can read any route in their tenant
+    # (RLS still applies); a driver id scopes the lookup to that driver.
+    driver_id: uuid.UUID | None
+
+
+@dataclass(frozen=True, slots=True)
+class RouteCashHandoverView:
+    """Everything the Driver App's cash-handover screen needs in one read:
+    what's expected, and the handover if it's already been declared.
+    """
+
+    route_id: uuid.UUID
+    driver_id: uuid.UUID
+    route_status: str
+    route_date: datetime.datetime
+    expected_amount: Decimal
+    cash_stop_count: int
+    handover: CashHandover | None
+
+
+class GetRouteCashHandoverViewUseCase:
+    """Read model behind `GET /cash-handovers/for-route/{route_id}`. Same
+    driver-scoping as `DeclareCashHandoverUseCase` — a route that isn't this
+    driver's is indistinguishable from one that doesn't exist.
+    """
+
+    def __init__(
+        self,
+        cash_handover_repository: CashHandoverRepository,
+        route_repository: RouteRepository,
+    ) -> None:
+        self._cash_handover_repository = cash_handover_repository
+        self._route_repository = route_repository
+
+    async def execute(self, query: GetRouteCashHandoverViewQuery) -> RouteCashHandoverView:
+        route = await self._route_repository.get_by_id(query.route_id)
+        if route is None or (
+            query.driver_id is not None and route.driver_id != query.driver_id
+        ):
+            msg = f"No route visible with id {query.route_id}."
+            raise NotFoundError(msg, route_id=str(query.route_id))
+
+        return RouteCashHandoverView(
+            route_id=query.route_id,
+            driver_id=route.driver_id,
+            route_status=route.status,
+            route_date=route.date,
+            expected_amount=await self._cash_handover_repository.get_expected_cash_for_route(
+                query.route_id
+            ),
+            cash_stop_count=await self._cash_handover_repository.count_cash_stops_for_route(
+                query.route_id
+            ),
+            handover=await self._cash_handover_repository.get_by_route(query.route_id),
+        )
 
 
 @dataclass(frozen=True, slots=True)
