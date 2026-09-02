@@ -9,6 +9,7 @@ library;
 
 export 'src/api_client.dart';
 export 'src/auth_api.dart';
+export 'src/cash_handover_api.dart';
 export 'src/complaint_api.dart';
 export 'src/customer_api.dart';
 export 'src/cylinder_ledger_api.dart';

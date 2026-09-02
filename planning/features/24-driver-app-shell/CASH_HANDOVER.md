@@ -1,7 +1,7 @@
 # Plan: Driver cash-handover screen
 
 **Phase:** 24 (increment — follows the shell + Stage-D2 regression work)
-**Status:** Stage 1 (backend) done 2026-09-02 · Stages 2–5 (mobile) pending
+**Status:** Stages 1–2 done 2026-09-02 · Stages 3–5 (screen + wiring + verify) pending
 **Drafted:** 2026-09-02
 
 ---
@@ -116,18 +116,26 @@ Gate: `pytest tests/unit` (757 pass), cash-handover + driver integration
 
 ---
 
-## Stage 2 — `packages/api_client`
+## Stage 2 — `packages/api_client`  ✅ DONE 2026-09-02
 
-- **`cash_handover_api.dart`** (new) — `CashHandoverApi(this._dio)`:
-  - `Future<Result<RouteCashHandover>> getForRoute(String routeId)`
-  - `Future<Result<CashHandover>> declare({required String routeId, required String driverId, required double actualAmount})`
-- **`models/cash_handover_models.dart`** (new) — `CashHandover` (mirrors
-  `CashHandoverResponse`: handoverNumber, expectedAmount, actualAmount,
-  shortfall, declaredAt) + `RouteCashHandover` (the view: routeStatus,
-  routeDate, expectedAmount, cashStopCount, handover?). Decimals arrive as JSON
-  strings → parse to `double`.
-- barrel exports in `api_client.dart` + `models/models.dart`.
-- `cash_handover_api_test.dart` — request paths, 409 mapping, null-handover parse.
+Commit: *(pending)*. api_client 53 tests pass (+5), analyze clean;
+driver_app 37 pass, analyze clean.
+
+- **`cash_handover_api.dart`** — `CashHandoverApi(this._dio)`:
+  - `getForRoute(String routeId) -> Result<RouteCashHandover>`
+  - `declare({routeId, driverId, actualAmount}) -> Result<CashHandover>` —
+    sends `actual_amount` as `toStringAsFixed(2)` (avoids `Decimal` float
+    drift).
+- **`models/cash_handover_models.dart`** — `CashHandover` (id,
+  handoverNumber?, driverId, routeId, expectedAmount, actualAmount,
+  shortfall, declaredBy, declaredAt; `surplus` getter) + `RouteCashHandover`
+  (routeStatus, routeDate, expectedAmount, cashStopCount, handover?;
+  `isDeclared` / `isPending` getters for the Stage-4 entry points).
+  Decimals via `asDouble` (the package's `decimal_json.dart` helper).
+- barrel exports added to `api_client.dart` + `models/models.dart`.
+- `cash_handover_api_test.dart` — 5 tests: expected-only parse, populated
+  handover, 404 → failure, POST body shape + fixed-2 amount, 409 → failure
+  with `errorCode == "CONFLICT"`.
 
 ---
 
