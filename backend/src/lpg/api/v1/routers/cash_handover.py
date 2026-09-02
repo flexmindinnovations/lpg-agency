@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from lpg.api.v1.dependencies.accounting import (
     get_cash_handover_number_sequence,
@@ -13,6 +13,7 @@ from lpg.api.v1.dependencies.accounting import (
 )
 from lpg.api.v1.dependencies.delivery import get_driver_repository, get_route_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.order import get_idempotency_service
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.cash_handover import (
     CashHandoverResponse,
@@ -29,6 +30,7 @@ from lpg.application.accounting.use_cases import (
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.delivery.ports import DriverRepository, RouteRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
+from lpg.infrastructure.idempotency.service import IdempotencyService, run_idempotent
 
 if TYPE_CHECKING:
     from lpg.domain.accounting.cash_handover import CashHandover
@@ -87,6 +89,7 @@ async def get_route_cash_handover(
     dependencies=[Depends(require_permission("cash_handovers:declare"))],
 )
 async def declare_cash_handover(
+    http_request: Request,
     request: DeclareCashHandoverRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     cash_handover_repository: Annotated[
@@ -97,23 +100,42 @@ async def declare_cash_handover(
     handover_number_sequence: Annotated[
         CashHandoverNumberSequence, Depends(get_cash_handover_number_sequence)
     ],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
 ) -> CashHandoverResponse:
     """A driver (or dispatcher/manager on their behalf) declares the cash
     handed over at the end of a route. `expected_amount` is computed
     server-side from real cash-payment proof-of-delivery records — never
     trusted from the request.
+
+    `Idempotency-Key` is optional (the offline Driver App sends one so a
+    queued retry replays rather than hitting the `uq_cash_handover_route`
+    409) — see `run_idempotent`.
     """
     if principal.user_id is None:
         raise HTTPException(status_code=401, detail="User ID is required.")
+    declared_by = principal.user_id
     use_case = DeclareCashHandoverUseCase(
         cash_handover_repository, route_repository, unit_of_work, handover_number_sequence
     )
-    handover = await use_case.execute(
-        DeclareCashHandoverCommand(
-            driver_id=request.driver_id,
-            route_id=request.route_id,
-            actual_amount=request.actual_amount,
-            declared_by=principal.user_id,
+
+    async def _operation() -> dict[str, Any]:
+        handover = await use_case.execute(
+            DeclareCashHandoverCommand(
+                driver_id=request.driver_id,
+                route_id=request.route_id,
+                actual_amount=request.actual_amount,
+                declared_by=declared_by,
+            )
         )
+        return _to_response(handover).model_dump(mode="json")
+
+    result = await run_idempotent(
+        idempotency_service,
+        tenant_id=principal.tenant_id,
+        idempotency_key=http_request.headers.get("Idempotency-Key"),
+        fingerprint_payload=request.model_dump(mode="json"),
+        operation=_operation,
     )
-    return _to_response(handover)
+    return CashHandoverResponse.model_validate(result)

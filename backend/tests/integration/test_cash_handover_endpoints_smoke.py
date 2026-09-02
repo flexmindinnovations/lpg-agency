@@ -516,6 +516,62 @@ class TestCashHandoverEndpointsThroughTheRealStack:
         assert second.status_code == 409, second.text
         assert second.json()["error_code"] == "CONFLICT"
 
+    async def test_declaration_replays_under_the_same_idempotency_key(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """The offline Driver App re-sends a queued declaration after a
+        dropped connection: same `Idempotency-Key` -> the stored 201, not the
+        `uq_cash_handover_route` 409 a genuinely-second declaration hits.
+        """
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@cash-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Cash Handover Smoke Tenant (replay)",
+        )
+        driver_id, route_id = await _seed_route_with_cash_delivery(
+            admin_engine_lpg_test, tenant_id=tenant_id, amount_collected="300.00"
+        )
+
+        token = await _login(real_lifespan_client, email=email, password=password)
+        key = str(uuid.uuid4())
+        headers = {"Authorization": f"Bearer {token}", "Idempotency-Key": key}
+        payload = {
+            "driver_id": str(driver_id),
+            "route_id": str(route_id),
+            "actual_amount": "300.00",
+        }
+
+        first = await real_lifespan_client.post(
+            "/api/v1/cash-handovers", headers=headers, json=payload
+        )
+        assert first.status_code == 201, first.text
+
+        replay = await real_lifespan_client.post(
+            "/api/v1/cash-handovers", headers=headers, json=payload
+        )
+        assert replay.status_code == 201, replay.text
+        assert replay.json()["id"] == first.json()["id"]
+
+        async with admin_engine_lpg_test.begin() as conn:
+            count = (
+                await conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM accounting.cash_handover "
+                        "WHERE route_id = :route_id"
+                    ),
+                    {"route_id": str(route_id)},
+                )
+            ).scalar_one()
+        assert count == 1
+
     async def test_declaration_rejected_while_route_is_in_progress(
         self,
         real_lifespan_client: AsyncClient,

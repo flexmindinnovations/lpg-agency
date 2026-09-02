@@ -17,13 +17,13 @@ import asyncio
 import hashlib
 import json
 import time
+import uuid
 from typing import TYPE_CHECKING, Any
 
 from lpg.application.common.errors import IdempotencyConflictError, ServiceUnavailableError
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
-    import uuid
     from collections.abc import Awaitable, Callable
 
     from lpg.infrastructure.redis.client import RedisClient
@@ -35,7 +35,10 @@ _logger = get_logger(__name__)
 # key forever. A completed result's own TTL (set separately, on completion)
 # is what actually governs how long a key stays replayable.
 _IN_PROGRESS_TTL_SECONDS = 30
-_RESULT_TTL_SECONDS = 24 * 60 * 60
+# 72h, not 24h: the offline-first Driver App (ADR-008) may hold a queued
+# mutation across a long weekend before it can sync, and a replay after that
+# gap must still return the stored result rather than re-applying.
+_RESULT_TTL_SECONDS = 72 * 60 * 60
 _POLL_INTERVAL_SECONDS = 0.1
 
 
@@ -137,3 +140,32 @@ class IdempotencyService:
                 raise ServiceUnavailableError(msg, idempotency_key=key)
 
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+
+
+async def run_idempotent(
+    service: IdempotencyService,
+    *,
+    tenant_id: uuid.UUID,
+    idempotency_key: str | None,
+    fingerprint_payload: dict[str, Any],
+    operation: Callable[[], Awaitable[Any]],
+) -> Any:
+    """Run ``operation`` under an ``Idempotency-Key``, minting a random key
+    when the caller passes ``None``.
+
+    For endpoints where the key is *optional*: the offline Driver App always
+    sends one (so a queued retry after a dropped connection replays the
+    stored result rather than re-applying the mutation), while existing
+    online callers such as the Dashboard need not. A minted key is unique per
+    request, so those callers get no replay protection — exactly the
+    behaviour they had before the endpoint became idempotent.
+
+    ``deliver`` / ``create`` keep their own inline check that *requires* the
+    header; this helper is for the retrofitted transitions only.
+    """
+    return await service.execute(
+        tenant_id=tenant_id,
+        idempotency_key=idempotency_key or str(uuid.uuid4()),
+        request_fingerprint=fingerprint(fingerprint_payload),
+        operation=operation,
+    )

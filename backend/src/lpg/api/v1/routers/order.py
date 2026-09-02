@@ -173,7 +173,11 @@ from lpg.application.tenant.ports import (
 )
 from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order
-from lpg.infrastructure.idempotency.service import IdempotencyService, fingerprint
+from lpg.infrastructure.idempotency.service import (
+    IdempotencyService,
+    fingerprint,
+    run_idempotent,
+)
 
 router = APIRouter(tags=["Orders"])
 
@@ -745,6 +749,7 @@ async def _require_own_driver_order_when_driver(
     dependencies=[Depends(require_permission("orders:dispatch"))],
 )
 async def depart_order(
+    request: Request,
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
@@ -756,9 +761,16 @@ async def depart_order(
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
 ) -> OrderResponse:
     """`ready_for_dispatch -> out_for_delivery` ("driver departs"). Issues
     the delivery OTP to the customer's phone post-commit.
+
+    `Idempotency-Key` is optional (the offline Driver App sends one so a
+    queued retry replays rather than re-issuing the OTP; online callers need
+    not) — see `run_idempotent`.
     """
     await _require_own_driver_order_when_driver(
         order_id, principal, order_repository, driver_repository, route_repository
@@ -772,10 +784,21 @@ async def depart_order(
         otp_delivery,
         unit_of_work,
     )
-    order = await use_case.execute(
-        DepartOrderCommand(order_id=order_id, changed_by=actor_id)
+
+    async def _operation() -> dict[str, Any]:
+        order = await use_case.execute(
+            DepartOrderCommand(order_id=order_id, changed_by=actor_id)
+        )
+        return _order_to_response(order).model_dump(mode="json")
+
+    result = await run_idempotent(
+        idempotency_service,
+        tenant_id=principal.tenant_id,
+        idempotency_key=request.headers.get("Idempotency-Key"),
+        fingerprint_payload={"order_id": str(order_id)},
+        operation=_operation,
     )
-    return _order_to_response(order)
+    return OrderResponse.model_validate(result)
 
 
 @router.post(
@@ -784,26 +807,43 @@ async def depart_order(
     dependencies=[Depends(require_permission("orders:dispatch"))],
 )
 async def reschedule_order(
+    request: Request,
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
 ) -> OrderResponse:
     """`failed_delivery -> ready_for_dispatch`. Also resets the paired
     `RouteStop` back to `pending` so the retry can reach `delivered` (see
     `RescheduleOrderUseCase`'s docstring).
+
+    `Idempotency-Key` is optional — see `run_idempotent`.
     """
     await _require_own_driver_order_when_driver(
         order_id, principal, order_repository, driver_repository, route_repository
     )
     actor_id = _require_actor(principal)
     use_case = RescheduleOrderUseCase(order_repository, route_repository, unit_of_work)
-    order = await use_case.execute(
-        RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
+
+    async def _operation() -> dict[str, Any]:
+        order = await use_case.execute(
+            RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
+        )
+        return _order_to_response(order).model_dump(mode="json")
+
+    result = await run_idempotent(
+        idempotency_service,
+        tenant_id=principal.tenant_id,
+        idempotency_key=request.headers.get("Idempotency-Key"),
+        fingerprint_payload={"order_id": str(order_id)},
+        operation=_operation,
     )
-    return _order_to_response(order)
+    return OrderResponse.model_validate(result)
 
 
 # ==========================================================================
@@ -927,6 +967,7 @@ async def deliver_order(
     dependencies=[Depends(require_permission("orders:deliver"))],
 )
 async def record_failed_delivery(
+    request: Request,
     order_id: uuid.UUID,
     body: RecordFailedDeliveryRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
@@ -934,8 +975,15 @@ async def record_failed_delivery(
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
 ) -> OrderResponse:
-    """`out_for_delivery -> failed_delivery` (D-12)."""
+    """`out_for_delivery -> failed_delivery` (D-12).
+
+    `Idempotency-Key` is optional — see `run_idempotent`. Reusing a key with
+    a different reason/resolution body is a 409 `IDEMPOTENCY_KEY_CONFLICT`.
+    """
     await _require_own_driver_order(
         order_id, principal, order_repository, driver_repository, route_repository
     )
@@ -943,15 +991,26 @@ async def record_failed_delivery(
     use_case = RecordFailedDeliveryUseCase(
         order_repository, route_repository, unit_of_work
     )
-    order = await use_case.execute(
-        RecordFailedDeliveryCommand(
-            order_id=order_id,
-            reason_code=body.reason_code,
-            resolution_action=body.resolution_action,
-            recorded_by=actor_id,
+
+    async def _operation() -> dict[str, Any]:
+        order = await use_case.execute(
+            RecordFailedDeliveryCommand(
+                order_id=order_id,
+                reason_code=body.reason_code,
+                resolution_action=body.resolution_action,
+                recorded_by=actor_id,
+            )
         )
+        return _order_to_response(order).model_dump(mode="json")
+
+    result = await run_idempotent(
+        idempotency_service,
+        tenant_id=principal.tenant_id,
+        idempotency_key=request.headers.get("Idempotency-Key"),
+        fingerprint_payload={"order_id": str(order_id), **body.model_dump(mode="json")},
+        operation=_operation,
     )
-    return _order_to_response(order)
+    return OrderResponse.model_validate(result)
 
 
 # ==========================================================================

@@ -848,13 +848,26 @@ class TestOrderFullLifecycle:
 
         # 5. The assigned driver departs their own order -> out_for_delivery;
         # OTP captured via the dependency override.
+        depart_key = str(uuid.uuid4())
         depart_response = await client.post(
-            f"/api/v1/orders/{order_id}/depart", headers=driver_headers
+            f"/api/v1/orders/{order_id}/depart",
+            headers={**driver_headers, "Idempotency-Key": depart_key},
         )
         assert depart_response.status_code == 200, depart_response.text
         assert depart_response.json()["status"] == "out_for_delivery"
         assert len(stack.otp_delivery.sent) == 1
         otp_code = stack.otp_delivery.sent[-1][1]
+
+        # 5b. Idempotency replay (the offline Driver App re-sends a queued
+        # depart after a dropped connection): same key -> the stored result,
+        # and crucially the use case does NOT run again, so no second OTP.
+        depart_replay = await client.post(
+            f"/api/v1/orders/{order_id}/depart",
+            headers={**driver_headers, "Idempotency-Key": depart_key},
+        )
+        assert depart_replay.status_code == 200, depart_replay.text
+        assert depart_replay.json()["status"] == "out_for_delivery"
+        assert len(stack.otp_delivery.sent) == 1
 
         # 6. Driver's own scoped queue shows this order.
         driver_list_response = await client.get("/api/v1/orders", headers=driver_headers)
@@ -985,19 +998,50 @@ class TestFailedDeliveryAndReschedule:
         )
         assert first_depart_response.status_code == 200, first_depart_response.text
 
+        failed_key = str(uuid.uuid4())
+        failed_body = {
+            "reason_code": "customer_unavailable",
+            "resolution_action": "reschedule",
+        }
         failed_response = await client.post(
             f"/api/v1/orders/{order_id}/failed-delivery",
-            json={"reason_code": "customer_unavailable", "resolution_action": "reschedule"},
-            headers=driver_headers,
+            json=failed_body,
+            headers={**driver_headers, "Idempotency-Key": failed_key},
         )
         assert failed_response.status_code == 200, failed_response.text
         assert failed_response.json()["status"] == "failed_delivery"
 
+        # Replay (same key, same body) -> stored result, no re-transition.
+        failed_replay = await client.post(
+            f"/api/v1/orders/{order_id}/failed-delivery",
+            json=failed_body,
+            headers={**driver_headers, "Idempotency-Key": failed_key},
+        )
+        assert failed_replay.status_code == 200, failed_replay.text
+        assert failed_replay.json()["status"] == "failed_delivery"
+
+        # Same key, *different* body -> 409, never silently a new transition.
+        failed_conflict = await client.post(
+            f"/api/v1/orders/{order_id}/failed-delivery",
+            json={"reason_code": "wrong_address", "resolution_action": "reschedule"},
+            headers={**driver_headers, "Idempotency-Key": failed_key},
+        )
+        assert failed_conflict.status_code == 409, failed_conflict.text
+
+        reschedule_key = str(uuid.uuid4())
         reschedule_response = await client.post(
-            f"/api/v1/orders/{order_id}/reschedule", headers=admin_headers
+            f"/api/v1/orders/{order_id}/reschedule",
+            headers={**admin_headers, "Idempotency-Key": reschedule_key},
         )
         assert reschedule_response.status_code == 200, reschedule_response.text
         assert reschedule_response.json()["status"] == "ready_for_dispatch"
+
+        reschedule_replay = await client.post(
+            f"/api/v1/orders/{order_id}/reschedule",
+            headers={**admin_headers, "Idempotency-Key": reschedule_key},
+        )
+        assert reschedule_replay.status_code == 200, reschedule_replay.text
+        assert reschedule_replay.json()["status"] == "ready_for_dispatch"
 
         # Depart again to get a fresh OTP, then deliver.
         stack.otp_delivery.sent.clear()

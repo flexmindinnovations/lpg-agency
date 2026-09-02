@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Drafted 2026-09-02 — not started
+**Status:** Stage 1 done 2026-09-02 (`uv run pytest` 1130 pass, ruff / mypy src / lint-imports clean) · Stages 2–7 pending
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -110,7 +110,7 @@ Differences from `deliver_order`:
 
 - Each endpoint: first call applies the transition; same key + same body
   replays the stored response body verbatim without re-running; same key +
-  different body → 409 `IDEMPOTENCY_KEY_REUSED`; no header → still works
+  different body → 409 `IDEMPOTENCY_KEY_CONFLICT`; no header → still works
   (fresh key each call).
 - `cash-handovers`: replay returns the same `CashHandoverResponse`; a second
   *distinct* key on an already-reconciled route still hits the existing
@@ -120,6 +120,36 @@ Differences from `deliver_order`:
 `uv run lint-imports`.
 
 **Commit:** `feat(backend): idempotency-key on depart/failed-delivery/reschedule/cash-handover`
+
+### ✅ DONE 2026-09-02
+
+- `idempotency/service.py` — `import uuid` moved to runtime; `_RESULT_TTL_SECONDS`
+  24 h → **72 h**; new `run_idempotent(service, *, tenant_id, idempotency_key,
+  fingerprint_payload, operation)` helper that mints a random key when the
+  caller passes `None` (the optional-key contract). `deliver` / `create` keep
+  their own inline "header required" check, untouched.
+- `routers/order.py` — `depart_order`, `reschedule_order`,
+  `record_failed_delivery` each gained `request: Request` +
+  `idempotency_service` params and wrap the use-case call in an
+  `async def _operation()` passed to `run_idempotent`. Fingerprint payload:
+  `{"order_id": ...}` for depart/reschedule (no body),
+  `{"order_id": ..., **body.model_dump(mode="json")}` for failed-delivery.
+- `routers/cash_handover.py` — `declare_cash_handover` gained
+  `http_request: Request` (the body param is already named `request`) +
+  `idempotency_service`; imports `get_idempotency_service` from
+  `dependencies.order`. `declared_by` hoisted to a local before the closure
+  so mypy keeps the `None`-narrowing.
+- Tests: `test_order_endpoints_smoke.py` — depart replay asserts **no second
+  OTP** is issued; failed-delivery replay + a same-key-different-body → 409;
+  reschedule replay. `test_cash_handover_endpoints_smoke.py` —
+  `test_declaration_replays_under_the_same_idempotency_key` (replay returns
+  the same `id`, `COUNT(*) == 1`). The pre-existing
+  `test_second_declaration_for_a_route_is_a_conflict` still passes (no key →
+  fresh minted key each call → real `uq_cash_handover_route` 409).
+- Gate: `uv run pytest` **1130 passed**; ruff / mypy src / lint-imports (5/5)
+  clean.
+- **No web-dashboard change** — the key is optional, so `order-detail.ts`'s
+  `departOrder` / `rescheduleOrder` calls are unaffected.
 
 ---
 
@@ -140,7 +170,7 @@ Differences from `deliver_order`:
   | `cash_handover_declare` | `POST /api/v1/cash-handovers` |
 
 - **409 handling** (`_processOperation`): inspect the problem-details
-  `error_code`. `IDEMPOTENCY_KEY_REUSED` → log and mark `synced` (our own
+  `error_code`. `IDEMPOTENCY_KEY_CONFLICT` → log and mark `synced` (our own
   bug, nothing to retry). Any other 409 (a genuinely stale transition —
   another device or the office already moved the aggregate) → `status =
   'conflict'` with the server message.
@@ -164,7 +194,7 @@ Differences from `deliver_order`:
 
 - Each op type dispatches to the right method/path and sends the op's
   idempotency key as the header.
-- 409 `IDEMPOTENCY_KEY_REUSED` → `synced`; 409 other → `conflict`.
+- 409 `IDEMPOTENCY_KEY_CONFLICT` → `synced`; 409 other → `conflict`.
 - Retry cap: an op erroring `_maxRetries` times ends `failed`.
 - A connectivity `false → true` event triggers `syncNow`.
 - Migration v3 → v4 adds `retry_count` with existing rows defaulted to 0.
