@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'auth_provider.dart';
+import 'features/cash_handover/presentation/cash_handover_screen.dart';
 import 'features/delivery/presentation/deliveries_screen.dart';
 import 'features/delivery/presentation/record_delivery_screen.dart';
 import 'features/delivery/presentation/stop_detail_screen.dart';
@@ -73,6 +74,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 RecordDeliveryScreen(orderId: state.pathParameters['orderId']!),
           ),
         ],
+      ),
+      // End-of-route cash reconciliation — also a full-screen task above the
+      // shell, reached from the Today nudge and the Deliveries history.
+      GoRoute(
+        path: '/routes/:routeId/cash-handover',
+        name: 'cashHandover',
+        builder: (context, state) =>
+            CashHandoverScreen(routeId: state.pathParameters['routeId']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

@@ -1,7 +1,7 @@
 # Plan: Driver cash-handover screen
 
 **Phase:** 24 (increment — follows the shell + Stage-D2 regression work)
-**Status:** Stages 1–2 done 2026-09-02 · Stages 3–5 (screen + wiring + verify) pending
+**Status:** Stages 1–3 done 2026-09-02 · Stages 4–5 (entry points + emulator) pending
 **Drafted:** 2026-09-02
 
 ---
@@ -139,47 +139,39 @@ driver_app 37 pass, analyze clean.
 
 ---
 
-## Stage 3 — `driver_app`: screen, providers, route
+## Stage 3 — `driver_app`: screen, providers, route  ✅ DONE 2026-09-02
 
-- **`api_provider.dart`** —
-  `cashHandoverApiProvider = Provider((ref) => CashHandoverApi(ref.watch(apiClientProvider).dio))`.
-- **`features/cash_handover/data/cash_handover_provider.dart`** (new):
-  - `routeCashHandoverProvider = FutureProvider.autoDispose.family<RouteCashHandover, String>((ref, routeId) => …getForRoute)`.
-  - `pendingCashHandoverProvider = FutureProvider.autoDispose<RouteCashHandover?>`
-    — reads `routeHistoryProvider`, takes the most recent `completed` route,
-    fetches its view, returns it iff `handover == null`. Drives the Today-tab
-    nudge.
-- **`features/cash_handover/presentation/cash_handover_screen.dart`** (new) —
-  `ConsumerStatefulWidget`, `CashHandoverScreen({required this.routeId})`.
-  Watches `routeCashHandoverProvider(routeId)`:
-  - **loading / error** → `LpgLoadingIndicator` / `LpgEmptyState` + Retry
-    (match `stop_detail_screen`).
-  - **`handover != null`** → *receipt* `LpgCard`: handover number,
-    Expected ₹X, Handed over ₹Y, **Shortfall ₹Z** (danger badge) or "Matched" /
-    "Over by ₹Z", declared date. Read-only. Copy: "This route's cash has been
-    reconciled."
-  - **`handover == null`** →
-    - header: route date + "N cash deliveries"
-    - **Expected cash: ₹X** — large, read-only, the number to count against
-    - `LpgTextField` "Amount you're handing over (₹)",
-      `keyboardType: numberWithOptions(decimal: true)`, live delta line as they
-      type ("Matches expected" / "Short by ₹Y" / "Over by ₹Z")
-    - `LpgButton "Declare handover"` → confirm dialog ("Hand over ₹Y for the
-      {date} route? This can't be undone.") → `declare(…)` → on success
-      `ref.invalidate` both providers, snackbar, stay on screen (re-renders as
-      the receipt).
-    - 409 from a race → friendly "Already declared" + refetch.
-  - `driverId` for the POST comes from `RouteCashHandover.driverId` in the view
-    response (preferred — no dependency on `driverProfileProvider`).
-- **`router.dart`** — top-level route above the shell (same tier as
-  `/stops/:orderId`):
-  ```dart
-  GoRoute(
-    path: '/routes/:routeId/cash-handover',
-    name: 'cashHandover',
-    builder: (c, s) => CashHandoverScreen(routeId: s.pathParameters['routeId']!),
-  ),
-  ```
+Commit: *(pending)*. driver_app 42 tests pass (+5), analyze clean. Live
+emulator walkthrough deferred to Stage 5 (needs the entry points).
+
+- **`api_provider.dart`** — `cashHandoverApiProvider`.
+- **`features/cash_handover/data/cash_handover_provider.dart`**:
+  - `routeCashHandoverProvider` (`autoDispose.family<RouteCashHandover, String>`).
+  - `pendingCashHandoverProvider` (`autoDispose<RouteCashHandover?>`) — walks
+    `routeHistoryProvider` (already newest-first) for the latest `completed`
+    route, fetches its view, returns it only when `isPending`. A load failure
+    → `null` (no nudge).
+- **`features/cash_handover/presentation/cash_handover_screen.dart`** —
+  `ConsumerStatefulWidget`, watches `routeCashHandoverProvider(routeId)`:
+  - loading / error → `LpgLoadingIndicator` / `LpgEmptyState` + Retry.
+  - `handover != null` → `_Receipt`: handover number + `SHORT`/`OVER`/
+    `RECONCILED` badge, Expected / Handed over / Shortfall|Over rows,
+    declared date, "This route's cash has been reconciled."
+  - `routeStatus != 'completed'` → "still in progress" empty state, no form.
+  - else → `_DeclareForm`: `_formatDate` header + "from N cash deliveries",
+    big **Expected cash ₹X**, `LpgTextField` (decimal keyboard) with a live
+    `_DeltaLine` ("Matches" / "Short by ₹Y" / "Over by ₹Z"), `LpgButton
+    "Declare handover"` → `AlertDialog` confirm → `declare(…)` (driverId from
+    the view response). On success: invalidate `routeCashHandoverProvider` +
+    `pendingCashHandoverProvider` + `routeHistoryProvider`, snackbar, screen
+    re-renders as the receipt. 409 → "already been reconciled" + refetch.
+- **`router.dart`** — `GoRoute(path: '/routes/:routeId/cash-handover',
+  name: 'cashHandover', …)` top-level, right after `/stops/:orderId`.
+- **`cash_handover_screen_test.dart`** — 5 tests: expected-amount + declare
+  action; live delta line (short / matches / over); in-progress → no form;
+  declared → receipt (badge, shortfall row, no field); full declare flow
+  (stateful fake adapter: POST body `actual_amount: '900.00'` → screen flips
+  to the receipt).
 
 ---
 

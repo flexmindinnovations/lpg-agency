@@ -27,3 +27,8 @@ final orderApiProvider = Provider<OrderApi>(
 final driverApiProvider = Provider<DriverApi>(
   (ref) => DriverApi(ref.watch(apiClientProvider).dio),
 );
+
+/// The `/cash-handovers/*` API — the end-of-route cash reconciliation screen.
+final cashHandoverApiProvider = Provider<CashHandoverApi>(
+  (ref) => CashHandoverApi(ref.watch(apiClientProvider).dio),
+);
