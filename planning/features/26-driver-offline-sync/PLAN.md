@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Stages 1–3 done 2026-09-02, Stages 4–5 done 2026-09-03 · Stages 6–7 pending
+**Status:** Stages 1–3 done 2026-09-02, Stages 4–6 done 2026-09-03 · Stage 7 (E2E + emulator + docs) pending
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -511,6 +511,39 @@ offline → op → `conflict` → appears in Sync status → acknowledge → sto
 detail reloads to the cancelled state.
 
 **Commit:** `feat(mobile): driver sync-status screen (pending / failed / conflicts)`
+
+### ✅ DONE 2026-09-03
+
+- `features/sync/presentation/sync_status_screen.dart` (new) —
+  `SyncStatusScreen` off `pendingSyncCountProvider` + `syncIssuesProvider`:
+  all-clear empty state; a `_PendingCard` ("N changes waiting to sync" +
+  "Sync now" → `syncNow(ignoreBackoff: true)`); an `_IssueCard` per issue —
+  **conflict** → "REJECTED" + "Acknowledge & discard"; **failed** → "FAILED"
+  + reason + "Retry"/"Discard". `_label(op)` turns the op type + `payload
+  .aggregateId` into "Record delivery · ORDERABC". Discard also invalidates
+  the route/stop/cash read providers so the screen behind reloads server
+  truth.
+- `router.dart` — top-level `GoRoute('/sync', name: 'sync')`.
+- `profile_screen.dart` — a "Sync status" `LpgCard` row (subtitle reflects
+  issues > pending > all-synced) → `context.pushNamed('sync')`.
+- `app_shell.dart` — the Profile tab icon gets a `Badge` **dot** (not a
+  count) when `syncIssuesProvider` is non-empty.
+- **Deviation:** a conflict is `discard`ed (row deleted), not marked
+  `synced` — cleaner, and the row genuinely shouldn't linger. A `failed` op
+  also gets a plain "Discard" alongside "Retry".
+- Tests: `test/features/sync/sync_status_screen_test.dart` (3) — empty
+  all-clear; conflict → acknowledge deletes the row; failed → Retry resets
+  `retryCount` and re-queues. **Note:** the widget tests override
+  `pendingSyncCountProvider` / `syncIssuesProvider` with plain
+  `StreamController`s — a live drift `.watch()` stream makes
+  `pumpAndSettle` hang in the test binding — while the row-level
+  discard/retry still exercises the real `SyncCoordinator` + `AppDatabase`
+  via the harness.
+- `offline_harness.dart` — dropped the `Future.delayed` from `dispose()` (a
+  pending `Timer` at teardown in `testWidgets`); `delivery_mutations_test`
+  keeps its own settle (it's a plain `test()`).
+- Gate: `driver_app` **69** pass + analyze clean.
+- **Emulator:** deferred to Stage 7.
 
 ---
 

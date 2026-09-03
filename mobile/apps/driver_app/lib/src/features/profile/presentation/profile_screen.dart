@@ -1,10 +1,12 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../api_provider.dart';
 import '../../../auth_provider.dart';
 import '../../../offline/cached_resource.dart';
+import '../../../offline/sync_providers.dart';
 import '../data/profile_provider.dart';
 
 /// The Profile tab: the driver's identity, licence, current vehicle and
@@ -99,6 +101,11 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _SyncStatusRow(
+            pending: ref.watch(pendingSyncCountProvider).value ?? 0,
+            issues: ref.watch(syncIssuesProvider).value?.length ?? 0,
+          ),
           const SizedBox(height: 32),
           LpgButton(
             label: 'Log Out',
@@ -130,6 +137,34 @@ class ProfileScreen extends ConsumerWidget {
   String _date(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
+}
+
+class _SyncStatusRow extends StatelessWidget {
+  const _SyncStatusRow({required this.pending, required this.issues});
+
+  final int pending;
+  final int issues;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final subtitle = issues > 0
+        ? '$issues need${issues == 1 ? 's' : ''} your attention'
+        : pending > 0
+        ? '$pending change${pending == 1 ? '' : 's'} syncing'
+        : 'All changes synced';
+
+    return LpgCard(
+      padding: EdgeInsets.zero,
+      onTap: () => context.pushNamed('sync'),
+      child: LpgListTile(
+        leadingIcon: issues > 0 ? Icons.sync_problem : Icons.sync,
+        title: 'Sync status',
+        subtitle: subtitle,
+        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+      ),
+    );
+  }
 }
 
 class _InfoCard extends StatelessWidget {

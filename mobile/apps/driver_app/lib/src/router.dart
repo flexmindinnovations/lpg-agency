@@ -12,6 +12,7 @@ import 'features/delivery/presentation/today_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
+import 'features/sync/presentation/sync_status_screen.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
 
@@ -83,6 +84,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'cashHandover',
         builder: (context, state) =>
             CashHandoverScreen(routeId: state.pathParameters['routeId']!),
+      ),
+      // Offline-queue health — reached from the Profile tab.
+      GoRoute(
+        path: '/sync',
+        name: 'sync',
+        builder: (context, state) => const SyncStatusScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

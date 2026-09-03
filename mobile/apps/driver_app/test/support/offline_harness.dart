@@ -83,7 +83,6 @@ class OfflineHarness {
 
   Future<void> dispose() async {
     coordinator.stop();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
     await db.close();
   }
 }

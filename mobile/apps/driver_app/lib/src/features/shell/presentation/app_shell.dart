@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../offline/offline_banner.dart';
+import '../../../offline/sync_providers.dart';
 import '../../notifications/data/notifications_provider.dart';
 
 /// The Driver App shell: a persistent bottom `NavigationBar` across the four
@@ -48,10 +49,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     final colors = Theme.of(context).extension<LpgColors>()!;
     final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
+    final syncIssues = ref.watch(syncIssuesProvider).value?.length ?? 0;
 
     Widget alertsIcon(IconData icon, Color color) => Badge(
       isLabelVisible: unread > 0,
       label: Text('$unread'),
+      child: Icon(icon, color: color),
+    );
+
+    // A small dot (not a count) — "something in the queue needs you".
+    Widget profileIcon(IconData icon, Color color) => Badge(
+      isLabelVisible: syncIssues > 0,
       child: Icon(icon, color: color),
     );
 
@@ -107,8 +115,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 label: 'Alerts',
               ),
               NavigationDestination(
-                icon: Icon(Icons.person_outline, color: colors.textSecondary),
-                selectedIcon: Icon(Icons.person, color: colors.actionPrimary),
+                icon: profileIcon(Icons.person_outline, colors.textSecondary),
+                selectedIcon: profileIcon(Icons.person, colors.actionPrimary),
                 label: 'Profile',
               ),
             ],
