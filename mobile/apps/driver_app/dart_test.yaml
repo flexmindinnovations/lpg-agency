@@ -1,0 +1,6 @@
+# Several suites spin up in-memory SQLite (drift) databases and geolocator
+# platform-channel fakes. At full parallelism those contend and flake
+# (notably the offline-sync and location-sharing suites); everything passes
+# serially. Capping concurrency keeps `flutter test` green without forcing
+# `-j 1`.
+concurrency: 2

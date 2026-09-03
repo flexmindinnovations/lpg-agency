@@ -64,11 +64,16 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
 
     return Scaffold(
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          Expanded(child: widget.navigationShell),
-        ],
+      // The banner sits above the tab screens' own Scaffolds, so it has to
+      // carry the top status-bar inset itself.
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(child: widget.navigationShell),
+          ],
+        ),
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(

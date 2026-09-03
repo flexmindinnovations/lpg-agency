@@ -59,13 +59,19 @@ two bugs, both caught by the D2 on-device run and fixed:
   Deliveries "Past routes" entry points. Verified end-to-end on
   emulator-5554. Commits `9890e0e` (backend), `0643d42` (api_client),
   `6e50c8c` (screen), + the entry-points commit.
+- **Driver push notifications** — ✅ done 2026-09-02, Phase 25.
+- **Offline-first sync (ADR-008 / D-24)** — ✅ done 2026-09-03, Phase 26, see
+  [26-driver-offline-sync/STATUS.md](../26-driver-offline-sync/STATUS.md).
+  Cache-first reads + offline banner; a durable, idempotent mutation queue
+  for depart / deliver (incl. POD media) / failed-delivery / cash-handover
+  with optimistic UI; a sync-status screen for failures and conflicts. This
+  closes the last mandatory Driver-App requirement.
 
 ## Notes
 
 - Plan: [PLAN.md](./PLAN.md) · Tasks: [TASKS.md](./TASKS.md)
 - Delivery feature screens (Active Delivery, Stop Detail, Record Delivery) were
   already design-system-themed before this phase.
-- Driver push notifications remain out of scope.
 - Driver app now needs a `dart_defines.local.json` (gitignored; see the
   `.example`) with `LOCATIONIQ_API_KEY` for production-grade map tiles +
   geocoding — degrades to OSM/Nominatim without it.

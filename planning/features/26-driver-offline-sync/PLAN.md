@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Stages 1–3 done 2026-09-02, Stages 4–6 done 2026-09-03 · Stage 7 (E2E + emulator + docs) pending
+**Status:** ✅ Complete — Stages 1–3 done 2026-09-02, Stages 4–7 done 2026-09-03. Closes the mandatory ADR-008 / D-24 offline-first requirement.
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -558,7 +558,39 @@ detail reloads to the cancelled state.
 - Memory: new `reference_driver_offline_sync.md`; note in
   `project_lpg_agency_status.md` that the ADR-008 sync-queue item is closed.
 
-**Commit:** `test(mobile): offline-sync integration test + docs`
+**Commit:** `test(mobile): offline-sync round-trip test + docs`
+
+### ✅ DONE 2026-09-03
+
+- `test/offline/round_trip_test.dart` — a plain `test()` (not the
+  `integration_test` package — the repo has no such infra, and it needs a
+  device): cache a stop's order → `OfflineHarness(online: false)` →
+  `departStop` + `recordDelivery` (media in `InMemoryMediaStore`, ops queued,
+  optimistic cache `delivered`) → flip online → `syncNow(ignoreBackoff: true)`
+  drains `depart` → `pod-attachments`×2 → `deliver` **in order**, both ops
+  `synced`, media store emptied.
+- `driver_app/dart_test.yaml` (new) — `concurrency: 2`. The in-memory-SQLite
+  offline suites + the **pre-existing** geolocator `location_sharing` suite
+  flake at full `flutter test` parallelism; capped (and serial) runs are
+  70/70 green.
+- `26-driver-offline-sync/STATUS.md` (new); `24-driver-app-shell/STATUS.md`
+  updated (offline-first done, dropped "push out of scope").
+- Memory: `reference_driver_offline_sync.md` (new); `MEMORY.md` index;
+  `project_lpg_agency_status.md` — "the Driver App is feature-complete"
+  (Phases 24–26).
+- Emulator: _see below._
+
+**Emulator (`emulator-5554`, debug APK vs. backend on `10.0.2.2:8000`):**
+`flutter build apk --debug` succeeds (all Stage 1–6 native deps —
+`path_provider`, `connectivity_plus`, SQLCipher — link). App cold-starts
+clean (no `FATAL`/unhandled exception), restores the session, and the Today
+tab shows the live route **through the cache-first read path**. Profile → new
+**"Sync status — All changes synced"** row → `SyncStatusScreen` renders
+"Everything's synced" (the drift `.watch()` streams work fine in the real
+engine — the `pumpAndSettle` issue is test-binding only). Airplane mode →
+the **"Offline — showing last synced data"** banner appears and Today keeps
+rendering the cached route. One cosmetic fix from this pass: wrapped the
+shell body in `SafeArea(bottom: false)` so the banner clears the status bar.
 
 ---
 
