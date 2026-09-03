@@ -17,6 +17,7 @@ from lpg.application.delivery.ports import DriverRepository, RouteRepository, Ve
 from lpg.application.delivery.use_cases import (
     AssignOrderToRouteUseCase,
     CompleteRouteReconciliationUseCase,
+    ConfirmRouteLoadUseCase,
     LoadVehicleForRouteUseCase,
 )
 from lpg.application.inventory.ports import (
@@ -83,6 +84,13 @@ def get_load_vehicle_for_route_use_case(
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> LoadVehicleForRouteUseCase:
     return LoadVehicleForRouteUseCase(route_repository, inventory_location_repository, unit_of_work)
+
+
+def get_confirm_route_load_use_case(
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> ConfirmRouteLoadUseCase:
+    return ConfirmRouteLoadUseCase(route_repository, unit_of_work)
 
 
 def get_complete_route_reconciliation_use_case(

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 
 from lpg.application.delivery.ports import RouteStopOwner
-from lpg.domain.delivery.route import ProofOfDelivery, Route, RouteStop
+from lpg.domain.delivery.route import LoadedLine, ProofOfDelivery, Route, RouteStop
 from lpg.infrastructure.persistence.models.delivery import RouteModel, RouteStopModel
 
 if TYPE_CHECKING:
@@ -34,6 +34,11 @@ class SqlAlchemyRouteRepository:
         return uuid.uuid4()
 
     async def save(self, route: Route) -> None:
+        loaded_lines = [
+            {"cylinder_type_id": str(line.cylinder_type_id), "quantity": line.quantity}
+            for line in route.loaded_lines
+        ] or None
+
         model = await self._uow.session.get(RouteModel, route.id)
         if model is None:
             model = RouteModel(
@@ -44,11 +49,15 @@ class SqlAlchemyRouteRepository:
                 vehicle_id=route.vehicle_id,
                 route_date=route.date,
                 status=route.status,
+                loaded_lines=loaded_lines,
+                load_confirmed_at=route.load_confirmed_at,
                 version=route.version,
             )
             self._uow.session.add(model)
         else:
             model.status = route.status
+            model.loaded_lines = loaded_lines
+            model.load_confirmed_at = route.load_confirmed_at
             model.version = route.version
 
         # Handle stops
@@ -276,6 +285,14 @@ class SqlAlchemyRouteRepository:
                 )
             )
 
+        loaded_lines = [
+            LoadedLine(
+                cylinder_type_id=uuid.UUID(row["cylinder_type_id"]),
+                quantity=int(row["quantity"]),
+            )
+            for row in (model.loaded_lines or [])
+        ]
+
         route = Route(
             route_id=model.id,
             tenant_id=model.tenant_id,
@@ -285,6 +302,8 @@ class SqlAlchemyRouteRepository:
             route_date=model.route_date,
             status=model.status,
             stops=stops,
+            loaded_lines=loaded_lines,
+            load_confirmed_at=model.load_confirmed_at,
             version=model.version,
         )
         self._uow.register_aggregate(route)

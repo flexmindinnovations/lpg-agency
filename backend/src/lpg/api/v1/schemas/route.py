@@ -31,6 +31,13 @@ class RouteStopResponse(BaseModel):
     proof_of_delivery: ProofOfDeliverySchema | None = None
 
 
+class RouteLoadLineResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    cylinder_type_id: uuid.UUID
+    quantity: int
+
+
 class RouteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +50,10 @@ class RouteResponse(BaseModel):
     status: str
     version: int
     stops: list[RouteStopResponse] = Field(default_factory=list)
+    #: The van-load manifest (empty until the route is loaded) + the driver's
+    #: confirmation timestamp. `cylinder_type` names are resolved client-side.
+    loaded_lines: list[RouteLoadLineResponse] = Field(default_factory=list)
+    load_confirmed_at: datetime | None = None
 
 
 class RoutePageResponse(BaseModel):

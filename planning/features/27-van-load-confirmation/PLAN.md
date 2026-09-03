@@ -1,7 +1,7 @@
 # Plan: Van-Load Confirmation
 
 **Phase:** 27
-**Status:** Drafted 2026-09-03 — not started
+**Status:** Stage 1 done 2026-09-03 (`uv run pytest` 1140, gate clean) · Stages 2–6 pending
 **Type:** Non-mandatory Driver-App gap (flagged since Phase 26). Also unblocks
 the client-side "empties ≤ loaded" validation (`05-mobile-architecture.md` §2).
 
@@ -67,14 +67,52 @@ Today nudge, no route-lifecycle change.
   `lint-imports`.
 - **Commit:** `feat(backend): route load manifest + driver load-confirmation`
 
+### ✅ DONE 2026-09-03
+
+- Domain (`domain/delivery/route.py`): `LoadedLine` VO;
+  `RouteLoadConfirmed` event (`route_id, tenant_id, driver_id, confirmed_by`);
+  `Route` gained `_loaded_lines` / `_load_confirmed_at` (in `__slots__` +
+  `__init__`), `loaded_lines` / `load_confirmed_at` properties,
+  `record_load_manifest(lines)` and `confirm_load(confirmed_by)` (idempotent;
+  `InvariantViolation` if not `loaded`).
+- App: `LoadVehicleForRouteUseCase` calls `record_load_manifest([...])` after
+  `change_status("loaded")`. New `ConfirmRouteLoadCommand`
+  (`route_id, confirmed_by, expected_driver_id`) + `ConfirmRouteLoadUseCase`
+  (`NotFoundError` for a missing route **or** `expected_driver_id` mismatch).
+- Persistence: `RouteModel` gained `loaded_lines` (JSONB) + `load_confirmed_at`;
+  repo `save()`/`_to_domain()` round-trip both. Migration `b3e1d7a24f90`
+  (`down_revision = a7f1c93e6b20`), applied to `lpg_dev` + `lpg_test`.
+- API: `POST /routes/{id}/confirm-load` (`routes:deliver`, `run_idempotent`
+  with an **optional** key, `_resolve_read_scope` → `expected_driver_id`).
+  `RouteResponse` + `GET /routes/active` gained `loaded_lines`
+  (`RouteLoadLineResponse` = `{cylinder_type_id, quantity}`) + `load_confirmed_at`.
+- **Deviations from the plan:**
+  - "not loaded" → **409 `INVARIANT_VIOLATION`**, not 422 — the codebase maps
+    every `DomainError` to 409 (well-formed request, wrong state), same as an
+    illegal `change_status`.
+  - `loaded_lines` carries **`{cylinder_type_id, quantity}` only** — no
+    `cylinder_type_name`. The domain VO has no name and the read model would
+    need a join; the Driver App resolves names client-side (Stage 3 adds a
+    cached cylinder-type lookup). Simpler + more offline-friendly.
+- Tests: `test_domain_route.py::TestVanLoad` (4); `test_route_use_cases.py`
+  `TestConfirmRouteLoadUseCase` (4) + a manifest-snapshot assertion on the
+  load test; `test_route_endpoints_smoke.py` — `confirm-load` in the
+  lifecycle test (manifest + confirm + idempotent replay) + 2 focused tests
+  (409 before loaded, 404 for another driver's route).
+- Gate: `uv run pytest` **1140 passed**; ruff / mypy src / lint-imports (5/5)
+  clean.
+- **Precursor:** `d4c2ded` fixed `driver_app/pubspec.yaml` — `cb8a7b0` (icons)
+  had displaced the `drift` dev-dep into the `flutter_launcher_icons:` block,
+  breaking `flutter analyze`.
+
 ## Stage 2 — `packages/api_client`
 
 - `RouteApi.confirmLoad(String routeId) → Result<RouteSummary>` (`POST
   /api/v1/routes/$routeId/confirm-load`, sends an `Idempotency-Key`).
 - `RouteSummary` gains `loadedLines: List<RouteLoadLine>` +
   `loadConfirmedAt: DateTime?`; new `RouteLoadLine` (`cylinderTypeId`,
-  `cylinderTypeName`, `quantity`). `bool get isLoadPending => status ==
-  'loaded' && loadConfirmedAt == null`.
+  `quantity` — names resolved client-side). `bool get isLoadPending =>
+  status == 'loaded' && loadConfirmedAt == null`.
 - Tests: parse `loaded_lines`; `confirmLoad` posts to the right path with a key.
 - **Commit:** `feat(mobile): RouteLoadLine model + RouteApi.confirmLoad`
 

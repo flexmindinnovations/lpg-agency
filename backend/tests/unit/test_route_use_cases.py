@@ -26,6 +26,8 @@ from lpg.application.delivery.use_cases import (
     AssignOrderToRouteUseCase,
     CompleteRouteReconciliationCommand,
     CompleteRouteReconciliationUseCase,
+    ConfirmRouteLoadCommand,
+    ConfirmRouteLoadUseCase,
     LoadVehicleForRouteCommand,
     LoadVehicleForRouteUseCase,
     LoadVehicleLine,
@@ -398,6 +400,10 @@ class TestLoadVehicleForRouteUseCase:
         assert mock_inventory_repo.save.call_count == 2
         mock_route_repo.save.assert_called_once()
         mock_uow.commit.assert_called_once()
+        # The manifest is snapshotted for the driver's van-load check.
+        assert [(ll.cylinder_type_id, ll.quantity) for ll in result.loaded_lines] == [
+            (cylinder_type_id, 20)
+        ]
 
     async def test_missing_route_raises_not_found(
         self, mock_route_repo: MagicMock, mock_inventory_repo: MagicMock, mock_uow: MagicMock
@@ -640,5 +646,66 @@ class TestUpdateRouteStatusUseCase:
                 UpdateRouteStatusCommand(route_id=route.id, new_status="cancelled")
             )
 
+        mock_route_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+
+# ==========================================================================
+# ConfirmRouteLoadUseCase
+# ==========================================================================
+
+
+class TestConfirmRouteLoadUseCase:
+    async def test_confirms_and_persists(
+        self, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        route = _make_route(status="loaded")
+        mock_route_repo.get_by_id.return_value = route
+        use_case = ConfirmRouteLoadUseCase(mock_route_repo, mock_uow)
+
+        result = await use_case.execute(
+            ConfirmRouteLoadCommand(route_id=route.id, confirmed_by=uuid.uuid4())
+        )
+
+        assert result.load_confirmed_at is not None
+        mock_route_repo.save.assert_called_once()
+        mock_uow.commit.assert_called_once()
+
+    async def test_missing_route_raises_not_found(
+        self, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        mock_route_repo.get_by_id.return_value = None
+        use_case = ConfirmRouteLoadUseCase(mock_route_repo, mock_uow)
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                ConfirmRouteLoadCommand(route_id=uuid.uuid4(), confirmed_by=uuid.uuid4())
+            )
+
+    async def test_another_drivers_route_is_not_found(
+        self, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        route = _make_route(status="loaded")
+        mock_route_repo.get_by_id.return_value = route
+        use_case = ConfirmRouteLoadUseCase(mock_route_repo, mock_uow)
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                ConfirmRouteLoadCommand(
+                    route_id=route.id,
+                    confirmed_by=uuid.uuid4(),
+                    expected_driver_id=uuid.uuid4(),
+                )
+            )
+        mock_route_repo.save.assert_not_called()
+
+    async def test_rejected_before_loaded(
+        self, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        route = _make_route(status="planned")
+        mock_route_repo.get_by_id.return_value = route
+        use_case = ConfirmRouteLoadUseCase(mock_route_repo, mock_uow)
+        with pytest.raises(InvariantViolation):
+            await use_case.execute(
+                ConfirmRouteLoadCommand(route_id=route.id, confirmed_by=uuid.uuid4())
+            )
         mock_route_repo.save.assert_not_called()
         mock_uow.commit.assert_not_called()

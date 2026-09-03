@@ -26,7 +26,7 @@ from lpg.application.common.errors import (
 )
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
 from lpg.domain.delivery.driver import Driver
-from lpg.domain.delivery.route import Route
+from lpg.domain.delivery.route import LoadedLine, Route
 from lpg.domain.delivery.vehicle import Vehicle
 from lpg.domain.order.vehicle_capacity_checker import VehicleCapacityChecker
 
@@ -448,6 +448,15 @@ class CompleteRouteReconciliationCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfirmRouteLoadCommand:
+    route_id: uuid.UUID
+    confirmed_by: uuid.UUID
+    #: When set (a `driver` principal), a route belonging to a different
+    #: driver is a 404, not someone else's route to confirm.
+    expected_driver_id: uuid.UUID | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class UpdateRouteStatusCommand:
     route_id: uuid.UUID
     new_status: str
@@ -635,9 +644,40 @@ class LoadVehicleForRouteUseCase:
             )
 
         route.change_status("loaded")
+        route.record_load_manifest(
+            [
+                LoadedLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
+                for line in command.lines
+            ]
+        )
 
         await self._inventory_repository.save(warehouse_location)
         await self._inventory_repository.save(vehicle_location)
+        await self._route_repository.save(route)
+        await self._unit_of_work.commit()
+        return route
+
+
+class ConfirmRouteLoadUseCase:
+    """The driver confirms they've checked the van against the load manifest
+    (`route.confirm_load`). Soft — it does not gate departing.
+    """
+
+    def __init__(self, route_repository: RouteRepository, unit_of_work: UnitOfWork) -> None:
+        self._route_repository = route_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ConfirmRouteLoadCommand) -> Route:
+        route = await self._route_repository.get_by_id(command.route_id)
+        if route is None or (
+            command.expected_driver_id is not None
+            and route.driver_id != command.expected_driver_id
+        ):
+            msg = f"No route visible with id {command.route_id}."
+            raise NotFoundError(msg, route_id=str(command.route_id))
+
+        route.confirm_load(command.confirmed_by)
+
         await self._route_repository.save(route)
         await self._unit_of_work.commit()
         return route

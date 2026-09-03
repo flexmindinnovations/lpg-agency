@@ -590,6 +590,7 @@ class TestRouteEndpointsThroughRealStack:
         client = stack.client
         fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
         admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
 
         # 1. Plan -> 201, planned.
         plan_response = await client.post(
@@ -636,7 +637,32 @@ class TestRouteEndpointsThroughRealStack:
             headers=admin_headers,
         )
         assert load_response.status_code == 200, load_response.text
-        assert load_response.json()["status"] == "loaded"
+        loaded = load_response.json()
+        assert loaded["status"] == "loaded"
+        # 5a. The load manifest is snapshotted for the driver's van-load check.
+        assert loaded["loaded_lines"] == [
+            {"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 10}
+        ]
+        assert loaded["load_confirmed_at"] is None
+
+        # 5b. The driver confirms the van matches the manifest — soft, doesn't
+        # gate departing. Idempotent under the same key.
+        confirm_key = str(uuid.uuid4())
+        confirm_response = await client.post(
+            f"/api/v1/routes/{route_id}/confirm-load",
+            headers={**driver_headers, "Idempotency-Key": confirm_key},
+        )
+        assert confirm_response.status_code == 200, confirm_response.text
+        assert confirm_response.json()["load_confirmed_at"] is not None
+        replay = await client.post(
+            f"/api/v1/routes/{route_id}/confirm-load",
+            headers={**driver_headers, "Idempotency-Key": confirm_key},
+        )
+        assert replay.status_code == 200, replay.text
+        assert (
+            replay.json()["load_confirmed_at"]
+            == confirm_response.json()["load_confirmed_at"]
+        )
 
         # 6. Assign an unassigned, confirmed order onto this route -> one stop.
         order = await _create_and_confirm_order(client, fixtures, admin_headers, quantity=2)
@@ -842,3 +868,65 @@ class TestRouteEndpointsThroughRealStack:
             headers=admin_headers,
         )
         assert illegal_response.status_code == 409, illegal_response.text
+
+    async def test_confirm_load_before_loaded_is_rejected(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+
+        plan = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        route_id = plan.json()["id"]
+
+        # Route is still `planned` — no manifest to confirm.
+        response = await client.post(
+            f"/api/v1/routes/{route_id}/confirm-load", headers=driver_headers
+        )
+        assert response.status_code == 409, response.text
+        assert response.json()["error_code"] == "INVARIANT_VIOLATION"
+
+    async def test_confirm_load_for_another_drivers_route_is_not_found(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        plan = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        route_id = plan.json()["id"]
+
+        hasher = Argon2PasswordHasher(_settings_for_hasher())
+        other_email = f"{uuid.uuid4().hex}@route-smoke.example"
+        other_password = "correct horse battery staple 88"
+        await _seed_driver(
+            admin_engine_lpg_test,
+            tenant_id=fixtures.tenant_id,
+            branch_id=fixtures.branch_id,
+            email=other_email,
+            password_hash=hasher.hash(other_password),
+        )
+        other_token = await _login(client, email=other_email, password=other_password)
+
+        response = await client.post(
+            f"/api/v1/routes/{route_id}/confirm-load",
+            headers={"Authorization": f"Bearer {other_token}"},
+        )
+        assert response.status_code == 404, response.text

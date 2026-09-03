@@ -17,8 +17,10 @@ from datetime import (
     date,  # noqa: TC003
     datetime,  # noqa: TC003
 )
+from typing import Any
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Uuid, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from lpg.infrastructure.persistence.database import Base
@@ -111,6 +113,13 @@ class RouteModel(Base):
     )
     route_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(30), server_default="planned")
+
+    # Van-load manifest snapshotted at `-> loaded` (`[{cylinder_type_id,
+    # quantity}]`) + the driver's confirmation timestamp (D-24 §2 / phase 27).
+    loaded_lines: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB(), nullable=True)
+    load_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(

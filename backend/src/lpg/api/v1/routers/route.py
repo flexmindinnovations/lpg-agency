@@ -21,18 +21,20 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
 from lpg.api.v1.dependencies.delivery import (
     get_assign_order_to_route_use_case,
     get_complete_route_reconciliation_use_case,
+    get_confirm_route_load_use_case,
     get_driver_repository,
     get_load_vehicle_for_route_use_case,
     get_route_repository,
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.order import get_idempotency_service
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.route import (
     AssignOrderRequest,
@@ -51,6 +53,8 @@ from lpg.application.delivery.use_cases import (
     AssignOrderToRouteUseCase,
     CompleteRouteReconciliationCommand,
     CompleteRouteReconciliationUseCase,
+    ConfirmRouteLoadCommand,
+    ConfirmRouteLoadUseCase,
     GetActiveRouteForDriverQuery,
     GetActiveRouteForDriverUseCase,
     GetRouteQuery,
@@ -67,6 +71,7 @@ from lpg.application.delivery.use_cases import (
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.domain.delivery.route import Route
+from lpg.infrastructure.idempotency.service import IdempotencyService, run_idempotent
 
 router = APIRouter(prefix="/routes", tags=["Routes"])
 
@@ -290,6 +295,50 @@ async def load_vehicle_for_route(
         )
     )
     return RouteResponse.model_validate(route)
+
+
+@router.post(
+    "/{route_id}/confirm-load",
+    response_model=RouteResponse,
+    summary="Driver confirms the van matches the load manifest",
+    dependencies=[Depends(require_permission("routes:deliver"))],
+)
+async def confirm_route_load(
+    http_request: Request,
+    route_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    use_case: Annotated[ConfirmRouteLoadUseCase, Depends(get_confirm_route_load_use_case)],
+    idempotency_service: Annotated[
+        IdempotencyService, Depends(get_idempotency_service)
+    ],
+) -> RouteResponse:
+    """A **soft** acknowledgement that the driver has checked the van against
+    the load manifest — it does *not* gate departing. Idempotent (a second
+    confirm is a no-op `200`); `409 INVARIANT_VIOLATION` if the route isn't
+    `loaded`. `Idempotency-Key` optional (the offline Driver App sends one).
+    """
+    actor_id = _require_actor(principal)
+    scoped_driver_id, _ = await _resolve_read_scope(principal, driver_repository)
+
+    async def _operation() -> dict[str, Any]:
+        route = await use_case.execute(
+            ConfirmRouteLoadCommand(
+                route_id=route_id,
+                confirmed_by=actor_id,
+                expected_driver_id=scoped_driver_id,
+            )
+        )
+        return RouteResponse.model_validate(route).model_dump(mode="json")
+
+    result = await run_idempotent(
+        idempotency_service,
+        tenant_id=principal.tenant_id,
+        idempotency_key=http_request.headers.get("Idempotency-Key"),
+        fingerprint_payload={"route_id": str(route_id)},
+        operation=_operation,
+    )
+    return RouteResponse.model_validate(result)
 
 
 @router.post(

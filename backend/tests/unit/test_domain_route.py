@@ -18,11 +18,13 @@ import pytest
 
 from lpg.domain.common.base import InvariantViolation
 from lpg.domain.delivery.route import (
+    LoadedLine,
     OrderAssignedToRoute,
     OrderDelivered,
     OrderDeliveryFailed,
     ProofOfDelivery,
     Route,
+    RouteLoadConfirmed,
     RoutePlanned,
     RouteStatusChanged,
     RouteStop,
@@ -146,6 +148,7 @@ class TestRouteStatusTransitions:
         events = [e for e in route.events if isinstance(e, VehicleLoaded)]
         assert events == []
 
+
     def test_rejects_unknown_status(self) -> None:
         route = _make_route(status="planned")
         with pytest.raises(InvariantViolation, match="Unknown route status"):
@@ -178,6 +181,43 @@ class TestRouteStatusTransitions:
         cancelled = _make_route(status="cancelled")
         with pytest.raises(InvariantViolation):
             cancelled.change_status("planned")
+
+
+class TestVanLoad:
+    def test_record_load_manifest_snapshots_the_lines(self) -> None:
+        route = _make_route(status="loaded")
+        ct = uuid.uuid4()
+        route.record_load_manifest([LoadedLine(cylinder_type_id=ct, quantity=7)])
+        assert list(route.loaded_lines) == [LoadedLine(cylinder_type_id=ct, quantity=7)]
+
+    def test_confirm_load_sets_the_timestamp_and_emits_the_event(self) -> None:
+        route = _make_route(status="loaded")
+        actor = uuid.uuid4()
+        assert route.load_confirmed_at is None
+
+        route.confirm_load(confirmed_by=actor)
+
+        assert route.load_confirmed_at is not None
+        events = [e for e in route.events if isinstance(e, RouteLoadConfirmed)]
+        assert len(events) == 1
+        assert events[0].confirmed_by == actor
+        assert events[0].driver_id == route.driver_id
+
+    def test_confirm_load_is_idempotent(self) -> None:
+        route = _make_route(status="loaded")
+        route.confirm_load(confirmed_by=uuid.uuid4())
+        first = route.load_confirmed_at
+
+        route.confirm_load(confirmed_by=uuid.uuid4())
+
+        assert route.load_confirmed_at == first
+        events = [e for e in route.events if isinstance(e, RouteLoadConfirmed)]
+        assert len(events) == 1
+
+    def test_confirm_load_rejected_when_not_loaded(self) -> None:
+        route = _make_route(status="planned")
+        with pytest.raises(InvariantViolation, match="once the route is loaded"):
+            route.confirm_load(confirmed_by=uuid.uuid4())
 
 
 class TestCompleteRequiresNonEmptyTerminalStops:

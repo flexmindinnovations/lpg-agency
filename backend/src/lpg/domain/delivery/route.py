@@ -81,6 +81,19 @@ class VehicleLoaded(DomainEvent):
     branch_id: uuid.UUID
 
 
+@dataclass(frozen=True, slots=True)
+class RouteLoadConfirmed(DomainEvent):
+    """The driver has checked the van against the load manifest. Not a gate
+    on departing — accountability, and it unlocks the Driver App's
+    empties-collected-vs-loaded validation.
+    """
+
+    route_id: uuid.UUID
+    tenant_id: uuid.UUID
+    driver_id: uuid.UUID
+    confirmed_by: uuid.UUID
+
+
 # ---------------------------------------------------------------------------
 # Value Objects and Constants
 # ---------------------------------------------------------------------------
@@ -118,6 +131,16 @@ class ProofOfDelivery:
     photo_url: str | None = None
     gps_lat: float | None = None
     gps_lon: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LoadedLine:
+    """One line of the van's load manifest — snapshotted when the office
+    loads the route, shown to the driver to check against.
+    """
+
+    cylinder_type_id: uuid.UUID
+    quantity: int
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +206,8 @@ class Route(AggregateRoot):
         "_branch_id",
         "_date",
         "_driver_id",
+        "_load_confirmed_at",
+        "_loaded_lines",
         "_status",
         "_stops",
         "_tenant_id",
@@ -200,6 +225,8 @@ class Route(AggregateRoot):
         route_date: datetime | None = None,
         status: str = "planned",
         stops: list[RouteStop] | None = None,
+        loaded_lines: list[LoadedLine] | None = None,
+        load_confirmed_at: datetime | None = None,
         version: int = 1,
     ) -> None:
         super().__init__(route_id, version=version)
@@ -210,6 +237,8 @@ class Route(AggregateRoot):
         self._date = route_date or datetime.now(UTC)
         self._status = status
         self._stops: list[RouteStop] = stops or []
+        self._loaded_lines: list[LoadedLine] = loaded_lines or []
+        self._load_confirmed_at = load_confirmed_at
 
     def record_planned(self) -> None:
         """Emits `RoutePlanned` — called explicitly by whichever use case
@@ -260,6 +289,40 @@ class Route(AggregateRoot):
     @property
     def stops(self) -> Sequence[RouteStop]:
         return tuple(self._stops)
+
+    @property
+    def loaded_lines(self) -> Sequence[LoadedLine]:
+        return tuple(self._loaded_lines)
+
+    @property
+    def load_confirmed_at(self) -> datetime | None:
+        return self._load_confirmed_at
+
+    def record_load_manifest(self, lines: Sequence[LoadedLine]) -> None:
+        """Snapshot what the office put on the van, for the driver to check
+        against. Called by `LoadVehicleForRouteUseCase` alongside the
+        `-> loaded` transition.
+        """
+        self._loaded_lines = list(lines)
+
+    def confirm_load(self, confirmed_by: uuid.UUID) -> None:
+        """The driver acknowledges the van matches the manifest. Idempotent;
+        rejected (409) if the route isn't `loaded`.
+        """
+        if self._status != "loaded":
+            msg = "The van load can only be confirmed once the route is loaded."
+            raise InvariantViolation(msg)
+        if self._load_confirmed_at is not None:
+            return
+        self._load_confirmed_at = datetime.now(UTC)
+        self.record_event(
+            RouteLoadConfirmed(
+                route_id=self.id,
+                tenant_id=self._tenant_id,
+                driver_id=self._driver_id,
+                confirmed_by=confirmed_by,
+            )
+        )
 
     def change_status(self, new_status: str) -> None:
         """Transition the route to a new status."""
