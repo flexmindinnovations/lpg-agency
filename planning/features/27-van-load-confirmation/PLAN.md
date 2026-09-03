@@ -1,7 +1,7 @@
 # Plan: Van-Load Confirmation
 
 **Phase:** 27
-**Status:** Stages 1–2 done 2026-09-03 · Stages 3–6 pending
+**Status:** Stages 1–3 done 2026-09-03 · Stages 4–6 pending
 **Type:** Non-mandatory Driver-App gap (flagged since Phase 26). Also unblocks
 the client-side "empties ≤ loaded" validation (`05-mobile-architecture.md` §2).
 
@@ -162,6 +162,51 @@ Today nudge, no route-lifecycle change.
   op; pending nudge shows only when `isLoadPending`; the offline harness
   covers the queue path.
 - **Commit:** `feat(mobile): van-load manifest screen + confirm (queued)`
+
+### ✅ DONE 2026-09-03
+
+- **`features/van_load/data/van_load_provider.dart`** (new):
+  - `cylinderTypeNamesProvider` (`FutureProvider<Map<String,String>>`) —
+    cache-first `GET /api/v1/admin/cylinder-types` via a new
+    `CacheFirstReader.getList` (best-effort JSON-array reader, never throws);
+    that endpoint has **no permission gate**, so the driver token works.
+  - `routeLoadProvider` (`.autoDispose.family<VanLoad, routeId>`) — projects
+    the active route's `loadedLines` into `VanLoadLine`s with resolved names
+    (falls back to the id's first 8 chars); throws if the route is no longer
+    active. `VanLoad` exposes `isConfirmed` + `totalCylinders`.
+  - `pendingLoadProvider` (`.autoDispose<RouteSummary?>`) — the active route
+    iff `isLoadPending` **and** not already queued
+    (`pendingSyncAggregatesProvider`), else `null`.
+- **`presentation/van_load_screen.dart`** (new) — `ConsumerWidget`; manifest
+  `LpgCard` (per line `label · ×N`, divider, total), a `_ConfirmedBanner` when
+  `load.isConfirmed || queued`, else an `LpgButton "Confirm load"` →
+  `deliveryMutationsProvider.confirmLoad(routeId)` → invalidate
+  `activeRouteProvider`/`pendingLoadProvider` → snackbar + `context.go('/')`.
+- **`offline/delivery_mutations.dart`** — `confirmLoad(routeId)`: stamps
+  `load_confirmed_at` on the cached `('route_active','current')` when it
+  matches, then `enqueueOperation('route_confirm_load', {path, body: null,
+  aggregateId: routeId})`.
+- **`sync_engine` `SyncCoordinator._dispatch`** — `route_confirm_load` joins
+  the thin structured-op group (`{path, body}`, no special handling).
+- **Routing** — `GoRoute('routes/:routeId/load', name: 'vanLoad')` under the
+  Deliveries branch, after `cashHandover`.
+- **Today nudge** — `_PendingLoadCard` (watches `pendingLoadProvider`) above
+  the pending-cash block: "Check your van load — N cylinders for today's
+  route" → `goNamed('vanLoad')`.
+- **`api_provider.dart`** — `cylinderTypeApiProvider`; **`cached_resource.dart`**
+  — `getList(path, {type, id})`.
+- **Deviation:** `cylinderTypeNamesProvider` uses a cache-first raw-array read
+  rather than a typed `CylinderTypeApi` call, so the name lookup survives
+  offline (the endpoint response is cached on first online open).
+- Tests: `van_load_screen_test.dart` (3 — manifest renders resolved names +
+  totals; Confirm queues `route_confirm_load` + navigates home;
+  already-confirmed shows the notice, no button — overrides
+  `pendingSyncAggregatesProvider` with a plain stream so `pumpAndSettle`
+  doesn't hang on the live drift watch); `delivery_mutations_test.dart` +1
+  (stamps the cache + queues); `today_screen_test.dart` +1 (nudge shows);
+  `sync_coordinator_test.dart` +1 (routes to the structured path).
+- Gate: `sync_engine` **15** · `api_client` **55** · `driver_app` **75** pass;
+  `flutter analyze` clean for `sync_engine` + `driver_app`.
 
 ## Stage 4 — Client-side empties validation
 

@@ -319,6 +319,7 @@ class SyncCoordinator {
       case 'order_failed_delivery':
       case 'order_reschedule':
       case 'cash_handover_declare':
+      case 'route_confirm_load':
         final decoded = jsonDecode(op.payload) as Map<String, dynamic>;
         await _apiClient.dio.post(
           decoded['path'] as String,

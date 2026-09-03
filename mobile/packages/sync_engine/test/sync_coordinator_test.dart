@@ -99,6 +99,22 @@ void main() {
     },
   );
 
+  test('route_confirm_load routes to the structured path', () async {
+    fakeAdapter.responseStatus = 200;
+    await coordinator.enqueueOperation(
+      'route_confirm_load',
+      jsonEncode({
+        'path': '/api/v1/routes/r1/confirm-load',
+        'body': null,
+        'aggregateId': 'r1',
+      }),
+    );
+    await settle();
+
+    expect(fakeAdapter.lastRequest?.path, '/api/v1/routes/r1/confirm-load');
+    expect((await onlyOp()).status, 'synced');
+  });
+
   test('the same idempotency key is sent on every attempt', () async {
     fakeAdapter.responseStatus = 500;
     await coordinator.enqueueOperation(

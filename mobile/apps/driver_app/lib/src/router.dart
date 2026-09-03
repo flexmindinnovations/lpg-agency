@@ -13,6 +13,7 @@ import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
 import 'features/sync/presentation/sync_status_screen.dart';
+import 'features/van_load/presentation/van_load_screen.dart';
 import 'login_screen.dart';
 import 'splash_screen.dart';
 
@@ -104,6 +105,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'routes/:routeId/cash-handover',
                     name: 'cashHandover',
                     builder: (context, state) => CashHandoverScreen(
+                      routeId: state.pathParameters['routeId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'routes/:routeId/load',
+                    name: 'vanLoad',
+                    builder: (context, state) => VanLoadScreen(
                       routeId: state.pathParameters['routeId']!,
                     ),
                   ),

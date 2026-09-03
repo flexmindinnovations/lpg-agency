@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cash_handover/data/cash_handover_provider.dart';
+import '../../van_load/data/van_load_provider.dart';
 import '../data/active_route_provider.dart';
 import 'widgets/location_sharing_card.dart';
 
@@ -35,9 +36,14 @@ class TodayScreen extends ConsumerWidget {
           ),
           data: (route) {
             final pendingCash = ref.watch(pendingCashHandoverProvider).value;
+            final pendingLoad = ref.watch(pendingLoadProvider).value;
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (pendingLoad != null) ...[
+                  _PendingLoadCard(route: pendingLoad),
+                  const SizedBox(height: 16),
+                ],
                 if (pendingCash != null) ...[
                   _PendingCashCard(view: pendingCash),
                   const SizedBox(height: 16),
@@ -170,6 +176,35 @@ class _NextStopCard extends StatelessWidget {
         leadingIcon: Icons.navigation_outlined,
         title: 'Next stop · Stop ${next.sequenceNumber}',
         subtitle: 'Order ${next.orderId.substring(0, 8).toUpperCase()}',
+        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+      ),
+    );
+  }
+}
+
+/// Shown while the office has loaded the van but the driver hasn't checked
+/// it yet — their prompt to open the manifest. Soft: it doesn't block
+/// departing.
+class _PendingLoadCard extends StatelessWidget {
+  const _PendingLoadCard({required this.route});
+
+  final RouteSummary route;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final total = route.loadedLines.fold<int>(0, (s, l) => s + l.quantity);
+
+    return LpgCard(
+      padding: EdgeInsets.zero,
+      onTap: () =>
+          context.goNamed('vanLoad', pathParameters: {'routeId': route.id}),
+      child: LpgListTile(
+        leadingIcon: Icons.inventory_2_outlined,
+        title: 'Check your van load',
+        subtitle: total == 0
+            ? "Review today's route manifest"
+            : "$total cylinder${total == 1 ? '' : 's'} for today's route",
         trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
       ),
     );

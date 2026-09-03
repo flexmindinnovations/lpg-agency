@@ -4,6 +4,7 @@ import 'package:driver_app/src/features/cash_handover/data/cash_handover_provide
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
 import 'package:driver_app/src/features/delivery/presentation/today_screen.dart';
+import 'package:driver_app/src/features/van_load/data/van_load_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,18 +56,22 @@ class _FakeController extends LocationSharingController {
   void stop() {}
 }
 
-Widget _screen({RouteSummary? route, RouteCashHandover? pendingCash}) =>
-    ProviderScope(
-      overrides: [
-        activeRouteProvider.overrideWith((ref) async => route),
-        pendingCashHandoverProvider.overrideWith((ref) async => pendingCash),
-        locationSharingControllerProvider.overrideWithValue(_FakeController()),
-        locationSharingStateProvider.overrideWith(
-          (ref) => Stream.value(const LocationSharingState()),
-        ),
-      ],
-      child: MaterialApp(theme: LpgTheme.light, home: const TodayScreen()),
-    );
+Widget _screen({
+  RouteSummary? route,
+  RouteCashHandover? pendingCash,
+  RouteSummary? pendingLoad,
+}) => ProviderScope(
+  overrides: [
+    activeRouteProvider.overrideWith((ref) async => route),
+    pendingCashHandoverProvider.overrideWith((ref) async => pendingCash),
+    pendingLoadProvider.overrideWith((ref) async => pendingLoad),
+    locationSharingControllerProvider.overrideWithValue(_FakeController()),
+    locationSharingStateProvider.overrideWith(
+      (ref) => Stream.value(const LocationSharingState()),
+    ),
+  ],
+  child: MaterialApp(theme: LpgTheme.light, home: const TodayScreen()),
+);
 
 void main() {
   group('TodayScreen', () {
@@ -94,6 +99,18 @@ void main() {
 
       expect(find.text('Cash reconciliation pending'), findsOneWidget);
       expect(find.textContaining('Declare ₹1200.00'), findsOneWidget);
+    });
+
+    testWidgets('nudges the driver to check the van load', (tester) async {
+      await tester.pumpWidget(
+        _screen(
+          route: _route(status: 'loaded'),
+          pendingLoad: _route(status: 'loaded'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check your van load'), findsOneWidget);
     });
 
     testWidgets('reports when every stop is done', (tester) async {

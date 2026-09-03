@@ -169,6 +169,28 @@ void main() {
   );
 
   test(
+    'confirmLoad stamps the cached active route and queues the op',
+    () async {
+      await cache.write('route_active', 'current', {
+        'id': 'r9',
+        'status': 'loaded',
+        'load_confirmed_at': null,
+      });
+
+      await build(online: true).confirmLoad('r9');
+
+      expect(
+        (await cache.read('route_active', 'current'))!['load_confirmed_at'],
+        isNotNull,
+      );
+      final op = (await onlyOpOrNull())!;
+      expect(op.type, 'route_confirm_load');
+      expect(jsonDecode(op.payload)['path'], '/api/v1/routes/r9/confirm-load');
+      expect(jsonDecode(op.payload)['aggregateId'], 'r9');
+    },
+  );
+
+  test(
     'recordDelivery offline writes media and queues an order_deliver op',
     () async {
       adapter.offline = true;

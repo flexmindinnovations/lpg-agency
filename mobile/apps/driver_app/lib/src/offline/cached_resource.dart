@@ -78,5 +78,28 @@ class CacheFirstReader {
     }
   }
 
+  /// Cache-first `GET` for an endpoint returning a JSON **array** (e.g. the
+  /// cylinder-type list). Best-effort — a failure with nothing cached
+  /// returns `const []`, never throws, so a name lookup just degrades to
+  /// showing ids. Cached wrapped as `{'items': [...]}`.
+  Future<List<dynamic>> getList(
+    String path, {
+    required String type,
+    required String id,
+  }) async {
+    try {
+      final res = await _dio.get<List<dynamic>>(path);
+      final data = res.data;
+      if (data != null) {
+        await _cache?.write(type, id, {'items': data});
+        return data;
+      }
+    } on DioException {
+      // fall through to the cache
+    }
+    return (await _cache?.read(type, id))?['items'] as List<dynamic>? ??
+        const [];
+  }
+
   static bool _never(DioException _) => false;
 }

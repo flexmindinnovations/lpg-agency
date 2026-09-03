@@ -103,6 +103,25 @@ class DeliveryMutations {
     );
   }
 
+  /// The driver confirms the van matches the load manifest. Optimistically
+  /// stamps `load_confirmed_at` on the cached active route so the screen and
+  /// the Today nudge update immediately.
+  Future<void> confirmLoad(String routeId) async {
+    final cached = await _cache?.read('route_active', 'current');
+    if (cached != null && cached['id'] == routeId) {
+      cached['load_confirmed_at'] = DateTime.now().toUtc().toIso8601String();
+      await _cache!.write('route_active', 'current', cached);
+    }
+    await _coordinator.enqueueOperation(
+      'route_confirm_load',
+      jsonEncode({
+        'path': '/api/v1/routes/$routeId/confirm-load',
+        'body': null,
+        'aggregateId': routeId,
+      }),
+    );
+  }
+
   /// `out_for_delivery → delivered` with proof of delivery.
   Future<DeliverOutcome> recordDelivery({
     required String orderId,
