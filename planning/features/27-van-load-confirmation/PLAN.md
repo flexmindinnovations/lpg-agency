@@ -1,7 +1,7 @@
 # Plan: Van-Load Confirmation
 
 **Phase:** 27
-**Status:** Stages 1–5 done 2026-09-03 · Stage 6 (emulator + docs) pending
+**Status:** ✅ Stages 1–6 done 2026-09-03 — see [STATUS.md](./STATUS.md)
 **Type:** Non-mandatory Driver-App gap (flagged since Phase 26). Also unblocks
 the client-side "empties ≤ loaded" validation (`05-mobile-architecture.md` §2).
 
@@ -291,6 +291,26 @@ Today nudge, no route-lifecycle change.
 - `27-van-load-confirmation/STATUS.md`; update `24-driver-app-shell/STATUS.md`;
   memory (`reference_van_load_confirmation.md` or fold into
   `reference_driver_offline_sync` / a driver-app-features note).
+
+### ✅ DONE 2026-09-03
+
+- **Live API round trip** (dev backend + arq, `scratchpad/stage6_roundtrip.py`
+  — a dev route mutated to `loaded` with a manifest, then restored):
+  `GET /routes/{id}` → 2-line manifest, `load_confirmed_at: null` →
+  `POST /confirm-load` + `Idempotency-Key` → 200, timestamp set → same-key
+  replay → same timestamp → third confirm, no key → 200 no-op. arq delivered
+  **3** `route_load_confirmed_staff` in-app notifications (manager /
+  dispatcher / agency_admin), "Van Load Confirmed" / "The driver confirmed
+  the van load for route #XXXXXXXX."
+- **APK** — `flutter build apk --debug --dart-define-from-file` clean;
+  installed on `emulator-5554`; cold-launch reaches the Flutter engine +
+  Dart VM, `MainActivity` focused, no `FATAL` / Dart exception. Full
+  logged-in walkthrough not run (seeded driver has no `loaded` route);
+  covered by the widget suites.
+- **`STATUS.md`** written; `24-driver-app-shell/STATUS.md` updated; memory
+  `reference_van_load_confirmation.md` added.
+- Restarted the dev backend + arq off stale (2026-09-02) processes so the
+  round trip ran against Stage 1/3/5 code.
 
 ---
 

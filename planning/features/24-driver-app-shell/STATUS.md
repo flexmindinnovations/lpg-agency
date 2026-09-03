@@ -66,6 +66,14 @@ two bugs, both caught by the D2 on-device run and fixed:
   for depart / deliver (incl. POD media) / failed-delivery / cash-handover
   with optimistic UI; a sync-status screen for failures and conflicts. This
   closes the last mandatory Driver-App requirement.
+- **Van-load confirmation** — ✅ done 2026-09-03, Phase 27, see
+  [27-van-load-confirmation/STATUS.md](../27-van-load-confirmation/STATUS.md).
+  `delivery.route` snapshots `loaded_lines` at `→ loaded`; the driver gets a
+  `VanLoadScreen` (manifest + soft "Confirm load", queued offline) reached
+  from a Today nudge; `record_delivery` now shows a soft warning when empties
+  collected on the route would exceed what the van was loaded with (the
+  `05-mobile-architecture.md` §2 offline check); `RouteLoadConfirmed` →
+  in-app `route_load_confirmed_staff` alert to dispatch.
 
 ## Notes
 
@@ -87,5 +95,4 @@ two bugs, both caught by the D2 on-device run and fixed:
 
 ## Last Updated
 
-2026-09-02 — Stage D2 delivery-workflow regression on emulator; fixed the
-post-delivery navigation strand + the stop-number off-by-one.
+2026-09-03 — Phase 27 (van-load confirmation) landed; see its STATUS.md.
