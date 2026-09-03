@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
+import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/image_picker_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
 import 'package:driver_app/src/features/delivery/presentation/record_delivery_screen.dart';
+import 'package:driver_app/src/offline/pending_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -160,9 +162,28 @@ Widget _host(ProviderContainer c) => UncontrolledProviderScope(
   ),
 );
 
+RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
+    RouteSummary(
+      id: 'route-1',
+      status: 'in_progress',
+      driverId: 'd1',
+      vehicleId: 'v1',
+      stops: const [
+        RouteStopSummary(
+          id: 's1',
+          orderId: 'order-1',
+          sequenceNumber: 1,
+          status: 'out_for_delivery',
+        ),
+      ],
+      loadedLines: loadedLines,
+    );
+
 ({ProviderContainer container, OfflineHarness harness}) _container(
   _RecordingAdapter adapter, {
   bool online = true,
+  RouteSummary? route,
+  Map<String, int> queuedEmpties = const {},
 }) {
   final harness = OfflineHarness(
     ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
@@ -174,6 +195,12 @@ Widget _host(ProviderContainer c) => UncontrolledProviderScope(
       stopOrderProvider.overrideWith((ref, id) async => _order()),
       imagePickerProvider.overrideWithValue(_FakePicker()),
       driverGeolocatorProvider.overrideWithValue(const _FakeGeolocator()),
+      activeRouteProvider.overrideWith((ref) async => route),
+      // A plain stream — the screen watches this live drift-backed provider,
+      // and `pumpAndSettle` would hang on the coordinator's queue watch.
+      queuedEmptiesByTypeProvider.overrideWith(
+        (ref) => Stream.value(queuedEmpties),
+      ),
     ],
   );
   return (container: container, harness: harness);
@@ -304,6 +331,64 @@ void main() {
       expect(ops.single.type, 'order_deliver');
 
       expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('warns when empties collected exceed the van load manifest', (
+      tester,
+    ) async {
+      final (:container, :harness) = _container(
+        _RecordingAdapter(),
+        route: _route(
+          loadedLines: const [
+            RouteLoadLine(cylinderTypeId: 'ct1', quantity: 1),
+          ],
+        ),
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      // Prefill records 2 delivered / 2 empties for ct1; the van carried 1.
+      expect(
+        find.textContaining('more empties than the van was loaded with'),
+        findsOneWidget,
+      );
+
+      // Step the empties down to the loaded quantity — warning clears.
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(Row, 'Empties collected'),
+          matching: find.byIcon(Icons.remove_circle_outline),
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.textContaining('more empties than the van was loaded with'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('no manifest warning when the load covers the empties', (
+      tester,
+    ) async {
+      final (:container, :harness) = _container(
+        _RecordingAdapter(),
+        route: _route(
+          loadedLines: const [
+            RouteLoadLine(cylinderTypeId: 'ct1', quantity: 5),
+          ],
+        ),
+        queuedEmpties: const {'ct1': 1},
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      // 1 queued elsewhere + 2 this stop = 3 <= 5 loaded.
+      expect(
+        find.textContaining('more empties than the van was loaded with'),
+        findsNothing,
+      );
     });
   });
 }

@@ -27,3 +27,33 @@ final pendingSyncAggregatesProvider = StreamProvider<Set<String>>((ref) {
     return ids;
   });
 });
+
+/// `cylinder_type_id -> empties already queued for delivery`, summed across
+/// every unsynced `order_deliver` op. The record-delivery screen adds the
+/// current stop's figure on top to warn when the route would hand back more
+/// empties than the van was loaded with. Best-effort: a synced delivery has
+/// already cleared the server and no longer shows here.
+final queuedEmptiesByTypeProvider = StreamProvider<Map<String, int>>((ref) {
+  return ref.watch(syncCoordinatorProvider).watchActive().map((ops) {
+    final totals = <String, int>{};
+    for (final op in ops) {
+      if (op.type != 'order_deliver') continue;
+      try {
+        final body =
+            (jsonDecode(op.payload) as Map<String, dynamic>)['body']
+                as Map<String, dynamic>?;
+        for (final line
+            in (body?['lines'] as List<dynamic>? ?? const [])
+                .cast<Map<String, dynamic>>()) {
+          final id = line['cylinder_type_id'] as String;
+          totals[id] =
+              (totals[id] ?? 0) +
+              (line['quantity_collected_empty'] as num).toInt();
+        }
+      } catch (_) {
+        // A payload we can't read tells us nothing about the empties.
+      }
+    }
+    return totals;
+  });
+});

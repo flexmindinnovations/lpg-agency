@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
 import '../../../offline/delivery_mutations.dart';
+import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
 import '../data/image_picker_provider.dart';
 import '../data/location_sharing.dart';
@@ -166,6 +167,18 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         ),
         data: (order) {
           _prefill(order);
+          // The van's load manifest is a whole-route budget for empties: you
+          // can't hand back more empties of a type than the office loaded.
+          // Soft — a warning, never a block (a broken check must not strand a
+          // driver). `null` for a type means "no manifest", so don't warn.
+          final manifest = <String, int>{
+            for (final l
+                in ref.watch(activeRouteProvider).value?.loadedLines ??
+                    const [])
+              l.cylinderTypeId: l.quantity,
+          };
+          final queuedEmpties =
+              ref.watch(queuedEmptiesByTypeProvider).value ?? const {};
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -179,6 +192,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   ordered: line.quantityOrdered,
                   delivered: _quantities[line.cylinderTypeId]?.$1 ?? 0,
                   collected: _quantities[line.cylinderTypeId]?.$2 ?? 0,
+                  loadedForType: manifest[line.cylinderTypeId],
+                  emptiesQueuedElsewhere:
+                      queuedEmpties[line.cylinderTypeId] ?? 0,
                   onChanged: (d, c) =>
                       setState(() => _quantities[line.cylinderTypeId] = (d, c)),
                 ),
@@ -286,17 +302,31 @@ class _QuantityRow extends StatelessWidget {
     required this.delivered,
     required this.collected,
     required this.onChanged,
+    this.loadedForType,
+    this.emptiesQueuedElsewhere = 0,
   });
 
   final int ordered;
   final int delivered;
   final int collected;
+
+  /// How many of this cylinder type the office loaded onto the van, or `null`
+  /// when there's no manifest to check against.
+  final int? loadedForType;
+
+  /// Empties of this type already recorded (and queued) at other stops on the
+  /// route — added to this stop's figure before checking the manifest.
+  final int emptiesQueuedElsewhere;
+
   final void Function(int delivered, int collected) onChanged;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<LpgColors>()!;
     final theme = Theme.of(context);
+    final loaded = loadedForType;
+    final overLoaded =
+        loaded != null && emptiesQueuedElsewhere + collected > loaded;
     return LpgCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,6 +350,29 @@ class _QuantityRow extends StatelessWidget {
             max: delivered,
             onChanged: (v) => onChanged(delivered, v),
           ),
+          if (overLoaded) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: colors.statusWarning,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'That is more empties than the van was loaded with for '
+                    'this type ($loaded loaded). Recheck before you submit.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.statusWarning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

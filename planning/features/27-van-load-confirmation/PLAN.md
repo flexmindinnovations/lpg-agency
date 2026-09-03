@@ -1,7 +1,7 @@
 # Plan: Van-Load Confirmation
 
 **Phase:** 27
-**Status:** Stages 1–3 done 2026-09-03 · Stages 4–6 pending
+**Status:** Stages 1–4 done 2026-09-03 · Stages 5–6 pending
 **Type:** Non-mandatory Driver-App gap (flagged since Phase 26). Also unblocks
 the client-side "empties ≤ loaded" validation (`05-mobile-architecture.md` §2).
 
@@ -221,6 +221,36 @@ Today nudge, no route-lifecycle change.
 - Tests: the `_QuantityRow` stepper clamps; an over-manifest total shows the
   warning.
 - **Commit:** `feat(mobile): cap empties-collected against the van load`
+
+### ✅ DONE 2026-09-03
+
+- **`offline/pending_sync.dart`** — `queuedEmptiesByTypeProvider`
+  (`StreamProvider<Map<String,int>>`) sums `quantity_collected_empty` across
+  every unsynced `order_deliver` op, keyed by cylinder-type id.
+- **`record_delivery_screen.dart`** — build reads the active route's
+  `loadedLines` into a `manifest` map + `queuedEmptiesByTypeProvider`; each
+  `_QuantityRow` gets `loadedForType` + `emptiesQueuedElsewhere`. When
+  `emptiesQueuedElsewhere + collected > loadedForType` it shows an amber
+  `warning_amber_rounded` row ("more empties than the van was loaded with for
+  this type (N loaded). Recheck before you submit.") — **soft**, never blocks
+  submit. No manifest for a type ⇒ no warning.
+- The existing hard caps stay: Delivered stepper `max: ordered`, Empties
+  stepper `max: delivered` (you still can't record more empties than fulls
+  delivered at a stop).
+- **Deviations:**
+  - The running tally counts **queued** deliveries only — a synced delivery
+    has already cleared the server and its order is no longer in the driver's
+    local data. Early in a route the warning can under-count; acceptable for a
+    soft check.
+  - No new domain VO (`CylinderBalance`) — a `Map<typeId,int>` off the manifest
+    + queue is enough for this one check; a VO can come later if more
+    client-side inventory rules appear.
+- Tests: `record_delivery_screen_test.dart` +2 (warning shows when prefilled
+  empties exceed a 1-cylinder manifest and clears when stepped down;
+  no warning when `queued elsewhere + this stop ≤ loaded`); `_container` now
+  overrides `activeRouteProvider` + `queuedEmptiesByTypeProvider` (plain
+  stream, so `pumpAndSettle` doesn't hang on the live queue watch).
+- Gate: `driver_app` **77** pass; `flutter analyze` clean.
 
 ## Stage 5 — (optional) office notification
 
