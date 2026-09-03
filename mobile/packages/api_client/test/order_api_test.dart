@@ -140,44 +140,47 @@ void main() {
       expect(failure!.errorCode, 'NETWORK_UNAVAILABLE');
     });
 
-    test('getOrderTracking parses the destination and driver location', () async {
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
-        expect(options.path, '/api/v1/orders/order-1/tracking');
-        return jsonResponse({
-          'order_id': 'order-1',
-          'status': 'out_for_delivery',
-          'destination_latitude': 9.9312,
-          'destination_longitude': 76.2673,
-          'destination_label': '221B Baker Street',
-          'route_status': 'in_progress',
-          'driver_location': {
-            'latitude': 9.94,
-            'longitude': 76.27,
-            'heading': 90.0,
-            'recorded_at': '2026-09-01T10:00:00Z',
-          },
-          'driver': {
-            'name': 'Ramesh Kumar',
-            'phone_number': '+919000011111',
-            'vehicle_number': 'TS07UB4412',
-            'vehicle_model': 'Tata Ace',
-          },
-        }, 200);
-      });
+    test(
+      'getOrderTracking parses the destination and driver location',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          expect(options.path, '/api/v1/orders/order-1/tracking');
+          return jsonResponse({
+            'order_id': 'order-1',
+            'status': 'out_for_delivery',
+            'destination_latitude': 9.9312,
+            'destination_longitude': 76.2673,
+            'destination_label': '221B Baker Street',
+            'route_status': 'in_progress',
+            'driver_location': {
+              'latitude': 9.94,
+              'longitude': 76.27,
+              'heading': 90.0,
+              'recorded_at': '2026-09-01T10:00:00Z',
+            },
+            'driver': {
+              'name': 'Ramesh Kumar',
+              'phone_number': '+919000011111',
+              'vehicle_number': 'TS07UB4412',
+              'vehicle_model': 'Tata Ace',
+            },
+          }, 200);
+        });
 
-      final result = await OrderApi(client.dio).getOrderTracking('order-1');
+        final result = await OrderApi(client.dio).getOrderTracking('order-1');
 
-      final tracking = result.when(
-        onSuccess: (data) => data,
-        onFailure: (_) => null,
-      );
-      expect(tracking!.routeStatus, 'in_progress');
-      expect(tracking.destinationLatitude, 9.9312);
-      expect(tracking.driverLocation!.heading, 90.0);
-      expect(tracking.driver!.name, 'Ramesh Kumar');
-      expect(tracking.driver!.vehicleNumber, 'TS07UB4412');
-    });
+        final tracking = result.when(
+          onSuccess: (data) => data,
+          onFailure: (_) => null,
+        );
+        expect(tracking!.routeStatus, 'in_progress');
+        expect(tracking.destinationLatitude, 9.9312);
+        expect(tracking.driverLocation!.heading, 90.0);
+        expect(tracking.driver!.name, 'Ramesh Kumar');
+        expect(tracking.driver!.vehicleNumber, 'TS07UB4412');
+      },
+    );
 
     test('departOrder posts to the depart action', () async {
       RequestOptions? captured;
@@ -233,72 +236,77 @@ void main() {
       expect(captured!.data, {'reason_code': 'wrong_address'});
     });
 
-    test('uploadPodAttachment posts multipart and parses the blob ref', () async {
-      RequestOptions? captured;
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
-        captured = options;
-        return jsonResponse({'blob_ref': 'tenant/x/orders/o1/pod/abc.png'}, 201);
-      });
+    test(
+      'uploadPodAttachment posts multipart and parses the blob ref',
+      () async {
+        RequestOptions? captured;
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          captured = options;
+          return jsonResponse({
+            'blob_ref': 'tenant/x/orders/o1/pod/abc.png',
+          }, 201);
+        });
 
-      final result = await OrderApi(client.dio).uploadPodAttachment(
-        'o1',
-        bytes: const [1, 2, 3],
-        filename: 'signature.png',
-      );
+        final result = await OrderApi(client.dio).uploadPodAttachment(
+          'o1',
+          bytes: const [1, 2, 3],
+          filename: 'signature.png',
+        );
 
-      expect(captured!.path, '/api/v1/orders/o1/pod-attachments');
-      expect(captured!.data, isA<FormData>());
-      expect(
-        result.when(onSuccess: (r) => r.blobRef, onFailure: (_) => null),
-        'tenant/x/orders/o1/pod/abc.png',
-      );
-    });
+        expect(captured!.path, '/api/v1/orders/o1/pod-attachments');
+        expect(captured!.data, isA<FormData>());
+        expect(
+          result.when(onSuccess: (r) => r.blobRef, onFailure: (_) => null),
+          'tenant/x/orders/o1/pod/abc.png',
+        );
+      },
+    );
 
-    test('deliverOrder sends lines, otp and PoD with an Idempotency-Key',
-        () async {
-      RequestOptions? captured;
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
-        captured = options;
-        return jsonResponse({
-          'order': _orderJson(status: 'delivered'),
-        }, 200);
-      });
+    test(
+      'deliverOrder sends lines, otp and PoD with an Idempotency-Key',
+      () async {
+        RequestOptions? captured;
+        final client = ApiClient(baseUrl: 'https://api.test');
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          captured = options;
+          return jsonResponse({'order': _orderJson(status: 'delivered')}, 200);
+        });
 
-      final result = await OrderApi(client.dio).deliverOrder(
-        'o1',
-        const DeliverOrderRequest(
-          lines: [
-            DeliveredLineRequest(
-              cylinderTypeId: 'ct1',
-              quantityDelivered: 2,
-              quantityCollectedEmpty: 2,
+        final result = await OrderApi(client.dio).deliverOrder(
+          'o1',
+          const DeliverOrderRequest(
+            lines: [
+              DeliveredLineRequest(
+                cylinderTypeId: 'ct1',
+                quantityDelivered: 2,
+                quantityCollectedEmpty: 2,
+              ),
+            ],
+            otpCode: '123456',
+            proofOfDelivery: ProofOfDeliverySubmission(
+              signatureBlobRef: 'sig',
+              photoBlobRef: 'photo',
+              gpsLat: 17.44,
+              gpsLng: 78.35,
+              paymentMethod: 'cash',
+              amountCollected: 905.5,
             ),
-          ],
-          otpCode: '123456',
-          proofOfDelivery: ProofOfDeliverySubmission(
-            signatureBlobRef: 'sig',
-            photoBlobRef: 'photo',
-            gpsLat: 17.44,
-            gpsLng: 78.35,
-            paymentMethod: 'cash',
-            amountCollected: 905.5,
           ),
-        ),
-        idempotencyKey: 'key-1',
-      );
+          idempotencyKey: 'key-1',
+        );
 
-      expect(captured!.path, '/api/v1/orders/o1/deliver');
-      expect(captured!.headers['Idempotency-Key'], 'key-1');
-      final body = captured!.data as Map;
-      expect(body['otp_code'], '123456');
-      expect((body['proof_of_delivery'] as Map)['payment_method'], 'cash');
-      expect(
-        result.when(onSuccess: (r) => r.order.status, onFailure: (_) => null),
-        'delivered',
-      );
-    });
+        expect(captured!.path, '/api/v1/orders/o1/deliver');
+        expect(captured!.headers['Idempotency-Key'], 'key-1');
+        final body = captured!.data as Map;
+        expect(body['otp_code'], '123456');
+        expect((body['proof_of_delivery'] as Map)['payment_method'], 'cash');
+        expect(
+          result.when(onSuccess: (r) => r.order.status, onFailure: (_) => null),
+          'delivered',
+        );
+      },
+    );
 
     test('getOrderTracking allows a null driver location', () async {
       final client = ApiClient(baseUrl: 'https://api.test');

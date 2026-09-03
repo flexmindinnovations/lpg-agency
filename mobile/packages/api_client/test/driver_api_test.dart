@@ -68,10 +68,7 @@ void main() {
 
       final result = await DriverApi(client.dio).getMe();
 
-      final failure = result.when(
-        onSuccess: (_) => null,
-        onFailure: (f) => f,
-      );
+      final failure = result.when(onSuccess: (_) => null, onFailure: (f) => f);
       expect(failure, isNotNull);
     });
   });

@@ -4,7 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_http_client_adapter.dart';
 
-Map<String, dynamic> _routeJson({String status = 'in_progress'}) => {
+Map<String, dynamic> _routeJson({
+  String status = 'in_progress',
+  List<Map<String, dynamic>>? loadedLines,
+  String? loadConfirmedAt,
+}) => {
   'id': 'route-1',
   'tenant_id': 'tenant-1',
   'branch_id': 'branch-1',
@@ -22,6 +26,8 @@ Map<String, dynamic> _routeJson({String status = 'in_progress'}) => {
       'status': 'pending',
     },
   ],
+  'loaded_lines': loadedLines ?? <Map<String, dynamic>>[],
+  'load_confirmed_at': loadConfirmedAt,
 };
 
 void main() {
@@ -38,6 +44,51 @@ void main() {
       final route = result.when(onSuccess: (r) => r, onFailure: (_) => null);
       expect(route!.isInProgress, isTrue);
       expect(route.stops.single.orderId, 'order-1');
+    });
+
+    test('getMyActiveRoute parses the van-load manifest', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        return jsonResponse(
+          _routeJson(
+            status: 'loaded',
+            loadedLines: [
+              {'cylinder_type_id': 'ct-14kg', 'quantity': 5},
+              {'cylinder_type_id': 'ct-19kg', 'quantity': 2},
+            ],
+          ),
+          200,
+        );
+      });
+
+      final result = await RouteApi(client.dio).getMyActiveRoute();
+      final route = result.when(onSuccess: (r) => r, onFailure: (_) => null)!;
+
+      expect(route.loadedLines, hasLength(2));
+      expect(route.loadedLines.first.cylinderTypeId, 'ct-14kg');
+      expect(route.loadedLines.first.quantity, 5);
+      expect(route.isLoadPending, isTrue);
+    });
+
+    test('confirmLoad posts to confirm-load with an idempotency key', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse(
+          _routeJson(status: 'loaded', loadConfirmedAt: '2026-09-03T10:00:00Z'),
+          200,
+        );
+      });
+
+      final result = await RouteApi(client.dio).confirmLoad('route-1');
+
+      expect(captured!.path, '/api/v1/routes/route-1/confirm-load');
+      expect(captured!.method, 'POST');
+      expect(captured!.headers['Idempotency-Key'], isNotNull);
+      final route = result.when(onSuccess: (r) => r, onFailure: (_) => null)!;
+      expect(route.loadConfirmedAt, isNotNull);
+      expect(route.isLoadPending, isFalse);
     });
 
     test('getMyActiveRoute maps a 404 to Success(null)', () async {
@@ -115,8 +166,10 @@ void main() {
         ),
       );
 
-      expect(result.when(onSuccess: (_) => true, onFailure: (_) => false),
-          isTrue);
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
       expect(captured!.path, '/api/v1/routes/route-1/location');
       expect(captured!.data, {
         'latitude': 9.93,

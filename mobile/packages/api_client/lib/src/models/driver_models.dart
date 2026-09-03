@@ -7,11 +7,12 @@ class DriverMeVehicle {
     required this.model,
   });
 
-  factory DriverMeVehicle.fromJson(Map<String, dynamic> json) => DriverMeVehicle(
-    registrationNumber: json['registration_number'] as String,
-    make: json['make'] as String,
-    model: json['model'] as String,
-  );
+  factory DriverMeVehicle.fromJson(Map<String, dynamic> json) =>
+      DriverMeVehicle(
+        registrationNumber: json['registration_number'] as String,
+        make: json['make'] as String,
+        model: json['model'] as String,
+      );
 
   final String registrationNumber;
   final String make;

@@ -1,7 +1,7 @@
 # Plan: Van-Load Confirmation
 
 **Phase:** 27
-**Status:** Stage 1 done 2026-09-03 (`uv run pytest` 1140, gate clean) · Stages 2–6 pending
+**Status:** Stages 1–2 done 2026-09-03 · Stages 3–6 pending
 **Type:** Non-mandatory Driver-App gap (flagged since Phase 26). Also unblocks
 the client-side "empties ≤ loaded" validation (`05-mobile-architecture.md` §2).
 
@@ -115,6 +115,22 @@ Today nudge, no route-lifecycle change.
   status == 'loaded' && loadConfirmedAt == null`.
 - Tests: parse `loaded_lines`; `confirmLoad` posts to the right path with a key.
 - **Commit:** `feat(mobile): RouteLoadLine model + RouteApi.confirmLoad`
+
+### ✅ DONE 2026-09-03
+
+- `models/route_models.dart` — `RouteLoadLine` (`cylinderTypeId`, `quantity`);
+  `RouteSummary` gained `loadedLines` (defaults `const []`) + `loadConfirmedAt`,
+  parsed from `loaded_lines` / `load_confirmed_at`; `bool get isLoadPending
+  => status == 'loaded' && loadConfirmedAt == null`. Both new ctor params are
+  optional — existing `RouteSummary(...)` call sites (screen-test fixtures)
+  are untouched.
+- `route_api.dart` — `RouteApi.confirmLoad(routeId, {idempotencyKey}) →
+  Result<RouteSummary>` (`POST /routes/{id}/confirm-load`, sends
+  `Idempotency-Key`, `Uuid().v4()` default).
+- Tests: `route_api_test.dart` +2 (manifest parse + `isLoadPending`;
+  `confirmLoad` path/method/header + `loadConfirmedAt`).
+- Gate: `api_client` **55** + `driver_app` 70 + `customer_app` 45 pass; all
+  analyze clean.
 
 ## Stage 3 — Driver app
 

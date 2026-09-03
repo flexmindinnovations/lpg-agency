@@ -21,9 +21,23 @@ class RouteStopSummary {
   final String status;
 }
 
+/// One line of the van's load manifest — mirrors the backend's
+/// `RouteLoadLineResponse`. Cylinder-type names are resolved client-side.
+class RouteLoadLine {
+  const RouteLoadLine({required this.cylinderTypeId, required this.quantity});
+
+  factory RouteLoadLine.fromJson(Map<String, dynamic> json) => RouteLoadLine(
+    cylinderTypeId: json['cylinder_type_id'] as String,
+    quantity: (json['quantity'] as num).toInt(),
+  );
+
+  final String cylinderTypeId;
+  final int quantity;
+}
+
 /// A delivery route — mirrors the backend's `RouteResponse`. Kept separate
 /// from the dashboard's richer route model: the Driver App only needs the
-/// status and the ordered stops.
+/// status, the ordered stops and the van-load manifest.
 class RouteSummary {
   const RouteSummary({
     required this.id,
@@ -32,6 +46,8 @@ class RouteSummary {
     required this.vehicleId,
     required this.stops,
     this.date,
+    this.loadedLines = const [],
+    this.loadConfirmedAt,
   });
 
   factory RouteSummary.fromJson(Map<String, dynamic> json) => RouteSummary(
@@ -47,6 +63,14 @@ class RouteSummary {
             ?.map((e) => RouteStopSummary.fromJson(e as Map<String, dynamic>))
             .toList() ??
         const [],
+    loadedLines:
+        (json['loaded_lines'] as List<dynamic>?)
+            ?.map((e) => RouteLoadLine.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    loadConfirmedAt: json['load_confirmed_at'] == null
+        ? null
+        : DateTime.tryParse(json['load_confirmed_at'] as String),
   );
 
   final String id;
@@ -56,9 +80,19 @@ class RouteSummary {
   final DateTime? date;
   final List<RouteStopSummary> stops;
 
+  /// What the office loaded onto the van (empty until the route is loaded).
+  final List<RouteLoadLine> loadedLines;
+
+  /// When the driver confirmed the van matches [loadedLines], or `null`.
+  final DateTime? loadConfirmedAt;
+
   /// `true` once the vehicle has departed — the only state in which the
   /// backend accepts location pings.
   bool get isInProgress => status == 'in_progress';
+
+  /// `true` when the office has loaded the van but the driver hasn't yet
+  /// confirmed it — drives the Today "check your van load" nudge.
+  bool get isLoadPending => status == 'loaded' && loadConfirmedAt == null;
 }
 
 /// `POST /routes/{id}/location` body — one GPS reading from the Driver App.

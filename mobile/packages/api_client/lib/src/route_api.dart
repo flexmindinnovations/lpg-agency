@@ -1,5 +1,6 @@
 import 'package:core/core.dart';
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 
 import 'failure_mapper.dart';
 import 'models/models.dart';
@@ -49,6 +50,33 @@ final class RouteApi {
           .map((e) => RouteSummary.fromJson(e as Map<String, dynamic>))
           .toList();
       return Success(items);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// The driver confirms the van matches the load manifest
+  /// (`POST /routes/{id}/confirm-load`). Soft — the backend does *not* gate
+  /// departing on it. An `Idempotency-Key` is sent so a queued offline retry
+  /// replays rather than re-confirming; a fresh v4 unless [idempotencyKey] is
+  /// passed. `409` if the route isn't `loaded`.
+  Future<Result<RouteSummary>> confirmLoad(
+    String routeId, {
+    String? idempotencyKey,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/routes/$routeId/confirm-load',
+        options: Options(
+          headers: {'Idempotency-Key': idempotencyKey ?? const Uuid().v4()},
+        ),
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(RouteSummary.fromJson(response.data!));
     } on DioException catch (e) {
       return FailureResult(mapDioError(e));
     } catch (e) {
