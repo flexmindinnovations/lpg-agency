@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
-import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
-import '../../../api_provider.dart';
+import '../../../offline/delivery_mutations.dart';
 import '../data/active_route_provider.dart';
 import '../data/image_picker_provider.dart';
 import '../data/location_sharing.dart';
@@ -97,77 +96,59 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         throw Exception('Enter a valid amount collected.');
       }
 
-      final orderApi = ref.read(orderApiProvider);
       final position = await ref
           .read(driverGeolocatorProvider)
           .currentPosition();
 
-      final sig = _unwrap(
-        await orderApi.uploadPodAttachment(
-          order.id,
-          bytes: signatureBytes,
-          filename: 'signature.png',
-        ),
-      );
-      final photo = _unwrap(
-        await orderApi.uploadPodAttachment(
-          order.id,
-          bytes: _photoBytes!,
-          filename: 'delivery.jpg',
-          contentType: 'image/jpeg',
-        ),
-      );
-
-      final result = await orderApi.deliverOrder(
-        order.id,
-        DeliverOrderRequest(
-          lines: [
-            for (final line in order.lines)
-              DeliveredLineRequest(
-                cylinderTypeId: line.cylinderTypeId,
-                quantityDelivered: _quantities[line.cylinderTypeId]!.$1,
-                quantityCollectedEmpty: _quantities[line.cylinderTypeId]!.$2,
-              ),
-          ],
-          otpCode: _otpController.text.trim(),
-          proofOfDelivery: ProofOfDeliverySubmission(
-            signatureBlobRef: sig.blobRef,
-            photoBlobRef: photo.blobRef,
+      final outcome = await ref
+          .read(deliveryMutationsProvider)
+          .recordDelivery(
+            orderId: order.id,
+            lines: [
+              for (final line in order.lines)
+                DeliveredLineRequest(
+                  cylinderTypeId: line.cylinderTypeId,
+                  quantityDelivered: _quantities[line.cylinderTypeId]!.$1,
+                  quantityCollectedEmpty: _quantities[line.cylinderTypeId]!.$2,
+                ),
+            ],
+            otpCode: _otpController.text.trim(),
             gpsLat: position.latitude,
             gpsLng: position.longitude,
             paymentMethod: _paymentMethod,
             amountCollected: amount,
-          ),
-        ),
-      );
+            signatureBytes: signatureBytes,
+            photoBytes: _photoBytes!,
+          );
+      if (!mounted) return;
 
-      result.when(
-        onSuccess: (_) {
+      switch (outcome) {
+        case DeliverFailed(:final message):
+          setState(() => _error = message);
+        case DeliverSynced() || DeliverQueued():
           ref.invalidate(activeRouteProvider);
           ref.invalidate(routeHistoryProvider);
-          if (!mounted) return;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Delivery recorded.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                outcome is DeliverQueued
+                    ? 'Delivery saved — it will sync when you are back online.'
+                    : 'Delivery recorded.',
+              ),
+            ),
+          );
           // Back to the route view rather than the stop detail: a delivered
           // order drops out of the driver's visibility (and their last stop
           // completes the route), so popping to `StopDetailScreen` would
           // strand them on a "stop not found" error.
           context.go('/');
-        },
-        onFailure: (failure) => setState(() => _error = failure.message),
-      );
+      }
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
-
-  T _unwrap<T>(Result<T> result) => result.when(
-    onSuccess: (v) => v,
-    onFailure: (f) => throw Exception(f.message),
-  );
 
   @override
   Widget build(BuildContext context) {

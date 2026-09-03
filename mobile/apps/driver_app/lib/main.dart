@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
@@ -8,11 +9,14 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:sync_engine/sync_engine.dart';
 
 import 'src/api_provider.dart';
 import 'src/auth_provider.dart';
 import 'src/local_database_provider.dart';
+import 'src/offline/media_store_provider.dart';
 import 'src/offline/sync_providers.dart';
 import 'src/push/push_notification_service.dart';
 import 'src/router.dart';
@@ -66,10 +70,17 @@ void main() async {
   );
   authController = AuthController(authRepository);
 
+  final mediaStore = FileMediaStore(
+    Directory(
+      p.join((await getApplicationSupportDirectory()).path, 'pod_media'),
+    ),
+  );
+
   final syncCoordinator = SyncCoordinator(
     database: localDatabase.database,
     apiClient: apiClient,
     connectivity: PluginConnectivityMonitor(),
+    mediaStore: mediaStore,
   );
   syncCoordinator.start();
 
@@ -93,6 +104,7 @@ void main() async {
         authControllerProvider.overrideWithValue(authController),
         apiClientProvider.overrideWithValue(apiClient),
         syncCoordinatorProvider.overrideWithValue(syncCoordinator),
+        mediaStoreProvider.overrideWithValue(mediaStore),
         pushNotificationServiceProvider.overrideWithValue(pushService),
       ],
       child: const DriverApp(),

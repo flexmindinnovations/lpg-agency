@@ -127,10 +127,7 @@ void main() {
     await tester.pumpAndSettle();
 
     for (final label in ['Today', 'Deliveries', 'Alerts', 'Profile']) {
-      expect(
-        find.widgetWithText(NavigationDestination, label),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(NavigationDestination, label), findsOneWidget);
     }
   });
 

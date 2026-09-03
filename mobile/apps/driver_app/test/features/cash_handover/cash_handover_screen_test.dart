@@ -64,8 +64,7 @@ class _CashAdapter implements HttpClientAdapter {
 
   @override
   Future<ResponseBody> fetch(RequestOptions options, _, _) async {
-    if (options.method == 'POST' &&
-        options.path == '/api/v1/cash-handovers') {
+    if (options.method == 'POST' && options.path == '/api/v1/cash-handovers') {
       declareBody = options.data as Map<String, dynamic>;
       declared = true;
       return _json({
@@ -137,7 +136,10 @@ void main() {
 
       expect(find.text('₹1811.00'), findsOneWidget);
       expect(find.textContaining('2 cash deliveries'), findsOneWidget);
-      expect(find.widgetWithText(LpgButton, 'Declare handover'), findsOneWidget);
+      expect(
+        find.widgetWithText(LpgButton, 'Declare handover'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('reports the delta as the driver types', (tester) async {

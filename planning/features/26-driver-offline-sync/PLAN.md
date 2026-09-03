@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Stages 1–3 done 2026-09-02, Stage 4 done 2026-09-03 · Stages 5–7 pending
+**Status:** Stages 1–3 done 2026-09-02, Stages 4–5 done 2026-09-03 · Stages 6–7 pending
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -442,6 +442,47 @@ land in blob storage, `notification_log` shows the `delivery_confirmed`
 push, Today shows the real advanced count.
 
 **Commit:** `feat(mobile): offline proof-of-delivery with a media upload queue`
+
+### ✅ DONE 2026-09-03
+
+- `sync_engine/lib/src/media_store.dart` (new) — `MediaStore` interface +
+  `FileMediaStore` (files under a root `Directory`, tidies the empty
+  per-delivery folder on delete). `path: ^1.9.0` added to `sync_engine`.
+- `SyncCoordinator({… MediaStore? mediaStore})`; **`_dispatchDeliver`** —
+  for each `media` entry without a `blobRef`: read the local file → multipart
+  `POST uploadPath` → store `blobRef` and **persist the payload after *each*
+  upload** (so a failure on the next file resumes here, not from the first);
+  then `POST path` with `<field>_blob_ref` folded into `proof_of_delivery`
+  (same `Idempotency-Key`); then delete the local media. The `order_deliver`
+  case is split out of the thin `{path, body}` router.
+- `driver_app/offline/`:
+  - `media_store_provider.dart` — `mediaStoreProvider` (overridden in `main`
+    with a `FileMediaStore` under `<app-support>/pod_media`; `path` +
+    `path_provider` added to the app).
+  - `delivery_mutations.dart` — `recordDelivery(...)` returns a
+    `sealed DeliverOutcome` (`DeliverSynced` / `DeliverQueued` /
+    `DeliverFailed`). **Online → inline** (`OrderApi` upload×2 + deliver, so a
+    wrong OTP is `DeliverFailed` immediately); a `NETWORK_UNAVAILABLE`
+    failure mid-submit falls through to the queue rather than making the
+    driver recapture. **Offline → `_queueDelivery`**: write the two media
+    blobs, optimistic cache `status: delivered`, enqueue `order_deliver` with
+    a `{field,key,filename,contentType,blobRef}` media list + the deliver
+    body (no blob refs yet). Deps grew: `orderApi`, `connectivity`,
+    `mediaStore`.
+- `record_delivery_screen.dart` `_submit` — routes through
+  `deliveryMutations.recordDelivery`; `DeliverFailed` → inline error,
+  otherwise snackbar (queued vs. recorded) + `context.go('/')`.
+- Tests: `sync_coordinator_test.dart` +2 (`order_deliver` group — full
+  upload→fold→deliver→cleanup; resume-from-failed-upload without re-sending
+  media 1). `offline_harness.dart` grew `InMemoryMediaStore` +
+  `FakeConnectivityMonitor` + the two new provider overrides.
+  `delivery_mutations_test.dart` +3 (offline queue w/ media, online inline,
+  online rejected-OTP). `record_delivery_screen_test.dart` — rewired to the
+  harness; +1 offline test.
+- Gate: `sync_engine` **14** + `driver_app` **66** + `customer_app` 45 +
+  `local_storage` 14 + `api_client` 53 pass; all analyze clean.
+- **Deferred to the emulator run (Stage 7):** airplane-mode POD capture →
+  re-enable → drain verification.
 
 ---
 

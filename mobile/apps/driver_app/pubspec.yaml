@@ -58,6 +58,11 @@ dependencies:
   # Cache-first read layer (offline/cached_resource.dart) catches DioException
   # directly — the api_client wrappers swallow it.
   dio: ^5.11.0
+  # Offline proof-of-delivery media store lives under app-support (main.dart).
+  path: ^1.9.0
+  path_provider: ^2.1.6
+  # Client-generated ids for queued media (offline/delivery_mutations.dart).
+  uuid: ^4.5.1
 
   # Push notifications. `Firebase.initializeApp()` reads
   # android/app/google-services.json at build time; without it the app still

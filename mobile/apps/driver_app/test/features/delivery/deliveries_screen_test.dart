@@ -107,8 +107,16 @@ void main() {
       await tester.pumpWidget(
         _screen(
           history: [
-            _route(id: 'r-old', status: 'completed', date: DateTime(2026, 8, 30)),
-            _route(id: 'r-older', status: 'completed', date: DateTime(2026, 8, 25)),
+            _route(
+              id: 'r-old',
+              status: 'completed',
+              date: DateTime(2026, 8, 30),
+            ),
+            _route(
+              id: 'r-older',
+              status: 'completed',
+              date: DateTime(2026, 8, 25),
+            ),
           ],
           pendingCash: _pendingCash('r-old'),
         ),

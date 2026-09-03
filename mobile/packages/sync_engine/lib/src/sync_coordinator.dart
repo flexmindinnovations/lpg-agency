@@ -15,6 +15,7 @@ import 'package:local_storage/local_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import 'connectivity_monitor.dart';
+import 'media_store.dart';
 
 /// Statuses a [SyncOperation] can be `error`-retried from vs. the terminal
 /// ones the driver has to look at.
@@ -34,17 +35,20 @@ class SyncCoordinator {
     required AppDatabase database,
     required ApiClient apiClient,
     ConnectivityMonitor? connectivity,
+    MediaStore? mediaStore,
     Duration pollInterval = const Duration(seconds: 30),
     int maxRetries = 8,
   }) : _db = database,
        _apiClient = apiClient,
        _connectivity = connectivity,
+       _mediaStore = mediaStore,
        _pollInterval = pollInterval,
        _maxRetries = maxRetries;
 
   final AppDatabase _db;
   final ApiClient _apiClient;
   final ConnectivityMonitor? _connectivity;
+  final MediaStore? _mediaStore;
   final Duration _pollInterval;
   final int _maxRetries;
 
@@ -293,10 +297,10 @@ class SyncCoordinator {
   /// after a dropped connection must replay the *same* key, or the backend
   /// applies it twice.
   ///
-  /// Driver ops carry a `{"path": "...", "body": {...}}` payload so this
-  /// method stays a thin router; the payload is built app-side next to the
-  /// screen that knows the real request shape. (`order_deliver`'s media
-  /// upload sequence is layered on in a later stage.)
+  /// Most driver ops carry a `{"path", "body"}` payload so this method stays
+  /// a thin router; the payload is built app-side next to the screen that
+  /// knows the real request shape. `order_deliver` is the exception — it
+  /// carries local media that has to be uploaded first ([_dispatchDeliver]).
   Future<void> _dispatch(SyncOperation op) async {
     final options = Options(headers: {'Idempotency-Key': op.idempotencyKey});
 
@@ -309,8 +313,9 @@ class SyncCoordinator {
           data: jsonDecode(op.payload),
           options: options,
         );
-      case 'order_depart':
       case 'order_deliver':
+        await _dispatchDeliver(op, options);
+      case 'order_depart':
       case 'order_failed_delivery':
       case 'order_reschedule':
       case 'cash_handover_declare':
@@ -324,6 +329,67 @@ class SyncCoordinator {
         throw StateError(
           'SyncCoordinator has no route for operation type "${op.type}".',
         );
+    }
+  }
+
+  /// Proof-of-delivery sync, in order and resumable:
+  /// 1. for each media entry without a `blobRef`, upload the local file and
+  ///    write the returned `blob_ref` **back onto the op's payload** — a
+  ///    mid-sequence failure then resumes from the next file, not the first;
+  /// 2. `POST .../deliver` with the collected refs folded into
+  ///    `proof_of_delivery` (same `Idempotency-Key`);
+  /// 3. on success, delete the local media.
+  ///
+  /// `media` entries: `{field, key, filename, contentType, blobRef}` where
+  /// `field` is `signature` / `photo` (→ `<field>_blob_ref`).
+  Future<void> _dispatchDeliver(SyncOperation op, Options options) async {
+    final store = _mediaStore;
+    if (store == null) {
+      throw StateError('order_deliver needs a MediaStore.');
+    }
+
+    final decoded = jsonDecode(op.payload) as Map<String, dynamic>;
+    final media = (decoded['media'] as List).cast<Map<String, dynamic>>();
+
+    for (final entry in media) {
+      if (entry['blobRef'] != null) continue;
+      final bytes = await store.read(entry['key'] as String);
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: entry['filename'] as String,
+          contentType: DioMediaType.parse(entry['contentType'] as String),
+        ),
+      });
+      final res = await _apiClient.dio.post<Map<String, dynamic>>(
+        decoded['uploadPath'] as String,
+        data: form,
+        options: options,
+      );
+      entry['blobRef'] = res.data?['blob_ref'];
+      // Persist after *each* upload — a failure on the next one then resumes
+      // here, not from the first file.
+      await _write(
+        op.id,
+        SyncOperationsCompanion(payload: drift.Value(jsonEncode(decoded))),
+      );
+    }
+
+    final body = Map<String, dynamic>.from(decoded['body'] as Map);
+    final pod = Map<String, dynamic>.from(body['proof_of_delivery'] as Map);
+    for (final entry in media) {
+      pod['${entry['field']}_blob_ref'] = entry['blobRef'];
+    }
+    body['proof_of_delivery'] = pod;
+
+    await _apiClient.dio.post(
+      decoded['path'] as String,
+      data: body,
+      options: options,
+    );
+
+    for (final entry in media) {
+      await store.delete(entry['key'] as String);
     }
   }
 }

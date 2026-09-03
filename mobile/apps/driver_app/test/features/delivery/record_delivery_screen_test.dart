@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
-import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/features/delivery/data/image_picker_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
@@ -15,6 +14,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
+
+import '../../support/offline_harness.dart';
 
 OrderResponse _order() => OrderResponse(
   id: 'order-1',
@@ -46,8 +47,18 @@ class _RecordingAdapter implements HttpClientAdapter {
   final paths = <String>[];
   Map<String, dynamic>? deliverBody;
 
+  /// When true, every request fails as if the network is down — so the
+  /// coordinator's post-enqueue `syncNow()` can't quietly complete the op.
+  bool offline = false;
+
   @override
   Future<ResponseBody> fetch(RequestOptions options, _, _) async {
+    if (offline) {
+      throw DioException.connectionError(
+        requestOptions: options,
+        reason: 'offline',
+      );
+    }
     paths.add(options.path);
     if (options.path.endsWith('/pod-attachments')) {
       return ResponseBody.fromString(
@@ -149,17 +160,23 @@ Widget _host(ProviderContainer c) => UncontrolledProviderScope(
   ),
 );
 
-ProviderContainer _container(_RecordingAdapter adapter) {
-  final client = ApiClient(baseUrl: 'https://api.test')
-    ..dio.httpClientAdapter = adapter;
-  return ProviderContainer(
+({ProviderContainer container, OfflineHarness harness}) _container(
+  _RecordingAdapter adapter, {
+  bool online = true,
+}) {
+  final harness = OfflineHarness(
+    ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
+    online: online,
+  );
+  final container = ProviderContainer(
     overrides: [
-      apiClientProvider.overrideWithValue(client),
+      ...harness.overrides,
       stopOrderProvider.overrideWith((ref, id) async => _order()),
       imagePickerProvider.overrideWithValue(_FakePicker()),
       driverGeolocatorProvider.overrideWithValue(const _FakeGeolocator()),
     ],
   );
+  return (container: container, harness: harness);
 }
 
 Future<void> _pump(WidgetTester tester, ProviderContainer c) async {
@@ -173,9 +190,10 @@ Future<void> _pump(WidgetTester tester, ProviderContainer c) async {
 void main() {
   group('RecordDeliveryScreen', () {
     testWidgets('renders the capture sections', (tester) async {
-      final c = _container(_RecordingAdapter());
-      addTearDown(c.dispose);
-      await _pump(tester, c);
+      final (:container, :harness) = _container(_RecordingAdapter());
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
 
       expect(find.text('Cylinders'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
@@ -192,9 +210,10 @@ void main() {
       tester,
     ) async {
       final adapter = _RecordingAdapter();
-      final c = _container(adapter);
-      addTearDown(c.dispose);
-      await _pump(tester, c);
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
 
       await tester.enterText(
         find.widgetWithText(TextField, 'Code from the customer'),
@@ -209,9 +228,10 @@ void main() {
 
     testWidgets('captures everything and posts the delivery', (tester) async {
       final adapter = _RecordingAdapter();
-      final c = _container(adapter);
-      addTearDown(c.dispose);
-      await _pump(tester, c);
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
 
       // Signature stroke.
       final pad = find.byType(Signature);
@@ -250,6 +270,39 @@ void main() {
       // On success it leaves the stop entirely (a delivered order drops out
       // of the driver's visibility) and lands back on the route view.
       expect(find.byType(RecordDeliveryScreen), findsNothing);
+      expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('offline: queues an order_deliver op and still lands home', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter()..offline = true;
+      final (:container, :harness) = _container(adapter, online: false);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.drag(find.byType(Signature), const Offset(40, 20));
+      await tester.pump();
+      await tester.tap(find.text('Take a photo'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Code from the customer'),
+        '123456',
+      );
+
+      await tester.tap(find.text('Confirm delivery'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
+      await tester.pumpAndSettle();
+
+      // No direct delivery POST — it's a queued op with local media.
+      expect(adapter.paths.where((p) => p.endsWith('/deliver')), isEmpty);
+      expect(harness.media.keys, hasLength(2));
+      final ops = await harness.ops();
+      expect(ops.single.type, 'order_deliver');
+
       expect(find.text('home'), findsOneWidget);
     });
   });

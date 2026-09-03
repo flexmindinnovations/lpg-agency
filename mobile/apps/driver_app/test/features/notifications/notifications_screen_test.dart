@@ -43,10 +43,7 @@ class _RecordingAdapter implements HttpClientAdapter {
 
 Widget _host(ProviderContainer c) => UncontrolledProviderScope(
   container: c,
-  child: MaterialApp(
-    theme: LpgTheme.light,
-    home: const NotificationsScreen(),
-  ),
+  child: MaterialApp(theme: LpgTheme.light, home: const NotificationsScreen()),
 );
 
 void main() {
