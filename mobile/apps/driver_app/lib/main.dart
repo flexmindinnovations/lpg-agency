@@ -13,6 +13,7 @@ import 'package:sync_engine/sync_engine.dart';
 import 'src/api_provider.dart';
 import 'src/auth_provider.dart';
 import 'src/local_database_provider.dart';
+import 'src/offline/sync_providers.dart';
 import 'src/push/push_notification_service.dart';
 import 'src/router.dart';
 
@@ -31,7 +32,8 @@ const _apiBaseUrl = String.fromEnvironment(
 /// (Deliveries), the driver's profile + logout (Profile), the per-stop
 /// workflow (depart → record delivery / proof-of-delivery → payment),
 /// background live-location sharing, and FCM push (new-delivery alerts).
-/// Offline-first sync of the delivery workflow is still a future phase.
+/// Reads are cache-first (Phase 26 / ADR-008); the offline write queue
+/// (`SyncCoordinator`) lands stage by stage.
 ///
 /// The on-device database and the auth session are both established here,
 /// before the first frame, so the rest of the app can assume both are
@@ -67,6 +69,7 @@ void main() async {
   final syncCoordinator = SyncCoordinator(
     database: localDatabase.database,
     apiClient: apiClient,
+    connectivity: PluginConnectivityMonitor(),
   );
   syncCoordinator.start();
 
@@ -89,6 +92,7 @@ void main() async {
         localDatabaseProvider.overrideWithValue(localDatabase),
         authControllerProvider.overrideWithValue(authController),
         apiClientProvider.overrideWithValue(apiClient),
+        syncCoordinatorProvider.overrideWithValue(syncCoordinator),
         pushNotificationServiceProvider.overrideWithValue(pushService),
       ],
       child: const DriverApp(),

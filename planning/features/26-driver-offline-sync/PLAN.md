@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Stages 1–2 done 2026-09-02 · Stages 3–7 pending
+**Status:** Stages 1–3 done 2026-09-02 · Stages 4–7 pending
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -281,6 +281,59 @@ Differences from `deliver_order`:
 - `OfflineBanner` renders only when `connectivityProvider` is `false`.
 
 **Commit:** `feat(mobile): cache-first reads + offline banner in the driver app`
+
+### ✅ DONE 2026-09-02
+
+- `local_storage` `ResourceCache` gained `delete(type, id)` (evict one) +
+  `clear()` (logout wipe).
+- `sync_engine` `ConnectivityMonitor` gained `Future<bool> get isOnline` (to
+  seed a UI before the first change event); `PluginConnectivityMonitor`
+  implements it via `checkConnectivity()`.
+- **`driver_app/lib/src/offline/`** (new module):
+  - `cached_resource.dart` — `resourceCacheProvider` (`Provider<ResourceCache?>`
+    — **nullable**: `null` when the DB isn't a real `DriftLocalDatabase`, i.e.
+    `NoopLocalDatabase` in widget tests, so caching degrades to a plain
+    pass-through). `CacheFirstReader` (renamed from `CachedResource` — drift
+    generates a `CachedResource` row class) + `cachedResourceProvider`.
+    `getMap(path, {type, id, queryParameters, absentWhen})` — GET, write-through
+    on success, fall back to the cached body on a network error, rethrow if
+    nothing's cached; `absentWhen(DioException)` returns `null` **and evicts**
+    (a genuine `404`).
+  - `connectivity.dart` — `connectivityMonitorProvider`,
+    `connectivityProvider` (`StreamProvider<bool>`, seeds `isOnline` then
+    follows changes; swallows the `MissingPluginException` a plain
+    `flutter test` throws and the plugin's error events → defaults to online).
+  - `sync_providers.dart` — `syncCoordinatorProvider` (throw-by-default,
+    overridden in `main`), `pendingSyncCountProvider`, `syncIssuesProvider`
+    (the ones deferred from Stage 2).
+  - `offline_banner.dart` — `OfflineBanner` strip ("Offline — showing last
+    synced data"), `SizedBox.shrink()` while online.
+- **Reworked providers** (`active_route_provider.dart`, `stop_order_provider.dart`)
+  — go through `CacheFirstReader` instead of the `RouteApi`/`OrderApi`
+  wrappers (which parse-and-discard the raw JSON). `RouteSummary` **does**
+  carry its stops, so caching the route body covers the stop list — no
+  separate `routeStopsProvider`. Cache keys: `('route_active','current')`,
+  `('route_history','current')`, `('order', orderId)` — `'current'` since the
+  DB is single-device/single-driver and logout clears it.
+  `activeRouteProvider` passes `absentWhen: 404` so a finished route evicts
+  rather than lingering. `routeHistoryProvider`/`stopOrderProvider` are
+  otherwise unchanged in shape (screen tests that override them directly are
+  untouched).
+- **`main.dart`** — `SyncCoordinator(..., connectivity: PluginConnectivityMonitor())`;
+  `syncCoordinatorProvider` override added.
+- **`OfflineBanner`** wired into `AppShell` (covers the 4 tabs) and
+  `StopDetailScreen` (its `build` split into `_body`).
+- **Logout** (`profile_screen.dart`) also `ref.read(resourceCacheProvider)?.clear()`.
+- Tests: `local_storage` +2 (`delete`/`clear`); `driver_app`
+  `test/offline/cached_resource_test.dart` (5: write-through, cache fallback,
+  rethrow-with-nothing-cached, `absentWhen` evict, null-cache pass-through) +
+  `offline_banner_test.dart` (2); `profile_screen_test.dart` gained a
+  `NoopLocalDatabase` override. `pubspec.yaml` — `dio` moved to `dependencies`
+  (the reader catches `DioException`), `drift` added to `dev_dependencies`.
+- Gate: `driver_app` **59** pass + analyze clean; `sync_engine` 12;
+  `local_storage` 14; `customer_app` 45 + clean; `api_client` 53.
+- **Minor:** `RouteApi.getMyActiveRoute` / `listRoutes` are now unused by the
+  driver app (still valid `api_client` API, still tested) — left in place.
 
 ---
 

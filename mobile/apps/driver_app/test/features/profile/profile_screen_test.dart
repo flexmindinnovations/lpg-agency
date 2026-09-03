@@ -6,10 +6,12 @@ import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/auth_provider.dart';
 import 'package:driver_app/src/features/profile/data/profile_provider.dart';
 import 'package:driver_app/src/features/profile/presentation/profile_screen.dart';
+import 'package:driver_app/src/local_database_provider.dart';
 import 'package:driver_app/src/push/push_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:local_storage/local_storage.dart';
 
 const _principal = Principal(
   userId: 'user-1',
@@ -74,6 +76,9 @@ Widget _host(AuthController controller, Future<DriverMe> Function() profile) =>
       overrides: [
         authControllerProvider.overrideWithValue(controller),
         driverProfileProvider.overrideWith((ref) => profile()),
+        // Log Out also clears the offline read cache; NoopLocalDatabase makes
+        // `resourceCacheProvider` null, so the clear is a safe no-op here.
+        localDatabaseProvider.overrideWithValue(NoopLocalDatabase()),
         // Log Out drops the FCM token before signing out; the service is
         // never `init()`ed here so `unregister()` is a no-op.
         pushNotificationServiceProvider.overrideWithValue(

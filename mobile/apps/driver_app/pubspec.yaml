@@ -55,6 +55,9 @@ dependencies:
   url_launcher: ^6.3.2
   signature: ^6.4.0
   image_picker: ^1.2.3
+  # Cache-first read layer (offline/cached_resource.dart) catches DioException
+  # directly — the api_client wrappers swallow it.
+  dio: ^5.11.0
 
   # Push notifications. `Firebase.initializeApp()` reads
   # android/app/google-services.json at build time; without it the app still
@@ -73,7 +76,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  dio: ^5.11.0
+  # In-memory AppDatabase for the offline cache tests.
+  drift: ^2.34.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

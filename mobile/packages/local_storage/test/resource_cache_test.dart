@@ -59,6 +59,26 @@ void main() {
     },
   );
 
+  test('delete evicts one row and leaves the rest', () async {
+    await cache.write('order', 'a', {'n': 1});
+    await cache.write('order', 'b', {'n': 2});
+
+    await cache.delete('order', 'a');
+
+    expect(await cache.read('order', 'a'), isNull);
+    expect(await cache.read('order', 'b'), {'n': 2});
+  });
+
+  test('clear drops every row', () async {
+    await cache.write('order', 'a', {'n': 1});
+    await cache.write('invoice', 'b', {'n': 2});
+
+    await cache.clear();
+
+    expect(await cache.read('order', 'a'), isNull);
+    expect(await cache.read('invoice', 'b'), isNull);
+  });
+
   test(
     'readAll returns every row of one resourceType, most recent first',
     () async {

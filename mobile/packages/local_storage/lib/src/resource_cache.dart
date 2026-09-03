@@ -45,6 +45,23 @@ final class ResourceCache {
         );
   }
 
+  /// Evict one row — e.g. an active route the backend now reports as gone
+  /// (`404`), so the next offline read doesn't resurrect it.
+  Future<void> delete(String resourceType, String resourceId) async {
+    await (_db.delete(_db.cachedResources)..where(
+          (t) =>
+              t.resourceType.equals(resourceType) &
+              t.resourceId.equals(resourceId),
+        ))
+        .go();
+  }
+
+  /// Drop every cached row — called on logout so the next user on this
+  /// device never sees the previous one's data.
+  Future<void> clear() async {
+    await _db.delete(_db.cachedResources).go();
+  }
+
   /// All cached rows of one type, e.g. every `'order'` row for a list
   /// screen's offline fallback. Ordered most-recently-updated first.
   Future<List<Map<String, dynamic>>> readAll(String resourceType) async {

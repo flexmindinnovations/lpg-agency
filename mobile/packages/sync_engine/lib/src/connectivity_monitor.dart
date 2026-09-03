@@ -14,6 +14,9 @@ abstract interface class ConnectivityMonitor {
   /// Emits `true` when connectivity is gained, `false` when lost. Distinct —
   /// no repeat of the same value.
   Stream<bool> get onConnectivityChanged;
+
+  /// The current state — for seeding a UI before the first change event.
+  Future<bool> get isOnline;
 }
 
 /// [ConnectivityMonitor] backed by the `connectivity_plus` plugin.
@@ -27,6 +30,10 @@ class PluginConnectivityMonitor implements ConnectivityMonitor {
   Stream<bool> get onConnectivityChanged => _connectivity.onConnectivityChanged
       .map(_hasConnection)
       .distinct();
+
+  @override
+  Future<bool> get isOnline async =>
+      _hasConnection(await _connectivity.checkConnectivity());
 
   static bool _hasConnection(List<ConnectivityResult> results) =>
       results.any((r) => r != ConnectivityResult.none);

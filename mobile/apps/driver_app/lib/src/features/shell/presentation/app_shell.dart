@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../offline/offline_banner.dart';
 import '../../notifications/data/notifications_provider.dart';
 
 /// The Driver App shell: a persistent bottom `NavigationBar` across the four
@@ -55,7 +56,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
 
     return Scaffold(
-      body: widget.navigationShell,
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: widget.navigationShell),
+        ],
+      ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           border: colors.isHighContrast

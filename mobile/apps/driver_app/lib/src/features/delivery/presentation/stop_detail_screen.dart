@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../api_provider.dart';
+import '../../../offline/offline_banner.dart';
 import '../data/active_route_provider.dart';
 import '../data/stop_order_provider.dart';
 import 'failed_delivery_sheet.dart';
@@ -26,74 +27,86 @@ class StopDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Delivery')),
-      body: orderAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
-          message: 'Could not load this stop.\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.invalidate(stopOrderProvider(orderId)),
-        ),
-        data: (order) {
-          final cylinders = order.lines.fold<int>(
-            0,
-            (sum, l) => sum + l.quantityOrdered,
-          );
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              LpgCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          order.orderNumber ??
-                              '#${order.id.substring(0, 8).toUpperCase()}',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary,
-                          ),
+      body: Column(
+        children: [
+          const OfflineBanner(),
+          Expanded(child: _body(context, ref, theme, colors, orderAsync)),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+    LpgColors colors,
+    AsyncValue<OrderResponse> orderAsync,
+  ) {
+    return orderAsync.when(
+      loading: () => const Center(child: LpgLoadingIndicator()),
+      error: (err, _) => LpgEmptyState(
+        message: 'Could not load this stop.\n$err',
+        icon: Icons.error_outline,
+        actionLabel: 'Retry',
+        onAction: () => ref.invalidate(stopOrderProvider(orderId)),
+      ),
+      data: (order) {
+        final cylinders = order.lines.fold<int>(
+          0,
+          (sum, l) => sum + l.quantityOrdered,
+        );
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            LpgCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        order.orderNumber ??
+                            '#${order.id.substring(0, 8).toUpperCase()}',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
                         ),
-                        LpgStatusBadge(
-                          label: order.status
-                              .replaceAll('_', ' ')
-                              .toUpperCase(),
-                          severity: _severity(order.status),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _DetailRow(
-                      icon: Icons.location_on_outlined,
-                      text: order.deliveryAddress.addressLine,
-                    ),
-                    const SizedBox(height: 8),
-                    _DetailRow(
-                      icon: Icons.propane_tank_outlined,
-                      text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
-                    ),
-                    if (order.totalAmount != null) ...[
-                      const SizedBox(height: 8),
-                      _DetailRow(
-                        icon: Icons.payments_outlined,
-                        text:
-                            'Collect ₹${order.totalAmount!.toStringAsFixed(2)}',
+                      ),
+                      LpgStatusBadge(
+                        label: order.status.replaceAll('_', ' ').toUpperCase(),
+                        severity: _severity(order.status),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  _DetailRow(
+                    icon: Icons.location_on_outlined,
+                    text: order.deliveryAddress.addressLine,
+                  ),
+                  const SizedBox(height: 8),
+                  _DetailRow(
+                    icon: Icons.propane_tank_outlined,
+                    text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
+                  ),
+                  if (order.totalAmount != null) ...[
+                    const SizedBox(height: 8),
+                    _DetailRow(
+                      icon: Icons.payments_outlined,
+                      text: 'Collect ₹${order.totalAmount!.toStringAsFixed(2)}',
+                    ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 16),
-              StopMapCard(orderId: order.id),
-              const SizedBox(height: 24),
-              ..._actions(context, ref, order),
-            ],
-          );
-        },
-      ),
+            ),
+            const SizedBox(height: 16),
+            StopMapCard(orderId: order.id),
+            const SizedBox(height: 24),
+            ..._actions(context, ref, order),
+          ],
+        );
+      },
     );
   }
 

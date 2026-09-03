@@ -37,11 +37,18 @@ class FakeAdapter implements HttpClientAdapter {
 
 class FakeConnectivityMonitor implements ConnectivityMonitor {
   final _controller = StreamController<bool>.broadcast();
+  bool online = true;
 
-  void emit(bool online) => _controller.add(online);
+  void emit(bool value) {
+    online = value;
+    _controller.add(value);
+  }
 
   @override
   Stream<bool> get onConnectivityChanged => _controller.stream;
+
+  @override
+  Future<bool> get isOnline async => online;
 
   Future<void> dispose() => _controller.close();
 }

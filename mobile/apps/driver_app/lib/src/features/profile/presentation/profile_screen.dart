@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api_provider.dart';
 import '../../../auth_provider.dart';
+import '../../../offline/cached_resource.dart';
 import '../data/profile_provider.dart';
 
 /// The Profile tab: the driver's identity, licence, current vehicle and
@@ -105,8 +106,11 @@ class ProfileScreen extends ConsumerWidget {
             expand: true,
             onPressed: () async {
               // Drop this device's FCM token first so a shared handset stops
-              // getting the previous driver's delivery alerts.
+              // getting the previous driver's delivery alerts, and clear the
+              // offline read cache so the next driver never sees this one's
+              // route/stop data.
               await ref.read(pushNotificationServiceProvider).unregister();
+              await ref.read(resourceCacheProvider)?.clear();
               await ref.read(authControllerProvider).logout();
             },
           ),
