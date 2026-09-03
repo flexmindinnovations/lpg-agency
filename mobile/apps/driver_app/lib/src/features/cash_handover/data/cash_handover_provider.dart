@@ -2,19 +2,32 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api_provider.dart';
+import '../../../offline/cached_resource.dart';
+import '../../../offline/pending_sync.dart';
 import '../../delivery/data/active_route_provider.dart';
 
 /// The cash-reconciliation view for one route (`GET /cash-handovers/for-route
-/// /{id}`) — `autoDispose`, the handover screen is the only reader.
-/// Invalidated after a successful declaration so it re-renders as the
-/// receipt.
+/// /{id}`), cached so the screen loads at the end of a route even in a dead
+/// zone. While a declaration for this route is queued the cached view is
+/// authoritative (skip the refetch); once it syncs, the pending set changes,
+/// this rebuilds and the real receipt comes back. `autoDispose`.
 final routeCashHandoverProvider = FutureProvider.autoDispose
     .family<RouteCashHandover, String>((ref, routeId) async {
-      final result = await ref.watch(cashHandoverApiProvider).getForRoute(routeId);
-      return result.when(
-        onSuccess: (view) => view,
-        onFailure: (failure) => throw Exception(failure.message),
-      );
+      final reader = ref.watch(cachedResourceProvider);
+      final pending =
+          ref.watch(pendingSyncAggregatesProvider).value ?? const <String>{};
+
+      final map = pending.contains(routeId)
+          ? await reader.readCached('route_cash', routeId)
+          : await reader.getMap(
+              '/api/v1/cash-handovers/for-route/$routeId',
+              type: 'route_cash',
+              id: routeId,
+            );
+      if (map == null) {
+        throw Exception('This route is not available offline.');
+      }
+      return RouteCashHandover.fromJson(map);
     });
 
 /// The driver's most recent finished route whose cash still needs declaring,

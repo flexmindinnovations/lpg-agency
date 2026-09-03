@@ -252,6 +252,10 @@ void main() {
     await settle();
 
     expect(await coordinator.watchPendingCount().first, 1); // just the errored one
+    expect(
+      (await coordinator.watchActive().first).map((o) => o.status),
+      ['error'],
+    );
     final issues = await coordinator.watchIssues().first;
     expect(issues.map((o) => o.status), contains('conflict'));
 

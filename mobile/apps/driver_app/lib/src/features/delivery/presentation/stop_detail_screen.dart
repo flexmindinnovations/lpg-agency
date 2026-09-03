@@ -1,12 +1,12 @@
 import 'package:api_client/api_client.dart';
-import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../api_provider.dart';
+import '../../../offline/delivery_mutations.dart';
 import '../../../offline/offline_banner.dart';
+import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
 import '../data/stop_order_provider.dart';
 import 'failed_delivery_sheet.dart';
@@ -74,9 +74,27 @@ class StopDetailScreen extends ConsumerWidget {
                           color: colors.textPrimary,
                         ),
                       ),
-                      LpgStatusBadge(
-                        label: order.status.replaceAll('_', ' ').toUpperCase(),
-                        severity: _severity(order.status),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (ref
+                                  .watch(pendingSyncAggregatesProvider)
+                                  .value
+                                  ?.contains(orderId) ??
+                              false) ...[
+                            const LpgStatusBadge(
+                              label: 'PENDING SYNC',
+                              severity: LpgStatusSeverity.info,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          LpgStatusBadge(
+                            label: order.status
+                                .replaceAll('_', ' ')
+                                .toUpperCase(),
+                            severity: _severity(order.status),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -124,7 +142,8 @@ class StopDetailScreen extends ConsumerWidget {
             onPressed: () => _run(
               context,
               ref,
-              () => ref.read(orderApiProvider).departOrder(order.id),
+              () => ref.read(deliveryMutationsProvider).departStop(order.id),
+              doneMessage: 'Delivery started.',
             ),
           ),
         ];
@@ -176,32 +195,40 @@ class StopDetailScreen extends ConsumerWidget {
       context,
       ref,
       () => ref
-          .read(orderApiProvider)
+          .read(deliveryMutationsProvider)
           .recordFailedDelivery(
             id,
             reasonCode: choice.reason,
             resolutionAction: choice.action,
           ),
+      doneMessage: 'Marked as failed.',
     );
   }
 
+  /// Runs a queued mutation: it moves the local state now and drains to the
+  /// backend in the background, so "done" here means "recorded and queued",
+  /// not "the server has confirmed it". A genuine rejection surfaces later on
+  /// the sync-status screen.
   Future<void> _run(
     BuildContext context,
     WidgetRef ref,
-    Future<Result<OrderResponse>> Function() action,
-  ) async {
+    Future<void> Function() action, {
+    required String doneMessage,
+  }) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await action();
+    try {
+      await action();
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text("Couldn't queue that: $e")),
+      );
+      return;
+    }
     if (!context.mounted) return;
-    result.when(
-      onSuccess: (_) {
-        ref.invalidate(stopOrderProvider(orderId));
-        ref.invalidate(activeRouteProvider);
-        messenger.showSnackBar(const SnackBar(content: Text('Done.')));
-      },
-      onFailure: (failure) =>
-          messenger.showSnackBar(SnackBar(content: Text(failure.message))),
-    );
+    ref.invalidate(stopOrderProvider(orderId));
+    ref.invalidate(activeRouteProvider);
+    messenger.showSnackBar(SnackBar(content: Text(doneMessage)));
   }
 
   LpgStatusSeverity _severity(String status) => switch (status) {

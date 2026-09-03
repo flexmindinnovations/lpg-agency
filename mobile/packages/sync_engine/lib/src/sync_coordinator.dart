@@ -127,6 +127,16 @@ class SyncCoordinator {
     return query.map((row) => row.read(count) ?? 0).watchSingle();
   }
 
+  /// A `Stream` of the operations still in flight (`pending` / `error` /
+  /// `syncing`), oldest first — the app derives its optimistic-overlay set
+  /// (which orders/routes have an unsynced mutation) from this.
+  Stream<List<SyncOperation>> watchActive() {
+    return (_db.select(_db.syncOperations)
+          ..where((t) => t.status.isIn(['pending', 'error', 'syncing']))
+          ..orderBy([(t) => drift.OrderingTerm.asc(t.createdAt)]))
+        .watch();
+  }
+
   /// A `Stream` of the operations that need the driver's attention —
   /// `failed` (retries exhausted or a permanent 4xx) and `conflict` (the
   /// server rejected a stale transition). Newest first.

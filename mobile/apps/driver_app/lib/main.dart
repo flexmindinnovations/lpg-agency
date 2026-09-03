@@ -107,7 +107,8 @@ void _wirePushRegistrationToAuth(
   AuthController authController,
   PushNotificationService pushService,
 ) {
-  var wasAuthenticated = authController.state.status == AuthStatus.authenticated;
+  var wasAuthenticated =
+      authController.state.status == AuthStatus.authenticated;
   if (wasAuthenticated) unawaited(pushService.registerWithBackend());
 
   authController.addListener(() {

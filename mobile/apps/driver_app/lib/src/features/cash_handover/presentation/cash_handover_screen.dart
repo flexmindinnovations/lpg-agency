@@ -3,7 +3,8 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../api_provider.dart';
+import '../../../offline/delivery_mutations.dart';
+import '../../../offline/pending_sync.dart';
 import '../../delivery/data/active_route_provider.dart';
 import '../data/cash_handover_provider.dart';
 
@@ -70,38 +71,33 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
       _error = null;
     });
 
-    final result = await ref
-        .read(cashHandoverApiProvider)
-        .declare(
-          routeId: widget.routeId,
-          driverId: view.driverId,
-          actualAmount: amount,
-        );
+    try {
+      await ref
+          .read(deliveryMutationsProvider)
+          .declareCashHandover(
+            routeId: widget.routeId,
+            driverId: view.driverId,
+            actualAmount: amount,
+          );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = "Couldn't queue the handover: $e";
+      });
+      return;
+    }
     if (!mounted) return;
 
-    result.when(
-      onSuccess: (_) {
-        ref.invalidate(routeCashHandoverProvider(widget.routeId));
-        ref.invalidate(pendingCashHandoverProvider);
-        ref.invalidate(routeHistoryProvider);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Cash handover recorded.')));
-        setState(() => _submitting = false);
-      },
-      onFailure: (failure) {
-        final alreadyDone = failure.errorCode == 'CONFLICT';
-        if (alreadyDone) {
-          ref.invalidate(routeCashHandoverProvider(widget.routeId));
-        }
-        setState(() {
-          _submitting = false;
-          _error = alreadyDone
-              ? 'This route has already been reconciled.'
-              : failure.message;
-        });
-      },
-    );
+    // The declaration is now a queued op; the screen flips to the "queued"
+    // notice via `pendingSyncAggregatesProvider`. Once it syncs the provider
+    // re-fetches and shows the real receipt.
+    ref.invalidate(pendingCashHandoverProvider);
+    ref.invalidate(routeHistoryProvider);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cash handover submitted.')));
+    setState(() => _submitting = false);
   }
 
   @override
@@ -120,6 +116,15 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
               ref.invalidate(routeCashHandoverProvider(widget.routeId)),
         ),
         data: (view) {
+          final queued =
+              ref
+                  .watch(pendingSyncAggregatesProvider)
+                  .value
+                  ?.contains(widget.routeId) ??
+              false;
+          if (queued && view.handover == null) {
+            return const _QueuedNotice();
+          }
           if (view.handover != null) {
             return _Receipt(view: view, handover: view.handover!);
           }
@@ -147,6 +152,17 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
 }
 
 String _money(double v) => '₹${v.toStringAsFixed(2)}';
+
+/// Shown after a declaration is queued but hasn't synced yet.
+class _QueuedNotice extends StatelessWidget {
+  const _QueuedNotice();
+
+  @override
+  Widget build(BuildContext context) => const LpgEmptyState(
+    message: 'Cash handover submitted.\nIt will sync once you are back online.',
+    icon: Icons.cloud_upload_outlined,
+  );
+}
 
 String _formatDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-'
@@ -372,11 +388,7 @@ class _Receipt extends StatelessWidget {
 }
 
 class _AmountRow extends StatelessWidget {
-  const _AmountRow({
-    required this.label,
-    required this.value,
-    this.emphasise,
-  });
+  const _AmountRow({required this.label, required this.value, this.emphasise});
 
   final String label;
   final double value;

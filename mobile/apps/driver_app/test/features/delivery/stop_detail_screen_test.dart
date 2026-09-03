@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
-import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/features/delivery/data/driver_position_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_destination_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
@@ -15,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maps/maps.dart';
 import 'package:maps/maps_testing.dart';
+
+import '../../support/offline_harness.dart';
 
 OrderResponse _order({String status = 'out_for_delivery'}) => OrderResponse(
   id: 'abcdef01aaaabbbb',
@@ -140,16 +141,18 @@ void main() {
       expect(find.text('Delivery failed'), findsOneWidget);
     });
 
-    testWidgets('a ready-for-dispatch stop offers "Start this delivery"', (
+    testWidgets('"Start this delivery" queues an order_depart op', (
       tester,
     ) async {
       final adapter = _RecordingAdapter(status: 'ready_for_dispatch');
-      final client = ApiClient(baseUrl: 'https://api.test')
-        ..dio.httpClientAdapter = adapter;
+      final harness = OfflineHarness(
+        ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
+      );
+      addTearDown(harness.dispose);
       final container = ProviderContainer(
         overrides: [
           ..._mapOverrides,
-          apiClientProvider.overrideWithValue(client),
+          ...harness.overrides,
           stopOrderProvider.overrideWith(
             (ref, id) async => _order(status: 'ready_for_dispatch'),
           ),
@@ -162,20 +165,26 @@ void main() {
       await tester.tap(find.text('Start this delivery'));
       await tester.pumpAndSettle();
 
+      final ops = await harness.ops();
+      expect(ops.single.type, 'order_depart');
       expect(
-        adapter.calls.map((c) => c.path),
-        contains('/api/v1/orders/abcdef01aaaabbbb/depart'),
+        jsonDecode(ops.single.payload)['path'],
+        '/api/v1/orders/abcdef01aaaabbbb/depart',
       );
     });
 
-    testWidgets('the failed-delivery sheet collects a reason', (tester) async {
+    testWidgets('the failed-delivery sheet queues an op with the reason', (
+      tester,
+    ) async {
       final adapter = _RecordingAdapter();
-      final client = ApiClient(baseUrl: 'https://api.test')
-        ..dio.httpClientAdapter = adapter;
+      final harness = OfflineHarness(
+        ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
+      );
+      addTearDown(harness.dispose);
       final container = ProviderContainer(
         overrides: [
           ..._mapOverrides,
-          apiClientProvider.overrideWithValue(client),
+          ...harness.overrides,
           stopOrderProvider.overrideWith((ref, id) async => _order()),
         ],
       );
@@ -192,10 +201,10 @@ void main() {
       await tester.tap(find.text('Confirm failed delivery'));
       await tester.pumpAndSettle();
 
-      final failedCall = adapter.calls.firstWhere(
-        (c) => c.path.endsWith('/failed-delivery'),
-      );
-      expect((failedCall.data as Map)['reason_code'], 'customer_unavailable');
+      final ops = await harness.ops();
+      expect(ops.single.type, 'order_failed_delivery');
+      final body = jsonDecode(ops.single.payload)['body'] as Map;
+      expect(body['reason_code'], 'customer_unavailable');
     });
   });
 }

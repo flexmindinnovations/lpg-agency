@@ -1,7 +1,7 @@
 # Plan: Driver App Offline-First Sync
 
 **Phase:** 26
-**Status:** Stages 1–3 done 2026-09-02 · Stages 4–7 pending
+**Status:** Stages 1–3 done 2026-09-02, Stage 4 done 2026-09-03 · Stages 5–7 pending
 **Requirement:** ADR-008 / D-24 — mandatory offline-first for the Driver App,
 deferred since Phase 5 (`local_storage` shipped the encrypted DB + one
 foundation table only; the sync queue + conflict resolution were explicitly
@@ -367,6 +367,40 @@ Differences from `deliver_order`:
 - Cash-handover declare offline → queued + optimistic receipt state.
 
 **Commit:** `feat(mobile): queue depart / failed-delivery / cash-handover offline`
+
+### ✅ DONE 2026-09-03
+
+- `sync_engine` `SyncCoordinator.watchActive()` → `Stream<List<SyncOperation>>`
+  (`pending`/`error`/`syncing`), for the optimistic overlay.
+- `driver_app/offline/`:
+  - `delivery_mutations.dart` — `DeliveryMutations` + `deliveryMutationsProvider`:
+    `departStop` / `recordFailedDelivery` (optimistically overwrite the cached
+    `('order', id)` `status`, then `enqueueOperation`), `declareCashHandover`
+    (enqueue only — no cached view to mutate). Every op's payload is
+    `{path, body, aggregateId}`.
+  - `pending_sync.dart` — `pendingSyncAggregatesProvider` (`StreamProvider<Set<String>>`
+    over `watchActive()`, reading each `payload.aggregateId`).
+  - `cached_resource.dart` — `CacheFirstReader.readCached(type, id)` (cache-only).
+- **Overlay wiring:** `stopOrderProvider` and `routeCashHandoverProvider` read
+  **cache-only** while their aggregate is in the pending set (so a not-yet-synced
+  transition isn't clobbered by a network refetch); they rebuild when the set
+  changes, so a synced op flips the screen back to server truth.
+- **Screens:** `stop_detail_screen.dart` `_actions` → `DeliveryMutations`
+  (fire-and-forget optimistic; `_run` now just invalidates + snackbars — a
+  genuine rejection surfaces on the Stage 6 sync-status screen), plus a
+  "PENDING SYNC" `LpgStatusBadge` next to the status badge. `StopTile` →
+  `ConsumerWidget` with the same chip. `cash_handover_screen.dart` → queue +
+  a `_QueuedNotice` state while `pendingSyncAggregatesProvider` holds the
+  routeId.
+- Tests: `test/support/offline_harness.dart` (real in-memory
+  `SyncCoordinator` + `ResourceCache` + overrides). `delivery_mutations_test.dart`
+  (4). `stop_detail_screen_test.dart` + `cash_handover_screen_test.dart` — the
+  three action tests rewritten to assert on the **queue** (op type + payload)
+  rather than a direct HTTP call; the cash-handover one drives the full
+  enqueue → sync → receipt flow against a stub. `sync_coordinator_test.dart`
+  +1 (`watchActive`).
+- Gate: `driver_app` **63** + `sync_engine` 12 + `customer_app` 45 +
+  `local_storage` 14 + `api_client` 53 pass; all analyze clean.
 
 ---
 

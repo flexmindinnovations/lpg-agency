@@ -43,6 +43,11 @@ class CacheFirstReader {
   final ResourceCache? _cache;
   final Dio _dio;
 
+  /// The cached body for ([type], [id]) with no network call — used when a
+  /// pending offline mutation means the local copy is ahead of the server.
+  Future<Map<String, dynamic>?> readCached(String type, String id) =>
+      _cache?.read(type, id) ?? Future.value();
+
   Future<Map<String, dynamic>?> getMap(
     String path, {
     required String type,

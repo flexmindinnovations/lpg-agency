@@ -112,7 +112,11 @@ class DeliveriesScreen extends ConsumerWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.route, this.cashPending = false, this.onTap});
+  const _HistoryRow({
+    required this.route,
+    this.cashPending = false,
+    this.onTap,
+  });
 
   final RouteSummary route;
   final bool cashPending;

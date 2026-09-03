@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
-import 'package:driver_app/src/api_provider.dart';
 import 'package:driver_app/src/features/cash_handover/data/cash_handover_provider.dart';
 import 'package:driver_app/src/features/cash_handover/presentation/cash_handover_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/offline_harness.dart';
 
 RouteCashHandover _view({
   String status = 'completed',
@@ -199,15 +200,14 @@ void main() {
       expect(find.byType(TextFormField), findsNothing);
     });
 
-    testWidgets('declaring posts the amount and then shows the receipt', (
-      tester,
-    ) async {
+    testWidgets('declaring queues the handover, then shows the receipt once '
+        'it syncs', (tester) async {
       final adapter = _CashAdapter();
-      final client = ApiClient(baseUrl: 'https://api.test')
-        ..dio.httpClientAdapter = adapter;
-      final container = ProviderContainer(
-        overrides: [apiClientProvider.overrideWithValue(client)],
+      final harness = OfflineHarness(
+        ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
       );
+      addTearDown(harness.dispose);
+      final container = ProviderContainer(overrides: harness.overrides);
       addTearDown(container.dispose);
 
       await _pump(tester, container);
@@ -222,11 +222,17 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Confirm'));
       await tester.pumpAndSettle();
 
-      expect(adapter.declareBody, {
+      // The op was queued with the right body...
+      final ops = await harness.ops();
+      expect(ops.single.type, 'cash_handover_declare');
+      expect(jsonDecode(ops.single.payload)['body'], {
         'driver_id': 'drv-1',
         'route_id': 'route-1',
         'actual_amount': '900.00',
       });
+      // ...synced against the stub, and the screen has caught up to the
+      // receipt.
+      expect(adapter.declared, isTrue);
       expect(find.text('CSH000003'), findsOneWidget);
       expect(find.byType(TextFormField), findsNothing);
     });

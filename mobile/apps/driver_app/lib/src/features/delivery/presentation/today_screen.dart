@@ -34,9 +34,7 @@ class TodayScreen extends ConsumerWidget {
             ],
           ),
           data: (route) {
-            final pendingCash = ref
-                .watch(pendingCashHandoverProvider)
-                .value;
+            final pendingCash = ref.watch(pendingCashHandoverProvider).value;
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [

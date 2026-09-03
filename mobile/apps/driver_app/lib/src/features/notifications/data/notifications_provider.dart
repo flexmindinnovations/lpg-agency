@@ -11,7 +11,9 @@ final driverNotificationsProvider =
     FutureProvider.autoDispose<List<NotificationResponse>>((ref) async {
       final auth = ref.watch(authControllerProvider);
       if (auth.state.status != AuthStatus.authenticated) return const [];
-      final result = await ref.watch(notificationApiProvider).getMyNotifications();
+      final result = await ref
+          .watch(notificationApiProvider)
+          .getMyNotifications();
       return result.when(
         onSuccess: (page) => page.items,
         onFailure: (failure) => throw Exception(failure.message),
