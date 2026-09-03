@@ -59,38 +59,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'login',
         builder: (context, state) => const LoginScreen(),
       ),
-      // The delivery drill-in (stop detail → record delivery) is a
-      // full-screen task pushed over the shell, so it can be reached the
-      // same way from the Today "next stop" card and the Deliveries list
-      // regardless of which tab is active.
-      GoRoute(
-        path: '/stops/:orderId',
-        name: 'stop',
-        builder: (context, state) =>
-            StopDetailScreen(orderId: state.pathParameters['orderId']!),
-        routes: [
-          GoRoute(
-            path: 'deliver',
-            name: 'deliver',
-            builder: (context, state) =>
-                RecordDeliveryScreen(orderId: state.pathParameters['orderId']!),
-          ),
-        ],
-      ),
-      // End-of-route cash reconciliation — also a full-screen task above the
-      // shell, reached from the Today nudge and the Deliveries history.
-      GoRoute(
-        path: '/routes/:routeId/cash-handover',
-        name: 'cashHandover',
-        builder: (context, state) =>
-            CashHandoverScreen(routeId: state.pathParameters['routeId']!),
-      ),
-      // Offline-queue health — reached from the Profile tab.
-      GoRoute(
-        path: '/sync',
-        name: 'sync',
-        builder: (context, state) => const SyncStatusScreen(),
-      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
@@ -104,12 +72,42 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // The delivery drill-in (stop detail → record delivery) and the
+          // end-of-route cash reconciliation live under the Deliveries
+          // branch so the bottom bar stays visible; they're reached from the
+          // Today cards and the Alerts inbox with `goNamed` (a cross-branch
+          // navigate), which builds the full `[Deliveries, …]` back stack.
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/deliveries',
                 name: 'deliveries',
                 builder: (context, state) => const DeliveriesScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'stops/:orderId',
+                    name: 'stop',
+                    builder: (context, state) => StopDetailScreen(
+                      orderId: state.pathParameters['orderId']!,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'deliver',
+                        name: 'deliver',
+                        builder: (context, state) => RecordDeliveryScreen(
+                          orderId: state.pathParameters['orderId']!,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'routes/:routeId/cash-handover',
+                    name: 'cashHandover',
+                    builder: (context, state) => CashHandoverScreen(
+                      routeId: state.pathParameters['routeId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -128,6 +126,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/profile',
                 name: 'profile',
                 builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  // Offline-queue health — reached from the Profile row.
+                  GoRoute(
+                    path: 'sync',
+                    name: 'sync',
+                    builder: (context, state) => const SyncStatusScreen(),
+                  ),
+                ],
               ),
             ],
           ),

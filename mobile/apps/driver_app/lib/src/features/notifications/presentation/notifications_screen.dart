@@ -32,10 +32,7 @@ class NotificationsScreen extends ConsumerWidget {
 
     if (item.referenceType == 'order' && item.referenceId != null) {
       if (context.mounted) {
-        context.pushNamed(
-          'stop',
-          pathParameters: {'orderId': item.referenceId!},
-        );
+        context.goNamed('stop', pathParameters: {'orderId': item.referenceId!});
       }
     } else if (item.referenceType == 'route') {
       if (context.mounted) context.go('/');

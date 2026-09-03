@@ -156,7 +156,7 @@ class _SyncStatusRow extends StatelessWidget {
 
     return LpgCard(
       padding: EdgeInsets.zero,
-      onTap: () => context.pushNamed('sync'),
+      onTap: () => context.goNamed('sync'),
       child: LpgListTile(
         leadingIcon: issues > 0 ? Icons.sync_problem : Icons.sync,
         title: 'Sync status',

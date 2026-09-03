@@ -70,6 +70,15 @@ two bugs, both caught by the D2 on-device run and fixed:
 ## Notes
 
 - Plan: [PLAN.md](./PLAN.md) · Tasks: [TASKS.md](./TASKS.md)
+- **2026-09-03: the delivery drill-in now keeps the bottom bar.** Stage B
+  put stop-detail / record-delivery / cash-handover (and later `/sync`) as
+  top-level routes *above* the shell — full-screen tasks with only a back
+  arrow. Per user feedback they're now nested under the Deliveries branch
+  (`/deliveries/stops/:orderId…`) / Profile branch (`/profile/sync`), so the
+  `StatefulShellRoute` bottom bar stays visible. Callers use `goNamed`
+  (a cross-branch navigate that builds the full `[Deliveries, …]` back
+  stack); opening a stop from Today/Alerts flips the highlighted tab to
+  Deliveries. Push deep-link updated to `/deliveries/stops/$id`.
 - Delivery feature screens (Active Delivery, Stop Detail, Record Delivery) were
   already design-system-themed before this phase.
 - Driver app now needs a `dart_defines.local.json` (gitignored; see the

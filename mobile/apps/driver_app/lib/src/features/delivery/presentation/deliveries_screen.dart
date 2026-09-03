@@ -53,7 +53,7 @@ class DeliveriesScreen extends ConsumerWidget {
                     for (final stop in route.stops)
                       StopTile(
                         stop: stop,
-                        onTap: () => context.pushNamed(
+                        onTap: () => context.goNamed(
                           'stop',
                           pathParameters: {'orderId': stop.orderId},
                         ),
@@ -86,7 +86,7 @@ class DeliveriesScreen extends ConsumerWidget {
                         route: r,
                         cashPending: r.id == pendingCashRouteId,
                         onTap: r.status == 'completed'
-                            ? () => context.pushNamed(
+                            ? () => context.goNamed(
                                 'cashHandover',
                                 pathParameters: {'routeId': r.id},
                               )

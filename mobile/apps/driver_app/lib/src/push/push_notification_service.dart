@@ -199,7 +199,7 @@ String? driverRouteFromData(Map<String, dynamic> data) {
   final referenceType = data['reference_type'] as String?;
   final referenceId = data['reference_id'] as String?;
   if (referenceType == 'order' && referenceId != null) {
-    return '/stops/$referenceId';
+    return '/deliveries/stops/$referenceId';
   }
   if (referenceType == 'route') return '/';
   if (data.isNotEmpty) return '/';

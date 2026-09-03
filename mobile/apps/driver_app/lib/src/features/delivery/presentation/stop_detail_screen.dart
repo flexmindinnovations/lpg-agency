@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../offline/delivery_mutations.dart';
-import '../../../offline/offline_banner.dart';
 import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
 import '../data/stop_order_provider.dart';
@@ -27,12 +26,9 @@ class StopDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Delivery')),
-      body: Column(
-        children: [
-          const OfflineBanner(),
-          Expanded(child: _body(context, ref, theme, colors, orderAsync)),
-        ],
-      ),
+      // The shell (this screen now lives under the Deliveries branch) owns
+      // the offline banner and the bottom bar.
+      body: _body(context, ref, theme, colors, orderAsync),
     );
   }
 
@@ -153,7 +149,7 @@ class StopDetailScreen extends ConsumerWidget {
             label: 'Record delivery',
             expand: true,
             icon: Icons.check_circle_outline,
-            onPressed: () => context.pushNamed(
+            onPressed: () => context.goNamed(
               'deliver',
               pathParameters: {'orderId': order.id},
             ),

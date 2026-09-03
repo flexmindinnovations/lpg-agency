@@ -10,7 +10,7 @@ void main() {
           'reference_type': 'order',
           'reference_id': 'abc123',
         }),
-        '/stops/abc123',
+        '/deliveries/stops/abc123',
       );
     });
 

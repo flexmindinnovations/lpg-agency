@@ -165,7 +165,7 @@ class _NextStopCard extends StatelessWidget {
     return LpgCard(
       padding: EdgeInsets.zero,
       onTap: () =>
-          context.pushNamed('stop', pathParameters: {'orderId': next.orderId}),
+          context.goNamed('stop', pathParameters: {'orderId': next.orderId}),
       child: LpgListTile(
         leadingIcon: Icons.navigation_outlined,
         title: 'Next stop · Stop ${next.sequenceNumber}',
@@ -194,7 +194,7 @@ class _PendingCashCard extends StatelessWidget {
 
     return LpgCard(
       padding: EdgeInsets.zero,
-      onTap: () => context.pushNamed(
+      onTap: () => context.goNamed(
         'cashHandover',
         pathParameters: {'routeId': view.routeId},
       ),
