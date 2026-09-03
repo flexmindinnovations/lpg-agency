@@ -127,9 +127,13 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     uuid.UUID(payload["route_id"])
                 )
                 payload["stop_count"] = str(len(route.stops)) if route is not None else "?"
-            elif notification_type == "cash_shortfall_staff":
-                # Tenant-wide ops team — a cash discrepancy is the office's
-                # problem, not one branch's. Same identity-role resolution as
+            elif notification_type in (
+                "cash_shortfall_staff",
+                "route_load_confirmed_staff",
+            ):
+                # Tenant-wide ops team — a cash discrepancy (or a driver
+                # confirming the van load) is the office's business, not one
+                # branch's. Same identity-role resolution as
                 # `order_placed_staff` (the demo seed doesn't wire the
                 # employee -> phone -> identity hop `EmployeeBranchStaffResolver`
                 # needs).
@@ -225,7 +229,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             if notification_type == "cash_shortfall_staff":
                 reference_type = "cash_handover"
                 reference_id = uuid.UUID(payload["cash_handover_id"])
-            elif notification_type == "route_ready":
+            elif notification_type in ("route_ready", "route_load_confirmed_staff"):
                 reference_type = "route"
                 reference_id = uuid.UUID(payload["route_id"])
             else:
@@ -384,6 +388,7 @@ def _get_title(notification_type: str) -> str:
         "delivery_failed_staff": "Delivery Failed Alert",
         "order_placed_staff": "New Order",
         "cash_shortfall_staff": "Cash Shortfall Declared",
+        "route_load_confirmed_staff": "Van Load Confirmed",
         "route_ready": "Route Ready",
         "stop_cancelled": "Stop Cancelled",
     }
@@ -403,6 +408,9 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         stops = payload.get("stop_count", "?")
         plural = "" if stops == "1" else "s"
         return f"Your route is ready — {stops} stop{plural}."
+    if notification_type == "route_load_confirmed_staff":
+        route_short = payload.get("route_id", "Unknown")[:8].upper()
+        return f"The driver confirmed the van load for route #{route_short}."
     bodies = {
         "order_placed": (
             f"We've received your order #{order_id_short}. "
@@ -449,9 +457,10 @@ def _should_send_sms(notification_type: str) -> bool:
 
 def _should_send_push(notification_type: str) -> bool:
     # Every customer- and driver-facing lifecycle event. The `*_staff` alerts
-    # (`delivery_failed_staff`, `order_placed_staff`, `cash_shortfall_staff`)
-    # are intentionally excluded — staff use the dashboard, not the mobile
-    # apps that register device tokens. `driver_assigned` isn't here either:
+    # (`delivery_failed_staff`, `order_placed_staff`, `cash_shortfall_staff`,
+    # `route_load_confirmed_staff`) are intentionally excluded — staff use the
+    # dashboard, not the mobile apps that register device tokens.
+    # `driver_assigned` isn't here either:
     # the job decides per instance (only a live mid-route addition pushes;
     # the initial batch is covered by one `route_ready`).
     return notification_type in {

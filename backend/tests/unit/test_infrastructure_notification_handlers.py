@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from lpg.domain.accounting.cash_handover import CashShortfallDeclared
-from lpg.domain.delivery.route import RouteStatusChanged
+from lpg.domain.delivery.route import RouteLoadConfirmed, RouteStatusChanged
 from lpg.domain.order.order import BookingCancelled, BookingConfirmed, BookingCreated
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.events.notification_handlers import (
@@ -136,6 +136,31 @@ async def test_cash_shortfall_enqueues_a_staff_alert() -> None:
             "expected_amount": "1811.00",
             "actual_amount": "1800.00",
             "shortfall": "11.00",
+        },
+    ) in queue.enqueued
+
+
+@pytest.mark.asyncio
+async def test_route_load_confirmed_enqueues_a_staff_alert() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = RouteLoadConfirmed(
+        route_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        driver_id=uuid.uuid4(),
+        confirmed_by=uuid.uuid4(),
+    )
+    await dispatcher.dispatch([event])
+
+    assert (
+        "send_notification",
+        {
+            "type": "route_load_confirmed_staff",
+            "tenant_id": str(event.tenant_id),
+            "route_id": str(event.route_id),
+            "driver_id": str(event.driver_id),
         },
     ) in queue.enqueued
 

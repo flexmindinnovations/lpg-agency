@@ -1,7 +1,7 @@
 # Plan: Van-Load Confirmation
 
 **Phase:** 27
-**Status:** Stages 1–4 done 2026-09-03 · Stages 5–6 pending
+**Status:** Stages 1–5 done 2026-09-03 · Stage 6 (emulator + docs) pending
 **Type:** Non-mandatory Driver-App gap (flagged since Phase 26). Also unblocks
 the client-side "empties ≤ loaded" validation (`05-mobile-architecture.md` §2).
 
@@ -259,6 +259,29 @@ Today nudge, no route-lifecycle change.
   `_STAFF_ALERT_ROLES` ("Driver X confirmed the load for route #Y"). Follows
   the `cash_shortfall_staff` pattern exactly.
 - **Commit:** `feat(backend): notify dispatch when a driver confirms the van load`
+
+### ✅ DONE 2026-09-03
+
+- **`notification_handlers.py`** — `_on_route_load_confirmed` registered for
+  `RouteLoadConfirmed`; enqueues `send_notification` with
+  `{type: route_load_confirmed_staff, tenant_id, route_id, driver_id}`. Thin,
+  no DB access — same shape as `_on_cash_shortfall_declared`.
+- **`notification_jobs.py`**:
+  - recipient resolution folded into the `cash_shortfall_staff` branch
+    (tenant-wide `_STAFF_ALERT_ROLES` via `SqlAlchemyStaffUserRepository`).
+  - `reference_type`/`reference_id` folded into the `route_ready` branch
+    (`route` / `route_id`).
+  - `_get_title` → "Van Load Confirmed"; `_get_body` → "The driver confirmed
+    the van load for route #XXXXXXXX." (route short id, like
+    `cash_shortfall_staff`).
+  - **in-app only** — not in `_should_send_email` / `_sms` / `_push` (the
+    `*_staff` exclusion note updated). A load confirmation is informational,
+    not a money trail, so unlike `cash_shortfall_staff` it skips email too.
+- Tests: `test_infrastructure_notification_handlers.py`
+  `test_route_load_confirmed_enqueues_a_staff_alert`;
+  `test_infrastructure_notification_jobs.py` — title/body + channels (all off).
+- Gate: `uv run pytest` **1143 passed**; ruff / mypy src (293 files) /
+  lint-imports (5/5) clean.
 
 ## Stage 6 — Emulator + docs
 

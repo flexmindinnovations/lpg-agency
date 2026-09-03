@@ -5,7 +5,11 @@ import structlog
 from lpg.domain.accounting.cash_handover import CashShortfallDeclared
 from lpg.domain.accounting.invoice import InvoiceGenerated
 from lpg.domain.common.base import DomainEvent
-from lpg.domain.delivery.route import OrderAssignedToRoute, RouteStatusChanged
+from lpg.domain.delivery.route import (
+    OrderAssignedToRoute,
+    RouteLoadConfirmed,
+    RouteStatusChanged,
+)
 from lpg.domain.order.order import (
     BookingCancelled,
     BookingConfirmed,
@@ -144,6 +148,21 @@ def register_notification_handlers(
             },
         )
 
+    async def _on_route_load_confirmed(event: DomainEvent) -> None:
+        assert isinstance(event, RouteLoadConfirmed)
+        # The office likes to know a driver has actually checked the van
+        # against the manifest before heading out — accountability, not a
+        # gate. In-app only (staff live in the dashboard).
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "route_load_confirmed_staff",
+                "tenant_id": str(event.tenant_id),
+                "route_id": str(event.route_id),
+                "driver_id": str(event.driver_id),
+            },
+        )
+
     async def _on_booking_cancelled(event: DomainEvent) -> None:
         assert isinstance(event, BookingCancelled)
         # Only matters to a driver who's already out running the route the
@@ -180,4 +199,5 @@ def register_notification_handlers(
     dispatcher.register(InvoiceGenerated, _on_invoice_generated)
     dispatcher.register(DeliveryFailed, _on_delivery_failed)
     dispatcher.register(CashShortfallDeclared, _on_cash_shortfall_declared)
+    dispatcher.register(RouteLoadConfirmed, _on_route_load_confirmed)
     dispatcher.register(BookingCancelled, _on_booking_cancelled)

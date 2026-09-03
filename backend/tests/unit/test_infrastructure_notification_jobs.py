@@ -128,3 +128,19 @@ def test_cash_shortfall_staff_goes_to_dashboard_and_email_but_not_push() -> None
     assert _should_send_email("cash_shortfall_staff") is True
     assert _should_send_sms("cash_shortfall_staff") is False
     assert _should_send_push("cash_shortfall_staff") is False
+
+
+def test_route_load_confirmed_staff_title_and_body() -> None:
+    assert _get_title("route_load_confirmed_staff") == "Van Load Confirmed"
+    body = _get_body(
+        "route_load_confirmed_staff",
+        {"route_id": "d9cfd7b3-3333-4444-5555-666677778888"},
+    )
+    assert "D9CFD7B3" in body
+    assert "confirmed the van load" in body
+
+
+def test_route_load_confirmed_staff_is_dashboard_only() -> None:
+    assert _should_send_email("route_load_confirmed_staff") is False
+    assert _should_send_sms("route_load_confirmed_staff") is False
+    assert _should_send_push("route_load_confirmed_staff") is False
