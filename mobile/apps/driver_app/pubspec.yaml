@@ -82,13 +82,13 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
+  # In-memory AppDatabase for the offline cache tests.
+  drift: ^2.34.3
 
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/launcher_icon.jpg"
-  # In-memory AppDatabase for the offline cache tests.
-  drift: ^2.34.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
