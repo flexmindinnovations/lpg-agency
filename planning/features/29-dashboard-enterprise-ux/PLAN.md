@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 done 2026-09-05 · Stages 4–10 pending
+**Status:** Stages 0–3 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 5–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -375,6 +375,50 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
 - **Gate:** `nx test order-feature-orders inventory-feature-inventory tenant-admin-feature-employees`;
   keyboard-nav + validation-error check on all 3 pilot forms.
 - **Commit:** `feat(forms): lpg-form-field + floating labels + button-state conventions; CVA + toPromise cleanup`
+
+### ✅ Stage 4 (core) DONE 2026-09-05
+
+- **`FormFieldComponent`** (`lpg-form-field`, `libs/shared/ui`) — `<p-floatlabel
+  variant="on">` + projected control + required asterisk (auto-inferred from
+  the control's `Validators.required`) + hint / error. Error shows on
+  `invalid && (touched || dirty)`, carries an **icon as well as colour**
+  (doc §28 — never colour-only), and maps validator keys → copy via
+  `[messages]` with generic fallbacks. Reactivity: `AbstractControl`'s
+  validity flags aren't signals, so a `toSignal(toObservable(control) →
+  switchMap(c.events))` "tick" drives the computeds (re-subscribes if the
+  `[control]` input is swapped). Spec (5) + story.
+- **Employees form migrated** (`libs/tenant-admin/feature-employees`) — both
+  the register and edit drawers (6 fields each) go from `.form-group` markup
+  with **zero validation UX** to `lpg-form-field` + floating labels + inline
+  errors; `email` gained `Validators.email`. Verified logged-in: floating
+  labels + asterisks render, blur surfaces "First name is required." with the
+  icon + red border, typing a valid value clears it, tab order is logical.
+- **`.toPromise()` → `firstValueFrom`** in `customer-onboarding-wizard.
+  component.ts`'s `submitWizard()` (3 calls) — the last `.toPromise()` in the
+  repo.
+- **Button + input conventions** (`styles.css`, doc §19/§20/§26) — `p-button`
+  gains a subtle `scale(0.98)` press feedback (reduced-motion-guarded);
+  inputs/selects → `--radius-input` (6px) + ~40px height; a comment documents
+  the severity → Primary/Secondary/Tertiary/Outline/Danger/Ghost mapping.
+- **Gate:** `nx build dashboard` clean; `nx test` shared-ui **45/45** (+4),
+  tenant-admin-feature-employees + customer-feature-customers smoke pass;
+  `nx lint` clean (2 pre-existing `any` in data-grid, 1 pre-existing
+  `_error` in the wizard — all untouched).
+
+### Stage 4b — remaining pilot form migrations (pending)
+
+- **order-queue Create-Order drawer** (`libs/order/feature-orders`) — migrate
+  to `lpg-form-field`; **and** move the customer from the out-of-form
+  `selectedCustomer()` signal onto a real `customer` `formControlName`
+  (`CustomerAutocomplete` is *already* a valid `ControlValueAccessor` — the
+  audit's "mixed binding" is order-queue's form model, not the component;
+  the `@if (selectedCustomer(); as c)` conditional sections need reworking to
+  read the control). Higher risk (FormArray + conditional sections) — its own
+  pass.
+- **inventory operation forms** (`libs/inventory/feature-inventory`) — 5
+  parallel `fb.group()` blocks → `lpg-form-field`.
+- Split out from Stage 4 to keep that commit reviewable; the pattern is
+  proven by the employees migration.
 
 ## Stage 5 — Data surfaces: tables, dialogs, drawers, toasts
 

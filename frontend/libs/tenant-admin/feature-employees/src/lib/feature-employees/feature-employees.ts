@@ -31,6 +31,7 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  FormFieldComponent,
   HasPermissionDirective,
   StatusChipCell,
   type ChipSeverity,
@@ -80,6 +81,7 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
     HasPermissionDirective,
     IconField,
     InputIcon,
+    FormFieldComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-employees.html',
@@ -109,6 +111,16 @@ export class FeatureEmployees implements OnInit {
 
   protected readonly roleOptions = ROLE_OPTIONS;
   protected readonly toSentenceCase = toSentenceCase;
+
+  /** Validator-key → message, shared by the register and edit forms. */
+  protected readonly fieldMessages = {
+    branch_id: { required: 'Select a branch.' },
+    first_name: { required: 'First name is required.' },
+    last_name: { required: 'Last name is required.' },
+    phone_number: { required: 'Phone number is required.' },
+    email: { email: 'Enter a valid email address.' },
+    role: { required: 'Select a role.' },
+  };
 
   protected readonly branchNameById = computed(() => {
     const map = new Map<string, string>();
@@ -146,7 +158,7 @@ export class FeatureEmployees implements OnInit {
     first_name: ['', [Validators.required]],
     last_name: ['', [Validators.required]],
     phone_number: ['', [Validators.required]],
-    email: [''],
+    email: ['', [Validators.email]],
     role: ['', [Validators.required]],
   });
 
@@ -155,7 +167,7 @@ export class FeatureEmployees implements OnInit {
     first_name: ['', [Validators.required]],
     last_name: ['', [Validators.required]],
     phone_number: ['', [Validators.required]],
-    email: [''],
+    email: ['', [Validators.email]],
     role: ['', [Validators.required]],
   });
 

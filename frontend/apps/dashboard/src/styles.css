@@ -47,7 +47,13 @@
    PRIME NG COMPONENT OVERRIDES
    ======================================================================== */
 :root {
-  /* Override PrimeNG Aura's very dark secondary buttons to match our light gray scheme */
+  /* Button severity mapping (doc §20). PrimeNG's own severities cover it:
+     (default) = Primary (filled blue), severity="secondary" = Secondary
+     (neutral elevated, retuned below off Aura's near-black default),
+     [text] = Tertiary, [outlined] = Outline, severity="danger" = Danger,
+     [text][plain] / a bare icon button = Ghost. Every state
+     (hover/active/focus/disabled/loading) comes from the preset; the
+     press feedback is added in "Button refinements" further down. */
   --p-button-secondary-background: var(--color-surface-overlay);
   --p-button-secondary-hover-background: var(--color-border-default);
   --p-button-secondary-active-background: var(--color-border-strong);
@@ -569,15 +575,23 @@ textarea {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
+/* Subtle press feedback (doc §26) — never a springy animation. */
 .p-button:not(:disabled):active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
-/* Input refinements */
+@media (prefers-reduced-motion: reduce) {
+  .p-button:not(:disabled):hover,
+  .p-button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* Input refinements — ~40px control height, 6px radius (doc §19). */
 .p-inputtext {
   font-size: var(--typography-body-small-font-size) !important;
-  border-radius: var(--radius-md) !important;
-  padding-block: 0.5rem !important;
+  border-radius: var(--radius-input) !important;
+  padding-block: 0.625rem !important;
   padding-inline: 0.75rem !important;
 }
 
@@ -589,12 +603,12 @@ textarea {
 }
 
 .p-select {
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-input) !important;
 }
 
 .p-select .p-select-label {
   font-size: var(--typography-body-small-font-size) !important;
-  padding: 0.5rem 0.75rem !important;
+  padding: 0.625rem 0.75rem !important;
 }
 
 /* Tag refinements — smaller, tighter */

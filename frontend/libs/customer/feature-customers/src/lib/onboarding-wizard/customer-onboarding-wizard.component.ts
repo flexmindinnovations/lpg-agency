@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal 
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs';
+import { firstValueFrom, tap } from 'rxjs';
 
 import { StepperModule } from 'primeng/stepper';
 import { ButtonModule } from 'primeng/button';
@@ -584,12 +584,12 @@ export class CustomerOnboardingWizardComponent implements OnInit {
         // where it actually happened all along.
       };
 
-      const customer = await this.customerService.register(registerPayload).toPromise();
+      const customer = await firstValueFrom(this.customerService.register(registerPayload));
 
       if (customer) {
         // 2. Add full Address
-        await this.customerService
-          .addAddress(customer.id, {
+        await firstValueFrom(
+          this.customerService.addAddress(customer.id, {
             address_type: addrData.address_type,
             line_1: addrData.line_1,
             line_2: addrData.line_2 || undefined,
@@ -599,18 +599,18 @@ export class CustomerOnboardingWizardComponent implements OnInit {
             district: addrData.district,
             state: addrData.state,
             pincode: addrData.pincode,
-          })
-          .toPromise();
+          }),
+        );
 
         // 3. Submit KYC
-        await this.customerService
-          .submitKyc(
+        await firstValueFrom(
+          this.customerService.submitKyc(
             customer.id,
             kycData.doc_type,
             kycData.document_number,
             kycData.document_file_ref,
-          )
-          .toPromise();
+          ),
+        );
       }
 
       const draftId = this.draftId();
