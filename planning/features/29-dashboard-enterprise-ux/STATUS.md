@@ -90,14 +90,32 @@ treatment.
 
 ## Verification
 
-- **Gate:** `nx build dashboard` clean (~679 kB, within budget). `nx test`:
-  shared-design-tokens 5/5, shared-ui 45/45, dashboard 16/16, reporting /
-  employees / customers / orders / inventory green (7 projects, exit 0).
-  `nx lint` dashboard + design-tokens: 0 errors (3 pre-existing warnings in
-  `shell-layout.ts` / `platform-shell.ts`, not phase files).
+Re-run uncached 2026-09-05 after Stage 4b, across every phase-touched project.
+
+- **`nx build dashboard`** — clean, initial total **678.92 kB** (148.79 kB
+  transfer), no budget warnings.
+- **`nx test`** — 8 projects, **72 tests**, all green:
+
+  | Project | Tests |
+  |---|---|
+  | shared-design-tokens | 5 / 5 |
+  | shared-ui | 45 / 45 (10 suites) |
+  | dashboard | 16 / 16 (3 suites) |
+  | reporting-feature-reports | 1 / 1 |
+  | tenant-admin-feature-employees | 1 / 1 |
+  | customer-feature-customers | 1 / 1 |
+  | order-feature-orders | 2 / 2 |
+  | inventory-feature-inventory | 1 / 1 |
+
+- **`nx lint`** — 8 projects, **0 errors**, 5 warnings, all pre-existing and
+  none in phase-authored code: 2 × `no-explicit-any` in `shared-ui`'s
+  `data-grid.component.ts`; `no-explicit-any` + 2 × unused `condition` in
+  `dashboard`'s `shell-layout.ts` / `platform-shell.ts`.
 - **Live:** dark theme resolves the new token values in the running app (HMR
   confirmed); `/design-system` and `home` render correctly; light + HC token
-  values verified unchanged.
+  values verified unchanged; the migrated order + inventory drawers show
+  floating labels, inferred required asterisks, and inline errors with the
+  non-colour icon.
 
 ## Deferred / follow-ups (not in scope)
 
