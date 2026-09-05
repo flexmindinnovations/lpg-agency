@@ -76,6 +76,16 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./profile/profile').then((m) => m.Profile),
         title: 'My Profile',
       },
+      {
+        // Internal design-system reference (Phase 29). No permission gate —
+        // it shows components and tokens, no tenant data. Reached from the
+        // profile menu, not the primary nav.
+        path: 'design-system',
+        loadComponent: () =>
+          import('./design-system/design-system.page').then((m) => m.DesignSystemPage),
+        title: 'Design System',
+        data: { breadcrumbs: [{ label: 'Design System' }] },
+      },
       // Phase 7 (Administration) — each admin area is its own route,
       // gated by the exact permission code its endpoints require
       // server-side (`docs/data/17-api-security.md` §6). The client-side

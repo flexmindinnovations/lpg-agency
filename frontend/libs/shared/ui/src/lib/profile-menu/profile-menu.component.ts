@@ -106,6 +106,16 @@ function initialsFor(displayName: string): string {
           </p>
         }
 
+        <a
+          role="menuitem"
+          class="profile-menu__item"
+          routerLink="/design-system"
+          (click)="popover.hide()"
+        >
+          <i class="pi pi-palette" aria-hidden="true"></i>
+          <span>Design system</span>
+        </a>
+
         <div class="profile-menu__divider" role="separator"></div>
         <p class="profile-menu__section-label">Theme</p>
         @for (option of themeOptions; track option.value) {

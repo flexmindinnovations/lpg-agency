@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 + 5 + 6 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 7–10 pending
+**Status:** Stages 0–3 + 5–7 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 8–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -549,6 +549,40 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
 - **Gate:** `nx test`; structural comparison against the reference
   screenshot.
 - **Commit:** `feat(dashboard): design-system showcase page`
+
+### ✅ DONE 2026-09-05
+
+- **`apps/dashboard/src/app/design-system/design-system.page.ts`** — route
+  `/design-system` (no permission gate — no tenant data; `app.spec.ts`'s
+  "every route has a guard" invariant updated with a one-line exemption +
+  rationale). 11 sections: **Color system** (semantic + surface swatches +
+  the neutral 0–950 strip), **Typography** (9-step scale at real sizes),
+  **Elevation** (0–4), **Radius** (8 steps), **Materials** (Mica / Acrylic /
+  atmospheric-base + noise), **Buttons** (all 6 severities + loading /
+  disabled / icon), **Form components** (`lpg-form-field` with a live error,
+  select, date picker, toggle, checkbox), **Data grid**, **Data display**
+  (`lpg-stat-card` with sparkline + loading, `lpg-activity-list`,
+  `lpg-live-indicator`, `lpg-skeleton`, `lpg-empty-state`), **Transitions**
+  (the motion token table), **Design principles** (6 cards). Every
+  colour / size / duration value is **read live** from
+  `getComputedStyle(documentElement)` via a `resolve()` computed, re-run on
+  a `data-theme` / `style` MutationObserver — so it stays a truthful
+  regression surface as tokens change.
+- **`ProfileMenuComponent`** — a "Design system" (`pi pi-palette`) menu item
+  linking `/design-system`, between Account Settings and the theme picker.
+- **Deviations:** (a) no dedicated "Chart styles" section with mini line /
+  area / bar previews (the reference has these) — the `lpg-stat-card`
+  sparkline stands in for the charting aesthetic; `home`'s real charts cover
+  the rest. (b) The profile-menu link hard-codes `/design-system` in the
+  shared `ProfileMenuComponent` (already dashboard-shell-scoped infra per
+  its own docstring) — a dead link if that component is ever reused without
+  the route.
+- **Gate:** `nx build dashboard` clean; `nx test dashboard` **16/16**,
+  shared-ui **45/45**; `nx lint` clean (pre-existing warnings only).
+  **Verified logged-in:** all 11 sections render, swatch values match the
+  live tokens (`#3978e8` etc.), all button severities + form controls +
+  the grid + the data-display components display correctly on the dark
+  theme; the profile-menu link resolves.
 
 ## Stage 8 — Rollout to flagship pages
 

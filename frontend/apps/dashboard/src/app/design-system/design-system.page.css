@@ -1,0 +1,253 @@
+:host {
+  display: block;
+}
+
+.ds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.ds-note {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--typography-secondary-font-size);
+  color: var(--color-text-secondary);
+}
+
+.ds-note:not(:first-child) {
+  margin-block-start: var(--spacing-lg);
+}
+
+.ds-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-xl);
+}
+
+@media (min-width: 900px) {
+  .ds-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---- Colour ---- */
+.ds-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.ds-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ds-swatch__chip {
+  block-size: 44px;
+  border-radius: var(--radius-input);
+}
+
+.ds-swatch__chip--bordered {
+  border: var(--border-width) solid var(--color-border-default);
+}
+
+.ds-swatch__name {
+  font-size: var(--typography-secondary-font-size);
+  color: var(--color-text-primary);
+}
+
+.ds-swatch__val {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.ds-neutrals {
+  display: flex;
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border-default);
+}
+
+.ds-neutral {
+  flex: 1;
+  block-size: 40px;
+}
+
+/* ---- Typography ---- */
+.ds-type {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.ds-type__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+  padding-block-end: var(--spacing-sm);
+}
+
+.ds-type__sample {
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.ds-type__spec {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* ---- Elevation / radius ---- */
+.ds-elevations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.ds-elevation {
+  inline-size: 64px;
+  block-size: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-raised);
+  border: var(--border-width) solid var(--color-border-default);
+  color: var(--color-text-secondary);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.ds-radii {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.ds-radius {
+  min-inline-size: 72px;
+  block-size: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-action-primary) 14%, transparent);
+  border: var(--border-width) solid var(--color-action-primary);
+}
+
+.ds-radius code {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+/* ---- Materials ---- */
+.ds-materials {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.ds-material {
+  block-size: 120px;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-card);
+  border: var(--border-width) solid var(--color-border-default);
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.ds-material--atmosphere {
+  background: var(--surface-atmosphere), var(--color-surface-base);
+}
+
+/* ---- Buttons ---- */
+.ds-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+/* ---- Form ---- */
+.ds-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+.ds-form__inline {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--typography-secondary-font-size);
+  color: var(--color-text-primary);
+}
+
+/* ---- Cards ---- */
+.ds-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+  margin-block-end: var(--spacing-lg);
+}
+
+/* ---- Motion ---- */
+.ds-motion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.ds-motion__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--typography-secondary-font-size);
+  color: var(--color-text-primary);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+  padding-block: 4px;
+}
+
+.ds-motion__row code {
+  color: var(--color-text-secondary);
+}
+
+/* ---- Principles ---- */
+.ds-principles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.ds-principle {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.ds-principle i {
+  color: var(--color-action-primary);
+  font-size: var(--icon-size-lg);
+}
+
+.ds-principle__title {
+  margin: 0 0 2px;
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-primary);
+  font-size: var(--typography-secondary-font-size);
+}
+
+.ds-principle__body {
+  margin: 0;
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
+
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}

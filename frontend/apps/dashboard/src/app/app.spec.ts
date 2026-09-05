@@ -39,7 +39,9 @@ describe('Routing foundation', () => {
     // it's that every route which isn't explicitly exempt requires a
     // `permissionGuard`, matching `permission.guard.ts`'s own docstring that
     // the server re-enforces every one of these regardless.
-    const exempt = new Set(['', 'profile', 'notifications', '**']);
+    // 'design-system' is an internal component/token reference — it shows
+    // no tenant data, so it carries no permission guard by design.
+    const exempt = new Set(['', 'profile', 'notifications', 'design-system', '**']);
     const shellRoute = appRoutes.find((route) => route.path === '');
     const children = shellRoute?.children ?? [];
     for (const child of children) {

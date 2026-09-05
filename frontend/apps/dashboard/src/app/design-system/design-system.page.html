@@ -1,0 +1,217 @@
+<ng-template lpgHeaderTitlePortal>
+  <lpg-page-header
+    title="Design System"
+    subtitle="The Fluent Glass token system and component vocabulary — every swatch below is read live from the active theme."
+  />
+</ng-template>
+
+<div class="ds">
+  <!-- ============ COLOR ============ -->
+  <lpg-section-card heading="Color system">
+    <p class="ds-note">Semantic tokens — components consume these, never raw hex.</p>
+    <div class="ds-swatches">
+      @for (s of semantic; track s.token) {
+        <div class="ds-swatch">
+          <span class="ds-swatch__chip" [style.background]="'var(' + s.token + ')'"></span>
+          <span class="ds-swatch__name">{{ s.name }}</span>
+          <code class="ds-swatch__val">{{ resolve()(s.token) || s.token }}</code>
+        </div>
+      }
+    </div>
+
+    <p class="ds-note">Surfaces &amp; text.</p>
+    <div class="ds-swatches">
+      @for (s of surfaces; track s.token) {
+        <div class="ds-swatch">
+          <span class="ds-swatch__chip ds-swatch__chip--bordered" [style.background]="'var(' + s.token + ')'"></span>
+          <span class="ds-swatch__name">{{ s.name }}</span>
+          <code class="ds-swatch__val">{{ resolve()(s.token) }}</code>
+        </div>
+      }
+    </div>
+
+    <p class="ds-note">Neutral scale (0 → 950).</p>
+    <div class="ds-neutrals">
+      @for (n of neutrals; track n.token) {
+        <span
+          class="ds-neutral"
+          [style.background]="'var(' + n.token + ')'"
+          [title]="n.name + ' · ' + resolve()(n.token)"
+        ></span>
+      }
+    </div>
+  </lpg-section-card>
+
+  <!-- ============ TYPOGRAPHY ============ -->
+  <lpg-section-card heading="Typography">
+    <div class="ds-type">
+      @for (t of typeScale; track t.name) {
+        <div class="ds-type__row">
+          <span
+            class="ds-type__sample"
+            [style.font-size]="'var(' + t.size + ')'"
+            [style.font-weight]="'var(' + t.weight + ')'"
+          >
+            {{ t.name }}
+          </span>
+          <code class="ds-type__spec">{{ resolve()(t.size) }} / {{ resolve()(t.weight) }}</code>
+        </div>
+      }
+    </div>
+  </lpg-section-card>
+
+  <!-- ============ ELEVATION + RADIUS ============ -->
+  <div class="ds-grid-2">
+    <lpg-section-card heading="Elevation">
+      <div class="ds-elevations">
+        @for (e of elevations; track e) {
+          <div class="ds-elevation" [style.box-shadow]="'var(--elevation-' + e + ')'">{{ e }}</div>
+        }
+      </div>
+    </lpg-section-card>
+
+    <lpg-section-card heading="Radius">
+      <div class="ds-radii">
+        @for (r of radii; track r) {
+          <div class="ds-radius" [style.border-radius]="'var(' + r + ')'">
+            <code>{{ r.replace('--radius-', '') }}</code>
+          </div>
+        }
+      </div>
+    </lpg-section-card>
+  </div>
+
+  <!-- ============ MATERIALS ============ -->
+  <lpg-section-card heading="Materials">
+    <div class="ds-materials">
+      <div class="ds-material ds-material--atmosphere surface-noise">
+        <span>Material A — atmospheric base</span>
+      </div>
+      <div class="ds-material" style="background: var(--surface-mica); border-color: var(--surface-mica-border); box-shadow: var(--surface-mica-shadow);">
+        <span>Material B — Mica (sidebar, header)</span>
+      </div>
+      <div
+        class="ds-material"
+        style="background: var(--surface-acrylic); backdrop-filter: var(--surface-acrylic-blur); border-color: var(--surface-acrylic-border); box-shadow: var(--surface-acrylic-shadow);"
+      >
+        <span>Material C — Acrylic (dialogs, palette)</span>
+      </div>
+    </div>
+  </lpg-section-card>
+
+  <!-- ============ BUTTONS ============ -->
+  <lpg-section-card heading="Buttons">
+    <div class="ds-buttons">
+      <p-button label="Primary" />
+      <p-button label="Secondary" severity="secondary" />
+      <p-button label="Tertiary" [text]="true" />
+      <p-button label="Outline" [outlined]="true" />
+      <p-button label="Danger" severity="danger" />
+      <p-button label="Ghost" [text]="true" [plain]="true" />
+      <p-button label="Loading" [loading]="true" />
+      <p-button label="Disabled" [disabled]="true" />
+      <p-button icon="pi pi-plus" [rounded]="true" aria-label="Add" />
+    </div>
+  </lpg-section-card>
+
+  <!-- ============ FORM ============ -->
+  <lpg-section-card heading="Form components">
+    <div class="ds-form">
+      <lpg-form-field label="Text input" for="ds-name" [control]="nameCtrl" [messages]="{ required: 'This field is required.' }">
+        <input id="ds-name" pInputText [formControl]="nameCtrl" [fluid]="true" />
+      </lpg-form-field>
+
+      <lpg-form-field label="Email (invalid)" for="ds-email" [control]="emailCtrl">
+        <input id="ds-email" pInputText [formControl]="emailCtrl" [fluid]="true" />
+      </lpg-form-field>
+
+      <lpg-form-field label="Select" for="ds-role" [control]="roleCtrl">
+        <p-select inputId="ds-role" [formControl]="roleCtrl" [options]="roleOptions" optionLabel="label" optionValue="value" [fluid]="true" />
+      </lpg-form-field>
+
+      <lpg-form-field label="Date picker" for="ds-date" [control]="dateCtrl">
+        <p-datepicker inputId="ds-date" [formControl]="dateCtrl" [fluid]="true" [showIcon]="true" iconDisplay="input" />
+      </lpg-form-field>
+
+      <div class="ds-form__inline">
+        <p-toggleswitch [formControl]="toggleCtrl" inputId="ds-toggle" />
+        <label for="ds-toggle">Toggle switch</label>
+      </div>
+
+      <div class="ds-form__inline">
+        <p-checkbox [formControl]="checkCtrl" [binary]="true" inputId="ds-check" />
+        <label for="ds-check">Checkbox</label>
+      </div>
+    </div>
+  </lpg-section-card>
+
+  <!-- ============ TABLE ============ -->
+  <lpg-section-card heading="Data grid">
+    <lpg-data-grid
+      [rows]="gridRows"
+      [columns]="gridColumns"
+      [autoHeight]="true"
+      [pageSize]="0"
+      ariaLabel="Design-system sample grid"
+    />
+  </lpg-section-card>
+
+  <!-- ============ DATA DISPLAY ============ -->
+  <lpg-section-card heading="Data display">
+    <div class="ds-cards">
+      <lpg-stat-card
+        label="Total Orders"
+        value="1,248"
+        icon="pi pi-shopping-cart"
+        tone="primary"
+        delta="+12.5%"
+        caption="vs last week"
+        [trend]="trend"
+      />
+      <lpg-stat-card label="Loading" value="0" icon="pi pi-box" [loading]="loadingDemo()" />
+    </div>
+
+    <div class="ds-grid-2">
+      <div>
+        <p class="ds-note">Activity list</p>
+        <lpg-activity-list [items]="activityItems" />
+        <div style="margin-block-start: 12px;">
+          <lpg-live-indicator label="32 active deliveries" />
+        </div>
+      </div>
+      <div>
+        <p class="ds-note">Skeleton &amp; empty state</p>
+        <lpg-skeleton variant="table" [rows]="3" [columns]="3" />
+        <lpg-empty-state title="No results" description="Nothing matches your filters yet." />
+      </div>
+    </div>
+  </lpg-section-card>
+
+  <!-- ============ MOTION ============ -->
+  <lpg-section-card heading="Transitions &amp; animations">
+    <div class="ds-motion">
+      @for (m of motion; track m.token) {
+        <div class="ds-motion__row">
+          <span>{{ m.name }}</span>
+          <code>{{ resolve()(m.token) }}</code>
+        </div>
+      }
+    </div>
+    <p class="ds-note">Route changes use the View Transitions API; entrance utilities: <code>.animate-fade-up</code>, <code>.animate-fade-in</code>. All motion respects <code>prefers-reduced-motion</code>.</p>
+  </lpg-section-card>
+
+  <!-- ============ PRINCIPLES ============ -->
+  <lpg-section-card heading="Design principles">
+    <div class="ds-principles">
+      @for (p of principles; track p.title) {
+        <div class="ds-principle">
+          <i class="{{ p.icon }}" aria-hidden="true"></i>
+          <div>
+            <p class="ds-principle__title">{{ p.title }}</p>
+            <p class="ds-principle__body">{{ p.body }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  </lpg-section-card>
+</div>
