@@ -40,6 +40,7 @@ import {
   DataGridComponent,
   type DataGridColumn,
   HasPermissionDirective,
+  PageHeaderComponent,
   StatusChipCell,
 } from '@lpg/shared/ui';
 
@@ -70,7 +71,7 @@ import { TitleCasePipe } from '@angular/common';
 @Component({
   selector: 'lpg-feature-customers',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
+  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,

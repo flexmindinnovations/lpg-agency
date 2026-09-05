@@ -23,6 +23,7 @@ import {
   DataGridComponent,
   type DataGridColumn,
   HasPermissionDirective,
+  PageHeaderComponent,
   StatusChipCell,
   shortId,
 } from '@lpg/shared/ui';
@@ -54,7 +55,7 @@ const BOOKING_SOURCE_OPTIONS = [
 @Component({
   selector: 'lpg-order-queue',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective, 
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,

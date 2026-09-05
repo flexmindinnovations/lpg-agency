@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 + 5–7 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 8–10 pending
+**Status:** Stages 0–3 + 5–8 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 9–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -600,6 +600,39 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
 - **Gate:** `nx test dashboard` + affected libs; `nx build dashboard`
   budget check; visual smoke in dark/light/high-contrast.
 - **Commit:** `feat(dashboard): roll out Fluent Glass primitives to home + pilot pages`
+
+### ✅ DONE 2026-09-05
+
+- **`home.ts` rebuilt** (−148 net lines) on the Stage 3 primitives:
+  `PageHeaderComponent` (title portal), **6 `StatCardComponent`s** in a grid
+  with `.animate-fade-up` + `--lpg-stagger-index` per card, `SectionCardComponent`
+  for the two chart panels + the inventory-by-status + pricing sections,
+  `ActivityListComponent` for Recent Activity (was the full AG Grid), an
+  `EmptyStateComponent` in each data-less branch, a `SkeletonComponent` while
+  loading. ~180 lines of hand-rolled `.kpi-card` / `.panel` / `.inventory-card`
+  / `.price-card` CSS deleted; `KpiData.colorClass` → `tone: StatTone`.
+- **Page-header rollout** — `order-queue`, `feature-customers`,
+  `feature-inventory`, `feature-employees` swap their
+  `<div class="page-header__text"><h1>…` markup for `<lpg-page-header>`.
+- **`StatCardComponent` polish** — the delta/caption foot row no longer
+  renders when both are empty (home's KPIs have no time-series), so the
+  cards aren't left with dead space.
+- **Deviations:** (a) home's stat cards show label + value + icon only —
+  the dashboard summary carries counts, not history, so no sparkline /
+  delta (valid pattern). (b) Recent Activity is now the lighter
+  `ActivityListComponent` (doc §17) rather than the detailed audit grid —
+  the copy-id affordance moves to `/admin/audit-log`, which keeps the full
+  grid. (c) `LiveIndicatorComponent` isn't placed on home (no live-delivery
+  section to attach it to). (d) The other feature-list pages
+  (drivers/vehicles/complaints/invoices/…) still use raw `.page-header`
+  markup — opportunistic follow-on, the pattern is proven.
+- **Gate:** `nx build dashboard` clean, initial bundle **678.9 kB** (under
+  budget); `nx test` dashboard **16/16**, shared-ui **45/45**, the 4 touched
+  feature libs smoke-pass; `nx lint` clean (0 new — the pre-existing
+  `_error` / `_condition` / `any` warnings only). **Verified logged-in:**
+  home renders 6 stat cards + 2 charts + activity list cleanly in **dark
+  and light**; the customers page header renders through
+  `lpg-page-header`; no home-specific console errors.
 
 ## Stage 9 — Hygiene & cleanup
 

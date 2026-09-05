@@ -2,6 +2,7 @@ import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   PLATFORM_ID,
   inject,
@@ -15,13 +16,18 @@ import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
 import { catchError, of } from 'rxjs';
 import {
-  ActionChipCell,
-  CopyableIdCell,
-  DataGridComponent,
-  DataGridColumn,
+  ActivityListComponent,
+  type ActivityItem,
+  type ActivityStatusTone,
+  EmptyStateComponent,
   formatEntityName,
   formatTimestamp,
   HasPermissionDirective,
+  PageHeaderComponent,
+  SectionCardComponent,
+  SkeletonComponent,
+  StatCardComponent,
+  type StatTone,
 } from '@lpg/shared/ui';
 import {
   DashboardService,
@@ -36,9 +42,21 @@ interface KpiData {
   title: string;
   value: string;
   icon: string;
-  colorClass: string;
+  tone: StatTone;
   permission?: string;
 }
+
+const ACTION_ICON: Record<string, string> = {
+  create: 'pi pi-plus-circle',
+  update: 'pi pi-pencil',
+  delete: 'pi pi-trash',
+};
+
+const ACTION_TONE: Record<string, ActivityStatusTone> = {
+  create: 'success',
+  update: 'info',
+  delete: 'danger',
+};
 
 interface InventoryStatusCard {
   status: string;
@@ -67,132 +85,113 @@ function escapeCsvCell(value: string): string {
 @Component({
   selector: 'lpg-home',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, DataGridComponent, HasPermissionDirective],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, HasPermissionDirective, PageHeaderComponent, SectionCardComponent, StatCardComponent, ActivityListComponent, EmptyStateComponent, SkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
-      <div class="page-header">
-        <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Agency Overview</h1>
-          <p class="page-subtitle">
-            Live summary of your agency's operational data across every module.
-          </p>
+      <ng-template lpgHeaderTitlePortal>
+        <lpg-page-header
+          title="Agency Overview"
+          subtitle="Live summary of your agency's operational data across every module."
+        />
+      </ng-template>
+      <ng-template lpgHeaderPortal>
+        <div class="dashboard__actions">
+          <button
+            *lpgHasPermission="'reports:read'"
+            pButton
+            severity="secondary"
+            [disabled]="loading()"
+            (click)="exportReport()"
+          >
+            <i pButtonIcon class="pi pi-download"></i>
+            <span pButtonLabel>Export Report</span>
+          </button>
+          <button *lpgHasPermission="'orders:create'" pButton type="button" (click)="onNewBooking()">
+            <i pButtonIcon class="pi pi-plus"></i>
+            <span pButtonLabel>New Booking</span>
+          </button>
         </div>
-    </ng-template>
-        <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-            <button
-              *lpgHasPermission="'reports:read'"
-              pButton
-              severity="secondary"
-              [disabled]="loading()"
-              (click)="exportReport()"
-            >
-              <i pButtonIcon class="pi pi-download"></i>
-              <span pButtonLabel>Export Report</span>
-            </button>
-            <button *lpgHasPermission="'orders:create'" pButton type="button" (click)="onNewBooking()">
-              <i pButtonIcon class="pi pi-plus"></i>
-              <span pButtonLabel>New Booking</span>
-            </button>
-          </div>
-</ng-template>
-      </div>
+      </ng-template>
 
       <!-- KPI Section -->
       <section class="dashboard__kpis">
-        @for (kpi of kpis(); track kpi.title) {
-          <div *lpgHasPermission="kpi.permission" class="kpi-card">
-            <div class="kpi-card__header">
-              <span class="kpi-card__title">{{ kpi.title }}</span>
-              <div class="kpi-card__icon" [class]="kpi.colorClass">
-                <i [class]="kpi.icon" aria-hidden="true"></i>
-              </div>
-            </div>
-            <div class="kpi-card__value">{{ loading() ? '—' : kpi.value }}</div>
-          </div>
+        @for (kpi of kpis(); track kpi.title; let i = $index) {
+          <lpg-stat-card
+            *lpgHasPermission="kpi.permission"
+            class="animate-fade-up"
+            [style.--lpg-stagger-index]="i"
+            [label]="kpi.title"
+            [value]="kpi.value"
+            [icon]="kpi.icon"
+            [tone]="kpi.tone"
+            [loading]="loading()"
+          />
         }
       </section>
 
       <!-- Charts Section -->
       <section class="dashboard__charts">
-        <div *lpgHasPermission="'vehicles:read'" class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Fleet Status</h2>
-          </div>
-          <div class="panel-content chart-container">
+        <lpg-section-card *lpgHasPermission="'vehicles:read'" heading="Fleet Status">
+          <div class="chart-container">
             @if (isBrowser) {
               <p-chart type="bar" [data]="vehicleStatusChartData()" [options]="barChartOptions()"></p-chart>
             }
           </div>
-        </div>
-        <div *lpgHasPermission="'inventory:read'" class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Cylinder Inventory (All Locations)</h2>
-          </div>
-          <div class="panel-content chart-container">
+        </lpg-section-card>
+        <lpg-section-card *lpgHasPermission="'inventory:read'" heading="Cylinder Inventory (All Locations)">
+          <div class="chart-container">
             @if (isBrowser) {
               <p-chart type="doughnut" [data]="inventoryChartData()" [options]="doughnutChartOptions()"></p-chart>
             }
           </div>
-        </div>
+        </lpg-section-card>
       </section>
 
       <!-- Inventory Detail Cards -->
-      <section *lpgHasPermission="'inventory:read'" class="dashboard__section">
-        <h2 class="section-heading">Inventory by Status</h2>
+      <lpg-section-card *lpgHasPermission="'inventory:read'" heading="Inventory by Status">
         @if (inventoryCards().length > 0) {
-          <div class="inventory-cards">
+          <div class="mini-cards">
             @for (card of inventoryCards(); track card.status) {
-              <div class="inventory-card">
-                <span class="inventory-card__label">{{ card.label }}</span>
-                <span class="inventory-card__value">{{ card.quantity.toLocaleString() }}</span>
+              <div class="mini-card">
+                <span class="mini-card__label">{{ card.label }}</span>
+                <span class="mini-card__value">{{ card.quantity.toLocaleString() }}</span>
               </div>
             }
           </div>
         } @else if (!loading()) {
-          <p class="empty-state">No inventory activity recorded yet.</p>
+          <lpg-empty-state title="No inventory activity yet" description="Cylinder movements will appear here once stock is recorded." />
         }
-      </section>
+      </lpg-section-card>
 
       <!-- Price Cards -->
-      <section *lpgHasPermission="'tenant:configure'" class="dashboard__section">
-        <h2 class="section-heading">Cylinder Pricing (Domestic)</h2>
+      <lpg-section-card *lpgHasPermission="'tenant:configure'" heading="Cylinder Pricing (Domestic)">
         @if (priceCards().length > 0) {
-          <div class="price-cards">
+          <div class="mini-cards">
             @for (card of priceCards(); track card.cylinder_type_id) {
-              <div class="price-card">
-                <span class="price-card__name">{{ card.name }}</span>
-                <span class="price-card__weight">{{ card.weight_kg }} kg</span>
-                <span class="price-card__price">
+              <div class="mini-card">
+                <span class="mini-card__label">{{ card.name }} · {{ card.weight_kg }} kg</span>
+                <span class="mini-card__value">
                   {{ card.price ? '₹' + card.price : 'Not configured' }}
                 </span>
               </div>
             }
           </div>
         } @else if (!loading()) {
-          <p class="empty-state">No cylinder types configured yet.</p>
+          <lpg-empty-state title="No cylinder types configured yet" description="Add cylinder types and a price list to see pricing here." />
         }
-      </section>
+      </lpg-section-card>
 
-      <!-- Data Grid Section -->
-      <section *lpgHasPermission="'audit:read'" class="dashboard__grid-section">
-        <div class="panel">
-          <div class="panel-header">
-            <h2 class="section-heading">Recent Activity</h2>
-          </div>
-          <div class="panel-content grid-wrapper">
-            <lpg-data-grid
-              [rows]="recentActivity()"
-              [columns]="activityColumns()"
-              [loading]="loading()"
-              ariaLabel="Recent platform activity"
-            >
-            </lpg-data-grid>
-          </div>
-        </div>
-      </section>
+      <!-- Recent Activity -->
+      <lpg-section-card *lpgHasPermission="'audit:read'" heading="Recent Activity">
+        @if (activityItems().length > 0) {
+          <lpg-activity-list [items]="activityItems()" />
+        } @else if (loading()) {
+          <lpg-skeleton variant="text" [lines]="4" />
+        } @else {
+          <lpg-empty-state title="No recent activity" description="Actions across the platform will show up here." />
+        }
+      </lpg-section-card>
     </div>
   `,
   styles: [
@@ -207,71 +206,17 @@ function escapeCsvCell(value: string): string {
         gap: var(--spacing-xl);
       }
 
-      /* ---- KPI Cards ---- */
+      .dashboard__actions {
+        display: flex;
+        gap: var(--spacing-sm);
+      }
+
       .dashboard__kpis {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: var(--spacing-lg);
       }
 
-      .kpi-card {
-        background: var(--color-surface-raised);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-lg);
-        padding: var(--spacing-xl);
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-        transition: transform var(--motion-duration-small), box-shadow var(--motion-duration-small);
-      }
-
-      .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--elevation-2);
-        border-color: var(--color-border-strong);
-      }
-
-      .kpi-card__header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-      }
-
-      .kpi-card__title {
-        font-size: var(--typography-body-small-font-size);
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
-        margin-top: 4px;
-      }
-
-      .kpi-card__icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        inline-size: 40px;
-        block-size: 40px;
-        border-radius: var(--radius-md);
-        font-size: 17px;
-        flex-shrink: 0;
-      }
-
-      .kpi-card__icon.bg-danger { background: color-mix(in srgb, var(--color-status-danger) 12%, transparent); color: var(--color-status-danger); }
-      .kpi-card__icon.bg-info { background: color-mix(in srgb, var(--color-status-info) 12%, transparent); color: var(--color-status-info); }
-      .kpi-card__icon.bg-success { background: color-mix(in srgb, var(--color-status-success) 12%, transparent); color: var(--color-status-success); }
-      .kpi-card__icon.bg-warning { background: color-mix(in srgb, var(--color-status-warning) 12%, transparent); color: var(--color-status-warning); }
-      .kpi-card__icon.bg-accent { background: color-mix(in srgb, var(--primitive-color-flame-orange-500) 12%, transparent); color: var(--primitive-color-flame-orange-500); }
-      .kpi-card__icon.bg-primary { background: color-mix(in srgb, var(--color-action-primary) 12%, transparent); color: var(--color-action-primary); }
-
-      .kpi-card__value {
-        font-size: 2.25rem;
-        font-weight: 700;
-        color: var(--color-text-primary);
-        letter-spacing: -0.02em;
-        line-height: 1;
-        margin-block: var(--spacing-xs);
-      }
-
-      /* ---- Charts Section ---- */
       .dashboard__charts {
         display: grid;
         grid-template-columns: 1fr;
@@ -284,130 +229,37 @@ function escapeCsvCell(value: string): string {
         }
       }
 
-      /* ---- Panels ---- */
-      .panel {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-        background: var(--color-surface-raised);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-lg);
-        padding: var(--spacing-xl);
-        box-shadow: var(--elevation-1);
-      }
-
-      .panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--spacing-sm);
-      }
-
-      .panel-header .section-heading {
-        margin: 0;
-      }
-
-      .panel-content {
-        flex: 1;
-        min-block-size: 0;
-      }
-
       .chart-container {
         position: relative;
         height: 300px;
         width: 100%;
       }
 
-      /* ---- Section headings outside panels ---- */
-      .dashboard__section {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-sm);
-      }
-
-      .dashboard__section .section-heading {
-        margin: 0;
-      }
-
-      .empty-state {
-        color: var(--color-text-secondary);
-        margin: 0;
-      }
-
-      /* ---- Inventory status cards ---- */
-      .inventory-cards {
+      /* Compact label/value tiles inside a section card (inventory, pricing). */
+      .mini-cards {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: var(--spacing-md);
       }
 
-      .inventory-card {
-        background: var(--color-surface-raised);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        padding: var(--spacing-lg);
+      .mini-card {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-xs);
+        gap: 2px;
+        padding: var(--spacing-md);
+        background: var(--color-surface-overlay);
+        border-radius: var(--radius-input);
       }
 
-      .inventory-card__label {
-        font-size: var(--typography-body-small-font-size);
+      .mini-card__label {
+        font-size: var(--typography-caption-font-size);
         color: var(--color-text-secondary);
       }
 
-      .inventory-card__value {
-        font-size: 1.5rem;
+      .mini-card__value {
+        font-size: var(--typography-heading3-font-size);
         font-weight: 700;
         color: var(--color-text-primary);
-      }
-
-      /* ---- Price cards ---- */
-      .price-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: var(--spacing-md);
-      }
-
-      .price-card {
-        background: var(--color-surface-raised);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        padding: var(--spacing-lg);
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-      }
-
-      .price-card__name {
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-primary);
-      }
-
-      .price-card__weight {
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-secondary);
-      }
-
-      .price-card__price {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--color-text-primary);
-      }
-
-      /* ---- Grid Section ---- */
-      .dashboard__grid-section {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .grid-wrapper {
-        flex: 0 0 350px;
-        min-height: 350px;
-        height: 350px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
       }
     `,
   ],
@@ -433,24 +285,21 @@ export class Home implements OnDestroy {
   protected readonly priceCards = signal<CylinderTypePriceCardResponse[]>([]);
 
   protected readonly recentActivity = signal<DashboardActivityEntryResponse[]>([]);
-  protected readonly activityColumns = signal<DataGridColumn<DashboardActivityEntryResponse>[]>([
-    {
-      field: 'entity_name',
-      header: 'Module',
-      width: 140,
-      valueFormatter: (v) => formatEntityName(v),
-      tooltipValueGetter: (v) => String(v ?? ''),
-    },
-    { field: 'action', header: 'Action', width: 110, cellRenderer: ActionChipCell },
-    { field: 'entity_id', header: 'Record', flex: 1, cellRenderer: CopyableIdCell },
-    {
-      field: 'performed_at',
-      header: 'When',
-      width: 180,
-      valueFormatter: (v) => formatTimestamp(v),
-      tooltipValueGetter: (v) => formatTimestamp(v),
-    },
-  ]);
+
+  /** The "Recent Activity" list (doc §17) — a lighter projection than the
+   *  full audit grid at /admin/audit-log. */
+  protected readonly activityItems = computed<ActivityItem[]>(() =>
+    this.recentActivity()
+      .slice(0, 8)
+      .map((entry) => ({
+        time: formatTimestamp(entry.performed_at),
+        icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
+        title: formatEntityName(entry.entity_name),
+        description: entry.entity_id ? String(entry.entity_id).slice(0, 8).toUpperCase() : undefined,
+        status: entry.action ? entry.action.charAt(0).toUpperCase() + entry.action.slice(1) : undefined,
+        statusTone: ACTION_TONE[entry.action] ?? 'neutral',
+      })),
+  );
 
   // PrimeNG's ChartData<...> generic is impractical to satisfy exactly.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -536,42 +385,42 @@ export class Home implements OnDestroy {
         title: 'Total Customers',
         value: (summary?.customer_count ?? 0).toLocaleString(),
         icon: 'pi pi-users',
-        colorClass: 'bg-info',
+        tone: 'info',
         permission: 'customers:read'
       },
       {
         title: 'Drivers',
         value: (summary?.driver_count ?? 0).toLocaleString(),
         icon: 'pi pi-id-card',
-        colorClass: 'bg-accent',
+        tone: 'info',
         permission: 'drivers:read'
       },
       {
         title: 'Fleet Vehicles',
         value: (summary?.vehicle_count ?? 0).toLocaleString(),
         icon: 'pi pi-truck',
-        colorClass: 'bg-warning',
+        tone: 'warning',
         permission: 'vehicles:read'
       },
       {
         title: 'Warehouses',
         value: (summary?.warehouse_count ?? 0).toLocaleString(),
         icon: 'pi pi-warehouse',
-        colorClass: 'bg-primary',
+        tone: 'primary',
         permission: 'tenant:configure'
       },
       {
         title: 'Filled Cylinders',
         value: filled.toLocaleString(),
         icon: 'pi pi-box',
-        colorClass: 'bg-success',
+        tone: 'success',
         permission: 'inventory:read'
       },
       {
         title: 'Cylinders Needing Attention',
         value: needingAttention.toLocaleString(),
         icon: 'pi pi-exclamation-triangle',
-        colorClass: 'bg-danger',
+        tone: 'danger',
         permission: 'inventory:read'
       },
     ]);

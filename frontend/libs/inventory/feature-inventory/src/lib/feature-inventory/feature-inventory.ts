@@ -37,7 +37,7 @@ import {
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, StatusChipCell, toSentenceCase } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, PageHeaderComponent, StatusChipCell, toSentenceCase } from '@lpg/shared/ui';
 
 const CYLINDER_STATUSES = [
   'filled',
@@ -69,7 +69,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-inventory',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective, 
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,

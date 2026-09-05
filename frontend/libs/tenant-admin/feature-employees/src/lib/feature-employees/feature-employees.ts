@@ -33,6 +33,7 @@ import {
   type DataGridColumn,
   FormFieldComponent,
   HasPermissionDirective,
+  PageHeaderComponent,
   StatusChipCell,
   type ChipSeverity,
   toSentenceCase,
@@ -66,6 +67,7 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
   selector: 'lib-feature-employees',
   standalone: true,
   imports: [
+    PageHeaderComponent,
     HeaderPortalDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,

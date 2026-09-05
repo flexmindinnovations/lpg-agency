@@ -1,10 +1,10 @@
 <div class="order-queue">
   <div class="page-header">
     <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-      <h1 class="page-title">Orders</h1>
-      <p class="page-subtitle">{{ total() }} order{{ total() === 1 ? '' : 's' }}</p>
-    </div>
+      <lpg-page-header
+        title="Orders"
+        [subtitle]="total() + ' order' + (total() === 1 ? '' : 's')"
+      />
     </ng-template>
     <ng-template lpgHeaderPortal>
       <div class="page-header__actions">

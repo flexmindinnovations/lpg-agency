@@ -32,17 +32,19 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         <div class="stat-card__value">{{ value() }}</div>
       }
 
-      <div class="stat-card__foot">
-        @if (delta() && !loading()) {
-          <span class="stat-card__delta stat-card__delta--{{ direction() }}">
-            <i class="pi {{ deltaIcon() }}" aria-hidden="true"></i>
-            {{ delta() }}
-          </span>
-        }
-        @if (caption()) {
-          <span class="stat-card__caption">{{ caption() }}</span>
-        }
-      </div>
+      @if ((delta() || caption()) && !loading()) {
+        <div class="stat-card__foot">
+          @if (delta()) {
+            <span class="stat-card__delta stat-card__delta--{{ direction() }}">
+              <i class="pi {{ deltaIcon() }}" aria-hidden="true"></i>
+              {{ delta() }}
+            </span>
+          }
+          @if (caption()) {
+            <span class="stat-card__caption">{{ caption() }}</span>
+          }
+        </div>
+      }
 
       @if (trendPoints().length > 1 && !loading()) {
         <svg
