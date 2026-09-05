@@ -1,10 +1,41 @@
 /*
-GENERATED FILE — DO NOT EDIT BY HAND.
-Source: design-tokens/tokens.json
-Regenerate: node scripts/generate-tokens.mjs
+Design tokens — hand-maintained.
+
+NOTE (Phase 29, Stage 0): this file previously carried a header claiming it
+was generated from `design-tokens/tokens.json` via `node
+scripts/generate-tokens.mjs` — neither file exists anywhere in this repo.
+That pipeline was never built; this file (and `tokens.ts`'s `tokenVars` map)
+have always been hand-edited directly. Edit them here.
 */
 
 :root {
+  /* ---- Neutral scale (Fluent Glass, Phase 29) ----
+     Dark-first: 100 is the primary dark surface, 900/950 the primary-theme
+     text colours. Used directly by [data-theme='dark'] below; kept as
+     primitives (not theme-scoped) since the scale itself doesn't change
+     per theme, only which step a semantic slot points at does. */
+  --primitive-color-neutral-0: #05080c;
+  --primitive-color-neutral-50: #080d13;
+  --primitive-color-neutral-100: #0b1118;
+  --primitive-color-neutral-200: #101720;
+  --primitive-color-neutral-300: #17212c;
+  --primitive-color-neutral-400: #22303d;
+  --primitive-color-neutral-500: #334352;
+  --primitive-color-neutral-600: #526273;
+  --primitive-color-neutral-700: #7d8b99;
+  --primitive-color-neutral-800: #b5bec8;
+  --primitive-color-neutral-900: #e2e7ec;
+  --primitive-color-neutral-950: #f7f9fb;
+  /* ---- Primary / accent (Fluent Glass) ----
+     Only 400-700 are specified by the design system; PrimeNG's own 50-950
+     scale is synthesized from --color-action-primary via `tokenScale()` in
+     primeng-preset.ts, so no wider primitive scale is needed here. */
+  --primitive-color-primary-400: #6ea8ff;
+  --primitive-color-primary-500: #4f8df7;
+  --primitive-color-primary-600: #3978e8;
+  --primitive-color-primary-700: #2864cc;
+  --primitive-color-accent-400: #82cfff;
+  --primitive-color-accent-500: #55b9ee;
   --primitive-color-blue-50: #eff6ff;
   --primitive-color-blue-100: #dbeafe;
   --primitive-color-blue-400: #60a5fa;
@@ -156,6 +187,43 @@ Regenerate: node scripts/generate-tokens.mjs
   --component-focus-ring-width: 2px;
   --component-focus-ring-offset: 4px;
 
+  /* ---- Extended radius scale (Fluent Glass) ----
+     Additive, named by use rather than by tier — the existing --radius-sm/
+     md/lg/full stay exactly as they were (still consumed by PrimeNG's
+     primitive.borderRadius mapping in primeng-preset.ts) so nothing already
+     rendering with them shifts in this stage. These are for surfaces this
+     phase's later stages (shell, forms, dialogs) opt into deliberately. */
+  --radius-xs: 4px;
+  --radius-input: 6px;
+  --radius-card: 10px;
+  --radius-dialog: 16px;
+  --radius-surface: 20px;
+
+  /* ---- Extended type scale (Fluent Glass) ----
+     Additive: the existing heading1/heading2/body/body-small/caption/label
+     tokens already cover most of the doc's steps closely enough to leave
+     untouched. These four have no existing equivalent. Line-heights snap to
+     the existing tight/snug/normal/relaxed multiplier vocabulary (1.2/1.3/
+     1.4/1.5) rather than introducing new one-off ratios. */
+  --typography-card-title-font-size: 14px;
+  --typography-card-title-font-weight: 600;
+  --typography-card-title-line-height: 1.4;
+  --typography-secondary-font-size: 13px;
+  --typography-secondary-font-weight: 400;
+  --typography-secondary-line-height: 1.4;
+  --typography-data-font-size: 13px;
+  --typography-data-font-weight: 500;
+  --typography-data-line-height: 1.4;
+  --typography-kpi-font-size: 28px;
+  --typography-kpi-font-weight: 600;
+  --typography-kpi-line-height: 1.2;
+
+  /* A single shared monochrome noise layer (2-4% opacity when applied via
+     the `.surface-noise` utility in styles.css) — one `feTurbulence` SVG,
+     reused everywhere rather than a `backdrop-filter` per element (doc
+     §40's performance rule). Not applied to anything yet in this stage. */
+  --surface-noise-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
   /* Light is the default theme; no attribute required. */
   --color-text-primary: #111827;
   --color-text-secondary: #6b7280;
@@ -181,6 +249,19 @@ Regenerate: node scripts/generate-tokens.mjs
   --elevation-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
   --elevation-2: 0 4px 6px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+  --elevation-4: 0 20px 40px rgba(0,0,0,0.16), 0 8px 16px rgba(0,0,0,0.10);
+  /* Materials (Fluent Glass, Phase 29) — light-mode fallbacks. Dark is the
+     primary experience these were designed for (doc §2-4); light gets a
+     conservative translucent-white treatment rather than a full redesign
+     of its own, per this stage's scope. Not consumed by any component yet. */
+  --surface-mica: rgba(255,255,255,0.72);
+  --surface-mica-border: rgba(0,0,0,0.08);
+  --surface-mica-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  --surface-acrylic: rgba(255,255,255,0.72);
+  --surface-acrylic-blur: blur(20px) saturate(120%);
+  --surface-acrylic-border: rgba(0,0,0,0.08);
+  --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.12);
+  --surface-atmosphere: none;
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
@@ -195,43 +276,72 @@ Regenerate: node scripts/generate-tokens.mjs
   --component-focus-ring-color: #162b66;
 }
 
+/* Fluent Glass dark theme (Phase 29, Stage 0) — the primary experience.
+   Every hex here was verified against WCAG 2.2 AA before being chosen (see
+   planning/features/29-dashboard-enterprise-ux/PLAN.md Stage 0 gate):
+     text-primary   #E2E7EC on #0B1118 -> 15.24:1
+     text-secondary #7D8B99 on #0B1118 ->  5.44:1
+     action-primary #3978E8 on #0B1118 ->  4.54:1 (text/link/icon use)
+     status success/warning/danger/info -> 8.95 / 10.33 / 6.30 / 7.73 : 1
+   text-disabled (#526273, 3.03:1) and the button-fill pair (below) are the
+   two deliberate exceptions — WCAG exempts disabled controls, and the
+   button fill uses a dedicated darker token (not --color-action-primary)
+   specifically so its white label text clears 4.5:1 — see
+   --component-button-primary-background below and primeng-preset.ts's
+   components.button override that wires it up. */
 [data-theme='dark'] {
-  --color-text-primary: #f9fafb;
-  --color-text-secondary: #9ca3af;
-  --color-text-disabled: #4b5563;
-  --color-text-inverse: #111827;
-  --color-surface-base: #0b0f16;
-  --color-surface-raised: #111827;
-  --color-surface-overlay: #1f2937;
-  --color-border-default: #374151;
-  --color-border-strong: #4b5563;
-  --color-border-focus: #6c8ddb;
-  --color-action-primary: #6c8ddb;
-  --color-action-primary-hover: #4068c8;
+  --color-text-primary: #e2e7ec;
+  --color-text-secondary: #7d8b99;
+  --color-text-disabled: #526273;
+  --color-text-inverse: #0b1118;
+  --color-surface-base: #0b1118;
+  --color-surface-raised: #101720;
+  --color-surface-overlay: #17212c;
+  --color-border-default: rgba(255,255,255,0.07);
+  --color-border-strong: rgba(255,255,255,0.14);
+  --color-border-focus: #4f8df7;
+  --color-action-primary: #3978e8;
+  --color-action-primary-hover: #2864cc;
   --color-action-primary-text: #ffffff;
-  --color-status-success: #4ade80;
-  --color-status-warning: #fbbf24;
-  --color-status-danger: #f87171;
-  --color-status-info: #60a5fa;
-  --color-highlight-background: #223f8b;
+  --color-status-success: #36c98f;
+  --color-status-warning: #e7b94a;
+  --color-status-danger: #f06a6a;
+  --color-status-info: #62a8ff;
+  /* A low-opacity primary tint for selected rows/menu items (doc §18),
+     rather than the old solid gas-blue-700 block. */
+  --color-highlight-background: rgba(57,120,232,0.24);
   --color-highlight-color: #ffffff;
   --border-width: 1px;
   --elevation-0: none;
-  --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
-  --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
-  --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
-  --component-button-primary-background: #6c8ddb;
-  --component-button-primary-background-hover: #4068c8;
+  --elevation-1: 0 2px 8px rgba(0,0,0,0.10);
+  --elevation-2: 0 8px 24px rgba(0,0,0,0.14);
+  --elevation-3: 0 16px 40px rgba(0,0,0,0.20);
+  --elevation-4: 0 24px 64px rgba(0,0,0,0.28);
+  --surface-mica: rgba(22,31,43,0.72);
+  --surface-mica-border: rgba(255,255,255,0.08);
+  --surface-mica-shadow: 0 8px 32px rgba(0,0,0,0.16);
+  --surface-acrylic: rgba(28,38,52,0.62);
+  --surface-acrylic-blur: blur(20px) saturate(120%);
+  --surface-acrylic-border: rgba(255,255,255,0.10);
+  --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  --surface-atmosphere:
+    radial-gradient(circle at 20% 0%, rgba(70,110,180,0.10), transparent 35%),
+    radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
+    #0b1118;
+  /* Deliberately NOT --color-action-primary (4.54:1 as text, only 4.18:1
+     under white button-label text — see the block comment above). */
+  --component-button-primary-background: #2864cc;
+  --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
-  --component-card-background: #111827;
-  --component-card-border: #374151;
-  --component-data-grid-border-color: #374151;
-  --component-data-grid-header-background: #111827;
-  --component-avatar-background: #6c8ddb;
+  --component-card-background: #101720;
+  --component-card-border: rgba(255,255,255,0.07);
+  --component-data-grid-border-color: rgba(255,255,255,0.07);
+  --component-data-grid-header-background: #101720;
+  --component-avatar-background: #3978e8;
   --component-avatar-color: #ffffff;
-  --component-profile-menu-item-hover-background: #1f2937;
-  --component-profile-menu-divider-color: #374151;
-  --component-focus-ring-color: #6c8ddb;
+  --component-profile-menu-item-hover-background: #17212c;
+  --component-profile-menu-divider-color: rgba(255,255,255,0.07);
+  --component-focus-ring-color: #4f8df7;
 }
 
 [data-theme='high-contrast'] {
@@ -259,6 +369,17 @@ Regenerate: node scripts/generate-tokens.mjs
   --elevation-1: none;
   --elevation-2: none;
   --elevation-3: none;
+  --elevation-4: none;
+  /* No translucency or blur in high-contrast — hard opaque surfaces and
+     borders only, consistent with its existing zero-elevation rule. */
+  --surface-mica: #ffffff;
+  --surface-mica-border: #000000;
+  --surface-mica-shadow: none;
+  --surface-acrylic: #ffffff;
+  --surface-acrylic-blur: none;
+  --surface-acrylic-border: #000000;
+  --surface-acrylic-shadow: none;
+  --surface-atmosphere: none;
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -274,43 +395,61 @@ Regenerate: node scripts/generate-tokens.mjs
 }
 
 @media (prefers-color-scheme: dark) {
+  /* Mirrors [data-theme='dark'] exactly — reached when a user has
+     explicitly chosen "System" (removing the attribute; see
+     ThemeService.applyTheme) and their OS is in dark mode. Since
+     ThemeService now defaults new sessions to the 'dark' preference
+     (Stage 0), this path is only exercised by that explicit "System"
+     choice, but it must never drift from the primary dark theme above. */
   :root:not([data-theme]) {
-    --color-text-primary: #f9fafb;
-    --color-text-secondary: #9ca3af;
-    --color-text-disabled: #4b5563;
-    --color-text-inverse: #111827;
-    --color-surface-base: #0b0f16;
-    --color-surface-raised: #111827;
-    --color-surface-overlay: #1f2937;
-    --color-border-default: #374151;
-    --color-border-strong: #4b5563;
-    --color-border-focus: #6c8ddb;
-    --color-action-primary: #6c8ddb;
-    --color-action-primary-hover: #4068c8;
+    --color-text-primary: #e2e7ec;
+    --color-text-secondary: #7d8b99;
+    --color-text-disabled: #526273;
+    --color-text-inverse: #0b1118;
+    --color-surface-base: #0b1118;
+    --color-surface-raised: #101720;
+    --color-surface-overlay: #17212c;
+    --color-border-default: rgba(255,255,255,0.07);
+    --color-border-strong: rgba(255,255,255,0.14);
+    --color-border-focus: #4f8df7;
+    --color-action-primary: #3978e8;
+    --color-action-primary-hover: #2864cc;
     --color-action-primary-text: #ffffff;
-    --color-status-success: #4ade80;
-    --color-status-warning: #fbbf24;
-    --color-status-danger: #f87171;
-    --color-status-info: #60a5fa;
-    --color-highlight-background: #223f8b;
+    --color-status-success: #36c98f;
+    --color-status-warning: #e7b94a;
+    --color-status-danger: #f06a6a;
+    --color-status-info: #62a8ff;
+    --color-highlight-background: rgba(57,120,232,0.24);
     --color-highlight-color: #ffffff;
     --border-width: 1px;
     --elevation-0: none;
-    --elevation-1: 0 1px 2px rgba(0,0,0,0.40);
-    --elevation-2: 0 4px 6px rgba(0,0,0,0.50);
-    --elevation-3: 0 12px 24px rgba(0,0,0,0.60);
-    --component-button-primary-background: #6c8ddb;
-    --component-button-primary-background-hover: #4068c8;
+    --elevation-1: 0 2px 8px rgba(0,0,0,0.10);
+    --elevation-2: 0 8px 24px rgba(0,0,0,0.14);
+    --elevation-3: 0 16px 40px rgba(0,0,0,0.20);
+    --elevation-4: 0 24px 64px rgba(0,0,0,0.28);
+    --surface-mica: rgba(22,31,43,0.72);
+    --surface-mica-border: rgba(255,255,255,0.08);
+    --surface-mica-shadow: 0 8px 32px rgba(0,0,0,0.16);
+    --surface-acrylic: rgba(28,38,52,0.62);
+    --surface-acrylic-blur: blur(20px) saturate(120%);
+    --surface-acrylic-border: rgba(255,255,255,0.10);
+    --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    --surface-atmosphere:
+      radial-gradient(circle at 20% 0%, rgba(70,110,180,0.10), transparent 35%),
+      radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
+      #0b1118;
+    --component-button-primary-background: #2864cc;
+    --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
-    --component-card-background: #111827;
-    --component-card-border: #374151;
-    --component-data-grid-border-color: #374151;
-    --component-data-grid-header-background: #111827;
-    --component-avatar-background: #6c8ddb;
+    --component-card-background: #101720;
+    --component-card-border: rgba(255,255,255,0.07);
+    --component-data-grid-border-color: rgba(255,255,255,0.07);
+    --component-data-grid-header-background: #101720;
+    --component-avatar-background: #3978e8;
     --component-avatar-color: #ffffff;
-    --component-profile-menu-item-hover-background: #1f2937;
-    --component-profile-menu-divider-color: #374151;
-    --component-focus-ring-color: #6c8ddb;
+    --component-profile-menu-item-hover-background: #17212c;
+    --component-profile-menu-divider-color: rgba(255,255,255,0.07);
+    --component-focus-ring-color: #4f8df7;
   }
 }
 

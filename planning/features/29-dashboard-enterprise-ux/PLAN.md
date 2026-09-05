@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Draft 2026-09-05 · Stages 0–10 pending
+**Status:** Stage 0 done 2026-09-05 · Stages 1–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -112,6 +112,65 @@ conventions (18px nav / 16px button / 20–24px feature) rather than replacing
   hex values get verified against real LPG surfaces, not assumed compliant,
   and nudged if any pairing fails; `nx build dashboard`.
 - **Commit:** `feat(design-tokens): Fluent Glass palette — Mica/Acrylic materials, dark-first default`
+
+### ✅ DONE 2026-09-05
+
+- **Discrepancy found & corrected:** `tokens.css` / `tokens.ts` carried a
+  "GENERATED FILE — regenerate via `node scripts/generate-tokens.mjs`"
+  header, but **neither `tokens.json` nor that script exists anywhere in the
+  repo** — the pipeline was never built; both files have always been
+  hand-edited. Headers rewritten to say so. No generator was built (out of
+  scope); editing is direct.
+- **`tokens.css`** — new primitive scales (`--primitive-color-neutral-0..950`,
+  `--primitive-color-primary-400..700`, `--primitive-color-accent-400/500`);
+  the existing blue/gray/gas-blue/flame-orange primitives are kept (still
+  used by the light theme + the brand-mark SVG). New material tokens
+  (`--surface-mica*`, `--surface-acrylic*`, `--surface-atmosphere`,
+  `--surface-noise-image` — a shared `feTurbulence` SVG data-URI). Additive
+  radius (`--radius-xs/input/card/dialog/surface`) and type
+  (`--typography-card-title/secondary/data/kpi-*`) scale steps — existing
+  `--radius-sm/md/lg/full` and heading/body tokens left untouched so nothing
+  currently rendering shifts. `--elevation-4` added.
+- **Dark theme fully rebuilt** (`[data-theme='dark']` + the
+  `prefers-color-scheme: dark` system-fallback block, kept in sync) on the
+  Fluent Glass palette. **Every pairing WCAG 2.2 AA-verified by computed
+  contrast ratio before selection** (documented inline): text-primary
+  15.24:1, text-secondary 5.44:1, action-primary-as-text 4.54:1, status
+  colours 6.3–10.3:1. Two deliberate exceptions, both documented in the
+  file: disabled text (exempt from AA), and the filled-button background —
+  which uses a **dedicated darker token** (`--component-button-primary-
+  background`, primary-700, white-label contrast 5.55:1) rather than
+  `--color-action-primary` (4.18:1 under white text). `primeng-preset.ts`
+  gains a small `components.button.root.primary` override wiring that token,
+  decoupled from `semantic.primary` (still used everywhere else).
+- **Light + high-contrast**: deliberately light-touch — light keeps its
+  existing values (dark is the primary experience; a full light redesign is
+  out of this stage's scope), gets conservative translucent-white material
+  fallbacks + `--elevation-4`. High-contrast gets opaque/no-blur material
+  fallbacks + `--elevation-4: none`, keeping its zero-elevation WCAG rule.
+- **`ThemeService`** — a session with no stored preference now defaults to
+  `'dark'` (was `'system'`). "System" stays a first-class switcher option.
+  Two specs updated.
+- **`app.ts`** — injects `ThemeService` at bootstrap so `data-theme` is
+  stamped on `<html>` before the first route paints, including `/login` and
+  the other pre-shell screens (which don't otherwise touch it). Without this
+  the theme only applied once the shell mounted post-login.
+- **`styles.css`** — a "Materials" section with `.surface-mica`,
+  `.surface-acrylic`, `.surface-noise` utility classes (unused until later
+  stages opt surfaces in).
+- **Deviation from the plan:** `primeng-preset.ts` needed almost no change —
+  it's entirely `var(--token-name)`-driven, so the new dark values flow
+  through automatically. The only edit was the button-contrast decoupling
+  above (which the plan's own Stage 0 gate — "nudged if any pairing fails" —
+  called for).
+- **Gate:** `nx test shared-design-tokens` 5/5, `nx test shared-ui` 19/19,
+  `nx test dashboard` 8/8, `nx lint` all three clean (3 pre-existing
+  warnings in `shell-layout.ts`/`platform-shell.ts`, untouched), `nx build
+  dashboard` production build clean, no budget warnings. Live dev-server
+  check: dark theme applies at bootstrap on `/login`, every new token
+  resolves, light/high-contrast switch still works, no console errors.
+- **Note for Stage 1:** killed a 3-day-stale `nx serve dashboard` on :4200
+  and started a fresh one (task `bvditb9xw`) — it's on current code.
 
 ## Stage 1 — Motion foundation: route transitions
 

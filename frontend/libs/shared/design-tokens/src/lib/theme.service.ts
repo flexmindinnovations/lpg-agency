@@ -17,6 +17,11 @@ export type ThemePreference = Theme | 'system';
  * The three themes come from `docs/ui/10-color-system.md`. High contrast is not
  * a nicety: WCAG 2.2 AA is a Phase 1 requirement (D-35), and low-vision users
  * need explicit borders where other themes use shadow-based elevation.
+ *
+ * Phase 29 (Fluent Glass): dark is the primary experience, so a session with
+ * no stored preference now defaults to 'dark' rather than 'system' — see
+ * `readStoredPreference()`. "System" is still a first-class option a user can
+ * pick explicitly from the theme switcher; it just isn't the default anymore.
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -78,6 +83,9 @@ export class ThemeService {
     } catch {
       // See setPreference.
     }
-    return 'system';
+    // Dark is the primary experience (Phase 29) — a first-run session, or
+    // one with an unrecognised stored value, lands there rather than on
+    // 'system'. A user can still pick "System" explicitly from the switcher.
+    return 'dark';
   }
 }

@@ -8,9 +8,9 @@ describe('ThemeService', () => {
     TestBed.configureTestingModule({});
   });
 
-  it('defaults to following the system preference', () => {
+  it('defaults to dark when no preference is stored', () => {
     const service = TestBed.inject(ThemeService);
-    expect(service.preference()).toBe('system');
+    expect(service.preference()).toBe('dark');
   });
 
   it('applies each of the three themes to the document', () => {
@@ -40,8 +40,8 @@ describe('ThemeService', () => {
     expect(localStorage.getItem('lpg.theme')).toBe('high-contrast');
   });
 
-  it('ignores an unrecognised stored value', () => {
+  it('ignores an unrecognised stored value and falls back to dark', () => {
     localStorage.setItem('lpg.theme', 'neon');
-    expect(TestBed.inject(ThemeService).preference()).toBe('system');
+    expect(TestBed.inject(ThemeService).preference()).toBe('dark');
   });
 });

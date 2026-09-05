@@ -121,6 +121,53 @@ body {
 }
 
 /* ========================================================================
+   MATERIALS (Fluent Glass, Phase 29 Stage 0)
+
+   Three surface materials, applied via these utility classes rather than
+   per-component styles so there's one definition of each — see the
+   surface-mica, surface-acrylic and surface-noise-image tokens in
+   tokens.css. Not yet applied anywhere; later stages (shell,
+   dialogs/drawers/command palette) opt specific surfaces into them
+   deliberately.
+   ======================================================================== */
+
+/* Sidebar, header, other large persistent surfaces — semi-opaque, no blur. */
+.surface-mica {
+  background: var(--surface-mica);
+  border-color: var(--surface-mica-border);
+  box-shadow: var(--surface-mica-shadow);
+}
+
+/* Dialogs, drawers, popovers, the command palette — transient/elevated
+ * surfaces only (doc §4/§40: never the whole dashboard, and backdrop-filter
+ * must not be applied to many elements at once). */
+.surface-acrylic {
+  background: var(--surface-acrylic);
+  backdrop-filter: var(--surface-acrylic-blur);
+  -webkit-backdrop-filter: var(--surface-acrylic-blur);
+  border-color: var(--surface-acrylic-border);
+  box-shadow: var(--surface-acrylic-shadow);
+}
+
+/* A barely-perceptible monochrome grain over a surface, so large gradients
+ * (e.g. --surface-atmosphere) don't read as artificially smooth. One shared
+ * SVG turbulence filter, positioned via ::after so it never intercepts
+ * pointer events or affects layout. */
+.surface-noise {
+  position: relative;
+}
+
+.surface-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--surface-noise-image);
+  opacity: 0.03;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+/* ========================================================================
    TYPOGRAPHY UTILITIES
    ======================================================================== */
 

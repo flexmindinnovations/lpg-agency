@@ -194,5 +194,29 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
         padding: 'var(--spacing-lg) var(--spacing-lg) var(--spacing-sm) var(--spacing-lg)',
       },
     },
+    // Deliberately decoupled from `semantic.primary` (Phase 29, Stage 0): the
+    // dark theme's --color-action-primary is tuned to read well as *text*
+    // against the dark base (4.54:1) but falls short of WCAG AA (4.18:1) as a
+    // background under the white label text a filled button needs. These
+    // --component-button-primary-* tokens are a step darker specifically for
+    // that pairing (5.55:1) — see tokens.css's dark-theme block comment for
+    // the full contrast audit. Every other primary-coloured surface (links,
+    // icons, focus rings, nav highlight) still reads --color-action-primary
+    // via `semantic.primary` above, unaffected by this override.
+    button: {
+      root: {
+        primary: {
+          background: 'var(--component-button-primary-background)',
+          hoverBackground: 'var(--component-button-primary-background-hover)',
+          activeBackground: 'var(--component-button-primary-background-hover)',
+          borderColor: 'var(--component-button-primary-background)',
+          hoverBorderColor: 'var(--component-button-primary-background-hover)',
+          activeBorderColor: 'var(--component-button-primary-background-hover)',
+          color: 'var(--component-button-primary-text)',
+          hoverColor: 'var(--component-button-primary-text)',
+          activeColor: 'var(--component-button-primary-text)',
+        },
+      },
+    },
   },
 });
