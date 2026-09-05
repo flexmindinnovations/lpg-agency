@@ -1,0 +1,337 @@
+# Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
+
+**Phase:** 29
+**Status:** Draft 2026-09-05 · Stages 0–10 pending
+**Type:** Full visual redesign + motion system + one new feature (command
+palette). No backend/data-model changes.
+
+---
+
+## Context
+
+Built from a full audit of `frontend/apps/dashboard` + `frontend/libs/*`
+(Angular 22, standalone/zoneless, 100% lazy-loaded per ADR-018, PrimeNG ^22
+on a custom Aura preset, Tailwind v4) plus a reference document
+(`GAS Fluent Glass Enterprise Design System Prompt.md`, attached by the user
+alongside a screenshot): a dark-first, Windows 11 Fluent 2 / Mica / Acrylic
+inspired enterprise design language — deliberately restrained (the doc
+itself warns against neon, excessive blur, and gaming aesthetics).
+
+**Audit findings this phase addresses:**
+
+1. **Zero route-transition or micro-interaction animation.**
+   `@angular/animations`'s DSL (`trigger`/`animate`/`transition`) has zero
+   usage anywhere; `provideAnimationsAsync()` exists solely to power
+   PrimeNG's own overlay animations. Navigation between routes is a hard cut.
+2. **No shared UI-primitive components** — `PageHeader`, `EmptyState`,
+   loading skeletons, stat/KPI cards, and section panels are all
+   reimplemented per-page as raw CSS classes (`.page-header`, `.empty-state`,
+   `.kpi-card`, `.panel`) rather than components. `home.ts` alone hand-rolls
+   ~200 lines of this.
+3. **No loading skeletons anywhere** — `p-skeleton` has zero usage; loading
+   states are "—" placeholder text or a bare "Loading…" string.
+   `DataGridComponent` even has an unused `loading` input.
+4. **Forms are CSS-class-only** (`.form-group`/`.field-hint`/`.field-error`),
+   no shared form-field component, no floating labels.
+5. **Two competing table systems**: the sanctioned `lpg-data-grid` (AG Grid,
+   ADR-020/028, used in 9 feature lists) vs. raw `p-table` (used in all 4
+   `libs/reporting` views, with none of the sort/filter/pagination the AG
+   Grid wrapper gives everywhere else).
+6. **Minor hygiene**: `@angular/material` is a fully unused dependency; one
+   deprecated `.toPromise()` call
+   (`customer-onboarding-wizard.component.ts`); one mixed
+   reactive/template-driven form binding (`order-queue.html`'s
+   `CustomerAutocomplete`); one component-selector prefix inconsistency
+   (`lib-notification-drawer` vs. the `lpg-` convention everywhere else).
+
+**Decisions locked in with the user:**
+
+1. **Dark becomes the default** theme for new sessions. Light and the
+   existing WCAG **high-contrast** mode (a real asset the reference doc
+   doesn't cover at all) stay fully supported in the switcher.
+2. **Adopt the reference's exact palette** (neutral 0–950 scale, primary
+   blue 400–700, accent sky-blue, semantic success/warning/danger/info) as
+   the new primitive token values — not a reinterpretation of the existing
+   gas-blue/flame-orange brand. The flame-mark SVG logo stays as a one-off
+   decorative element (iconography, not a token).
+3. **Command palette (Ctrl/Cmd+K) is in scope** as its own stage, bounded to
+   navigation + customer search + 2 quick-create actions.
+
+**Strategy — re-skin via tokens, not a rewrite.**
+`libs/shared/design-tokens` already has the exact seams this needs: a
+generated `tokens.css` (source `tokens.json` + `generate-tokens.mjs`), a
+`ThemeService` with light/dark/high-contrast/system, and a PrimeNG preset
+built on `definePreset(Aura, {...})`. This phase changes token **values**
+and adds new **material** tokens (Mica/Acrylic) — the mechanism (components
+read `var(--...)`, never literal colors) stays exactly as-is and is why this
+is affordable.
+
+Icon system: **no library swap.** PrimeIcons are already single-weight
+outline glyphs (confirmed against the doc's "outline based, simple,
+consistent stroke width" rule) — this phase standardizes *sizing*
+conventions (18px nav / 16px button / 20–24px feature) rather than replacing
+~40+ icon call sites.
+
+---
+
+## Stage 0 — Design tokens: Fluent Glass palette + materials
+
+- **`libs/shared/design-tokens/src/lib/tokens.json`** (source of truth —
+  never hand-edit generated CSS): replace primitive color scales with the
+  reference's exact values — neutral 0–950, primary 400–700 (expanded to a
+  full 50–950 scale via the existing `tokenScale()` `color-mix()` helper so
+  it still plugs into PrimeUIX's `primary`/`blue`/etc. primitive slots),
+  accent sky-blue, semantic success `#36C98F`/warning `#E7B94A`/danger
+  `#F06A6A`/info `#62A8FF`.
+- **New material tokens**: `--surface-mica` / `--surface-mica-border` /
+  `--surface-mica-shadow` (sidebar, header, persistent panels — semi-opaque,
+  low blur, fine border); `--surface-acrylic` / `--surface-acrylic-blur` /
+  `--surface-acrylic-border` / `--surface-acrylic-shadow` (dialogs, drawers,
+  command palette, popovers, dropdowns **only** — never a full-page surface,
+  per the doc's own perf/mud warnings); `--surface-atmosphere` (the two
+  subtle radial-gradient layers over the base dark background).
+- **New scales**: elevation 0–4, radius 4/6/8/10/12/16/20/999px, type scale
+  (Display 32/40/600 → Caption 12/16/400, Data 13/18/500, Large KPI
+  28/34/600) — spacing's existing 4px-grid tokens are already compatible,
+  verified against the doc's 4/8/12/16/20/24/32/40/48/64 scale.
+- **Noise texture**: one shared SVG `feTurbulence` data-URI applied via a
+  single `.surface-noise` utility class at 2–4% opacity — generated once,
+  reused everywhere it's needed, not a `backdrop-filter` per element (the
+  doc's own performance rule, §40).
+- **`ThemeService`**: default `ThemePreference` resolution flips to `dark`
+  for a first-run/no-`localStorage`-entry session; `light` and
+  `high-contrast` remain full switcher options, restyled to the new
+  radius/spacing/type scale while keeping high-contrast's "zero elevation,
+  hard borders" WCAG rule untouched.
+- **`primeng-preset.ts`**: rebuild the `definePreset(Aura, {...})`
+  primitive/semantic/component blocks against the new token values — same
+  mechanism, new numbers.
+- **Gate:** `node scripts/generate-tokens.mjs` regenerates clean; every
+  existing page still renders (no dangling `var()` references); **WCAG 2.2
+  AA contrast check on every new text/surface pairing** — the doc's exact
+  hex values get verified against real LPG surfaces, not assumed compliant,
+  and nudged if any pairing fails; `nx build dashboard`.
+- **Commit:** `feat(design-tokens): Fluent Glass palette — Mica/Acrylic materials, dark-first default`
+
+## Stage 1 — Motion foundation: route transitions
+
+- `provideRouter(appRoutes, withComponentInputBinding(), withViewTransitions({ onViewTransitionCreated }))`
+  in `app.config.ts`; `onViewTransitionCreated` calls `skipTransition()`
+  under `prefers-reduced-motion`.
+- Retarget `--motion-duration-*`/`--motion-easing-*` to the doc's scale
+  (Micro 100–140ms, Fast 160–200ms, Normal 220–280ms, Complex 300–400ms max;
+  ease-out entering / ease-in exiting; `cubic-bezier(.2,.8,.2,1)` for
+  page-level transitions).
+- Page-enter treatment per doc §25: opacity 0→1, `translateY(6px)→0`,
+  subtle blur-reduction, 180–240ms — styled on
+  `::view-transition-old/new(root)`.
+- Motion utility classes for Stage 3/8 entrance polish (`.animate-fade-up`,
+  `.animate-stagger`).
+- **Gate:** manual nav check (Chrome/Edge transition visible, Firefox
+  graceful hard-cut fallback, reduced-motion toggle = no transition);
+  `nx build dashboard`.
+- **Commit:** `feat(dashboard): route-level view transitions + retuned motion tokens`
+
+## Stage 2 — App shell: Mica surfaces + nav polish
+
+- `AppShellComponent`'s sidebar/header restyled onto `--surface-mica*`
+  tokens (semi-opaque, low blur, fine border, subtle elevation) in place of
+  today's solid surface tokens.
+- Active nav item → low-opacity blue-tinted surface (token-driven), **no
+  glow** (glow is reserved for hover/focus/live-indicator per the doc's
+  restraint rule, §35).
+- Icon-size convention applied consistently: 18px nav, 16px button, 20–24px
+  feature icons.
+- Brand flame mark kept as-is, now sitting on the Mica sidebar.
+- **Gate:** `nx test shared-ui`; visual check in dark (primary) + light +
+  high-contrast.
+- **Commit:** `feat(shell): Mica sidebar/header + icon-sizing convention`
+
+## Stage 3 — Shared UI primitives (`libs/shared/ui`)
+
+Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
+
+- **`StatCardComponent`** (`lpg-stat-card`) — doc §15: metric + comparison
+  delta + mini trend sparkline + contextual icon; hover = elevation++/
+  border-highlight/1–2px lift (never a jump).
+- **`ActivityCardComponent`** (`lpg-activity-list`) — doc §17: time/icon/
+  description/status rows, for "Recent Activity"-style panels.
+- **`LiveIndicatorComponent`** (`lpg-live-indicator`) — a small, gently
+  pulsing dot; used sparingly (live-route/active-delivery counts), never a
+  whole-card animation.
+- **`PageHeaderComponent`**, **`EmptyStateComponent`** (+ an error-state
+  variant per doc §37: what happened / why / what to do / Retry),
+  **`SkeletonBlockComponent`/`SkeletonListComponent`/`SkeletonTableComponent`**
+  (shimmer via a token-duration-driven `@keyframes` sweep,
+  reduced-motion-safe) — as previously scoped; `SkeletonTableComponent`
+  wires into `DataGridComponent`'s currently-dead `loading` input.
+- **`SectionCardComponent`** (`lpg-section-card`) — formalizes chart/list
+  panel chrome.
+- **Gate:** `nx test shared-ui`; `nx build dashboard` bundle-budget check
+  (none of these should pull a heavy transitive dep, unlike AG Grid).
+- **Commit:** `feat(shared-ui): StatCard/ActivityCard/LiveIndicator/PageHeader/EmptyState/Skeleton primitives`
+
+## Stage 4 — Enterprise form + input + button system
+
+- `FormFieldComponent` (`lpg-form-field`) + PrimeNG `p-floatlabel` (variant
+  `on`) as the standard field wrapper — doc §19 spec: 40–44px input height,
+  dark translucent surface, blue focus border + ring, 13px medium label,
+  12px supporting text, semantic-red error **plus a non-color (icon)
+  indicator** — never color-only.
+- Pilot migration: Create-Order drawer, inventory operation forms, employee
+  create/edit forms (same 3 as the earlier draft — deliberately not every
+  form in one phase).
+- Bundled hygiene fixes on the same files: `CustomerAutocomplete` → real
+  `ControlValueAccessor` (removes the `[ngModel]`+`standalone` workaround
+  inside the reactive form); `customer-onboarding-wizard.component.ts`'s
+  `.toPromise()` → `firstValueFrom(...)`.
+- Button system (doc §20): confirm/extend PrimeNG severities → Primary
+  (filled blue) / Secondary (neutral elevated) / Tertiary (transparent) /
+  Outline / Danger / Ghost, each with documented default/hover/pressed/
+  focused/disabled/loading states via the preset — no new wrapper
+  component, `p-button` stays.
+- **Gate:** `nx test order-feature-orders inventory-feature-inventory tenant-admin-feature-employees`;
+  keyboard-nav + validation-error check on all 3 pilot forms.
+- **Commit:** `feat(forms): lpg-form-field + floating labels + button-state conventions; CVA + toPromise cleanup`
+
+## Stage 5 — Data surfaces: tables, dialogs, drawers, toasts
+
+- Migrate the 4 `libs/reporting/feature-reports` `p-table` views to
+  `lpg-data-grid` (closes the two-table-system inconsistency); restyle
+  `DataGridComponent`/AG Grid theme to doc §18: 48–52px rows, sticky header,
+  subtle row-hover, semantic status badges, low-opacity blue selected-row
+  tint.
+- Dialogs → Acrylic material (doc §21): blur+saturate backdrop, `opacity
+  0→1` + `scale(.97→1)` + `translateY(4px→0)`, 180–240ms, smoke-like (not
+  full-app) backdrop.
+- Drawers → doc §22: 400–520px, `translateX(24px)→0` + opacity, Acrylic
+  surface.
+- Toasts → doc §23: bottom-right, icon/title/message/optional-action/close,
+  `translateY(8px)+opacity→translateY(0)+opacity 1`, 180–220ms.
+- All retuning happens through the PrimeNG preset + the new material
+  tokens — PrimeNG's overlay components already animate; this stage
+  retargets material + timing, doesn't reinvent the mechanism.
+- **Gate:** `nx test reporting-feature-reports`; visual check each report
+  page retains its data and gains sort/filter/pagination; dialog/drawer/
+  toast entrance timing check.
+- **Commit:** `refactor(dashboard): Acrylic dialogs/drawers/toasts; reporting onto lpg-data-grid`
+
+## Stage 6 — Command palette (Ctrl/Cmd+K)
+
+- New shared component (`libs/shared/ui` or a new
+  `libs/shared/command-palette`): global `Ctrl/Cmd+K` listener, Acrylic
+  surface, large radius, keyboard-shortcut hints, `Esc` closes, focus
+  returns to the trigger element (a11y requirement, doc §28).
+- Search scope, deliberately bounded: static page/nav registry (reuses
+  `ShellLayout.navGroups`'s existing structure — no duplicated nav list) +
+  live customer search via the existing
+  `CustomerService.list(skip, limit, search)` (already backs
+  `CustomerAutocomplete`) + 2 quick-create actions (New Order, New
+  Customer) reusing existing navigation patterns (`home.ts`'s
+  `onNewBooking()`-style route+query-param trigger).
+- Order search-by-number is **not** included in this stage (no existing
+  typeahead endpoint) — noted as a follow-on if wanted.
+- **Gate:** unit test for keyboard nav + fuzzy filter + focus-return;
+  manual check for shortcut conflicts with the browser/OS and any existing
+  app shortcuts.
+- **Commit:** `feat(dashboard): global command palette (Ctrl/Cmd+K)`
+
+## Stage 7 — Design-system showcase page
+
+- New route rendering the sections from the screenshot — Color System,
+  Typography, Elevation/Radius, Materials (Mica/Acrylic/Noise), Form
+  Components, Table, Chart Styles, Transitions & Animations, Design
+  Principles — built entirely from Stage 0–6's real tokens/components (not
+  hardcoded swatches), so it's both documentation and a living regression
+  surface for future token edits.
+- Access: available to any authenticated staff member (no sensitive data on
+  the page) — reachable from a footer/settings link, not the primary nav.
+- **Gate:** `nx test`; structural comparison against the reference
+  screenshot.
+- **Commit:** `feat(dashboard): design-system showcase page`
+
+## Stage 8 — Rollout to flagship pages
+
+- Apply Stage 3's primitives to `home.ts` (Agency Overview — highest-
+  traffic, worst offender for hand-rolled CSS) + 2–3 more pilot pages
+  (order queue, customer list, inventory): `StatCardComponent` (with
+  sparkline) replaces `.kpi-card`, `ActivityCardComponent`/
+  `LiveIndicatorComponent` for the deliveries/recent-activity sections,
+  `SectionCardComponent`/`EmptyStateComponent`/`PageHeaderComponent`
+  elsewhere.
+- Staggered fade-up entrance on `@for`-rendered KPI cards/rows via Stage
+  1's utility classes.
+- Scoped as "flagship + a few" — remaining pages get the primitives
+  opportunistically or in a tracked follow-on.
+- **Gate:** `nx test dashboard` + affected libs; `nx build dashboard`
+  budget check; visual smoke in dark/light/high-contrast.
+- **Commit:** `feat(dashboard): roll out Fluent Glass primitives to home + pilot pages`
+
+## Stage 9 — Hygiene & cleanup
+
+- Drop unused `@angular/material` (keep `@angular/cdk` — used for
+  `PortalModule`); refresh lockfile.
+- Fix `lib-notification-drawer` → `lpg-notification-drawer` selector
+  prefix.
+- Confirm all phase-authored components are `OnPush` (pre-existing ~32%
+  gap elsewhere stays an explicit out-of-scope follow-up).
+- **Gate:** `nx run-many -t lint,test,build` across every touched project.
+- **Commit:** `chore(frontend): drop unused Angular Material dep; fix notification-drawer selector prefix`
+
+## Stage 10 — Verification + docs
+
+- Run the doc's own **§44 Final Design Test** (10 questions — hierarchy in
+  2s, keyboard-only operability, text-over-translucent-surface readability,
+  motion communicates something, calm-for-long-sessions, cross-component
+  consistency, obvious semantic states, business-health-at-a-glance, and
+  "does it still work without gradients/blur/animation") as the phase's
+  literal acceptance checklist.
+- WCAG 2.2 AA re-verification pass specifically on the shipped dark theme
+  (not just Stage 0's spot-checks).
+- `planning/features/29-dashboard-enterprise-ux/STATUS.md`;
+  `libs/shared/ui/README.md`; Storybook updates; memory update.
+
+---
+
+## Risks / notes
+
+- **This is the largest phase of this kind to date (11 stages)** — a full
+  visual identity change plus a new feature, not incremental polish. Expect
+  this to span several sessions; commit-per-stage (ask before each, as
+  always) keeps it bisectable.
+- **Adopting the doc's exact palette (the user's choice) means losing the
+  gas-blue/flame-orange brand identity from the systematic token set** —
+  the flame mark logo itself is unaffected (it's iconography, not a token),
+  but every other "branded" surface becomes the reference's enterprise
+  blue. Worth a final look-over once Stage 0 lands, before Stage 8's
+  rollout makes it pervasive.
+- **Dark-as-default is a visible behavior change for every existing user**
+  on their next login — worth a heads-up/changelog note, not just a silent
+  flip.
+- **Contrast verification on Stage 0 is non-negotiable, not optional** —
+  the doc's own hex values are a design intent, not a guarantee; some
+  neutral-on-neutral text pairings in a dark Mica scheme commonly need a
+  nudge to clear AA, and this app already has a WCAG-conscious
+  high-contrast mode that raises the bar.
+- **Command palette scope creep risk** — bounded explicitly to nav +
+  customer search + 2 create actions in Stage 6; order/invoice/etc. search
+  is a named follow-on, not silently expanded scope.
+- **Acrylic (`backdrop-filter`) stays on transient surfaces only**
+  (dialogs/drawers/palette/popovers) per the doc's own performance section
+  (§40) — never applied to the 9+ list pages' repeated cards, which use the
+  cheaper Mica/solid surfaces instead.
+
+## References
+
+- Attached: `GAS Fluent Glass Enterprise Design System Prompt.md` (source
+  spec) + reference screenshot
+- `libs/shared/design-tokens/src/lib/tokens.json` / `tokens.css` /
+  `generate-tokens.mjs` — the token pipeline this phase re-values rather
+  than replaces
+- `libs/shared/design-tokens/src/lib/primeng-preset.ts` — the Aura-based
+  preset rebuilt in Stage 0
+- ADR-020 / ADR-028 — AG Grid-behind-`lpg-data-grid` rule extended to
+  reporting in Stage 5
+- ADR-018 — 100%-lazy-loaded routing Stage 1's transitions sit on top of
+- `apps/dashboard/project.json` — bundle budgets checked at every stage
+  gate
