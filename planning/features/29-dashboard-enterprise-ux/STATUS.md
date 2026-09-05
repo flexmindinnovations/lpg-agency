@@ -1,8 +1,7 @@
 # Status: Dashboard Fluent Glass Enterprise Overhaul
 
 **Phase:** 29
-**Status:** Stages 0–10 done 2026-09-05. Stage 4b (two remaining pilot form
-migrations) explicitly deferred — see below. The dashboard app now runs the
+**Status:** Stages 0–10 + 4b done 2026-09-05. The dashboard app now runs the
 Fluent Glass design system: enterprise-blue palette, Mica/Acrylic materials,
 dark-as-default, route + micro motion, a shared `lpg-` primitive set, a global
 command palette, and a live design-system showcase.
@@ -26,12 +25,13 @@ default, command palette in scope. Plan: [PLAN.md](./PLAN.md).
 | 2 — App shell | `0ff6781` | Sidebar / header / breadcrumb bar on Mica; content on the atmosphere gradient + noise; active-nav weight/tint retuned (theme-safe `--color-highlight-*`); nav icon sizing convention. |
 | 3 — Shared primitives | `297479b` | `lpg-skeleton`, `lpg-empty-state`, `lpg-page-header`, `lpg-section-card`, `lpg-stat-card` (inline SVG sparkline), `lpg-live-indicator`, `lpg-activity-list` — each `OnPush` + spec + story. Skeleton wired into `lpg-data-grid` loading. |
 | 4 — Form system | `094e0d9` | `lpg-form-field` (float-label `variant="on"` + validator-keyed errors, reacts via the control's `events` stream); employees register + edit forms migrated; `p-button` active-press feedback; `.toPromise()` → `firstValueFrom` in the onboarding wizard. |
+| 4b — order + inventory forms | _this_ | order-queue Create-Order drawer + all six inventory operation drawers (25 fields) onto `lpg-form-field` + floating labels + inline errors; order-queue's customer moved onto a real `formControlName` bound to the `lpg-customer-autocomplete` CVA (the `[ngModel]` + `{ standalone: true }` workaround removed). |
 | 5 — Data surfaces | `a05c1cc` | Dialogs / drawers / toasts onto Acrylic + backdrop blur; `--radius-dialog`; all four reporting tables `p-table` → `lpg-data-grid` (`autoHeight`, shared `format` helpers, `lpg-empty-state` error branch); data-grid row/header height to 48px. |
 | 6 — Command palette | `d6b133a` | `Ctrl/Cmd+K` palette — nav (reuses the permission-filtered `navGroups`), debounced customer search, 2 quick-create actions. Acrylic panel, ARIA combobox, focus round-trip. Shell top-right trigger button. |
 | 7 — Showcase page | `1e8e18d` | `/design-system` — 11 sections reading live `getComputedStyle` values, re-rendering on `data-theme` change. Profile-menu entry. |
 | 8 — Rollout | `37d1ca5` | `home` rebuilt on the primitives (−148 net lines, all 6 KPIs on `lpg-stat-card` with `StatTone`, `lpg-activity-list`, `lpg-section-card`, empty/skeleton states); `lpg-page-header` on orders / customers / inventory / employees. |
 | 9 — Hygiene | `bee83bc` | `@angular/material` dropped (zero usage; surgical lockfile diff; `@angular/cdk` kept); all 10 phase-authored components confirmed `OnPush`; `catch (_error)` warning cleared. `lib-notification-drawer` rename **skipped** — `lib-` is a config-enforced domain convention, not an accident. |
-| 10 — Verification + docs | _this_ | WCAG AA re-verification on the shipped dark theme (one failing pairing found + fixed, below); this doc; `libs/shared/ui/README.md`; §44 test. |
+| 10 — Verification + docs | `dd521fb` | WCAG AA re-verification on the shipped dark theme (one failing pairing found + fixed, below); this doc; `libs/shared/ui/README.md`; §44 test. |
 
 ## Stage 10 — WCAG 2.2 AA re-verification (dark theme)
 
@@ -101,10 +101,6 @@ treatment.
 
 ## Deferred / follow-ups (not in scope)
 
-- **Stage 4b** — `order-queue` and the inventory adjust/receive forms still use
-  `.form-group` markup, not `lpg-form-field`; and `order-queue`'s customer
-  field should move onto a real `formControlName` (the `CustomerAutocomplete`
-  CVA already supports it). Small, mechanical, no blocker — a fast-follow.
 - **Storybook build** — `nx build-storybook shared-ui` is broken upstream (a
   webpack CSS `@import` parse issue, pre-existing, unrelated to phase files).
   Story files are TS-valid and lint-clean; `nx storybook shared-ui` dev serves.

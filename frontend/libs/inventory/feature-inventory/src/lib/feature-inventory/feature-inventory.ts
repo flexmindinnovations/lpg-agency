@@ -37,7 +37,14 @@ import {
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, PageHeaderComponent, StatusChipCell, toSentenceCase } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  FormFieldComponent,
+  PageHeaderComponent,
+  StatusChipCell,
+  toSentenceCase,
+} from '@lpg/shared/ui';
 
 const CYLINDER_STATUSES = [
   'filled',
@@ -82,6 +89,7 @@ function errorMessageFor(error: unknown): string {
     Message,
     Select,
     DataGridComponent,
+    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -100,6 +108,25 @@ export class FeatureInventory implements OnInit {
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
 
   protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({ label: toSentenceCase(s), value: s }));
+
+  /**
+   * Validator-key → message, shared across the six inventory-operation forms
+   * (they reuse the same field names). `lpg-form-field` falls back to a
+   * generic message for any key not listed.
+   */
+  protected readonly fieldMessages = {
+    cylinder_type_id: { required: 'Select a cylinder type.' },
+    quantity: { required: 'Enter a quantity.', min: 'Quantity must be at least 1.' },
+    quantity_received: { required: 'Enter a quantity.', min: 'Quantity must be at least 1.' },
+    actual_quantity: { required: 'Enter the counted quantity.', min: 'Cannot be negative.' },
+    warehouse_id: { required: 'Select a warehouse.' },
+    vehicle_id: { required: 'Select a vehicle.' },
+    status: { required: 'Select a status.' },
+    from_status: { required: 'Select the current status.' },
+    to_status: { required: 'Select the target status.' },
+    mode: { required: 'Choose an action.' },
+    reason: { required: 'A reason is required.', minlength: 'Give a little more detail.' },
+  };
 
   protected readonly locationType = signal<InventoryLocationType>('warehouse');
   protected readonly locationRefId = signal<string | null>(null);

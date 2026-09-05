@@ -168,30 +168,32 @@
     (onHide)="grnTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="grnForm" (ngSubmit)="onSubmitGrn()" class="dialog-form">
-      <div class="form-group">
-        <label for="grn_cylinder_type">Cylinder Type</label>
+      <lpg-form-field
+        label="Cylinder type"
+        for="grn_cylinder_type"
+        [control]="grnForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
         <p-select
-          id="grn_cylinder_type"
+          inputId="grn_cylinder_type"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"
           optionLabel="name"
           optionValue="id"
-          placeholder="Select cylinder type"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="grn_quantity">Quantity Received</label>
-        <p-inputnumber id="grn_quantity" formControlName="quantity_received" [min]="1" />
-      </div>
-      <div class="form-group">
-        <label for="grn_source_omc">Source OMC (optional)</label>
-        <input
-          pInputText
-          id="grn_source_omc"
-          formControlName="source_omc"
-          placeholder="e.g. iocl"
-        />
-      </div>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Quantity received"
+        for="grn_quantity"
+        [control]="grnForm.controls.quantity_received"
+        [messages]="fieldMessages.quantity_received"
+      >
+        <p-inputnumber inputId="grn_quantity" formControlName="quantity_received" [min]="1" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field label="Source OMC" for="grn_source_omc" [control]="grnForm.controls.source_omc" hint="Optional.">
+        <input pInputText id="grn_source_omc" formControlName="source_omc" [fluid]="true" />
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showGrnModal.set(false)">
           Cancel
@@ -212,50 +214,74 @@
     (onHide)="transferTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="transferForm" (ngSubmit)="onSubmitTransfer()" class="dialog-form">
-      <div class="form-group">
-        <label for="transfer_warehouse">Warehouse</label>
+      <lpg-form-field
+        label="Warehouse"
+        for="transfer_warehouse"
+        [control]="transferForm.controls.warehouse_id"
+        [messages]="fieldMessages.warehouse_id"
+      >
         <p-select
-          id="transfer_warehouse"
+          inputId="transfer_warehouse"
           formControlName="warehouse_id"
           [options]="warehouses()"
           optionLabel="name"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="transfer_vehicle">Vehicle</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Vehicle"
+        for="transfer_vehicle"
+        [control]="transferForm.controls.vehicle_id"
+        [messages]="fieldMessages.vehicle_id"
+      >
         <p-select
-          id="transfer_vehicle"
+          inputId="transfer_vehicle"
           formControlName="vehicle_id"
           [options]="vehicles()"
           optionLabel="registration_number"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="transfer_cylinder_type">Cylinder Type</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Cylinder type"
+        for="transfer_cylinder_type"
+        [control]="transferForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
         <p-select
-          id="transfer_cylinder_type"
+          inputId="transfer_cylinder_type"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"
           optionLabel="name"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="transfer_status">Status</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Status"
+        for="transfer_status"
+        [control]="transferForm.controls.status"
+        [messages]="fieldMessages.status"
+      >
         <p-select
-          id="transfer_status"
+          inputId="transfer_status"
           formControlName="status"
           [options]="statusOptions"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="transfer_quantity">Quantity</label>
-        <p-inputnumber id="transfer_quantity" formControlName="quantity" [min]="1" />
-      </div>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Quantity"
+        for="transfer_quantity"
+        [control]="transferForm.controls.quantity"
+        [messages]="fieldMessages.quantity"
+      >
+        <p-inputnumber inputId="transfer_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showTransferModal.set(false)">
           Cancel
@@ -282,10 +308,14 @@
       (ngSubmit)="onSubmitDeliveryCollection()"
       class="dialog-form"
     >
-      <div class="form-group">
-        <label for="dc_mode">Action</label>
+      <lpg-form-field
+        label="Action"
+        for="dc_mode"
+        [control]="deliveryCollectionForm.controls.mode"
+        [messages]="fieldMessages.mode"
+      >
         <p-select
-          id="dc_mode"
+          inputId="dc_mode"
           formControlName="mode"
           [options]="[
             { label: 'Delivery (Filled leaves the vehicle)', value: 'delivery' },
@@ -293,22 +323,32 @@
           ]"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="dc_cylinder_type">Cylinder Type</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Cylinder type"
+        for="dc_cylinder_type"
+        [control]="deliveryCollectionForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
         <p-select
-          id="dc_cylinder_type"
+          inputId="dc_cylinder_type"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"
           optionLabel="name"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="dc_quantity">Quantity</label>
-        <p-inputnumber id="dc_quantity" formControlName="quantity" [min]="1" />
-      </div>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Quantity"
+        for="dc_quantity"
+        [control]="deliveryCollectionForm.controls.quantity"
+        [messages]="fieldMessages.quantity"
+      >
+        <p-inputnumber inputId="dc_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
+      </lpg-form-field>
       <div class="modal-actions">
         <button
           pButton
@@ -336,40 +376,59 @@
     (onHide)="statusChangeTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="statusChangeForm" (ngSubmit)="onSubmitStatusChange()" class="dialog-form">
-      <div class="form-group">
-        <label for="sc_cylinder_type">Cylinder Type</label>
+      <lpg-form-field
+        label="Cylinder type"
+        for="sc_cylinder_type"
+        [control]="statusChangeForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
         <p-select
-          id="sc_cylinder_type"
+          inputId="sc_cylinder_type"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"
           optionLabel="name"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="sc_from_status">From Status</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="From status"
+        for="sc_from_status"
+        [control]="statusChangeForm.controls.from_status"
+        [messages]="fieldMessages.from_status"
+      >
         <p-select
-          id="sc_from_status"
+          inputId="sc_from_status"
           formControlName="from_status"
           [options]="statusOptions"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="sc_to_status">To Status</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="To status"
+        for="sc_to_status"
+        [control]="statusChangeForm.controls.to_status"
+        [messages]="fieldMessages.to_status"
+      >
         <p-select
-          id="sc_to_status"
+          inputId="sc_to_status"
           formControlName="to_status"
           [options]="statusOptions"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="sc_quantity">Quantity</label>
-        <p-inputnumber id="sc_quantity" formControlName="quantity" [min]="1" />
-      </div>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Quantity"
+        for="sc_quantity"
+        [control]="statusChangeForm.controls.quantity"
+        [messages]="fieldMessages.quantity"
+      >
+        <p-inputnumber inputId="sc_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
+      </lpg-form-field>
       <div class="modal-actions">
         <button
           pButton
@@ -397,44 +456,67 @@
     (onHide)="adjustTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="adjustForm" (ngSubmit)="onSubmitAdjust()" class="dialog-form">
-      <div class="form-group">
-        <label for="adj_cylinder_type">Cylinder Type</label>
+      <lpg-form-field
+        label="Cylinder type"
+        for="adj_cylinder_type"
+        [control]="adjustForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
         <p-select
-          id="adj_cylinder_type"
+          inputId="adj_cylinder_type"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"
           optionLabel="name"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="adj_from_status">From Status</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="From status"
+        for="adj_from_status"
+        [control]="adjustForm.controls.from_status"
+        [messages]="fieldMessages.from_status"
+      >
         <p-select
-          id="adj_from_status"
+          inputId="adj_from_status"
           formControlName="from_status"
           [options]="statusOptions"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="adj_to_status">To Status</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="To status"
+        for="adj_to_status"
+        [control]="adjustForm.controls.to_status"
+        [messages]="fieldMessages.to_status"
+      >
         <p-select
-          id="adj_to_status"
+          inputId="adj_to_status"
           formControlName="to_status"
           [options]="statusOptions"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="adj_quantity">Quantity</label>
-        <p-inputnumber id="adj_quantity" formControlName="quantity" [min]="1" />
-      </div>
-      <div class="form-group">
-        <label for="adj_reason">Reason</label>
-        <textarea pTextarea id="adj_reason" formControlName="reason" rows="3"></textarea>
-      </div>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Quantity"
+        for="adj_quantity"
+        [control]="adjustForm.controls.quantity"
+        [messages]="fieldMessages.quantity"
+      >
+        <p-inputnumber inputId="adj_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Reason"
+        for="adj_reason"
+        [control]="adjustForm.controls.reason"
+        [messages]="fieldMessages.reason"
+      >
+        <textarea pTextarea id="adj_reason" formControlName="reason" rows="3" [fluid]="true"></textarea>
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showAdjustModal.set(false)">
           Cancel
@@ -455,30 +537,44 @@
     (onHide)="reconcileTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="reconcileForm" (ngSubmit)="onSubmitReconcile()" class="dialog-form">
-      <div class="form-group">
-        <label for="rec_cylinder_type">Cylinder Type</label>
+      <lpg-form-field
+        label="Cylinder type"
+        for="rec_cylinder_type"
+        [control]="reconcileForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
         <p-select
-          id="rec_cylinder_type"
+          inputId="rec_cylinder_type"
           formControlName="cylinder_type_id"
           [options]="cylinderTypes()"
           optionLabel="name"
           optionValue="id"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="rec_status">Status</label>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Status"
+        for="rec_status"
+        [control]="reconcileForm.controls.status"
+        [messages]="fieldMessages.status"
+      >
         <p-select
-          id="rec_status"
+          inputId="rec_status"
           formControlName="status"
           [options]="statusOptions"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="rec_actual_quantity">Actual (Physically Counted) Quantity</label>
-        <p-inputnumber id="rec_actual_quantity" formControlName="actual_quantity" [min]="0" />
-      </div>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Actual (physically counted) quantity"
+        for="rec_actual_quantity"
+        [control]="reconcileForm.controls.actual_quantity"
+        [messages]="fieldMessages.actual_quantity"
+      >
+        <p-inputnumber inputId="rec_actual_quantity" formControlName="actual_quantity" [min]="0" [fluid]="true" />
+      </lpg-form-field>
       @if (!lastReconciliationRecordId()) {
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showReconcileModal.set(false)">

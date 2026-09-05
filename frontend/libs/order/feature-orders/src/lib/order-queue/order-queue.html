@@ -60,22 +60,28 @@
     </ng-template>
 
     <form [formGroup]="createForm" (ngSubmit)="onSubmitCreate()" class="dialog-form">
-      <div class="form-group">
-        <label for="create_customer">Customer</label>
+      <lpg-form-field
+        label="Customer"
+        for="create_customer"
+        [control]="createForm.controls.customer"
+        [messages]="fieldMessages.customer"
+      >
         <lpg-customer-autocomplete
           inputId="create_customer"
-          [ngModel]="selectedCustomer()"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="onCustomerSelected($event)"
+          formControlName="customer"
           placeholder="Search by name or phone..."
         ></lpg-customer-autocomplete>
-      </div>
+      </lpg-form-field>
 
       @if (selectedCustomer(); as customer) {
-      <div class="form-group">
-        <label for="create_address">Delivery Address</label>
+      <lpg-form-field
+        label="Delivery address"
+        for="create_address"
+        [control]="createForm.controls.address_id"
+        [messages]="fieldMessages.address_id"
+      >
         <p-select
-          id="create_address"
+          inputId="create_address"
           formControlName="address_id"
           [options]="customer.addresses"
           optionLabel="line_1"
@@ -84,24 +90,32 @@
           (onChange)="onAddressChange($event.value)"
           [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="create_booking_source">Booking Source</label>
+      <lpg-form-field
+        label="Booking source"
+        for="create_booking_source"
+        [control]="createForm.controls.booking_source"
+        [messages]="fieldMessages.booking_source"
+      >
         <p-select
-          id="create_booking_source"
+          inputId="create_booking_source"
           formControlName="booking_source"
           [options]="bookingSourceOptions"
           optionLabel="label"
           optionValue="value"
           [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="create_requested_date">Requested Delivery Date</label>
+      <lpg-form-field
+        label="Requested delivery date"
+        for="create_requested_date"
+        [control]="createForm.controls.requested_date"
+        [messages]="fieldMessages.requested_date"
+      >
         <p-datepicker
-          id="create_requested_date"
+          inputId="create_requested_date"
           formControlName="requested_date"
           [showIcon]="true"
           [showTime]="true"
@@ -110,7 +124,7 @@
           appendTo="body"
           [fluid]="true"
         ></p-datepicker>
-      </div>
+      </lpg-form-field>
 
       <div class="lines-header">
         <label>Cylinders</label>
@@ -149,7 +163,7 @@
           type="button"
           label="Create Booking"
           [loading]="loading()"
-          [disabled]="createForm.invalid || !selectedCustomer() || !selectedAddress() || loading()"
+          [disabled]="createForm.invalid || !selectedAddress() || loading()"
           (onClick)="onSubmitCreate()"
         ></p-button>
       </div>

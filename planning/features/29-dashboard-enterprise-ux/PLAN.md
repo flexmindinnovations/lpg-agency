@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–10 done · Stage 4b (2 pilot form migrations) deferred · 2026-09-05 · see [STATUS.md](./STATUS.md)
+**Status:** Stages 0–10 + 4b done · 2026-09-05 · see [STATUS.md](./STATUS.md)
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -405,7 +405,7 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
   `nx lint` clean (2 pre-existing `any` in data-grid, 1 pre-existing
   `_error` in the wizard — all untouched).
 
-### Stage 4b — remaining pilot form migrations (pending)
+### Stage 4b — remaining pilot form migrations
 
 - **order-queue Create-Order drawer** (`libs/order/feature-orders`) — migrate
   to `lpg-form-field`; **and** move the customer from the out-of-form
@@ -419,6 +419,34 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
   parallel `fb.group()` blocks → `lpg-form-field`.
 - Split out from Stage 4 to keep that commit reviewable; the pattern is
   proven by the employees migration.
+- **Commit:** `feat(forms): lpg-form-field on the order + inventory drawers; customer onto a real form control`
+
+### ✅ Stage 4b DONE 2026-09-05
+
+- **order-queue Create-Order drawer** — Customer / Delivery address / Booking
+  source / Requested delivery date all on `lpg-form-field` + floating labels +
+  inline errors. The customer is now a real `customer` `formControlName`
+  (`Validators.required`) bound straight to `lpg-customer-autocomplete` (its
+  CVA); a `valueChanges` subscription (constructor, `takeUntilDestroyed`)
+  mirrors it into the `selectedCustomer` signal the `@if` blocks and submit
+  read, and clears the address on change — the old `[ngModel]` +
+  `{ standalone: true }` workaround and `onCustomerSelected()` are gone. The
+  submit-disabled check dropped its now-redundant `!selectedCustomer()`. The
+  FormArray "lines" rows keep their compact inline layout (unlabelled by
+  design). Verified logged-in: empty-required shows "Select a customer." with
+  the icon; picking a customer reveals the four dependent fields.
+- **inventory** — all six operation drawers (Receive Goods, Load Transfer,
+  Delivery / Collection, Change Status, Adjust, Reconcile — 25 fields) off
+  `.form-group` onto `lpg-form-field`; `p-select` / `p-inputnumber` gained
+  `inputId` + `[fluid]`, placeholders dropped (they clash with `variant="on"`
+  labels), Source OMC carries an "Optional." hint. Shared `fieldMessages` map
+  (the six forms reuse field names). Verified: Adjust shows "Select a cylinder
+  type." / "A reason is required." on the empty required fields, valid
+  defaults (From/To status, Quantity) stay clean.
+- **Gate:** `nx build dashboard` clean; `nx test` + `nx lint`
+  order-feature-orders / inventory-feature-inventory / dashboard all green
+  (3 pre-existing shell warnings only). Global `.form-group` / `.dialog-form`
+  styles kept — still used by other dialogs.
 
 ## Stage 5 — Data surfaces: tables, dialogs, drawers, toasts
 

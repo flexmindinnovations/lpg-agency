@@ -22,6 +22,7 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  FormFieldComponent,
   HasPermissionDirective,
   PageHeaderComponent,
   StatusChipCell,
@@ -55,7 +56,7 @@ const BOOKING_SOURCE_OPTIONS = [
 @Component({
   selector: 'lpg-order-queue',
   standalone: true,
-  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective,
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
@@ -69,6 +70,7 @@ const BOOKING_SOURCE_OPTIONS = [
     DatePicker,
     DataGridComponent,
     CustomerAutocomplete,
+    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -93,6 +95,17 @@ export class OrderQueue implements OnInit {
       .on('order.status_changed')
       .pipe(debounceTime(500), takeUntilDestroyed())
       .subscribe(() => this.loadOrders({ silent: true }));
+
+    // The customer is a real form control now (`lpg-customer-autocomplete` is
+    // a CVA); mirror it into the signal the address-dependent template blocks
+    // read, and clear the address whenever the customer changes.
+    this.createForm.controls.customer.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((customer) => {
+        this.selectedCustomer.set(customer);
+        this.selectedAddress.set(null);
+        this.createForm.controls.address_id.setValue('');
+      });
   }
 
   protected readonly orders = signal<OrderResponse[]>([]);
@@ -111,6 +124,14 @@ export class OrderQueue implements OnInit {
 
   protected readonly selectedCustomer = signal<CustomerResponse | null>(null);
   protected readonly selectedAddress = signal<CustomerAddressResponse | null>(null);
+
+  /** Validator-key → message for the create-booking fields. */
+  protected readonly fieldMessages = {
+    customer: { required: 'Select a customer.' },
+    address_id: { required: 'Select a delivery address.' },
+    booking_source: { required: 'Select a booking source.' },
+    requested_date: { required: 'Pick a requested delivery date.' },
+  };
 
   protected readonly orderColumns: DataGridColumn<OrderResponse>[] = [
     {
@@ -143,6 +164,7 @@ export class OrderQueue implements OnInit {
   ];
 
   protected readonly createForm = this.fb.group({
+    customer: this.fb.control<CustomerResponse | null>(null, [Validators.required]),
     address_id: ['', [Validators.required]],
     booking_source: ['staff' as (typeof BOOKING_SOURCE_OPTIONS)[number]['value'], [Validators.required]],
     requested_date: [new Date(), [Validators.required]],
@@ -207,9 +229,9 @@ export class OrderQueue implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected openCreateDrawer(): void {
-    this.selectedCustomer.set(null);
     this.selectedAddress.set(null);
     this.createForm.reset({
+      customer: null,
       address_id: '',
       booking_source: 'staff',
       requested_date: new Date(),
@@ -222,12 +244,6 @@ export class OrderQueue implements OnInit {
   protected closeCreateDrawer(): void {
     this.showCreateDrawer.set(false);
     void this.router.navigate([], { relativeTo: this.route, queryParams: {} });
-  }
-
-  protected onCustomerSelected(customer: CustomerResponse | null): void {
-    this.selectedCustomer.set(customer);
-    this.selectedAddress.set(null);
-    this.createForm.patchValue({ address_id: '' });
   }
 
   protected onAddressChange(addressId: string): void {
