@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 + 5–9 done · Stage 4 core done (4b pending) · 2026-09-05 · Stage 10 pending
+**Status:** Stages 0–10 done · Stage 4b (2 pilot form migrations) deferred · 2026-09-05 · see [STATUS.md](./STATUS.md)
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -690,6 +690,38 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
   (not just Stage 0's spot-checks).
 - `planning/features/29-dashboard-enterprise-ux/STATUS.md`;
   `libs/shared/ui/README.md`; Storybook updates; memory update.
+
+### ✅ DONE 2026-09-05
+
+- **WCAG 2.2 AA re-verification on the shipped dark theme** — live resolved
+  token values pulled from the running app, run through a contrast audit
+  *with alpha compositing* for the translucent Mica / Acrylic / highlight
+  surfaces. **One failure found + fixed:** `--color-action-primary` `#3978e8`
+  measured 4.31:1 as text on the `#101720` card surface (and 4.24:1 for a
+  selected dropdown option) — below AA. Bumped to `#4f8df7` (`primary-500`,
+  5.0–5.9:1 as text everywhere); `--color-action-primary-hover` → `#6ea8ff`
+  (`primary-400`). Applied in both the `[data-theme='dark']` block and the
+  `@media (prefers-color-scheme: dark)` mirror. The filled button is
+  unaffected (keeps its own `#2864cc`); `--component-avatar-background` moved
+  to `#2864cc` too; PrimeNG `highlight.color` → `--color-text-primary` so the
+  selected-item label is a neutral 9–13:1 rather than the primary hue.
+  Light + high-contrast themes verified unchanged. Full table in STATUS.md.
+- **§44 Final Design Test** — all 10 questions answered *yes* with evidence
+  (table in [STATUS.md](./STATUS.md)).
+- **Docs** — [STATUS.md](./STATUS.md) written; `libs/shared/ui/README.md`
+  rewritten (component table, form-field pattern, `p-button` convention,
+  formatters, the Storybook-build caveat).
+- **Storybook** — `nx build-storybook shared-ui` is broken upstream
+  (pre-existing webpack CSS `@import` parse issue); story files are TS-valid
+  and lint-clean. Noted, not fixed — out of scope.
+- **Memory** — a `reference_fluent_glass_design_system` note added (memory is
+  not version-controlled).
+- **Gate:** `nx build dashboard` clean (~679 kB); `nx test`
+  shared-design-tokens 5/5, shared-ui 45/45, dashboard 16/16 + reporting /
+  employees / customers / orders / inventory green; `nx lint` 0 errors
+  (3 pre-existing warnings, non-phase files).
+- **Deferred:** Stage 4b (order-queue + inventory form migrations to
+  `lpg-form-field`; order-queue customer field onto a real `formControlName`).
 
 ---
 

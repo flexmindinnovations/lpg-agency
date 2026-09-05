@@ -182,8 +182,13 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
     highlight: {
       background: 'color-mix(in srgb, var(--color-action-primary), transparent 88%)',
       focusBackground: 'color-mix(in srgb, var(--color-action-primary), transparent 76%)',
-      color: 'var(--color-action-primary)',
-      focusColor: 'var(--color-action-primary)',
+      // The selected-item label stays a neutral high-contrast colour, not the
+      // primary hue (Phase 29, Stage 10): primary text on the primary@12% tint
+      // measured 4.24:1 over the dark overlay surface — below WCAG AA. The tint
+      // background + hover state carry the "selected" affordance instead, and
+      // --color-text-primary on the tint clears 9:1 on every dark surface.
+      color: 'var(--color-text-primary)',
+      focusColor: 'var(--color-text-primary)',
     },
   },
   components: {
@@ -198,14 +203,13 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       },
     },
     // Deliberately decoupled from `semantic.primary` (Phase 29, Stage 0): the
-    // dark theme's --color-action-primary is tuned to read well as *text*
-    // against the dark base (4.54:1) but falls short of WCAG AA (4.18:1) as a
-    // background under the white label text a filled button needs. These
-    // --component-button-primary-* tokens are a step darker specifically for
-    // that pairing (5.55:1) — see tokens.css's dark-theme block comment for
-    // the full contrast audit. Every other primary-coloured surface (links,
-    // icons, focus rings, nav highlight) still reads --color-action-primary
-    // via `semantic.primary` above, unaffected by this override.
+    // dark theme's --color-action-primary (#4f8df7) reads well as *text* on the
+    // dark surfaces (5.0-5.9:1) but white label text on it is only 3.2:1 — below
+    // WCAG AA. These --component-button-primary-* tokens are a step darker
+    // (#2864cc) specifically for that pairing (white text 5.55:1) — see
+    // tokens.css's dark-theme block comment for the full contrast audit. Every
+    // other primary-coloured surface (links, icons, focus rings, nav highlight)
+    // still reads --color-action-primary via `semantic.primary` above.
     button: {
       root: {
         primary: {

@@ -321,8 +321,12 @@ have always been hand-edited directly. Edit them here.
   --color-border-default: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.14);
   --color-border-focus: #4f8df7;
-  --color-action-primary: #3978e8;
-  --color-action-primary-hover: #2864cc;
+  /* WCAG AA (Stage 10): as *text/link/border* color on the dark card surface
+     (#101720) #3978e8 measured 4.31:1 — below 4.5. primary-500 (#4f8df7)
+     measures 5.0-5.9:1 across all dark surfaces. The filled button keeps its
+     own AA-safe #2864cc via --component-button-primary-background. */
+  --color-action-primary: #4f8df7;
+  --color-action-primary-hover: #6ea8ff;
   --color-action-primary-text: #ffffff;
   --color-status-success: #36c98f;
   --color-status-warning: #e7b94a;
@@ -330,7 +334,7 @@ have always been hand-edited directly. Edit them here.
   --color-status-info: #62a8ff;
   /* A low-opacity primary tint for selected rows/menu items (doc §18),
      rather than the old solid gas-blue-700 block. */
-  --color-highlight-background: rgba(57,120,232,0.24);
+  --color-highlight-background: rgba(79,141,247,0.22);
   --color-highlight-color: #ffffff;
   --border-width: 1px;
   --elevation-0: none;
@@ -350,8 +354,8 @@ have always been hand-edited directly. Edit them here.
     radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
     #0b1118;
   --surface-noise-opacity: 0.03;
-  /* Deliberately NOT --color-action-primary (4.54:1 as text, only 4.18:1
-     under white button-label text — see the block comment above). */
+  /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
+     text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
   --component-button-primary-background-hover: #1f4fa8;
   --component-button-primary-text: #ffffff;
@@ -359,7 +363,7 @@ have always been hand-edited directly. Edit them here.
   --component-card-border: rgba(255,255,255,0.07);
   --component-data-grid-border-color: rgba(255,255,255,0.07);
   --component-data-grid-header-background: #101720;
-  --component-avatar-background: #3978e8;
+  --component-avatar-background: #2864cc;
   --component-avatar-color: #ffffff;
   --component-profile-menu-item-hover-background: #17212c;
   --component-profile-menu-divider-color: rgba(255,255,255,0.07);
@@ -435,14 +439,15 @@ have always been hand-edited directly. Edit them here.
     --color-border-default: rgba(255,255,255,0.07);
     --color-border-strong: rgba(255,255,255,0.14);
     --color-border-focus: #4f8df7;
-    --color-action-primary: #3978e8;
-    --color-action-primary-hover: #2864cc;
+    /* WCAG AA (Stage 10) — see the [data-theme='dark'] block. */
+    --color-action-primary: #4f8df7;
+    --color-action-primary-hover: #6ea8ff;
     --color-action-primary-text: #ffffff;
     --color-status-success: #36c98f;
     --color-status-warning: #e7b94a;
     --color-status-danger: #f06a6a;
     --color-status-info: #62a8ff;
-    --color-highlight-background: rgba(57,120,232,0.24);
+    --color-highlight-background: rgba(79,141,247,0.22);
     --color-highlight-color: #ffffff;
     --border-width: 1px;
     --elevation-0: none;
@@ -469,7 +474,7 @@ have always been hand-edited directly. Edit them here.
     --component-card-border: rgba(255,255,255,0.07);
     --component-data-grid-border-color: rgba(255,255,255,0.07);
     --component-data-grid-header-background: #101720;
-    --component-avatar-background: #3978e8;
+    --component-avatar-background: #2864cc;
     --component-avatar-color: #ffffff;
     --component-profile-menu-item-hover-background: #17212c;
     --component-profile-menu-divider-color: rgba(255,255,255,0.07);
