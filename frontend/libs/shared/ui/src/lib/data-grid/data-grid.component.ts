@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, output, si
 import { AgGridAngular } from 'ag-grid-angular';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
+import { SkeletonComponent } from '../skeleton/skeleton.component';
 
 // AG Grid 33+ uses a modular architecture — features (row selection, column
 // filters, etc.) are no-ops unless their module is registered first. This is
@@ -141,24 +142,33 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
 @Component({
   selector: 'lpg-data-grid',
   standalone: true,
-  imports: [AgGridAngular],
+  imports: [AgGridAngular, SkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ag-grid-angular
-      class="lpg-data-grid"
-      [rowData]="rowData()"
-      [columnDefs]="columnDefs()"
-      [gridOptions]="gridOptions()"
-      [attr.aria-label]="ariaLabel()"
-      (gridReady)="onGridReady($event)"
-      (selectionChanged)="onSelectionChanged($event)"
-    />
+    @if (loading()) {
+      <div class="lpg-data-grid__skeleton">
+        <lpg-skeleton variant="table" [rows]="8" [columns]="columns().length || 4" />
+      </div>
+    } @else {
+      <ag-grid-angular
+        class="lpg-data-grid"
+        [rowData]="rowData()"
+        [columnDefs]="columnDefs()"
+        [gridOptions]="gridOptions()"
+        [attr.aria-label]="ariaLabel()"
+        (gridReady)="onGridReady($event)"
+        (selectionChanged)="onSelectionChanged($event)"
+      />
+    }
   `,
   styles: [
     `
       :host {
         display: block;
         block-size: 100%;
+      }
+      .lpg-data-grid__skeleton {
+        padding: var(--spacing-md);
       }
       .lpg-data-grid {
         block-size: 100%;

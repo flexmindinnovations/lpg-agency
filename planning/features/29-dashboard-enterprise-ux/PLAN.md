@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–2 done 2026-09-05 · Stages 3–10 pending
+**Status:** Stages 0–3 done 2026-09-05 · Stages 4–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -302,6 +302,56 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
 - **Gate:** `nx test shared-ui`; `nx build dashboard` bundle-budget check
   (none of these should pull a heavy transitive dep, unlike AG Grid).
 - **Commit:** `feat(shared-ui): StatCard/ActivityCard/LiveIndicator/PageHeader/EmptyState/Skeleton primitives`
+
+### ✅ DONE 2026-09-05
+
+- 7 components in `libs/shared/ui/src/lib/`, all `OnPush` / standalone /
+  `lpg-` prefixed, each with a `.spec.ts` + `.stories.ts`, exported from the
+  main barrel:
+  - **`SkeletonComponent`** (`lpg-skeleton`) — **one parametric component**
+    (`variant: block | text | circle | table` + `lines`/`rows`/`columns`)
+    rather than the three the plan sketched; the shimmer keyframe is
+    component-scoped (works in a story without the app's global CSS),
+    reduced-motion-safe. Wired into `DataGridComponent`: `@if (loading())`
+    now renders `<lpg-skeleton variant="table">` (that input was dead
+    before).
+  - **`EmptyStateComponent`** (`lpg-empty-state`) — icon/title/description +
+    `[actions]` slot; `tone="error"` (doc §37) = same layout, danger icon,
+    consumer supplies the Retry button + copy.
+  - **`PageHeaderComponent`** (`lpg-page-header`) — title / subtitle /
+    optional back-link / `[actions]` slot. Sits in the shell's title
+    portal; renders the full header (incl. actions) when used standalone.
+  - **`SectionCardComponent`** (`lpg-section-card`) — the standard panel
+    surface (`--component-card-*`, `--radius-card`, `--elevation-1`) with an
+    optional heading + `[headerActions]` slot.
+  - **`StatCardComponent`** (`lpg-stat-card`) — doc §15 KPI card: label /
+    value / contextual icon (6 tones) / delta with auto up/down/flat
+    direction from a leading sign / caption / **inline-SVG sparkline** (no
+    chart lib — a normalized polyline) / `loading` → skeleton. Restrained
+    hover: 1px lift + border highlight + elevation bump.
+  - **`LiveIndicatorComponent`** (`lpg-live-indicator`) — a small pulsing
+    dot (a ring animates, never a card), `active`/`label`, reduced-motion
+    static fallback.
+  - **`ActivityListComponent`** (`lpg-activity-list`) — doc §17 time / icon /
+    title / description / toned status-chip rows.
+- **Deviations:** (a) 1 parametric `SkeletonComponent` vs 3; (b) each
+  component self-contains its small entrance/shimmer keyframes rather than
+  depending on Stage 1's app-global `.animate-*` utilities — so they render
+  correctly in Storybook too.
+- **Gate:** `nx test shared-ui` **41/41** (was 19; +22); `nx lint shared-ui`
+  clean (2 pre-existing `any` warnings in `data-grid`, untouched);
+  `nx build dashboard` clean, initial bundle **676.65 kB** raw / 148.72 kB
+  transfer — under the 700 kB warn budget; the new primitives are
+  tree-shaken out of every chunk until Stage 8 wires them into pages.
+  **Visual check:** temporarily rendered all 7 on `home` in dark and
+  screenshotted — stat cards (deltas, sparklines), skeleton table shimmer,
+  section card, live indicator, activity list with status chips, empty
+  state all render cleanly and on-theme; reverted the temporary wiring.
+- **Pre-existing, not addressed:** `nx build-storybook shared-ui` was
+  already broken before this stage (webpack can't parse the CSS `@import`s
+  in `.storybook/preview.ts` — confirmed by stashing all Stage 3 changes and
+  reproducing). The stories themselves are TS-valid and lint-clean; the
+  Storybook build-pipeline fix is out of scope here.
 
 ## Stage 4 — Enterprise form + input + button system
 
