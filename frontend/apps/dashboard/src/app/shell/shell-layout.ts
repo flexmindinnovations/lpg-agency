@@ -9,6 +9,8 @@ import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { NotificationBell } from '@lpg/notification/ui-bell';
 import { NotificationDrawer } from '@lpg/notification/ui-drawer';
+import { CommandPaletteComponent } from '../command-palette/command-palette.component';
+import { CommandPaletteService } from '../command-palette/command-palette.service';
 
 /** How often to nag a tenant in its license grace period — matches
  * `NotificationBell`'s own 5-minute polling interval convention. */
@@ -41,6 +43,7 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
     ConfirmDialogModule,
     NotificationBell,
     NotificationDrawer,
+    CommandPaletteComponent,
   ],
   providers: [MessageService],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,16 +55,73 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
       [role]="role()"
       (signOut)="onSignOut()"
     >
-      <lib-notification-bell
-        shell-top-right-actions
-        (toggled)="isDrawerVisible.set(!isDrawerVisible())"
-      />
+      <div shell-top-right-actions class="shell-actions">
+        <button
+          type="button"
+          class="cmdk-trigger"
+          (click)="commandPalette.open()"
+          aria-label="Open command palette"
+        >
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <span>Search</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+        <lib-notification-bell (toggled)="isDrawerVisible.set(!isDrawerVisible())" />
+      </div>
       <router-outlet />
     </lpg-app-shell>
     <lib-notification-drawer [(visible)]="isDrawerVisible" />
+    <lpg-command-palette [navItems]="flatNavItems()" />
     <p-toast position="bottom-right" />
     <p-confirmdialog />
   `,
+  styles: [
+    `
+      .shell-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+      }
+
+      .cmdk-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: 6px var(--spacing-sm);
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-input);
+        background: var(--color-surface-overlay);
+        color: var(--color-text-secondary);
+        font: inherit;
+        font-size: var(--typography-secondary-font-size);
+        cursor: pointer;
+        transition: border-color var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      .cmdk-trigger:hover {
+        border-color: var(--color-border-strong);
+      }
+
+      .cmdk-trigger .pi-search {
+        font-size: var(--icon-size-sm);
+      }
+
+      .cmdk-trigger kbd {
+        padding: 1px 5px;
+        border: var(--border-width) solid var(--color-border-strong);
+        border-radius: var(--radius-xs);
+        background: var(--color-surface-base);
+        font-size: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .cmdk-trigger span,
+        .cmdk-trigger kbd {
+          display: none;
+        }
+      }
+    `,
+  ],
 })
 export class ShellLayout {
   protected readonly isDrawerVisible = signal(false);
@@ -71,6 +131,7 @@ export class ShellLayout {
   private readonly router = inject(Router);
   private readonly licenseStatusStore = inject(LicenseStatusStore);
   private readonly messageService = inject(MessageService);
+  protected readonly commandPalette = inject(CommandPaletteService);
 
   protected readonly email = computed(() => this.authService.principal()?.email ?? null);
   protected readonly role = computed(() => this.authService.principal()?.role ?? '');
@@ -252,4 +313,7 @@ export class ShellLayout {
       ]),
     ];
   });
+
+  /** Flat, permission-filtered nav destinations — feeds the command palette. */
+  protected readonly flatNavItems = computed(() => this.navGroups().flatMap((g) => g.items));
 }

@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 + 5 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 6–10 pending
+**Status:** Stages 0–3 + 5 + 6 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 7–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -498,6 +498,43 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
   manual check for shortcut conflicts with the browser/OS and any existing
   app shortcuts.
 - **Commit:** `feat(dashboard): global command palette (Ctrl/Cmd+K)`
+
+### ✅ DONE 2026-09-05
+
+- **`apps/dashboard/src/app/command-palette/`** (kept in the app, not
+  `libs/shared/ui` — one consumer, needs app routes + `CustomerService`):
+  - `CommandPaletteService` (`providedIn: 'root'`) — `isOpen` signal,
+    `open()` captures `document.activeElement`, `close()` restores focus to
+    it (doc §28). Self-registers `Ctrl/Cmd+K` via `KeyboardShortcutsService`.
+  - `CommandPaletteComponent` (`lpg-command-palette`) — Acrylic panel
+    (`--surface-acrylic*` + `--radius-dialog`), search input, grouped
+    results (Navigation / Customers / Actions), a keyboard-hints footer.
+    ArrowUp/Down move `activeId` (ARIA `aria-activedescendant` combobox
+    pattern — options aren't tab stops), Enter runs, Esc / backdrop close.
+    Subsequence `fuzzyScore` (exported, tested) ranks nav + actions;
+    customer results come from a debounced (200ms, ≥2 chars, best-effort)
+    `CustomerService.list(0, 6, q)`. Actions: "New order"
+    (`/orders?create=true`) + "New customer" (`/customers/new`), reusing
+    existing patterns. Reduced-motion-guarded entrance.
+  - `shell-layout.ts` — `<lpg-command-palette [navItems]="flatNavItems()">`
+    (`flatNavItems` = `navGroups().flatMap(g => g.items)`, reusing the
+    permission-filtered nav, no duplication) + a header "Search · Ctrl K"
+    trigger button next to the notification bell.
+- **Deviations:** (a) tenant shell only — not `PlatformShell` (a
+  super_admin session has no tenant, so customer search would fail and
+  there are 3 nav items; low value). (b) `Ctrl/Cmd+K` won't fire while a
+  text field is focused (inherited from `KeyboardShortcutsService`'s
+  editable-target guard) — a header click still works. (c) order
+  search-by-number not included (no typeahead endpoint), as planned.
+- **Gate:** `nx test dashboard` **16/16** (+8: `fuzzyScore` ranking, service
+  focus round-trip, component filter + ArrowDown + Enter + Esc); `nx lint
+  dashboard` 0 errors (the listbox-option `<li>` carries a targeted
+  eslint-disable with a rationale comment); `nx build dashboard` clean,
+  initial bundle **678.5 kB** (+1.8 from the eager shell, under budget).
+  **Verified logged-in:** Ctrl+K + trigger both open, input auto-focuses,
+  "disp" → Dispatch, ArrowDown moves the row, live customer search returns
+  real results, Esc closes and focus returns to the trigger; no console
+  errors.
 
 ## Stage 7 — Design-system showcase page
 
