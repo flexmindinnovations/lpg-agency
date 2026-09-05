@@ -1,6 +1,6 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import {
@@ -28,7 +28,28 @@ export const appConfig: ApplicationConfig = {
     MessageService,
     ConfirmationService,
     provideBrowserGlobalErrorListeners(),
-    provideRouter(appRoutes, withComponentInputBinding()),
+    provideRouter(
+      appRoutes,
+      withComponentInputBinding(),
+      // Native View Transitions API cross-fade between routes (Phase 29
+      // Stage 1). Progressive enhancement — a no-op in browsers without
+      // `document.startViewTransition`. The actual animation is styled on
+      // `::view-transition-old/new(root)` in styles.css; `skipInitial
+      // Transition` keeps the first paint from animating; the hook below
+      // skips it entirely under `prefers-reduced-motion` (the styled
+      // durations also collapse to 0 there — belt and braces).
+      withViewTransitions({
+        skipInitialTransition: true,
+        onViewTransitionCreated: ({ transition }) => {
+          if (
+            typeof matchMedia === 'function' &&
+            matchMedia('(prefers-reduced-motion: reduce)').matches
+          ) {
+            transition.skipTransition();
+          }
+        },
+      }),
+    ),
     // Backend root URL, swapped per build configuration via `fileReplacements`
     // (`apps/dashboard/project.json`) — see `src/environments/environment.ts`.
     provideApiConfiguration(environment.apiUrl),
@@ -57,7 +78,9 @@ export const appConfig: ApplicationConfig = {
     ),
     // Overlay/transition animations (Dialog, Drawer, Toast, dropdowns) need
     // Angular's animation system. Loaded async so it is not in the initial
-    // bundle for routes that never touch an overlay component.
+    // bundle for routes that never touch an overlay component. (Route
+    // transitions do NOT use this — they run on the native View Transitions
+    // API via `withViewTransitions()` above.)
     provideAnimationsAsync(),
     // PrimeNG (ADR-028, ADR-020 amendment): primary component library.
     // `LpgPrimeNgPreset` is the only place PrimeNG's own colours are ever

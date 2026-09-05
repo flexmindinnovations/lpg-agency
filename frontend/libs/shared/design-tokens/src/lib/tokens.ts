@@ -199,6 +199,8 @@ export const tokenVars = {
   "motionDurationLarge": '--motion-duration-large',
   "motionEasingStandard": '--motion-easing-standard',
   "motionEasingDecelerate": '--motion-easing-decelerate',
+  "motionEasingAccelerate": '--motion-easing-accelerate',
+  "motionEasingEmphasized": '--motion-easing-emphasized',
   "motionReducedMotionDurationMicro": '--motion-reduced-motion-duration-micro',
   "motionReducedMotionDurationSmall": '--motion-reduced-motion-duration-small',
   "motionReducedMotionDurationMedium": '--motion-reduced-motion-duration-medium',

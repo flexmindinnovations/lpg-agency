@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stage 0 done 2026-09-05 · Stages 1–10 pending
+**Status:** Stages 0–1 done 2026-09-05 · Stages 2–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -190,6 +190,40 @@ conventions (18px nav / 16px button / 20–24px feature) rather than replacing
   graceful hard-cut fallback, reduced-motion toggle = no transition);
   `nx build dashboard`.
 - **Commit:** `feat(dashboard): route-level view transitions + retuned motion tokens`
+
+### ✅ DONE 2026-09-05
+
+- **`app.config.ts`** — `provideRouter(appRoutes, withComponentInputBinding(),
+  withViewTransitions({ skipInitialTransition: true, onViewTransitionCreated }))`.
+  The hook calls `transition.skipTransition()` when
+  `matchMedia('(prefers-reduced-motion: reduce)').matches` (with a
+  `typeof matchMedia` guard). Comment on `provideAnimationsAsync()` updated to
+  note routes don't use it.
+- **`tokens.css`** — motion durations retuned to the doc §39 scale (micro
+  100→120, small 150→180, medium 250→260, large 350→360; names unchanged,
+  many consumers). Two new easings: `--motion-easing-accelerate`
+  (`cubic-bezier(0.4,0,1,1)`, ease-in / exiting) and
+  `--motion-easing-emphasized` (`cubic-bezier(0.2,0.8,0.2,1)`, the doc's
+  page-transition curve). `tokens.ts` gains the two entries.
+- **`styles.css`** — a "MOTION" section: `@keyframes lpg-route-out/in` +
+  `::view-transition-old(root)` (fade out, `accelerate`, 180ms) /
+  `::view-transition-new(root)` (fade + `translateY(6px)` settle,
+  `emphasized`, 260ms). No blur in the keyframes — doc §40 warns off animated
+  full-viewport blur and the plan keeps that restraint (deviation from §25's
+  literal recipe, noted). Entrance utilities `.animate-fade-up` (with
+  `--lpg-stagger-index` support) + `.animate-fade-in` for Stage 3/8. A
+  `@media (prefers-reduced-motion: reduce)` block zeroes all four.
+- **Gate:** `nx build dashboard` clean; `nx test` shared-design-tokens 5/5,
+  dashboard 8/8, shared-ui 19/19; `nx lint` clean. Live dev-server check:
+  `document.startViewTransition` **is invoked by the router on every
+  navigation** (`vtCount` increments per nav), the `::view-transition-new(root)`
+  CSS rule is present, new motion token values resolve.
+- **Known dev-only console noise:** an interrupted navigation (a guard/redirect
+  firing mid-transition, or `skipTransition()` under reduced-motion) makes
+  Angular's own router log `AbortError: Transition was skipped` via
+  `console.error` — but **only under `ngDevMode`**; it's silent in production
+  builds (`_router-chunk.mjs` guards every `transition.*.catch` with
+  `ngDevMode`). Not a regression, not fixable from app code.
 
 ## Stage 2 — App shell: Mica surfaces + nav polish
 

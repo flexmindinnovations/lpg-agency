@@ -146,12 +146,20 @@ have always been hand-edited directly. Edit them here.
   --typography-label-font-size: 14px;
   --typography-label-font-weight: 500;
   --typography-label-line-height: 1.4;
-  --motion-duration-micro: 100ms;
-  --motion-duration-small: 150ms;
-  --motion-duration-medium: 250ms;
-  --motion-duration-large: 350ms;
+  /* Durations retuned to the Fluent Glass motion scale (Phase 29 Stage 1,
+     doc §39): micro 100-140 / fast 160-200 / normal 220-280 / complex
+     300-400 max. Names kept (many consumers) — only the values moved. */
+  --motion-duration-micro: 120ms;
+  --motion-duration-small: 180ms;
+  --motion-duration-medium: 260ms;
+  --motion-duration-large: 360ms;
   --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-easing-decelerate: cubic-bezier(0, 0, 0, 1);
+  /* ease-in, for UI leaving the screen (doc §39). */
+  --motion-easing-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  /* The doc's page-transition curve (§25) — also the default "nice" ease
+     for entrance/hover motion elsewhere. */
+  --motion-easing-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-reduced-motion-duration-micro: 0ms;
   --motion-reduced-motion-duration-small: 0ms;
   --motion-reduced-motion-duration-medium: 50ms;

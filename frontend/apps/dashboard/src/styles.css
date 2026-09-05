@@ -168,6 +168,78 @@ body {
 }
 
 /* ========================================================================
+   MOTION (Fluent Glass, Phase 29 Stage 1)
+
+   Route transitions run on the native View Transitions API, wired in
+   app.config.ts via provideRouter(withViewTransitions()). The animation
+   itself is styled here on the ::view-transition-*(root) pseudo-elements.
+   Progressive enhancement: browsers without the API just hard-cut.
+   ======================================================================== */
+
+@keyframes lpg-route-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lpg-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Outgoing view: quick fade with an ease-in (doc §39: ease-in for exiting).
+   Incoming view: slightly longer, settles up 6px with the page-transition
+   curve (doc §25). No blur — doc §40 warns off animated full-viewport blur,
+   and the plan keeps to that restraint. */
+::view-transition-old(root) {
+  animation: var(--motion-duration-small) var(--motion-easing-accelerate) both
+    lpg-route-out;
+}
+
+::view-transition-new(root) {
+  animation: var(--motion-duration-medium) var(--motion-easing-emphasized) both
+    lpg-route-in;
+}
+
+/* Entrance utilities for lists/cards — used from Stage 3/8, not applied
+   anywhere yet. Set --lpg-stagger-index inline in an @for block so a row of
+   items cascades in rather than all popping at once. */
+@keyframes lpg-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes lpg-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.animate-fade-up {
+  animation: var(--motion-duration-medium) var(--motion-easing-emphasized) both
+    lpg-fade-up;
+  animation-delay: calc(var(--lpg-stagger-index, 0) * 40ms);
+}
+
+.animate-fade-in {
+  animation: var(--motion-duration-small) var(--motion-easing-emphasized) both
+    lpg-fade-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  .animate-fade-up,
+  .animate-fade-in {
+    animation: none;
+  }
+}
+
+/* ========================================================================
    TYPOGRAPHY UTILITIES
    ======================================================================== */
 
