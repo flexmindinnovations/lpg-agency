@@ -178,8 +178,9 @@ have always been hand-edited directly. Edit them here.
   --component-button-padding-y: 8px;
   --component-card-padding: 24px;
   --component-card-radius: 8px;
-  --component-data-grid-row-height: 40px;
-  --component-data-grid-header-height: 44px;
+  /* 48px rows / header — the doc §18 range (48-52) for enterprise tables. */
+  --component-data-grid-row-height: 48px;
+  --component-data-grid-header-height: 48px;
   --component-data-grid-cell-padding-x: 8px;
   --component-app-shell-sidebar-width: 260px;
   --component-app-shell-sidebar-collapsed-width: 64px;

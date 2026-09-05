@@ -1,27 +1,17 @@
 <h2 class="section-heading">Customer Consumption Report</h2>
 
-@if (store.loading()) {
-  <div class="loading-state">Loading report...</div>
-} @else if (store.error()) {
-  <div class="error-state">{{ store.error() }}</div>
+@if (store.error()) {
+  <lpg-empty-state
+    tone="error"
+    title="Couldn't load customer consumption"
+    [description]="store.error() ?? ''"
+  />
 } @else {
-  <p-table [value]="store.customerConsumption()" [tableStyle]="{ 'min-width': '50rem' }" styleClass="p-datatable-striped">
-    <ng-template #header>
-      <tr>
-        <th>Customer Name</th>
-        <th>Avg Refill Interval (Days)</th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-record>
-      <tr>
-        <td>{{ record.customer_name }}</td>
-        <td>{{ record.avg_refill_interval_days | number:'1.0-1' }}</td>
-      </tr>
-    </ng-template>
-    <ng-template #emptymessage>
-      <tr>
-        <td colspan="2" class="empty-message">No customer consumption data available.</td>
-      </tr>
-    </ng-template>
-  </p-table>
+  <lpg-data-grid
+    [rows]="store.customerConsumption()"
+    [columns]="columns"
+    [loading]="store.loading()"
+    [autoHeight]="true"
+    ariaLabel="Customer consumption report"
+  />
 }

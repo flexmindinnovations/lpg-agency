@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 5–10 pending
+**Status:** Stages 0–3 + 5 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 6–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -441,6 +441,43 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
   page retains its data and gains sort/filter/pagination; dialog/drawer/
   toast entrance timing check.
 - **Commit:** `refactor(dashboard): Acrylic dialogs/drawers/toasts; reporting onto lpg-data-grid`
+
+### ✅ DONE 2026-09-05
+
+- **Reporting → `lpg-data-grid`** — all 4 views (`daily-sales`,
+  `driver-performance`, `customer-consumption`, `gst-filing`) dropped
+  `p-table` for `lpg-data-grid`; they gain sort / filter / pagination and now
+  match the 9 operational grids. New `DataGridComponent` `autoHeight` input
+  (`domLayout: 'autoHeight'` + a host class) so a report grid grows to its
+  rows inside the padded panel instead of needing a fixed height. Currency /
+  date / percent / decimal formatting moved into `@lpg/shared/ui`'s new
+  `format.ts` (`Intl`, no locale registration) used as column
+  `valueFormatter`s. The `@if (store.error())` blocks now render
+  `<lpg-empty-state tone="error">`; the bare "Loading report…" text is gone
+  (the grid's `[loading]` skeleton covers it).
+- **Data-grid rows** `--component-data-grid-row-height` / `-header-height`
+  40/44 → **48px** (doc §18).
+- **Acrylic overlays** (`styles.css` + preset): `.p-dialog`, `.p-drawer`,
+  `.p-toast-message` → `--surface-acrylic*` (translucent + `blur(20px)
+  saturate(120%)` + fine border + strong shadow). `.p-dialog-mask` /
+  `.p-drawer-mask` get a 2px "smoke" blur; the scrim colour is now a
+  **dark** `color-mix(neutral-0, transparent 45%)` in the preset's
+  `semantic.mask` (Aura's `{text.color}`-based default produced a *light*
+  scrim on the dark theme). `overlay.modal` radius → `--radius-dialog`
+  (16px). Verified logged-in: drawer bg `rgba(28,38,52,0.62)` + the blur,
+  mask a 55%-black 2px-blur scrim, no console errors; the reporting grids
+  render formatted data with 48px rows + a pager.
+- **Deviations:** (a) the drawer's *slide-in* stays PrimeNG's own animation
+  (a full-width slide, not the doc §22 `translateX(24px)`) — retuning
+  PrimeNG's animation trigger isn't worth it; the material + timing are
+  applied. (b) Drawers use the same `--surface-acrylic` (62% opacity) as
+  dialogs — readable, but if Stage 10 QA finds the blurred-content bleed
+  behind a large empty form area distracting, bump a drawer-specific
+  opacity. (c) `nx build-storybook` still pre-existingly broken (Stage 3
+  note) — untouched.
+- **Gate:** `nx build dashboard` clean; `nx test` reporting-feature-reports
+  smoke, shared-ui 45/45, shared-design-tokens 5/5; `nx lint` clean (2
+  pre-existing `any` in data-grid).
 
 ## Stage 6 — Command palette (Ctrl/Cmd+K)
 

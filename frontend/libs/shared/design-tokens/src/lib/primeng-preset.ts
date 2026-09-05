@@ -156,7 +156,7 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
         color: 'var(--color-text-primary)',
       },
       modal: {
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: 'var(--radius-dialog)',
         padding: 'var(--spacing-lg)',
         background: 'var(--color-surface-base)',
         borderColor: 'var(--color-border-default)',
@@ -164,7 +164,10 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       },
     },
     mask: {
-      background: 'color-mix(in srgb, var(--color-text-primary), transparent 60%)',
+      // A dark "smoke" scrim (doc §21) — not the light one Aura's default
+      // `{text.color}`-based mix produces on a dark theme. The blur is added
+      // on `.p-dialog-mask` / `.p-drawer-mask` in styles.css.
+      background: 'color-mix(in srgb, var(--primitive-color-neutral-0), transparent 45%)',
       color: 'var(--color-surface-overlay)',
     },
     surface: {

@@ -143,6 +143,7 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
   selector: 'lpg-data-grid',
   standalone: true,
   imports: [AgGridAngular, SkeletonComponent],
+  host: { '[class.lpg-data-grid--auto]': 'autoHeight()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading()) {
@@ -166,6 +167,10 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
       :host {
         display: block;
         block-size: 100%;
+      }
+      /* autoHeight grids size to their content — let the host do the same. */
+      :host(.lpg-data-grid--auto) {
+        block-size: auto;
       }
       .lpg-data-grid__skeleton {
         padding: var(--spacing-md);
@@ -219,6 +224,10 @@ export class DataGridComponent<TRow = unknown> {
    *  anything else is the initial page size, with a [10, 25, 50, 100]
    *  selector. Defaults on — a long list is unusable without it. */
   readonly pageSize = input(25);
+  /** Grow to fit the rows (up to a page) instead of filling a fixed-height
+   *  host. Use inside a padded content box that has no height of its own —
+   *  e.g. a report page. */
+  readonly autoHeight = input(false);
 
   readonly ready = output<void>();
 
@@ -264,6 +273,7 @@ export class DataGridComponent<TRow = unknown> {
         ? undefined
         : { mode: this.selectionMode() === 'single' ? 'singleRow' : 'multiRow' },
     suppressCellFocus: false,
+    domLayout: this.autoHeight() ? 'autoHeight' : 'normal',
     // Keyboard navigation and screen-reader support are verified once here,
     // per ADR-011, rather than re-verified in every feature that shows a grid.
     ensureDomOrder: true,

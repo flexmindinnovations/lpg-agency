@@ -509,16 +509,30 @@ textarea {
    PRIMENG GLOBAL OVERRIDES — polish default appearance
    ======================================================================== */
 
-/* Dialog backdrop */
-.p-dialog-mask {
+/* Dialog / drawer / command-palette backdrop — a smoke-like scrim with a
+   light blur (doc §21). The scrim colour itself comes from the preset's
+   semantic.mask; here we add the blur the token can't express. */
+.p-dialog-mask,
+.p-drawer-mask {
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
-/* Dialog panel */
+@media (prefers-reduced-motion: no-preference) {
+  .p-dialog-mask,
+  .p-drawer-mask {
+    transition: backdrop-filter var(--motion-duration-small) var(--motion-easing-emphasized);
+  }
+}
+
+/* Dialog panel — Acrylic (doc §4, §21): elevated/transient surface only. */
 .p-dialog {
-  border-radius: var(--radius-lg) !important;
-  box-shadow: var(--elevation-3) !important;
-  border: var(--border-width) solid var(--color-border-default) !important;
+  border-radius: var(--radius-dialog) !important;
+  background: var(--surface-acrylic) !important;
+  backdrop-filter: var(--surface-acrylic-blur);
+  -webkit-backdrop-filter: var(--surface-acrylic-blur);
+  box-shadow: var(--surface-acrylic-shadow) !important;
+  border: var(--border-width) solid var(--surface-acrylic-border) !important;
 }
 
 .p-dialog .p-dialog-header {
@@ -536,7 +550,23 @@ textarea {
   padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg) !important;
 }
 
-/* Drawer panel */
+/* Drawer panel — Acrylic (doc §4, §22). The slide-in itself is PrimeNG's
+   own animation; this sets the material + timing. */
+.p-drawer {
+  background: var(--surface-acrylic) !important;
+  backdrop-filter: var(--surface-acrylic-blur);
+  -webkit-backdrop-filter: var(--surface-acrylic-blur);
+  box-shadow: var(--surface-acrylic-shadow) !important;
+}
+
+.p-drawer.p-drawer-right {
+  border-inline-start: var(--border-width) solid var(--surface-acrylic-border) !important;
+}
+
+.p-drawer.p-drawer-left {
+  border-inline-end: var(--border-width) solid var(--surface-acrylic-border) !important;
+}
+
 .p-drawer .p-drawer-header {
   padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xs) !important;
   border-bottom: none !important;
@@ -626,10 +656,15 @@ textarea {
   font-size: var(--typography-body-small-font-size) !important;
 }
 
-/* Toast refinements */
+/* Toast refinements — bottom-right (set on <p-toast> in the shells), an
+   Acrylic surface, lightweight (doc §23). */
 .p-toast-message {
   border-radius: var(--radius-md) !important;
-  box-shadow: var(--elevation-2) !important;
+  background: var(--surface-acrylic) !important;
+  backdrop-filter: var(--surface-acrylic-blur);
+  -webkit-backdrop-filter: var(--surface-acrylic-blur);
+  border: var(--border-width) solid var(--surface-acrylic-border) !important;
+  box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
 /* Tooltip refinements */

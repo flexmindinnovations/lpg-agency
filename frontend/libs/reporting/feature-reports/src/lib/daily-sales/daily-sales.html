@@ -1,31 +1,18 @@
 <h2 class="section-heading">Daily Sales (Last 30 Days)</h2>
 
-@if (store.loading()) {
-  <div class="loading-state">Loading report...</div>
-} @else if (store.error()) {
-  <div class="error-state">{{ store.error() }}</div>
+@if (store.error()) {
+  <lpg-empty-state
+    tone="error"
+    title="Couldn't load daily sales"
+    [description]="store.error() ?? ''"
+  />
 } @else {
-  <p-table [value]="store.dailySales()" [tableStyle]="{ 'min-width': '50rem' }" styleClass="p-datatable-striped">
-    <ng-template #header>
-      <tr>
-        <th>Date</th>
-        <th>Total Invoices</th>
-        <th>Total Revenue</th>
-        <th>Total Tax</th>
-      </tr>
-    </ng-template>
-    <ng-template #body let-record>
-      <tr>
-        <td>{{ record.sale_date | date }}</td>
-        <td>{{ record.total_invoices }}</td>
-        <td>{{ record.total_revenue | currency:'INR' }}</td>
-        <td>{{ record.total_tax | currency:'INR' }}</td>
-      </tr>
-    </ng-template>
-    <ng-template #emptymessage>
-      <tr>
-        <td colspan="4" class="empty-message">No sales data available for this period.</td>
-      </tr>
-    </ng-template>
-  </p-table>
+  <lpg-data-grid
+    [rows]="store.dailySales()"
+    [columns]="columns"
+    [loading]="store.loading()"
+    [autoHeight]="true"
+    [pageSize]="15"
+    ariaLabel="Daily sales, last 30 days"
+  />
 }
