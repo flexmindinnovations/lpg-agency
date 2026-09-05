@@ -629,7 +629,7 @@ export class CustomerOnboardingWizardComponent implements OnInit {
         detail: 'Customer onboarded successfully.',
       });
       this.router.navigate(['/customers']);
-    } catch (_error) {
+    } catch {
       this.messageService.add({
         severity: 'error',
         summary: 'Error',

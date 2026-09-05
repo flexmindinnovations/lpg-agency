@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–3 + 5–8 done · Stage 4 core done (4b pending) · 2026-09-05 · Stages 9–10 pending
+**Status:** Stages 0–3 + 5–9 done · Stage 4 core done (4b pending) · 2026-09-05 · Stage 10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -644,6 +644,39 @@ Each `OnPush`, standalone, `lpg-` prefixed, Storybook story + unit test:
   gap elsewhere stays an explicit out-of-scope follow-up).
 - **Gate:** `nx run-many -t lint,test,build` across every touched project.
 - **Commit:** `chore(frontend): drop unused Angular Material dep; fix notification-drawer selector prefix`
+
+### ✅ DONE 2026-09-05
+
+- **`@angular/material` removed** — zero usage anywhere (re-verified);
+  `npm install --legacy-peer-deps` (the repo's existing install strategy —
+  `@ngrx/signals@21` predates Angular 22). Lockfile diff is surgical: the
+  only removed key is `node_modules/@angular/material`, nothing added or
+  version-bumped (2292 → 2291 packages). `@angular/cdk` kept (portals,
+  clipboard — 5+ files).
+- **OnPush** confirmed on all 10 components authored across Stages 2–8
+  (`Skeleton`/`EmptyState`/`PageHeader`/`SectionCard`/`StatCard`/
+  `LiveIndicator`/`ActivityList`/`FormField`/`CommandPalette`/`DesignSystemPage`)
+  — `OnPush` by construction. The pre-existing ~32% gap elsewhere stays
+  out of scope.
+- **Bonus:** cleared the pre-existing `_error` unused-var lint warning in
+  `customer-onboarding-wizard.component.ts` (`catch (_error)` → `catch`) —
+  a file this phase already touched in Stage 4.
+- **`lib-notification-drawer` → `lpg-notification-drawer` rename SKIPPED**
+  (deviation from plan). On inspection the audit's premise was wrong: `lib-`
+  is a **deliberate, config-enforced** prefix for the entire
+  `libs/notification/*` family — `project.json` *and* `eslint.config.mjs`
+  set `prefix: "lib"` in `ui-drawer`, `ui-bell`, `feature-notifications`,
+  and route-level components across the repo (`lib-daily-sales`,
+  `lib-feature-complaints`, …) use it too. It's a domain-scoped convention,
+  not a lone accident. Renaming it (plus `ui-bell` etc. for consistency)
+  is multi-file churn across 4 libs — component selectors, 2 `project.json`
+  prefixes, 4+ eslint rules, template usages — for zero user-facing benefit,
+  and would leave the notification family internally inconsistent. Left as
+  a noted non-issue.
+- **Gate:** `nx build dashboard` clean (678.9 kB); `nx test` dashboard
+  16/16, shared-ui 45/45, customer-feature-customers smoke; `nx lint`
+  clean (2 pre-existing `any` in data-grid, 3 pre-existing in
+  shell/platform-shell — the `_error` one is now gone).
 
 ## Stage 10 — Verification + docs
 
