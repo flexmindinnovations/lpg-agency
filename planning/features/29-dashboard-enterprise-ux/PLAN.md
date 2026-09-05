@@ -1,7 +1,7 @@
 # Plan: Dashboard Enterprise UX Overhaul — Fluent Glass Design System
 
 **Phase:** 29
-**Status:** Stages 0–1 done 2026-09-05 · Stages 2–10 pending
+**Status:** Stages 0–2 done 2026-09-05 · Stages 3–10 pending
 **Type:** Full visual redesign + motion system + one new feature (command
 palette). No backend/data-model changes.
 
@@ -239,6 +239,45 @@ conventions (18px nav / 16px button / 20–24px feature) rather than replacing
 - **Gate:** `nx test shared-ui`; visual check in dark (primary) + light +
   high-contrast.
 - **Commit:** `feat(shell): Mica sidebar/header + icon-sizing convention`
+
+### ✅ DONE 2026-09-05
+
+- **`app-shell.component.ts`** — `.shell__sidebar-wrapper` + `.shell__header`
+  + `.shell__breadcrumb-wrapper` restyled onto `--surface-mica*`
+  (semi-opaque tint, `--surface-mica-border`, `--surface-mica-shadow`; no
+  blur — Mica isn't a blur material). `.shell__content` gets `position:
+  relative` + `background: var(--surface-atmosphere)` (the Material-A base,
+  doc §2) and the global `surface-noise` class; `.shell__main` →
+  `background: transparent` so the atmosphere shows through. Active nav item:
+  weight 700 → 600 (doc §13 restraint), keeps the themed
+  `--color-highlight-*` pair. `.shell__collapse-toggle` → `--color-surface-
+  overlay` + `--elevation-1` so it reads as a control over the Mica edge.
+  `.shell__brand-mark` → `--primitive-color-flame-orange-500` (keeps its
+  flame identity regardless of palette — was inheriting the now-blue
+  `--color-action-primary`). Nav icon size → `--icon-size-md` token.
+  Drive-by fix: a stale `var(--color-focus-ring)` (never existed) →
+  `var(--color-border-focus)` on the breadcrumb focus ring.
+- **`tokens.css`** — `--icon-size-sm/md/lg/xl` (16/18/20/24, doc §12);
+  `--surface-noise-opacity` (0 in light/HC — nothing to break up there;
+  0.03 in dark); `--surface-noise-image: none` in the HC block. `tokens.ts`
+  gains the entries. **`styles.css`** — `.icon-sm/md/lg/xl` utilities;
+  `.surface-noise::after` opacity now reads `var(--surface-noise-opacity)`.
+- **Deviation:** first pass shifted active-nav text to
+  `--color-text-primary` + the icon to `--color-action-primary` for a
+  dark-mode blue accent — but light's `--color-highlight-background` is
+  still a solid navy (light theme deliberately untouched this phase), so
+  dark text on navy was **unreadable in light mode**. Caught in the
+  light/HC visual check, reverted to the theme-safe `--color-highlight-
+  color`. The dark blue-accent nicety is deferred (needs light's highlight
+  token to become tint-based first — Stage 5 or a later polish).
+- **Gate:** `nx build dashboard` clean; `nx test` shared-ui 19/19,
+  shared-design-tokens 5/5; `nx lint` clean. **Visual check, logged in
+  (real backend), all three themes:** dark — Mica sidebar/header distinct
+  from the atmospheric content, flame brand mark, subtle blue-tint active
+  nav, noise at 0.03; light — preserved (white Mica, navy active nav +
+  white text); high-contrast — opaque surfaces, hard borders, no
+  shadow/atmosphere/noise, blue active-nav text. Computed-style spot checks
+  confirm every token resolves.
 
 ## Stage 3 — Shared UI primitives (`libs/shared/ui`)
 

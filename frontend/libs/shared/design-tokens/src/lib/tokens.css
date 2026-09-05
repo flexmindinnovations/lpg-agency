@@ -207,6 +207,18 @@ have always been hand-edited directly. Edit them here.
   --radius-dialog: 16px;
   --radius-surface: 20px;
 
+  /* ---- Icon sizing (Fluent Glass, doc §12) ----
+     nav 18 / button 16 / feature 20-24. Consumed via the .icon-* utility
+     classes in styles.css and directly by the shell's nav icons. */
+  --icon-size-sm: 16px;
+  --icon-size-md: 18px;
+  --icon-size-lg: 20px;
+  --icon-size-xl: 24px;
+
+  /* Opacity of the shared .surface-noise grain. 0 in light / high-contrast
+     (nothing to break up — no large gradients there); dark turns it on. */
+  --surface-noise-opacity: 0;
+
   /* ---- Extended type scale (Fluent Glass) ----
      Additive: the existing heading1/heading2/body/body-small/caption/label
      tokens already cover most of the doc's steps closely enough to leave
@@ -336,6 +348,7 @@ have always been hand-edited directly. Edit them here.
     radial-gradient(circle at 20% 0%, rgba(70,110,180,0.10), transparent 35%),
     radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
     #0b1118;
+  --surface-noise-opacity: 0.03;
   /* Deliberately NOT --color-action-primary (4.54:1 as text, only 4.18:1
      under white button-label text — see the block comment above). */
   --component-button-primary-background: #2864cc;
@@ -388,6 +401,7 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-border: #000000;
   --surface-acrylic-shadow: none;
   --surface-atmosphere: none;
+  --surface-noise-image: none;
   --component-button-primary-background: #0000ee;
   --component-button-primary-background-hover: #0000ee;
   --component-button-primary-text: #ffffff;
@@ -446,6 +460,7 @@ have always been hand-edited directly. Edit them here.
       radial-gradient(circle at 20% 0%, rgba(70,110,180,0.10), transparent 35%),
       radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
       #0b1118;
+    --surface-noise-opacity: 0.03;
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;

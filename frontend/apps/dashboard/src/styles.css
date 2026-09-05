@@ -162,10 +162,17 @@ body {
   position: absolute;
   inset: 0;
   background-image: var(--surface-noise-image);
-  opacity: 0.03;
+  opacity: var(--surface-noise-opacity, 0.03);
   pointer-events: none;
   mix-blend-mode: overlay;
 }
+
+/* Icon sizing (doc §12) — for `pi` icon-font glyphs, which render in a
+   fixed box. Nav = md (18), button = sm (16), feature = lg/xl (20/24). */
+.icon-sm { font-size: var(--icon-size-sm); }
+.icon-md { font-size: var(--icon-size-md); }
+.icon-lg { font-size: var(--icon-size-lg); }
+.icon-xl { font-size: var(--icon-size-xl); }
 
 /* ========================================================================
    MOTION (Fluent Glass, Phase 29 Stage 1)

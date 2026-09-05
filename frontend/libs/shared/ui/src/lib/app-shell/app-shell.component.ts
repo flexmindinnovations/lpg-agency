@@ -115,7 +115,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </button>
       </div>
 
-      <div class="shell__content">
+      <div class="shell__content surface-noise">
         <header class="shell__header">
           <div class="shell__header-spacer">
             <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
@@ -177,15 +177,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
       /* ---- Sidebar Wrapper & Sidebar ---- */
 
+      /* Mica surface (doc §3): the sidebar is a large persistent chrome
+         surface — semi-opaque tint over the atmospheric base, a fine
+         border, an extremely subtle edge elevation. No blur (Mica isn't a
+         blur material; that's Acrylic). */
       .shell__sidebar-wrapper {
         position: relative;
         display: flex;
         flex-direction: column;
         inline-size: var(--component-app-shell-sidebar-width);
         flex-shrink: 0;
-        background: var(--color-surface-base);
-        border-inline-end: var(--border-width) solid var(--color-border-default);
-        transition: inline-size var(--motion-duration-medium) var(--motion-easing-standard);
+        background: var(--surface-mica);
+        border-inline-end: var(--border-width) solid var(--surface-mica-border);
+        box-shadow: var(--surface-mica-shadow);
+        transition: inline-size var(--motion-duration-medium) var(--motion-easing-emphasized);
         z-index: 10;
       }
 
@@ -225,10 +230,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       }
 
       .shell__brand-mark {
-        inline-size: 1.5rem;
-        block-size: 1.5rem;
+        inline-size: var(--icon-size-xl);
+        block-size: var(--icon-size-xl);
         flex-shrink: 0;
-        color: var(--color-action-primary);
+        /* The brand mark keeps its own flame identity regardless of the
+           palette (Phase 29 decision) — not tied to --color-action-primary,
+           which is now blue. */
+        color: var(--primitive-color-flame-orange-500);
       }
 
       .shell__brand-name {
@@ -252,13 +260,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         justify-content: center;
         inline-size: 24px;
         block-size: 24px;
-        border: var(--border-width) solid var(--color-border-default);
-        background: var(--color-surface-base);
+        border: var(--border-width) solid var(--color-border-strong);
+        background: var(--color-surface-overlay);
         color: var(--color-text-secondary);
         border-radius: 50%;
         cursor: pointer;
         z-index: 20;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: var(--elevation-1);
         transition: background-color var(--motion-duration-small) var(--motion-easing-standard),
           color var(--motion-duration-small) var(--motion-easing-standard),
           border-color var(--motion-duration-small) var(--motion-easing-standard);
@@ -355,7 +363,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       }
 
       .shell__nav-link i {
-        font-size: 18px; /* Increased nav icon size */
+        font-size: var(--icon-size-md); /* 18px — doc §12 nav icon size */
         flex-shrink: 0;
         inline-size: 1.5rem;
         text-align: center;
@@ -372,15 +380,18 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         opacity: 1;
       }
 
+      /* Active item: the themed highlight surface + its paired text colour
+         (a subtle blue tint in dark, per doc §13), medium weight — no glow,
+         no heavy 700 weight. Text/icon stay on --color-highlight-color so
+         this reads correctly in light + high-contrast too. */
       .shell__nav-link.is-active {
         background: var(--color-highlight-background);
         color: var(--color-highlight-color);
-        font-weight: 700;
+        font-weight: 600;
       }
 
       .shell__nav-link.is-active i {
         opacity: 1;
-        font-weight: 700;
       }
 
       .shell__nav-label {
@@ -401,29 +412,35 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
       /* ---- Main Content ---- */
 
+      /* The content column is Material A (doc §2): the atmospheric base —
+         a deep neutral with two very subtle radial gradients. The global
+         surface-noise class lays a barely-perceptible grain over it so the
+         gradients don't read as artificially smooth. */
       .shell__content {
+        position: relative;
         display: flex;
         flex-direction: column;
         flex: 1;
         min-inline-size: 0;
+        background: var(--surface-atmosphere);
       }
 
-      /* ---- Global Header ---- */
+      /* ---- Global Header ---- (Mica, doc §3) */
       .shell__header {
         display: flex;
         align-items: center;
         justify-content: flex-end;
         min-block-size: 72px;
         padding: 8px var(--spacing-xl);
-        border-block-end: var(--border-width) solid var(--color-border-default);
-        background: var(--color-surface-base);
+        border-block-end: var(--border-width) solid var(--surface-mica-border);
+        background: var(--surface-mica);
         flex-shrink: 0;
         flex-wrap: wrap;
       }
-      
+
       .shell__breadcrumb-wrapper {
         padding: var(--spacing-md) var(--spacing-xl) 0;
-        background: var(--color-surface-base);
+        background: var(--surface-mica);
       }
 
       :host ::ng-deep .shell__breadcrumb {
@@ -438,7 +455,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         text-decoration: none;
       }
       :host ::ng-deep .shell__breadcrumb .p-breadcrumb-list li a:focus-visible {
-        outline: 2px solid var(--color-focus-ring);
+        outline: 2px solid var(--color-border-focus);
         outline-offset: 2px;
         border-radius: var(--radius-sm);
       }
@@ -460,7 +477,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         padding: var(--spacing-lg) var(--spacing-xl);
         overflow-x: hidden;
         overflow-y: auto;
-        background: var(--color-surface-base);
+        /* Transparent — the atmospheric base on .shell__content shows through. */
+        background: transparent;
       }
 
       .shell__main:focus,
