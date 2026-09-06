@@ -1,7 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
+
+# `DocumentOcrPort` / `DocumentOcrResult` moved to `application.common.ports`
+# when driver/vehicle compliance started sharing the OCR engine. Re-exported
+# here (explicit `as` so it counts as a public re-export under mypy --strict)
+# so existing `from lpg.application.customer.ports import ...` imports keep
+# working.
+from lpg.application.common.ports import DocumentOcrPort as DocumentOcrPort
+from lpg.application.common.ports import DocumentOcrResult as DocumentOcrResult
 
 if TYPE_CHECKING:
     import uuid
@@ -61,28 +68,6 @@ class ConsumerNumberSequence(Protocol):
     """
 
     async def next(self) -> str: ...
-
-
-@dataclass(frozen=True, slots=True)
-class DocumentOcrResult:
-    text: str
-    confidence: float  # 0-1
-
-
-class DocumentOcrPort(Protocol):
-    """Server-side OCR for the KYC auto-fill "second pass" (D-onboarding).
-
-    The browser already runs a fast, in-page OCR pass for instant feedback
-    (`document-ocr.service.ts`, same regex-based field parsing). This port
-    is the slower, more-accurate follow-up that refines the pre-filled
-    fields once it completes — the image is already uploaded to and stored
-    by our own backend for the KYC record regardless (see
-    `FileStorage`/`kyc-attachments`), so running OCR on it here server-side
-    adds no new privacy exposure, just better accuracy from a heavier model
-    than is practical to ship to every browser.
-    """
-
-    async def recognize(self, image_bytes: bytes) -> DocumentOcrResult: ...
 
 
 class OnboardingDraftRepository(Protocol):

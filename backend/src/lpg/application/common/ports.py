@@ -11,6 +11,7 @@ their aggregates, one per aggregate root, in their own phases.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -146,6 +147,27 @@ class FileStorage(Protocol):
         bandwidth and memory.
         """
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentOcrResult:
+    text: str
+    confidence: float  # 0-1
+
+
+@runtime_checkable
+class DocumentOcrPort(Protocol):
+    """Server-side OCR of a document image.
+
+    A single, heavier-than-browser OCR model shared by every "read a scanned
+    document" flow — customer KYC (Aadhaar/PAN), and driver/vehicle compliance
+    (driving licence, RC). The port returns raw recognised text + a mean
+    confidence; the per-document-type *field* parsing lives in the domain layer
+    (``domain/customer/kyc_document_parser``,
+    ``domain/delivery/compliance_document_parser``), not here.
+    """
+
+    async def recognize(self, image_bytes: bytes) -> DocumentOcrResult: ...
 
 
 @runtime_checkable

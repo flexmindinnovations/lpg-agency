@@ -31,6 +31,7 @@ from lpg.api.v1.routers import (
     dashboard,
     delivery,
     dev_tools,
+    documents,
     employee,
     health,
     inventory,
@@ -304,6 +305,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(employee.router, prefix=settings.api_v1_prefix)
     app.include_router(cylinder_ledger.router, prefix=settings.api_v1_prefix)
     app.include_router(delivery.router, prefix=settings.api_v1_prefix)
+    app.include_router(documents.router, prefix=settings.api_v1_prefix)
     app.include_router(notifications.router, prefix=settings.api_v1_prefix)
     app.include_router(inventory.router, prefix=settings.api_v1_prefix)
     app.include_router(order.router, prefix=settings.api_v1_prefix)

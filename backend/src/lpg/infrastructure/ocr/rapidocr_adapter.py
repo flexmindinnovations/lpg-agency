@@ -36,7 +36,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from lpg.application.customer.ports import DocumentOcrResult
+from lpg.application.common.ports import DocumentOcrResult
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
