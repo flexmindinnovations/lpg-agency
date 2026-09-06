@@ -24,10 +24,9 @@
   }
 
   <div class="filters-row">
-    <div class="filters-row__field">
-      <label for="filter_branch">Branch</label>
+    <lpg-form-field class="filters-row__field" label="Branch" for="filter_branch">
       <p-select
-        id="filter_branch"
+        inputId="filter_branch"
         [options]="branches()"
         optionLabel="name"
         optionValue="id"
@@ -35,12 +34,12 @@
         [showClear]="true"
         [ngModel]="filterBranchId()"
         (ngModelChange)="onFilterBranchChange($event)"
+        [fluid]="true"
       />
-    </div>
-    <div class="filters-row__field">
-      <label for="filter_date">Date</label>
+    </lpg-form-field>
+    <lpg-form-field class="filters-row__field" label="Date" for="filter_date">
       <p-datepicker
-        id="filter_date"
+        inputId="filter_date"
         iconDisplay="input"
         [showIcon]="true"
         [showOnFocus]="false"
@@ -50,8 +49,9 @@
         appendTo="body"
         [ngModel]="filterDate()"
         (ngModelChange)="onFilterDateChange($event)"
+        [fluid]="true"
       />
-    </div>
+    </lpg-form-field>
   </div>
 
   <div class="dispatch-layout">
@@ -128,27 +128,21 @@
   (onHide)="planTrigger()?.nativeElement?.focus()"
 >
   <form [formGroup]="planForm" (ngSubmit)="onSubmitPlan()" class="dialog-form">
-    <div class="form-group">
-      <label for="plan_branch">Branch</label>
+    <lpg-form-field label="Branch" for="plan_branch" [control]="planForm.controls.branch_id" [messages]="fieldMessages.branch_id">
       <p-select
-        id="plan_branch"
+        inputId="plan_branch"
         formControlName="branch_id"
         [options]="branches()"
         optionLabel="name"
         optionValue="id"
-        placeholder="Select a branch"
         [fluid]="true"
         [appendTo]="'body'"
       />
-      @if (planForm.get('branch_id')?.invalid && planForm.get('branch_id')?.touched) {
-        <small class="field-error">Branch is required.</small>
-      }
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="date">Date</label>
+    <lpg-form-field label="Date" for="date" [control]="planForm.controls.date" [messages]="fieldMessages.date">
       <p-datepicker
-        id="date"
+        inputId="date"
         formControlName="date"
         iconDisplay="input"
         [showIcon]="true"
@@ -157,70 +151,58 @@
         appendTo="body"
         [fluid]="true"
       />
-      @if (planForm.get('date')?.invalid && planForm.get('date')?.touched) {
-        <small class="field-error">Date is required.</small>
-      }
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="driver_id">Driver</label>
+    <lpg-form-field label="Driver" for="driver_id" [control]="planForm.controls.driver_id" [messages]="fieldMessages.driver_id">
       <p-select
-        id="driver_id"
+        inputId="driver_id"
         formControlName="driver_id"
         [options]="driverOptions()"
         optionLabel="label"
         optionValue="id"
-        placeholder="Select a driver"
         [fluid]="true"
         [appendTo]="'body'"
       />
-      @if (planForm.get('driver_id')?.invalid && planForm.get('driver_id')?.touched) {
-        <small class="field-error">Driver is required.</small>
-      }
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="vehicle_id">Vehicle</label>
+    <lpg-form-field label="Vehicle" for="vehicle_id" [control]="planForm.controls.vehicle_id" [messages]="fieldMessages.vehicle_id">
       <p-select
-        id="vehicle_id"
+        inputId="vehicle_id"
         formControlName="vehicle_id"
         [options]="vehicleOptions()"
         optionLabel="label"
         optionValue="id"
-        placeholder="Select a vehicle"
         [fluid]="true"
         [appendTo]="'body'"
       />
-      @if (planForm.get('vehicle_id')?.invalid && planForm.get('vehicle_id')?.touched) {
-        <small class="field-error">Vehicle is required.</small>
-      }
-      @if (selectedVehicle(); as v) {
-        <div class="vehicle-summary">
-          <div class="detail-grid">
-            <div class="detail-field">
-              <span class="detail-field__label">Name</span>
-              <span>{{ v.make }} {{ v.model }}</span>
-            </div>
-            <div class="detail-field">
-              <span class="detail-field__label">Number</span>
-              <span>{{ v.registration_number }}</span>
-            </div>
-            <div class="detail-field">
-              <span class="detail-field__label">Capacity</span>
-              <span>{{ v.capacity_units }} cylinders</span>
-            </div>
-            <div class="detail-field">
-              <span class="detail-field__label">Ownership</span>
-              <span>{{ v.ownership_type | titlecase }}</span>
-            </div>
-            <div class="detail-field">
-              <span class="detail-field__label">Status</span>
-              <span>{{ v.status | titlecase }}</span>
-            </div>
+    </lpg-form-field>
+
+    @if (selectedVehicle(); as v) {
+      <div class="vehicle-summary">
+        <div class="detail-grid">
+          <div class="detail-field">
+            <span class="detail-field__label">Name</span>
+            <span>{{ v.make }} {{ v.model }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Number</span>
+            <span>{{ v.registration_number }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Capacity</span>
+            <span>{{ v.capacity_units }} cylinders</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Ownership</span>
+            <span>{{ v.ownership_type | titlecase }}</span>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field__label">Status</span>
+            <span>{{ v.status | titlecase }}</span>
           </div>
         </div>
-      }
-    </div>
+      </div>
+    }
 
     <div class="modal-actions">
       <button
@@ -336,19 +318,17 @@
         <div class="load-form">
           <h3 class="section-title">Load Vehicle</h3>
           <form [formGroup]="loadForm" (ngSubmit)="onSubmitLoad()" class="dialog-form">
-            <div class="form-group">
-              <label for="load_warehouse">Warehouse</label>
+            <lpg-form-field label="Warehouse" for="load_warehouse" [control]="loadForm.controls.warehouse_id" [messages]="fieldMessages.warehouse_id">
               <p-select
-                id="load_warehouse"
+                inputId="load_warehouse"
                 formControlName="warehouse_id"
                 [options]="warehouses()"
                 optionLabel="name"
                 optionValue="id"
-                placeholder="Select a warehouse"
                 [fluid]="true"
                 [appendTo]="'body'"
               />
-            </div>
+            </lpg-form-field>
 
             <span class="load-form__section-label">Cylinder Lines</span>
             <div formArrayName="lines" class="load-lines">
@@ -395,8 +375,7 @@
         <div class="load-form">
           <h3 class="section-title">Declare Cash Handover</h3>
           <form [formGroup]="cashHandoverForm" (ngSubmit)="onSubmitCashHandover()" class="dialog-form">
-            <div class="form-group">
-              <label for="cash_handover_amount">Cash Amount Handed Over</label>
+            <lpg-form-field label="Cash amount handed over" for="cash_handover_amount" [control]="cashHandoverForm.controls.actual_amount" [messages]="fieldMessages.actual_amount">
               <p-inputnumber
                 inputId="cash_handover_amount"
                 formControlName="actual_amount"
@@ -406,7 +385,7 @@
                 [min]="0"
                 [fluid]="true"
               />
-            </div>
+            </lpg-form-field>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="showCashHandoverForm.set(false)">
@@ -449,22 +428,23 @@
       @if (showAddStopForm()) {
         <div class="load-form">
           <form [formGroup]="addStopForm" (ngSubmit)="onSubmitAddStop()" class="dialog-form">
-            <div class="form-group">
-              <label for="add_stop_order">Order</label>
+            <lpg-form-field
+              label="Order"
+              for="add_stop_order"
+              [control]="addStopForm.controls.order_id"
+              [messages]="fieldMessages.order_id"
+              [hint]="unassignedOrderOptions().length === 0 ? 'No unassigned orders are available right now.' : ''"
+            >
               <p-select
-                id="add_stop_order"
+                inputId="add_stop_order"
                 formControlName="order_id"
                 [options]="unassignedOrderOptions()"
                 optionLabel="label"
                 optionValue="id"
-                placeholder="Select an order"
                 [fluid]="true"
                 [appendTo]="'body'"
               />
-              @if (unassignedOrderOptions().length === 0) {
-                <small class="field-error">No unassigned orders are available right now.</small>
-              }
-            </div>
+            </lpg-form-field>
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="showAddStopForm.set(false)">
                 Cancel
@@ -524,22 +504,23 @@
       <p class="assign-order-summary">
         Order <strong [pTooltip]="order.id" tooltipPosition="top">{{ order.order_number ?? order.id }}</strong> — {{ order.delivery_address.address_line }}
       </p>
-      <div class="form-group">
-        <label for="assign_route">Target Route</label>
+      <lpg-form-field
+        label="Target route"
+        for="assign_route"
+        [control]="assignOrderForm.controls.route_id"
+        [messages]="fieldMessages.route_id"
+        [hint]="assignableRoutes().length === 0 ? 'No planned or loaded routes are available. Plan a route first.' : ''"
+      >
         <p-select
-          id="assign_route"
+          inputId="assign_route"
           formControlName="route_id"
           [options]="assignableRouteOptions()"
           optionLabel="label"
           optionValue="id"
-          placeholder="Select a route"
           [fluid]="true"
           [appendTo]="'body'"
         />
-        @if (assignableRoutes().length === 0) {
-          <small class="field-error">No planned or loaded routes are available. Plan a route first.</small>
-        }
-      </div>
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showAssignOrderDrawer.set(false)">
           Cancel

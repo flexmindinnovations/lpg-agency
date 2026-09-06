@@ -195,55 +195,48 @@
   </ng-template>
 
   <form [formGroup]="raiseForm" (ngSubmit)="submitRaise()" class="dialog-form">
-    <div class="form-group">
-      <label for="customer_id">Customer ID *</label>
-      <input pInputText id="customer_id" formControlName="customer_id" placeholder="e.g. CUST-123" />
-    </div>
+    <lpg-form-field label="Customer ID" for="customer_id" [control]="raiseForm.controls.customer_id" [messages]="fieldMessages.customer_id">
+      <input pInputText id="customer_id" formControlName="customer_id" placeholder="e.g. CUST-123" [fluid]="true" />
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="order_id">Order ID (Optional)</label>
-      <input pInputText id="order_id" formControlName="order_id" placeholder="e.g. ORD-456" />
-    </div>
+    <lpg-form-field label="Order ID" for="order_id" [control]="raiseForm.controls.order_id" hint="Optional.">
+      <input pInputText id="order_id" formControlName="order_id" placeholder="e.g. ORD-456" [fluid]="true" />
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="category">Category *</label>
-      <p-select 
-        id="category" 
-        formControlName="category" 
-        [options]="categoryOptions" 
-        optionLabel="label" 
-        optionValue="value" 
-        placeholder="Select a category" 
+    <lpg-form-field label="Category" for="category" [control]="raiseForm.controls.category" [messages]="fieldMessages.category">
+      <p-select
+        inputId="category"
+        formControlName="category"
+        [options]="categoryOptions"
+        optionLabel="label"
+        optionValue="value"
         appendTo="body"
-        styleClass="w-full"
+        [fluid]="true"
       />
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="priority">Priority *</label>
-      <p-select 
-        id="priority" 
-        formControlName="priority" 
-        [options]="priorityOptions" 
-        optionLabel="label" 
-        optionValue="value" 
-        placeholder="Select a priority" 
+    <lpg-form-field label="Priority" for="priority" [control]="raiseForm.controls.priority" [messages]="fieldMessages.priority">
+      <p-select
+        inputId="priority"
+        formControlName="priority"
+        [options]="priorityOptions"
+        optionLabel="label"
+        optionValue="value"
         appendTo="body"
-        styleClass="w-full"
+        [fluid]="true"
       />
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="description">Description *</label>
-      <textarea 
-        pTextarea 
-        id="description" 
-        formControlName="description" 
-        rows="4" 
+    <lpg-form-field label="Description" for="description" [control]="raiseForm.controls.description" [messages]="fieldMessages.description">
+      <textarea
+        pTextarea
+        id="description"
+        formControlName="description"
+        rows="4"
         placeholder="Enter complaint details..."
-        class="w-full"
+        [fluid]="true"
       ></textarea>
-    </div>
+    </lpg-form-field>
   </form>
 
   <ng-template #footer>
@@ -285,10 +278,9 @@
   </ng-template>
 
   <form [formGroup]="assignForm" (ngSubmit)="submitAssign()" class="dialog-form">
-    <div class="form-group">
-      <label for="assigned_to">Assign To *</label>
-      <input pInputText id="assigned_to" formControlName="assigned_to" placeholder="e.g. Manager ID or Name" />
-    </div>
+    <lpg-form-field label="Assign to" for="assigned_to" [control]="assignForm.controls.assigned_to" [messages]="fieldMessages.assigned_to">
+      <input pInputText id="assigned_to" formControlName="assigned_to" placeholder="e.g. Manager ID or Name" [fluid]="true" />
+    </lpg-form-field>
   </form>
 
   <ng-template #footer>
@@ -314,31 +306,28 @@
   </ng-template>
 
   <form [formGroup]="resolveForm" (ngSubmit)="submitResolve()" class="dialog-form">
-    <div class="form-group">
-      <label for="outcome">Outcome *</label>
-      <p-select 
-        id="outcome" 
-        formControlName="outcome" 
-        [options]="outcomeOptions" 
-        optionLabel="label" 
-        optionValue="value" 
-        placeholder="Select outcome" 
+    <lpg-form-field label="Outcome" for="outcome" [control]="resolveForm.controls.outcome" [messages]="fieldMessages.outcome">
+      <p-select
+        inputId="outcome"
+        formControlName="outcome"
+        [options]="outcomeOptions"
+        optionLabel="label"
+        optionValue="value"
         appendTo="body"
-        styleClass="w-full"
+        [fluid]="true"
       />
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="resolution_notes">Resolution Notes *</label>
-      <textarea 
-        pTextarea 
-        id="resolution_notes" 
-        formControlName="resolution_notes" 
-        rows="4" 
+    <lpg-form-field label="Resolution notes" for="resolution_notes" [control]="resolveForm.controls.resolution_notes" [messages]="fieldMessages.resolution_notes">
+      <textarea
+        pTextarea
+        id="resolution_notes"
+        formControlName="resolution_notes"
+        rows="4"
         placeholder="Enter resolution details..."
-        class="w-full"
+        [fluid]="true"
       ></textarea>
-    </div>
+    </lpg-form-field>
   </form>
 
   <ng-template #footer>

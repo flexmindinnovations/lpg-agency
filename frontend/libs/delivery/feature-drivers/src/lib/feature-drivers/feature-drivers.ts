@@ -16,6 +16,7 @@ import { KeyboardShortcutsService } from '@lpg/shared/util';
 import {
   DataGridComponent,
   type DataGridColumn,
+  FormFieldComponent,
   HasPermissionDirective,
   StatusChipCell,
   type ChipSeverity,
@@ -85,6 +86,7 @@ function formatDateForApi(value: unknown): string | undefined {
     Tag,
     DatePicker,
     DataGridComponent,
+    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -206,6 +208,14 @@ export class FeatureDrivers implements OnInit {
     license_expiry_date: this.fb.control<Date | null>(null),
     status: ['active', [Validators.required]],
   });
+
+  /** Validator-key → message, shared by the register and edit forms. */
+  protected readonly fieldMessages = {
+    branch_id: { required: 'Select a branch.' },
+    employee_id: { required: 'Select an employee.' },
+    license_number: { required: 'License number is required.' },
+    status: { required: 'Select a duty status.' },
+  };
 
   protected get registerModalVisible(): boolean {
     return this.showRegisterModal();

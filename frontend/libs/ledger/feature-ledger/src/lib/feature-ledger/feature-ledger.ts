@@ -17,6 +17,7 @@ import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 
 import { KeyboardShortcutsService } from '@lpg/shared/util';
+import { FormFieldComponent } from '@lpg/shared/ui';
 
 import {
   CylinderLedgerService,
@@ -39,7 +40,7 @@ interface EnrichedBalance {
 @Component({
   selector: 'lpg-feature-ledger',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -47,6 +48,7 @@ interface EnrichedBalance {
     Select,
     InputText,
     Drawer,
+    FormFieldComponent,
   ],
   templateUrl: './feature-ledger.html',
   styleUrl: './feature-ledger.css',
@@ -75,6 +77,12 @@ export class FeatureLedger implements OnInit {
     delta: this.fb.control<number>(0, [Validators.required]),
     reason: this.fb.control<string>('', [Validators.required]),
   });
+
+  protected readonly fieldMessages = {
+    cylinder_type_id: { required: 'Select a cylinder type.' },
+    delta: { required: 'Enter an adjustment quantity.' },
+    reason: { required: 'A reason is required.' },
+  };
 
   enrichedBalances = computed(() => {
     const l = this.ledger();

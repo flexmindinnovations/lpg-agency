@@ -142,7 +142,12 @@ export class DesignSystemPage {
   protected readonly loadingDemo = signal(true);
 
   protected readonly nameCtrl = new FormControl('', { validators: [Validators.required] });
-  protected readonly emailCtrl = new FormControl('not-an-email', { validators: [Validators.email] });
+  // Pre-touched so the showcase actually renders lpg-form-field's error state.
+  protected readonly emailCtrl = (() => {
+    const c = new FormControl('not-an-email', { validators: [Validators.email] });
+    c.markAsTouched();
+    return c;
+  })();
   protected readonly roleCtrl = new FormControl<string | null>(null);
   protected readonly dateCtrl = new FormControl<Date | null>(null);
   protected readonly toggleCtrl = new FormControl(true);

@@ -1,6 +1,6 @@
 
 import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective, shortId } from '@lpg/shared/ui';
+import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -121,6 +121,7 @@ function toDateOnlyString(date: Date): string {
     Tag,
     DatePicker,
     Tooltip,
+    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -264,6 +265,17 @@ export class FeatureDispatch implements OnInit {
     vehicle_id: ['', [Validators.required]],
     date: [new Date(), [Validators.required]],
   });
+
+  protected readonly fieldMessages = {
+    branch_id: { required: 'Branch is required.' },
+    driver_id: { required: 'Driver is required.' },
+    vehicle_id: { required: 'Vehicle is required.' },
+    date: { required: 'Date is required.' },
+    warehouse_id: { required: 'Select a warehouse.' },
+    actual_amount: { required: 'Enter the amount handed over.', min: 'Cannot be negative.' },
+    route_id: { required: 'Select a target route.' },
+    order_id: { required: 'Select an order.' },
+  };
 
   // ---------------------------------------------------------------------------
   // Route Detail drawer (+ inline Load Vehicle sub-form)

@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
-import { FloatLabel } from 'primeng/floatlabel';
 import { InputText } from 'primeng/inputtext';
 import { AuthService } from '@lpg/shared/data-access';
+import { FormFieldComponent } from '@lpg/shared/ui';
 import { AuthShell } from '../auth-shell/auth-shell';
 
 /**
@@ -17,7 +17,7 @@ import { AuthShell } from '../auth-shell/auth-shell';
 @Component({
   selector: 'lpg-forgot-password-page',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, FloatLabel, InputText, AuthShell],
+  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, InputText, FormFieldComponent, AuthShell],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-auth-shell>
@@ -38,23 +38,22 @@ import { AuthShell } from '../auth-shell/auth-shell';
           </div>
 
           <div class="login-card__body">
-            <div class="form-group">
-              <p-floatlabel variant="on" class="login-card__float-label">
-                <input
-                  pInputText
-                  id="forgot-email"
-                  type="email"
-                  formControlName="email"
-                  autocomplete="username"
-                  class="login-card__input"
-                  [attr.aria-invalid]="emailInvalid()"
-                />
-                <label for="forgot-email">Email</label>
-              </p-floatlabel>
-              @if (emailInvalid()) {
-                <span class="field-error">Enter a valid email address.</span>
-              }
-            </div>
+            <lpg-form-field
+              label="Email"
+              for="forgot-email"
+              [control]="form.controls.email"
+              [messages]="{ required: 'Enter a valid email address.', email: 'Enter a valid email address.' }"
+            >
+              <input
+                pInputText
+                id="forgot-email"
+                type="email"
+                formControlName="email"
+                autocomplete="username"
+                class="login-card__input"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
 
           <div class="login-card__footer">
@@ -95,11 +94,6 @@ import { AuthShell } from '../auth-shell/auth-shell';
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-      }
-
-      .login-card__float-label {
-        display: block;
-        inline-size: 100%;
       }
 
       .login-card__input {
@@ -148,11 +142,6 @@ export class ForgotPasswordPage {
   protected readonly form = this.formBuilder.group({
     email: ['', [Validators.required, Validators.email]],
   });
-
-  protected emailInvalid(): boolean {
-    const control = this.form.controls.email;
-    return control.invalid && (control.dirty || control.touched);
-  }
 
   protected submit(): void {
     if (this.submitting()) {

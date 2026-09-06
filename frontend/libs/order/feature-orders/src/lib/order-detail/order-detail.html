@@ -176,10 +176,9 @@
         incur a cancellation charge.
       </p-message>
       }
-      <div class="form-group">
-        <label for="cancel_reason">Reason</label>
-        <textarea pTextarea id="cancel_reason" formControlName="reason" rows="3"></textarea>
-      </div>
+      <lpg-form-field label="Reason" for="cancel_reason" [control]="cancelForm.controls.reason" [messages]="fieldMessages.reason">
+        <textarea pTextarea id="cancel_reason" formControlName="reason" rows="3" [fluid]="true"></textarea>
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showCancelDialog.set(false)">
           Close
@@ -201,30 +200,26 @@
     (onHide)="assignTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="assignForm" (ngSubmit)="onSubmitAssign()" class="dialog-form">
-      <div class="form-group">
-        <label for="assign_driver">Driver</label>
+      <lpg-form-field label="Driver" for="assign_driver" [control]="assignForm.controls.driver_id" [messages]="fieldMessages.driver_id">
         <p-select
-          id="assign_driver"
+          inputId="assign_driver"
           formControlName="driver_id"
           [options]="driverOptions()"
           optionLabel="display_label"
           optionValue="id"
-          placeholder="Select a driver"
           [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="assign_vehicle">Vehicle</label>
+      </lpg-form-field>
+      <lpg-form-field label="Vehicle" for="assign_vehicle" [control]="assignForm.controls.vehicle_id" [messages]="fieldMessages.vehicle_id">
         <p-select
-          id="assign_vehicle"
+          inputId="assign_vehicle"
           formControlName="vehicle_id"
           [options]="vehicles()"
           optionLabel="registration_number"
           optionValue="id"
-          placeholder="Select a vehicle"
           [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showAssignDrawer.set(false)">
           Close
@@ -244,28 +239,26 @@
     (onHide)="failedDeliveryTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="failedDeliveryForm" (ngSubmit)="onSubmitFailedDelivery()" class="dialog-form">
-      <div class="form-group">
-        <label for="failed_reason">Reason</label>
+      <lpg-form-field label="Reason" for="failed_reason" [control]="failedDeliveryForm.controls.reason_code" [messages]="fieldMessages.reason_code">
         <p-select
-          id="failed_reason"
+          inputId="failed_reason"
           formControlName="reason_code"
           [options]="failedDeliveryReasons"
           optionLabel="label"
           optionValue="value"
           [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="failed_resolution">Resolution</label>
+      </lpg-form-field>
+      <lpg-form-field label="Resolution" for="failed_resolution" [control]="failedDeliveryForm.controls.resolution_action" [messages]="fieldMessages.resolution_action">
         <p-select
-          id="failed_resolution"
+          inputId="failed_resolution"
           formControlName="resolution_action"
           [options]="resolutionActions"
           optionLabel="label"
           optionValue="value"
           [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showFailedDeliveryDrawer.set(false)">
           Close
@@ -287,10 +280,9 @@
     (onHide)="deliverTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="deliverForm" (ngSubmit)="onSubmitDeliver()" class="dialog-form">
-      <div class="form-group">
-        <label for="deliver_otp">Delivery OTP</label>
-        <input pInputText id="deliver_otp" formControlName="otp_code" autocomplete="one-time-code" />
-      </div>
+      <lpg-form-field label="Delivery OTP" for="deliver_otp" [control]="deliverForm.controls.otp_code" [messages]="fieldMessages.otp_code">
+        <input pInputText id="deliver_otp" formControlName="otp_code" autocomplete="one-time-code" [fluid]="true" />
+      </lpg-form-field>
 
       <label class="deliver__section-label">Quantities</label>
       <div formArrayName="lines" class="deliver-lines">
@@ -317,19 +309,17 @@
         }
       </div>
 
-      <div class="form-group">
-        <label for="deliver_payment_method">Payment Method</label>
+      <lpg-form-field label="Payment method" for="deliver_payment_method" [control]="deliverForm.controls.payment_method" [messages]="fieldMessages.payment_method">
         <p-select
-          id="deliver_payment_method"
+          inputId="deliver_payment_method"
           formControlName="payment_method"
           [options]="paymentMethods"
           optionLabel="label"
           optionValue="value"
           [fluid]="true"
         ></p-select>
-      </div>
-      <div class="form-group">
-        <label for="deliver_amount_collected">Amount Collected</label>
+      </lpg-form-field>
+      <lpg-form-field label="Amount collected" for="deliver_amount_collected" [control]="deliverForm.controls.amount_collected" [messages]="fieldMessages.amount_collected">
         <p-inputgroup>
           <p-inputgroup-addon>₹</p-inputgroup-addon>
           <p-inputnumber
@@ -342,12 +332,12 @@
             [fluid]="true"
           />
         </p-inputgroup>
-      </div>
+      </lpg-form-field>
 
       <label class="deliver__section-label">Proof of Delivery</label>
 
       <div class="form-group">
-        <span>Signature</span>
+        <label>Signature</label>
         <canvas
           #signatureCanvas
           class="signature-pad"
@@ -375,8 +365,7 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="deliver_photo">Delivery Photo</label>
+      <lpg-form-field label="Delivery photo" for="deliver_photo">
         <input
           id="deliver_photo"
           type="file"
@@ -389,7 +378,7 @@
         } @if (photoBlobRef()) {
         <span class="pod-status pod-status--ok"><i class="pi pi-check"></i> Uploaded</span>
         }
-      </div>
+      </lpg-form-field>
 
       <div class="form-group">
         <button pButton type="button" text (click)="captureLocation()">

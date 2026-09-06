@@ -388,10 +388,14 @@
   gap: var(--spacing-xs);
 }
 
+/* Matches lpg-form-field's .lpg-field__label — the KYC upload block is the
+   last consumer of this local .form-group (it's a dropzone, not a control). */
 .form-group label,
 .form-group-label {
-  font-weight: 500;
-  font-size: var(--typography-body-small-font-size);
+  font-weight: var(--typography-label-font-weight);
+  font-size: var(--typography-secondary-font-size);
+  color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .required {

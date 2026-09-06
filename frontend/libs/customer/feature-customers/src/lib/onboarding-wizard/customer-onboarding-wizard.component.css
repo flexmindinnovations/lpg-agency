@@ -61,36 +61,18 @@
   flex-wrap: wrap;
 }
 
+.form-row > lpg-form-field,
 .form-row > .form-group {
   flex: 1;
   min-width: 250px;
 }
 
-.form-group {
+/* Only the is_commercial checkbox row still uses .form-group here. */
+.form-group.checkbox-group {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.form-group label {
-  font-weight: var(--typography-label-font-weight, 500);
-  font-size: var(--typography-body-small-font-size);
-  color: var(--color-text-primary);
-}
-
-.required {
-  color: var(--color-status-danger);
-}
-
-.checkbox-group {
   flex-direction: row;
   align-items: center;
   gap: var(--spacing-sm);
-}
-
-.field-error {
-  font-size: var(--typography-caption-font-size);
-  color: var(--color-status-danger);
 }
 
 .step-actions {

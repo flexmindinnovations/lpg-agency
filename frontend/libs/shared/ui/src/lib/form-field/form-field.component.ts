@@ -2,34 +2,36 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, Validators } from '@angular/forms';
 import { of, startWith, switchMap } from 'rxjs';
-import { FloatLabel } from 'primeng/floatlabel';
 
 /**
- * The standard form field wrapper (doc §19) — a floating label, the
- * projected control, and hint / error text below it.
+ * The standard form field wrapper (doc §19) — a 13px medium label above the
+ * projected control, then hint / error text below it. One wrapper for every
+ * labelled control in the app: data-entry forms and filter rows alike.
  *
- * Pass the bound `AbstractControl` via `[control]` so the field knows when
- * to surface an error (`invalid && (touched || dirty)`); `[messages]` maps
- * validator keys to copy. The error carries an icon as well as colour —
- * status is never communicated by colour alone (doc §28).
+ * Pass the bound `AbstractControl` via `[control]` so the field knows when to
+ * surface an error (`invalid && (touched || dirty)`) and whether to show the
+ * required asterisk; `[messages]` maps validator keys to copy. The error
+ * carries an icon as well as colour — status is never communicated by colour
+ * alone (doc §28). A filter row can omit `[control]` entirely: it then renders
+ * just the label + control.
  *
- * The projected control keeps its own `id` / `formControlName`; give the
- * field the matching `for` so the floating label and the input are
- * associated for the float behaviour and for assistive tech.
+ * The projected control keeps its own `id` / `formControlName`; give the field
+ * the matching `for` so the label and the input are associated for assistive
+ * tech. Give the control `[fluid]="true"` (or let the wrapper's fallback
+ * stretch it to full width).
  */
 @Component({
   selector: 'lpg-form-field',
   standalone: true,
-  imports: [FloatLabel],
+  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="lpg-field" [class.lpg-field--invalid]="showError()">
-      <p-floatlabel variant="on">
-        <ng-content />
-        <label [attr.for]="for()">
-          {{ label() }}@if (isRequired()) {<span class="lpg-field__req" aria-hidden="true">&nbsp;*</span>}
-        </label>
-      </p-floatlabel>
+      <label class="lpg-field__label" [attr.for]="for()">
+        {{ label() }}@if (isRequired()) {<span class="lpg-field__req" aria-hidden="true">*</span>}
+      </label>
+
+      <ng-content />
 
       @if (showError()) {
         <span class="lpg-field__error" role="alert">
@@ -50,22 +52,30 @@ import { FloatLabel } from 'primeng/floatlabel';
       .lpg-field {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-xs);
+        gap: 6px;
       }
 
-      /* p-floatlabel renders its own wrapper; make the control fill it. */
-      .lpg-field ::ng-deep .p-floatlabel {
-        inline-size: 100%;
-      }
-
-      .lpg-field label {
+      .lpg-field__label {
         font-size: var(--typography-secondary-font-size);
         font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
+        color: var(--color-text-primary);
+        line-height: 1.3;
       }
 
       .lpg-field__req {
         color: var(--color-status-danger);
+        margin-inline-start: 2px;
+      }
+
+      /* Stretch the projected control to the field width unless the call site
+         already set a width (e.g. PrimeNG's [fluid]). */
+      .lpg-field ::ng-deep .p-inputtext,
+      .lpg-field ::ng-deep .p-select,
+      .lpg-field ::ng-deep .p-datepicker,
+      .lpg-field ::ng-deep .p-inputnumber,
+      .lpg-field ::ng-deep .p-autocomplete,
+      .lpg-field ::ng-deep textarea {
+        width: 100%;
       }
 
       .lpg-field__hint {
@@ -93,7 +103,8 @@ import { FloatLabel } from 'primeng/floatlabel';
       .lpg-field--invalid ::ng-deep .p-inputtext,
       .lpg-field--invalid ::ng-deep .p-select,
       .lpg-field--invalid ::ng-deep .p-inputnumber-input,
-      .lpg-field--invalid ::ng-deep .p-autocomplete-input {
+      .lpg-field--invalid ::ng-deep .p-autocomplete-input,
+      .lpg-field--invalid ::ng-deep textarea {
         border-color: var(--color-status-danger);
       }
     `,
@@ -101,7 +112,7 @@ import { FloatLabel } from 'primeng/floatlabel';
 })
 export class FormFieldComponent {
   readonly label = input.required<string>();
-  /** The `id` of the projected control — links the floating label to it. */
+  /** The `id` of the projected control — links the label to it. */
   readonly for = input<string>('');
   readonly hint = input<string>('');
   readonly control = input<AbstractControl | null>(null);

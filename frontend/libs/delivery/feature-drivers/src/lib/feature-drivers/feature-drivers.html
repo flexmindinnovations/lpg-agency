@@ -66,55 +66,45 @@
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form id="registerDriverForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
-      <div class="form-group">
-        <label for="branch_id">Branch</label>
+      <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
         <p-select
-          id="branch_id"
+          inputId="branch_id"
           formControlName="branch_id"
           [options]="branches()"
           optionLabel="name"
           optionValue="id"
-          placeholder="Select Branch"
+          appendTo="body"
+          [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="employee_id">Employee</label>
+      <lpg-form-field label="Employee" for="employee_id" [control]="registerForm.controls.employee_id" [messages]="fieldMessages.employee_id">
         <p-select
           [options]="employees()"
-          id="employee_id"
+          inputId="employee_id"
           formControlName="employee_id"
           optionLabel="_displayName"
           optionValue="id"
-          placeholder="Select an employee"
-          styleClass="w-full"
           appendTo="body"
+          [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="license_number">License Number</label>
-        <input
-          pInputText
-          id="license_number"
-          formControlName="license_number"
-          placeholder="e.g. DL-12345"
-        />
-      </div>
+      <lpg-form-field label="License number" for="license_number" [control]="registerForm.controls.license_number" [messages]="fieldMessages.license_number">
+        <input pInputText id="license_number" formControlName="license_number" placeholder="e.g. DL-12345" [fluid]="true" />
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="license_expiry_date">License Expiry Date (Optional)</label>
+      <lpg-form-field label="License expiry date" for="license_expiry_date" [control]="registerForm.controls.license_expiry_date" hint="Optional.">
         <p-datepicker
-          id="license_expiry_date"
+          inputId="license_expiry_date"
           formControlName="license_expiry_date"
           [showIcon]="true"
           iconDisplay="input"
           dateFormat="dd-mm-yy"
-          placeholder="dd-mm-yyyy"
           appendTo="body"
           [fluid]="true"
         ></p-datepicker>
-      </div>
+      </lpg-form-field>
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
@@ -171,62 +161,56 @@
         </div>
       } @else {
         <form id="editDriverForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
-          <div class="form-group">
-            <label for="edit_employee_id">Employee</label>
+          <lpg-form-field label="Employee" for="edit_employee_id" [control]="editForm.controls.employee_id" [messages]="fieldMessages.employee_id">
             <p-select
-              id="edit_employee_id"
+              inputId="edit_employee_id"
               formControlName="employee_id"
               [options]="allEmployeesDisplay()"
               optionLabel="_displayName"
               optionValue="id"
-              placeholder="Select an employee"
-              styleClass="w-full"
               appendTo="body"
+              [fluid]="true"
             ></p-select>
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_branch_id">Branch</label>
+          <lpg-form-field label="Branch" for="edit_branch_id" [control]="editForm.controls.branch_id" [messages]="fieldMessages.branch_id">
             <p-select
-              id="edit_branch_id"
+              inputId="edit_branch_id"
               formControlName="branch_id"
               [options]="branches()"
               optionLabel="name"
               optionValue="id"
-              placeholder="Select Branch"
               appendTo="body"
+              [fluid]="true"
             ></p-select>
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_license_number">License Number</label>
-            <input pInputText id="edit_license_number" formControlName="license_number" />
-          </div>
+          <lpg-form-field label="License number" for="edit_license_number" [control]="editForm.controls.license_number" [messages]="fieldMessages.license_number">
+            <input pInputText id="edit_license_number" formControlName="license_number" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_license_expiry_date">License Expiry Date</label>
+          <lpg-form-field label="License expiry date" for="edit_license_expiry_date" [control]="editForm.controls.license_expiry_date">
             <p-datepicker
-              id="edit_license_expiry_date"
+              inputId="edit_license_expiry_date"
               formControlName="license_expiry_date"
               [showIcon]="true"
               iconDisplay="input"
               dateFormat="dd-mm-yy"
-              placeholder="dd-mm-yyyy"
               appendTo="body"
               [fluid]="true"
             ></p-datepicker>
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_status">Duty Status</label>
+          <lpg-form-field label="Duty status" for="edit_status" [control]="editForm.controls.status" [messages]="fieldMessages.status">
             <p-select
-              id="edit_status"
+              inputId="edit_status"
               formControlName="status"
               [options]="statusOptions"
               optionLabel="label"
               optionValue="value"
+              [fluid]="true"
             ></p-select>
-          </div>
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>

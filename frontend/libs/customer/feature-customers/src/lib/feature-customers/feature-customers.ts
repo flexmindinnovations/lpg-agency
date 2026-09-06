@@ -39,6 +39,7 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  FormFieldComponent,
   HasPermissionDirective,
   PageHeaderComponent,
   StatusChipCell,
@@ -94,6 +95,7 @@ import { TitleCasePipe } from '@angular/common';
     DataGridComponent,
     RouterLink,
     TitleCasePipe,
+    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -248,6 +250,12 @@ export class FeatureCustomers implements OnInit {
     doc_type: ['aadhaar', [Validators.required]],
     doc_reference: ['', [Validators.required]],
   });
+
+  protected readonly fieldMessages = {
+    address_line: { required: 'An address line is required.' },
+    doc_type: { required: 'Select a document type.' },
+    doc_reference: { required: 'A document reference is required.' },
+  };
 
   // p-dialog/p-drawer's [(visible)] two-way-binds to a plain property, not a signal
   // directly — thin getter/setter bridges keep the rest of the component

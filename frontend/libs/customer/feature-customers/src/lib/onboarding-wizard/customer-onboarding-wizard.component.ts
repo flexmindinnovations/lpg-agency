@@ -14,6 +14,7 @@ import { Dialog } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { FormFieldComponent } from '@lpg/shared/ui';
 import {
   CustomerService,
   AdminBranchService,
@@ -47,6 +48,7 @@ const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
     Dialog,
     ToastModule,
     HeaderTitlePortalDirective,
+    FormFieldComponent,
   ],
   templateUrl: './customer-onboarding-wizard.component.html',
   styleUrl: './customer-onboarding-wizard.component.css',
@@ -139,6 +141,37 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     document_file_ref: [null as string | null],
   });
 
+  /** Validator-key → message for the wizard's step forms. */
+  private static readonly PHONE_MSG =
+    'Enter a valid 10-digit mobile number, or a full number with country code (e.g. +919876543210).';
+  protected readonly fieldMessages = {
+    first_name: { required: 'First name is required.' },
+    last_name: { required: 'Last name is required.' },
+    phone_number: {
+      required: 'A primary phone number is required.',
+      pattern: CustomerOnboardingWizardComponent.PHONE_MSG,
+    },
+    alternate_mobile: { pattern: CustomerOnboardingWizardComponent.PHONE_MSG },
+    branch_id: { required: 'Select an operating branch.' },
+    consumer_category: { required: 'Select a consumer category.' },
+    contact_person: { required: 'Contact person is required for commercial entities.' },
+    date_of_birth: { required: 'Date of birth is required.' },
+    address_type: { required: 'Select an address type.' },
+    line_1: { required: 'Address line 1 is required.' },
+    area: { required: 'Area / locality is required.' },
+    city: { required: 'City is required.' },
+    district: { required: 'District is required.' },
+    state: { required: 'State is required.' },
+    pincode: {
+      required: 'A pincode is required.',
+      pattern: 'Enter a valid 6-digit pincode.',
+    },
+    doc_type: { required: 'Select a document type.' },
+    document_number: { required: 'Document number is required.' },
+    issue_date: { required: 'Issue date is required.' },
+    expiry_date: { required: 'Expiry date is required.' },
+  };
+
   constructor() {
     this.registrationForm.controls.is_commercial.valueChanges.subscribe((isCommercial) => {
       const contactPersonCtrl = this.registrationForm.controls.contact_person;
@@ -193,11 +226,6 @@ export class CustomerOnboardingWizardComponent implements OnInit {
         // No drafts to resume is not an error state worth surfacing.
       },
     });
-  }
-
-  protected isInvalid(form: import('@angular/forms').FormGroup, controlName: string): boolean {
-    const control = form.get(controlName);
-    return control ? control.invalid && control.touched : false;
   }
 
   /** Auto-prefixes a bare 10-digit Indian mobile number with +91 on blur. */

@@ -48,8 +48,7 @@
         <p-popover #filterPopover>
           <ng-template #content>
             <div class="filter-panel">
-              <div class="form-group">
-                <label for="filter-type">Type</label>
+              <lpg-form-field label="Type" for="filter-type">
                 <p-select
                   inputId="filter-type"
                   [options]="customerTypeOptions"
@@ -58,11 +57,10 @@
                   optionValue="value"
                   placeholder="Any type"
                   [showClear]="true"
-                  styleClass="w-full"
+                  [fluid]="true"
                 />
-              </div>
-              <div class="form-group">
-                <label for="filter-kyc">KYC Status</label>
+              </lpg-form-field>
+              <lpg-form-field label="KYC status" for="filter-kyc">
                 <p-select
                   inputId="filter-kyc"
                   [options]="kycStatusFilterOptions"
@@ -71,11 +69,10 @@
                   optionValue="value"
                   placeholder="Any KYC status"
                   [showClear]="true"
-                  styleClass="w-full"
+                  [fluid]="true"
                 />
-              </div>
-              <div class="form-group">
-                <label for="filter-status">Account Status</label>
+              </lpg-form-field>
+              <lpg-form-field label="Account status" for="filter-status">
                 <p-select
                   inputId="filter-status"
                   [options]="accountStatusFilterOptions"
@@ -84,9 +81,9 @@
                   optionValue="value"
                   placeholder="Any account status"
                   [showClear]="true"
-                  styleClass="w-full"
+                  [fluid]="true"
                 />
-              </div>
+              </lpg-form-field>
               <button
                 pButton
                 severity="secondary"
@@ -313,15 +310,9 @@
   (onHide)="addAddressTrigger()?.nativeElement?.focus()"
 >
   <form id="addAddressForm" [formGroup]="addressForm" (ngSubmit)="submitAddAddress()" class="dialog-form" novalidate>
-    <div class="form-group">
-      <label for="addr-line">Address Line</label>
-      <input
-        pInputText
-        id="addr-line"
-        formControlName="address_line"
-        placeholder="Street, Building, Area"
-      />
-    </div>
+    <lpg-form-field label="Address line" for="addr-line" [control]="addressForm.controls.address_line" [messages]="fieldMessages.address_line">
+      <input pInputText id="addr-line" formControlName="address_line" placeholder="Street, Building, Area" [fluid]="true" />
+    </lpg-form-field>
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeAddAddressModal()">
         Cancel
@@ -344,25 +335,19 @@
   (onHide)="submitKycTrigger()?.nativeElement?.focus()"
 >
   <form id="submitKycForm" [formGroup]="kycForm" (ngSubmit)="submitKyc()" class="dialog-form" novalidate>
-    <div class="form-group">
-      <label for="kyc-type">Document Type</label>
+    <lpg-form-field label="Document type" for="kyc-type" [control]="kycForm.controls.doc_type" [messages]="fieldMessages.doc_type">
       <p-select
-        id="kyc-type"
+        inputId="kyc-type"
         formControlName="doc_type"
         [options]="kycDocTypeOptions"
         optionLabel="label"
         optionValue="value"
+        [fluid]="true"
       />
-    </div>
-    <div class="form-group">
-      <label for="kyc-ref">Document Reference No.</label>
-      <input
-        pInputText
-        id="kyc-ref"
-        formControlName="doc_reference"
-        placeholder="Enter reference ID"
-      />
-    </div>
+    </lpg-form-field>
+    <lpg-form-field label="Document reference no." for="kyc-ref" [control]="kycForm.controls.doc_reference" [messages]="fieldMessages.doc_reference">
+      <input pInputText id="kyc-ref" formControlName="doc_reference" placeholder="Enter reference ID" [fluid]="true" />
+    </lpg-form-field>
     @if (isReplacingExistingKycDoc()) {
       <p class="text-sm text-muted">
         A {{ selectedKycDocTypeLabel() }} is already on file — submitting will replace it, not

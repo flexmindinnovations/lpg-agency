@@ -14,6 +14,7 @@ import { forkJoin, type Observable } from 'rxjs';
 import {
   DataGridComponent,
   type DataGridColumn,
+  FormFieldComponent,
   HasPermissionDirective,
   StatusChipCell,
   type ChipSeverity,
@@ -68,6 +69,7 @@ function errorMessageFor(error: unknown): string {
     Select,
     Tag,
     DataGridComponent,
+    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -168,6 +170,17 @@ export class FeatureVehicles implements OnInit {
     ownership_type: ['owned', [Validators.required]],
     capacity_units: [20, [Validators.required, Validators.min(1)]],
   });
+
+  /** Validator-key → message, shared by the register and edit forms. */
+  protected readonly fieldMessages = {
+    branch_id: { required: 'Select a branch.' },
+    registration_number: { required: 'Registration number is required.' },
+    make: { required: 'Make is required.' },
+    model: { required: 'Model is required.' },
+    ownership_type: { required: 'Select an ownership type.' },
+    capacity_units: { required: 'Enter a capacity.', min: 'Capacity must be at least 1.' },
+    status: { required: 'Select a status.' },
+  };
 
   protected get registerModalVisible(): boolean {
     return this.showRegisterModal();

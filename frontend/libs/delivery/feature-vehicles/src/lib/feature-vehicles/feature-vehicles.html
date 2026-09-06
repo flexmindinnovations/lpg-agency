@@ -63,42 +63,32 @@
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form id="registerVehicleForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
-      <div class="form-group">
-        <label for="branch_id">Branch</label>
+      <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
         <p-select
-          id="branch_id"
+          inputId="branch_id"
           formControlName="branch_id"
           [options]="branches()"
           optionLabel="name"
           optionValue="id"
-          placeholder="Select Branch"
+          [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="registration_number">Registration Number</label>
-        <input
-          pInputText
-          id="registration_number"
-          formControlName="registration_number"
-          placeholder="e.g. MH12AB1234"
-        />
-      </div>
+      <lpg-form-field label="Registration number" for="registration_number" [control]="registerForm.controls.registration_number" [messages]="fieldMessages.registration_number">
+        <input pInputText id="registration_number" formControlName="registration_number" placeholder="e.g. MH12AB1234" [fluid]="true" />
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="make">Make</label>
-        <input pInputText id="make" formControlName="make" placeholder="e.g. Tata" />
-      </div>
+      <lpg-form-field label="Make" for="make" [control]="registerForm.controls.make" [messages]="fieldMessages.make">
+        <input pInputText id="make" formControlName="make" placeholder="e.g. Tata" [fluid]="true" />
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="model">Model</label>
-        <input pInputText id="model" formControlName="model" placeholder="e.g. Ace" />
-      </div>
+      <lpg-form-field label="Model" for="model" [control]="registerForm.controls.model" [messages]="fieldMessages.model">
+        <input pInputText id="model" formControlName="model" placeholder="e.g. Ace" [fluid]="true" />
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="ownership_type">Ownership Type</label>
+      <lpg-form-field label="Ownership type" for="ownership_type" [control]="registerForm.controls.ownership_type" [messages]="fieldMessages.ownership_type">
         <p-select
-          id="ownership_type"
+          inputId="ownership_type"
           formControlName="ownership_type"
           [options]="[
             { label: 'Owned', value: 'owned' },
@@ -108,19 +98,13 @@
           ]"
           optionLabel="label"
           optionValue="value"
+          [fluid]="true"
         ></p-select>
-      </div>
+      </lpg-form-field>
 
-      <div class="form-group">
-        <label for="capacity_units">Capacity (Cylinder Units)</label>
-        <input
-          pInputText
-          type="number"
-          id="capacity_units"
-          formControlName="capacity_units"
-          min="1"
-        />
-      </div>
+      <lpg-form-field label="Capacity (cylinder units)" for="capacity_units" [control]="registerForm.controls.capacity_units" [messages]="fieldMessages.capacity_units">
+        <input pInputText type="number" id="capacity_units" formControlName="capacity_units" min="1" [fluid]="true" />
+      </lpg-form-field>
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
@@ -181,48 +165,39 @@
         </div>
       } @else {
         <form id="editVehicleForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
-          <div class="form-group">
-            <label for="edit_vehicle_make">Make</label>
-            <input pInputText id="edit_vehicle_make" formControlName="make" />
-          </div>
+          <lpg-form-field label="Make" for="edit_vehicle_make" [control]="editForm.controls.make" [messages]="fieldMessages.make">
+            <input pInputText id="edit_vehicle_make" formControlName="make" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_vehicle_model">Model</label>
-            <input pInputText id="edit_vehicle_model" formControlName="model" />
-          </div>
+          <lpg-form-field label="Model" for="edit_vehicle_model" [control]="editForm.controls.model" [messages]="fieldMessages.model">
+            <input pInputText id="edit_vehicle_model" formControlName="model" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_vehicle_ownership_type">Ownership Type</label>
+          <lpg-form-field label="Ownership type" for="edit_vehicle_ownership_type" [control]="editForm.controls.ownership_type" [messages]="fieldMessages.ownership_type">
             <p-select
-              id="edit_vehicle_ownership_type"
+              inputId="edit_vehicle_ownership_type"
               formControlName="ownership_type"
               [options]="ownershipOptions"
               optionLabel="label"
               optionValue="value"
+              [fluid]="true"
             ></p-select>
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_vehicle_capacity_units">Capacity (Cylinder Units)</label>
-            <input
-              pInputText
-              type="number"
-              id="edit_vehicle_capacity_units"
-              formControlName="capacity_units"
-              min="1"
-            />
-          </div>
+          <lpg-form-field label="Capacity (cylinder units)" for="edit_vehicle_capacity_units" [control]="editForm.controls.capacity_units" [messages]="fieldMessages.capacity_units">
+            <input pInputText type="number" id="edit_vehicle_capacity_units" formControlName="capacity_units" min="1" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="edit_vehicle_status">Status</label>
+          <lpg-form-field label="Status" for="edit_vehicle_status" [control]="editForm.controls.status" [messages]="fieldMessages.status">
             <p-select
-              id="edit_vehicle_status"
+              inputId="edit_vehicle_status"
               formControlName="status"
               [options]="statusOptions"
               optionLabel="label"
               optionValue="value"
+              [fluid]="true"
             ></p-select>
-          </div>
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>

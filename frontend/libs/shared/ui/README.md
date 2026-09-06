@@ -35,16 +35,20 @@ and `/design-system` in the running app for a live showcase.
 
 | Component | Selector | Key inputs | Notes |
 |---|---|---|---|
-| `FormFieldComponent` | `lpg-form-field` | `label` (req), `for`, `hint`, `control: AbstractControl`, `messages: Record<string,string>`, `required` | Wraps a projected control in `p-floatlabel variant="on"`, renders hint + validator-keyed error text. Pass the `FormControl` so it can react to `touched`/`dirty`/status via the control's `events` stream. |
+| `FormFieldComponent` | `lpg-form-field` | `label` (req), `for`, `hint`, `control: AbstractControl`, `messages: Record<string,string>`, `required` | The single wrapper for every labelled control — a 13px medium label above the projected control, then hint / validator-keyed error text below. Pass the `FormControl` so it reacts to `touched`/`dirty`/status via the control's `events` stream and infers the required asterisk. Omit `[control]` for a filter row (just label + control). |
 
 Reactive-forms field pattern:
 
 ```html
 <lpg-form-field label="Email" for="email" [control]="form.controls.email"
   [messages]="{ email: 'Enter a valid email address.' }">
-  <input pInputText id="email" formControlName="email" />
+  <input pInputText id="email" formControlName="email" [fluid]="true" />
 </lpg-form-field>
 ```
+
+Give the projected control `[fluid]="true"` (PrimeNG) so it fills the field width;
+plain elements are stretched by the wrapper as a fallback. Placeholders are fine
+now the label sits above the control — use them for format hints (`e.g. 9876543210`).
 
 ## Data grid
 

@@ -41,6 +41,7 @@ import {
   DataGridComponent,
   type DataGridColumn,
   displayNameFromEmail,
+  FormFieldComponent,
   HasPermissionDirective,
   PreviewDialog,
   type PreviewData,
@@ -71,6 +72,7 @@ function errorMessageFor(_error: unknown): string {
     Tag,
     Textarea,
     DataGridComponent,
+    FormFieldComponent,
     HasPermissionDirective,
     PreviewDialog,
   ],
@@ -247,6 +249,22 @@ export class FeatureComplaints implements OnInit {
     outcome: ['Resolved', Validators.required],
     resolution_notes: ['', [Validators.required, Validators.minLength(5)]],
   });
+
+  protected readonly fieldMessages = {
+    customer_id: { required: 'A customer ID is required.' },
+    category: { required: 'Select a category.' },
+    priority: { required: 'Select a priority.' },
+    description: {
+      required: 'A description is required.',
+      minlength: 'Give a little more detail (at least 10 characters).',
+    },
+    assigned_to: { required: 'Enter who to assign this to.' },
+    outcome: { required: 'Select an outcome.' },
+    resolution_notes: {
+      required: 'Resolution notes are required.',
+      minlength: 'Give a little more detail (at least 5 characters).',
+    },
+  };
 
   // Values must match the backend's `ComplaintCategory` enum exactly
   // (`domain/complaint/value_objects.py`) — these previously sent

@@ -172,61 +172,49 @@
 
               <form [formGroup]="registrationForm" class="wizard-form">
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="first_name">First Name <span class="required">*</span></label>
-                    <input pInputText id="first_name" formControlName="first_name" placeholder="First Name" />
-                    @if (isInvalid(registrationForm, 'first_name')) {<span class="field-error">First Name is required.</span>}
-                  </div>
-                  <div class="form-group">
-                    <label for="last_name">Last Name <span class="required">*</span></label>
-                    <input pInputText id="last_name" formControlName="last_name" placeholder="Last Name" />
-                    @if (isInvalid(registrationForm, 'last_name')) {<span class="field-error">Last Name is required.</span>}
-                  </div>
+                  <lpg-form-field label="First name" for="first_name" [control]="registrationForm.controls.first_name" [messages]="fieldMessages.first_name">
+                    <input pInputText id="first_name" formControlName="first_name" [fluid]="true" />
+                  </lpg-form-field>
+                  <lpg-form-field label="Last name" for="last_name" [control]="registrationForm.controls.last_name" [messages]="fieldMessages.last_name">
+                    <input pInputText id="last_name" formControlName="last_name" [fluid]="true" />
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="phone_number">Primary Phone Number <span class="required">*</span></label>
+                  <lpg-form-field label="Primary phone number" for="phone_number" [control]="registrationForm.controls.phone_number" [messages]="fieldMessages.phone_number">
                     <input
                       pInputText
                       id="phone_number"
                       formControlName="phone_number"
                       placeholder="e.g. 9876543210"
+                      [fluid]="true"
                       (blur)="normalizePhoneField('phone_number')"
                     />
-                    @if (isInvalid(registrationForm, 'phone_number')) {<span class="field-error">Enter a valid 10-digit mobile number, or a full number with country code (e.g. +919876543210).</span>}
-                  </div>
-                  <div class="form-group">
-                    <label for="alternate_mobile">Alternate Mobile</label>
+                  </lpg-form-field>
+                  <lpg-form-field label="Alternate mobile" for="alternate_mobile" [control]="registrationForm.controls.alternate_mobile" [messages]="fieldMessages.alternate_mobile" hint="Optional.">
                     <input
                       pInputText
                       id="alternate_mobile"
                       formControlName="alternate_mobile"
-                      placeholder="Optional"
+                      [fluid]="true"
                       (blur)="normalizePhoneField('alternate_mobile')"
                     />
-                    @if (isInvalid(registrationForm, 'alternate_mobile')) {<span class="field-error">Enter a valid 10-digit mobile number, or a full number with country code (e.g. +919876543210).</span>}
-                  </div>
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="date_of_birth">Date of Birth <span class="required">*</span></label>
-                    <p-datepicker formControlName="date_of_birth" [showIcon]="true" iconDisplay="input" placeholder="Select DOB"></p-datepicker>
-                    @if (isInvalid(registrationForm, 'date_of_birth')) {<span class="field-error">Date of birth is required.</span>}
-                  </div>
-                  <div class="form-group">
-                    <label for="branch_id">Operating Branch <span class="required">*</span></label>
-                    <p-select id="branch_id" formControlName="branch_id" [options]="branches()" optionLabel="name" optionValue="id" placeholder="Select Branch"></p-select>
-                    @if (isInvalid(registrationForm, 'branch_id')) {<span class="field-error">Branch is required.</span>}
-                  </div>
+                  <lpg-form-field label="Date of birth" for="date_of_birth" [control]="registrationForm.controls.date_of_birth" [messages]="fieldMessages.date_of_birth">
+                    <p-datepicker inputId="date_of_birth" formControlName="date_of_birth" [showIcon]="true" iconDisplay="input" [fluid]="true"></p-datepicker>
+                  </lpg-form-field>
+                  <lpg-form-field label="Operating branch" for="branch_id" [control]="registrationForm.controls.branch_id" [messages]="fieldMessages.branch_id">
+                    <p-select inputId="branch_id" formControlName="branch_id" [options]="branches()" optionLabel="name" optionValue="id" [fluid]="true"></p-select>
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="consumer_category">Consumer Category <span class="required">*</span></label>
-                    <p-select id="consumer_category" formControlName="consumer_category" [options]="customerCategoryOptions" optionLabel="label" optionValue="value"></p-select>
-                  </div>
+                  <lpg-form-field label="Consumer category" for="consumer_category" [control]="registrationForm.controls.consumer_category" [messages]="fieldMessages.consumer_category">
+                    <p-select inputId="consumer_category" formControlName="consumer_category" [options]="customerCategoryOptions" optionLabel="label" optionValue="value" [fluid]="true"></p-select>
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-group checkbox-group">
@@ -235,12 +223,12 @@
                 </div>
 
                 @if (registrationForm.get('is_commercial')?.value) {
-<div class="form-group">
-                  <label for="contact_person">Contact Person <span class="required">*</span></label>
-                  <input pInputText id="contact_person" formControlName="contact_person" placeholder="Name of contact person" />
-                  @if (isInvalid(registrationForm, 'contact_person')) {<span class="field-error">Contact person is required for commercial entities.</span>}
-                </div>
-}
+                  <div class="form-row">
+                    <lpg-form-field label="Contact person" for="contact_person" [control]="registrationForm.controls.contact_person" [messages]="fieldMessages.contact_person">
+                      <input pInputText id="contact_person" formControlName="contact_person" placeholder="Name of contact person" [fluid]="true" />
+                    </lpg-form-field>
+                  </div>
+                }
               </form>
             </div>
             
@@ -274,60 +262,45 @@
 
               <form [formGroup]="addressForm" class="wizard-form">
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="address_type">Address Type <span class="required">*</span></label>
-                    <p-select id="address_type" formControlName="address_type" [options]="addressTypeOptions" optionLabel="label" optionValue="value"></p-select>
-                  </div>
+                  <lpg-form-field label="Address type" for="address_type" [control]="addressForm.controls.address_type" [messages]="fieldMessages.address_type">
+                    <p-select inputId="address_type" formControlName="address_type" [options]="addressTypeOptions" optionLabel="label" optionValue="value" [fluid]="true"></p-select>
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="line_1">Address Line 1 <span class="required">*</span></label>
-                    <input pInputText id="line_1" formControlName="line_1" placeholder="Flat, House no., Building" />
-                    @if (isInvalid(addressForm, 'line_1')) {<span class="field-error">Line 1 is required.</span>}
-                  </div>
-                  <div class="form-group">
-                    <label for="line_2">Address Line 2</label>
-                    <input pInputText id="line_2" formControlName="line_2" placeholder="Street, Sector, Village" />
-                  </div>
+                  <lpg-form-field label="Address line 1" for="line_1" [control]="addressForm.controls.line_1" [messages]="fieldMessages.line_1">
+                    <input pInputText id="line_1" formControlName="line_1" placeholder="Flat, House no., Building" [fluid]="true" />
+                  </lpg-form-field>
+                  <lpg-form-field label="Address line 2" for="line_2" [control]="addressForm.controls.line_2">
+                    <input pInputText id="line_2" formControlName="line_2" placeholder="Street, Sector, Village" [fluid]="true" />
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="landmark">Landmark</label>
-                    <input pInputText id="landmark" formControlName="landmark" placeholder="Near Apollo Hospital" />
-                  </div>
-                  <div class="form-group">
-                    <label for="area">Area/Locality <span class="required">*</span></label>
-                    <input pInputText id="area" formControlName="area" placeholder="Locality name" />
-                    @if (isInvalid(addressForm, 'area')) {<span class="field-error">Area is required.</span>}
-                  </div>
+                  <lpg-form-field label="Landmark" for="landmark" [control]="addressForm.controls.landmark">
+                    <input pInputText id="landmark" formControlName="landmark" placeholder="Near Apollo Hospital" [fluid]="true" />
+                  </lpg-form-field>
+                  <lpg-form-field label="Area / locality" for="area" [control]="addressForm.controls.area" [messages]="fieldMessages.area">
+                    <input pInputText id="area" formControlName="area" placeholder="Locality name" [fluid]="true" />
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="city">City <span class="required">*</span></label>
-                    <input pInputText id="city" formControlName="city" placeholder="City" />
-                    @if (isInvalid(addressForm, 'city')) {<span class="field-error">City is required.</span>}
-                  </div>
-                  <div class="form-group">
-                    <label for="district">District <span class="required">*</span></label>
-                    <input pInputText id="district" formControlName="district" placeholder="District" />
-                    @if (isInvalid(addressForm, 'district')) {<span class="field-error">District is required.</span>}
-                  </div>
+                  <lpg-form-field label="City" for="city" [control]="addressForm.controls.city" [messages]="fieldMessages.city">
+                    <input pInputText id="city" formControlName="city" [fluid]="true" />
+                  </lpg-form-field>
+                  <lpg-form-field label="District" for="district" [control]="addressForm.controls.district" [messages]="fieldMessages.district">
+                    <input pInputText id="district" formControlName="district" [fluid]="true" />
+                  </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="state">State <span class="required">*</span></label>
-                    <input pInputText id="state" formControlName="state" placeholder="State" />
-                    @if (isInvalid(addressForm, 'state')) {<span class="field-error">State is required.</span>}
-                  </div>
-                  <div class="form-group">
-                    <label for="pincode">Pincode <span class="required">*</span></label>
-                    <input pInputText id="pincode" formControlName="pincode" placeholder="6-digit pincode" />
-                    @if (isInvalid(addressForm, 'pincode')) {<span class="field-error">Valid 6-digit pincode is required.</span>}
-                  </div>
+                  <lpg-form-field label="State" for="state" [control]="addressForm.controls.state" [messages]="fieldMessages.state">
+                    <input pInputText id="state" formControlName="state" [fluid]="true" />
+                  </lpg-form-field>
+                  <lpg-form-field label="Pincode" for="pincode" [control]="addressForm.controls.pincode" [messages]="fieldMessages.pincode">
+                    <input pInputText id="pincode" formControlName="pincode" placeholder="6-digit pincode" [fluid]="true" />
+                  </lpg-form-field>
                 </div>
               </form>
             </div>
@@ -369,29 +342,22 @@
 
               <form [formGroup]="kycForm" class="wizard-form">
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="doc_type">Document Type <span class="required">*</span></label>
-                    <p-select id="doc_type" formControlName="doc_type" [options]="kycDocTypeOptions" optionLabel="label" optionValue="value"></p-select>
-                  </div>
-                  <div class="form-group">
-                    <label for="document_number">Document Number <span class="required">*</span></label>
-                    <input pInputText id="document_number" formControlName="document_number" placeholder="Enter doc ID" />
-                    @if (isInvalid(kycForm, 'document_number')) {<span class="field-error">Document number is required.</span>}
-                  </div>
+                  <lpg-form-field label="Document type" for="doc_type" [control]="kycForm.controls.doc_type" [messages]="fieldMessages.doc_type">
+                    <p-select inputId="doc_type" formControlName="doc_type" [options]="kycDocTypeOptions" optionLabel="label" optionValue="value" [fluid]="true"></p-select>
+                  </lpg-form-field>
+                  <lpg-form-field label="Document number" for="document_number" [control]="kycForm.controls.document_number" [messages]="fieldMessages.document_number">
+                    <input pInputText id="document_number" formControlName="document_number" placeholder="Enter doc ID" [fluid]="true" />
+                  </lpg-form-field>
                 </div>
 
                 @if (kycForm.value.doc_type === 'passport') {
                   <div class="form-row">
-                    <div class="form-group">
-                      <label for="issue_date">Issue Date <span class="required">*</span></label>
-                      <p-datepicker formControlName="issue_date" [showIcon]="true" iconDisplay="input" placeholder="Select Issue Date"></p-datepicker>
-                      @if (isInvalid(kycForm, 'issue_date')) {<span class="field-error">Issue date is required.</span>}
-                    </div>
-                    <div class="form-group">
-                      <label for="expiry_date">Expiry Date <span class="required">*</span></label>
-                      <p-datepicker formControlName="expiry_date" [showIcon]="true" iconDisplay="input" placeholder="Select Expiry Date"></p-datepicker>
-                      @if (isInvalid(kycForm, 'expiry_date')) {<span class="field-error">Expiry date is required.</span>}
-                    </div>
+                    <lpg-form-field label="Issue date" for="issue_date" [control]="kycForm.controls.issue_date" [messages]="fieldMessages.issue_date">
+                      <p-datepicker inputId="issue_date" formControlName="issue_date" [showIcon]="true" iconDisplay="input" [fluid]="true"></p-datepicker>
+                    </lpg-form-field>
+                    <lpg-form-field label="Expiry date" for="expiry_date" [control]="kycForm.controls.expiry_date" [messages]="fieldMessages.expiry_date">
+                      <p-datepicker inputId="expiry_date" formControlName="expiry_date" [showIcon]="true" iconDisplay="input" [fluid]="true"></p-datepicker>
+                    </lpg-form-field>
                   </div>
                 }
 

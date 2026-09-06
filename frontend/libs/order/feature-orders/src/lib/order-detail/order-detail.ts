@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective, shortId } from '@lpg/shared/ui';
+import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -79,6 +79,7 @@ const PAYMENT_METHODS = [
     Tag,
     Textarea,
     Tooltip,
+    FormFieldComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './order-detail.html',
@@ -199,6 +200,20 @@ export class OrderDetail implements OnInit {
     gps_lng: [0, [Validators.required]],
     lines: this.fb.array<ReturnType<typeof this.buildDeliverLineGroup>>([]),
   });
+
+  protected readonly fieldMessages = {
+    reason: {
+      required: 'A reason is required.',
+      minlength: 'Give a little more detail.',
+    },
+    driver_id: { required: 'Select a driver.' },
+    vehicle_id: { required: 'Select a vehicle.' },
+    reason_code: { required: 'Select a reason.' },
+    resolution_action: { required: 'Select a resolution.' },
+    otp_code: { required: 'The delivery OTP is required.' },
+    payment_method: { required: 'Select a payment method.' },
+    amount_collected: { required: 'Enter the amount collected.', min: 'Cannot be negative.' },
+  };
 
   protected readonly signatureBlobRef = signal<string | null>(null);
   protected readonly photoBlobRef = signal<string | null>(null);

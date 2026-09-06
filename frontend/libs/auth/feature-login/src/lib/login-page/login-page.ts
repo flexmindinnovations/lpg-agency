@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
-import { FloatLabel } from 'primeng/floatlabel';
 import { InputText } from 'primeng/inputtext';
 import { InputPassword } from 'primeng/inputpassword';
 import { Message } from 'primeng/message';
 import { AuthService, type AppError } from '@lpg/shared/data-access';
+import { FormFieldComponent } from '@lpg/shared/ui';
 import { AuthShell } from '../auth-shell/auth-shell';
 
 function isAppError(value: unknown): value is AppError {
@@ -42,10 +42,10 @@ function errorMessageFor(error: unknown): string {
     ReactiveFormsModule,
     RouterLink,
     ButtonDirective,
-    FloatLabel,
     InputText,
     InputPassword,
     Message,
+    FormFieldComponent,
     AuthShell,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -62,39 +62,40 @@ function errorMessageFor(error: unknown): string {
         }
 
         <div class="login-card__body">
-          <div class="form-group">
-            <p-floatlabel variant="on" class="login-card__float-label">
-              <input
-                pInputText
-                id="login-email"
-                type="email"
-                formControlName="email"
-                autocomplete="username"
-                class="login-card__input"
-                [attr.aria-invalid]="emailInvalid()"
-              />
-              <label for="login-email">Email</label>
-            </p-floatlabel>
-            @if (emailInvalid()) {
-              <span class="field-error">Enter a valid email address.</span>
-            }
-          </div>
+          <lpg-form-field
+            label="Email"
+            for="login-email"
+            [control]="form.controls.email"
+            [messages]="{ required: 'Enter a valid email address.', email: 'Enter a valid email address.' }"
+          >
+            <input
+              pInputText
+              id="login-email"
+              type="email"
+              formControlName="email"
+              autocomplete="username"
+              class="login-card__input"
+              [fluid]="true"
+            />
+          </lpg-form-field>
 
-          <div class="form-group">
+          <lpg-form-field
+            label="Password"
+            for="login-password"
+            [control]="form.controls.password"
+            [messages]="{ required: 'Password is required.', minlength: 'Password must be at least 12 characters.' }"
+          >
             <div class="password-field">
-              <p-floatlabel variant="on" class="login-card__float-label">
-                <input
-                  #passwordInput
-                  pInputPassword
-                  id="login-password"
-                  type="password"
-                  formControlName="password"
-                  autocomplete="current-password"
-                  class="login-card__input password-field__input"
-                  [attr.aria-invalid]="passwordInvalid()"
-                />
-                <label for="login-password">Password</label>
-              </p-floatlabel>
+              <input
+                #passwordInput
+                pInputPassword
+                id="login-password"
+                type="password"
+                formControlName="password"
+                autocomplete="current-password"
+                class="login-card__input password-field__input"
+                [fluid]="true"
+              />
               <button
                 type="button"
                 class="password-field__toggle"
@@ -105,10 +106,7 @@ function errorMessageFor(error: unknown): string {
                 <i class="pi" [class.pi-eye]="!passwordVisible()" [class.pi-eye-slash]="passwordVisible()"></i>
               </button>
             </div>
-            @if (passwordInvalid()) {
-              <span class="field-error">Password is required.</span>
-            }
-          </div>
+          </lpg-form-field>
         </div>
 
         <div class="login-card__footer">
@@ -154,11 +152,6 @@ function errorMessageFor(error: unknown): string {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-      }
-
-      .login-card__float-label {
-        display: block;
-        inline-size: 100%;
       }
 
       .login-card__input {
@@ -242,16 +235,6 @@ export class LoginPage {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(12)]],
   });
-
-  protected emailInvalid(): boolean {
-    const control = this.form.controls.email;
-    return control.invalid && (control.dirty || control.touched);
-  }
-
-  protected passwordInvalid(): boolean {
-    const control = this.form.controls.password;
-    return control.invalid && (control.dirty || control.touched);
-  }
 
   protected passwordVisible(): boolean {
     return this.passwordInput()?.mask() === false;

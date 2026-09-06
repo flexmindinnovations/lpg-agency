@@ -56,43 +56,49 @@
   (onHide)="onDrawerHide()"
 >
   <form [formGroup]="adjustForm" (ngSubmit)="submitAdjustment()" class="dialog-form">
-    <div class="form-group">
-      <label for="cylinder_type_id">Cylinder Type</label>
+    <lpg-form-field
+      label="Cylinder type"
+      for="cylinder_type_id"
+      [control]="adjustForm.controls.cylinder_type_id"
+      [messages]="fieldMessages.cylinder_type_id"
+    >
       <p-select
-        id="cylinder_type_id"
+        inputId="cylinder_type_id"
         formControlName="cylinder_type_id"
         [options]="cylinderTypes()"
         optionLabel="name"
         optionValue="id"
-        placeholder="Select a cylinder type"
         appendTo="body"
         [autofocus]="true"
+        [fluid]="true"
       />
-    </div>
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="delta">Delta (Quantity)</label>
-      <input
-        pInputText
-        id="delta"
-        type="number"
-        formControlName="delta"
-      />
-      <small class="field-hint">
-        Use negative numbers for cylinders the customer owes the agency.
-      </small>
-    </div>
+    <lpg-form-field
+      label="Delta (quantity)"
+      for="delta"
+      [control]="adjustForm.controls.delta"
+      [messages]="fieldMessages.delta"
+      hint="Use negative numbers for cylinders the customer owes the agency."
+    >
+      <input pInputText id="delta" type="number" formControlName="delta" [fluid]="true" />
+    </lpg-form-field>
 
-    <div class="form-group">
-      <label for="reason">Reason for Adjustment</label>
+    <lpg-form-field
+      label="Reason for adjustment"
+      for="reason"
+      [control]="adjustForm.controls.reason"
+      [messages]="fieldMessages.reason"
+    >
       <input
         pInputText
         id="reason"
         type="text"
         formControlName="reason"
         placeholder="e.g. Lost cylinder, manual correction"
+        [fluid]="true"
       />
-    </div>
+    </lpg-form-field>
 
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeAdjustModal()">
