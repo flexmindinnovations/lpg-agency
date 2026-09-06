@@ -6,6 +6,7 @@ import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputGroup } from 'primeng/inputgroup';
 import { InputGroupAddon } from 'primeng/inputgroupaddon';
 import { InputNumber } from 'primeng/inputnumber';
@@ -70,6 +71,7 @@ const PAYMENT_METHODS = [
     ButtonIcon,
     ButtonLabel,
     Drawer,
+    DrawerA11yDirective,
     InputGroup,
     InputGroupAddon,
     InputNumber,

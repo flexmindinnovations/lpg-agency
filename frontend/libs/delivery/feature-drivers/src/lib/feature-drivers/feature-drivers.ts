@@ -24,6 +24,7 @@ import {
 } from '@lpg/shared/ui';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
@@ -79,6 +80,7 @@ function formatDateForApi(value: unknown): string | undefined {
     ButtonLabel,
     InputText,
     Drawer,
+    DrawerA11yDirective,
     IconField,
     InputIcon,
     Message,

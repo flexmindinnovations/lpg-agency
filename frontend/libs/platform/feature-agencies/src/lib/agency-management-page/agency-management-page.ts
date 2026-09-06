@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { MessageService } from 'primeng/api';
 import { AgencyService, type AppError } from '@lpg/shared/data-access';
 import {
@@ -35,7 +36,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-agency-management-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ButtonDirective, Drawer, DataGridComponent],
+  imports: [HeaderTitlePortalDirective, ButtonDirective, Drawer, DrawerA11yDirective, DataGridComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">

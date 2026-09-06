@@ -16,6 +16,7 @@ import { InputText } from 'primeng/inputtext';
 import { IconField } from 'primeng/iconfield';
 import { Tag } from 'primeng/tag';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
 import { ButtonDirective } from 'primeng/button';
 import { MessageService } from 'primeng/api';
@@ -37,6 +38,7 @@ import {
   selector: 'lpg-feature-invoices',
   standalone: true,
   imports: [
+    DrawerA11yDirective,
     HeaderTitlePortalDirective,
     Drawer,
     Dialog,

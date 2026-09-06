@@ -6,6 +6,7 @@ import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { MultiSelect } from 'primeng/multiselect';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import {
@@ -65,6 +66,7 @@ function errorMessageFor(error: unknown): string {
     Select,
     MultiSelect,
     Drawer,
+    DrawerA11yDirective,
     Dialog,
     DataGridComponent,
     FormFieldComponent,

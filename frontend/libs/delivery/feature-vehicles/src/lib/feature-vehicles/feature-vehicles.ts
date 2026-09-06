@@ -23,6 +23,7 @@ import {
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
@@ -63,6 +64,7 @@ function errorMessageFor(error: unknown): string {
     ButtonLabel,
     InputText,
     Drawer,
+    DrawerA11yDirective,
     IconField,
     InputIcon,
     Message,

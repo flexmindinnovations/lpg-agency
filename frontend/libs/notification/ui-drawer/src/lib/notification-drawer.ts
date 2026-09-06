@@ -5,12 +5,13 @@ import { DrawerModule } from 'primeng/drawer';
 import { ButtonModule } from 'primeng/button';
 import { BadgeModule } from 'primeng/badge';
 import { TooltipModule } from 'primeng/tooltip';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { NotificationService } from '@lpg/shared/data-access';
 import type { NotificationResponse } from '@lpg/shared/data-access';
 
 @Component({
   selector: 'lib-notification-drawer',
-  imports: [DatePipe, RouterLink, DrawerModule, ButtonModule, BadgeModule, TooltipModule],
+  imports: [DatePipe, RouterLink, DrawerModule, DrawerA11yDirective, ButtonModule, BadgeModule, TooltipModule],
   templateUrl: './notification-drawer.html',
   styleUrl: './notification-drawer.css'
 })

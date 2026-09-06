@@ -5,6 +5,7 @@ import { forkJoin, of, type Observable } from 'rxjs';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { MessageService } from 'primeng/api';
@@ -82,6 +83,7 @@ class FlagDefaultCell {
     ButtonLabel,
     InputText,
     Drawer,
+    DrawerA11yDirective,
     Select,
     DatePicker,
     DataGridComponent,

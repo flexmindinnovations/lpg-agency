@@ -13,6 +13,7 @@ import { InputText } from 'primeng/inputtext';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Tag } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { AdminAuditLogService, type AuditLogEntryResponse } from '@lpg/shared/data-access';
@@ -37,6 +38,7 @@ const ACTION_SEVERITY: Record<string, string> = {
     InputIconModule,
     DataGridComponent,
     Drawer,
+    DrawerA11yDirective,
     Tag,
     JsonPipe,
     UpperCasePipe,

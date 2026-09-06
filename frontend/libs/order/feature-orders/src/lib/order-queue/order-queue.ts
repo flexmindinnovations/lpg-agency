@@ -7,6 +7,7 @@ import { debounceTime } from 'rxjs';
 import { Button, ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputNumber } from 'primeng/inputnumber';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
@@ -64,6 +65,7 @@ const BOOKING_SOURCE_OPTIONS = [
     ButtonLabel,
     Button,
     Drawer,
+    DrawerA11yDirective,
     Message,
     Select,
     InputNumber,

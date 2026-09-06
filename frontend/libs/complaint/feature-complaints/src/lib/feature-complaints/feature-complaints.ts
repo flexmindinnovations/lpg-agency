@@ -17,6 +17,7 @@ import { catchError, map } from 'rxjs/operators';
 
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
@@ -67,6 +68,7 @@ function errorMessageFor(_error: unknown): string {
     ButtonIcon,
     ButtonLabel,
     Drawer,
+    DrawerA11yDirective,
     InputText,
     Select,
     Tag,

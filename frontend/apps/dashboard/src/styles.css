@@ -498,9 +498,12 @@ textarea {
   border-inline-end: var(--border-width) solid var(--surface-acrylic-border) !important;
 }
 
+/* Header and footer each sit against a full-bleed divider on the drawer-edge
+   wrapper, with a matching `--spacing-md` gap between the rule and the
+   header/footer content on the inner side. */
 .p-drawer .p-drawer-header {
-  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xs) !important;
-  border-bottom: none !important;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) !important;
+  border-bottom: var(--border-width) solid var(--color-border-default) !important;
 }
 
 .p-drawer .p-drawer-header .p-drawer-title {
@@ -510,7 +513,29 @@ textarea {
 }
 
 .p-drawer .p-drawer-content {
-  padding: var(--spacing-xs) var(--spacing-lg) var(--spacing-lg) !important;
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+/* `<ng-template #footer>` drawers: the divider belongs on the full-width
+   `.p-drawer-footer`, mirroring the header — so the inner `.modal-actions`
+   drops its own rule to avoid doubling up. */
+.p-drawer .p-drawer-footer {
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) !important;
+  border-top: var(--border-width) solid var(--color-border-default) !important;
+}
+
+.p-drawer .p-drawer-footer .modal-actions {
+  margin-block-start: 0;
+  padding-block-start: 0;
+  border-block-start: none;
+}
+
+/* Inline `.modal-actions` (pinned to the base of a `.dialog-form`, no footer
+   template): break its divider out of the content padding so it reaches the
+   drawer edges like the header's. */
+.p-drawer .p-drawer-content .modal-actions {
+  margin-inline: calc(-1 * var(--spacing-lg));
+  padding-inline: var(--spacing-lg);
 }
 
 /* Notification drawer: the content is a flex column with its own padding

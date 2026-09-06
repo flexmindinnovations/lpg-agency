@@ -19,6 +19,7 @@ import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
@@ -80,6 +81,7 @@ import { TitleCasePipe } from '@angular/common';
     ButtonLabel,
     InputText,
     Drawer,
+    DrawerA11yDirective,
     Dialog,
     IconField,
     InputIcon,

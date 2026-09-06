@@ -9,7 +9,7 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
-  padding: var(--spacing-xs, 0.25rem) var(--spacing-lg, 1.5rem);
+  padding: var(--spacing-md, 1rem) var(--spacing-lg, 1.5rem) var(--spacing-xs, 0.25rem);
 }
 
 .drawer-clear {

@@ -15,6 +15,7 @@ import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { FormFieldComponent } from '@lpg/shared/ui';
@@ -48,6 +49,7 @@ interface EnrichedBalance {
     Select,
     InputText,
     Drawer,
+    DrawerA11yDirective,
     FormFieldComponent,
   ],
   templateUrl: './feature-ledger.html',

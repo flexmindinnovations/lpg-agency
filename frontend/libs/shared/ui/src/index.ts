@@ -12,6 +12,7 @@ export * from './lib/activity-cells/activity-cells';
 export * from './lib/status-chip-cell/status-chip-cell';
 export * from './lib/preview-dialog/preview-dialog';
 export * from './lib/directives/has-permission.directive';
+export * from './lib/directives/drawer-a11y.directive';
 export * from './lib/app-shell/app-shell.component';
 export * from './lib/app-shell/nav-item';
 export * from './lib/app-shell/breadcrumb.service';

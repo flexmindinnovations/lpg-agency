@@ -16,6 +16,7 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { Button, ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputNumber } from 'primeng/inputnumber';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
@@ -115,6 +116,7 @@ function toDateOnlyString(date: Date): string {
     ButtonLabel,
     Button,
     Drawer,
+    DrawerA11yDirective,
     InputNumber,
     Message,
     Select,
