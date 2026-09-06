@@ -6,6 +6,7 @@ Uses mocked repositories and UoW — no database required.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -70,18 +71,35 @@ def mock_vehicle_repo() -> MagicMock:
     return repo
 
 
+@pytest.fixture
+def mock_compliance_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.next_id = MagicMock(return_value=uuid.uuid4())
+    repo.save = AsyncMock()
+    return repo
+
+
+_DL_REF = "tenant/x/compliance-staging/dl.png"
+_RC_REF = "tenant/x/compliance-staging/rc.png"
+_EXPIRY = date(2030, 1, 1)
+
+
 # ==========================================================================
 # Driver use case tests
 # ==========================================================================
 
 
-async def test_register_driver_success(mock_driver_repo: MagicMock, mock_uow: MagicMock) -> None:
-    use_case = RegisterDriverUseCase(mock_driver_repo, mock_uow)
+async def test_register_driver_success(
+    mock_driver_repo: MagicMock, mock_compliance_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    use_case = RegisterDriverUseCase(mock_driver_repo, mock_compliance_repo, mock_uow)
     command = RegisterDriverCommand(
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
         employee_id=uuid.uuid4(),
         license_number="DL-12345",
+        license_expiry_date=_EXPIRY,
+        licence_document_ref=_DL_REF,
     )
     driver = await use_case.execute(command)
 
@@ -91,16 +109,45 @@ async def test_register_driver_success(mock_driver_repo: MagicMock, mock_uow: Ma
     mock_uow.commit.assert_called_once()
 
 
+async def test_register_driver_also_creates_the_licence_compliance_document(
+    mock_driver_repo: MagicMock, mock_compliance_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    use_case = RegisterDriverUseCase(mock_driver_repo, mock_compliance_repo, mock_uow)
+    driver = await use_case.execute(
+        RegisterDriverCommand(
+            tenant_id=uuid.uuid4(),
+            branch_id=uuid.uuid4(),
+            employee_id=uuid.uuid4(),
+            license_number="DL-12345",
+            license_expiry_date=_EXPIRY,
+            licence_document_ref=_DL_REF,
+        )
+    )
+
+    mock_compliance_repo.save.assert_called_once()
+    doc = mock_compliance_repo.save.call_args.args[0]
+    assert doc.owner_type == "driver"
+    assert doc.owner_id == driver.id
+    assert doc.doc_type == "driving_licence"
+    assert doc.document_number == "DL-12345"
+    assert doc.file_ref == _DL_REF
+    assert doc.expiry_date == _EXPIRY
+    # driver + document committed together
+    mock_uow.commit.assert_called_once()
+
+
 async def test_register_driver_duplicate_employee_id(
-    mock_driver_repo: MagicMock, mock_uow: MagicMock
+    mock_driver_repo: MagicMock, mock_compliance_repo: MagicMock, mock_uow: MagicMock
 ) -> None:
     mock_driver_repo.get_by_employee_id.return_value = MagicMock(spec=Driver)
-    use_case = RegisterDriverUseCase(mock_driver_repo, mock_uow)
+    use_case = RegisterDriverUseCase(mock_driver_repo, mock_compliance_repo, mock_uow)
     command = RegisterDriverCommand(
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
         employee_id=uuid.uuid4(),
         license_number="DL-12345",
+        license_expiry_date=_EXPIRY,
+        licence_document_ref=_DL_REF,
     )
     with pytest.raises(DuplicateEmployeeCodeError):
         await use_case.execute(command)
@@ -271,14 +318,18 @@ async def test_list_drivers_empty(mock_driver_repo: MagicMock) -> None:
 # ==========================================================================
 
 
-async def test_register_vehicle_success(mock_vehicle_repo: MagicMock, mock_uow: MagicMock) -> None:
-    use_case = RegisterVehicleUseCase(mock_vehicle_repo, mock_uow)
+async def test_register_vehicle_success(
+    mock_vehicle_repo: MagicMock, mock_compliance_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    use_case = RegisterVehicleUseCase(mock_vehicle_repo, mock_compliance_repo, mock_uow)
     command = RegisterVehicleCommand(
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
         registration_number="MH12AB1234",
         make="Tata",
         model="Ace",
+        rc_document_ref=_RC_REF,
+        rc_expiry_date=_EXPIRY,
         capacity_units=10,
     )
     vehicle = await use_case.execute(command)
@@ -286,20 +337,25 @@ async def test_register_vehicle_success(mock_vehicle_repo: MagicMock, mock_uow: 
     assert vehicle.registration_number == "MH12AB1234"
     assert vehicle.status == "active"
     mock_vehicle_repo.save.assert_called_once_with(vehicle)
+    doc = mock_compliance_repo.save.call_args.args[0]
+    assert doc.owner_type == "vehicle" and doc.doc_type == "vehicle_rc"
+    assert doc.document_number == "MH12AB1234" and doc.file_ref == _RC_REF
     mock_uow.commit.assert_called_once()
 
 
 async def test_register_vehicle_duplicate_registration(
-    mock_vehicle_repo: MagicMock, mock_uow: MagicMock
+    mock_vehicle_repo: MagicMock, mock_compliance_repo: MagicMock, mock_uow: MagicMock
 ) -> None:
     mock_vehicle_repo.get_by_registration_number.return_value = MagicMock(spec=Vehicle)
-    use_case = RegisterVehicleUseCase(mock_vehicle_repo, mock_uow)
+    use_case = RegisterVehicleUseCase(mock_vehicle_repo, mock_compliance_repo, mock_uow)
     command = RegisterVehicleCommand(
         tenant_id=uuid.uuid4(),
         branch_id=uuid.uuid4(),
         registration_number="MH12AB1234",
         make="Tata",
         model="Ace",
+        rc_document_ref=_RC_REF,
+        rc_expiry_date=_EXPIRY,
         capacity_units=10,
     )
     with pytest.raises(DuplicateRegistrationNumberError):

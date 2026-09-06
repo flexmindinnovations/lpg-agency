@@ -66,6 +66,7 @@ async def get_unit_of_work(
                 yield uow
     except Exception as e:
         from fastapi import HTTPException
+        from fastapi.exceptions import RequestValidationError
 
         from lpg.application.common.errors import ApplicationError
         from lpg.domain.common.base import DomainError
@@ -79,8 +80,10 @@ async def get_unit_of_work(
         # that resolves a UnitOfWork through this dependency — found via three
         # integration tests expecting 409 ("Cannot transition order from
         # 'closed' to 'closed'", and the inventory/route equivalents) that all
-        # got 500 instead.
-        if isinstance(e, (HTTPException, ApplicationError, DomainError)):
+        # got 500 instead. `RequestValidationError` (a malformed request body,
+        # resolved after this generator dep is already entered) must likewise
+        # pass through to its 422 handler, not become a 500.
+        if isinstance(e, (HTTPException, RequestValidationError, ApplicationError, DomainError)):
             raise
 
         from lpg.config.logging import get_logger

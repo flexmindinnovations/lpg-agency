@@ -90,11 +90,29 @@
         ></p-select>
       </lpg-form-field>
 
+      <lpg-form-field
+        label="Driving licence scan"
+        [control]="registerForm.controls.licence_document_ref"
+        [messages]="fieldMessages.licence_document_ref"
+        hint="Upload a photo or PDF — the number and expiry are read from it and stay editable."
+      >
+        <lpg-document-upload
+          accept="image/*,application/pdf"
+          inputId="driver-licence-upload"
+          hint="Driving licence · image or PDF · up to 10 MB"
+          [uploader]="licenceUploader"
+          [recognizer]="licenceRecognizer"
+          (uploaded)="onLicenceUploaded($event)"
+          (recognized)="onLicenceRecognized($event)"
+          (cleared)="onLicenceCleared()"
+        />
+      </lpg-form-field>
+
       <lpg-form-field label="License number" for="license_number" [control]="registerForm.controls.license_number" [messages]="fieldMessages.license_number">
         <input pInputText id="license_number" formControlName="license_number" placeholder="e.g. DL-12345" [fluid]="true" />
       </lpg-form-field>
 
-      <lpg-form-field label="License expiry date" for="license_expiry_date" [control]="registerForm.controls.license_expiry_date" hint="Optional.">
+      <lpg-form-field label="License expiry date" for="license_expiry_date" [control]="registerForm.controls.license_expiry_date" [messages]="fieldMessages.license_expiry_date">
         <p-datepicker
           inputId="license_expiry_date"
           formControlName="license_expiry_date"

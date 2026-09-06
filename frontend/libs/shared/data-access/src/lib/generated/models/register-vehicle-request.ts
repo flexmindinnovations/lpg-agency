@@ -7,5 +7,8 @@ export interface RegisterVehicleRequest {
   make: string;
   model: string;
   ownership_type?: string;
+  rc_document_ref: string;
+  rc_expiry_date: string;
+  rc_issue_date?: (string | null);
   registration_number: string;
 }

@@ -10,10 +10,11 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { forkJoin, type Observable } from 'rxjs';
+import { forkJoin, map, type Observable } from 'rxjs';
 import {
   DataGridComponent,
   type DataGridColumn,
+  DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
   StatusChipCell,
@@ -30,17 +31,29 @@ import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
+import { DatePicker } from 'primeng/datepicker';
 import { Tag } from 'primeng/tag';
 import {
   AdminBranchService,
   DeliveryService,
+  DocumentService,
   type AppError,
   type BranchResponse,
+  type RecognizeComplianceDocumentResponse,
   type VehicleResponse,
 } from '@lpg/shared/data-access';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
+}
+
+/** `dd-mm-yyyy`-picker value → `yyyy-mm-dd` API string, or `undefined`. */
+function formatDateForApi(value: unknown): string | undefined {
+  if (!value) return undefined;
+  const d = new Date(value as string | number | Date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
 }
 
 function errorMessageFor(error: unknown): string {
@@ -70,8 +83,10 @@ function errorMessageFor(error: unknown): string {
     Message,
     Select,
     Tag,
+    DatePicker,
     DataGridComponent,
     FormFieldComponent,
+    DocumentUploadComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -81,6 +96,7 @@ function errorMessageFor(error: unknown): string {
 export class FeatureVehicles implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
+  private readonly documentService = inject(DocumentService);
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
@@ -171,7 +187,17 @@ export class FeatureVehicles implements OnInit {
     model: ['', [Validators.required]],
     ownership_type: ['owned', [Validators.required]],
     capacity_units: [20, [Validators.required, Validators.min(1)]],
+    rc_document_ref: ['', [Validators.required]],
+    rc_expiry_date: this.fb.control<Date | null>(null, [Validators.required]),
   });
+
+  /** Blob ref set by `<lpg-document-upload>` once the RC scan is stored. */
+  protected readonly rcUploader = (file: File): Observable<{ blobRef: string }> =>
+    this.documentService.uploadAttachment(file).pipe(map((r) => ({ blobRef: r.blob_ref })));
+  protected readonly rcRecognizer = (
+    blobRef: string,
+  ): Observable<RecognizeComplianceDocumentResponse> =>
+    this.documentService.recognize(blobRef, 'vehicle_rc');
 
   /** Validator-key → message, shared by the register and edit forms. */
   protected readonly fieldMessages = {
@@ -181,6 +207,8 @@ export class FeatureVehicles implements OnInit {
     model: { required: 'Model is required.' },
     ownership_type: { required: 'Select an ownership type.' },
     capacity_units: { required: 'Enter a capacity.', min: 'Capacity must be at least 1.' },
+    rc_document_ref: { required: 'Upload a scan of the registration certificate.' },
+    rc_expiry_date: { required: 'RC validity date is required.' },
     status: { required: 'Select a status.' },
   };
 
@@ -259,12 +287,40 @@ export class FeatureVehicles implements OnInit {
       model: '',
       ownership_type: 'owned',
       capacity_units: 20,
+      rc_document_ref: '',
+      rc_expiry_date: null,
     });
     this.showRegisterModal.set(true);
   }
 
+  protected onRcUploaded(event: { blobRef: string }): void {
+    this.registerForm.controls.rc_document_ref.setValue(event.blobRef);
+    this.registerForm.controls.rc_document_ref.markAsTouched();
+  }
+
+  protected onRcCleared(): void {
+    this.registerForm.controls.rc_document_ref.setValue('');
+  }
+
+  protected onRcRecognized(result: unknown): void {
+    const rc = result as RecognizeComplianceDocumentResponse;
+    if (rc.registration_number) {
+      this.registerForm.controls.registration_number.setValue(rc.registration_number);
+    }
+    if (rc.fuel_type || rc.maker_model) {
+      // Maker/model isn't a form field here — leave for the user, RC OCR of it
+      // is low confidence anyway.
+    }
+    if (rc.valid_till) {
+      this.registerForm.controls.rc_expiry_date.setValue(new Date(rc.valid_till));
+    }
+  }
+
   protected onSubmitRegister(): void {
-    if (this.registerForm.invalid) return;
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
 
     const val = this.registerForm.getRawValue();
     this.loading.set(true);
@@ -276,6 +332,8 @@ export class FeatureVehicles implements OnInit {
         model: val.model,
         ownership_type: val.ownership_type,
         capacity_units: val.capacity_units,
+        rc_document_ref: val.rc_document_ref,
+        rc_expiry_date: formatDateForApi(val.rc_expiry_date) ?? '',
       })
       .subscribe({
         next: () => {

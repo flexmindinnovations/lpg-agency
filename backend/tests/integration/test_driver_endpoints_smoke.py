@@ -233,12 +233,34 @@ class TestDriverEndpointsThroughRealStack:
                 "branch_id": str(branch_id),
                 "employee_id": str(employee_id),
                 "license_number": "DL-12345-MH",
+                "license_expiry_date": "2030-01-01",
+                "licence_document_ref": "tenant/x/compliance-staging/dl.png",
             },
             headers=headers,
         )
         assert register_response.status_code == 201, register_response.text
         driver_id = register_response.json()["id"]
         assert register_response.json()["status"] == "active"
+
+        # A driving-licence document was created alongside the driver.
+        docs = await real_lifespan_client.get(
+            f"/api/v1/drivers/{driver_id}/documents", headers=headers
+        )
+        assert docs.status_code == 200, docs.text
+        assert [d["doc_type"] for d in docs.json()["items"]] == ["driving_licence"]
+
+        # Registering without a licence scan is rejected.
+        missing_doc = await real_lifespan_client.post(
+            "/api/v1/drivers",
+            json={
+                "branch_id": str(branch_id),
+                "employee_id": str(employee_id),
+                "license_number": "DL-NO-DOC",
+                "license_expiry_date": "2030-01-01",
+            },
+            headers=headers,
+        )
+        assert missing_doc.status_code == 422, missing_doc.text
 
         # 2. Get Driver
         get_response = await real_lifespan_client.get(
@@ -297,6 +319,8 @@ class TestDriverEndpointsThroughRealStack:
                 "model": "Ace",
                 "ownership_type": "owned",
                 "capacity_units": 20,
+                "rc_document_ref": "tenant/x/compliance-staging/rc.png",
+                "rc_expiry_date": "2030-01-01",
             },
             headers=headers,
         )
@@ -344,9 +368,7 @@ class TestDriverMe:
             password_hash=hasher.hash(admin_password),
             role="agency_admin",
         )
-        branch_id = await _seed_branch(
-            admin_engine_lpg_test, tenant_id=tenant_id, name="Depot"
-        )
+        branch_id = await _seed_branch(admin_engine_lpg_test, tenant_id=tenant_id, name="Depot")
         employee_id = await _seed_employee(
             admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
         )
@@ -360,9 +382,7 @@ class TestDriverMe:
             role="driver",
         )
 
-        admin_token = await _login(
-            client, email=admin_email, password=admin_password
-        )
+        admin_token = await _login(client, email=admin_email, password=admin_password)
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         register = await client.post(
             "/api/v1/drivers",
@@ -370,6 +390,8 @@ class TestDriverMe:
                 "branch_id": str(branch_id),
                 "employee_id": str(employee_id),
                 "license_number": "DL-ME-9001",
+                "license_expiry_date": "2030-01-01",
+                "licence_document_ref": "tenant/x/compliance-staging/dl.png",
                 "identity_user_id": str(driver_user_id),
             },
             headers=admin_headers,
@@ -377,9 +399,7 @@ class TestDriverMe:
         assert register.status_code == 201, register.text
 
         # The driver reads their own profile — resolved from the token.
-        driver_token = await _login(
-            client, email=driver_email, password=driver_password
-        )
+        driver_token = await _login(client, email=driver_email, password=driver_password)
         me = await client.get(
             "/api/v1/drivers/me",
             headers={"Authorization": f"Bearer {driver_token}"},
@@ -393,7 +413,5 @@ class TestDriverMe:
         assert body["vehicle"] is None  # no active route
 
         # A non-driver principal has no /drivers/me.
-        not_a_driver = await client.get(
-            "/api/v1/drivers/me", headers=admin_headers
-        )
+        not_a_driver = await client.get("/api/v1/drivers/me", headers=admin_headers)
         assert not_a_driver.status_code == 404, not_a_driver.text

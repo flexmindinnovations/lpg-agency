@@ -6063,7 +6063,12 @@
             ],
             "title": "Identity User Id"
           },
-          "license_expiry_date": {
+          "licence_document_ref": {
+            "minLength": 1,
+            "title": "Licence Document Ref",
+            "type": "string"
+          },
+          "licence_issue_date": {
             "anyOf": [
               {
                 "format": "date",
@@ -6073,7 +6078,12 @@
                 "type": "null"
               }
             ],
-            "title": "License Expiry Date"
+            "title": "Licence Issue Date"
+          },
+          "license_expiry_date": {
+            "format": "date",
+            "title": "License Expiry Date",
+            "type": "string"
           },
           "license_number": {
             "maxLength": 100,
@@ -6085,7 +6095,9 @@
         "required": [
           "branch_id",
           "employee_id",
-          "license_number"
+          "license_number",
+          "license_expiry_date",
+          "licence_document_ref"
         ],
         "title": "RegisterDriverRequest",
         "type": "object"
@@ -6173,6 +6185,28 @@
             "title": "Ownership Type",
             "type": "string"
           },
+          "rc_document_ref": {
+            "minLength": 1,
+            "title": "Rc Document Ref",
+            "type": "string"
+          },
+          "rc_expiry_date": {
+            "format": "date",
+            "title": "Rc Expiry Date",
+            "type": "string"
+          },
+          "rc_issue_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rc Issue Date"
+          },
           "registration_number": {
             "maxLength": 20,
             "minLength": 1,
@@ -6185,6 +6219,8 @@
           "registration_number",
           "make",
           "model",
+          "rc_document_ref",
+          "rc_expiry_date",
           "capacity_units"
         ],
         "title": "RegisterVehicleRequest",
@@ -11312,7 +11348,7 @@
         ]
       },
       "post": {
-        "description": "Register a new driver profile.",
+        "description": "Register a new driver profile. A driving-licence scan is required — the\ndriver and its `driving_licence` compliance document are created together.",
         "operationId": "register_driver_api_v1_drivers_post",
         "requestBody": {
           "content": {
@@ -15286,7 +15322,7 @@
         ]
       },
       "post": {
-        "description": "Register a new vehicle.",
+        "description": "Register a new vehicle. An RC scan is required — the vehicle and its\n`vehicle_rc` compliance document are created together.",
         "operationId": "register_vehicle_api_v1_vehicles_post",
         "requestBody": {
           "content": {

@@ -72,7 +72,11 @@ class RegisterDriverRequest(BaseModel):
     branch_id: uuid.UUID
     employee_id: uuid.UUID
     license_number: str = Field(min_length=1, max_length=100)
-    license_expiry_date: date | None = None
+    license_expiry_date: date
+    # Blob ref of a driving-licence scan staged via `POST /documents/attachments`
+    # — a compliance document is created for it in the same transaction.
+    licence_document_ref: str = Field(min_length=1)
+    licence_issue_date: date | None = None
     identity_user_id: uuid.UUID | None = None
 
 
@@ -122,6 +126,11 @@ class RegisterVehicleRequest(BaseModel):
     registration_number: str = Field(min_length=1, max_length=20)
     make: str = Field(min_length=1, max_length=100)
     model: str = Field(min_length=1, max_length=100)
+    # Blob ref of an RC scan staged via `POST /documents/attachments` — a
+    # compliance document is created for it in the same transaction.
+    rc_document_ref: str = Field(min_length=1)
+    rc_expiry_date: date
+    rc_issue_date: date | None = None
     ownership_type: str = "owned"
     capacity_units: int = Field(ge=1)
 

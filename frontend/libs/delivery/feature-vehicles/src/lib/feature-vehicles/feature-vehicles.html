@@ -74,8 +74,38 @@
         ></p-select>
       </lpg-form-field>
 
+      <lpg-form-field
+        label="Registration certificate (RC) scan"
+        [control]="registerForm.controls.rc_document_ref"
+        [messages]="fieldMessages.rc_document_ref"
+        hint="Upload a photo or PDF — the registration number and validity are read from it and stay editable."
+      >
+        <lpg-document-upload
+          accept="image/*,application/pdf"
+          inputId="vehicle-rc-upload"
+          hint="RC · image or PDF · up to 10 MB"
+          [uploader]="rcUploader"
+          [recognizer]="rcRecognizer"
+          (uploaded)="onRcUploaded($event)"
+          (recognized)="onRcRecognized($event)"
+          (cleared)="onRcCleared()"
+        />
+      </lpg-form-field>
+
       <lpg-form-field label="Registration number" for="registration_number" [control]="registerForm.controls.registration_number" [messages]="fieldMessages.registration_number">
         <input pInputText id="registration_number" formControlName="registration_number" placeholder="e.g. MH12AB1234" [fluid]="true" />
+      </lpg-form-field>
+
+      <lpg-form-field label="RC valid until" for="rc_expiry_date" [control]="registerForm.controls.rc_expiry_date" [messages]="fieldMessages.rc_expiry_date">
+        <p-datepicker
+          inputId="rc_expiry_date"
+          formControlName="rc_expiry_date"
+          [showIcon]="true"
+          iconDisplay="input"
+          dateFormat="dd-mm-yy"
+          appendTo="body"
+          [fluid]="true"
+        ></p-datepicker>
       </lpg-form-field>
 
       <lpg-form-field label="Make" for="make" [control]="registerForm.controls.make" [messages]="fieldMessages.make">

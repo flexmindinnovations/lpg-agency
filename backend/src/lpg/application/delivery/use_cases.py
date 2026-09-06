@@ -25,6 +25,7 @@ from lpg.application.common.errors import (
     RouteReconciliationPendingError,
 )
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
+from lpg.domain.delivery.compliance_document import ComplianceDocument
 from lpg.domain.delivery.driver import Driver
 from lpg.domain.delivery.route import LoadedLine, Route
 from lpg.domain.delivery.vehicle import Vehicle
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.delivery.ports import (
+        ComplianceDocumentRepository,
         DriverRepository,
         RouteRepository,
         VehicleRepository,
@@ -59,7 +61,11 @@ class RegisterDriverCommand(Command):
     branch_id: uuid.UUID
     employee_id: uuid.UUID
     license_number: str
-    license_expiry_date: date | None = None
+    # A scanned driving licence is required at registration — the driver +
+    # its `driving_licence` compliance document are created in one transaction.
+    license_expiry_date: date
+    licence_document_ref: str
+    licence_issue_date: date | None = None
     identity_user_id: uuid.UUID | None = None
 
 
@@ -106,9 +112,11 @@ class RegisterDriverUseCase:
     def __init__(
         self,
         repository: DriverRepository,
+        compliance_repository: ComplianceDocumentRepository,
         unit_of_work: UnitOfWork,
     ) -> None:
         self._repository = repository
+        self._compliance_repository = compliance_repository
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: RegisterDriverCommand) -> Driver:
@@ -126,8 +134,21 @@ class RegisterDriverUseCase:
             license_expiry_date=command.license_expiry_date,
             identity_user_id=command.identity_user_id,
         )
-
         await self._repository.save(driver)
+
+        licence = ComplianceDocument(
+            document_id=self._compliance_repository.next_id(),
+            tenant_id=command.tenant_id,
+            owner_type="driver",
+            owner_id=driver.id,
+            doc_type="driving_licence",
+            document_number=command.license_number,
+            file_ref=command.licence_document_ref,
+            issue_date=command.licence_issue_date,
+            expiry_date=command.license_expiry_date,
+        )
+        await self._compliance_repository.save(licence)
+
         await self._unit_of_work.commit()
         return driver
 
@@ -256,6 +277,11 @@ class RegisterVehicleCommand(Command):
     registration_number: str
     make: str
     model: str
+    # A scanned RC is required at registration — the vehicle + its `vehicle_rc`
+    # compliance document are created in one transaction.
+    rc_document_ref: str
+    rc_expiry_date: date
+    rc_issue_date: date | None = None
     ownership_type: str = "owned"
     capacity_units: int = 1
 
@@ -298,9 +324,11 @@ class RegisterVehicleUseCase:
     def __init__(
         self,
         repository: VehicleRepository,
+        compliance_repository: ComplianceDocumentRepository,
         unit_of_work: UnitOfWork,
     ) -> None:
         self._repository = repository
+        self._compliance_repository = compliance_repository
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: RegisterVehicleCommand) -> Vehicle:
@@ -324,8 +352,21 @@ class RegisterVehicleUseCase:
             ownership_type=command.ownership_type,
             capacity_units=command.capacity_units,
         )
-
         await self._repository.save(vehicle)
+
+        rc = ComplianceDocument(
+            document_id=self._compliance_repository.next_id(),
+            tenant_id=command.tenant_id,
+            owner_type="vehicle",
+            owner_id=vehicle.id,
+            doc_type="vehicle_rc",
+            document_number=command.registration_number,
+            file_ref=command.rc_document_ref,
+            issue_date=command.rc_issue_date,
+            expiry_date=command.rc_expiry_date,
+        )
+        await self._compliance_repository.save(rc)
+
         await self._unit_of_work.commit()
         return vehicle
 
@@ -670,8 +711,7 @@ class ConfirmRouteLoadUseCase:
     async def execute(self, command: ConfirmRouteLoadCommand) -> Route:
         route = await self._route_repository.get_by_id(command.route_id)
         if route is None or (
-            command.expected_driver_id is not None
-            and route.driver_id != command.expected_driver_id
+            command.expected_driver_id is not None and route.driver_id != command.expected_driver_id
         ):
             msg = f"No route visible with id {command.route_id}."
             raise NotFoundError(msg, route_id=str(command.route_id))

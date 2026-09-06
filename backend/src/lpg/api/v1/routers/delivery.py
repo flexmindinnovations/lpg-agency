@@ -209,10 +209,14 @@ async def register_driver(
     request: RegisterDriverRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    compliance_repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> DriverResponse:
-    """Register a new driver profile."""
-    use_case = RegisterDriverUseCase(repository, unit_of_work)
+    """Register a new driver profile. A driving-licence scan is required — the
+    driver and its `driving_licence` compliance document are created together."""
+    use_case = RegisterDriverUseCase(repository, compliance_repository, unit_of_work)
     try:
         driver = await use_case.execute(
             RegisterDriverCommand(
@@ -221,6 +225,8 @@ async def register_driver(
                 employee_id=request.employee_id,
                 license_number=request.license_number,
                 license_expiry_date=request.license_expiry_date,
+                licence_document_ref=request.licence_document_ref,
+                licence_issue_date=request.licence_issue_date,
                 identity_user_id=request.identity_user_id,
             )
         )
@@ -378,10 +384,14 @@ async def register_vehicle(
     request: RegisterVehicleRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     repository: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
+    compliance_repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> VehicleResponse:
-    """Register a new vehicle."""
-    use_case = RegisterVehicleUseCase(repository, unit_of_work)
+    """Register a new vehicle. An RC scan is required — the vehicle and its
+    `vehicle_rc` compliance document are created together."""
+    use_case = RegisterVehicleUseCase(repository, compliance_repository, unit_of_work)
     try:
         vehicle = await use_case.execute(
             RegisterVehicleCommand(
@@ -390,6 +400,9 @@ async def register_vehicle(
                 registration_number=request.registration_number,
                 make=request.make,
                 model=request.model,
+                rc_document_ref=request.rc_document_ref,
+                rc_expiry_date=request.rc_expiry_date,
+                rc_issue_date=request.rc_issue_date,
                 ownership_type=request.ownership_type,
                 capacity_units=request.capacity_units,
             )

@@ -11,11 +11,12 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { forkJoin, type Observable } from 'rxjs';
+import { forkJoin, map, type Observable } from 'rxjs';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import {
   DataGridComponent,
   type DataGridColumn,
+  DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
   StatusChipCell,
@@ -35,12 +36,14 @@ import { Tag } from 'primeng/tag';
 import { DatePicker } from 'primeng/datepicker';
 import {
   DeliveryService,
+  DocumentService,
   AdminBranchService,
   AdminEmployeeService,
   type AppError,
   type BranchResponse,
   type DriverResponse,
   type EmployeeResponse,
+  type RecognizeComplianceDocumentResponse,
 } from '@lpg/shared/data-access';
 
 function isAppError(value: unknown): value is AppError {
@@ -89,6 +92,7 @@ function formatDateForApi(value: unknown): string | undefined {
     DatePicker,
     DataGridComponent,
     FormFieldComponent,
+    DocumentUploadComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,6 +102,7 @@ function formatDateForApi(value: unknown): string | undefined {
 export class FeatureDrivers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
+  private readonly documentService = inject(DocumentService);
   private readonly branchService = inject(AdminBranchService);
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
@@ -200,8 +205,17 @@ export class FeatureDrivers implements OnInit {
     branch_id: ['', [Validators.required]],
     employee_id: ['', [Validators.required]],
     license_number: ['', [Validators.required]],
-    license_expiry_date: [''],
+    license_expiry_date: this.fb.control<Date | null>(null, [Validators.required]),
+    licence_document_ref: ['', [Validators.required]],
   });
+
+  /** Blob ref set by `<lpg-document-upload>` once the licence scan is stored. */
+  protected readonly licenceUploader = (file: File): Observable<{ blobRef: string }> =>
+    this.documentService.uploadAttachment(file).pipe(map((r) => ({ blobRef: r.blob_ref })));
+  protected readonly licenceRecognizer = (
+    blobRef: string,
+  ): Observable<RecognizeComplianceDocumentResponse> =>
+    this.documentService.recognize(blobRef, 'driving_licence');
 
   protected readonly editForm = this.fb.group({
     employee_id: ['', [Validators.required]],
@@ -216,6 +230,8 @@ export class FeatureDrivers implements OnInit {
     branch_id: { required: 'Select a branch.' },
     employee_id: { required: 'Select an employee.' },
     license_number: { required: 'License number is required.' },
+    license_expiry_date: { required: 'License expiry date is required.' },
+    licence_document_ref: { required: 'Upload a scan of the driving licence.' },
     status: { required: 'Select a duty status.' },
   };
 
@@ -320,7 +336,8 @@ export class FeatureDrivers implements OnInit {
       branch_id: initialBranchId,
       employee_id: '',
       license_number: '',
-      license_expiry_date: '',
+      license_expiry_date: null,
+      licence_document_ref: '',
     });
 
     if (initialBranchId) {
@@ -337,8 +354,33 @@ export class FeatureDrivers implements OnInit {
     this.showRegisterModal.set(true);
   }
 
+  /** `<lpg-document-upload>` stored the licence scan — keep the ref. */
+  protected onLicenceUploaded(event: { blobRef: string }): void {
+    this.registerForm.controls.licence_document_ref.setValue(event.blobRef);
+    this.registerForm.controls.licence_document_ref.markAsTouched();
+  }
+
+  protected onLicenceCleared(): void {
+    this.registerForm.controls.licence_document_ref.setValue('');
+  }
+
+  /** OCR "second pass" result — pre-fill number + expiry, still editable. */
+  protected onLicenceRecognized(result: unknown): void {
+    const dl = result as RecognizeComplianceDocumentResponse;
+    if (dl.document_number) {
+      this.registerForm.controls.license_number.setValue(dl.document_number);
+    }
+    const expiry = dl.transport_valid_till ?? dl.valid_till;
+    if (expiry) {
+      this.registerForm.controls.license_expiry_date.setValue(new Date(expiry));
+    }
+  }
+
   protected onSubmitRegister(): void {
-    if (this.registerForm.invalid) return;
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
 
     const val = this.registerForm.getRawValue();
     this.loading.set(true);
@@ -348,7 +390,8 @@ export class FeatureDrivers implements OnInit {
         branch_id: val.branch_id,
         employee_id: val.employee_id,
         license_number: val.license_number,
-        license_expiry_date: formatDateForApi(val.license_expiry_date),
+        license_expiry_date: formatDateForApi(val.license_expiry_date) ?? '',
+        licence_document_ref: val.licence_document_ref,
       })
       .subscribe({
         next: () => {
