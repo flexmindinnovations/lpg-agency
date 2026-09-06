@@ -667,6 +667,18 @@ textarea {
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
+/* Floating panels — the profile menu / any popover, and select dropdowns —
+   get the Acrylic material too (doc §4). The preset supplies the colour +
+   border via overlay.popover / overlay.select; only the blur has to come
+   from CSS. Previously these were a flat --color-surface-base slab that
+   read as near-black over the Mica chrome. */
+.p-popover,
+.p-select-overlay {
+  backdrop-filter: var(--surface-acrylic-blur);
+  -webkit-backdrop-filter: var(--surface-acrylic-blur);
+  box-shadow: var(--surface-acrylic-shadow) !important;
+}
+
 /* Tooltip refinements */
 .p-tooltip .p-tooltip-text {
   background-color: var(--color-surface-overlay) !important;

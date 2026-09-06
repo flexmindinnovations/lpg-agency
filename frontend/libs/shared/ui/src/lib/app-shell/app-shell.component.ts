@@ -438,9 +438,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         flex-wrap: wrap;
       }
 
+      /* Transparent, not Mica — the breadcrumb belongs to the content
+         column, so the atmospheric base flows through it uninterrupted
+         (it used to read as a stray slab of header chrome). */
       .shell__breadcrumb-wrapper {
         padding: var(--spacing-md) var(--spacing-xl) 0;
-        background: var(--surface-mica);
+        background: transparent;
       }
 
       :host ::ng-deep .shell__breadcrumb {

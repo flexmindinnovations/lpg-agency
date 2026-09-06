@@ -79,6 +79,27 @@ function initialsFor(displayName: string): string {
           </div>
         </div>
 
+        <div
+          class="profile-menu__theme"
+          role="group"
+          aria-label="Theme"
+        >
+          @for (option of themeOptions; track option.value) {
+            <button
+              role="menuitemradio"
+              type="button"
+              class="profile-menu__theme-btn"
+              [class.is-active]="themePreference() === option.value"
+              [attr.aria-checked]="themePreference() === option.value"
+              [attr.aria-label]="option.label"
+              [title]="option.label"
+              (click)="setTheme(option.value)"
+            >
+              <i [class]="option.icon" aria-hidden="true"></i>
+            </button>
+          }
+        </div>
+
         <div class="profile-menu__divider" role="separator"></div>
 
         <a
@@ -115,24 +136,6 @@ function initialsFor(displayName: string): string {
           <i class="pi pi-palette" aria-hidden="true"></i>
           <span>Design system</span>
         </a>
-
-        <div class="profile-menu__divider" role="separator"></div>
-        <p class="profile-menu__section-label">Theme</p>
-        @for (option of themeOptions; track option.value) {
-          <button
-            role="menuitemradio"
-            type="button"
-            class="profile-menu__item"
-            [attr.aria-checked]="themePreference() === option.value"
-            (click)="setTheme(option.value)"
-          >
-            <i [class]="option.icon" aria-hidden="true"></i>
-            <span class="profile-menu__item-label">{{ option.label }}</span>
-            @if (themePreference() === option.value) {
-              <i class="pi pi-check profile-menu__item-check" aria-hidden="true"></i>
-            }
-          </button>
-        }
 
         <div class="profile-menu__divider" role="separator"></div>
 
@@ -286,25 +289,50 @@ function initialsFor(displayName: string): string {
         opacity: 0.8;
       }
 
-      .profile-menu__item-label {
+      /* ---- Inline theme switcher (segmented control) ---- */
+
+      .profile-menu__theme {
+        display: flex;
+        gap: 2px;
+        margin: var(--spacing-xs) var(--spacing-sm) 0;
+        padding: 3px;
+        background: var(--color-surface-raised);
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-md);
+      }
+
+      .profile-menu__theme-btn {
         flex: 1;
-        text-align: start;
-      }
-
-      .profile-menu__item-check {
-        color: var(--color-action-primary);
-        opacity: 1 !important;
-      }
-
-      .profile-menu__section-label {
-        margin: 0;
-        padding: var(--spacing-xs) var(--spacing-sm);
-        font-size: 11px;
-        font-weight: var(--typography-label-font-weight);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 0;
+        border: none;
+        background: transparent;
         color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        opacity: 0.7;
+        border-radius: calc(var(--radius-md) - 2px);
+        cursor: pointer;
+        transition:
+          background-color var(--motion-duration-small) var(--motion-easing-standard),
+          color var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      .profile-menu__theme-btn i {
+        font-size: 14px;
+      }
+
+      .profile-menu__theme-btn:hover {
+        color: var(--color-text-primary);
+      }
+
+      .profile-menu__theme-btn.is-active {
+        background: color-mix(in srgb, var(--color-action-primary) 16%, transparent);
+        color: var(--color-action-primary);
+      }
+
+      .profile-menu__theme-btn:focus-visible {
+        outline: 2px solid var(--color-border-focus);
+        outline-offset: -2px;
       }
 
       .profile-menu__stub-note {

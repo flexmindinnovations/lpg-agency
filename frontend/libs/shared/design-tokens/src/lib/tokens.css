@@ -349,9 +349,14 @@ have always been hand-edited directly. Edit them here.
   --surface-acrylic-blur: blur(20px) saturate(120%);
   --surface-acrylic-border: rgba(255,255,255,0.10);
   --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  /* Material A / §6 gradient system: atmospheric, monochromatic blue→indigo,
+     "extremely subtle" — the two accent hues are the spec's own
+     --gradient-atmosphere blue (#4f8df7) and --gradient-brand indigo
+     (#6c7fe8). A touch more present + a wider spread than the first pass so
+     the tone actually reads once the breadcrumb stopped covering it. */
   --surface-atmosphere:
-    radial-gradient(circle at 20% 0%, rgba(70,110,180,0.10), transparent 35%),
-    radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
+    radial-gradient(circle at 15% -5%, rgba(79,141,247,0.12), transparent 45%),
+    radial-gradient(circle at 85% 105%, rgba(108,127,232,0.10), transparent 45%),
     #0b1118;
   --surface-noise-opacity: 0.03;
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
@@ -462,9 +467,10 @@ have always been hand-edited directly. Edit them here.
     --surface-acrylic-blur: blur(20px) saturate(120%);
     --surface-acrylic-border: rgba(255,255,255,0.10);
     --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    /* §6 gradient system — see the [data-theme='dark'] block. */
     --surface-atmosphere:
-      radial-gradient(circle at 20% 0%, rgba(70,110,180,0.10), transparent 35%),
-      radial-gradient(circle at 80% 100%, rgba(100,80,180,0.08), transparent 35%),
+      radial-gradient(circle at 15% -5%, rgba(79,141,247,0.12), transparent 45%),
+      radial-gradient(circle at 85% 105%, rgba(108,127,232,0.10), transparent 45%),
       #0b1118;
     --surface-noise-opacity: 0.03;
     --component-button-primary-background: #2864cc;

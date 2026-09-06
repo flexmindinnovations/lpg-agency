@@ -35,7 +35,7 @@ describe('ShellLayout', () => {
     expect(el.querySelector('main#shell-main-content')).toBeTruthy();
   });
 
-  it('exposes a profile menu whose theme section offers all four theme options', () => {
+  it('exposes a profile menu whose theme switcher offers all four theme options', () => {
     const fixture = TestBed.createComponent(ShellLayout);
     fixture.detectChanges();
     const trigger: HTMLButtonElement | null =
@@ -44,8 +44,10 @@ describe('ShellLayout', () => {
     trigger?.click();
     fixture.detectChanges();
 
+    // The theme switcher is an inline segmented control — icon-only buttons
+    // whose accessible name is on `aria-label`, not visible text.
     const items: NodeListOf<HTMLElement> = document.querySelectorAll('[role="menuitemradio"]');
-    const labels = Array.from(items).map((el) => el.querySelector('span')?.textContent?.trim());
+    const labels = Array.from(items).map((el) => el.getAttribute('aria-label'));
     expect(labels).toEqual(['System', 'Light', 'Dark', 'High contrast']);
   });
 });

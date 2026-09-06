@@ -142,17 +142,23 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       },
     },
     overlay: {
+      // Floating panels (select dropdowns, popovers) use the Acrylic material
+      // like the other transient surfaces (doc §4) — the backdrop-filter blur
+      // itself can't live in a token, so styles.css adds it to
+      // `.p-select-overlay` / `.p-popover`. Without this they fell back to a
+      // flat `--color-surface-base` slab that read as near-black against the
+      // Mica chrome and the atmospheric base.
       select: {
         borderRadius: 'var(--radius-md)',
-        background: 'var(--color-surface-base)',
-        borderColor: 'var(--color-border-default)',
+        background: 'var(--surface-acrylic)',
+        borderColor: 'var(--surface-acrylic-border)',
         color: 'var(--color-text-primary)',
       },
       popover: {
         borderRadius: 'var(--radius-md)',
         padding: 'var(--spacing-sm)',
-        background: 'var(--color-surface-base)',
-        borderColor: 'var(--color-border-default)',
+        background: 'var(--surface-acrylic)',
+        borderColor: 'var(--surface-acrylic-border)',
         color: 'var(--color-text-primary)',
       },
       modal: {
