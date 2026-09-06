@@ -103,12 +103,15 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
         offset: 'var(--component-focus-ring-offset)',
         shadow: 'none',
       },
+      // Inset "well": the page-ground colour, so on a raised card / drawer /
+      // dialog the field reads as recessed. A strong border carries it when
+      // it sits flush on the page (filters).
       background: 'var(--color-surface-base)',
       disabledBackground: 'var(--color-surface-overlay)',
-      filledBackground: 'var(--color-surface-raised)',
-      filledHoverBackground: 'var(--color-surface-raised)',
-      filledFocusBackground: 'var(--color-surface-raised)',
-      borderColor: 'var(--color-border-default)',
+      filledBackground: 'var(--color-surface-base)',
+      filledHoverBackground: 'var(--color-surface-base)',
+      filledFocusBackground: 'var(--color-surface-base)',
+      borderColor: 'var(--color-border-strong)',
       hoverBorderColor: 'var(--color-border-strong)',
       focusBorderColor: 'var(--color-action-primary)',
       invalidBorderColor: 'var(--color-status-danger)',
@@ -142,38 +145,34 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       },
     },
     overlay: {
-      // Floating panels (select dropdowns, popovers) use the Acrylic material
-      // like the other transient surfaces (doc §4) — the backdrop-filter blur
-      // itself can't live in a token, so styles.css adds it to
-      // `.p-select-overlay` / `.p-popover`. Without this they fell back to a
-      // flat `--color-surface-base` slab that read as near-black against the
-      // Mica chrome and the atmospheric base.
+      // Floating panels — select dropdowns, popovers — are solid surfaces one
+      // step up from the page (`--color-surface-overlay`), a 1px border and a
+      // tight shadow (from `.p-select-overlay` / `.p-popover` in styles.css).
+      // No translucency / backdrop-blur: that caused open-flicker.
       select: {
         borderRadius: 'var(--radius-md)',
-        background: 'var(--surface-acrylic)',
-        borderColor: 'var(--surface-acrylic-border)',
+        background: 'var(--color-surface-overlay)',
+        borderColor: 'var(--color-border-default)',
         color: 'var(--color-text-primary)',
       },
       popover: {
         borderRadius: 'var(--radius-md)',
         padding: 'var(--spacing-sm)',
-        background: 'var(--surface-acrylic)',
-        borderColor: 'var(--surface-acrylic-border)',
+        background: 'var(--color-surface-overlay)',
+        borderColor: 'var(--color-border-default)',
         color: 'var(--color-text-primary)',
       },
       modal: {
         borderRadius: 'var(--radius-dialog)',
         padding: 'var(--spacing-lg)',
-        background: 'var(--color-surface-base)',
+        background: 'var(--color-surface-raised)',
         borderColor: 'var(--color-border-default)',
         color: 'var(--color-text-primary)',
       },
     },
     mask: {
-      // A dark "smoke" scrim (doc §21) — not the light one Aura's default
-      // `{text.color}`-based mix produces on a dark theme. The blur is added
-      // on `.p-dialog-mask` / `.p-drawer-mask` in styles.css.
-      background: 'color-mix(in srgb, var(--primitive-color-neutral-0), transparent 45%)',
+      // Plain dark scrim behind dialogs/drawers — no blur.
+      background: 'rgba(2, 6, 12, 0.6)',
       color: 'var(--color-surface-overlay)',
     },
     surface: {
@@ -228,6 +227,21 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
           color: 'var(--component-button-primary-text)',
           hoverColor: 'var(--component-button-primary-text)',
           activeColor: 'var(--component-button-primary-text)',
+        },
+        // Secondary = a neutral bordered button. Aura's default points this at
+        // its own zinc ramp (`{surface.100}` / `{surface.800}`), which isn't
+        // remapped to the app tokens — hence the stray near-black slab. This
+        // wires it to the surface + border + text tokens.
+        secondary: {
+          background: 'var(--color-surface-raised)',
+          hoverBackground: 'var(--color-surface-overlay)',
+          activeBackground: 'var(--color-surface-overlay)',
+          borderColor: 'var(--color-border-strong)',
+          hoverBorderColor: 'var(--color-border-strong)',
+          activeBorderColor: 'var(--color-border-strong)',
+          color: 'var(--color-text-primary)',
+          hoverColor: 'var(--color-text-primary)',
+          activeColor: 'var(--color-text-primary)',
         },
       },
     },

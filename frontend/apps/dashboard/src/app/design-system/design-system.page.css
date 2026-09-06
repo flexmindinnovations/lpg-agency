@@ -142,7 +142,7 @@
   color: var(--color-text-secondary);
 }
 
-/* ---- Materials ---- */
+/* ---- Surfaces ---- */
 .ds-materials {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -160,10 +160,6 @@
   color: var(--color-text-primary);
   position: relative;
   overflow: hidden;
-}
-
-.ds-material--atmosphere {
-  background: var(--surface-atmosphere), var(--color-surface-base);
 }
 
 /* ---- Buttons ---- */

@@ -8,9 +8,9 @@ Import from the barrel:
 import { StatCardComponent, EmptyStateComponent, formatCurrencyInr } from '@lpg/shared/ui';
 ```
 
-The visual language (Fluent Glass — Mica/Acrylic surfaces, the enterprise-blue
-palette, motion) lives in `@lpg/shared/design-tokens`; these components only
-consume `var(--…)` tokens, never raw hex. See
+The visual language (solid surfaces, the enterprise-blue palette, tight
+shadows, short opacity-only motion) lives in `@lpg/shared/design-tokens`;
+these components only consume `var(--…)` tokens, never raw hex. See
 `planning/features/29-dashboard-enterprise-ux/` for the design system rationale
 and `/design-system` in the running app for a live showcase.
 
@@ -19,7 +19,7 @@ and `/design-system` in the running app for a live showcase.
 | Component | Selector | Key inputs | Notes |
 |---|---|---|---|
 | `PageHeaderComponent` | `lpg-page-header` | `title` (req), `subtitle`, `backLink`, `backLabel` | Drop into the shell title portal. `[actions]` content slot for right-aligned buttons. |
-| `SectionCardComponent` | `lpg-section-card` | `heading`, `hasHeaderActions` | Mica card wrapper for a dashboard panel. `[headerActions]` + default slot. |
+| `SectionCardComponent` | `lpg-section-card` | `heading`, `hasHeaderActions` | Solid card wrapper for a dashboard panel. `[headerActions]` + default slot. |
 | `StatCardComponent` | `lpg-stat-card` | `label` (req), `value` (req), `icon`, `tone`, `delta`, `deltaDirection`, `caption`, `trend: number[]`, `loading` | KPI tile with an inline SVG sparkline. `tone: 'primary' \| 'info' \| 'success' \| 'warning' \| 'danger' \| 'neutral'`. 1px hover lift only. |
 
 ## State & feedback

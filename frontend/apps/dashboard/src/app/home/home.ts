@@ -116,11 +116,9 @@ function escapeCsvCell(value: string): string {
 
       <!-- KPI Section -->
       <section class="dashboard__kpis">
-        @for (kpi of kpis(); track kpi.title; let i = $index) {
+        @for (kpi of kpis(); track kpi.title) {
           <lpg-stat-card
             *lpgHasPermission="kpi.permission"
-            class="animate-fade-up"
-            [style.--lpg-stagger-index]="i"
             [label]="kpi.title"
             [value]="kpi.value"
             [icon]="kpi.icon"

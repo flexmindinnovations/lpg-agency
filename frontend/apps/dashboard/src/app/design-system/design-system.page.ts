@@ -88,8 +88,8 @@ const PRINCIPLES = [
   { icon: 'pi pi-th-large', title: 'Consistency', body: 'One token system, one component vocabulary across every module.' },
   { icon: 'pi pi-bolt', title: 'Feedback', body: 'Every interaction has a state; motion communicates, never decorates.' },
   { icon: 'pi pi-check-circle', title: 'Accessibility', body: 'WCAG 2.2 AA, keyboard-operable, status never by colour alone.' },
-  { icon: 'pi pi-gauge', title: 'Performance', body: 'Glass used selectively; transform/opacity animations only.' },
-  { icon: 'pi pi-sparkles', title: 'Modern aesthetic', body: 'Fluent-inspired Mica/Acrylic materials, restrained and premium.' },
+  { icon: 'pi pi-gauge', title: 'Performance', body: 'Solid surfaces, tight shadows, short opacity-only transitions — nothing that flickers.' },
+  { icon: 'pi pi-sparkles', title: 'Restraint', body: 'Flat, high-contrast, quiet. The data is the interface, not the chrome.' },
 ];
 
 @Component({

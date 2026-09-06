@@ -1,7 +1,7 @@
 <ng-template lpgHeaderTitlePortal>
   <lpg-page-header
     title="Design System"
-    subtitle="The Fluent Glass token system and component vocabulary — every swatch below is read live from the active theme."
+    subtitle="The design token system and component vocabulary — every swatch below is read live from the active theme."
   />
 </ng-template>
 
@@ -81,20 +81,20 @@
     </lpg-section-card>
   </div>
 
-  <!-- ============ MATERIALS ============ -->
-  <lpg-section-card heading="Materials">
+  <!-- ============ SURFACES ============ -->
+  <lpg-section-card heading="Surfaces">
     <div class="ds-materials">
-      <div class="ds-material ds-material--atmosphere surface-noise">
-        <span>Material A — atmospheric base</span>
+      <div class="ds-material" style="background: var(--color-surface-base); border-color: var(--color-border-default);">
+        <span>Base — the page ground</span>
       </div>
-      <div class="ds-material" style="background: var(--surface-mica); border-color: var(--surface-mica-border); box-shadow: var(--surface-mica-shadow);">
-        <span>Material B — Mica (sidebar, header)</span>
+      <div class="ds-material" style="background: var(--surface-mica); border-color: var(--surface-mica-border);">
+        <span>Chrome — sidebar, header</span>
       </div>
       <div
         class="ds-material"
-        style="background: var(--surface-acrylic); backdrop-filter: var(--surface-acrylic-blur); border-color: var(--surface-acrylic-border); box-shadow: var(--surface-acrylic-shadow);"
+        style="background: var(--surface-acrylic); border-color: var(--surface-acrylic-border); box-shadow: var(--surface-acrylic-shadow);"
       >
-        <span>Material C — Acrylic (dialogs, palette)</span>
+        <span>Overlay — dialogs, drawers, popovers</span>
       </div>
     </div>
   </lpg-section-card>
@@ -197,7 +197,7 @@
         </div>
       }
     </div>
-    <p class="ds-note">Route changes use the View Transitions API; entrance utilities: <code>.animate-fade-up</code>, <code>.animate-fade-in</code>. All motion respects <code>prefers-reduced-motion</code>.</p>
+    <p class="ds-note">Route changes cross-fade via the View Transitions API (opacity only, ~140ms); <code>.animate-fade-in</code> gives a card a single quiet fade on first paint. No transforms, no staggered cascades. All motion respects <code>prefers-reduced-motion</code>.</p>
   </lpg-section-card>
 
   <!-- ============ PRINCIPLES ============ -->

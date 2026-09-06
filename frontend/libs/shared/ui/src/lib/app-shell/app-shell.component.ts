@@ -115,7 +115,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         </button>
       </div>
 
-      <div class="shell__content surface-noise">
+      <div class="shell__content">
         <header class="shell__header">
           <div class="shell__header-spacer">
             <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
@@ -177,10 +177,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
       /* ---- Sidebar Wrapper & Sidebar ---- */
 
-      /* Mica surface (doc §3): the sidebar is a large persistent chrome
-         surface — semi-opaque tint over the atmospheric base, a fine
-         border, an extremely subtle edge elevation. No blur (Mica isn't a
-         blur material; that's Acrylic). */
+      /* Persistent chrome — a solid surface one step up from the page ground,
+         separated by a single border. */
       .shell__sidebar-wrapper {
         position: relative;
         display: flex;
@@ -189,7 +187,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         flex-shrink: 0;
         background: var(--surface-mica);
         border-inline-end: var(--border-width) solid var(--surface-mica-border);
-        box-shadow: var(--surface-mica-shadow);
         transition: inline-size var(--motion-duration-medium) var(--motion-easing-emphasized);
         z-index: 10;
       }
@@ -412,20 +409,17 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
       /* ---- Main Content ---- */
 
-      /* The content column is Material A (doc §2): the atmospheric base —
-         a deep neutral with two very subtle radial gradients. The global
-         surface-noise class lays a barely-perceptible grain over it so the
-         gradients don't read as artificially smooth. */
+      /* Flat solid base — the page ground. */
       .shell__content {
         position: relative;
         display: flex;
         flex-direction: column;
         flex: 1;
         min-inline-size: 0;
-        background: var(--surface-atmosphere);
+        background: var(--color-surface-base);
       }
 
-      /* ---- Global Header ---- (Mica, doc §3) */
+      /* ---- Global Header ---- (solid chrome, same surface as the sidebar) */
       .shell__header {
         display: flex;
         align-items: center;
@@ -438,9 +432,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         flex-wrap: wrap;
       }
 
-      /* Transparent, not Mica — the breadcrumb belongs to the content
-         column, so the atmospheric base flows through it uninterrupted
-         (it used to read as a stray slab of header chrome). */
+      /* Transparent — the breadcrumb belongs to the content column, not the
+         header chrome. */
       .shell__breadcrumb-wrapper {
         padding: var(--spacing-md) var(--spacing-xl) 0;
         background: transparent;

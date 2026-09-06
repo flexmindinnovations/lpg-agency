@@ -46,22 +46,11 @@
 /* ========================================================================
    PRIME NG COMPONENT OVERRIDES
    ======================================================================== */
-:root {
-  /* Button severity mapping (doc §20). PrimeNG's own severities cover it:
-     (default) = Primary (filled blue), severity="secondary" = Secondary
-     (neutral elevated, retuned below off Aura's near-black default),
-     [text] = Tertiary, [outlined] = Outline, severity="danger" = Danger,
-     [text][plain] / a bare icon button = Ghost. Every state
-     (hover/active/focus/disabled/loading) comes from the preset; the
-     press feedback is added in "Button refinements" further down. */
-  --p-button-secondary-background: var(--color-surface-overlay);
-  --p-button-secondary-hover-background: var(--color-border-default);
-  --p-button-secondary-active-background: var(--color-border-strong);
-  --p-button-secondary-color: var(--color-text-primary);
-  --p-button-secondary-border-color: var(--color-border-default);
-  --p-button-secondary-hover-border-color: var(--color-border-strong);
-  --p-button-secondary-active-border-color: var(--color-border-strong);
-}
+/* Button severity mapping (doc §20): (default) = Primary (filled blue),
+   severity="secondary" = Secondary (neutral bordered), [text] = Tertiary,
+   [outlined] = Outline, severity="danger" = Danger, [text][plain] / a bare
+   icon button = Ghost. All colours + states come from the preset
+   (primeng-preset.ts components.button); no --p-button-* overrides here. */
 
 /* ========================================================================
    FOUNDATION
@@ -145,32 +134,12 @@ body {
 }
 
 /* Dialogs, drawers, popovers, the command palette — transient/elevated
- * surfaces only (doc §4/§40: never the whole dashboard, and backdrop-filter
- * must not be applied to many elements at once). */
+ * surfaces. Solid, bordered, tight shadow (the translucency + backdrop-blur
+ * that used to be here caused open-flicker and washed the page out). */
 .surface-acrylic {
   background: var(--surface-acrylic);
-  backdrop-filter: var(--surface-acrylic-blur);
-  -webkit-backdrop-filter: var(--surface-acrylic-blur);
   border-color: var(--surface-acrylic-border);
   box-shadow: var(--surface-acrylic-shadow);
-}
-
-/* A barely-perceptible monochrome grain over a surface, so large gradients
- * (e.g. --surface-atmosphere) don't read as artificially smooth. One shared
- * SVG turbulence filter, positioned via ::after so it never intercepts
- * pointer events or affects layout. */
-.surface-noise {
-  position: relative;
-}
-
-.surface-noise::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: var(--surface-noise-image);
-  opacity: var(--surface-noise-opacity, 0.03);
-  pointer-events: none;
-  mix-blend-mode: overlay;
 }
 
 /* Icon sizing (doc §12) — for `pi` icon-font glyphs, which render in a
@@ -189,6 +158,8 @@ body {
    Progressive enhancement: browsers without the API just hard-cut.
    ======================================================================== */
 
+/* Route transition — a plain, fast opacity cross-fade. No transform (it
+   caused a visible jump on every navigation), no blur. */
 @keyframes lpg-route-out {
   to {
     opacity: 0;
@@ -198,49 +169,29 @@ body {
 @keyframes lpg-route-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
 }
 
-/* Outgoing view: quick fade with an ease-in (doc §39: ease-in for exiting).
-   Incoming view: slightly longer, settles up 6px with the page-transition
-   curve (doc §25). No blur — doc §40 warns off animated full-viewport blur,
-   and the plan keeps to that restraint. */
 ::view-transition-old(root) {
-  animation: var(--motion-duration-small) var(--motion-easing-accelerate) both
-    lpg-route-out;
+  animation: 100ms linear both lpg-route-out;
 }
 
 ::view-transition-new(root) {
-  animation: var(--motion-duration-medium) var(--motion-easing-emphasized) both
-    lpg-route-in;
+  animation: 140ms linear both lpg-route-in;
 }
 
-/* Entrance utilities for lists/cards — used from Stage 3/8, not applied
-   anywhere yet. Set --lpg-stagger-index inline in an @for block so a row of
-   items cascades in rather than all popping at once. */
-@keyframes lpg-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
+/* Entrance utility — a single quiet fade-in for a card/list on first paint.
+   No translate, no per-item stagger (both read as flicker on a data tool
+   the user opens dozens of times a day). */
 @keyframes lpg-fade-in {
   from {
     opacity: 0;
   }
 }
 
-.animate-fade-up {
-  animation: var(--motion-duration-medium) var(--motion-easing-emphasized) both
-    lpg-fade-up;
-  animation-delay: calc(var(--lpg-stagger-index, 0) * 40ms);
-}
-
+.animate-fade-up,
 .animate-fade-in {
-  animation: var(--motion-duration-small) var(--motion-easing-emphasized) both
-    lpg-fade-in;
+  animation: var(--motion-duration-small) ease-out both lpg-fade-in;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -509,28 +460,10 @@ textarea {
    PRIMENG GLOBAL OVERRIDES — polish default appearance
    ======================================================================== */
 
-/* Dialog / drawer / command-palette backdrop — a smoke-like scrim with a
-   light blur (doc §21). The scrim colour itself comes from the preset's
-   semantic.mask; here we add the blur the token can't express. */
-.p-dialog-mask,
-.p-drawer-mask {
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .p-dialog-mask,
-  .p-drawer-mask {
-    transition: backdrop-filter var(--motion-duration-small) var(--motion-easing-emphasized);
-  }
-}
-
-/* Dialog panel — Acrylic (doc §4, §21): elevated/transient surface only. */
+/* Dialog panel — solid elevated surface. */
 .p-dialog {
   border-radius: var(--radius-dialog) !important;
   background: var(--surface-acrylic) !important;
-  backdrop-filter: var(--surface-acrylic-blur);
-  -webkit-backdrop-filter: var(--surface-acrylic-blur);
   box-shadow: var(--surface-acrylic-shadow) !important;
   border: var(--border-width) solid var(--surface-acrylic-border) !important;
 }
@@ -550,12 +483,10 @@ textarea {
   padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-lg) !important;
 }
 
-/* Drawer panel — Acrylic (doc §4, §22). The slide-in itself is PrimeNG's
-   own animation; this sets the material + timing. */
+/* Drawer panel — solid elevated surface. The slide-in is PrimeNG's own
+   animation; this just sets the material. */
 .p-drawer {
   background: var(--surface-acrylic) !important;
-  backdrop-filter: var(--surface-acrylic-blur);
-  -webkit-backdrop-filter: var(--surface-acrylic-blur);
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
@@ -592,28 +523,27 @@ textarea {
   overflow: hidden;
 }
 
-/* Button refinements */
+/* Button refinements. Explicit transition properties only — never
+   `transition: all` (it animates layout + transform and causes text jitter).
+   No hover lift; hover is a background-colour change from the preset. */
 .p-button {
   font-weight: var(--typography-label-font-weight) !important;
   font-size: var(--typography-body-small-font-size) !important;
   border-radius: var(--radius-md) !important;
-  transition: all var(--motion-duration-small) var(--motion-easing-standard) !important;
+  transition:
+    background-color var(--motion-duration-small) var(--motion-easing-standard),
+    border-color var(--motion-duration-small) var(--motion-easing-standard),
+    color var(--motion-duration-small) var(--motion-easing-standard) !important;
 }
 
-.p-button:not(:disabled):hover {
-  transform: translateY(-0.5px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-}
-
-/* Subtle press feedback (doc §26) — never a springy animation. */
+/* A restrained press feedback — a small opacity dip, no transform. */
 .p-button:not(:disabled):active {
-  transform: scale(0.98);
+  opacity: 0.9;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .p-button:not(:disabled):hover,
   .p-button:not(:disabled):active {
-    transform: none;
+    opacity: 1;
   }
 }
 
@@ -656,26 +586,19 @@ textarea {
   font-size: var(--typography-body-small-font-size) !important;
 }
 
-/* Toast refinements — bottom-right (set on <p-toast> in the shells), an
-   Acrylic surface, lightweight (doc §23). */
+/* Toast refinements — bottom-right (set on <p-toast> in the shells). Solid. */
 .p-toast-message {
   border-radius: var(--radius-md) !important;
   background: var(--surface-acrylic) !important;
-  backdrop-filter: var(--surface-acrylic-blur);
-  -webkit-backdrop-filter: var(--surface-acrylic-blur);
   border: var(--border-width) solid var(--surface-acrylic-border) !important;
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 
-/* Floating panels — the profile menu / any popover, and select dropdowns —
-   get the Acrylic material too (doc §4). The preset supplies the colour +
-   border via overlay.popover / overlay.select; only the blur has to come
-   from CSS. Previously these were a flat --color-surface-base slab that
-   read as near-black over the Mica chrome. */
+/* Floating panels — the profile menu / any popover, and select dropdowns.
+   The preset supplies the solid background + border via overlay.popover /
+   overlay.select; this just adds the shadow. */
 .p-popover,
 .p-select-overlay {
-  backdrop-filter: var(--surface-acrylic-blur);
-  -webkit-backdrop-filter: var(--surface-acrylic-blur);
   box-shadow: var(--surface-acrylic-shadow) !important;
 }
 

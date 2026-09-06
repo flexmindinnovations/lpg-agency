@@ -130,10 +130,8 @@ export function fuzzyScore(text: string, q: string): number {
         justify-content: center;
         align-items: flex-start;
         padding-block-start: 12vh;
-        background: color-mix(in srgb, var(--primitive-color-neutral-0), transparent 45%);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-        animation: cmdk-fade var(--motion-duration-small) var(--motion-easing-emphasized) both;
+        background: rgba(2, 6, 12, 0.6);
+        animation: cmdk-fade var(--motion-duration-small) ease-out both;
       }
 
       .cmdk__panel {
@@ -141,14 +139,12 @@ export function fuzzyScore(text: string, q: string): number {
         max-block-size: 60vh;
         display: flex;
         flex-direction: column;
-        background: var(--surface-acrylic);
-        backdrop-filter: var(--surface-acrylic-blur);
-        -webkit-backdrop-filter: var(--surface-acrylic-blur);
-        border: var(--border-width) solid var(--surface-acrylic-border);
+        background: var(--color-surface-overlay);
+        border: var(--border-width) solid var(--color-border-strong);
         border-radius: var(--radius-dialog);
-        box-shadow: var(--surface-acrylic-shadow);
+        box-shadow: var(--elevation-4);
         overflow: hidden;
-        animation: cmdk-in var(--motion-duration-medium) var(--motion-easing-emphasized) both;
+        animation: cmdk-in var(--motion-duration-small) ease-out both;
       }
 
       .cmdk__search {
@@ -271,7 +267,6 @@ export function fuzzyScore(text: string, q: string): number {
       @keyframes cmdk-in {
         from {
           opacity: 0;
-          transform: translateY(-6px) scale(0.98);
         }
       }
 

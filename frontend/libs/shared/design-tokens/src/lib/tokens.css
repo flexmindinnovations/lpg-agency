@@ -271,18 +271,20 @@ have always been hand-edited directly. Edit them here.
   --elevation-2: 0 4px 6px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06);
   --elevation-3: 0 12px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
   --elevation-4: 0 20px 40px rgba(0,0,0,0.16), 0 8px 16px rgba(0,0,0,0.10);
-  /* Materials (Fluent Glass, Phase 29) — light-mode fallbacks. Dark is the
-     primary experience these were designed for (doc §2-4); light gets a
-     conservative translucent-white treatment rather than a full redesign
-     of its own, per this stage's scope. Not consumed by any component yet. */
-  --surface-mica: rgba(255,255,255,0.72);
-  --surface-mica-border: rgba(0,0,0,0.08);
-  --surface-mica-shadow: 0 8px 32px rgba(0,0,0,0.08);
-  --surface-acrylic: rgba(255,255,255,0.72);
-  --surface-acrylic-blur: blur(20px) saturate(120%);
-  --surface-acrylic-border: rgba(0,0,0,0.08);
-  --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.12);
-  --surface-atmosphere: none;
+  /* Surface aliases (formerly the "Fluent Glass" Mica/Acrylic materials).
+     The translucency + backdrop-blur experiment was pulled back — it caused
+     open-flicker on every overlay and washed the page out. These are now
+     plain solid surfaces: `mica` = persistent chrome (sidebar/header),
+     `acrylic` = transient overlays (dialogs/drawers/popovers/selects/toasts).
+     Kept as named aliases so consumers don't churn. */
+  --surface-mica: var(--color-surface-raised);
+  --surface-mica-border: var(--color-border-default);
+  --surface-mica-shadow: none;
+  --surface-acrylic: var(--color-surface-base);
+  --surface-acrylic-blur: none;
+  --surface-acrylic-border: var(--color-border-default);
+  --surface-acrylic-shadow: var(--elevation-3);
+  --surface-atmosphere: var(--color-surface-base);
   --component-button-primary-background: #162b66;
   --component-button-primary-background-hover: #0b173c;
   --component-button-primary-text: #ffffff;
@@ -337,28 +339,23 @@ have always been hand-edited directly. Edit them here.
   --color-highlight-background: rgba(79,141,247,0.22);
   --color-highlight-color: #ffffff;
   --border-width: 1px;
+  /* Tight, restrained elevation — borders do most of the separation work on
+     dark; shadows are a subtle depth cue, not a 64px halo. */
   --elevation-0: none;
-  --elevation-1: 0 2px 8px rgba(0,0,0,0.10);
-  --elevation-2: 0 8px 24px rgba(0,0,0,0.14);
-  --elevation-3: 0 16px 40px rgba(0,0,0,0.20);
-  --elevation-4: 0 24px 64px rgba(0,0,0,0.28);
-  --surface-mica: rgba(22,31,43,0.72);
-  --surface-mica-border: rgba(255,255,255,0.08);
-  --surface-mica-shadow: 0 8px 32px rgba(0,0,0,0.16);
-  --surface-acrylic: rgba(28,38,52,0.62);
-  --surface-acrylic-blur: blur(20px) saturate(120%);
-  --surface-acrylic-border: rgba(255,255,255,0.10);
-  --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.25);
-  /* Material A / §6 gradient system: atmospheric, monochromatic blue→indigo,
-     "extremely subtle" — the two accent hues are the spec's own
-     --gradient-atmosphere blue (#4f8df7) and --gradient-brand indigo
-     (#6c7fe8). A touch more present + a wider spread than the first pass so
-     the tone actually reads once the breadcrumb stopped covering it. */
-  --surface-atmosphere:
-    radial-gradient(circle at 15% -5%, rgba(79,141,247,0.12), transparent 45%),
-    radial-gradient(circle at 85% 105%, rgba(108,127,232,0.10), transparent 45%),
-    #0b1118;
-  --surface-noise-opacity: 0.03;
+  --elevation-1: 0 1px 2px rgba(0,0,0,0.4);
+  --elevation-2: 0 2px 8px rgba(0,0,0,0.4);
+  --elevation-3: 0 8px 24px rgba(0,0,0,0.45);
+  --elevation-4: 0 12px 32px rgba(0,0,0,0.5);
+  /* Solid surfaces, no translucency or blur (see the :root note). */
+  --surface-mica: var(--color-surface-raised);
+  --surface-mica-border: var(--color-border-default);
+  --surface-mica-shadow: none;
+  --surface-acrylic: var(--color-surface-overlay);
+  --surface-acrylic-blur: none;
+  --surface-acrylic-border: var(--color-border-strong);
+  --surface-acrylic-shadow: var(--elevation-3);
+  --surface-atmosphere: var(--color-surface-base);
+  --surface-noise-opacity: 0;
   /* Deliberately NOT --color-action-primary (#4f8df7): white button-label
      text on it is only 3.2:1. #2864cc gives white text 5.7:1. */
   --component-button-primary-background: #2864cc;
@@ -456,23 +453,19 @@ have always been hand-edited directly. Edit them here.
     --color-highlight-color: #ffffff;
     --border-width: 1px;
     --elevation-0: none;
-    --elevation-1: 0 2px 8px rgba(0,0,0,0.10);
-    --elevation-2: 0 8px 24px rgba(0,0,0,0.14);
-    --elevation-3: 0 16px 40px rgba(0,0,0,0.20);
-    --elevation-4: 0 24px 64px rgba(0,0,0,0.28);
-    --surface-mica: rgba(22,31,43,0.72);
-    --surface-mica-border: rgba(255,255,255,0.08);
-    --surface-mica-shadow: 0 8px 32px rgba(0,0,0,0.16);
-    --surface-acrylic: rgba(28,38,52,0.62);
-    --surface-acrylic-blur: blur(20px) saturate(120%);
-    --surface-acrylic-border: rgba(255,255,255,0.10);
-    --surface-acrylic-shadow: 0 20px 60px rgba(0,0,0,0.25);
-    /* §6 gradient system — see the [data-theme='dark'] block. */
-    --surface-atmosphere:
-      radial-gradient(circle at 15% -5%, rgba(79,141,247,0.12), transparent 45%),
-      radial-gradient(circle at 85% 105%, rgba(108,127,232,0.10), transparent 45%),
-      #0b1118;
-    --surface-noise-opacity: 0.03;
+    --elevation-1: 0 1px 2px rgba(0,0,0,0.4);
+    --elevation-2: 0 2px 8px rgba(0,0,0,0.4);
+    --elevation-3: 0 8px 24px rgba(0,0,0,0.45);
+    --elevation-4: 0 12px 32px rgba(0,0,0,0.5);
+    --surface-mica: var(--color-surface-raised);
+    --surface-mica-border: var(--color-border-default);
+    --surface-mica-shadow: none;
+    --surface-acrylic: var(--color-surface-overlay);
+    --surface-acrylic-blur: none;
+    --surface-acrylic-border: var(--color-border-strong);
+    --surface-acrylic-shadow: var(--elevation-3);
+    --surface-atmosphere: var(--color-surface-base);
+    --surface-noise-opacity: 0;
     --component-button-primary-background: #2864cc;
     --component-button-primary-background-hover: #1f4fa8;
     --component-button-primary-text: #ffffff;
