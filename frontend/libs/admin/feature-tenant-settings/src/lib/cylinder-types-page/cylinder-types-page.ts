@@ -12,7 +12,7 @@ import {
   type AppError,
   type CylinderTypeResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -29,7 +29,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-cylinder-types-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -94,16 +94,16 @@ function errorMessageFor(error: unknown): string {
         <form id="addCylinderTypeForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
           <p class="page-lede">Define a new LPG cylinder type by name and weight.</p>
 
-          <div class="form-group">
-            <label for="cylinder-name">Name</label>
-            <input pInputText id="cylinder-name" type="text" formControlName="name" placeholder="e.g. 14.2 kg Domestic" />
-            @if (form.controls.name.touched && form.controls.name.invalid) {
-              <small class="field-error">Cylinder type name is required.</small>
-            }
-          </div>
+          <lpg-form-field label="Name" for="cylinder-name" [control]="form.controls.name" [messages]="{ required: 'Cylinder type name is required.' }">
+            <input pInputText id="cylinder-name" type="text" formControlName="name" placeholder="e.g. 14.2 kg Domestic" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="cylinder-weight">Weight (kg)</label>
+          <lpg-form-field
+            label="Weight (kg)"
+            for="cylinder-weight"
+            [control]="form.controls.weightKg"
+            [messages]="{ required: 'Weight is required.', min: 'Weight must be greater than 0.' }"
+          >
             <input
               pInputText
               id="cylinder-weight"
@@ -111,11 +111,9 @@ function errorMessageFor(error: unknown): string {
               step="0.01"
               formControlName="weightKg"
               placeholder="e.g. 14.2"
+              [fluid]="true"
             />
-            @if (form.controls.weightKg.touched && form.controls.weightKg.invalid) {
-              <small class="field-error">Weight must be greater than 0.</small>
-            }
-          </div>
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

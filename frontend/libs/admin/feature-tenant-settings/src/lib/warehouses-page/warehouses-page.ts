@@ -15,7 +15,7 @@ import {
   type BranchResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -32,7 +32,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-warehouses-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -97,38 +97,25 @@ function errorMessageFor(error: unknown): string {
         <form id="addWarehouseForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
           <p class="page-lede">Create a new warehouse location and assign it to an operating branch.</p>
           
-          <div class="form-group">
-            <label for="warehouse-branch">Branch</label>
-            <p-select 
-              id="warehouse-branch" 
-              formControlName="branchId" 
-              [options]="branches()" 
-              optionLabel="name" 
-              optionValue="id" 
-              placeholder="Select a branch"
-              styleClass="w-full"
-              appendTo="body">
+          <lpg-form-field label="Branch" for="warehouse-branch" [control]="form.controls.branchId" [messages]="{ required: 'Branch is required.' }">
+            <p-select
+              inputId="warehouse-branch"
+              formControlName="branchId"
+              [options]="branches()"
+              optionLabel="name"
+              optionValue="id"
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-            @if (form.controls.branchId.touched && form.controls.branchId.invalid) {
-              <small class="field-error">Branch is required.</small>
-            }
-          </div>
-          
-          <div class="form-group">
-            <label for="warehouse-name">Name</label>
-            <input pInputText id="warehouse-name" type="text" formControlName="name" placeholder="e.g. Northside Depot" />
-            @if (form.controls.name.touched && form.controls.name.invalid) {
-              <small class="field-error">Warehouse name is required.</small>
-            }
-          </div>
-          
-          <div class="form-group">
-            <label for="warehouse-address">Address</label>
-            <input pInputText id="warehouse-address" type="text" formControlName="addressLine" placeholder="Full street address" />
-            @if (form.controls.addressLine.touched && form.controls.addressLine.invalid) {
-              <small class="field-error">Address is required.</small>
-            }
-          </div>
+          </lpg-form-field>
+
+          <lpg-form-field label="Name" for="warehouse-name" [control]="form.controls.name" [messages]="{ required: 'Warehouse name is required.' }">
+            <input pInputText id="warehouse-name" type="text" formControlName="name" placeholder="e.g. Northside Depot" [fluid]="true" />
+          </lpg-form-field>
+
+          <lpg-form-field label="Address" for="warehouse-address" [control]="form.controls.addressLine" [messages]="{ required: 'Address is required.' }">
+            <input pInputText id="warehouse-address" type="text" formControlName="addressLine" placeholder="Full street address" [fluid]="true" />
+          </lpg-form-field>
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">

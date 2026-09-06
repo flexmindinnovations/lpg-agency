@@ -8,10 +8,10 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
-import { FloatLabel } from 'primeng/floatlabel';
 import { InputPassword } from 'primeng/inputpassword';
 import { Message } from 'primeng/message';
 import { AuthService, type AppError } from '@lpg/shared/data-access';
+import { FormFieldComponent } from '@lpg/shared/ui';
 import { AuthShell } from '../auth-shell/auth-shell';
 
 function isAppError(value: unknown): value is AppError {
@@ -47,9 +47,9 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
     ReactiveFormsModule,
     RouterLink,
     ButtonDirective,
-    FloatLabel,
     InputPassword,
     Message,
+    FormFieldComponent,
     AuthShell,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,20 +85,23 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
           }
 
           <div class="login-card__body">
-            <div class="form-group">
+            <lpg-form-field
+              label="New password"
+              for="reset-new-password"
+              [control]="form.controls.newPassword"
+              [messages]="{ required: 'A new password is required.', minlength: 'Use at least 12 characters.' }"
+            >
               <div class="password-field">
-                <p-floatlabel variant="on" class="login-card__float-label">
-                  <input
-                    #newPasswordInput
-                    pInputPassword
-                    id="reset-new-password"
-                    type="password"
-                    formControlName="newPassword"
-                    autocomplete="new-password"
-                    class="login-card__input password-field__input"
-                  />
-                  <label for="reset-new-password">New password</label>
-                </p-floatlabel>
+                <input
+                  #newPasswordInput
+                  pInputPassword
+                  id="reset-new-password"
+                  type="password"
+                  formControlName="newPassword"
+                  autocomplete="new-password"
+                  class="login-card__input password-field__input"
+                  [fluid]="true"
+                />
                 <button
                   type="button"
                   class="password-field__toggle"
@@ -113,22 +116,25 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
                   ></i>
                 </button>
               </div>
-            </div>
+            </lpg-form-field>
 
-            <div class="form-group">
+            <lpg-form-field
+              label="Confirm new password"
+              for="reset-confirm-password"
+              [control]="form.controls.confirmPassword"
+              [messages]="{ required: 'Confirm the new password.' }"
+            >
               <div class="password-field">
-                <p-floatlabel variant="on" class="login-card__float-label">
-                  <input
-                    #confirmPasswordInput
-                    pInputPassword
-                    id="reset-confirm-password"
-                    type="password"
-                    formControlName="confirmPassword"
-                    autocomplete="new-password"
-                    class="login-card__input password-field__input"
-                  />
-                  <label for="reset-confirm-password">Confirm new password</label>
-                </p-floatlabel>
+                <input
+                  #confirmPasswordInput
+                  pInputPassword
+                  id="reset-confirm-password"
+                  type="password"
+                  formControlName="confirmPassword"
+                  autocomplete="new-password"
+                  class="login-card__input password-field__input"
+                  [fluid]="true"
+                />
                 <button
                   type="button"
                   class="password-field__toggle"
@@ -143,10 +149,13 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
                   ></i>
                 </button>
               </div>
-              @if (mismatch()) {
-                <span class="field-error">Passwords do not match.</span>
-              }
-            </div>
+            </lpg-form-field>
+            @if (mismatch()) {
+              <p class="reset-password__mismatch" role="alert">
+                <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+                Passwords do not match.
+              </p>
+            }
           </div>
 
           <div class="login-card__footer">
@@ -193,13 +202,17 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
         gap: var(--spacing-md);
       }
 
-      .login-card__float-label {
-        display: block;
-        inline-size: 100%;
-      }
-
       .login-card__input {
         width: 100%;
+      }
+
+      .reset-password__mismatch {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-status-danger);
       }
 
       .password-field {

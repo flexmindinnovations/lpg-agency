@@ -18,6 +18,7 @@ import {
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
+  FormFieldComponent,
   StatusChipCell,
   type ChipSeverity,
   type DataGridColumn,
@@ -66,6 +67,7 @@ function errorMessageFor(error: unknown): string {
     Drawer,
     Dialog,
     DataGridComponent,
+    FormFieldComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -115,22 +117,19 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="issueLicenseForm" [formGroup]="issueForm" (ngSubmit)="issue()" novalidate class="dialog-form">
-          <div class="form-group">
-            <label for="issue-tenant-id">Tenant</label>
+          <lpg-form-field label="Tenant" for="issue-tenant-id" [control]="issueForm.controls.tenantId" [messages]="{ required: 'Select a tenant to issue a license for.' }">
             <p-select
-              id="issue-tenant-id"
+              inputId="issue-tenant-id"
               formControlName="tenantId"
               [options]="newOrTrialAgencyOptions()"
               optionLabel="label"
               optionValue="value"
               placeholder="Select a new or trial tenant"
               appendTo="body"
+              [fluid]="true"
               (onChange)="onIssueTenantChange($event.value)">
             </p-select>
-            @if (issueForm.controls.tenantId.touched && issueForm.controls.tenantId.invalid) {
-              <small class="field-error">Select a tenant to issue a license for.</small>
-            }
-          </div>
+          </lpg-form-field>
 
           @if (selectedIssueTenant(); as tenant) {
             <div class="tenant-preview">
@@ -153,28 +152,28 @@ function errorMessageFor(error: unknown): string {
             </div>
           }
 
-          <div class="form-group">
-            <label for="issue-plan-tier">Plan tier</label>
+          <lpg-form-field label="Plan tier" for="issue-plan-tier" [control]="issueForm.controls.planTier">
             <p-select
-              id="issue-plan-tier"
+              inputId="issue-plan-tier"
               formControlName="planTier"
               [options]="planTierOptions"
               optionLabel="label"
               optionValue="value"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-          </div>
-          <div class="form-group">
-            <label for="issue-validity-days">Validity</label>
+          </lpg-form-field>
+          <lpg-form-field label="Validity" for="issue-validity-days" [control]="issueForm.controls.validityDays">
             <p-select
-              id="issue-validity-days"
+              inputId="issue-validity-days"
               formControlName="validityDays"
               [options]="validityOptions"
               optionLabel="label"
               optionValue="value"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-          </div>
+          </lpg-form-field>
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="issueDrawerVisible.set(false)">Cancel</button>
             <button pButton type="submit" [disabled]="submitting() || issueForm.invalid" [loading]="submitting()">
@@ -263,17 +262,17 @@ function errorMessageFor(error: unknown): string {
             </div>
 
             <form [formGroup]="planTierForm" (ngSubmit)="savePlanTier(license.tenant_id)" class="dialog-form">
-              <div class="form-group">
-                <label for="detail-plan-tier">Change plan tier</label>
+              <lpg-form-field label="Change plan tier" for="detail-plan-tier" [control]="planTierForm.controls.planTier">
                 <p-select
-                  id="detail-plan-tier"
+                  inputId="detail-plan-tier"
                   formControlName="planTier"
                   [options]="planTierOptions"
                   optionLabel="label"
                   optionValue="value"
-                  appendTo="body">
+                  appendTo="body"
+                  [fluid]="true">
                 </p-select>
-              </div>
+              </lpg-form-field>
               <div class="modal-actions">
                 <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()" [loading]="savingPlanTier()">
                   Save plan tier
@@ -282,23 +281,22 @@ function errorMessageFor(error: unknown): string {
             </form>
 
             <form [formGroup]="deviceCapForm" (ngSubmit)="saveDeviceCap(license.tenant_id)" class="dialog-form">
-              <div class="form-group">
-                <label for="detail-app-type">Apps</label>
+              <lpg-form-field label="Apps" for="detail-app-type" [control]="deviceCapForm.controls.appTypes">
                 <p-multiselect
-                  id="detail-app-type"
+                  inputId="detail-app-type"
                   formControlName="appTypes"
                   [options]="appTypeOptions"
                   optionLabel="label"
                   optionValue="value"
                   display="chip"
                   placeholder="Select apps"
-                  appendTo="body">
+                  appendTo="body"
+                  [fluid]="true">
                 </p-multiselect>
-              </div>
-              <div class="form-group">
-                <label for="detail-max-devices">Device cap (blank = unlimited)</label>
-                <input pInputText id="detail-max-devices" type="number" min="0" formControlName="maxDevices" />
-              </div>
+              </lpg-form-field>
+              <lpg-form-field label="Device cap" for="detail-max-devices" [control]="deviceCapForm.controls.maxDevices" hint="Blank = unlimited.">
+                <input pInputText id="detail-max-devices" type="number" min="0" formControlName="maxDevices" [fluid]="true" />
+              </lpg-form-field>
               <div class="modal-actions">
                 <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()" [loading]="savingDeviceCap()">
                   Save device cap

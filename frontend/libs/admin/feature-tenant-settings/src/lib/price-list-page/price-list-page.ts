@@ -17,7 +17,7 @@ import {
   type CylinderTypeResponse,
   type PriceListEntryResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
 
@@ -41,7 +41,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-price-list-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -106,62 +106,47 @@ function errorMessageFor(error: unknown): string {
         <form id="setPriceForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
           <p class="page-lede">Set a price for a cylinder type and customer category. Leave branch empty for a tenant-wide default.</p>
 
-          <div class="form-group">
-            <label for="price-cylinder-type">Cylinder type</label>
+          <lpg-form-field label="Cylinder type" for="price-cylinder-type" [control]="form.controls.cylinderTypeId" [messages]="{ required: 'Cylinder type is required.' }">
             <p-select
-              id="price-cylinder-type"
+              inputId="price-cylinder-type"
               formControlName="cylinderTypeId"
               [options]="cylinderTypes()"
               optionLabel="name"
               optionValue="id"
-              placeholder="Select a cylinder type"
-              styleClass="w-full"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-            @if (form.controls.cylinderTypeId.touched && form.controls.cylinderTypeId.invalid) {
-              <small class="field-error">Cylinder type is required.</small>
-            }
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="price-customer-type">Customer type</label>
+          <lpg-form-field label="Customer type" for="price-customer-type" [control]="form.controls.customerType" [messages]="{ required: 'Customer type is required.' }">
             <p-select
-              id="price-customer-type"
+              inputId="price-customer-type"
               formControlName="customerType"
               [options]="customerTypes"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select a customer type"
-              styleClass="w-full"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-            @if (form.controls.customerType.touched && form.controls.customerType.invalid) {
-              <small class="field-error">Customer type is required.</small>
-            }
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="price-branch">Branch (optional)</label>
+          <lpg-form-field label="Branch" for="price-branch" [control]="form.controls.branchId" hint="Leave empty for a tenant-wide default.">
             <p-select
-              id="price-branch"
+              inputId="price-branch"
               formControlName="branchId"
               [options]="branches()"
               optionLabel="name"
               optionValue="id"
               placeholder="Tenant-wide default"
               [showClear]="true"
-              styleClass="w-full"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="price-value">Price</label>
-            <input pInputText id="price-value" type="number" step="0.01" formControlName="price" placeholder="0.00" />
-            @if (form.controls.price.touched && form.controls.price.invalid) {
-              <small class="field-error">Price must be greater than 0.</small>
-            }
-          </div>
+          <lpg-form-field label="Price" for="price-value" [control]="form.controls.price" [messages]="{ required: 'Price is required.', min: 'Price must be greater than 0.' }">
+            <input pInputText id="price-value" type="number" step="0.01" formControlName="price" placeholder="0.00" [fluid]="true" />
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

@@ -8,7 +8,7 @@ import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { MessageService } from 'primeng/api';
 import { AdminBranchService, type AppError, type BranchResponse } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -25,7 +25,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-branches-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -90,18 +90,13 @@ function errorMessageFor(error: unknown): string {
         <form id="addBranchForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
           <p class="page-lede">Create a new branch and optionally assign it to a region.</p>
 
-          <div class="form-group">
-            <label for="branch-name">Name</label>
-            <input pInputText id="branch-name" type="text" formControlName="name" placeholder="e.g. North City Branch" />
-            @if (form.controls.name.touched && form.controls.name.invalid) {
-              <small class="field-error">Branch name is required.</small>
-            }
-          </div>
+          <lpg-form-field label="Name" for="branch-name" [control]="form.controls.name" [messages]="{ required: 'Branch name is required.' }">
+            <input pInputText id="branch-name" type="text" formControlName="name" placeholder="e.g. North City Branch" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="branch-region">Region (optional)</label>
-            <input pInputText id="branch-region" type="text" formControlName="region" placeholder="e.g. Northern Region" />
-          </div>
+          <lpg-form-field label="Region" for="branch-region" [control]="form.controls.region" hint="Optional.">
+            <input pInputText id="branch-region" type="text" formControlName="region" placeholder="e.g. Northern Region" [fluid]="true" />
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

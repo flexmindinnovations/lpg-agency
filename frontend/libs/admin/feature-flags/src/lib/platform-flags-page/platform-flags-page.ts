@@ -13,7 +13,7 @@ import {
   type AppError,
   type FeatureFlagResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, formatTimestamp } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, formatTimestamp } from '@lpg/shared/ui';
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -85,6 +85,7 @@ class FlagDefaultCell {
     Select,
     DatePicker,
     DataGridComponent,
+    FormFieldComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -125,31 +126,15 @@ class FlagDefaultCell {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="createFlagForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
-          <div class="form-group">
-            <label for="flag-key">Key</label>
-            <input pInputText id="flag-key" type="text" formControlName="key" />
-            @if (form.controls.key.touched && form.controls.key.invalid) {
-              <small class="field-error">Key is required.</small>
-            }
-          </div>
-          <div class="form-group">
-            <label for="flag-description">Description</label>
-            <input pInputText id="flag-description" type="text" formControlName="description" />
-            @if (form.controls.description.touched && form.controls.description.invalid) {
-              <small class="field-error">Description is required.</small>
-            }
-          </div>
-          <div class="form-group">
-            <label for="flag-rollout">Rollout % (optional)</label>
-            <input
-              pInputText
-              id="flag-rollout"
-              type="number"
-              min="0"
-              max="100"
-              formControlName="rolloutPercentage"
-            />
-          </div>
+          <lpg-form-field label="Key" for="flag-key" [control]="form.controls.key" [messages]="{ required: 'Key is required.' }">
+            <input pInputText id="flag-key" type="text" formControlName="key" [fluid]="true" />
+          </lpg-form-field>
+          <lpg-form-field label="Description" for="flag-description" [control]="form.controls.description" [messages]="{ required: 'Description is required.' }">
+            <input pInputText id="flag-description" type="text" formControlName="description" [fluid]="true" />
+          </lpg-form-field>
+          <lpg-form-field label="Rollout %" for="flag-rollout" [control]="form.controls.rolloutPercentage" hint="Optional.">
+            <input pInputText id="flag-rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
@@ -208,10 +193,9 @@ class FlagDefaultCell {
             </div>
           } @else {
             <form id="editFlagForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
-              <div class="form-group">
-                <label for="edit_default">Default</label>
+              <lpg-form-field label="Default" for="edit_default" [control]="editForm.controls.isEnabledByDefault">
                 <p-select
-                  id="edit_default"
+                  inputId="edit_default"
                   formControlName="isEnabledByDefault"
                   [options]="[
                     { label: 'Enabled', value: true },
@@ -219,48 +203,37 @@ class FlagDefaultCell {
                   ]"
                   optionLabel="label"
                   optionValue="value"
+                  [fluid]="true"
                 ></p-select>
-              </div>
+              </lpg-form-field>
 
-              <div class="form-group">
-                <label for="edit_rollout">Rollout % (optional)</label>
-                <input
-                  pInputText
-                  id="edit_rollout"
-                  type="number"
-                  min="0"
-                  max="100"
-                  formControlName="rolloutPercentage"
-                />
-              </div>
+              <lpg-form-field label="Rollout %" for="edit_rollout" [control]="editForm.controls.rolloutPercentage" hint="Optional.">
+                <input pInputText id="edit_rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
+              </lpg-form-field>
 
-              <div class="form-group">
-                <label for="edit_starts_at">Starts At (optional)</label>
+              <lpg-form-field label="Starts at" for="edit_starts_at" [control]="editForm.controls.startsAt" hint="Optional.">
                 <p-datepicker
-                  id="edit_starts_at"
+                  inputId="edit_starts_at"
                   formControlName="startsAt"
                   [showIcon]="true"
                   iconDisplay="input"
                   dateFormat="dd-mm-yy"
-                  placeholder="dd-mm-yyyy"
                   appendTo="body"
                   [fluid]="true"
                 ></p-datepicker>
-              </div>
+              </lpg-form-field>
 
-              <div class="form-group">
-                <label for="edit_ends_at">Ends At (optional)</label>
+              <lpg-form-field label="Ends at" for="edit_ends_at" [control]="editForm.controls.endsAt" hint="Optional.">
                 <p-datepicker
-                  id="edit_ends_at"
+                  inputId="edit_ends_at"
                   formControlName="endsAt"
                   [showIcon]="true"
                   iconDisplay="input"
                   dateFormat="dd-mm-yy"
-                  placeholder="dd-mm-yyyy"
                   appendTo="body"
                   [fluid]="true"
                 ></p-datepicker>
-              </div>
+              </lpg-form-field>
 
               <div class="modal-actions">
                 <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>

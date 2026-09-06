@@ -13,7 +13,7 @@ import {
   type AppError,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, StatusChipCell } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell } from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
 const STAFF_ROLES = [
@@ -45,7 +45,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-staff-users-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon, ManagePermissionsDialogComponent],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, IconField, InputIcon, ManagePermissionsDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -110,30 +110,21 @@ function errorMessageFor(error: unknown): string {
         <form id="inviteUserForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
           <p class="page-lede">Send an invitation email to a new staff member and assign their role.</p>
 
-          <div class="form-group">
-            <label for="invite-email">Email</label>
-            <input pInputText id="invite-email" type="email" formControlName="email" placeholder="staff@example.com" />
-            @if (form.controls.email.touched && form.controls.email.invalid) {
-              <small class="field-error">A valid email address is required.</small>
-            }
-          </div>
+          <lpg-form-field label="Email" for="invite-email" [control]="form.controls.email" [messages]="{ required: 'A valid email address is required.', email: 'A valid email address is required.' }">
+            <input pInputText id="invite-email" type="email" formControlName="email" placeholder="staff@example.com" [fluid]="true" />
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="invite-role">Role</label>
+          <lpg-form-field label="Role" for="invite-role" [control]="form.controls.role" [messages]="{ required: 'Role is required.' }">
             <p-select
-              id="invite-role"
+              inputId="invite-role"
               formControlName="role"
               [options]="roles"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select a role"
-              styleClass="w-full"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-            @if (form.controls.role.touched && form.controls.role.invalid) {
-              <small class="field-error">Role is required.</small>
-            }
-          </div>
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="inviteDrawerVisible.set(false)">Cancel</button>
@@ -157,19 +148,18 @@ function errorMessageFor(error: unknown): string {
         <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
           <p class="page-lede">Reassign the role, manage specific permissions, or deactivate the account.</p>
 
-          <div class="form-group">
-            <label for="manage-role">New role (for reassignment)</label>
+          <lpg-form-field label="New role (for reassignment)" for="manage-role" [control]="manageForm.controls.newRole">
             <p-select
-              id="manage-role"
+              inputId="manage-role"
               formControlName="newRole"
               [options]="roles"
               optionLabel="label"
               optionValue="value"
               placeholder="- select to reassign -"
-              styleClass="w-full"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-          </div>
+          </lpg-form-field>
 
           <div class="flex flex-col gap-4 mt-6">
             <div class="flex items-center justify-between border border-gray-200 rounded p-4">

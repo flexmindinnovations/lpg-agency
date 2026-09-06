@@ -1,4 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { FormFieldComponent } from '@lpg/shared/ui';
 
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -30,7 +31,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-flag-overrides-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, Select, Message],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, Select, Message, FormFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -58,10 +59,9 @@ function errorMessageFor(error: unknown): string {
       } @else {
         <section class="admin-form-section">
           <form [formGroup]="form" novalidate>
-            <div class="form-group">
-              <label for="flag-key">Flag</label>
+            <lpg-form-field label="Flag" for="flag-key" [control]="form.controls.key">
               <p-select
-                id="flag-key"
+                inputId="flag-key"
                 formControlName="key"
                 [options]="flagOptions()"
                 optionLabel="label"
@@ -69,8 +69,9 @@ function errorMessageFor(error: unknown): string {
                 [loading]="loading()"
                 placeholder="Select a flag"
                 appendTo="body"
+                [fluid]="true"
               ></p-select>
-            </div>
+            </lpg-form-field>
             <div class="admin-form-actions">
               <button pButton type="button" [disabled]="form.invalid" (click)="checkStatus()">
                 Check status
@@ -114,17 +115,6 @@ function errorMessageFor(error: unknown): string {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-      }
-
-      .admin-form-section .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-      }
-
-      .admin-form-section .form-group label {
-        font-weight: var(--typography-label-font-weight);
-        font-size: var(--typography-body-small-font-size);
       }
 
       .admin-form-actions {

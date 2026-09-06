@@ -14,7 +14,7 @@ import {
   type AppError,
   type TenantConfigurationResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, formatTimestamp } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, formatTimestamp } from '@lpg/shared/ui';
 
 /** The recognized config-key catalog, each with a human-readable label and
  * a description of what it controls — mirrors the backend's
@@ -112,7 +112,7 @@ class ConfigKeyCell {
 @Component({
   selector: 'lpg-tenant-configuration-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, Select, Drawer, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -178,30 +178,21 @@ class ConfigKeyCell {
         <form id="setConfigForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
           <p class="page-lede">This creates a new historized entry — the previous value is preserved.</p>
 
-          <div class="form-group">
-            <label for="config-key">Key</label>
+          <lpg-form-field label="Key" for="config-key" [control]="form.controls.configKey" [messages]="{ required: 'Configuration key is required.' }">
             <p-select
-              id="config-key"
+              inputId="config-key"
               formControlName="configKey"
               [options]="recognizedKeys"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select a key"
-              styleClass="w-full"
-              appendTo="body">
+              appendTo="body"
+              [fluid]="true">
             </p-select>
-            @if (form.controls.configKey.touched && form.controls.configKey.invalid) {
-              <small class="field-error">Configuration key is required.</small>
-            }
-          </div>
+          </lpg-form-field>
 
-          <div class="form-group">
-            <label for="config-value">Value</label>
-            <input pInputText id="config-value" type="text" formControlName="configValue" placeholder="e.g. 18" />
-            @if (form.controls.configValue.touched && form.controls.configValue.invalid) {
-              <small class="field-error">Value is required.</small>
-            }
-          </div>
+          <lpg-form-field label="Value" for="config-value" [control]="form.controls.configValue" [messages]="{ required: 'Value is required.' }">
+            <input pInputText id="config-value" type="text" formControlName="configValue" placeholder="e.g. 18" [fluid]="true" />
+          </lpg-form-field>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

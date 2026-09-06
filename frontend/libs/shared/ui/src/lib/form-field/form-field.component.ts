@@ -71,6 +71,7 @@ import { of, startWith, switchMap } from 'rxjs';
          already set a width (e.g. PrimeNG's [fluid]). */
       .lpg-field ::ng-deep .p-inputtext,
       .lpg-field ::ng-deep .p-select,
+      .lpg-field ::ng-deep .p-multiselect,
       .lpg-field ::ng-deep .p-datepicker,
       .lpg-field ::ng-deep .p-inputnumber,
       .lpg-field ::ng-deep .p-autocomplete,

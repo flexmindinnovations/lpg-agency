@@ -1,5 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { formatTimestamp } from '@lpg/shared/ui';
+import { formatTimestamp, FormFieldComponent } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -41,7 +41,7 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
 @Component({
   selector: 'lpg-license-activation-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, FormFieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -60,13 +60,9 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
         <section class="admin-form-section">
           <p class="page-lede">Enter the activation key you received to unlock this tenant.</p>
           <form [formGroup]="form" (ngSubmit)="activate()" novalidate>
-            <div class="form-group">
-              <label for="license-key">Activation key</label>
-              <input pInputText id="license-key" type="text" formControlName="key" placeholder="LPG-XXXX-XXXX-XXXX-XXXX" />
-              @if (form.controls.key.touched && form.controls.key.invalid) {
-                <small class="field-error">An activation key is required.</small>
-              }
-            </div>
+            <lpg-form-field label="Activation key" for="license-key" [control]="form.controls.key" [messages]="{ required: 'An activation key is required.' }">
+              <input pInputText id="license-key" type="text" formControlName="key" placeholder="LPG-XXXX-XXXX-XXXX-XXXX" [fluid]="true" />
+            </lpg-form-field>
             <div class="admin-form-actions">
               <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
                 Activate
@@ -121,17 +117,6 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-md);
-      }
-
-      .admin-form-section .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-      }
-
-      .admin-form-section .form-group label {
-        font-weight: var(--typography-label-font-weight);
-        font-size: var(--typography-body-small-font-size);
       }
 
       .admin-form-actions {
