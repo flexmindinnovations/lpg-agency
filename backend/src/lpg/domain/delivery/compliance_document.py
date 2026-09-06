@@ -148,7 +148,6 @@ class ComplianceDocument(AggregateRoot):
         verified_by: uuid.UUID | None = None,
         verified_at: datetime | None = None,
         version: int = 1,
-        _record_event: bool = True,
     ) -> None:
         super().__init__(document_id, version=version)
 
@@ -173,17 +172,16 @@ class ComplianceDocument(AggregateRoot):
         self._verified_by = verified_by
         self._verified_at = verified_at
 
-        if _record_event:
-            self.record_event(
-                ComplianceDocumentAdded(
-                    document_id=document_id,
-                    tenant_id=tenant_id,
-                    owner_type=owner_type,
-                    owner_id=owner_id,
-                    doc_type=doc_type,
-                    expiry_date=expiry_date,
-                )
+        self.record_event(
+            ComplianceDocumentAdded(
+                document_id=document_id,
+                tenant_id=tenant_id,
+                owner_type=owner_type,
+                owner_id=owner_id,
+                doc_type=doc_type,
+                expiry_date=expiry_date,
             )
+        )
 
     # ------------------------------------------------------------------
     # Properties

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     import datetime
     import uuid
 
+    from lpg.domain.delivery.compliance_document import ComplianceDocument
     from lpg.domain.delivery.driver import Driver
     from lpg.domain.delivery.route import Route
     from lpg.domain.delivery.vehicle import Vehicle
@@ -140,3 +141,53 @@ class RouteRepository(Protocol):
         date_from: datetime.date | None = None,
         date_to: datetime.date | None = None,
     ) -> int: ...
+
+
+class ComplianceDocumentRepository(Protocol):
+    """Persistence for `ComplianceDocument` — the driver/vehicle compliance
+    pack. Tenant-scoped by RLS on `delivery.compliance_document`."""
+
+    def next_id(self) -> uuid.UUID: ...
+
+    async def save(self, doc: ComplianceDocument) -> None: ...
+
+    async def get_by_id(self, document_id: uuid.UUID) -> ComplianceDocument | None: ...
+
+    async def get_for_owner_and_type(
+        self, owner_type: str, owner_id: uuid.UUID, doc_type: str
+    ) -> ComplianceDocument | None:
+        """The one live document of a given type for an owner (`replace`
+        supersedes in place, so there is at most one)."""
+        ...
+
+    async def list_by_owner(
+        self, owner_type: str, owner_id: uuid.UUID
+    ) -> list[ComplianceDocument]: ...
+
+    async def list_for_tenant(
+        self,
+        *,
+        owner_type: str | None = None,
+        status: str | None = None,
+        expiry: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[ComplianceDocument]: ...
+
+    async def count_for_tenant(
+        self,
+        *,
+        owner_type: str | None = None,
+        status: str | None = None,
+        expiry: str | None = None,
+    ) -> int: ...
+
+    async def list_expiring(self, within_days: int = 30) -> list[ComplianceDocument]:
+        """Documents expiring within the window that have not had an
+        "expiring" notification enqueued in that window — the nightly cron's
+        work list."""
+        ...
+
+    async def mark_expiry_notified(self, document_id: uuid.UUID) -> None: ...
+
+    async def soft_delete(self, document_id: uuid.UUID) -> None: ...

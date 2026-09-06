@@ -302,6 +302,7 @@ ignore_imports = [
     "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.driver",
     "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.vehicle",
     "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.route",
+    "lpg.api.v1.dependencies.delivery -> lpg.infrastructure.persistence.repositories.compliance_document",
     # Inventory Management: dependencies/inventory.py wires the location, GRN
     # and reconciliation-record repositories.
     "lpg.api.v1.dependencies.inventory -> lpg.infrastructure.persistence.repositories.inventory",

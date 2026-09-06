@@ -94,6 +94,52 @@ class VehicleModel(Base):
     version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
 
 
+class ComplianceDocumentModel(Base):
+    """A statutory document held against a driver or vehicle. Polymorphic
+    owner (`owner_type` + `owner_id`) — no DB FK on `owner_id` since it points
+    at either `delivery.driver` or `delivery.vehicle`; the app layer keeps it
+    consistent (same trade-off `notification`/`audit` rows make)."""
+
+    __tablename__ = "compliance_document"
+    __table_args__ = {"schema": "delivery"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    owner_type: Mapped[str] = mapped_column(String(20))
+    owner_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    doc_type: Mapped[str] = mapped_column(String(50))
+    document_number: Mapped[str] = mapped_column(String())
+    file_ref: Mapped[str] = mapped_column(String())
+    issue_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    expiry_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    verification_status: Mapped[str] = mapped_column(String(20), server_default="pending")
+    rejection_reason: Mapped[str | None] = mapped_column(String(), nullable=True)
+    verified_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("identity.identity_user.id", ondelete="SET NULL"), nullable=True
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Cron dedupe — set when an "expiring soon" notification was last enqueued.
+    last_expiry_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
 class RouteModel(Base):
     __tablename__ = "route"
     __table_args__ = {"schema": "delivery"}  # noqa: RUF012

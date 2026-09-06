@@ -4,10 +4,11 @@ compliance."""
 
 from __future__ import annotations
 
-from datetime import date
+import uuid
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DocumentAttachmentResponse(BaseModel):
@@ -45,3 +46,51 @@ class RecognizeComplianceDocumentResponse(BaseModel):
     engine_number: str | None = None
     fuel_type: str | None = None
     maker_model: str | None = None
+
+
+# ==========================================================================
+# Compliance document CRUD
+# ==========================================================================
+
+ComplianceOwnerType = Literal["driver", "vehicle"]
+
+
+class AddComplianceDocumentRequest(BaseModel):
+    doc_type: str
+    document_number: str = Field(min_length=1)
+    file_ref: str = Field(min_length=1)
+    issue_date: date | None = None
+    expiry_date: date | None = None
+
+
+class ReplaceComplianceDocumentRequest(BaseModel):
+    document_number: str = Field(min_length=1)
+    file_ref: str = Field(min_length=1)
+    issue_date: date | None = None
+    expiry_date: date | None = None
+
+
+class VerifyComplianceDocumentRequest(BaseModel):
+    status: Literal["verified", "rejected"]
+    rejection_reason: str | None = None
+
+
+class ComplianceDocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    owner_type: str
+    owner_id: uuid.UUID
+    doc_type: str
+    document_number: str
+    file_url: str | None
+    issue_date: date | None
+    expiry_date: date | None
+    verification_status: str
+    rejection_reason: str | None
+    verified_at: datetime | None
+
+
+class ComplianceDocumentListResponse(BaseModel):
+    items: list[ComplianceDocumentResponse]
+    total: int

@@ -20,11 +20,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.admin import get_employee_repository
 from lpg.api.v1.dependencies.delivery import (
+    get_compliance_document_repository,
     get_driver_repository,
     get_route_repository,
     get_vehicle_repository,
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
+from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.delivery import (
     DriverMeResponse,
@@ -41,9 +43,30 @@ from lpg.api.v1.schemas.delivery import (
     VehiclePageResponse,
     VehicleResponse,
 )
-from lpg.application.common.errors import NotFoundError
-from lpg.application.common.ports import UnitOfWork
+from lpg.api.v1.schemas.document import (
+    AddComplianceDocumentRequest,
+    ComplianceDocumentListResponse,
+    ComplianceDocumentResponse,
+    ComplianceOwnerType,
+    ReplaceComplianceDocumentRequest,
+    VerifyComplianceDocumentRequest,
+)
+from lpg.application.common.errors import ConflictError, NotFoundError
+from lpg.application.common.ports import FileStorage, UnitOfWork
+from lpg.application.delivery.compliance_use_cases import (
+    AddComplianceDocumentCommand,
+    AddComplianceDocumentUseCase,
+    ListComplianceDocumentsForOwnerQuery,
+    ListComplianceDocumentsForOwnerUseCase,
+    ListComplianceDocumentsQuery,
+    ListComplianceDocumentsUseCase,
+    ReplaceComplianceDocumentCommand,
+    ReplaceComplianceDocumentUseCase,
+    VerifyComplianceDocumentCommand,
+    VerifyComplianceDocumentUseCase,
+)
 from lpg.application.delivery.ports import (
+    ComplianceDocumentRepository,
     DriverRepository,
     RouteRepository,
     VehicleRepository,
@@ -130,13 +153,9 @@ def _vehicle_to_response(vehicle: object) -> VehicleResponse:
 async def get_my_driver_profile(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
-    employee_repository: Annotated[
-        EmployeeRepository, Depends(get_employee_repository)
-    ],
+    employee_repository: Annotated[EmployeeRepository, Depends(get_employee_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    vehicle_repository: Annotated[
-        VehicleRepository, Depends(get_vehicle_repository)
-    ],
+    vehicle_repository: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
 ) -> DriverMeResponse:
     """The Driver App's Profile tab. Resolves the driver from the token (the
     same "no `driver_id` needed client-side" pattern as `GET /routes/active`):
@@ -147,14 +166,10 @@ async def get_my_driver_profile(
     """
     actor_id = principal.user_id
     driver = (
-        await driver_repository.get_by_identity_user_id(actor_id)
-        if actor_id is not None
-        else None
+        await driver_repository.get_by_identity_user_id(actor_id) if actor_id is not None else None
     )
     if driver is None:
-        raise HTTPException(
-            status_code=404, detail="No driver profile for this account."
-        )
+        raise HTTPException(status_code=404, detail="No driver profile for this account.")
 
     employee = await employee_repository.get_by_id(driver.employee_id)
 
@@ -490,3 +505,247 @@ async def update_vehicle_details(
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
     return _vehicle_to_response(vehicle)
+
+
+# ==========================================================================
+# Compliance document endpoints  (driver/vehicle statutory documents)
+# ==========================================================================
+
+
+async def _compliance_doc_to_response(
+    doc: object, file_storage: FileStorage
+) -> ComplianceDocumentResponse:
+    from lpg.domain.delivery.compliance_document import ComplianceDocument
+
+    assert isinstance(doc, ComplianceDocument)
+    file_url = await file_storage.url(doc.file_ref) if doc.file_ref else None
+    return ComplianceDocumentResponse(
+        id=doc.id,
+        owner_type=doc.owner_type,
+        owner_id=doc.owner_id,
+        doc_type=doc.doc_type,
+        document_number=doc.document_number,
+        file_url=file_url,
+        issue_date=doc.issue_date,
+        expiry_date=doc.expiry_date,
+        verification_status=doc.verification_status,
+        rejection_reason=doc.rejection_reason,
+        verified_at=doc.verified_at,
+    )
+
+
+async def _list_owner_documents(
+    owner_type: ComplianceOwnerType,
+    owner_id: uuid.UUID,
+    repository: ComplianceDocumentRepository,
+    file_storage: FileStorage,
+) -> ComplianceDocumentListResponse:
+    use_case = ListComplianceDocumentsForOwnerUseCase(repository)
+    docs = await use_case.execute(
+        ListComplianceDocumentsForOwnerQuery(owner_type=owner_type, owner_id=owner_id)
+    )
+    items = [await _compliance_doc_to_response(d, file_storage) for d in docs]
+    return ComplianceDocumentListResponse(items=items, total=len(items))
+
+
+async def _add_owner_document(
+    owner_type: ComplianceOwnerType,
+    owner_id: uuid.UUID,
+    request: AddComplianceDocumentRequest,
+    principal: AuthenticatedPrincipal,
+    repository: ComplianceDocumentRepository,
+    unit_of_work: UnitOfWork,
+    file_storage: FileStorage,
+) -> ComplianceDocumentResponse:
+    use_case = AddComplianceDocumentUseCase(repository, unit_of_work)
+    try:
+        doc = await use_case.execute(
+            AddComplianceDocumentCommand(
+                tenant_id=principal.tenant_id,
+                owner_type=owner_type,
+                owner_id=owner_id,
+                doc_type=request.doc_type,
+                document_number=request.document_number,
+                file_ref=request.file_ref,
+                issue_date=request.issue_date,
+                expiry_date=request.expiry_date,
+            )
+        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return await _compliance_doc_to_response(doc, file_storage)
+
+
+@router.get(
+    "/drivers/{driver_id}/documents",
+    response_model=ComplianceDocumentListResponse,
+    dependencies=[Depends(require_permission("drivers:read"))],
+)
+async def list_driver_documents(
+    driver_id: uuid.UUID,
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentListResponse:
+    return await _list_owner_documents("driver", driver_id, repository, file_storage)
+
+
+@router.post(
+    "/drivers/{driver_id}/documents",
+    response_model=ComplianceDocumentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("drivers:manage"))],
+)
+async def add_driver_document(
+    driver_id: uuid.UUID,
+    request: AddComplianceDocumentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentResponse:
+    return await _add_owner_document(
+        "driver", driver_id, request, principal, repository, unit_of_work, file_storage
+    )
+
+
+@router.get(
+    "/vehicles/{vehicle_id}/documents",
+    response_model=ComplianceDocumentListResponse,
+    dependencies=[Depends(require_permission("vehicles:read"))],
+)
+async def list_vehicle_documents(
+    vehicle_id: uuid.UUID,
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentListResponse:
+    return await _list_owner_documents("vehicle", vehicle_id, repository, file_storage)
+
+
+@router.post(
+    "/vehicles/{vehicle_id}/documents",
+    response_model=ComplianceDocumentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("vehicles:manage"))],
+)
+async def add_vehicle_document(
+    vehicle_id: uuid.UUID,
+    request: AddComplianceDocumentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentResponse:
+    return await _add_owner_document(
+        "vehicle", vehicle_id, request, principal, repository, unit_of_work, file_storage
+    )
+
+
+@router.put(
+    "/compliance-documents/{document_id}",
+    response_model=ComplianceDocumentResponse,
+    dependencies=[Depends(require_permission("drivers:manage"))],
+)
+async def replace_compliance_document(
+    document_id: uuid.UUID,
+    request: ReplaceComplianceDocumentRequest,
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentResponse:
+    """Supersede a document with a renewed one (same slot, verification resets
+    to pending). Gated by `drivers:manage` — the same roles hold
+    `vehicles:manage`."""
+    use_case = ReplaceComplianceDocumentUseCase(repository, unit_of_work)
+    try:
+        doc = await use_case.execute(
+            ReplaceComplianceDocumentCommand(
+                document_id=document_id,
+                document_number=request.document_number,
+                file_ref=request.file_ref,
+                issue_date=request.issue_date,
+                expiry_date=request.expiry_date,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return await _compliance_doc_to_response(doc, file_storage)
+
+
+@router.post(
+    "/compliance-documents/{document_id}/verify",
+    response_model=ComplianceDocumentResponse,
+    dependencies=[Depends(require_permission("compliance:verify"))],
+)
+async def verify_compliance_document(
+    document_id: uuid.UUID,
+    request: VerifyComplianceDocumentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentResponse:
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    use_case = VerifyComplianceDocumentUseCase(repository, unit_of_work)
+    try:
+        doc = await use_case.execute(
+            VerifyComplianceDocumentCommand(
+                document_id=document_id,
+                verified_by=principal.user_id,
+                status=request.status,
+                rejection_reason=request.rejection_reason,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return await _compliance_doc_to_response(doc, file_storage)
+
+
+@router.get(
+    "/compliance-documents",
+    response_model=ComplianceDocumentListResponse,
+    dependencies=[Depends(require_permission("drivers:read"))],
+)
+async def list_compliance_documents(
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+    owner_type: ComplianceOwnerType | None = None,
+    status: str | None = None,
+    expiry: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> ComplianceDocumentListResponse:
+    """Tenant-wide compliance-document list for the drivers/vehicles pages —
+    `expiry` is `expiring` (<=30 days) or `expired`."""
+    use_case = ListComplianceDocumentsUseCase(repository)
+    docs, total = await use_case.execute(
+        ListComplianceDocumentsQuery(
+            owner_type=owner_type,
+            status=status,
+            expiry=expiry,
+            skip=skip,
+            limit=limit,
+        )
+    )
+    items = [await _compliance_doc_to_response(d, file_storage) for d in docs]
+    return ComplianceDocumentListResponse(items=items, total=total)

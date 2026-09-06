@@ -13,7 +13,12 @@ from lpg.api.v1.dependencies.inventory import (
 from lpg.api.v1.dependencies.order import get_order_repository
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.ports import UnitOfWork
-from lpg.application.delivery.ports import DriverRepository, RouteRepository, VehicleRepository
+from lpg.application.delivery.ports import (
+    ComplianceDocumentRepository,
+    DriverRepository,
+    RouteRepository,
+    VehicleRepository,
+)
 from lpg.application.delivery.use_cases import (
     AssignOrderToRouteUseCase,
     CompleteRouteReconciliationUseCase,
@@ -51,6 +56,16 @@ def get_vehicle_repository(
     )
 
     return SqlAlchemyVehicleRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_compliance_document_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> ComplianceDocumentRepository:
+    from lpg.infrastructure.persistence.repositories.compliance_document import (
+        SqlAlchemyComplianceDocumentRepository,
+    )
+
+    return SqlAlchemyComplianceDocumentRepository(unit_of_work)  # type: ignore[arg-type]
 
 
 def get_route_repository(
