@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { firstValueFrom, tap } from 'rxjs';
+import { firstValueFrom, map, tap, type Observable } from 'rxjs';
 
 import { StepperModule } from 'primeng/stepper';
 import { ButtonModule } from 'primeng/button';
@@ -14,7 +14,7 @@ import { Dialog } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { FormFieldComponent } from '@lpg/shared/ui';
+import { DocumentUploadComponent, FormFieldComponent } from '@lpg/shared/ui';
 import {
   CustomerService,
   AdminBranchService,
@@ -22,8 +22,6 @@ import {
   type OnboardingDraftResponse,
   type RecognizeKycDocumentResponse,
 } from '@lpg/shared/data-access';
-
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 // Backend validation requires strict E.164 (`domain/customer/customer.py`'s
 // `_E164_PHONE_REGEX`) — a `+` and country code are non-negotiable on
@@ -49,6 +47,7 @@ const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
     ToastModule,
     HeaderTitlePortalDirective,
     FormFieldComponent,
+    DocumentUploadComponent,
   ],
   templateUrl: './customer-onboarding-wizard.component.html',
   styleUrl: './customer-onboarding-wizard.component.css',
@@ -60,7 +59,6 @@ export class CustomerOnboardingWizardComponent implements OnInit {
   private readonly branchService = inject(AdminBranchService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly currentStep = signal(1);
   protected readonly isSubmitting = signal(false);
@@ -71,13 +69,18 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     { label: 'Manual Entry', value: 'manual' as const },
   ];
   protected readonly entryMode = signal<'auto' | 'manual'>('manual');
-  protected readonly ocrStage = signal<'uploading' | 'analyzing' | null>(null);
+  /** Set only when server-side recognition succeeded but returned no usable
+   *  document type/number — the `<lpg-document-upload>` control surfaces its
+   *  own upload/read errors. */
   protected readonly ocrError = signal<string | null>(null);
-  protected readonly uploadedFileName = signal<string | null>(null);
-  protected readonly uploadedFileSize = signal<number | null>(null);
-  protected readonly filePreviewUrl = signal<string | null>(null);
-  protected readonly isDragging = signal(false);
   protected readonly extractedSummary = signal<string | null>(null);
+
+  /** Stores the KYC image and normalises the response to the shape
+   *  `<lpg-document-upload>` expects. */
+  protected readonly kycUploader = (file: File): Observable<{ blobRef: string }> =>
+    this.customerService.uploadKycAttachment(file).pipe(map((r) => ({ blobRef: r.blob_ref })));
+  protected readonly kycRecognizer = (blobRef: string): Observable<RecognizeKycDocumentResponse> =>
+    this.customerService.recognizeKycDocument(blobRef);
 
   protected readonly draftId = signal<string | null>(null);
   protected readonly savingDraft = signal(false);
@@ -197,10 +200,6 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       expiryDateCtrl.updateValueAndValidity();
     });
 
-    this.destroyRef.onDestroy(() => {
-      const existingPreviewUrl = this.filePreviewUrl();
-      if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
-    });
   }
 
   ngOnInit() {
@@ -254,103 +253,21 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     this.ocrError.set(null);
   }
 
-  protected onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (file) this.processFile(file);
+  /** `<lpg-document-upload>` (uploaded) — the image is stored, keep its ref. */
+  protected onKycDocUploaded(event: { blobRef: string }): void {
+    this.kycForm.patchValue({ document_file_ref: event.blobRef });
   }
 
-  protected onDragOver(event: DragEvent) {
-    event.preventDefault();
-    this.isDragging.set(true);
+  /** `<lpg-document-upload>` (recognized) — the server-side OCR "second pass". */
+  protected onKycRecognized(result: unknown): void {
+    this.applyExtractedData(result as RecognizeKycDocumentResponse);
   }
 
-  protected onDragLeave(event: DragEvent) {
-    event.preventDefault();
-    this.isDragging.set(false);
-  }
-
-  protected onDrop(event: DragEvent) {
-    event.preventDefault();
-    this.isDragging.set(false);
-    const file = event.dataTransfer?.files?.[0];
-    if (file) this.processFile(file);
-  }
-
-  protected removeFile() {
-    this.uploadedFileName.set(null);
-    const existingPreviewUrl = this.filePreviewUrl();
-    if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
-    this.filePreviewUrl.set(null);
+  /** `<lpg-document-upload>` (cleared) — drop the ref and any extraction. */
+  protected onKycDocCleared(): void {
     this.ocrError.set(null);
     this.extractedSummary.set(null);
-    this.ocrStage.set(null);
     this.kycForm.patchValue({ document_file_ref: null });
-  }
-
-  protected formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  private processFile(file: File) {
-    if (!file.type.startsWith('image/')) {
-      this.ocrError.set('Unsupported file type. Please upload a JPG or PNG image.');
-      return;
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      this.ocrError.set('File is too large. Please upload an image under 10 MB.');
-      return;
-    }
-
-    this.ocrError.set(null);
-    this.extractedSummary.set(null);
-    this.uploadedFileName.set(file.name);
-    this.uploadedFileSize.set(file.size);
-    const existingPreviewUrl = this.filePreviewUrl();
-    if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
-    this.filePreviewUrl.set(URL.createObjectURL(file));
-    this.ocrStage.set('uploading');
-
-    this.customerService.uploadKycAttachment(file).subscribe({
-      next: (res) => {
-        this.kycForm.patchValue({ document_file_ref: res.blob_ref });
-        this.recognizeDocument(res.blob_ref);
-      },
-      error: () => {
-        this.ocrStage.set(null);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Upload failed',
-          detail: 'Could not upload the document image. You can still fill details manually.',
-        });
-      },
-    });
-  }
-
-  /**
-   * OCR runs entirely server-side (a heavier, more accurate model than is
-   * practical to ship to every browser — see
-   * `RecognizeKycDocumentUseCase`'s docstring on the backend). The uploaded
-   * image never needs a client-side OCR pass of its own.
-   */
-  private recognizeDocument(blobRef: string) {
-    this.ocrStage.set('analyzing');
-    this.customerService.recognizeKycDocument(blobRef).subscribe({
-      next: (res) => {
-        this.ocrStage.set(null);
-        // The dropzone may have been cleared (file removed) before this
-        // call returned — don't resurrect a stale result.
-        if (!this.uploadedFileName()) return;
-        this.applyExtractedData(res);
-      },
-      error: () => {
-        this.ocrStage.set(null);
-        this.ocrError.set('Failed to read the document. Please try again or fill details manually.');
-      },
-    });
   }
 
   private applyExtractedData(result: RecognizeKycDocumentResponse) {

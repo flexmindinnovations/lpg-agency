@@ -13,6 +13,7 @@ import {
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
+import { type Observable, map } from 'rxjs';
 
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
@@ -40,13 +41,12 @@ import {
 import {
   DataGridComponent,
   type DataGridColumn,
+  DocumentUploadComponent,
   FormFieldComponent,
   HasPermissionDirective,
   PageHeaderComponent,
   StatusChipCell,
 } from '@lpg/shared/ui';
-
-const MAX_KYC_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
@@ -98,6 +98,7 @@ import { TitleCasePipe } from '@angular/common';
     RouterLink,
     TitleCasePipe,
     FormFieldComponent,
+    DocumentUploadComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -165,11 +166,13 @@ export class FeatureCustomers implements OnInit {
   protected readonly showDetailDrawer = signal(false);
   protected readonly showAddAddressModal = signal(false);
   protected readonly showSubmitKycModal = signal(false);
-  protected readonly submitKycFile = signal<File | null>(null);
-  protected readonly submitKycFilePreviewUrl = signal<string | null>(null);
+  /** Blob ref of the document image once `<lpg-document-upload>` has stored it. */
+  protected readonly submitKycBlobRef = signal<string | null>(null);
   protected readonly submitKycFileError = signal<string | null>(null);
-  protected readonly submitKycDragging = signal(false);
   protected readonly submitKycUploading = signal(false);
+
+  protected readonly kycUploader = (file: File): Observable<{ blobRef: string }> =>
+    this.customerService.uploadKycAttachment(file).pipe(map((r) => ({ blobRef: r.blob_ref })));
 
   // PrimeNG's Dialog has no built-in "return focus to trigger" behaviour —
   // matches `apps/dashboard/src/app/home/home.ts`'s documented pattern.
@@ -441,13 +444,18 @@ export class FeatureCustomers implements OnInit {
     this.kycForm.reset({
       doc_type: 'aadhaar',
     });
-    this.clearSubmitKycFile();
+    this.resetSubmitKycFile();
     this.showSubmitKycModal.set(true);
   }
 
   protected closeSubmitKycModal(): void {
     this.showSubmitKycModal.set(false);
-    this.clearSubmitKycFile();
+    this.resetSubmitKycFile();
+  }
+
+  private resetSubmitKycFile(): void {
+    this.submitKycBlobRef.set(null);
+    this.submitKycFileError.set(null);
   }
 
   /** True when the selected doc_type already has a document on file —
@@ -463,75 +471,22 @@ export class FeatureCustomers implements OnInit {
     return this.kycDocTypeOptions.find((opt) => opt.value === docType)?.label ?? docType;
   }
 
-  // Same drag-and-drop dropzone pattern as the onboarding wizard
-  // (customer-onboarding-wizard.component.ts) — visual and behavioral
-  // parity, so KYC upload doesn't look like two different features
-  // depending on which screen it's done from.
-  protected onKycFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (file) this.processSubmitKycFile(file);
-  }
-
-  protected onKycDragOver(event: DragEvent): void {
-    event.preventDefault();
-    this.submitKycDragging.set(true);
-  }
-
-  protected onKycDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    this.submitKycDragging.set(false);
-  }
-
-  protected onKycDrop(event: DragEvent): void {
-    event.preventDefault();
-    this.submitKycDragging.set(false);
-    const file = event.dataTransfer?.files?.[0];
-    if (file) this.processSubmitKycFile(file);
-  }
-
-  protected removeSubmitKycFile(): void {
-    this.clearSubmitKycFile();
-  }
-
-  protected formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  private processSubmitKycFile(file: File): void {
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      this.submitKycFileError.set('Unsupported file type. Please upload a JPG, PNG, or PDF.');
-      return;
-    }
-    if (file.size > MAX_KYC_UPLOAD_BYTES) {
-      this.submitKycFileError.set('File is too large. Please upload a file under 10 MB.');
-      return;
-    }
-
+  /** `<lpg-document-upload>` stored the image — keep its ref for submit. */
+  protected onKycDocUploaded(event: { blobRef: string }): void {
+    this.submitKycBlobRef.set(event.blobRef);
     this.submitKycFileError.set(null);
-    const existingPreviewUrl = this.submitKycFilePreviewUrl();
-    if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
-    this.submitKycFile.set(file);
-    this.submitKycFilePreviewUrl.set(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
   }
 
-  private clearSubmitKycFile(): void {
-    this.submitKycFile.set(null);
-    this.submitKycFileError.set(null);
-    const existingPreviewUrl = this.submitKycFilePreviewUrl();
-    if (existingPreviewUrl) URL.revokeObjectURL(existingPreviewUrl);
-    this.submitKycFilePreviewUrl.set(null);
+  protected onKycDocCleared(): void {
+    this.submitKycBlobRef.set(null);
   }
 
   protected submitKyc(): void {
     const customer = this.selectedCustomer();
     if (!customer || this.kycForm.invalid) return;
 
-    const file = this.submitKycFile();
-    if (!file) {
+    const blobRef = this.submitKycBlobRef();
+    if (!blobRef) {
       // Guards against Enter-key form submission, which fires (ngSubmit)
       // regardless of the submit button's [disabled] state.
       this.submitKycFileError.set('A document photo or scan is required.');
@@ -540,17 +495,7 @@ export class FeatureCustomers implements OnInit {
 
     const { doc_type, doc_reference } = this.kycForm.getRawValue();
     this.submitKycUploading.set(true);
-    this.customerService.uploadKycAttachment(file).subscribe({
-      next: (res) => this.finishSubmitKyc(customer.id, doc_type, doc_reference, res.blob_ref),
-      error: () => {
-        this.submitKycUploading.set(false);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to upload the document. Please try again.',
-        });
-      },
-    });
+    this.finishSubmitKyc(customer.id, doc_type, doc_reference, blobRef);
   }
 
   private finishSubmitKyc(

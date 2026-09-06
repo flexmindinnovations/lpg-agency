@@ -1,6 +1,7 @@
 export * from './lib/data-grid/data-grid.component';
 export * from './lib/skeleton/skeleton.component';
 export * from './lib/form-field/form-field.component';
+export * from './lib/document-upload/document-upload.component';
 export * from './lib/empty-state/empty-state.component';
 export * from './lib/page-header/page-header.component';
 export * from './lib/section-card/section-card.component';

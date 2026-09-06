@@ -36,6 +36,7 @@ and `/design-system` in the running app for a live showcase.
 | Component | Selector | Key inputs | Notes |
 |---|---|---|---|
 | `FormFieldComponent` | `lpg-form-field` | `label` (req), `for`, `hint`, `control: AbstractControl`, `messages: Record<string,string>`, `required` | The single wrapper for every labelled control — a 13px medium label above the projected control, then hint / validator-keyed error text below. Pass the `FormControl` so it reacts to `touched`/`dirty`/status via the control's `events` stream and infers the required asterisk. Omit `[control]` for a filter row (just label + control). |
+| `DocumentUploadComponent` | `lpg-document-upload` | `accept`, `maxBytes`, `hint`, `inputId`, `uploader` (req), `recognizer?` | Dropzone + drag/drop + type/size guard + image/PDF preview + upload → optional server-side recognition status line. Endpoint-agnostic: pass an `uploader: (file) => Observable<{ blobRef }>` and (optionally) a `recognizer: (blobRef) => Observable<T>`; react via `(uploaded)` / `(recognized)` / `(cleared)` / `(errored)`. Mapping a recognition result onto a form stays with the parent. |
 
 Reactive-forms field pattern:
 
@@ -49,6 +50,19 @@ Reactive-forms field pattern:
 Give the projected control `[fluid]="true"` (PrimeNG) so it fills the field width;
 plain elements are stretched by the wrapper as a fallback. Placeholders are fine
 now the label sits above the control — use them for format hints (`e.g. 9876543210`).
+
+Document upload:
+
+```html
+<lpg-document-upload
+  accept="image/*"
+  hint="Aadhaar or PAN card · JPG or PNG · up to 10 MB"
+  [uploader]="uploadFn"
+  [recognizer]="recognizeFn"
+  (uploaded)="onUploaded($event)"
+  (recognized)="applyExtracted($event)"
+/>
+```
 
 ## Data grid
 
