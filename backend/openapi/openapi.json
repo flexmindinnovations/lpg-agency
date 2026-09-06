@@ -15,6 +15,55 @@
         "title": "ActivateLicenseRequest",
         "type": "object"
       },
+      "AddComplianceDocumentRequest": {
+        "properties": {
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_number": {
+            "minLength": 1,
+            "title": "Document Number",
+            "type": "string"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "file_ref": {
+            "minLength": 1,
+            "title": "File Ref",
+            "type": "string"
+          },
+          "issue_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Date"
+          }
+        },
+        "required": [
+          "doc_type",
+          "document_number",
+          "file_ref"
+        ],
+        "title": "AddComplianceDocumentRequest",
+        "type": "object"
+      },
       "AddCustomerAddressRequest": {
         "properties": {
           "address_type": {
@@ -400,6 +449,20 @@
           "next_cursor"
         ],
         "title": "AuditLogPageResponse",
+        "type": "object"
+      },
+      "Body_upload_document_attachment_api_v1_documents_attachments_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_attachment_api_v1_documents_attachments_post",
         "type": "object"
       },
       "Body_upload_kyc_attachment_api_v1_customers_kyc_attachments_post": {
@@ -969,6 +1032,130 @@
         ],
         "title": "ComplaintStatus",
         "type": "string"
+      },
+      "ComplianceDocumentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ComplianceDocumentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ComplianceDocumentListResponse",
+        "type": "object"
+      },
+      "ComplianceDocumentResponse": {
+        "properties": {
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_number": {
+            "title": "Document Number",
+            "type": "string"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Date"
+          },
+          "owner_id": {
+            "format": "uuid",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "owner_type": {
+            "title": "Owner Type",
+            "type": "string"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "verification_status": {
+            "title": "Verification Status",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "owner_type",
+          "owner_id",
+          "doc_type",
+          "document_number",
+          "file_url",
+          "issue_date",
+          "expiry_date",
+          "verification_status",
+          "rejection_reason",
+          "verified_at"
+        ],
+        "title": "ComplianceDocumentResponse",
+        "type": "object"
       },
       "CreateBranchRequest": {
         "properties": {
@@ -2042,6 +2229,219 @@
           "healthy"
         ],
         "title": "DependencyStatus",
+        "type": "object"
+      },
+      "DocumentAttachmentResponse": {
+        "description": "A pre-uploaded document image blob ref, staged under a tenant-scoped\nkey before the owning record exists.",
+        "properties": {
+          "blob_ref": {
+            "title": "Blob Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blob_ref"
+        ],
+        "title": "DocumentAttachmentResponse",
+        "type": "object"
+      },
+      "DriverLocationPingRequest": {
+        "description": "A single GPS reading from the Driver App while a route is in progress.",
+        "properties": {
+          "accuracy_m": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy M"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "exclusiveMaximum": 360.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "speed_kph": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Kph"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "title": "DriverLocationPingRequest",
+        "type": "object"
+      },
+      "DriverLocationSnapshot": {
+        "properties": {
+          "accuracy_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy M"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "speed_kph": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Kph"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "recorded_at"
+        ],
+        "title": "DriverLocationSnapshot",
+        "type": "object"
+      },
+      "DriverMeResponse": {
+        "description": "`GET /drivers/me` — the calling driver's own profile for the Driver\nApp's Profile tab. `name`/`phone_number` come from the linked employee;\n`vehicle` is `null` when the driver has no active route.",
+        "properties": {
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "license_expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Expiry Date"
+          },
+          "license_number": {
+            "title": "License Number",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "phone_number": {
+            "title": "Phone Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "vehicle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DriverMeVehicle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "driver_id",
+          "name",
+          "phone_number",
+          "license_number",
+          "license_expiry_date",
+          "status"
+        ],
+        "title": "DriverMeResponse",
+        "type": "object"
+      },
+      "DriverMeVehicle": {
+        "description": "The vehicle a driver is currently out with (from their active route).",
+        "properties": {
+          "make": {
+            "title": "Make",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "registration_number": {
+            "title": "Registration Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration_number",
+          "make",
+          "model"
+        ],
+        "title": "DriverMeVehicle",
         "type": "object"
       },
       "DriverPageResponse": {
@@ -4066,6 +4466,100 @@
         "title": "OrderStatusHistoryEntryResponse",
         "type": "object"
       },
+      "OrderTrackingResponse": {
+        "description": "Everything the customer app's order-tracking map needs beyond what it\nalready has from the order itself: the resolved route status, the driver's\nlast-known position (``None`` until the driver starts sharing), and the\nassigned driver + vehicle.",
+        "properties": {
+          "destination_label": {
+            "title": "Destination Label",
+            "type": "string"
+          },
+          "destination_latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Latitude"
+          },
+          "destination_longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Longitude"
+          },
+          "driver": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrackingDriverInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "driver_location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DriverLocationSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "route_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Status"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "booked",
+              "confirmed",
+              "assigned",
+              "ready_for_dispatch",
+              "out_for_delivery",
+              "delivered",
+              "failed_delivery",
+              "cancelled",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "status",
+          "destination_latitude",
+          "destination_longitude",
+          "destination_label",
+          "route_status",
+          "driver_location"
+        ],
+        "title": "OrderTrackingResponse",
+        "type": "object"
+      },
       "OtpRequestRequest": {
         "properties": {
           "phone_number": {
@@ -4678,6 +5172,208 @@
           "new_role"
         ],
         "title": "ReassignRoleRequest",
+        "type": "object"
+      },
+      "RecognizeComplianceDocumentRequest": {
+        "properties": {
+          "blob_ref": {
+            "minLength": 1,
+            "title": "Blob Ref",
+            "type": "string"
+          },
+          "doc_kind": {
+            "enum": [
+              "driving_licence",
+              "vehicle_rc"
+            ],
+            "title": "Doc Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blob_ref",
+          "doc_kind"
+        ],
+        "title": "RecognizeComplianceDocumentRequest",
+        "type": "object"
+      },
+      "RecognizeComplianceDocumentResponse": {
+        "description": "Result of the OCR \"second pass\" for a DL or RC image. Only the fields\nrelevant to `doc_kind` are populated; every one is a reviewable head start\nthe caller edits before saving, never written straight through.",
+        "properties": {
+          "chassis_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chassis Number"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "doc_kind": {
+            "enum": [
+              "driving_licence",
+              "vehicle_rc"
+            ],
+            "title": "Doc Kind",
+            "type": "string"
+          },
+          "document_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Number"
+          },
+          "engine_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Number"
+          },
+          "fitness_upto": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fitness Upto"
+          },
+          "fuel_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuel Type"
+          },
+          "holder_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holder Name"
+          },
+          "insurance_upto": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insurance Upto"
+          },
+          "maker_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maker Model"
+          },
+          "registration_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Date"
+          },
+          "registration_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Number"
+          },
+          "transport_valid_till": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport Valid Till"
+          },
+          "valid_till": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Till"
+          },
+          "vehicle_classes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Vehicle Classes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "doc_kind",
+          "confidence"
+        ],
+        "title": "RecognizeComplianceDocumentResponse",
         "type": "object"
       },
       "RecognizeKycDocumentRequest": {
@@ -5564,6 +6260,50 @@
         "title": "RenameWarehouseRequest",
         "type": "object"
       },
+      "ReplaceComplianceDocumentRequest": {
+        "properties": {
+          "document_number": {
+            "minLength": 1,
+            "title": "Document Number",
+            "type": "string"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "file_ref": {
+            "minLength": 1,
+            "title": "File Ref",
+            "type": "string"
+          },
+          "issue_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Date"
+          }
+        },
+        "required": [
+          "document_number",
+          "file_ref"
+        ],
+        "title": "ReplaceComplianceDocumentRequest",
+        "type": "object"
+      },
       "RequestRefundRequest": {
         "properties": {
           "amount": {
@@ -5620,6 +6360,78 @@
         "title": "ResolveComplaintRequest",
         "type": "object"
       },
+      "RouteCashHandoverResponse": {
+        "description": "`GET /cash-handovers/for-route/{route_id}` — the Driver App reads this\nbefore declaring (to show `expected_amount`) and after (to show the\nreceipt). `handover` is null until the driver has declared.",
+        "properties": {
+          "cash_stop_count": {
+            "title": "Cash Stop Count",
+            "type": "integer"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "expected_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Expected Amount",
+            "type": "string"
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CashHandoverResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "route_date": {
+            "format": "date-time",
+            "title": "Route Date",
+            "type": "string"
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          },
+          "route_status": {
+            "title": "Route Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "route_id",
+          "driver_id",
+          "route_status",
+          "route_date",
+          "expected_amount",
+          "cash_stop_count"
+        ],
+        "title": "RouteCashHandoverResponse",
+        "type": "object"
+      },
+      "RouteLoadLineResponse": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity"
+        ],
+        "title": "RouteLoadLineResponse",
+        "type": "object"
+      },
       "RoutePageResponse": {
         "properties": {
           "items": {
@@ -5672,6 +6484,25 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "load_confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Confirmed At"
+          },
+          "loaded_lines": {
+            "items": {
+              "$ref": "#/components/schemas/RouteLoadLineResponse"
+            },
+            "title": "Loaded Lines",
+            "type": "array"
           },
           "status": {
             "title": "Status",
@@ -6270,6 +7101,53 @@
         "title": "TokenResponse",
         "type": "object"
       },
+      "TrackingDriverInfo": {
+        "description": "The assigned driver + vehicle, shown on the tracking screen. Present\nonce the order is on a route.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "vehicle_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Model"
+          },
+          "vehicle_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Number"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TrackingDriverInfo",
+        "type": "object"
+      },
       "UnreadCountResponse": {
         "properties": {
           "count": {
@@ -6846,6 +7724,34 @@
           "version"
         ],
         "title": "VehicleResponse",
+        "type": "object"
+      },
+      "VerifyComplianceDocumentRequest": {
+        "properties": {
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "status": {
+            "enum": [
+              "verified",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "VerifyComplianceDocumentRequest",
         "type": "object"
       },
       "VerifyKycDocumentRequest": {
@@ -8654,7 +9560,7 @@
     },
     "/api/v1/cash-handovers": {
       "post": {
-        "description": "A driver (or dispatcher/manager on their behalf) declares the cash\nhanded over at the end of a route. `expected_amount` is computed\nserver-side from real cash-payment proof-of-delivery records — never\ntrusted from the request.",
+        "description": "A driver (or dispatcher/manager on their behalf) declares the cash\nhanded over at the end of a route. `expected_amount` is computed\nserver-side from real cash-payment proof-of-delivery records — never\ntrusted from the request.\n\n`Idempotency-Key` is optional (the offline Driver App sends one so a\nqueued retry replays rather than hitting the `uq_cash_handover_route`\n409) — see `run_idempotent`.",
         "operationId": "declare_cash_handover_api_v1_cash_handovers_post",
         "requestBody": {
           "content": {
@@ -8689,6 +9595,50 @@
           }
         },
         "summary": "Declare Cash Handover",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/for-route/{route_id}": {
+      "get": {
+        "description": "The Driver App's cash-handover screen: `expected_amount` (from the\nroute's real cash proof-of-delivery records) plus the declared handover\nonce it exists.\n\nA `driver` principal sees only their own routes; dispatch staff (who also\nhold `cash_handovers:declare`, per `c039189dfbdc`) can read any route in\ntheir tenant — same \"or dispatcher/manager on their behalf\" split as the\ndeclare endpoint. Either way `route_repository.get_by_id`'s RLS keeps it\ntenant-scoped, and a route the caller can't see is a `404`.",
+        "operationId": "get_route_cash_handover_api_v1_cash_handovers_for_route__route_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteCashHandoverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Route Cash Handover",
         "tags": [
           "Cash Handovers"
         ]
@@ -8959,6 +9909,219 @@
         "summary": "Resolve Complaint",
         "tags": [
           "Complaints"
+        ]
+      }
+    },
+    "/api/v1/compliance-documents": {
+      "get": {
+        "description": "Tenant-wide compliance-document list for the drivers/vehicles pages —\n`expiry` is `expiring` (<=30 days) or `expired`.",
+        "operationId": "list_compliance_documents_api_v1_compliance_documents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "owner_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "driver",
+                    "vehicle"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Owner Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expiry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expiry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Compliance Documents",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
+    "/api/v1/compliance-documents/{document_id}": {
+      "put": {
+        "description": "Supersede a document with a renewed one (same slot, verification resets\nto pending). Gated by `drivers:manage` — the same roles hold\n`vehicles:manage`.",
+        "operationId": "replace_compliance_document_api_v1_compliance_documents__document_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Compliance Document",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
+    "/api/v1/compliance-documents/{document_id}/verify": {
+      "post": {
+        "operationId": "verify_compliance_document_api_v1_compliance_documents__document_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Compliance Document",
+        "tags": [
+          "Delivery"
         ]
       }
     },
@@ -9962,6 +11125,90 @@
         ]
       }
     },
+    "/api/v1/documents/attachments": {
+      "post": {
+        "description": "Pre-upload a document image, staged under a tenant-scoped key so it can\nbe captured and OCR'd before the owning record exists (same reasoning as\n`upload_kyc_attachment`).",
+        "operationId": "upload_document_attachment_api_v1_documents_attachments_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_attachment_api_v1_documents_attachments_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentAttachmentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Document Attachment",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/v1/documents/recognize": {
+      "post": {
+        "description": "Re-read an already-uploaded driving licence / RC image with the heavier\nserver-side OCR model and parse it for the fields the register/edit form\nneeds. Degrades to \"number only\" on a low-quality scan — never blocks.",
+        "operationId": "recognize_document_api_v1_documents_recognize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecognizeComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecognizeComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recognize Document",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
     "/api/v1/drivers": {
       "get": {
         "description": "List drivers with optional search and filter.",
@@ -10105,6 +11352,28 @@
         ]
       }
     },
+    "/api/v1/drivers/me": {
+      "get": {
+        "description": "The Driver App's Profile tab. Resolves the driver from the token (the\nsame \"no `driver_id` needed client-side\" pattern as `GET /routes/active`):\nname/phone come from the linked employee, the current vehicle from the\ndriver's active route (`null` when they have none). `404` if the caller\nisn't a driver. Declared before `GET /drivers/{driver_id}` so `me` isn't\nparsed as a UUID.",
+        "operationId": "get_my_driver_profile_api_v1_drivers_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverMeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The calling driver's own profile",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
     "/api/v1/drivers/{driver_id}": {
       "get": {
         "description": "Retrieve a single driver by ID.",
@@ -10198,6 +11467,100 @@
           }
         },
         "summary": "Update Driver Assignment",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
+    "/api/v1/drivers/{driver_id}/documents": {
+      "get": {
+        "operationId": "list_driver_documents_api_v1_drivers__driver_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Driver Documents",
+        "tags": [
+          "Delivery"
+        ]
+      },
+      "post": {
+        "operationId": "add_driver_document_api_v1_drivers__driver_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "driver_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Driver Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Driver Document",
         "tags": [
           "Delivery"
         ]
@@ -12018,7 +13381,7 @@
     },
     "/api/v1/orders/{order_id}/depart": {
       "post": {
-        "description": "`ready_for_dispatch -> out_for_delivery` (\"driver departs\"). Issues\nthe delivery OTP to the customer's phone post-commit.",
+        "description": "`ready_for_dispatch -> out_for_delivery` (\"driver departs\"). Issues\nthe delivery OTP to the customer's phone post-commit.\n\n`Idempotency-Key` is optional (the offline Driver App sends one so a\nqueued retry replays rather than re-issuing the OTP; online callers need\nnot) — see `run_idempotent`.",
         "operationId": "depart_order_api_v1_orders__order_id__depart_post",
         "parameters": [
           {
@@ -12106,7 +13469,7 @@
     },
     "/api/v1/orders/{order_id}/failed-delivery": {
       "post": {
-        "description": "`out_for_delivery -> failed_delivery` (D-12).",
+        "description": "`out_for_delivery -> failed_delivery` (D-12).\n\n`Idempotency-Key` is optional — see `run_idempotent`. Reusing a key with\na different reason/resolution body is a 409 `IDEMPOTENCY_KEY_CONFLICT`.",
         "operationId": "record_failed_delivery_api_v1_orders__order_id__failed_delivery_post",
         "parameters": [
           {
@@ -12262,7 +13625,7 @@
     },
     "/api/v1/orders/{order_id}/reschedule": {
       "post": {
-        "description": "`failed_delivery -> ready_for_dispatch`. Also resets the paired\n`RouteStop` back to `pending` so the retry can reach `delivered` (see\n`RescheduleOrderUseCase`'s docstring).",
+        "description": "`failed_delivery -> ready_for_dispatch`. Also resets the paired\n`RouteStop` back to `pending` so the retry can reach `delivered` (see\n`RescheduleOrderUseCase`'s docstring).\n\n`Idempotency-Key` is optional — see `run_idempotent`.",
         "operationId": "reschedule_order_api_v1_orders__order_id__reschedule_post",
         "parameters": [
           {
@@ -12299,6 +13662,50 @@
           }
         },
         "summary": "Reschedule Order",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/tracking": {
+      "get": {
+        "description": "The order-tracking map's data: the delivery destination, the route's\nstatus, the driver's last-known position (from the short-TTL cache the\nDriver App's location pings write), and the assigned driver + vehicle.\nSame row-scoping as `GET /orders/{order_id}` — a customer only sees their\nown order.",
+        "operationId": "get_order_tracking_api_v1_orders__order_id__tracking_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderTrackingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Order Tracking",
         "tags": [
           "Orders"
         ]
@@ -13372,6 +14779,28 @@
         ]
       }
     },
+    "/api/v1/routes/active": {
+      "get": {
+        "description": "The Driver App's entry point — resolves the driver from the token, so\nthe app never needs to know its own `driver_id`. `404` if the caller\nisn't a driver or has no active route.",
+        "operationId": "get_my_active_route_api_v1_routes_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The calling driver's own active route",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
     "/api/v1/routes/active-for-driver/{driver_id}": {
       "get": {
         "operationId": "get_active_route_for_driver_api_v1_routes_active_for_driver__driver_id__get",
@@ -13512,6 +14941,50 @@
         ]
       }
     },
+    "/api/v1/routes/{route_id}/confirm-load": {
+      "post": {
+        "description": "A **soft** acknowledgement that the driver has checked the van against\nthe load manifest — it does *not* gate departing. Idempotent (a second\nconfirm is a no-op `200`); `409 INVARIANT_VIOLATION` if the route isn't\n`loaded`. `Idempotency-Key` optional (the offline Driver App sends one).",
+        "operationId": "confirm_route_load_api_v1_routes__route_id__confirm_load_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Driver confirms the van matches the load manifest",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
     "/api/v1/routes/{route_id}/load": {
       "post": {
         "description": "`planned -> loaded` (BR-12): atomic warehouse -> vehicle transfer.",
@@ -13561,6 +15034,53 @@
           }
         },
         "summary": "Load the vehicle and mark the route loaded",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/location": {
+      "post": {
+        "description": "Transient telemetry, not a domain event: the ping is cached as the\nroute's last-known position (short TTL) and published on each of the\nroute's per-order real-time channels. `404` unless the caller is the\nroute's own driver; `409` unless the route is `in_progress`.",
+        "operationId": "report_driver_location_api_v1_routes__route_id__location_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverLocationPingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report the driver's live location",
         "tags": [
           "Routes"
         ]
@@ -14007,6 +15527,100 @@
           }
         },
         "summary": "Update Vehicle Details",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}/documents": {
+      "get": {
+        "operationId": "list_vehicle_documents_api_v1_vehicles__vehicle_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Vehicle Documents",
+        "tags": [
+          "Delivery"
+        ]
+      },
+      "post": {
+        "operationId": "add_vehicle_document_api_v1_vehicles__vehicle_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vehicle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vehicle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Vehicle Document",
         "tags": [
           "Delivery"
         ]
