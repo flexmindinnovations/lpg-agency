@@ -34,6 +34,16 @@ CustomerAddressResponse _address() => const CustomerAddressResponse(
   isPrimary: true,
 );
 
+/// City/state/pincode all unset — the shape a freshly-added address can
+/// have before the customer fills them in, and the case that used to
+/// render a lone dangling `,` as the subtitle's second line.
+CustomerAddressResponse _partialAddress() => const CustomerAddressResponse(
+  id: 'addr-2',
+  line1: '789 Second Street',
+  addressType: 'delivery',
+  isPrimary: true,
+);
+
 Widget _screen({CustomerResponse? profile, bool nullProfile = false, Object? error}) =>
     ProviderScope(
       overrides: [
@@ -66,6 +76,17 @@ void main() {
       await pumpScreen(tester, _screen(profile: _profile(addresses: [_address()])));
 
       expect(find.text('PRIMARY'), findsOneWidget);
+    });
+
+    testWidgets('a partial address (no city/state/pincode) has no dangling comma line', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(profile: _profile(addresses: [_partialAddress()])),
+      );
+
+      expect(find.text('789 Second Street'), findsOneWidget);
     });
 
     testWidgets('shows an error state with retry when the load fails', (

@@ -52,6 +52,20 @@ void main() {
       expect(find.textContaining('1180.00'), findsOneWidget);
     });
 
+    testWidgets(
+      "doesn't double-prefix an invoice number that already has its own "
+      '"INV-..." prefix',
+      (tester) async {
+        await pumpScreen(
+          tester,
+          _screen(invoices: [_invoice(number: 'INV-2026-000011')]),
+        );
+
+        expect(find.text('INV-2026-000011'), findsOneWidget);
+        expect(find.text('INV-INV-2026-000011'), findsNothing);
+      },
+    );
+
     testWidgets('shows an error state with retry when the load fails', (
       tester,
     ) async {

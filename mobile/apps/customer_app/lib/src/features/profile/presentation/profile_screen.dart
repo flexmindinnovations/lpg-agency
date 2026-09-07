@@ -8,6 +8,27 @@ import '../../../auth_provider.dart';
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
 
+/// `line1[, line2]` on the first line, `city, state pincode` on the second —
+/// each piece only included (and each joining comma/space only added) when
+/// it's actually present, so a partial address (city/state/pincode all
+/// blank, as a freshly-added address can be before the customer fills them
+/// in) doesn't render a lone dangling `,` where the second line would go.
+String _formatAddressSubtitle(CustomerAddressResponse address) {
+  final line2 = address.line2;
+  final firstLine = (line2 != null && line2.isNotEmpty)
+      ? '${address.line1}, $line2'
+      : address.line1;
+
+  final stateAndPincode = [address.state, address.pincode]
+      .where((s) => s != null && s.isNotEmpty)
+      .join(' ');
+  final secondLine = [address.city, stateAndPincode]
+      .where((s) => s != null && s.isNotEmpty)
+      .join(', ');
+
+  return secondLine.isEmpty ? firstLine : '$firstLine\n$secondLine';
+}
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -229,9 +250,7 @@ class ProfileScreen extends ConsumerWidget {
                           ? ''
                           : address.addressType[0].toUpperCase() +
                                 address.addressType.substring(1),
-                      subtitle:
-                          '${address.line1}${address.line2 != null ? ', ${address.line2}' : ''}\n'
-                          '${address.city ?? ''}, ${address.state ?? ''} ${address.pincode ?? ''}',
+                      subtitle: _formatAddressSubtitle(address),
                       trailing: address.isPrimary
                           ? const LpgStatusBadge(
                               label: 'PRIMARY',

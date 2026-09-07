@@ -74,7 +74,11 @@ class InvoiceDetailScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'INV-${invoice.invoiceNumber ?? invoice.invoiceId.substring(0, 8).toUpperCase()}',
+                            // See `invoice_list_screen.dart`'s identical
+                            // comment — `invoiceNumber` already has its own
+                            // "INV-..." prefix.
+                            invoice.invoiceNumber ??
+                                'INV-${invoice.invoiceId.substring(0, 8).toUpperCase()}',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: colors.textPrimary,

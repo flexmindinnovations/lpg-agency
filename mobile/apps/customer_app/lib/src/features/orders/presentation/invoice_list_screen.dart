@@ -65,7 +65,12 @@ class InvoiceListScreen extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'INV-${invoice.invoiceNumber ?? invoice.invoiceId.substring(0, 8).toUpperCase()}',
+                            // `invoiceNumber` already carries the backend's
+                            // own "INV-..." prefix — only the UUID fallback
+                            // needs one added, or this doubles up into
+                            // "INV-INV-2026-000011".
+                            invoice.invoiceNumber ??
+                                'INV-${invoice.invoiceId.substring(0, 8).toUpperCase()}',
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: colors.textPrimary,

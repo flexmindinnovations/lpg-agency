@@ -9,9 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/pump_screen.dart';
 
-InvoiceResponse _invoice({String status = 'partially_paid'}) => InvoiceResponse(
+InvoiceResponse _invoice({
+  String status = 'partially_paid',
+  String number = '000042',
+}) => InvoiceResponse(
   invoiceId: 'inv-abcd1234',
-  invoiceNumber: '000042',
+  invoiceNumber: number,
   tenantId: 't1',
   customerId: 'c1',
   orderId: 'o1',
@@ -35,11 +38,15 @@ InvoiceResponse _invoice({String status = 'partially_paid'}) => InvoiceResponse(
   amountPaid: 500,
 );
 
-Widget _screen({bool nullInvoice = false, Object? error}) => ProviderScope(
+Widget _screen({
+  bool nullInvoice = false,
+  Object? error,
+  String number = '000042',
+}) => ProviderScope(
   overrides: [
     invoiceDetailProvider.overrideWith((ref, id) async {
       if (error != null) throw error;
-      return nullInvoice ? null : _invoice();
+      return nullInvoice ? null : _invoice(number: number);
     }),
     cylinderTypesProvider.overrideWith((ref) async => const []),
   ],
@@ -57,6 +64,17 @@ void main() {
       expect(find.text('Invoice Details'), findsOneWidget);
       expect(find.textContaining('PARTIALLY'), findsWidgets);
     });
+
+    testWidgets(
+      "doesn't double-prefix an invoice number that already has its own "
+      '"INV-..." prefix',
+      (tester) async {
+        await pumpScreen(tester, _screen(number: 'INV-2026-000011'));
+
+        expect(find.text('INV-2026-000011'), findsOneWidget);
+        expect(find.text('INV-INV-2026-000011'), findsNothing);
+      },
+    );
 
     testWidgets('shows a not-found state when the invoice is null', (
       tester,

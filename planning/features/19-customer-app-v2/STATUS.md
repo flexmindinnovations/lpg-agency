@@ -156,8 +156,35 @@ App's phone-OTP sign-in works with the seeded account.
 
 ## Outstanding
 
-- Re-verify invoices / support / profile / address CRUD screens on-device
-  post-rebuild (widget tests pass; not walked through the emulator).
+- ~~Re-verify invoices / support / profile / address CRUD screens on-device
+  post-rebuild (widget tests pass; not walked through the emulator).~~
+  **DONE 2026-09-07.** Walked through every screen on a fresh Pixel emulator
+  against the local backend, signed in as `e2e.customer@example.com`:
+  Invoices (list + detail, read-only by design) — correct. Support — raised
+  a real complaint end-to-end (upload form → `POST` → appears in the list →
+  detail view), confirmed the write in the DB. Profile — viewed and edited
+  (name/email), confirmed the update in the DB. Address CRUD — Add,
+  Edit and Set-Primary all confirmed against the DB; Delete is not
+  implemented, by design (`_showAddressActions`'s own doc comment: no
+  `DELETE .../addresses/{id}` route exists yet — Phase 0 item 5 of
+  `foamy-forging-sparrow.md`, still open, not a bug).
+
+  Two real bugs found and fixed in the process (analyze clean, full test
+  suite green, regression tests added):
+  - **Invoice number double-prefix** (`invoice_list_screen.dart`,
+    `invoice_detail_screen.dart`): both hardcoded an `'INV-'` prefix in
+    front of `invoice.invoiceNumber`, which already carries the backend's
+    own `"INV-..."` prefix — rendered `"INV-INV-2026-000011"` instead of
+    `"INV-2026-000011"`. Fixed by only prefixing the UUID-based fallback,
+    not the real invoice number.
+  - **Dangling comma on a partial address** (`profile_screen.dart`): the
+    second subtitle line was built as `'${city}, ${state} ${pincode}'`
+    unconditionally, so an address with city/state/pincode all unset (the
+    shape a freshly-added address can have before the customer fills them
+    in) rendered a lone `,` where the line would go. Fixed with a
+    `_formatAddressSubtitle` helper that only includes a piece — and only
+    adds the punctuation joining it to the next piece — when that piece is
+    actually present.
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
 - ~~Driver app only *views* a route + shares location — the delivery workflow
   (mark departed, record delivery + proof-of-delivery, collect payment) still
