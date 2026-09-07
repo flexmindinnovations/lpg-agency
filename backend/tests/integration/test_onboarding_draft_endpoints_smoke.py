@@ -298,6 +298,8 @@ class TestOnboardingDraftEndpointsThroughRealStack:
 
         # PIL's default bitmap font is too small/low-quality for OCR to read
         # reliably — use a real scalable font, same as manual verification.
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        font_small: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             font = ImageFont.truetype("arial.ttf", 28)
             font_small = ImageFont.truetype("arial.ttf", 20)

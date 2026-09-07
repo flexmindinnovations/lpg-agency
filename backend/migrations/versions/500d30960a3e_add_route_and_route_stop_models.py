@@ -16,8 +16,8 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = '500d30960a3e'
-down_revision: str | None = '7c3f1a9e2b4d'
+revision: str = "500d30960a3e"
+down_revision: str | None = "7c3f1a9e2b4d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -32,9 +32,19 @@ def upgrade() -> None:
         sa.Column("vehicle_id", sa.Uuid(), nullable=False),
         sa.Column("route_date", sa.DateTime(timezone=True), nullable=False),
         sa.Column("status", sa.String(length=30), server_default="planned", nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("created_by", sa.Uuid(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("updated_by", sa.Uuid(), nullable=True),
         sa.Column("version", sa.Integer(), server_default=sa.text("1"), nullable=False),
         sa.ForeignKeyConstraint(["branch_id"], ["tenant.branch.id"], ondelete="CASCADE"),

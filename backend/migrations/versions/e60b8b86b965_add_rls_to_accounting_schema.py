@@ -15,8 +15,8 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = 'e60b8b86b965'
-down_revision: str | None = 'de95b5bcc7de'
+revision: str = "e60b8b86b965"
+down_revision: str | None = "de95b5bcc7de"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -97,7 +97,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_invoice_line_isolation ON {_SCHEMA}.invoice_line")
+    op.execute(
+        f"DROP POLICY IF EXISTS rls_{_SCHEMA}_invoice_line_isolation ON {_SCHEMA}.invoice_line"
+    )
     op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_invoice_isolation ON {_SCHEMA}.invoice")
 
     op.execute(f"ALTER TABLE {_SCHEMA}.invoice_line NO FORCE ROW LEVEL SECURITY")

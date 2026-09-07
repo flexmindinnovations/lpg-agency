@@ -16,23 +16,13 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = '1f25cb7394d7'
-down_revision: str | None = 'de17b27d462e'
-branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
-
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-revision: str = '1f25cb7394d7'
-down_revision: str | None = 'de17b27d462e'
+revision: str = "1f25cb7394d7"
+down_revision: str | None = "de17b27d462e"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 _SCHEMA = "identity"
+
 
 def upgrade() -> None:
     # Grant kyc:read to accountant and dispatcher
@@ -46,6 +36,7 @@ def upgrade() -> None:
                 ON CONFLICT DO NOTHING
             """).bindparams(role_code=role_code)
         )
+
 
 def downgrade() -> None:
     for role_code in ["accountant", "dispatcher"]:

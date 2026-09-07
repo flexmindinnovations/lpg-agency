@@ -48,7 +48,9 @@ async def main() -> None:
     async with engine.begin() as conn:
         tenant_id = (
             await conn.execute(
-                text("SELECT tenant_id FROM identity.identity_user WHERE email = 'admin@example.com'")
+                text(
+                    "SELECT tenant_id FROM identity.identity_user WHERE email = 'admin@example.com'"
+                )
             )
         ).scalar()
         if tenant_id is None:
@@ -131,7 +133,8 @@ async def main() -> None:
         )
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
                 "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
                 "FROM identity.role_permission rp "
                 "JOIN identity.role r ON r.id = rp.role_id "
@@ -143,7 +146,8 @@ async def main() -> None:
         employee_id = (
             await conn.execute(
                 text(
-                    "SELECT id FROM tenant.employee WHERE tenant_id = :tenant_id AND employee_code = :code"
+                    "SELECT id FROM tenant.employee "
+                    "WHERE tenant_id = :tenant_id AND employee_code = :code"
                 ),
                 {"tenant_id": tenant_id, "code": EMPLOYEE_CODE},
             )
@@ -156,8 +160,8 @@ async def main() -> None:
                         "INSERT INTO tenant.employee "
                         "(id, tenant_id, branch_id, employee_code, first_name, last_name, "
                         "phone_number, email, role, status) "
-                        "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :code, 'E2E', 'Driver', "
-                        ":phone, :email, 'driver', 'active') "
+                        "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :code, "
+                        "'E2E', 'Driver', :phone, :email, 'driver', 'active') "
                         "RETURNING id"
                     ),
                     {
@@ -174,7 +178,10 @@ async def main() -> None:
 
         driver_id = (
             await conn.execute(
-                text("SELECT id FROM delivery.driver WHERE tenant_id = :tenant_id AND employee_id = :emp"),
+                text(
+                    "SELECT id FROM delivery.driver "
+                    "WHERE tenant_id = :tenant_id AND employee_id = :emp"
+                ),
                 {"tenant_id": tenant_id, "emp": employee_id},
             )
         ).scalar()
@@ -184,7 +191,8 @@ async def main() -> None:
                 text(
                     "INSERT INTO delivery.driver "
                     "(tenant_id, branch_id, identity_user_id, employee_id, license_number, status) "
-                    "VALUES (:tenant_id, :branch_id, :identity_user_id, :employee_id, :license, 'active')"
+                    "VALUES (:tenant_id, :branch_id, :identity_user_id, "
+                    ":employee_id, :license, 'active')"
                 ),
                 {
                     "tenant_id": tenant_id,
@@ -198,7 +206,9 @@ async def main() -> None:
             # Existing driver profile (e.g. re-run after a partial failure) —
             # make sure the link is actually there.
             await conn.execute(
-                text("UPDATE delivery.driver SET identity_user_id = :user_id WHERE id = :driver_id"),
+                text(
+                    "UPDATE delivery.driver SET identity_user_id = :user_id WHERE id = :driver_id"
+                ),
                 {"user_id": user_id, "driver_id": driver_id},
             )
             print("driver profile already existed — ensured identity_user_id link.")
@@ -208,7 +218,9 @@ async def main() -> None:
     print(f"Login Email:    {EMAIL}")
     print(f"Login Password: {PASSWORD}")
     print(f"Branch:         {BRANCH_NAME}")
-    print("Assign an order to this driver (employee code EMP-E2E-DRIVER) to deliver it as this user.")
+    print(
+        "Assign an order to this driver (employee code EMP-E2E-DRIVER) to deliver it as this user."
+    )
 
 
 if __name__ == "__main__":

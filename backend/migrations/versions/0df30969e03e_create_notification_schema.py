@@ -15,8 +15,8 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = '0df30969e03e'
-down_revision: str | None = 'e60b8b86b965'
+revision: str = "0df30969e03e"
+down_revision: str | None = "e60b8b86b965"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -38,7 +38,9 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
     """)
-    op.execute("CREATE INDEX ON notification.in_app_notification (tenant_id, recipient_user_id, is_read);")
+    op.execute(
+        "CREATE INDEX ON notification.in_app_notification (tenant_id, recipient_user_id, is_read);"
+    )
 
     op.execute("ALTER TABLE notification.in_app_notification ENABLE ROW LEVEL SECURITY;")
     op.execute("""

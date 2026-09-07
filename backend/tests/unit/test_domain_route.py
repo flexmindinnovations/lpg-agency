@@ -193,11 +193,13 @@ class TestVanLoad:
     def test_confirm_load_sets_the_timestamp_and_emits_the_event(self) -> None:
         route = _make_route(status="loaded")
         actor = uuid.uuid4()
-        assert route.load_confirmed_at is None
+        confirmed_at_before = route.load_confirmed_at
+        assert confirmed_at_before is None
 
         route.confirm_load(confirmed_by=actor)
 
-        assert route.load_confirmed_at is not None
+        confirmed_at = route.load_confirmed_at
+        assert confirmed_at is not None
         events = [e for e in route.events if isinstance(e, RouteLoadConfirmed)]
         assert len(events) == 1
         assert events[0].confirmed_by == actor

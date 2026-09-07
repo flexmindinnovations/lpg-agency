@@ -34,14 +34,19 @@ def _make_location(location_type: str = "warehouse", **kwargs: object) -> Invent
 
 
 def _location_with_balance(
-    cylinder_type_id: uuid.UUID, status: str, quantity: int, **kwargs: object
+    cylinder_type_id: uuid.UUID,
+    status: str,
+    quantity: int,
+    location_type: str = "warehouse",
 ) -> InventoryLocation:
     """A location pre-seeded with balance directly via the constructor — the
     only way to fund a status like "empty" that no public mutation method
     credits directly on a warehouse (`receive_goods` always credits
     "filled"; `record_collection` is vehicle-only).
     """
-    return _make_location(balances={(cylinder_type_id, status): quantity}, **kwargs)
+    return _make_location(
+        location_type=location_type, balances={(cylinder_type_id, status): quantity}
+    )
 
 
 class TestInventoryLocationCreation:

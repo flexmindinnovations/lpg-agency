@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
@@ -16,6 +17,10 @@ from lpg.infrastructure.channels.push_channel import (
     StubPushChannel,
     build_push_channel,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 def _service_account() -> dict[str, str]:
@@ -63,7 +68,7 @@ def test_build_returns_fcm_channel_with_valid_credentials() -> None:
     assert isinstance(channel, FcmHttpV1PushChannel)
 
 
-def test_build_reads_credentials_from_a_file_path(tmp_path) -> None:
+def test_build_reads_credentials_from_a_file_path(tmp_path: Path) -> None:
     key_file = tmp_path / "sa.json"
     key_file.write_text(json.dumps(_service_account()), encoding="utf-8")
     channel = build_push_channel(
@@ -92,7 +97,7 @@ async def test_stub_channel_send_is_a_noop() -> None:
 # -- FcmHttpV1PushChannel -------------------------------------------------------
 
 
-def _mock_channel(handler) -> FcmHttpV1PushChannel:
+def _mock_channel(handler: Callable[[httpx.Request], httpx.Response]) -> FcmHttpV1PushChannel:
     return FcmHttpV1PushChannel(
         service_account=_service_account(),
         project_id="lpg-test",

@@ -99,7 +99,8 @@ def upgrade() -> None:
             # Backfill existing users of that role — see module docstring.
             op.execute(
                 sa.text(f"""
-                    INSERT INTO {_SCHEMA}.identity_user_permission (id, user_id, permission_id, created_at)
+                    INSERT INTO {_SCHEMA}.identity_user_permission
+                        (id, user_id, permission_id, created_at)
                     SELECT gen_random_uuid(), u.id, :permission_id, now()
                     FROM {_SCHEMA}.identity_user u
                     WHERE u.role = :role_code

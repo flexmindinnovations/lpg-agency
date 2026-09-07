@@ -15,8 +15,8 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = '6feb4eae14a5'
-down_revision: str | None = '1f25cb7394d7'
+revision: str = "6feb4eae14a5"
+down_revision: str | None = "1f25cb7394d7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -46,11 +46,15 @@ def upgrade() -> None:
             END;
         BEGIN
             IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
-                EXECUTE format('GRANT EXECUTE ON FUNCTION tenant.auth_resolve_tenant_id_by_slug(text) TO %I', app_role);
+                EXECUTE format(
+                    'GRANT EXECUTE ON FUNCTION tenant.auth_resolve_tenant_id_by_slug(text) TO %I',
+                    app_role
+                );
             END IF;
         END
         $$;
     """)
+
 
 def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS tenant.auth_resolve_tenant_id_by_slug(text)")

@@ -1,6 +1,7 @@
 """Unit tests for notification use cases."""
 
 import uuid
+from collections.abc import Sequence
 
 import pytest
 
@@ -9,15 +10,25 @@ from lpg.application.notification.use_cases import (
     CountUnreadUseCase,
     MarkReadUseCase,
 )
+from lpg.domain.common.base import DomainEvent
 from lpg.domain.notification.in_app_notification import InAppNotification
 
 
 class FakeUnitOfWork:
-    async def __aenter__(self):
+    async def __aenter__(self) -> "FakeUnitOfWork":
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, *_: object) -> None:
         pass
+
+    async def commit(self) -> None:
+        pass
+
+    async def rollback(self) -> None:
+        pass
+
+    def collect_events(self) -> Sequence[DomainEvent]:
+        return []
 
 
 class FakeInAppNotificationRepository:

@@ -28,13 +28,14 @@ class LpgApiUser(HttpUser):
                 self.tenant_id = me_resp.json().get("tenant_id")
 
         self.ws = None
-        if self.token and self.tenant_id:
+        if self.token and self.tenant_id and self.host:
             ws_url = self.host.replace("http", "ws") + f"/api/v1/ws?token={self.token}"
             try:
                 self.ws = websocket.create_connection(ws_url)
                 self.ws.send(json.dumps({"subscribe": ["dashboard", f"order:{uuid.uuid4()}"]}))
             except Exception as e:  # noqa: BLE001 - a single simulated user must not crash the load test
-                events.request.fire(
+                # locust ships py.typed but EventHook.fire itself is untyped.
+                events.request.fire(  # type: ignore[no-untyped-call]
                     request_type="WebSocket",
                     name="connect",
                     response_time=0,
@@ -76,7 +77,7 @@ class LpgApiUser(HttpUser):
             self.ws.send(json.dumps({"type": "ping"}))
             self.ws.settimeout(0.5)
             self.ws.recv()
-            events.request.fire(
+            events.request.fire(  # type: ignore[no-untyped-call]
                 request_type="WebSocket",
                 name="ping",
                 response_time=0,
@@ -86,7 +87,7 @@ class LpgApiUser(HttpUser):
         except websocket.WebSocketTimeoutException:
             pass
         except Exception as e:  # noqa: BLE001 - a single simulated user must not crash the load test
-            events.request.fire(
+            events.request.fire(  # type: ignore[no-untyped-call]
                 request_type="WebSocket",
                 name="ping",
                 response_time=0,

@@ -17,6 +17,7 @@ import pytest
 from lpg.domain.common.base import InvariantViolation
 from lpg.domain.order.order import (
     BookingCancelled,
+    BookingConfirmed,
     BookingCreated,
     DeliveredLine,
     DeliveryAddress,
@@ -257,12 +258,13 @@ class TestOrderConfirm:
 
         events = order.events
         assert len(events) == 1
-        assert events[0].__class__.__name__ == "BookingConfirmed"
-        assert events[0].order_id == order.id
-        assert events[0].tenant_id == order._tenant_id
-        assert events[0].customer_id == order._customer_id
-        assert events[0].branch_id == order._branch_id
-        assert events[0].confirmed_by == changed_by
+        event = events[0]
+        assert isinstance(event, BookingConfirmed)
+        assert event.order_id == order.id
+        assert event.tenant_id == order._tenant_id
+        assert event.customer_id == order._customer_id
+        assert event.branch_id == order._branch_id
+        assert event.confirmed_by == changed_by
 
     def test_rejects_missing_price_for_a_line(self) -> None:
         order = _make_order()

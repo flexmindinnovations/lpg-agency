@@ -60,7 +60,9 @@ async def main() -> None:
     async with engine.begin() as conn:
         tenant_id = (
             await conn.execute(
-                text("SELECT tenant_id FROM identity.identity_user WHERE email = 'admin@example.com'")
+                text(
+                    "SELECT tenant_id FROM identity.identity_user WHERE email = 'admin@example.com'"
+                )
             )
         ).scalar()
         if tenant_id is None:
@@ -128,7 +130,8 @@ async def main() -> None:
         )
         await conn.execute(
             text(
-                "INSERT INTO identity.identity_user_permission (id, user_id, permission_id, created_at) "
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
                 "SELECT gen_random_uuid(), :user_id, rp.permission_id, now() "
                 "FROM identity.role_permission rp "
                 "JOIN identity.role r ON r.id = rp.role_id "
@@ -139,7 +142,10 @@ async def main() -> None:
 
         customer_id = (
             await conn.execute(
-                text("SELECT id FROM customer.customer WHERE tenant_id = :tenant_id AND phone_number = :phone"),
+                text(
+                    "SELECT id FROM customer.customer "
+                    "WHERE tenant_id = :tenant_id AND phone_number = :phone"
+                ),
                 {"tenant_id": tenant_id, "phone": PHONE_NUMBER},
             )
         ).scalar()
@@ -172,9 +178,16 @@ async def main() -> None:
                     "consumer_number = COALESCE(consumer_number, :consumer_number) "
                     "WHERE id = :customer_id"
                 ),
-                {"user_id": user_id, "consumer_number": CONSUMER_NUMBER, "customer_id": customer_id},
+                {
+                    "user_id": user_id,
+                    "consumer_number": CONSUMER_NUMBER,
+                    "customer_id": customer_id,
+                },
             )
-            print("customer profile already existed — ensured identity_user_id link + consumer_number.")
+            print(
+                "customer profile already existed — ensured identity_user_id link + "
+                "consumer_number."
+            )
 
     await engine.dispose()
     print("\nDone.")

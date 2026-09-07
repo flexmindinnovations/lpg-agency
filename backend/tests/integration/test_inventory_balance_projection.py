@@ -124,12 +124,12 @@ class TestBalanceProjectionStaysInLockstep:
         async for session in database.open_session(tenant_id=tenant_id):
             async with SqlAlchemyUnitOfWork(session, context) as uow:
                 repo = SqlAlchemyInventoryLocationRepository(uow)
-                location = await repo.get_by_id(location_id)
-                assert location is not None
-                location.change_status(
+                reloaded_location = await repo.get_by_id(location_id)
+                assert reloaded_location is not None
+                reloaded_location.change_status(
                     cylinder_type_id, "filled", "leakage", 10, performed_by=performer
                 )
-                await repo.save(location)
+                await repo.save(reloaded_location)
 
         async for session in database.open_session(tenant_id=tenant_id):
             uow = SqlAlchemyUnitOfWork(session, context)

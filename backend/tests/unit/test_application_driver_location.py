@@ -26,6 +26,12 @@ class _FakeStore:
     ) -> None:
         self.saved.append((tenant_id, route_id, snapshot))
 
+    async def read(self, tenant_id: uuid.UUID, route_id: uuid.UUID) -> dict[str, Any] | None:
+        for saved_tenant_id, saved_route_id, snapshot in reversed(self.saved):
+            if saved_tenant_id == tenant_id and saved_route_id == route_id:
+                return snapshot
+        return None
+
 
 class _FakePublisher:
     def __init__(self) -> None:

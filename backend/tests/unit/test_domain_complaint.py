@@ -198,12 +198,15 @@ class TestResolve:
         """
         complaint = _make_complaint()
         complaint.resolve(ResolutionOutcome.REJECTED, "first pass", uuid.uuid4())
-        assert complaint.resolution is not None
-        assert complaint.resolution.outcome == ResolutionOutcome.REJECTED
+        first_resolution = complaint.resolution
+        assert first_resolution is not None
+        assert first_resolution.outcome == ResolutionOutcome.REJECTED
 
         complaint.status = ComplaintStatus.IN_PROGRESS
         second_resolver = uuid.uuid4()
         complaint.resolve(ResolutionOutcome.RESOLVED, "second pass", second_resolver)
 
-        assert complaint.resolution.outcome == ResolutionOutcome.RESOLVED
-        assert complaint.resolution.resolved_by == second_resolver
+        second_resolution = complaint.resolution
+        assert second_resolution is not None
+        assert second_resolution.outcome == ResolutionOutcome.RESOLVED
+        assert second_resolution.resolved_by == second_resolver
