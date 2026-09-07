@@ -1,4 +1,4 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,8 +11,6 @@ import {
   ElementRef,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Router } from '@angular/router';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
 import { catchError, of } from 'rxjs';
 import {
@@ -44,6 +42,8 @@ interface KpiData {
   icon: string;
   tone: StatTone;
   permission?: string;
+  /** The module this metric summarises — makes the card a real link there. */
+  route: string;
 }
 
 const ACTION_ICON: Record<string, string> = {
@@ -78,14 +78,10 @@ function statusLabel(status: string): string {
   return STATUS_LABELS[status] ?? status;
 }
 
-function escapeCsvCell(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
 @Component({
   selector: 'lpg-home',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, ChartModule, HasPermissionDirective, PageHeaderComponent, SectionCardComponent, StatCardComponent, ActivityListComponent, EmptyStateComponent, SkeletonComponent],
+  imports: [HeaderTitlePortalDirective, ChartModule, HasPermissionDirective, PageHeaderComponent, SectionCardComponent, StatCardComponent, ActivityListComponent, EmptyStateComponent, SkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
@@ -95,26 +91,8 @@ function escapeCsvCell(value: string): string {
           subtitle="Live summary of your agency's operational data across every module."
         />
       </ng-template>
-      <ng-template lpgHeaderPortal>
-        <div class="dashboard__actions">
-          <button
-            *lpgHasPermission="'reports:read'"
-            pButton
-            severity="secondary"
-            [disabled]="loading()"
-            (click)="exportReport()"
-          >
-            <i pButtonIcon class="pi pi-download"></i>
-            <span pButtonLabel>Export Report</span>
-          </button>
-          <button *lpgHasPermission="'orders:create'" pButton type="button" (click)="onNewBooking()">
-            <i pButtonIcon class="pi pi-plus"></i>
-            <span pButtonLabel>New Booking</span>
-          </button>
-        </div>
-      </ng-template>
 
-      <!-- KPI Section -->
+      <!-- KPI Section — each card links to the module it summarises. -->
       <section class="dashboard__kpis">
         @for (kpi of kpis(); track kpi.title) {
           <lpg-stat-card
@@ -124,6 +102,7 @@ function escapeCsvCell(value: string): string {
             [icon]="kpi.icon"
             [tone]="kpi.tone"
             [loading]="loading()"
+            [route]="kpi.route"
           />
         }
       </section>
@@ -204,11 +183,6 @@ function escapeCsvCell(value: string): string {
         gap: var(--spacing-xl);
       }
 
-      .dashboard__actions {
-        display: flex;
-        gap: var(--spacing-sm);
-      }
-
       .dashboard__kpis {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -266,7 +240,6 @@ export class Home implements OnDestroy {
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly el = inject(ElementRef);
   private readonly dashboardService = inject(DashboardService);
-  private readonly router = inject(Router);
   private readonly wsService = inject(WebSocketService);
 
   protected readonly loading = signal(true);
@@ -384,78 +357,50 @@ export class Home implements OnDestroy {
         value: (summary?.customer_count ?? 0).toLocaleString(),
         icon: 'pi pi-users',
         tone: 'info',
-        permission: 'customers:read'
+        permission: 'customers:read',
+        route: '/customers',
       },
       {
         title: 'Drivers',
         value: (summary?.driver_count ?? 0).toLocaleString(),
         icon: 'pi pi-id-card',
         tone: 'info',
-        permission: 'drivers:read'
+        permission: 'drivers:read',
+        route: '/drivers',
       },
       {
         title: 'Fleet Vehicles',
         value: (summary?.vehicle_count ?? 0).toLocaleString(),
         icon: 'pi pi-truck',
         tone: 'warning',
-        permission: 'vehicles:read'
+        permission: 'vehicles:read',
+        route: '/vehicles',
       },
       {
         title: 'Warehouses',
         value: (summary?.warehouse_count ?? 0).toLocaleString(),
         icon: 'pi pi-warehouse',
         tone: 'primary',
-        permission: 'tenant:configure'
+        permission: 'tenant:configure',
+        route: '/admin/warehouses',
       },
       {
         title: 'Filled Cylinders',
         value: filled.toLocaleString(),
         icon: 'pi pi-box',
         tone: 'success',
-        permission: 'inventory:read'
+        permission: 'inventory:read',
+        route: '/inventory',
       },
       {
         title: 'Cylinders Needing Attention',
         value: needingAttention.toLocaleString(),
         icon: 'pi pi-exclamation-triangle',
         tone: 'danger',
-        permission: 'inventory:read'
+        permission: 'inventory:read',
+        route: '/inventory',
       },
     ]);
-  }
-
-  protected onNewBooking(): void {
-    void this.router.navigate(['/orders'], { queryParams: { create: true } });
-  }
-
-  protected exportReport(): void {
-    const summary = this.summary();
-    const rows: string[][] = [
-      ['Metric', 'Value'],
-      ['Total Customers', String(summary?.customer_count ?? 0)],
-      ['Drivers', String(summary?.driver_count ?? 0)],
-      ['Fleet Vehicles', String(summary?.vehicle_count ?? 0)],
-      ['Warehouses', String(summary?.warehouse_count ?? 0)],
-      ['Cylinder Types', String(summary?.cylinder_type_count ?? 0)],
-    ];
-    for (const [status, qty] of Object.entries(summary?.inventory_by_status ?? {})) {
-      rows.push([`Inventory — ${statusLabel(status)}`, String(qty)]);
-    }
-    for (const [status, qty] of Object.entries(summary?.vehicles_by_status ?? {})) {
-      rows.push([`Vehicles — ${status}`, String(qty)]);
-    }
-    for (const card of summary?.price_cards ?? []) {
-      rows.push([`Price — ${card.name} (${card.customer_type})`, card.price ?? 'Not configured']);
-    }
-
-    const csv = rows.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `agency-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
   }
 
   private updateChartTheme() {
