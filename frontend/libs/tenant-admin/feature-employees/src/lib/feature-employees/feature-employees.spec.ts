@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ConfirmationService } from 'primeng/api';
 import { FeatureEmployees } from './feature-employees';
 
 describe('FeatureEmployees', () => {
@@ -8,6 +9,7 @@ describe('FeatureEmployees', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeatureEmployees],
+      providers: [ConfirmationService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FeatureEmployees);
