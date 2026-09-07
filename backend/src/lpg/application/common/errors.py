@@ -382,3 +382,13 @@ class DuplicateScaleAssetTagError(ConflictError):
 
     error_code = "DUPLICATE_SCALE_ASSET_TAG"
     title = "A scale with this asset tag is already registered at this warehouse."
+
+
+class WeighmentCheckRequiredError(ConflictError):
+    """MDG 2022 cl. 1.4(c)(d) — 100% of cylinders must be weight-checked
+    before load-out. `LoadVehicleForRouteUseCase` raises this when the load
+    manifest has a cylinder type with no passing `load_out_full_check`
+    `WeighmentRecord` for the route yet (Weighment Part 3)."""
+
+    error_code = "WEIGHMENT_CHECK_REQUIRED"
+    title = "A passing 100% weighment check is required before this route can be loaded."

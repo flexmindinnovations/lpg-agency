@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     import uuid
 
     from lpg.application.common.ports import UnitOfWork
+    from lpg.application.compliance.ports import WeighmentRecordRepository
     from lpg.application.delivery.ports import (
         ComplianceDocumentRepository,
         DriverRepository,
@@ -47,6 +48,7 @@ if TYPE_CHECKING:
         ReconciliationRecordRepository,
     )
     from lpg.application.order.ports import OrderRepository
+    from lpg.application.tenant.ports import TenantConfigurationRepository
     from lpg.domain.order.order import Order
 
 
@@ -646,6 +648,23 @@ class LoadVehicleForRouteUseCase:
     `LoadTransferUseCase.execute()` itself since that use case owns its own
     commit, which would break this operation's atomicity with the route's
     own status change.
+
+    Weighment Part 3 (MDG 2022 cl. 1.4(c)(d)): **tenant opt-in only** — a
+    tenant that has set `TenantConfiguration` key `weighment_gate_enabled`
+    to a truthy value gets a hard gate here: every cylinder type on the
+    manifest must have a passing 100% load-out weighment check
+    (`WeighmentRecord.context == 'load_out_full_check'`) already recorded
+    for this route, or this raises `WeighmentCheckRequiredError` (409)
+    before any stock moves. Defaults to **off** — every tenant that hasn't
+    set up scales/weighment yet sees no change in behavior; a live
+    integration test (`test_order_endpoints_smoke.py`, `test_route_
+    endpoints_smoke.py`) exercises the un-flagged full order/dispatch/
+    delivery lifecycle and would fail loudly if this default ever flipped.
+    `weighment_record_repository`/`tenant_config_repository` are optional
+    (`None`) purely so callers that predate this gate — and any composition
+    root not yet wired for it — don't have to change; the gate is skipped
+    (not just defaulted off) when either is absent, never as a per-call
+    opt-out once both are wired.
     """
 
     def __init__(
@@ -653,19 +672,71 @@ class LoadVehicleForRouteUseCase:
         route_repository: RouteRepository,
         inventory_location_repository: InventoryLocationRepository,
         unit_of_work: UnitOfWork,
+        weighment_record_repository: WeighmentRecordRepository | None = None,
+        tenant_config_repository: TenantConfigurationRepository | None = None,
     ) -> None:
         self._route_repository = route_repository
         self._inventory_repository = inventory_location_repository
         self._unit_of_work = unit_of_work
+        self._weighment_repository = weighment_record_repository
+        self._tenant_config_repository = tenant_config_repository
         self._get_or_create_location = GetOrCreateInventoryLocationUseCase(
             inventory_location_repository
         )
+
+    async def _weighment_gate_enabled(self, tenant_id: uuid.UUID) -> bool:
+        from lpg.application.tenant.tenant_configuration import (
+            GetEffectiveTenantConfigurationQuery,
+            GetEffectiveTenantConfigurationUseCase,
+        )
+
+        if self._tenant_config_repository is None:
+            return False
+        config = await GetEffectiveTenantConfigurationUseCase(
+            self._tenant_config_repository
+        ).execute(
+            GetEffectiveTenantConfigurationQuery(
+                tenant_id=tenant_id, config_key="weighment_gate_enabled"
+            )
+        )
+        return bool(config.config_value) if config is not None else False
+
+    async def _require_passing_load_out_weighment(
+        self, tenant_id: uuid.UUID, route_id: uuid.UUID, lines: list[LoadVehicleLine]
+    ) -> None:
+        from lpg.application.common.errors import WeighmentCheckRequiredError
+
+        if self._weighment_repository is None or self._tenant_config_repository is None:
+            return
+        if not await self._weighment_gate_enabled(tenant_id):
+            return
+
+        records = await self._weighment_repository.list_for_reference("route", route_id)
+        passing_cylinder_types = {
+            record.cylinder_type_id
+            for record in records
+            if record.context == "load_out_full_check" and record.result == "pass"
+        }
+        missing = {
+            line.cylinder_type_id
+            for line in lines
+            if line.cylinder_type_id not in passing_cylinder_types
+        }
+        if missing:
+            msg = (
+                f"{len(missing)} cylinder type(s) on this load manifest have no passing "
+                "100% weighment check recorded for this route yet — record one via "
+                "POST /routes/{route_id}/weighment before loading (MDG 2022 cl. 1.4(c)(d))."
+            )
+            raise WeighmentCheckRequiredError(msg, route_id=str(route_id))
 
     async def execute(self, command: LoadVehicleForRouteCommand) -> Route:
         route = await self._route_repository.get_by_id(command.route_id)
         if route is None:
             msg = f"No route visible with id {command.route_id}."
             raise NotFoundError(msg, route_id=str(command.route_id))
+
+        await self._require_passing_load_out_weighment(route.tenant_id, route.id, command.lines)
 
         warehouse_location = await self._get_or_create_location.execute(
             tenant_id=route.tenant_id,

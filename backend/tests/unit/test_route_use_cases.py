@@ -20,6 +20,7 @@ from lpg.application.common.errors import (
     DuplicateRouteAssignmentError,
     NotFoundError,
     RouteReconciliationPendingError,
+    WeighmentCheckRequiredError,
 )
 from lpg.application.delivery.use_cases import (
     AssignOrderToRouteCommand,
@@ -38,9 +39,31 @@ from lpg.application.delivery.use_cases import (
 )
 from lpg.application.inventory.ports import ReconciliationRecordEntry
 from lpg.domain.common.base import InvariantViolation
+from lpg.domain.compliance.weighment_record import WeighmentRecord
 from lpg.domain.delivery.route import Route, RoutePlanned
 from lpg.domain.inventory.inventory_location import InsufficientStockError, InventoryLocation
 from lpg.domain.order.order import DeliveryAddress, Order, OrderLine
+
+
+def _weighment_record(**kwargs: object) -> WeighmentRecord:
+    defaults: dict[str, object] = {
+        "id": uuid.uuid4(),
+        "tenant_id": uuid.uuid4(),
+        "scale_id": uuid.uuid4(),
+        "context": "load_out_full_check",
+        "reference_type": "route",
+        "reference_id": uuid.uuid4(),
+        "cylinder_type_id": uuid.uuid4(),
+        "total_cylinders_in_batch": 20,
+        "cylinders_checked": 20,
+        "underweight_cylinder_count": 0,
+        "tolerance_grams_applied": 150,
+        "result": "pass",
+        "recorded_by": uuid.uuid4(),
+        "recorded_at": datetime.now(UTC),
+    }
+    defaults.update(kwargs)
+    return WeighmentRecord(**defaults)  # type: ignore[arg-type]
 
 
 def _make_route(**kwargs: object) -> Route:
@@ -131,6 +154,48 @@ def mock_inventory_repo() -> MagicMock:
     repo.next_id = MagicMock(side_effect=lambda: uuid.uuid4())
     repo.save = AsyncMock()
     repo.get_by_location_ref = AsyncMock(return_value=None)
+    return repo
+
+
+@pytest.fixture
+def mock_weighment_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.list_for_reference = AsyncMock(return_value=[])
+    return repo
+
+
+def _gate_enabled_tenant_config_repo() -> MagicMock:
+    """A `TenantConfigurationRepository` reporting `weighment_gate_enabled
+    = true` — the opt-in a tenant sets once they've actually adopted
+    weighment."""
+    from lpg.domain.tenant.tenant_configuration import TenantConfiguration
+
+    repo = MagicMock()
+    repo.list_for_tenant_and_key = AsyncMock(
+        return_value=[
+            TenantConfiguration(
+                uuid.uuid4(),
+                uuid.uuid4(),
+                "weighment_gate_enabled",
+                True,
+                datetime.now(UTC),
+            )
+        ]
+    )
+    return repo
+
+
+@pytest.fixture
+def mock_tenant_config_repo_gate_enabled() -> MagicMock:
+    return _gate_enabled_tenant_config_repo()
+
+
+@pytest.fixture
+def mock_tenant_config_repo_default() -> MagicMock:
+    """No `weighment_gate_enabled` entry at all — the default for every
+    tenant that hasn't opted in."""
+    repo = MagicMock()
+    repo.list_for_tenant_and_key = AsyncMock(return_value=[])
     return repo
 
 
@@ -457,6 +522,215 @@ class TestLoadVehicleForRouteUseCase:
         mock_inventory_repo.save.assert_not_called()
         mock_route_repo.save.assert_not_called()
         mock_uow.commit.assert_not_called()
+
+    async def test_weighment_gate_blocks_when_no_passing_check_is_on_file(
+        self,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        mock_weighment_repo: MagicMock,
+        mock_tenant_config_repo_gate_enabled: MagicMock,
+    ) -> None:
+        """Weighment Part 3 (MDG 2022 cl. 1.4(c)(d)) — a tenant with
+        `weighment_gate_enabled = true` gets a real 100% load-out gate."""
+        cylinder_type_id = uuid.uuid4()
+        route = _make_route(status="planned")
+        mock_route_repo.get_by_id.return_value = route
+        mock_weighment_repo.list_for_reference.return_value = []
+
+        use_case = LoadVehicleForRouteUseCase(
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            mock_weighment_repo,
+            mock_tenant_config_repo_gate_enabled,
+        )
+        with pytest.raises(WeighmentCheckRequiredError):
+            await use_case.execute(
+                LoadVehicleForRouteCommand(
+                    route_id=route.id,
+                    warehouse_id=uuid.uuid4(),
+                    lines=[LoadVehicleLine(cylinder_type_id=cylinder_type_id, quantity=20)],
+                    performed_by=uuid.uuid4(),
+                )
+            )
+        mock_inventory_repo.save.assert_not_called()
+        mock_route_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+    async def test_weighment_gate_ignores_a_failed_check(
+        self,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        mock_weighment_repo: MagicMock,
+        mock_tenant_config_repo_gate_enabled: MagicMock,
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        route = _make_route(status="planned")
+        mock_route_repo.get_by_id.return_value = route
+        mock_weighment_repo.list_for_reference.return_value = [
+            _weighment_record(
+                reference_id=route.id,
+                cylinder_type_id=cylinder_type_id,
+                result="fail",
+                underweight_cylinder_count=2,
+            )
+        ]
+
+        use_case = LoadVehicleForRouteUseCase(
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            mock_weighment_repo,
+            mock_tenant_config_repo_gate_enabled,
+        )
+        with pytest.raises(WeighmentCheckRequiredError):
+            await use_case.execute(
+                LoadVehicleForRouteCommand(
+                    route_id=route.id,
+                    warehouse_id=uuid.uuid4(),
+                    lines=[LoadVehicleLine(cylinder_type_id=cylinder_type_id, quantity=20)],
+                    performed_by=uuid.uuid4(),
+                )
+            )
+
+    async def test_weighment_gate_passes_when_every_manifest_line_has_a_passing_check(
+        self,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        mock_weighment_repo: MagicMock,
+        mock_tenant_config_repo_gate_enabled: MagicMock,
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        route = _make_route(status="planned")
+        warehouse_id = uuid.uuid4()
+        warehouse_location = InventoryLocation(
+            inventory_location_id=uuid.uuid4(),
+            tenant_id=route.tenant_id,
+            location_type="warehouse",
+            location_ref_id=warehouse_id,
+            balances={(cylinder_type_id, "filled"): 50},
+        )
+        vehicle_location = _make_vehicle_location(location_ref_id=route.vehicle_id)
+
+        async def _get_by_ref(location_type: str, location_ref_id: uuid.UUID) -> InventoryLocation:
+            return warehouse_location if location_type == "warehouse" else vehicle_location
+
+        mock_route_repo.get_by_id.return_value = route
+        mock_inventory_repo.get_by_location_ref.side_effect = _get_by_ref
+        mock_weighment_repo.list_for_reference.return_value = [
+            _weighment_record(
+                reference_id=route.id, cylinder_type_id=cylinder_type_id, result="pass"
+            )
+        ]
+
+        use_case = LoadVehicleForRouteUseCase(
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            mock_weighment_repo,
+            mock_tenant_config_repo_gate_enabled,
+        )
+        result = await use_case.execute(
+            LoadVehicleForRouteCommand(
+                route_id=route.id,
+                warehouse_id=warehouse_id,
+                lines=[LoadVehicleLine(cylinder_type_id=cylinder_type_id, quantity=20)],
+                performed_by=uuid.uuid4(),
+            )
+        )
+
+        assert result.status == "loaded"
+        mock_uow.commit.assert_called_once()
+
+    async def test_weighment_gate_stays_off_by_default_even_with_both_repositories_wired(
+        self,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+        mock_weighment_repo: MagicMock,
+        mock_tenant_config_repo_default: MagicMock,
+    ) -> None:
+        """The gate is opt-in (`weighment_gate_enabled` unset = off) — a
+        tenant with both repositories wired (i.e. every real tenant, once
+        this ships) but no config entry sees no change in behavior. This is
+        what keeps the existing full-lifecycle integration tests
+        (`test_order_endpoints_smoke.py`, `test_route_endpoints_smoke.py`)
+        passing without themselves knowing about weighment at all."""
+        cylinder_type_id = uuid.uuid4()
+        route = _make_route(status="planned")
+        warehouse_id = uuid.uuid4()
+        warehouse_location = InventoryLocation(
+            inventory_location_id=uuid.uuid4(),
+            tenant_id=route.tenant_id,
+            location_type="warehouse",
+            location_ref_id=warehouse_id,
+            balances={(cylinder_type_id, "filled"): 50},
+        )
+        vehicle_location = _make_vehicle_location(location_ref_id=route.vehicle_id)
+
+        async def _get_by_ref(location_type: str, location_ref_id: uuid.UUID) -> InventoryLocation:
+            return warehouse_location if location_type == "warehouse" else vehicle_location
+
+        mock_route_repo.get_by_id.return_value = route
+        mock_inventory_repo.get_by_location_ref.side_effect = _get_by_ref
+        mock_weighment_repo.list_for_reference.return_value = []  # no records at all
+
+        use_case = LoadVehicleForRouteUseCase(
+            mock_route_repo,
+            mock_inventory_repo,
+            mock_uow,
+            mock_weighment_repo,
+            mock_tenant_config_repo_default,
+        )
+        result = await use_case.execute(
+            LoadVehicleForRouteCommand(
+                route_id=route.id,
+                warehouse_id=warehouse_id,
+                lines=[LoadVehicleLine(cylinder_type_id=cylinder_type_id, quantity=20)],
+                performed_by=uuid.uuid4(),
+            )
+        )
+
+        assert result.status == "loaded"
+        mock_uow.commit.assert_called_once()
+
+    async def test_no_weighment_repository_skips_the_gate(
+        self, mock_route_repo: MagicMock, mock_inventory_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        """Every other test in this class constructs the use case without a
+        4th argument — this test makes that behavior explicit rather than
+        just implicit in the others."""
+        cylinder_type_id = uuid.uuid4()
+        route = _make_route(status="planned")
+        warehouse_id = uuid.uuid4()
+        warehouse_location = InventoryLocation(
+            inventory_location_id=uuid.uuid4(),
+            tenant_id=route.tenant_id,
+            location_type="warehouse",
+            location_ref_id=warehouse_id,
+            balances={(cylinder_type_id, "filled"): 50},
+        )
+        vehicle_location = _make_vehicle_location(location_ref_id=route.vehicle_id)
+
+        async def _get_by_ref(location_type: str, location_ref_id: uuid.UUID) -> InventoryLocation:
+            return warehouse_location if location_type == "warehouse" else vehicle_location
+
+        mock_route_repo.get_by_id.return_value = route
+        mock_inventory_repo.get_by_location_ref.side_effect = _get_by_ref
+
+        use_case = LoadVehicleForRouteUseCase(mock_route_repo, mock_inventory_repo, mock_uow)
+        result = await use_case.execute(
+            LoadVehicleForRouteCommand(
+                route_id=route.id,
+                warehouse_id=warehouse_id,
+                lines=[LoadVehicleLine(cylinder_type_id=cylinder_type_id, quantity=20)],
+                performed_by=uuid.uuid4(),
+            )
+        )
+        assert result.status == "loaded"
 
 
 # ==========================================================================

@@ -6,6 +6,8 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from lpg.api.v1.dependencies.admin import get_tenant_configuration_repository
+from lpg.api.v1.dependencies.compliance import get_weighment_record_repository
 from lpg.api.v1.dependencies.inventory import (
     get_inventory_location_repository,
     get_reconciliation_record_repository,
@@ -13,6 +15,7 @@ from lpg.api.v1.dependencies.inventory import (
 from lpg.api.v1.dependencies.order import get_order_repository
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.compliance.ports import WeighmentRecordRepository
 from lpg.application.delivery.ports import (
     ComplianceDocumentRepository,
     DriverRepository,
@@ -30,6 +33,7 @@ from lpg.application.inventory.ports import (
     ReconciliationRecordRepository,
 )
 from lpg.application.order.ports import OrderRepository
+from lpg.application.tenant.ports import TenantConfigurationRepository
 
 # `Annotated[...]`-typed FastAPI dependency-provider parameters need every
 # name resolvable at *runtime* (FastAPI/Pydantic inspect them to build the
@@ -97,8 +101,26 @@ def get_load_vehicle_for_route_use_case(
         InventoryLocationRepository, Depends(get_inventory_location_repository)
     ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    weighment_record_repository: Annotated[
+        WeighmentRecordRepository, Depends(get_weighment_record_repository)
+    ],
+    tenant_config_repository: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
 ) -> LoadVehicleForRouteUseCase:
-    return LoadVehicleForRouteUseCase(route_repository, inventory_location_repository, unit_of_work)
+    # Both repositories are always passed here — the real app always has
+    # Weighment Part 3's opt-in gate wired and *able* to activate, even
+    # though it stays a no-op for every tenant that hasn't set
+    # `weighment_gate_enabled` (see the use case's own docstring). Optional
+    # on the use case's own constructor only so tests that predate this
+    # gate don't all need updating.
+    return LoadVehicleForRouteUseCase(
+        route_repository,
+        inventory_location_repository,
+        unit_of_work,
+        weighment_record_repository,
+        tenant_config_repository,
+    )
 
 
 def get_confirm_route_load_use_case(

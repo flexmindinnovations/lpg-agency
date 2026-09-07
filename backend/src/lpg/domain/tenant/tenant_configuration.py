@@ -51,6 +51,12 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # loosen the invariant — a future MDG edition changing the figure
         # updates the domain constant, not this key.
         "weighment_scale_least_count_max_grams",
+        # Tenant opt-in for Weighment Part 3's load-out dispatch gate
+        # (`LoadVehicleForRouteUseCase`) — defaults to **off** (any falsy or
+        # absent value) so a tenant that hasn't set up scales/weighment yet
+        # sees no change to route loading. A tenant sets this to a truthy
+        # value only once they've actually adopted weighment.
+        "weighment_gate_enabled",
     }
 )
 

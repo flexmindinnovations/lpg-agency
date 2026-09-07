@@ -246,6 +246,64 @@ async def list_goods_receipt_weighments(
     return WeighmentRecordListResponse(items=[_weighment_to_response(r) for r in records])
 
 
+@weighment_router.post(
+    "/routes/{route_id}/weighment",
+    response_model=WeighmentRecordResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("weighment:record"))],
+)
+async def record_route_load_out_weighment(
+    route_id: uuid.UUID,
+    request: RecordWeighmentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[RecordWeighmentUseCase, Depends(get_record_weighment_use_case)],
+) -> WeighmentRecordResponse:
+    """MDG 2022 cl. 1.4(c)(d) — 100% of cylinders checked before load-out.
+    Record this (`cylinders_checked` must equal `total_cylinders_in_batch`
+    — enforced as a domain invariant) *before* calling
+    `POST /routes/{route_id}/load`, which will 409 with
+    `WEIGHMENT_CHECK_REQUIRED` if a passing check isn't on file yet for
+    every cylinder type on the load manifest."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        record = await use_case.execute(
+            RecordWeighmentCommand(
+                tenant_id=principal.tenant_id,
+                scale_id=request.scale_id,
+                context="load_out_full_check",
+                reference_type="route",
+                reference_id=route_id,
+                cylinder_type_id=request.cylinder_type_id,
+                total_cylinders_in_batch=request.total_cylinders_in_batch,
+                cylinders_checked=request.cylinders_checked,
+                underweight_cylinder_count=request.underweight_cylinder_count,
+                recorded_by=principal.user_id,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _weighment_to_response(record)
+
+
+@weighment_router.get(
+    "/routes/{route_id}/weighment",
+    response_model=WeighmentRecordListResponse,
+    dependencies=[Depends(require_permission("weighment:record"))],
+)
+async def list_route_weighments(
+    route_id: uuid.UUID,
+    repository: Annotated[WeighmentRecordRepository, Depends(get_weighment_record_repository)],
+) -> WeighmentRecordListResponse:
+    use_case = ListWeighmentRecordsUseCase(repository)
+    records = await use_case.execute(
+        ListWeighmentRecordsQuery(reference_type="route", reference_id=route_id)
+    )
+    return WeighmentRecordListResponse(items=[_weighment_to_response(r) for r in records])
+
+
 @router.put(
     "/{scale_id}/status",
     response_model=ScaleResponse,
