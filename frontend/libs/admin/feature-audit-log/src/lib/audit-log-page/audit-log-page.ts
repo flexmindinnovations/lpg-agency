@@ -59,7 +59,7 @@ const ACTION_SEVERITY: Record<string, string> = {
       <div class="data-toolbar">
         <div class="data-toolbar__filters">
           <p-iconfield styleClass="w-full md:w-80" iconPosition="left">
-            <p-inputicon styleClass="pi pi-search" />
+            <p-inputicon class="pi pi-search" />
             <input
               pInputText
               type="text"

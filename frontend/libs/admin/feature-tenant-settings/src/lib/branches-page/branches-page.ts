@@ -43,8 +43,15 @@ function errorMessageFor(error: unknown): string {
         <div class="data-toolbar">
           <div class="data-toolbar__filters">
             <p-iconfield styleClass="w-full md:w-64">
-              <p-inputicon styleClass="pi pi-search" />
-              <input pInputText type="text" placeholder="Search branches..." class="w-full" />
+              <p-inputicon class="pi pi-search" />
+              <input
+                pInputText
+                type="text"
+                placeholder="Search branches..."
+                class="w-full"
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+              />
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
@@ -67,6 +74,7 @@ function errorMessageFor(error: unknown): string {
             [rows]="branches()"
             [columns]="columns"
             [loading]="loading()"
+            [searchQuery]="searchQuery()"
             ariaLabel="Branches"
           />
         </section>
@@ -126,6 +134,10 @@ export class BranchesPage implements OnInit {
 
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Filters `branches()` client-side (the full list is already loaded) via
+   *  `lpg-data-grid`'s built-in quick filter — see its own `searchQuery`
+   *  input docstring. */
+  protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
 

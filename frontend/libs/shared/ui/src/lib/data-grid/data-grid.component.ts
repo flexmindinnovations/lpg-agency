@@ -339,6 +339,16 @@ export class DataGridComponent<TRow = unknown> {
       valueFormatter: column.valueFormatter
         ? (params) => column.valueFormatter?.(params.value, params.data as TRow) ?? ''
         : undefined,
+      // The quick filter (`searchQuery`) matches each column's raw field
+      // value by default — not what `valueFormatter` renders. That's wrong
+      // whenever the two differ (a resolved display name standing in for an
+      // id, a formatted date or currency string), which is routine here: the
+      // user searches for what the cell shows, not the id/ISO-string/number
+      // backing it. Route quick-filter matching through the same formatter
+      // so it always matches the rendered text.
+      getQuickFilterText: column.valueFormatter
+        ? (params) => column.valueFormatter?.(params.value, params.data as TRow) ?? ''
+        : undefined,
       tooltipValueGetter: column.tooltipValueGetter
         ? (params) => column.tooltipValueGetter?.(params.value, params.data as TRow) ?? ''
         : undefined,
@@ -399,6 +409,25 @@ export class DataGridComponent<TRow = unknown> {
     effect(() => {
       this.rowData();
       this.scheduleCellRendererRefresh();
+    });
+
+    // `[gridOptions]` is only read by ag-grid-angular at grid creation —
+    // including `quickFilterText` there covers the very first render, but
+    // typing afterwards never reaches the live grid through that binding.
+    // AG Grid's own reactive path for an already-created grid is the
+    // imperative API, same as `refreshCells` below.
+    //
+    // `searchQuery()` is read unconditionally, *before* the `gridApi?.`
+    // guard, and bound to a local first — not inlined as the call's
+    // argument. An effect only tracks signals it actually reads during a
+    // given run; on the very first run `gridApi` is still undefined (the
+    // grid hasn't fired `gridReady` yet), and `a?.b(c())` never evaluates
+    // `c()` when `a` is nullish. Inlining the read there meant it was
+    // skipped on that first run, so the effect never subscribed to
+    // `searchQuery` at all and silently never fired again on any keystroke.
+    effect(() => {
+      const query = this.searchQuery();
+      this.gridApi?.setGridOption('quickFilterText', query);
     });
   }
 

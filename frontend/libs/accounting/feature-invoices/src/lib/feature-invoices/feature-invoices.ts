@@ -69,6 +69,7 @@ export class FeatureInvoices implements OnInit {
   readonly isPrinting = signal(false);
   readonly invoices = signal<InvoiceResponse[]>([]);
   readonly selectedInvoice = signal<InvoiceResponse | null>(null);
+  readonly searchQuery = signal('');
   private readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
 
   /** `InvoiceResponse` only denormalizes `customer_consumer_number`, not a

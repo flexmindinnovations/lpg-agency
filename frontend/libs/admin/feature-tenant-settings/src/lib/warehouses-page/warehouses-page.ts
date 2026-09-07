@@ -50,8 +50,15 @@ function errorMessageFor(error: unknown): string {
       <div class="data-toolbar">
         <div class="data-toolbar__filters">
           <p-iconfield styleClass="w-full md:w-64">
-            <p-inputicon styleClass="pi pi-search" />
-            <input pInputText type="text" placeholder="Search warehouses..." class="w-full" />
+            <p-inputicon class="pi pi-search" />
+            <input
+              pInputText
+              type="text"
+              placeholder="Search warehouses..."
+              class="w-full"
+              [value]="searchQuery()"
+              (input)="searchQuery.set($any($event.target).value)"
+            />
           </p-iconfield>
         </div>
         <div class="data-toolbar__actions">
@@ -74,6 +81,7 @@ function errorMessageFor(error: unknown): string {
             [rows]="warehouses()"
             [columns]="columns"
             [loading]="loading()"
+            [searchQuery]="searchQuery()"
             ariaLabel="Warehouses"
           />
         </section>
@@ -146,6 +154,7 @@ export class WarehousesPage implements OnInit {
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
+  protected readonly searchQuery = signal('');
   
   protected readonly createDrawerVisible = signal(false);
   protected readonly submitting = signal(false);

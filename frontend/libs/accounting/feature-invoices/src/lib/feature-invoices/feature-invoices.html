@@ -11,8 +11,15 @@
   <section class="invoice-list-section">
     <div class="search-bar">
       <p-iconfield class="search-input">
-        <p-inputicon styleClass="pi pi-search"></p-inputicon>
-        <input pInputText type="text" class="w-full" placeholder="Search invoices..." />
+        <p-inputicon class="pi pi-search"></p-inputicon>
+        <input
+          pInputText
+          type="text"
+          class="w-full"
+          placeholder="Search invoices..."
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
       </p-iconfield>
     </div>
 
@@ -21,6 +28,7 @@
         [rows]="invoices()"
         [columns]="columns"
         [loading]="isLoading()"
+        [searchQuery]="searchQuery()"
         ariaLabel="Invoices list"
       ></lpg-data-grid>
     </section>

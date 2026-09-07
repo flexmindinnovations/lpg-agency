@@ -131,8 +131,15 @@ class ConfigKeyCell {
         <div class="data-toolbar">
           <div class="data-toolbar__filters">
             <p-iconfield styleClass="w-full md:w-64">
-              <p-inputicon styleClass="pi pi-search" />
-              <input pInputText type="text" placeholder="Search configuration..." class="w-full" />
+              <p-inputicon class="pi pi-search" />
+              <input
+                pInputText
+                type="text"
+                placeholder="Search configuration..."
+                class="w-full"
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+              />
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
@@ -155,6 +162,7 @@ class ConfigKeyCell {
             [rows]="entries()"
             [columns]="columns"
             [loading]="loading()"
+            [searchQuery]="searchQuery()"
             ariaLabel="Tenant configuration history"
           />
         </section>
@@ -228,6 +236,7 @@ export class TenantConfigurationPage implements OnInit {
 
   protected readonly entries = signal<TenantConfigurationResponse[]>([]);
   protected readonly loading = signal(false);
+  protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
   protected readonly recognizedKeys = RECOGNIZED_CONFIG_KEYS.map((key) => ({

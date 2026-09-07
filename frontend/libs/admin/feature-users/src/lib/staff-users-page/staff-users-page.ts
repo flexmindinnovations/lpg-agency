@@ -63,8 +63,15 @@ function errorMessageFor(error: unknown): string {
         <div class="data-toolbar">
           <div class="data-toolbar__filters">
             <p-iconfield styleClass="w-full md:w-64">
-              <p-inputicon styleClass="pi pi-search" />
-              <input pInputText type="text" placeholder="Search users..." class="w-full" />
+              <p-inputicon class="pi pi-search" />
+              <input
+                pInputText
+                type="text"
+                placeholder="Search users..."
+                class="w-full"
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+              />
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
@@ -87,6 +94,7 @@ function errorMessageFor(error: unknown): string {
             [rows]="users()"
             [columns]="columns"
             [loading]="loading()"
+            [searchQuery]="searchQuery()"
             ariaLabel="Staff users"
           />
         </section>
@@ -213,6 +221,7 @@ export class StaffUsersPage implements OnInit {
 
   protected readonly users = signal<StaffUserResponse[]>([]);
   protected readonly loading = signal(false);
+  protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
   protected readonly inviteDrawerVisible = signal(false);
   protected readonly manageDrawerVisible = signal(false);
