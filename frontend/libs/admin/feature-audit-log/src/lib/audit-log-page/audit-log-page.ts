@@ -75,16 +75,14 @@ const ACTION_SEVERITY: Record<string, string> = {
         </div>
       </div>
 
-      <div class="grid-wrapper">
-        <lpg-data-grid
-          [rows]="entries()"
-          [columns]="columns"
-          [loading]="loading()"
-          [selectionMode]="'single'"
-          (selectionChange)="onSelectionChange($event)"
-          ariaLabel="Audit log"
-        />
-      </div>
+      <lpg-data-grid
+        [rows]="entries()"
+        [columns]="columns"
+        [loading]="loading()"
+        [selectionMode]="'single'"
+        (selectionChange)="onSelectionChange($event)"
+        ariaLabel="Audit log"
+      />
 
       @if (nextCursor()) {
         <div class="load-more">
@@ -185,13 +183,6 @@ const ACTION_SEVERITY: Record<string, string> = {
         block-size: 100%;
       }
 
-      .grid-wrapper {
-        flex: 1;
-        min-block-size: 400px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-      }
 
       .load-more {
         display: flex;

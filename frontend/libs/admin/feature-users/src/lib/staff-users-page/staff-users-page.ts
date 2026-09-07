@@ -87,14 +87,12 @@ function errorMessageFor(error: unknown): string {
         </div>
       } @else {
         <section class="grid-section">
-          <div class="grid-wrapper">
-            <lpg-data-grid
-              [rows]="users()"
-              [columns]="columns"
-              [loading]="loading()"
-              ariaLabel="Staff users"
-            />
-          </div>
+          <lpg-data-grid
+            [rows]="users()"
+            [columns]="columns"
+            [loading]="loading()"
+            ariaLabel="Staff users"
+          />
         </section>
       }
 
@@ -216,13 +214,6 @@ function errorMessageFor(error: unknown): string {
         min-block-size: 0;
       }
 
-      .grid-wrapper {
-        flex: 1;
-        min-block-size: 400px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-      }
     `,
   ],
 })

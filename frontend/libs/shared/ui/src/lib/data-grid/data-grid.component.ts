@@ -143,7 +143,10 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
   selector: 'lpg-data-grid',
   standalone: true,
   imports: [AgGridAngular, SkeletonComponent],
-  host: { '[class.lpg-data-grid--auto]': 'autoHeight()' },
+  host: {
+    '[class.lpg-data-grid--auto]': 'autoHeight()',
+    '[class.lpg-data-grid--bordered]': 'bordered()',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading()) {
@@ -166,10 +169,19 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
     `
       :host {
         display: block;
+        flex: 1;
+        min-block-size: var(--component-data-grid-min-block-size, 400px);
         block-size: 100%;
+        border-radius: var(--component-data-grid-border-radius, var(--radius-md, 8px));
+        overflow: hidden;
+      }
+      :host(.lpg-data-grid--bordered) {
+        border: var(--component-data-grid-border);
       }
       /* autoHeight grids size to their content — let the host do the same. */
       :host(.lpg-data-grid--auto) {
+        flex: initial;
+        min-block-size: auto;
         block-size: auto;
       }
       .lpg-data-grid__skeleton {
@@ -198,8 +210,9 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         --ag-header-column-separator-display: none;
         --ag-row-border-width: 1px;
         --ag-row-border-color: var(--color-border-default);
-        --ag-border-radius: 0;
-        --ag-wrapper-border-radius: 0;
+        --ag-border-radius: var(--radius-input, 6px);
+        --ag-wrapper-border-radius: var(--component-data-grid-border-radius, var(--radius-md, 8px));
+        --ag-checkbox-border-radius: var(--radius-xs, 4px);
       }
       
       /* Force selected rows to use the highlight text colour so they are readable
@@ -210,6 +223,59 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         --lpg-link-color: var(--color-highlight-color);
         --lpg-link-hover-color: var(--color-highlight-color);
       }
+
+      /* Pagination controls matching Fluent Glass design system tokens */
+      ::ng-deep .lpg-data-grid .ag-paging-panel {
+        color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-page-size .ag-picker-field-wrapper {
+        border-radius: var(--radius-input, 6px);
+        border: var(--border-width, 1px) solid var(--color-border-default);
+        background-color: var(--color-surface-base);
+        transition: border-color var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-page-size .ag-picker-field-wrapper:focus-within {
+        border-color: var(--color-border-focus);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-page-number {
+        border-radius: var(--radius-sm, 4px);
+        min-inline-size: 28px;
+        min-block-size: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background-color var(--motion-duration-small) var(--motion-easing-standard),
+          color var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-page-number:hover {
+        background-color: var(--color-surface-overlay);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-page-number.ag-paging-page-number-current {
+        border-radius: var(--radius-sm, 4px);
+        background-color: var(--color-action-primary);
+        color: var(--color-action-primary-text, #ffffff);
+        font-weight: var(--typography-label-font-weight, 600);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-button {
+        border-radius: var(--radius-sm, 4px);
+        padding: var(--spacing-xs, 4px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      ::ng-deep .lpg-data-grid .ag-paging-button:not(.ag-disabled):hover {
+        background-color: var(--color-surface-overlay);
+      }
     `,
   ],
 })
@@ -218,6 +284,7 @@ export class DataGridComponent<TRow = unknown> {
   readonly columns = input.required<readonly DataGridColumn<TRow>[]>();
   readonly selectionMode = input<DataGridSelectionMode>('none');
   readonly loading = input(false);
+  readonly bordered = input(true);
   /** Required: a grid without an accessible name is unusable with a screen reader. */
   readonly ariaLabel = input.required<string>();
   /** Client-side pagination. `0` disables it (single scrolling list);

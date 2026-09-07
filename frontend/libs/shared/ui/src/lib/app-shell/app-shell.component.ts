@@ -1,5 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, input, model, output } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, NavigationEnd, ActivatedRoute } from '@angular/router';
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  NavigationEnd,
+  ActivatedRoute,
+} from '@angular/router';
 import { Badge } from 'primeng/badge';
 import { Tooltip } from 'primeng/tooltip';
 import { Breadcrumb } from 'primeng/breadcrumb';
@@ -15,7 +21,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'lpg-app-shell',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, Badge, Tooltip, ProfileMenuComponent, PortalModule, Breadcrumb],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    Badge,
+    Tooltip,
+    ProfileMenuComponent,
+    PortalModule,
+    Breadcrumb,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="shell__skip-link" href="#shell-main-content">Skip to main content</a>
@@ -26,11 +40,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           <!-- Brand -->
           <div class="shell__sidebar-header">
             <div class="shell__brand">
-              <svg
-                class="shell__brand-mark"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
+              <svg class="shell__brand-mark" viewBox="0 0 24 24" aria-hidden="true">
                 <!-- Outer Flame -->
                 <path
                   d="M12 2C15 5 19 9 19 14.5C19 18.64 15.86 22 12 22C8.14 22 5 18.64 5 14.5C5 9 9 5 12 2Z"
@@ -62,7 +72,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                         [routerLink]="item.route"
                         routerLinkActive="is-active"
                         #rla="routerLinkActive"
-                        [attr.aria-current]="(rla.isActive || isAliasActive(item, router.url)) ? 'page' : null"
+                        [attr.aria-current]="
+                          rla.isActive || isAliasActive(item, router.url) ? 'page' : null
+                        "
                         [routerLinkActiveOptions]="{ exact: !!item.exact }"
                         class="shell__nav-link"
                         [class.is-active]="rla.isActive || isAliasActive(item, router.url)"
@@ -264,7 +276,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         cursor: pointer;
         z-index: 20;
         box-shadow: var(--elevation-1);
-        transition: background-color var(--motion-duration-small) var(--motion-easing-standard),
+        transition:
+          background-color var(--motion-duration-small) var(--motion-easing-standard),
           color var(--motion-duration-small) var(--motion-easing-standard),
           border-color var(--motion-duration-small) var(--motion-easing-standard);
       }
@@ -354,7 +367,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         overflow: hidden;
         font-size: var(--typography-body-small-font-size);
         font-weight: 400;
-        transition: background-color var(--motion-duration-small) var(--motion-easing-standard),
+        transition:
+          background-color var(--motion-duration-small) var(--motion-easing-standard),
           color var(--motion-duration-small) var(--motion-easing-standard);
         position: relative;
       }
@@ -435,7 +449,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
       /* Transparent — the breadcrumb belongs to the content column, not the
          header chrome. */
       .shell__breadcrumb-wrapper {
-        padding: var(--spacing-md) var(--spacing-xl) 0;
+        padding: var(--spacing-sm) var(--spacing-xl);
         background: transparent;
       }
 
@@ -532,7 +546,7 @@ export class AppShellComponent {
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
-        takeUntilDestroyed()
+        takeUntilDestroyed(),
       )
       .subscribe(() => {
         let route = this.activatedRoute.root;
@@ -556,6 +570,6 @@ export class AppShellComponent {
 
   protected isAliasActive(item: NavItem, currentUrl: string): boolean {
     if (!item.aliases) return false;
-    return item.aliases.some(alias => currentUrl.startsWith(alias));
+    return item.aliases.some((alias) => currentUrl.startsWith(alias));
   }
 }

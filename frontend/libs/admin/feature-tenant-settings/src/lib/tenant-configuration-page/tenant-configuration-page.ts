@@ -155,14 +155,12 @@ class ConfigKeyCell {
         </div>
       } @else {
         <section class="grid-section">
-          <div class="grid-wrapper">
-            <lpg-data-grid
-              [rows]="entries()"
-              [columns]="columns"
-              [loading]="loading()"
-              ariaLabel="Tenant configuration history"
-            />
-          </div>
+          <lpg-data-grid
+            [rows]="entries()"
+            [columns]="columns"
+            [loading]="loading()"
+            ariaLabel="Tenant configuration history"
+          />
         </section>
       }
 
@@ -231,13 +229,6 @@ class ConfigKeyCell {
         min-block-size: 0;
       }
 
-      .grid-wrapper {
-        flex: 1;
-        min-block-size: 400px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-      }
     `,
   ],
 })

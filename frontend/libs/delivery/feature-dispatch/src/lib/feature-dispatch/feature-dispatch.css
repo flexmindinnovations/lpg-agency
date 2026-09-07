@@ -1,13 +1,17 @@
 :host {
   display: block;
-  block-size: 100%;
+  /* Fill the scroll viewport when routes are few, but grow past it when the
+     board is long — a hard `block-size: 100%` caps the page at the fold, and
+     the board's overflow then escapes the shell's padded scroll area (the
+     bottom padding is lost and cards butt against the edge). */
+  min-block-size: 100%;
 }
 
 .dispatch-container {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  block-size: 100%;
+  min-block-size: 100%;
 }
 
 .filters-row {
@@ -48,8 +52,6 @@
   grid-template-columns: 1fr 20rem;
   gap: var(--spacing-md);
   align-items: start;
-  flex: 1;
-  min-block-size: 0;
 }
 
 .route-board {

@@ -125,24 +125,22 @@
 
   @if (locationRefId()) {
   <h2 class="section-title">Balance</h2>
-  <div class="grid-wrapper">
-    <lpg-data-grid
-      [rows]="balance()?.balances ?? []"
-      [columns]="balanceColumns"
-      [loading]="loading()"
-      ariaLabel="Inventory balance"
-    />
-  </div>
+  <lpg-data-grid
+    style="min-block-size: 260px"
+    [rows]="balance()?.balances ?? []"
+    [columns]="balanceColumns"
+    [loading]="loading()"
+    ariaLabel="Inventory balance"
+  />
 
   <h2 class="section-title">Transaction History</h2>
-  <div class="grid-wrapper grid-wrapper--transactions">
-    <lpg-data-grid
-      [rows]="transactions()"
-      [columns]="transactionColumns"
-      [loading]="loading()"
-      ariaLabel="Inventory transaction history"
-    />
-  </div>
+  <lpg-data-grid
+    style="min-block-size: 320px"
+    [rows]="transactions()"
+    [columns]="transactionColumns"
+    [loading]="loading()"
+    ariaLabel="Inventory transaction history"
+  />
   @if (transactionsCursor()) {
   <button
     pButton

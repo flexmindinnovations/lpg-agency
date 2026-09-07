@@ -35,16 +35,6 @@
   margin: 0;
 }
 
-.grid-wrapper {
-  min-block-size: 260px;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.grid-wrapper--transactions {
-  min-block-size: 320px;
-}
 
 .empty-hint {
   font-size: var(--typography-caption-font-size);

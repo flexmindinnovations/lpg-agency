@@ -27,10 +27,6 @@
   flex: 1;
 }
 
-.grid-wrapper {
-  flex: 1;
-  min-block-size: 400px;
-}
 
 .invoice-detail-content {
   display: flex;

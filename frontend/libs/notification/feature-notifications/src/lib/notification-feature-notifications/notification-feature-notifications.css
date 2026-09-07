@@ -16,10 +16,3 @@
   min-block-size: 0;
 }
 
-.grid-wrapper {
-  flex: 1;
-  min-block-size: 400px;
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}

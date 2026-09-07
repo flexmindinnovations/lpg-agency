@@ -11,14 +11,10 @@
 </ng-template>
   </div>
 
-  <section class="grid-section">
-    <div class="grid-wrapper">
-      <lpg-data-grid
-        [rows]="notifications()"
-        [columns]="columns"
-        [loading]="loading()"
-        ariaLabel="Notifications"
-      />
-    </div>
-  </section>
+    <lpg-data-grid
+      [rows]="notifications()"
+      [columns]="columns"
+      [loading]="loading()"
+      ariaLabel="Notifications"
+    />
 </div>

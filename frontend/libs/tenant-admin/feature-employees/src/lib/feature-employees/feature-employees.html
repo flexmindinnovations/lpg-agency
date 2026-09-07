@@ -39,14 +39,12 @@
   </div>
   }
 
-  <div class="grid-wrapper">
-    <lpg-data-grid
-      [rows]="employees()"
-      [columns]="columns"
-      [loading]="loading()"
-      ariaLabel="Employees list"
-    />
-  </div>
+  <lpg-data-grid
+    [rows]="employees()"
+    [columns]="columns"
+    [loading]="loading()"
+    ariaLabel="Employees list"
+  />
 
   <!-- Register Employee Drawer -->
   <p-drawer

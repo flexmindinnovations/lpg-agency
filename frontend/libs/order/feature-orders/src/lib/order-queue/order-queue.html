@@ -36,14 +36,12 @@
     </div>
   </div>
 
-  <div class="grid-wrapper">
-    <lpg-data-grid
-      [rows]="orders()"
-      [columns]="orderColumns"
-      [loading]="loading()"
-      ariaLabel="Order queue"
-    />
-  </div>
+  <lpg-data-grid
+    [rows]="orders()"
+    [columns]="orderColumns"
+    [loading]="loading()"
+    ariaLabel="Order queue"
+  />
 
   <!-- Create Order Drawer -->
   <p-drawer

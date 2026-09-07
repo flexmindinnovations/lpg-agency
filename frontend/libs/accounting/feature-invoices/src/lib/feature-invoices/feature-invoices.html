@@ -16,14 +16,12 @@
       </p-iconfield>
     </div>
 
-    <div class="grid-wrapper">
-      <lpg-data-grid
-        [rows]="invoices()"
-        [columns]="columns"
-        [loading]="isLoading()"
-        ariaLabel="Invoices list"
-      ></lpg-data-grid>
-    </div>
+    <lpg-data-grid
+      [rows]="invoices()"
+      [columns]="columns"
+      [loading]="isLoading()"
+      ariaLabel="Invoices list"
+    ></lpg-data-grid>
   </section>
 </div>
 

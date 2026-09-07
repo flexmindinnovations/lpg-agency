@@ -107,14 +107,12 @@ class FlagDefaultCell {
       </div>
 
       <section class="grid-section">
-        <div class="grid-wrapper">
-          <lpg-data-grid
-            [rows]="flags()"
-            [columns]="columns"
-            [loading]="loading()"
-            ariaLabel="Feature flags"
-          />
-        </div>
+        <lpg-data-grid
+          [rows]="flags()"
+          [columns]="columns"
+          [loading]="loading()"
+          ariaLabel="Feature flags"
+        />
       </section>
 
       <!-- Create Flag Drawer -->
@@ -257,12 +255,6 @@ class FlagDefaultCell {
         margin-block-start: var(--spacing-lg);
       }
 
-      .grid-wrapper {
-        block-size: 400px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-      }
 
       .detail-view {
         display: flex;

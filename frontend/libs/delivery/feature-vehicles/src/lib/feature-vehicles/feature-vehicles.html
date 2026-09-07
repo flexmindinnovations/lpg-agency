@@ -43,14 +43,12 @@
   </div>
   }
 
-  <div class="grid-wrapper">
-    <lpg-data-grid
-      [rows]="vehicles()"
-      [columns]="columns"
-      [loading]="loading()"
-      ariaLabel="Vehicles list"
-    />
-  </div>
+  <lpg-data-grid
+    [rows]="vehicles()"
+    [columns]="columns"
+    [loading]="loading()"
+    ariaLabel="Vehicles list"
+  />
 
   <!-- Register Vehicle Modal -->
   <p-drawer

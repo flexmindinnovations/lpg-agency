@@ -46,14 +46,12 @@
 
 
 
-  <div class="grid-wrapper">
-    <lpg-data-grid
-      [rows]="drivers()"
-      [columns]="columns"
-      [loading]="loading()"
-      ariaLabel="Drivers list"
-    />
-  </div>
+  <lpg-data-grid
+    [rows]="drivers()"
+    [columns]="columns"
+    [loading]="loading()"
+    ariaLabel="Drivers list"
+  />
 
   <!-- Register Driver Modal -->
   <p-drawer

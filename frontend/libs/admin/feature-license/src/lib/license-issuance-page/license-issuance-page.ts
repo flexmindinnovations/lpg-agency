@@ -97,14 +97,12 @@ function errorMessageFor(error: unknown): string {
         </div>
       } @else {
         <section class="grid-section">
-          <div class="grid-wrapper">
-            <lpg-data-grid
-              [rows]="licenses()"
-              [columns]="columns"
-              [loading]="loading()"
-              ariaLabel="Licenses"
-            />
-          </div>
+          <lpg-data-grid
+            [rows]="licenses()"
+            [columns]="columns"
+            [loading]="loading()"
+            ariaLabel="Licenses"
+          />
         </section>
       }
 
@@ -338,13 +336,6 @@ function errorMessageFor(error: unknown): string {
         margin-block-start: var(--spacing-lg);
       }
 
-      .grid-wrapper {
-        flex: 1;
-        min-block-size: 400px;
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-      }
 
       .issued-key {
         font-family: monospace;
