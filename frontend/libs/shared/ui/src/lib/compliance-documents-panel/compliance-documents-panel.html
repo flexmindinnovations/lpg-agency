@@ -1,0 +1,185 @@
+<div class="cdp">
+  <div class="cdp__header">
+    <h4 class="cdp__title">Compliance Documents</h4>
+    @if (mode() === 'list') {
+      <button *lpgHasPermission="managePermission()" pButton type="button" severity="secondary" size="small" (click)="openAddForm()">
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Add document</span>
+      </button>
+    }
+  </div>
+
+  @if (mode() === 'list') {
+    @if (loading()) {
+      <p class="cdp__empty">Loading documents…</p>
+    } @else if (documents().length === 0) {
+      <p class="cdp__empty">No compliance documents on file yet.</p>
+    } @else {
+      <div class="cdp__table" role="table" aria-label="Compliance documents">
+        <div class="cdp__row cdp__row--head" role="row">
+          <span role="columnheader">Type</span>
+          <span role="columnheader">Number</span>
+          <span role="columnheader">Expiry</span>
+          <span role="columnheader">Status</span>
+          <span role="columnheader" class="cdp__actions-head">Actions</span>
+        </div>
+        @for (doc of documents(); track doc.id) {
+          <div class="cdp__row" role="row">
+            <span role="cell">{{ docTypeLabel(doc.doc_type) }}</span>
+            <span role="cell">{{ doc.document_number }}</span>
+            <span role="cell" class="cdp__expiry">
+              {{ doc.expiry_date ? formatDate(doc.expiry_date) : '—' }}
+              @if (expiryBadge(doc); as badge) {
+                <p-tag [value]="badge.label" [severity]="badge.severity" />
+              }
+            </span>
+            <span role="cell">
+              <p-tag [value]="toSentenceCase(doc.verification_status)" [severity]="verificationSeverity(doc.verification_status)" />
+              @if (doc.verification_status === 'rejected' && doc.rejection_reason) {
+                <span class="cdp__reject-reason">{{ doc.rejection_reason }}</span>
+              }
+            </span>
+            <span role="cell" class="cdp__actions">
+              @if (doc.file_url) {
+                <a [href]="doc.file_url" target="_blank" rel="noopener" class="cdp__view-link" aria-label="View document file">
+                  <i class="pi pi-external-link" aria-hidden="true"></i>
+                </a>
+              }
+              <button
+                *lpgHasPermission="managePermission()"
+                pButton
+                type="button"
+                severity="secondary"
+                text
+                size="small"
+                [disabled]="verifyingId() === doc.id"
+                (click)="openReplaceForm(doc)"
+              >
+                Replace
+              </button>
+              @if (doc.verification_status === 'pending') {
+                <button
+                  *lpgHasPermission="'compliance:verify'"
+                  pButton
+                  type="button"
+                  severity="success"
+                  text
+                  size="small"
+                  [disabled]="verifyingId() === doc.id"
+                  (click)="verifyNow(doc)"
+                >
+                  Verify
+                </button>
+                <button
+                  *lpgHasPermission="'compliance:verify'"
+                  pButton
+                  type="button"
+                  severity="danger"
+                  text
+                  size="small"
+                  [disabled]="verifyingId() === doc.id"
+                  (click)="openReject(doc)"
+                >
+                  Reject
+                </button>
+              }
+            </span>
+          </div>
+
+          @if (rejectingDoc()?.id === doc.id) {
+            <div class="cdp__reject-form">
+              <lpg-form-field label="Rejection reason" for="reject-reason-{{ doc.id }}">
+                <input
+                  pInputText
+                  id="reject-reason-{{ doc.id }}"
+                  type="text"
+                  [fluid]="true"
+                  placeholder="e.g. Scan is illegible"
+                  [value]="rejectReason()"
+                  (input)="rejectReason.set($any($event.target).value)"
+                />
+              </lpg-form-field>
+              @if (rejectError(); as err) {
+                <p-message severity="error">{{ err }}</p-message>
+              }
+              <div class="cdp__reject-actions">
+                <button pButton type="button" severity="secondary" size="small" (click)="cancelReject()">Cancel</button>
+                <button pButton type="button" severity="danger" size="small" [disabled]="verifyingId() === doc.id" (click)="confirmReject()">
+                  Confirm reject
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+  } @else {
+    <form class="cdp__form" [formGroup]="docForm" (ngSubmit)="submitForm()">
+      @if (formError(); as err) {
+        <p-message severity="error">{{ err }}</p-message>
+      }
+
+      <lpg-form-field label="Document type" for="cdp-doc-type" [control]="docForm.controls.doc_type" [messages]="fieldMessages.doc_type">
+        <p-select
+          inputId="cdp-doc-type"
+          formControlName="doc_type"
+          [options]="docTypeOptions()"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [fluid]="true"
+        ></p-select>
+      </lpg-form-field>
+
+      <lpg-form-field
+        label="Document scan"
+        [control]="docForm.controls.file_ref"
+        [messages]="fieldMessages.file_ref"
+        hint="Image or PDF · up to 10 MB"
+      >
+        <lpg-document-upload
+          accept="image/*,application/pdf"
+          inputId="cdp-file-upload"
+          [uploader]="uploader()"
+          (uploaded)="onFileUploaded($event)"
+          (cleared)="onFileCleared()"
+        />
+      </lpg-form-field>
+
+      <lpg-form-field label="Document number" for="cdp-doc-number" [control]="docForm.controls.document_number" [messages]="fieldMessages.document_number">
+        <input pInputText id="cdp-doc-number" formControlName="document_number" [fluid]="true" />
+      </lpg-form-field>
+
+      <lpg-form-field label="Issue date" for="cdp-issue-date" [control]="docForm.controls.issue_date">
+        <p-datepicker
+          inputId="cdp-issue-date"
+          formControlName="issue_date"
+          [showIcon]="true"
+          iconDisplay="input"
+          dateFormat="dd-mm-yy"
+          appendTo="body"
+          [fluid]="true"
+        ></p-datepicker>
+      </lpg-form-field>
+
+      <lpg-form-field label="Expiry date" for="cdp-expiry-date" [control]="docForm.controls.expiry_date">
+        <p-datepicker
+          inputId="cdp-expiry-date"
+          formControlName="expiry_date"
+          [showIcon]="true"
+          iconDisplay="input"
+          dateFormat="dd-mm-yy"
+          appendTo="body"
+          [fluid]="true"
+        ></p-datepicker>
+      </lpg-form-field>
+
+      <div class="cdp__form-actions">
+        <button pButton type="button" severity="secondary" (click)="cancelForm()">Cancel</button>
+        <button pButton type="submit" [disabled]="docForm.invalid || submitting()">
+          {{ formPurpose() === 'add' ? 'Add document' : 'Save replacement' }}
+        </button>
+      </div>
+    </form>
+  }
+</div>

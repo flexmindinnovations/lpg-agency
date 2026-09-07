@@ -4,14 +4,20 @@ import {
   Component,
   ElementRef,
   OnInit,
+  computed,
   inject,
   signal,
   viewChild,
   DestroyRef,
 } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, map, type Observable } from 'rxjs';
 import {
+  ComplianceDocumentsPanel,
+  type AddComplianceDocumentCmd,
+  type ComplianceDocumentItem,
+  type ReplaceComplianceDocumentCmd,
+  type VerifyComplianceDocumentCmd,
   DataGridComponent,
   type DataGridColumn,
   DocumentUploadComponent,
@@ -72,6 +78,7 @@ function errorMessageFor(error: unknown): string {
   standalone: true,
   imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
     ReactiveFormsModule,
+    FormsModule,
     ButtonDirective,
     ButtonIcon,
     ButtonLabel,
@@ -88,6 +95,7 @@ function errorMessageFor(error: unknown): string {
     FormFieldComponent,
     DocumentUploadComponent,
     HasPermissionDirective,
+    ComplianceDocumentsPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-vehicles.html',
@@ -121,6 +129,41 @@ export class FeatureVehicles implements OnInit {
   }
 
   protected readonly vehicles = signal<VehicleResponse[]>([]);
+
+  // Expiry filter (list page, above the grid) — mirrors FeatureDrivers'
+  // client-side filter, computed from a full compliance-document fetch
+  // since the list endpoint has no owner-missing-required-doc query.
+  protected readonly expiryFilterOptions = [
+    { label: 'All vehicles', value: 'all' },
+    { label: 'Documents expiring ≤30d', value: 'expiring' },
+    { label: 'Documents expired', value: 'expired' },
+    { label: 'Missing RC on file', value: 'missing' },
+  ];
+  protected readonly expiryFilter = signal<'all' | 'expiring' | 'expired' | 'missing'>('all');
+  private readonly vehicleComplianceFlags = signal<
+    Map<string, { expiring: boolean; expired: boolean; hasRequired: boolean }>
+  >(new Map());
+
+  protected readonly filteredVehicles = computed(() => {
+    const filter = this.expiryFilter();
+    const all = this.vehicles();
+    if (filter === 'all') return all;
+    const flags = this.vehicleComplianceFlags();
+    return all.filter((v) => {
+      const f = flags.get(v.id);
+      switch (filter) {
+        case 'expiring':
+          return !!f?.expiring;
+        case 'expired':
+          return !!f?.expired;
+        case 'missing':
+          return !f?.hasRequired;
+        default:
+          return true;
+      }
+    });
+  });
+
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
@@ -138,6 +181,19 @@ export class FeatureVehicles implements OnInit {
   protected readonly selectedVehicle = signal<VehicleResponse | null>(null);
   protected readonly editMode = signal(false);
   protected readonly saving = signal(false);
+
+  // Compliance-documents panel (drawer) — vehicle-specific doc types + the
+  // owner-scoped list, reloaded whenever the drawer opens or a document is
+  // added/replaced/verified.
+  protected readonly vehicleDocTypeOptions = [
+    { label: 'Registration certificate (RC)', value: 'vehicle_rc' },
+    { label: 'Insurance', value: 'vehicle_insurance' },
+    { label: 'Fitness certificate', value: 'vehicle_fitness' },
+    { label: 'PUC certificate', value: 'vehicle_puc' },
+    { label: 'PESO transport licence', value: 'peso_transport_licence' },
+  ];
+  protected readonly vehicleDocuments = signal<ComplianceDocumentItem[]>([]);
+  protected readonly vehicleDocumentsLoading = signal(false);
 
   protected readonly ownershipOptions = [
     { label: 'Owned', value: 'owned' },
@@ -222,6 +278,7 @@ export class FeatureVehicles implements OnInit {
   ngOnInit(): void {
     this.loadBranches();
     this.loadVehicles();
+    this.loadVehicleComplianceFlags();
 
 
     const unregisterNew = this.keyboardShortcuts.register({
@@ -269,6 +326,32 @@ export class FeatureVehicles implements OnInit {
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
         this.loading.set(false);
+      },
+    });
+  }
+
+  /** Feeds the Expiry filter — one tenant-wide fetch of every vehicle
+   * document, reduced to a per-vehicle flag map client-side (the list
+   * endpoint has no "missing required doc" query of its own). */
+  protected loadVehicleComplianceFlags(): void {
+    this.documentService.listComplianceDocuments({ owner_type: 'vehicle', limit: 500 }).subscribe({
+      next: (res) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const map = new Map<string, { expiring: boolean; expired: boolean; hasRequired: boolean }>();
+        for (const doc of res.items) {
+          const entry = map.get(doc.owner_id) ?? { expiring: false, expired: false, hasRequired: false };
+          if (doc.doc_type === 'vehicle_rc') entry.hasRequired = true;
+          if (doc.expiry_date) {
+            const diffDays = Math.round(
+              (new Date(doc.expiry_date).getTime() - today.getTime()) / 86_400_000,
+            );
+            if (diffDays < 0) entry.expired = true;
+            else if (diffDays <= 30) entry.expiring = true;
+          }
+          map.set(doc.owner_id, entry);
+        }
+        this.vehicleComplianceFlags.set(map);
       },
     });
   }
@@ -351,11 +434,54 @@ export class FeatureVehicles implements OnInit {
     this.selectedVehicle.set(vehicle);
     this.editMode.set(false);
     this.showDetailDrawer.set(true);
+    this.loadVehicleDocuments(vehicle.id);
   }
 
   protected closeDetails(): void {
     this.showDetailDrawer.set(false);
     this.editMode.set(false);
+  }
+
+  protected loadVehicleDocuments(vehicleId: string): void {
+    this.vehicleDocumentsLoading.set(true);
+    this.documentService.listVehicleDocuments(vehicleId).subscribe({
+      next: (res) => {
+        this.vehicleDocuments.set(res.items);
+        this.vehicleDocumentsLoading.set(false);
+      },
+      error: () => {
+        this.vehicleDocuments.set([]);
+        this.vehicleDocumentsLoading.set(false);
+      },
+    });
+  }
+
+  /** Bound per-vehicle in the template — `<lpg-compliance-documents-panel>`
+   * calls this with the new document's fields once its inline form submits. */
+  protected addVehicleDocument(vehicle: VehicleResponse) {
+    return (cmd: AddComplianceDocumentCmd) => this.documentService.addVehicleDocument(vehicle.id, cmd);
+  }
+
+  /** Replace/verify are owner-agnostic on the backend — no vehicle id needed. */
+  protected readonly replaceComplianceDocument = (
+    documentId: string,
+    cmd: ReplaceComplianceDocumentCmd,
+  ) => this.documentService.replace(documentId, cmd);
+
+  protected readonly verifyComplianceDocument = (
+    documentId: string,
+    cmd: VerifyComplianceDocumentCmd,
+  ) => this.documentService.verify(documentId, cmd);
+
+  protected onVehicleDocumentsChanged(): void {
+    const vehicle = this.selectedVehicle();
+    if (vehicle) this.loadVehicleDocuments(vehicle.id);
+    this.loadVehicleComplianceFlags();
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Compliance documents updated.',
+    });
   }
 
   protected startEdit(): void {

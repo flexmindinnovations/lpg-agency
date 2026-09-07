@@ -10,10 +10,15 @@ import {
   viewChild,
   DestroyRef,
 } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, map, type Observable } from 'rxjs';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import {
+  ComplianceDocumentsPanel,
+  type AddComplianceDocumentCmd,
+  type ComplianceDocumentItem,
+  type ReplaceComplianceDocumentCmd,
+  type VerifyComplianceDocumentCmd,
   DataGridComponent,
   type DataGridColumn,
   DocumentUploadComponent,
@@ -78,6 +83,7 @@ function formatDateForApi(value: unknown): string | undefined {
   standalone: true,
   imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
     ReactiveFormsModule,
+    FormsModule,
     ButtonDirective,
     ButtonIcon,
     ButtonLabel,
@@ -94,6 +100,7 @@ function formatDateForApi(value: unknown): string | undefined {
     FormFieldComponent,
     DocumentUploadComponent,
     HasPermissionDirective,
+    ComplianceDocumentsPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-drivers.html',
@@ -128,6 +135,42 @@ export class FeatureDrivers implements OnInit {
   }
 
   protected readonly drivers = signal<DriverResponse[]>([]);
+
+  // Expiry filter (list page, above the grid) — "missing" and "expiring"/
+  // "expired" both need to know which drivers' documents look like that,
+  // computed client-side from a full compliance-document fetch since the
+  // list endpoint has no owner-missing-required-doc query of its own.
+  protected readonly expiryFilterOptions = [
+    { label: 'All drivers', value: 'all' },
+    { label: 'Documents expiring ≤30d', value: 'expiring' },
+    { label: 'Documents expired', value: 'expired' },
+    { label: 'Missing licence on file', value: 'missing' },
+  ];
+  protected readonly expiryFilter = signal<'all' | 'expiring' | 'expired' | 'missing'>('all');
+  private readonly driverComplianceFlags = signal<
+    Map<string, { expiring: boolean; expired: boolean; hasRequired: boolean }>
+  >(new Map());
+
+  protected readonly filteredDrivers = computed(() => {
+    const filter = this.expiryFilter();
+    const all = this.drivers();
+    if (filter === 'all') return all;
+    const flags = this.driverComplianceFlags();
+    return all.filter((d) => {
+      const f = flags.get(d.id);
+      switch (filter) {
+        case 'expiring':
+          return !!f?.expiring;
+        case 'expired':
+          return !!f?.expired;
+        case 'missing':
+          return !f?.hasRequired;
+        default:
+          return true;
+      }
+    });
+  });
+
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly employees = signal<(EmployeeResponse & { _displayName?: string })[]>([]);
   // Unscoped (all branches) — feeds the grid's Employee Code lookup, distinct
@@ -175,6 +218,18 @@ export class FeatureDrivers implements OnInit {
   protected readonly selectedDriver = signal<DriverResponse | null>(null);
   protected readonly editMode = signal(false);
   protected readonly saving = signal(false);
+
+  // Compliance-documents panel (drawer) — driver-specific doc types + the
+  // owner-scoped list, reloaded whenever the drawer opens or a document is
+  // added/replaced/verified.
+  protected readonly driverDocTypeOptions = [
+    { label: 'Driving licence', value: 'driving_licence' },
+    { label: 'DL hazmat endorsement', value: 'dl_hazmat_endorsement' },
+    { label: 'TREM card', value: 'trem_card' },
+    { label: 'Driver training certificate', value: 'driver_training_certificate' },
+  ];
+  protected readonly driverDocuments = signal<ComplianceDocumentItem[]>([]);
+  protected readonly driverDocumentsLoading = signal(false);
 
   protected readonly registerTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
@@ -244,6 +299,7 @@ export class FeatureDrivers implements OnInit {
 
   ngOnInit(): void {
     this.loadBranches();
+    this.loadDriverComplianceFlags();
     this.loading.set(true);
     // Load employees before the first `loadDrivers()` call, not in
     // parallel with it: the grid's Employee Code column resolves through
@@ -320,6 +376,32 @@ export class FeatureDrivers implements OnInit {
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
         this.loading.set(false);
+      },
+    });
+  }
+
+  /** Feeds the Expiry filter — one tenant-wide fetch of every driver
+   * document, reduced to a per-driver flag map client-side (the list
+   * endpoint has no "missing required doc" query of its own). */
+  protected loadDriverComplianceFlags(): void {
+    this.documentService.listComplianceDocuments({ owner_type: 'driver', limit: 500 }).subscribe({
+      next: (res) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const map = new Map<string, { expiring: boolean; expired: boolean; hasRequired: boolean }>();
+        for (const doc of res.items) {
+          const entry = map.get(doc.owner_id) ?? { expiring: false, expired: false, hasRequired: false };
+          if (doc.doc_type === 'driving_licence') entry.hasRequired = true;
+          if (doc.expiry_date) {
+            const diffDays = Math.round(
+              (new Date(doc.expiry_date).getTime() - today.getTime()) / 86_400_000,
+            );
+            if (diffDays < 0) entry.expired = true;
+            else if (diffDays <= 30) entry.expiring = true;
+          }
+          map.set(doc.owner_id, entry);
+        }
+        this.driverComplianceFlags.set(map);
       },
     });
   }
@@ -409,11 +491,54 @@ export class FeatureDrivers implements OnInit {
     this.selectedDriver.set(driver);
     this.editMode.set(false);
     this.showDetailDrawer.set(true);
+    this.loadDriverDocuments(driver.id);
   }
 
   protected closeDetails(): void {
     this.showDetailDrawer.set(false);
     this.editMode.set(false);
+  }
+
+  protected loadDriverDocuments(driverId: string): void {
+    this.driverDocumentsLoading.set(true);
+    this.documentService.listDriverDocuments(driverId).subscribe({
+      next: (res) => {
+        this.driverDocuments.set(res.items);
+        this.driverDocumentsLoading.set(false);
+      },
+      error: () => {
+        this.driverDocuments.set([]);
+        this.driverDocumentsLoading.set(false);
+      },
+    });
+  }
+
+  /** Bound per-driver in the template — `<lpg-compliance-documents-panel>`
+   * calls this with the new document's fields once its inline form submits. */
+  protected addDriverDocument(driver: DriverResponse) {
+    return (cmd: AddComplianceDocumentCmd) => this.documentService.addDriverDocument(driver.id, cmd);
+  }
+
+  /** Replace/verify are owner-agnostic on the backend — no driver id needed. */
+  protected readonly replaceComplianceDocument = (
+    documentId: string,
+    cmd: ReplaceComplianceDocumentCmd,
+  ) => this.documentService.replace(documentId, cmd);
+
+  protected readonly verifyComplianceDocument = (
+    documentId: string,
+    cmd: VerifyComplianceDocumentCmd,
+  ) => this.documentService.verify(documentId, cmd);
+
+  protected onDriverDocumentsChanged(): void {
+    const driver = this.selectedDriver();
+    if (driver) this.loadDriverDocuments(driver.id);
+    this.loadDriverComplianceFlags();
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Compliance documents updated.',
+    });
   }
 
   protected startEdit(): void {

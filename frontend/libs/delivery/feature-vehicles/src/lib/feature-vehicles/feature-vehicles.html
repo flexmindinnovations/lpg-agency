@@ -40,11 +40,20 @@
         (input)="onSearch($event)"
       />
     </p-iconfield>
+    <p-select
+      [options]="expiryFilterOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="expiryFilter()"
+      (ngModelChange)="expiryFilter.set($event)"
+      aria-label="Filter by document expiry"
+      styleClass="expiry-filter-select"
+    ></p-select>
   </div>
   }
 
   <lpg-data-grid
-    [rows]="vehicles()"
+    [rows]="filteredVehicles()"
     [columns]="columns"
     [loading]="loading()"
     ariaLabel="Vehicles list"
@@ -182,6 +191,18 @@
             <span class="detail-label">Status</span>
             <p-tag [value]="toSentenceCase(vehicle.status)" [severity]="statusSeverity(vehicle.status)" />
           </div>
+
+          <lpg-compliance-documents-panel
+            [documents]="vehicleDocuments()"
+            [loading]="vehicleDocumentsLoading()"
+            [docTypeOptions]="vehicleDocTypeOptions"
+            managePermission="vehicles:manage"
+            [uploader]="rcUploader"
+            [addDocument]="addVehicleDocument(vehicle)"
+            [replaceDocument]="replaceComplianceDocument"
+            [verifyDocument]="verifyComplianceDocument"
+            (changed)="onVehicleDocumentsChanged()"
+          />
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>

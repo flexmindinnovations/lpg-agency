@@ -20,6 +20,11 @@
   flex: 1;
 }
 
+::ng-deep .expiry-filter-select {
+  flex-shrink: 0;
+  min-inline-size: 14rem;
+}
+
 .grid-hint {
   font-size: var(--typography-caption-font-size);
   color: var(--color-text-secondary);

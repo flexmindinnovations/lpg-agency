@@ -41,13 +41,22 @@
         (input)="onSearch($event)"
       />
     </p-iconfield>
+    <p-select
+      [options]="expiryFilterOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="expiryFilter()"
+      (ngModelChange)="expiryFilter.set($event)"
+      aria-label="Filter by document expiry"
+      styleClass="expiry-filter-select"
+    ></p-select>
   </div>
   }
 
 
 
   <lpg-data-grid
-    [rows]="drivers()"
+    [rows]="filteredDrivers()"
     [columns]="columns"
     [loading]="loading()"
     ariaLabel="Drivers list"
@@ -166,6 +175,18 @@
             <span class="detail-label">Duty Status</span>
             <p-tag [value]="toSentenceCase(driver.status)" [severity]="statusSeverity(driver.status)" />
           </div>
+
+          <lpg-compliance-documents-panel
+            [documents]="driverDocuments()"
+            [loading]="driverDocumentsLoading()"
+            [docTypeOptions]="driverDocTypeOptions"
+            managePermission="drivers:manage"
+            [uploader]="licenceUploader"
+            [addDocument]="addDriverDocument(driver)"
+            [replaceDocument]="replaceComplianceDocument"
+            [verifyDocument]="verifyComplianceDocument"
+            (changed)="onDriverDocumentsChanged()"
+          />
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
