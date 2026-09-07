@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
 
 export type StatTone = 'primary' | 'info' | 'success' | 'warning' | 'danger' | 'neutral';
@@ -9,14 +11,29 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
  * contextual icon, with a restrained hover (a 1px lift and a border
  * highlight — never a jump). The sparkline is an inline SVG polyline, not a
  * chart library.
+ *
+ * Purely a display card by default. Passing `route` makes the whole card a
+ * real, keyboard-focusable link to that route (a native `<a
+ * [routerLink]>`, not a `div` with a synthetic click handler) — the hover
+ * lift below only ever implied interactivity, it didn't provide it.
  */
 @Component({
   selector: 'lpg-stat-card',
   standalone: true,
-  imports: [SkeletonComponent],
+  imports: [SkeletonComponent, NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="stat-card">
+    @if (route()) {
+      <a class="stat-card stat-card--linked" [routerLink]="route()">
+        <ng-container [ngTemplateOutlet]="content" />
+      </a>
+    } @else {
+      <div class="stat-card">
+        <ng-container [ngTemplateOutlet]="content" />
+      </div>
+    }
+
+    <ng-template #content>
       <div class="stat-card__head">
         <span class="stat-card__label">{{ label() }}</span>
         @if (icon()) {
@@ -56,7 +73,7 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
           <polyline [attr.points]="sparkPath()" />
         </svg>
       }
-    </div>
+    </ng-template>
   `,
   styles: [
     `
@@ -83,6 +100,14 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
         transform: translateY(-1px);
         border-color: var(--color-border-strong);
         box-shadow: var(--elevation-2);
+      }
+
+      /* The linked variant renders as <a>, which needs its default browser
+         styling (underline, link colour on any untyped text) reset — every
+         piece of text inside already has its own explicit colour below. */
+      .stat-card--linked {
+        text-decoration: none;
+        cursor: pointer;
       }
 
       .stat-card__head {
@@ -196,6 +221,10 @@ export type DeltaDirection = 'up' | 'down' | 'flat';
 export class StatCardComponent {
   readonly label = input.required<string>();
   readonly value = input.required<string | number>();
+  /** A router link array/string; makes the whole card a real `<a
+   *  [routerLink]>` instead of a static `div`. Same shape as
+   *  `PageHeaderComponent.backLink`. */
+  readonly route = input<unknown[] | string | null>(null);
   /** PrimeIcon class for the contextual icon. */
   readonly icon = input<string>('');
   readonly tone = input<StatTone>('primary');

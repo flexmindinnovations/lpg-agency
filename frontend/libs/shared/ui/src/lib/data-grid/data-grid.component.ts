@@ -276,6 +276,19 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
       ::ng-deep .lpg-data-grid .ag-paging-button:not(.ag-disabled):hover {
         background-color: var(--color-surface-overlay);
       }
+
+      /* The global :focus-visible ring (apps/dashboard/src/styles.css) uses
+         an outset offset, which gets clipped here: this host has its own
+         overflow:hidden for rounded corners, and AG Grid layers several
+         more overflow:hidden containers inside it (root wrapper, header
+         cells, paging panel) for virtualized scrolling — none of those are
+         safe to loosen. An inset ring can never be clipped by an ancestor,
+         so every focusable element inside the grid (cells, header sort/
+         filter buttons, pagination controls) gets one scoped here instead
+         of the app-wide outset default. */
+      ::ng-deep .lpg-data-grid *:focus-visible {
+        outline-offset: -2px;
+      }
     `,
   ],
 })
@@ -295,6 +308,12 @@ export class DataGridComponent<TRow = unknown> {
    *  host. Use inside a padded content box that has no height of its own —
    *  e.g. a report page. */
   readonly autoHeight = input(false);
+  /** Free-text filter applied across every visible column's rendered value
+   *  (AG Grid's own "quick filter" — no per-page filter logic needed). Only
+   *  matches rows already present in `rows()`; a page whose rows come from
+   *  a paginated/cursor-based endpoint needs a real server-side search
+   *  instead of this. */
+  readonly searchQuery = input('');
 
   readonly ready = output<void>();
 
@@ -354,6 +373,7 @@ export class DataGridComponent<TRow = unknown> {
     pagination: this.pageSize() > 0,
     paginationPageSize: this.pageSize() || 25,
     paginationPageSizeSelector: [10, 25, 50, 100],
+    quickFilterText: this.searchQuery(),
   }));
 
   readonly selectionChange = output<TRow[]>();

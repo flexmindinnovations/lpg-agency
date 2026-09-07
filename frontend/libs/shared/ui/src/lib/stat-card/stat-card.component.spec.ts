@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { StatCardComponent } from './stat-card.component';
 
 describe('StatCardComponent', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  });
+
   function render(inputs: Record<string, unknown>) {
     const fixture = TestBed.createComponent(StatCardComponent);
     for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
@@ -37,5 +42,20 @@ describe('StatCardComponent', () => {
   it('omits the sparkline for a single point', () => {
     const el = render({ label: 'x', value: 1, trend: [3] }).nativeElement as HTMLElement;
     expect(el.querySelector('.stat-card__spark')).toBeNull();
+  });
+
+  it('renders a plain div when no route is given', () => {
+    const el = render({ label: 'x', value: 1 }).nativeElement as HTMLElement;
+    expect(el.querySelector('a.stat-card')).toBeNull();
+    expect(el.querySelector('div.stat-card')).not.toBeNull();
+  });
+
+  it('renders a real link when a route is given', () => {
+    const el = render({ label: 'x', value: 1, route: '/customers' }).nativeElement as HTMLElement;
+    const link = el.querySelector('a.stat-card');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/customers');
+    // The card's own content still renders through the shared template.
+    expect(link?.querySelector('.stat-card__label')?.textContent).toContain('x');
   });
 });

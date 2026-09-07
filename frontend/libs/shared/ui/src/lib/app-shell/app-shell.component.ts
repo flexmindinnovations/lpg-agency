@@ -460,6 +460,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         border: none;
         margin-block-end: 0;
         font-size: var(--typography-body-small-font-size);
+        /* PrimeNG renders this <nav> with overflow:auto, which clips the
+           focus ring on the home icon and every breadcrumb link — a single
+           line of text/icons never needs to scroll internally, so this is
+           safe. */
+        overflow: visible;
       }
       :host ::ng-deep .shell__breadcrumb .p-breadcrumb-list li a {
         text-decoration: none;
