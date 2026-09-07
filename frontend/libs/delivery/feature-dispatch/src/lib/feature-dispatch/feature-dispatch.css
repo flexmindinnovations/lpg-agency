@@ -206,6 +206,27 @@
   background: var(--color-surface-overlay);
 }
 
+.weighment-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weighment-record-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-base);
+  font-size: var(--typography-secondary-font-size);
+}
+
 .load-line {
   display: grid;
   grid-template-columns: 1fr 8rem auto;

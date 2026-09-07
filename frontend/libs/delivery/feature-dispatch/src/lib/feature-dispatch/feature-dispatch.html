@@ -260,6 +260,18 @@
             <i pButtonIcon class="pi pi-inbox"></i>
             <span pButtonLabel>Load Vehicle</span>
           </button>
+          <button
+            *lpgHasPermission="'weighment:record'"
+            pButton
+            type="button"
+            severity="secondary"
+            [text]="true"
+            pTooltip="MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch."
+            (click)="openLoadOutWeighmentForm()"
+          >
+            <i pButtonIcon class="pi pi-verified"></i>
+            <span pButtonLabel>Log Load-Out Weighment</span>
+          </button>
         }
         @if (canStartRoute()) {
           <button pButton type="button" [loading]="loading()" (click)="onStartRoute()">
@@ -365,6 +377,110 @@
               </button>
               <button pButton type="submit" [disabled]="loadForm.invalid || loading()">
                 Load
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      @if (showLoadOutWeighmentForm()) {
+        <div class="load-form">
+          <h3 class="section-title">Log Load-Out Weighment</h3>
+          <p-message severity="info">
+            MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before
+            dispatch. Log one record per cylinder type; this only blocks loading for tenants
+            that have opted into the weighment gate.
+          </p-message>
+
+          @if (routeWeighments().length > 0) {
+            <ul class="weighment-record-list">
+              @for (record of routeWeighments(); track record.id) {
+                <li>
+                  <span>{{ cylinderTypeName(record.cylinder_type_id) }}</span>
+                  <span>{{ record.cylinders_checked }}/{{ record.total_cylinders_in_batch }} checked</span>
+                  <p-tag
+                    [severity]="record.result === 'pass' ? 'success' : 'danger'"
+                    [value]="record.result === 'pass' ? 'Pass' : 'Fail'"
+                  />
+                </li>
+              }
+            </ul>
+          }
+
+          <form [formGroup]="loadOutWeighmentForm" (ngSubmit)="onSubmitLoadOutWeighment()" class="dialog-form">
+            <lpg-form-field
+              label="Cylinder type"
+              for="wt_cylinder_type"
+              [control]="loadOutWeighmentForm.controls.cylinder_type_id"
+              [messages]="fieldMessages.cylinder_type_id"
+            >
+              <p-select
+                inputId="wt_cylinder_type"
+                formControlName="cylinder_type_id"
+                [options]="cylinderTypes()"
+                optionLabel="name"
+                optionValue="id"
+                [fluid]="true"
+                [appendTo]="'body'"
+              />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Scale used"
+              for="wt_scale"
+              [control]="loadOutWeighmentForm.controls.scale_id"
+              [messages]="fieldMessages.scale_id"
+              [hint]="activeScaleOptions().length === 0 ? 'No active certified scale registered yet.' : ''"
+            >
+              <p-select
+                inputId="wt_scale"
+                formControlName="scale_id"
+                [options]="activeScaleOptions()"
+                optionLabel="label"
+                optionValue="id"
+                placeholder="Select a scale"
+                [fluid]="true"
+                [appendTo]="'body'"
+              />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Cylinders checked (100% of this type)"
+              for="wt_total"
+              [control]="loadOutWeighmentForm.controls.total_cylinders"
+              [messages]="fieldMessages.total_cylinders"
+            >
+              <p-inputnumber inputId="wt_total" formControlName="total_cylinders" [min]="1" [fluid]="true" />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Underweight cylinders found"
+              for="wt_underweight"
+              [control]="loadOutWeighmentForm.controls.underweight_cylinder_count"
+              [messages]="fieldMessages.underweight_cylinder_count"
+              hint="Any underweight cylinder is segregated and returned in the same truck."
+            >
+              <p-inputnumber
+                inputId="wt_underweight"
+                formControlName="underweight_cylinder_count"
+                [min]="0"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+            <div class="modal-actions">
+              <button
+                pButton
+                type="button"
+                severity="secondary"
+                (click)="showLoadOutWeighmentForm.set(false)"
+              >
+                Close
+              </button>
+              <button
+                pButton
+                type="submit"
+                [disabled]="
+                  loadOutWeighmentForm.invalid || loading() || activeScaleOptions().length === 0
+                "
+              >
+                Record Weighment
               </button>
             </div>
           </form>

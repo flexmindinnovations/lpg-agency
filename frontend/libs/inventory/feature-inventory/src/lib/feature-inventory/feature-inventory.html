@@ -157,7 +157,7 @@
 
   <!-- Goods Receipt Modal -->
   <p-drawer
-    header="Receive Goods"
+    [header]="lastGrn() ? 'Log Weighment Sample' : 'Receive Goods'"
     [(visible)]="showGrnModal"
     position="right"
     [modal]="true"
@@ -165,6 +165,7 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="grnTrigger()?.nativeElement?.focus()"
   >
+    @if (!lastGrn()) {
     <form [formGroup]="grnForm" (ngSubmit)="onSubmitGrn()" class="dialog-form">
       <lpg-form-field
         label="Cylinder type"
@@ -199,6 +200,79 @@
         <button pButton type="submit" [disabled]="grnForm.invalid || loading()">Receive</button>
       </div>
     </form>
+    } @else {
+    <p-message severity="info" styleClass="grn-weighment-hint">
+      Goods receipt saved — {{ lastGrn()!.quantity_received }} cylinders. MDG 2022 cl. 1.2(iv)
+      calls for weighing a 10% random sample now; this step is optional and won't block the
+      receipt either way.
+    </p-message>
+    <form [formGroup]="weighmentForm" (ngSubmit)="onSubmitWeighmentSample()" class="dialog-form">
+      <lpg-form-field
+        label="Scale used"
+        for="wt_scale"
+        [control]="weighmentForm.controls.scale_id"
+        [messages]="fieldMessages.scale_id"
+        [hint]="
+          activeScalesForWarehouse().length === 0
+            ? 'No active certified scale registered at this warehouse yet.'
+            : ''
+        "
+      >
+        <p-select
+          inputId="wt_scale"
+          formControlName="scale_id"
+          [options]="activeScalesForWarehouse()"
+          optionLabel="asset_tag"
+          optionValue="id"
+          placeholder="Select a scale"
+          [fluid]="true"
+        ></p-select>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Cylinders checked"
+        for="wt_checked"
+        [control]="weighmentForm.controls.cylinders_checked"
+        [messages]="fieldMessages.cylinders_checked"
+        hint="Suggested: 10% of the batch, random."
+      >
+        <p-inputnumber
+          inputId="wt_checked"
+          formControlName="cylinders_checked"
+          [min]="1"
+          [max]="lastGrn()!.quantity_received"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Underweight cylinders found"
+        for="wt_underweight"
+        [control]="weighmentForm.controls.underweight_cylinder_count"
+        [messages]="fieldMessages.underweight_cylinder_count"
+        hint="Any underweight cylinder in the sample is segregated and returned in the same truck."
+      >
+        <p-inputnumber
+          inputId="wt_underweight"
+          formControlName="underweight_cylinder_count"
+          [min]="0"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="skipWeighmentSample()">
+          Skip
+        </button>
+        <button
+          pButton
+          type="submit"
+          [disabled]="
+            weighmentForm.invalid || loading() || activeScalesForWarehouse().length === 0
+          "
+        >
+          Record Sample
+        </button>
+      </div>
+    </form>
+    }
   </p-drawer>
 
   <!-- Load Transfer Modal -->

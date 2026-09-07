@@ -46,15 +46,12 @@
       "@lpg/notification/feature-notifications": [
         "./libs/notification/feature-notifications/src/index.ts"
       ],
-      "@lpg/notification/ui-bell": [
-        "./libs/notification/ui-bell/src/index.ts"
-      ],
-      "@lpg/notification/ui-drawer": [
-        "./libs/notification/ui-drawer/src/index.ts"
-      ],
+      "@lpg/notification/ui-bell": ["./libs/notification/ui-bell/src/index.ts"],
+      "@lpg/notification/ui-drawer": ["./libs/notification/ui-drawer/src/index.ts"],
       "@lpg/complaint/feature-complaints": ["./libs/complaint/feature-complaints/src/index.ts"],
       "@lpg/reporting/feature-reports": ["./libs/reporting/feature-reports/src/index.ts"],
-      "@lpg/reporting/data-access": ["./libs/reporting/data-access/src/index.ts"]
+      "@lpg/reporting/data-access": ["./libs/reporting/data-access/src/index.ts"],
+      "@lpg/compliance/feature-scales": ["./libs/compliance/feature-scales/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

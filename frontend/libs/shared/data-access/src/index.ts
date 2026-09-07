@@ -26,6 +26,7 @@ export * from './lib/admin-employee.service';
 export * from './lib/customer.service';
 export * from './lib/delivery.service';
 export * from './lib/document.service';
+export * from './lib/weighment.service';
 export * from './lib/inventory.service';
 export * from './lib/dashboard.service';
 export * from './lib/order.service';

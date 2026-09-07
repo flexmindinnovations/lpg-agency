@@ -127,6 +127,13 @@ export const appRoutes: Route[] = [
           import('@lpg/delivery/feature-dispatch').then((m) => m.deliveryDispatchRoutes),
       },
       {
+        path: 'scales',
+        canActivate: [permissionGuard('weighment:record', STAFF_LIST_EXCLUDED_ROLES)],
+        data: { breadcrumbs: [{ label: 'Scales', routerLink: '/scales' }] },
+        loadChildren: () =>
+          import('@lpg/compliance/feature-scales').then((m) => m.complianceScalesRoutes),
+      },
+      {
         path: 'inventory',
         canActivate: [permissionGuard('inventory:read')],
         data: { breadcrumbs: [{ label: 'Inventory', routerLink: '/inventory' }] },

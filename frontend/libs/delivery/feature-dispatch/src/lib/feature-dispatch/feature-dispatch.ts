@@ -30,6 +30,7 @@ import {
   AdminWarehouseService,
   DeliveryService,
   OrderService,
+  WeighmentService,
   type AppError,
   type BranchResponse,
   type CashHandoverResponse,
@@ -38,8 +39,10 @@ import {
   type EmployeeResponse,
   type OrderResponse,
   type RouteResponse,
+  type ScaleResponse,
   type VehicleResponse,
   type WarehouseResponse,
+  type WeighmentRecordResponse,
 } from '@lpg/shared/data-access';
 
 const ROUTE_STATUS_COLUMNS = [
@@ -91,6 +94,8 @@ function errorMessageFor(error: unknown): string {
       return isAppError(error) && error.detail ? error.detail : 'That resource could not be found.';
     case 'INVALID_STATE_TRANSITION':
       return 'That action is not valid for the route in its current state.';
+    case 'WEIGHMENT_CHECK_REQUIRED':
+      return 'This tenant requires a passing 100% weighment check for every cylinder type on the manifest before loading. Use "Log Load-Out Weighment" first.';
     default:
       return 'Something went wrong. Please try again.';
   }
@@ -138,6 +143,7 @@ export class FeatureDispatch implements OnInit {
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
+  private readonly weighmentService = inject(WeighmentService);
   private readonly router = inject(Router);
 
   protected readonly routes = signal<RouteResponse[]>([]);
@@ -161,6 +167,7 @@ export class FeatureDispatch implements OnInit {
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
+  protected readonly scales = signal<ScaleResponse[]>([]);
   protected readonly unassignedOrders = signal<OrderResponse[]>([]);
   // Broader than `unassignedOrders` (not status-filtered) — exists solely to
   // back `orderNumberById` below, since a route stop's order is by
@@ -217,6 +224,26 @@ export class FeatureDispatch implements OnInit {
   private vehicleDisplayName(vehicle: VehicleResponse): string {
     return `${vehicle.make} ${vehicle.model} (${vehicle.registration_number})`;
   }
+
+  protected readonly warehouseNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const w of this.warehouses()) map.set(w.id, w.name);
+    return map;
+  });
+
+  /** `/scales` has no server-side warehouse filter, and unlike Inventory
+   * this screen has no single "selected warehouse" — the load-out weighment
+   * step can be logged for any of the tenant's active, certified scales, so
+   * the warehouse is shown in the label to disambiguate rather than
+   * filtering the list down. */
+  protected readonly activeScaleOptions = computed(() =>
+    this.scales()
+      .filter((s) => s.status === 'active')
+      .map((s) => ({
+        id: s.id,
+        label: `${s.asset_tag} — ${this.warehouseNameById().get(s.warehouse_id) ?? 'Unknown warehouse'}`,
+      })),
+  );
 
   /** Read directly rather than as a computed() — the form control's
    * valueChanges is an Observable, not a signal, and the p-select's
@@ -277,6 +304,13 @@ export class FeatureDispatch implements OnInit {
     actual_amount: { required: 'Enter the amount handed over.', min: 'Cannot be negative.' },
     route_id: { required: 'Select a target route.' },
     order_id: { required: 'Select an order.' },
+    cylinder_type_id: { required: 'Select a cylinder type.' },
+    scale_id: { required: 'Select a certified scale.' },
+    total_cylinders: { required: 'Enter how many cylinders were checked.', min: 'Must be at least 1.' },
+    underweight_cylinder_count: {
+      required: 'Enter the underweight count (0 if none).',
+      min: 'Cannot be negative.',
+    },
   };
 
   // ---------------------------------------------------------------------------
@@ -320,6 +354,79 @@ export class FeatureDispatch implements OnInit {
 
   protected get loadLines() {
     return this.loadForm.controls.lines;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Log Load-Out Weighment (inline sub-form within the Route Detail drawer)
+  //
+  // MDG 2022 cl. 1.4(c)(d) — 100% of cylinders checked before dispatch. Kept
+  // separate from Load Vehicle itself: a tenant that has opted into the
+  // gate (`weighment_gate_enabled`) needs a passing record per cylinder
+  // type *before* `POST .../load` will succeed (Weighment Part 3), so this
+  // has to be logged ahead of time, not as a field on that form. One record
+  // per cylinder type, so the sub-form stays open after each save to let
+  // staff work through the whole manifest.
+  // ---------------------------------------------------------------------------
+
+  protected readonly showLoadOutWeighmentForm = signal(false);
+  protected readonly routeWeighments = signal<WeighmentRecordResponse[]>([]);
+  protected readonly loadOutWeighmentForm = this.fb.group({
+    cylinder_type_id: ['', [Validators.required]],
+    scale_id: ['', [Validators.required]],
+    total_cylinders: [1, [Validators.required, Validators.min(1)]],
+    underweight_cylinder_count: [0, [Validators.required, Validators.min(0)]],
+  });
+
+  protected cylinderTypeName(cylinderTypeId: string): string {
+    return this.cylinderTypes().find((c) => c.id === cylinderTypeId)?.name ?? cylinderTypeId;
+  }
+
+  protected openLoadOutWeighmentForm(): void {
+    const route = this.selectedRoute();
+    if (!route) return;
+    this.loadOutWeighmentForm.reset({
+      cylinder_type_id: '',
+      scale_id: this.activeScaleOptions()[0]?.id ?? '',
+      total_cylinders: 1,
+      underweight_cylinder_count: 0,
+    });
+    this.weighmentService.listRouteWeighments(route.id).subscribe({
+      next: (res) => this.routeWeighments.set(res.items),
+    });
+    this.showLoadForm.set(false);
+    this.showLoadOutWeighmentForm.set(true);
+  }
+
+  protected onSubmitLoadOutWeighment(): void {
+    const route = this.selectedRoute();
+    if (!route || this.loadOutWeighmentForm.invalid) return;
+    const val = this.loadOutWeighmentForm.getRawValue();
+    this.loading.set(true);
+    this.weighmentService
+      .recordRouteLoadOutWeighment(route.id, {
+        scale_id: val.scale_id,
+        cylinder_type_id: val.cylinder_type_id,
+        total_cylinders_in_batch: val.total_cylinders,
+        cylinders_checked: val.total_cylinders,
+        underweight_cylinder_count: val.underweight_cylinder_count,
+      })
+      .subscribe({
+        next: (record) => {
+          this.routeWeighments.set([...this.routeWeighments(), record]);
+          this.loadOutWeighmentForm.patchValue({
+            cylinder_type_id: '',
+            total_cylinders: 1,
+            underweight_cylinder_count: 0,
+          });
+          this.infoMessage.set('Weighment recorded.');
+          this.errorMessage.set(null);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.errorMessage.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
   }
 
   // ---------------------------------------------------------------------------
@@ -389,6 +496,9 @@ export class FeatureDispatch implements OnInit {
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (types) => this.cylinderTypes.set(types),
       error: () => this.errorMessage.set('Failed to load cylinder types.'),
+    });
+    this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
+      next: (res) => this.scales.set(res.items),
     });
     this.loadDriversAndVehicles();
     this.loadRoutes();
@@ -631,6 +741,7 @@ export class FeatureDispatch implements OnInit {
     this.loadLines.clear();
     this.loadLines.push(this.buildLoadLineGroup());
     this.showAddStopForm.set(false);
+    this.showLoadOutWeighmentForm.set(false);
     this.showLoadForm.set(true);
   }
 

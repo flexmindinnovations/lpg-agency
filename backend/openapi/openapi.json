@@ -5761,6 +5761,44 @@
         "title": "RecordPaymentRequest",
         "type": "object"
       },
+      "RecordWeighmentRequest": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "cylinders_checked": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cylinders Checked",
+            "type": "integer"
+          },
+          "scale_id": {
+            "format": "uuid",
+            "title": "Scale Id",
+            "type": "string"
+          },
+          "total_cylinders_in_batch": {
+            "exclusiveMinimum": 0.0,
+            "title": "Total Cylinders In Batch",
+            "type": "integer"
+          },
+          "underweight_cylinder_count": {
+            "minimum": 0.0,
+            "title": "Underweight Cylinder Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scale_id",
+          "cylinder_type_id",
+          "total_cylinders_in_batch",
+          "cylinders_checked",
+          "underweight_cylinder_count"
+        ],
+        "title": "RecordWeighmentRequest",
+        "type": "object"
+      },
       "RefreshRequest": {
         "description": "`refresh_token` is optional in the body — the Dashboard's browser\nclient relies on the `HttpOnly` cookie instead\n(`api/v1/routers/auth.py`'s module docstring). Mobile clients, which\ncan't rely on a cookie, supply it here.",
         "properties": {
@@ -6156,6 +6194,66 @@
         "title": "RegisterEmployeeRequest",
         "type": "object"
       },
+      "RegisterScaleRequest": {
+        "properties": {
+          "asset_tag": {
+            "minLength": 1,
+            "title": "Asset Tag",
+            "type": "string"
+          },
+          "certificate_expiry_date": {
+            "format": "date",
+            "title": "Certificate Expiry Date",
+            "type": "string"
+          },
+          "certificate_ref": {
+            "minLength": 1,
+            "title": "Certificate Ref",
+            "type": "string"
+          },
+          "least_count_grams": {
+            "exclusiveMinimum": 0.0,
+            "title": "Least Count Grams",
+            "type": "integer"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "asset_tag",
+          "least_count_grams",
+          "certificate_ref",
+          "certificate_expiry_date"
+        ],
+        "title": "RegisterScaleRequest",
+        "type": "object"
+      },
       "RegisterVehicleRequest": {
         "properties": {
           "branch_id": {
@@ -6338,6 +6436,26 @@
           "file_ref"
         ],
         "title": "ReplaceComplianceDocumentRequest",
+        "type": "object"
+      },
+      "ReplaceScaleCertificateRequest": {
+        "properties": {
+          "certificate_expiry_date": {
+            "format": "date",
+            "title": "Certificate Expiry Date",
+            "type": "string"
+          },
+          "certificate_ref": {
+            "minLength": 1,
+            "title": "Certificate Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "certificate_ref",
+          "certificate_expiry_date"
+        ],
+        "title": "ReplaceScaleCertificateRequest",
         "type": "object"
       },
       "RequestRefundRequest": {
@@ -6700,6 +6818,109 @@
         "title": "SaveOnboardingDraftRequest",
         "type": "object"
       },
+      "ScaleListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScaleResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ScaleListResponse",
+        "type": "object"
+      },
+      "ScaleResponse": {
+        "properties": {
+          "asset_tag": {
+            "title": "Asset Tag",
+            "type": "string"
+          },
+          "certificate_expiry_date": {
+            "format": "date",
+            "title": "Certificate Expiry Date",
+            "type": "string"
+          },
+          "certificate_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificate Url"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_expired": {
+            "title": "Is Expired",
+            "type": "boolean"
+          },
+          "least_count_grams": {
+            "title": "Least Count Grams",
+            "type": "integer"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "warehouse_id",
+          "asset_tag",
+          "make",
+          "model",
+          "least_count_grams",
+          "certificate_url",
+          "certificate_expiry_date",
+          "status",
+          "is_expired"
+        ],
+        "title": "ScaleResponse",
+        "type": "object"
+      },
       "ScheduleFeatureFlagRequest": {
         "properties": {
           "ends_at": {
@@ -6903,6 +7124,19 @@
           "price"
         ],
         "title": "SetPriceRequest",
+        "type": "object"
+      },
+      "SetScaleStatusRequest": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SetScaleStatusRequest",
         "type": "object"
       },
       "SetTenantConfigurationRequest": {
@@ -7841,6 +8075,101 @@
           "address_line"
         ],
         "title": "WarehouseResponse",
+        "type": "object"
+      },
+      "WeighmentRecordListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WeighmentRecordResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WeighmentRecordListResponse",
+        "type": "object"
+      },
+      "WeighmentRecordResponse": {
+        "properties": {
+          "context": {
+            "title": "Context",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "cylinders_checked": {
+            "title": "Cylinders Checked",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "format": "uuid",
+            "title": "Recorded By",
+            "type": "string"
+          },
+          "reference_id": {
+            "format": "uuid",
+            "title": "Reference Id",
+            "type": "string"
+          },
+          "reference_type": {
+            "title": "Reference Type",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "scale_id": {
+            "format": "uuid",
+            "title": "Scale Id",
+            "type": "string"
+          },
+          "tolerance_grams_applied": {
+            "title": "Tolerance Grams Applied",
+            "type": "integer"
+          },
+          "total_cylinders_in_batch": {
+            "title": "Total Cylinders In Batch",
+            "type": "integer"
+          },
+          "underweight_cylinder_count": {
+            "title": "Underweight Cylinder Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "scale_id",
+          "context",
+          "reference_type",
+          "reference_id",
+          "cylinder_type_id",
+          "total_cylinders_in_batch",
+          "cylinders_checked",
+          "underweight_cylinder_count",
+          "tolerance_grams_applied",
+          "result",
+          "recorded_by",
+          "recorded_at"
+        ],
+        "title": "WeighmentRecordResponse",
         "type": "object"
       },
       "lpg__api__v1__schemas__order__AssignOrderRequest": {
@@ -12014,6 +12343,101 @@
         ]
       }
     },
+    "/api/v1/goods-receipt-notes/{grn_id}/weighment": {
+      "get": {
+        "operationId": "list_goods_receipt_weighments_api_v1_goods_receipt_notes__grn_id__weighment_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grn_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grn Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeighmentRecordListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Goods Receipt Weighments",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      },
+      "post": {
+        "description": "MDG 2022 cl. 1.2(iv) — 10% of filled cylinders weighed randomly on\nreceipt. Non-blocking: this records evidence a sample was checked, it\ndoes not gate `POST .../goods-receipt-notes` itself (weighing the\nphysical sample happens after the truck is logged in, not atomically\nwith it).",
+        "operationId": "record_goods_receipt_weighment_api_v1_goods_receipt_notes__grn_id__weighment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grn_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grn Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordWeighmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeighmentRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Goods Receipt Weighment",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      }
+    },
     "/api/v1/inventory-locations/{location_type}/{location_ref_id}/adjustments": {
       "post": {
         "description": "Manual correction. 409 INSUFFICIENT_STOCK / INVALID_STATUS_TRANSITION as applicable.",
@@ -15216,6 +15640,334 @@
         "summary": "Update route status",
         "tags": [
           "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/weighment": {
+      "get": {
+        "operationId": "list_route_weighments_api_v1_routes__route_id__weighment_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeighmentRecordListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Route Weighments",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      },
+      "post": {
+        "description": "MDG 2022 cl. 1.4(c)(d) — 100% of cylinders checked before load-out.\nRecord this (`cylinders_checked` must equal `total_cylinders_in_batch`\n— enforced as a domain invariant) *before* calling\n`POST /routes/{route_id}/load`, which will 409 with\n`WEIGHMENT_CHECK_REQUIRED` if a passing check isn't on file yet for\nevery cylinder type on the load manifest.",
+        "operationId": "record_route_load_out_weighment_api_v1_routes__route_id__weighment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordWeighmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeighmentRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Route Load Out Weighment",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      }
+    },
+    "/api/v1/scales": {
+      "get": {
+        "description": "Tenant-wide scale registry for the dashboard — `expiry` is\n`expiring` (<=30 days) or `expired`, same semantics as\n`GET /compliance-documents`. Readable by anyone who can *record* a\nweighment check, not just manage the registry — a warehouse worker\npicking which scale to use doesn't need `weighment:manage`.",
+        "operationId": "list_scales_api_v1_scales_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expiry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expiry"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaleListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Scales",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      },
+      "post": {
+        "description": "Register a scale — MDG 2022 cl. 1.2(ii)(iii) requires least count\n<=10g and a valid calibration certificate; both are enforced as domain\ninvariants on `Scale`, not just request validation.",
+        "operationId": "register_scale_api_v1_scales_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterScaleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Scale",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      }
+    },
+    "/api/v1/scales/{scale_id}/certificate": {
+      "put": {
+        "description": "Recalibration — a renewed certificate supersedes the old one in\nplace, same asset. MDG has no assumed reverification interval to check\nagainst here; this just records the new validity window.",
+        "operationId": "replace_scale_certificate_api_v1_scales__scale_id__certificate_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scale_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scale Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceScaleCertificateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Scale Certificate",
+        "tags": [
+          "Compliance — Weighment"
+        ]
+      }
+    },
+    "/api/v1/scales/{scale_id}/status": {
+      "put": {
+        "operationId": "set_scale_status_api_v1_scales__scale_id__status_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scale_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scale Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetScaleStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScaleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Scale Status",
+        "tags": [
+          "Compliance — Weighment"
         ]
       }
     },

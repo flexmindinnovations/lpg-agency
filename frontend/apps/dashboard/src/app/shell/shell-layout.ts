@@ -246,6 +246,12 @@ export class ShellLayout {
           route: '/admin/warehouses',
           condition: can('tenant:configure'),
         },
+        {
+          label: 'Scales',
+          icon: 'pi pi-sliders-h',
+          route: '/scales',
+          condition: can('weighment:record'),
+        },
       ]),
       ...buildGroup('Administration', [
         {

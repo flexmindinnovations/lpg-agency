@@ -1,0 +1,57 @@
+:host {
+  display: block;
+  block-size: 100%;
+}
+
+.scale-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  block-size: 100%;
+}
+
+.search-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+::ng-deep .expiry-filter-select {
+  flex-shrink: 0;
+  min-inline-size: 14rem;
+}
+
+.detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  flex: 1;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: var(--typography-caption-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-value {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-primary);
+}
+
+.detail-value a {
+  display: inline-flex;
+  color: var(--color-action-primary);
+}

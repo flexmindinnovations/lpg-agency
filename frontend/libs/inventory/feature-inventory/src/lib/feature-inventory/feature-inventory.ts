@@ -29,12 +29,15 @@ import {
   AdminWarehouseService,
   DeliveryService,
   InventoryService,
+  WeighmentService,
   type AppError,
   type CylinderTypeResponse,
+  type GoodsReceiptResponse,
   type InventoryBalanceLine,
   type InventoryBalanceResponse,
   type InventoryLocationType,
   type InventoryTransactionResponse,
+  type ScaleResponse,
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
@@ -104,10 +107,12 @@ export class FeatureInventory implements OnInit {
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly deliveryService = inject(DeliveryService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
+  private readonly weighmentService = inject(WeighmentService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
+  protected readonly scales = signal<ScaleResponse[]>([]);
 
   protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({ label: toSentenceCase(s), value: s }));
 
@@ -128,6 +133,16 @@ export class FeatureInventory implements OnInit {
     to_status: { required: 'Select the target status.' },
     mode: { required: 'Choose an action.' },
     reason: { required: 'A reason is required.', minlength: 'Give a little more detail.' },
+    scale_id: { required: 'Select a certified scale.' },
+    cylinders_checked: {
+      required: 'Enter how many cylinders were weighed.',
+      min: 'Must be at least 1.',
+      max: 'Cannot exceed the batch size.',
+    },
+    underweight_cylinder_count: {
+      required: 'Enter the underweight count (0 if none).',
+      min: 'Cannot be negative.',
+    },
   };
 
   protected readonly locationType = signal<InventoryLocationType>('warehouse');
@@ -150,6 +165,14 @@ export class FeatureInventory implements OnInit {
     this.locationType() === 'warehouse'
       ? this.warehouses().map((w) => ({ label: w.name, value: w.id }))
       : this.vehicles().map((v) => ({ label: v.registration_number, value: v.id })),
+  );
+
+  /** Certified scales at the currently-selected warehouse — `/scales` has no
+   * server-side warehouse filter (D24 Weighment §API), so this narrows
+   * client-side, same as `activeScalesForWarehouse` in the dispatch load-out
+   * screen. */
+  protected readonly activeScalesForWarehouse = computed(() =>
+    this.scales().filter((s) => s.status === 'active' && s.warehouse_id === this.locationRefId()),
   );
 
   // Modal visibility
@@ -211,6 +234,18 @@ export class FeatureInventory implements OnInit {
     source_omc: [''],
   });
 
+  /** MDG 2022 cl. 1.2(iv) — 10% goods-receipt sample. Surfaced as a second
+   * step inside the same "Receive Goods" drawer once the GRN itself is
+   * saved, since the physical weighing happens after the truck is logged
+   * in, not atomically with it (`foamy-forging-sparrow.md`'s own framing).
+   * Non-blocking — skipping it leaves the GRN as recorded either way. */
+  protected readonly lastGrn = signal<GoodsReceiptResponse | null>(null);
+  protected readonly weighmentForm = this.fb.group({
+    scale_id: ['', [Validators.required]],
+    cylinders_checked: [1, [Validators.required, Validators.min(1)]],
+    underweight_cylinder_count: [0, [Validators.required, Validators.min(0)]],
+  });
+
   protected readonly transferForm = this.fb.group({
     warehouse_id: ['', [Validators.required]],
     vehicle_id: ['', [Validators.required]],
@@ -256,6 +291,9 @@ export class FeatureInventory implements OnInit {
     });
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (ct) => this.cylinderTypes.set(ct),
+    });
+    this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
+      next: (res) => this.scales.set(res.items),
     });
   }
 
@@ -326,6 +364,7 @@ export class FeatureInventory implements OnInit {
 
   protected openGrnModal(): void {
     this.grnForm.reset({ cylinder_type_id: '', quantity_received: 1, source_omc: '' });
+    this.lastGrn.set(null);
     this.showGrnModal.set(true);
   }
 
@@ -341,9 +380,55 @@ export class FeatureInventory implements OnInit {
         source_omc: val.source_omc || null,
       })
       .subscribe({
+        next: (grn) => {
+          // Stock is already recorded — refresh the grid now, then swap the
+          // drawer to the (optional) weighment-sample step rather than
+          // closing it, so the same "Receive Goods" action can flow
+          // straight into logging the MDG-required 10% check.
+          this.loading.set(false);
+          this.loadBalance();
+          this.loadTransactions();
+          this.lastGrn.set(grn);
+          const suggested = Math.max(1, Math.ceil(grn.quantity_received * 0.1));
+          this.weighmentForm.reset({
+            scale_id: this.activeScalesForWarehouse()[0]?.id ?? '',
+            cylinders_checked: Math.min(suggested, grn.quantity_received),
+            underweight_cylinder_count: 0,
+          });
+        },
+        error: (err) => {
+          this.errorMessage.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
+  }
+
+  /** Non-blocking — closes the drawer without recording a sample. */
+  protected skipWeighmentSample(): void {
+    this.showGrnModal.set(false);
+    this.lastGrn.set(null);
+    this.successMessage.set('Done.');
+  }
+
+  protected onSubmitWeighmentSample(): void {
+    const grn = this.lastGrn();
+    if (!grn || this.weighmentForm.invalid) return;
+    const val = this.weighmentForm.getRawValue();
+    this.loading.set(true);
+    this.weighmentService
+      .recordGoodsReceiptWeighment(grn.id, {
+        scale_id: val.scale_id,
+        cylinder_type_id: grn.cylinder_type_id,
+        total_cylinders_in_batch: grn.quantity_received,
+        cylinders_checked: val.cylinders_checked,
+        underweight_cylinder_count: val.underweight_cylinder_count,
+      })
+      .subscribe({
         next: () => {
           this.showGrnModal.set(false);
-          this.refreshAfterMutation();
+          this.lastGrn.set(null);
+          this.successMessage.set('Weighment sample recorded.');
+          this.loading.set(false);
         },
         error: (err) => {
           this.errorMessage.set(errorMessageFor(err));
