@@ -374,3 +374,11 @@ class TenantSuspendedError(ConflictError):
 
     error_code = "TENANT_SUSPENDED"
     title = "This tenant's agency has been suspended."
+
+
+class DuplicateScaleAssetTagError(ConflictError):
+    """A scale with this asset tag is already registered at this warehouse
+    (Weighment Part 1)."""
+
+    error_code = "DUPLICATE_SCALE_ASSET_TAG"
+    title = "A scale with this asset tag is already registered at this warehouse."
