@@ -1,9 +1,28 @@
 # Status: Dashboard Fluent Glass Enterprise Overhaul
 
+**2026-09-06 addendum, read this first:** the Mica/Acrylic **materials**
+described as shipped below were pulled back the day after this doc was last
+updated — `ba2a937` ("pull back the glass — solid overlays, no
+backdrop-filter, tight shadows") removed every `backdrop-filter`, made
+`--surface-mica`/`--surface-acrylic` solid aliases (`--surface-*-blur: none`,
+`--surface-atmosphere` flat, `--surface-noise-opacity: 0`), and tightened the
+elevation ramp — translucent acrylic surfaces were the source of an
+open-flicker bug and washed-out modal backgrounds. **Everything else this doc
+describes is unaffected and still current**: the enterprise-blue palette,
+dark-as-default, route + micro motion, the `lpg-` primitive set, the command
+palette, and the design-system showcase all still stand — only the
+*translucency* was reverted, to flat solid surfaces + tight shadows, "what
+real B2B tools use" per that commit's own message. The stage-by-stage record
+below is kept as-written (an accurate account of what each stage actually
+shipped **at the time**), not rewritten to erase the materials history —
+where a specific line describes a surface treatment `ba2a937` later replaced,
+this addendum is the correction to read alongside it.
+
 **Phase:** 29
-**Status:** Stages 0–10 + 4b done 2026-09-05. The dashboard app now runs the
-Fluent Glass design system: enterprise-blue palette, Mica/Acrylic materials,
-dark-as-default, route + micro motion, a shared `lpg-` primitive set, a global
+**Status:** Stages 0–10 + 4b done 2026-09-05, **materials pulled back
+2026-09-06** (see addendum above). The dashboard app now runs the
+enterprise-blue palette, flat solid surfaces (no backdrop-filter), dark-as-
+default, route + micro motion, a shared `lpg-` primitive set, a global
 command palette, and a live design-system showcase.
 
 ## Context
@@ -37,7 +56,11 @@ default, command palette in scope. Plan: [PLAN.md](./PLAN.md).
 
 Live resolved token values were pulled from the running app and run through a
 contrast audit **with alpha compositing** for the translucent Mica / Acrylic /
-highlight surfaces (script kept in the session scratchpad).
+highlight surfaces (script kept in the session scratchpad). *(As of the
+2026-09-06 addendum above, Mica/Acrylic are solid — the fixed colour values
+below are unaffected, since a solid surface is a stricter, not looser,
+contrast case than the translucent one this audit was compositing against;
+only the "translucent" framing here is now historical.)*
 
 **One failure found and fixed:**
 
@@ -80,13 +103,13 @@ treatment.
 | 1 | Hierarchy obvious in 2s? | Yes — `lpg-page-header` title/subtitle, KPI row, then section cards; consistent on every flagship page. |
 | 2 | Important info prioritised? | Yes — KPI value at `--typography-kpi` 28/600, semantic-toned icons, sparkline; secondary data at 13px muted. |
 | 3 | Keyboard-only operable? | Yes — `Ctrl/Cmd+K` palette with full arrow/enter/esc + focus round-trip; every route has a guard or a documented exemption; PrimeNG focus states on the token focus ring. |
-| 4 | Text readable over every translucent surface? | Yes — the Stage 10 audit composited every Mica/Acrylic/tint pairing; the one sub-AA case was fixed. |
+| 4 | Text readable over every translucent surface? | Yes at the time (the Stage 10 audit composited every Mica/Acrylic/tint pairing; the one sub-AA case was fixed) — moot as of 2026-09-06: Mica/Acrylic are now solid, so this is a strictly easier bar than what was actually verified. |
 | 5 | Motion communicates something? | Yes — route fade/translate signals navigation; `.animate-fade-up` stagger signals list arrival; 1px KPI hover lift signals interactivity. All `prefers-reduced-motion`-gated. |
 | 6 | Calm for long sessions? | Yes — dark default, low-chroma neutrals, noise at 0.03 opacity, motion ≤ 360 ms, no autoplaying or looping animation (live-indicator pulse excepted and reduced-motion-safe). |
 | 7 | Consistent across components? | Yes — one primitive set, all `lpg-` prefixed, all token-driven; `p-*` bound to the same tokens via the preset. |
 | 8 | Semantic states obvious? | Yes — success/warning/danger/info tokens ≥ 3:1, used consistently by `lpg-stat-card`, `lpg-activity-list`, chips, toasts. |
 | 9 | Business health at a glance? | Yes — home leads with 6 KPIs + fleet/inventory charts + recent activity above the fold. |
-| 10 | Works without gradients/blur/animation? | Yes — high-contrast theme ships opaque material fallbacks (`--surface-acrylic-blur: none`, `--surface-atmosphere: none`, `--surface-noise-image: none`, `--elevation-4: none`); reduced-motion disables all transitions; layout is flexbox/grid, not effect-dependent. |
+| 10 | Works without gradients/blur/animation? | Yes — at the time, high-contrast theme shipped opaque material fallbacks (`--surface-acrylic-blur: none`, `--surface-atmosphere: none`, `--surface-noise-image: none`, `--elevation-4: none`) while other themes still had blur; as of 2026-09-06 every theme is opaque by default (blur removed entirely, not just high-contrast-gated), so this now holds even more strongly. Reduced-motion still disables all transitions; layout is still flexbox/grid, not effect-dependent. |
 
 ## Verification
 
