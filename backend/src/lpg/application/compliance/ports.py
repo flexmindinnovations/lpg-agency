@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     import uuid
 
     from lpg.domain.compliance.scale import Scale
+    from lpg.domain.compliance.weighment_record import WeighmentRecord
 
 
 class ScaleRepository(Protocol):
@@ -44,3 +45,24 @@ class ScaleRepository(Protocol):
         status: str | None = None,
         expiry: str | None = None,
     ) -> int: ...
+
+
+class WeighmentRecordRepository(Protocol):
+    """Persistence for `WeighmentRecord` — tenant-scoped by RLS on
+    `compliance.weighment_record`. Append-only: no `save`-then-mutate,
+    just `add`."""
+
+    def next_id(self) -> uuid.UUID: ...
+
+    async def add(self, record: WeighmentRecord) -> None: ...
+
+    async def list_for_reference(
+        self, reference_type: str, reference_id: uuid.UUID
+    ) -> list[WeighmentRecord]: ...
+
+    async def get_latest_passing_for_reference(
+        self, reference_type: str, reference_id: uuid.UUID, *, context: str
+    ) -> WeighmentRecord | None:
+        """The most recent `result = 'pass'` record for this reference and
+        context, if any — what Part 3's load-out gate checks for."""
+        ...

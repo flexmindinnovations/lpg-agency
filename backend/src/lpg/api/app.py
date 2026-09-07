@@ -307,6 +307,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cylinder_ledger.router, prefix=settings.api_v1_prefix)
     app.include_router(delivery.router, prefix=settings.api_v1_prefix)
     app.include_router(compliance.router, prefix=settings.api_v1_prefix)
+    app.include_router(compliance.weighment_router, prefix=settings.api_v1_prefix)
     app.include_router(documents.router, prefix=settings.api_v1_prefix)
     app.include_router(notifications.router, prefix=settings.api_v1_prefix)
     app.include_router(inventory.router, prefix=settings.api_v1_prefix)

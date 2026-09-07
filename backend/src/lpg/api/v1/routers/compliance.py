@@ -8,23 +8,34 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from lpg.api.v1.dependencies.compliance import get_scale_repository
+from lpg.api.v1.dependencies.compliance import (
+    get_record_weighment_use_case,
+    get_scale_repository,
+    get_weighment_record_repository,
+)
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.compliance import (
+    RecordWeighmentRequest,
     RegisterScaleRequest,
     ReplaceScaleCertificateRequest,
     ScaleListResponse,
     ScaleResponse,
     SetScaleStatusRequest,
+    WeighmentRecordListResponse,
+    WeighmentRecordResponse,
 )
 from lpg.application.common.errors import ConflictError, NotFoundError
 from lpg.application.common.ports import FileStorage, UnitOfWork
-from lpg.application.compliance.ports import ScaleRepository
+from lpg.application.compliance.ports import ScaleRepository, WeighmentRecordRepository
 from lpg.application.compliance.use_cases import (
     ListScalesQuery,
     ListScalesUseCase,
+    ListWeighmentRecordsQuery,
+    ListWeighmentRecordsUseCase,
+    RecordWeighmentCommand,
+    RecordWeighmentUseCase,
     RegisterScaleCommand,
     RegisterScaleUseCase,
     ReplaceScaleCertificateCommand,
@@ -37,8 +48,15 @@ from lpg.domain.common.base import DomainError
 
 if TYPE_CHECKING:
     from lpg.domain.compliance.scale import Scale
+    from lpg.domain.compliance.weighment_record import WeighmentRecord
 
 router = APIRouter(prefix="/scales", tags=["Compliance — Weighment"])
+
+#: Weighment-record endpoints are nested under the GRN/route resource they
+#: evidence (`/goods-receipt-notes/{grn_id}/weighment`,
+#: `/routes/{route_id}/weighment`), not under `/scales` — a second router,
+#: same file, both registered in `app.py`.
+weighment_router = APIRouter(tags=["Compliance — Weighment"])
 
 
 async def _to_response(scale: Scale, file_storage: FileStorage) -> ScaleResponse:
@@ -151,6 +169,81 @@ async def replace_scale_certificate(
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
     return await _to_response(scale, file_storage)
+
+
+def _weighment_to_response(record: WeighmentRecord) -> WeighmentRecordResponse:
+    return WeighmentRecordResponse(
+        id=record.id,
+        scale_id=record.scale_id,
+        context=record.context,
+        reference_type=record.reference_type,
+        reference_id=record.reference_id,
+        cylinder_type_id=record.cylinder_type_id,
+        total_cylinders_in_batch=record.total_cylinders_in_batch,
+        cylinders_checked=record.cylinders_checked,
+        underweight_cylinder_count=record.underweight_cylinder_count,
+        tolerance_grams_applied=record.tolerance_grams_applied,
+        result=record.result,
+        recorded_by=record.recorded_by,
+        recorded_at=record.recorded_at,
+    )
+
+
+@weighment_router.post(
+    "/goods-receipt-notes/{grn_id}/weighment",
+    response_model=WeighmentRecordResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("weighment:record"))],
+)
+async def record_goods_receipt_weighment(
+    grn_id: uuid.UUID,
+    request: RecordWeighmentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[RecordWeighmentUseCase, Depends(get_record_weighment_use_case)],
+) -> WeighmentRecordResponse:
+    """MDG 2022 cl. 1.2(iv) — 10% of filled cylinders weighed randomly on
+    receipt. Non-blocking: this records evidence a sample was checked, it
+    does not gate `POST .../goods-receipt-notes` itself (weighing the
+    physical sample happens after the truck is logged in, not atomically
+    with it)."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        record = await use_case.execute(
+            RecordWeighmentCommand(
+                tenant_id=principal.tenant_id,
+                scale_id=request.scale_id,
+                context="goods_receipt_sample",
+                reference_type="grn",
+                reference_id=grn_id,
+                cylinder_type_id=request.cylinder_type_id,
+                total_cylinders_in_batch=request.total_cylinders_in_batch,
+                cylinders_checked=request.cylinders_checked,
+                underweight_cylinder_count=request.underweight_cylinder_count,
+                recorded_by=principal.user_id,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _weighment_to_response(record)
+
+
+@weighment_router.get(
+    "/goods-receipt-notes/{grn_id}/weighment",
+    response_model=WeighmentRecordListResponse,
+    dependencies=[Depends(require_permission("weighment:record"))],
+)
+async def list_goods_receipt_weighments(
+    grn_id: uuid.UUID,
+    repository: Annotated[WeighmentRecordRepository, Depends(get_weighment_record_repository)],
+) -> WeighmentRecordListResponse:
+    use_case = ListWeighmentRecordsUseCase(repository)
+    records = await use_case.execute(
+        ListWeighmentRecordsQuery(reference_type="grn", reference_id=grn_id)
+    )
+    return WeighmentRecordListResponse(items=[_weighment_to_response(r) for r in records])
 
 
 @router.put(

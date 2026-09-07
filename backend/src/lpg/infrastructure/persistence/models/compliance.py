@@ -57,3 +57,31 @@ class ScaleModel(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
     version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
+class WeighmentRecordModel(Base):
+    """Append-only — no standard audit columns, matching `inventory.
+    inventory_transaction`'s precedent (UPDATE/DELETE revoked from the app
+    role at the DB level, see the creating migration)."""
+
+    __tablename__ = "weighment_record"
+    __table_args__ = {"schema": "compliance"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    scale_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("compliance.scale.id"))
+    context: Mapped[str] = mapped_column(String(30))
+    reference_type: Mapped[str] = mapped_column(String(20))
+    reference_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    cylinder_type_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    total_cylinders_in_batch: Mapped[int] = mapped_column(Integer())
+    cylinders_checked: Mapped[int] = mapped_column(Integer())
+    underweight_cylinder_count: Mapped[int] = mapped_column(Integer())
+    tolerance_grams_applied: Mapped[int] = mapped_column(Integer())
+    result: Mapped[str] = mapped_column(String(10))
+    recorded_by: Mapped[uuid.UUID] = mapped_column(Uuid())
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )

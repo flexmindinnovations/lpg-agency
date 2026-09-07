@@ -36,6 +36,21 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # staff. Falls back to `compliance_jobs.DEFAULT_LEAD_DAYS` (30) when
         # a tenant has never set this.
         "compliance_expiry_lead_days",
+        # Weighment (Part 2) — the permissible net-weight shortage, in
+        # grams, for a filled cylinder before it's flagged underweight.
+        # Falls back to `compliance.use_cases.DEFAULT_WEIGHMENT_TOLERANCE_
+        # GRAMS` (150g, Legal Metrology (Packaged Commodities) Rules 2011 —
+        # confirm against the tenant's own OMC before go-live).
+        "weighment_tolerance_grams",
+        # The MDG-required maximum least count (grams) a registered scale
+        # may have — informational/tenant-visible mirror of `domain.
+        # compliance.scale.MAX_LEAST_COUNT_GRAMS` (10g, MDG 2022 cl.
+        # 1.2(ii)(iii)), which is the actual hard-enforced domain invariant.
+        # This config key exists so the number is documented and
+        # tenant-auditable even though nothing currently reads it back to
+        # loosen the invariant — a future MDG edition changing the figure
+        # updates the domain constant, not this key.
+        "weighment_scale_least_count_max_grams",
     }
 )
 

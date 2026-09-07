@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -44,3 +44,31 @@ class ScaleResponse(BaseModel):
 class ScaleListResponse(BaseModel):
     items: list[ScaleResponse]
     total: int
+
+
+class RecordWeighmentRequest(BaseModel):
+    scale_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    total_cylinders_in_batch: int = Field(gt=0)
+    cylinders_checked: int = Field(gt=0)
+    underweight_cylinder_count: int = Field(ge=0)
+
+
+class WeighmentRecordResponse(BaseModel):
+    id: uuid.UUID
+    scale_id: uuid.UUID
+    context: str
+    reference_type: str
+    reference_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    total_cylinders_in_batch: int
+    cylinders_checked: int
+    underweight_cylinder_count: int
+    tolerance_grams_applied: int
+    result: str
+    recorded_by: uuid.UUID
+    recorded_at: datetime
+
+
+class WeighmentRecordListResponse(BaseModel):
+    items: list[WeighmentRecordResponse]
