@@ -45,7 +45,9 @@ from arq.connections import RedisSettings
 
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import get_settings
+from lpg.infrastructure.jobs.compliance_jobs import check_compliance_expiry
 from lpg.infrastructure.jobs.notification_jobs import send_notification
+from lpg.infrastructure.jobs.pool import build_job_queue
 from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 from lpg.infrastructure.persistence.database import build_database
 
@@ -170,6 +172,14 @@ async def startup(ctx: dict[str, Any]) -> None:
     register_realtime_handlers(dispatcher, RedisRealtimePublisher(redis_client))
     ctx["event_dispatcher"] = dispatcher
 
+    # Lets a job enqueue further jobs (`check_compliance_expiry` enqueuing
+    # one `send_notification` per expiring document) — a separate ARQ
+    # connection pool from `redis_client` above, which is this codebase's own
+    # cache/pub-sub client, not ARQ's job-queue connection.
+    job_queue = build_job_queue(settings)
+    await job_queue.connect()
+    ctx["job_queue"] = job_queue
+
     _logger.info("worker_started", environment=settings.environment)
 
 
@@ -183,6 +193,9 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     push_channel = ctx.get("push_channel")
     if push_channel is not None and hasattr(push_channel, "aclose"):
         await push_channel.aclose()
+    job_queue = ctx.get("job_queue")
+    if job_queue is not None:
+        await job_queue.disconnect()
     _logger.info("worker_stopped")
 
 
@@ -190,7 +203,8 @@ class WorkerSettings:
     """ARQ reads these as class attributes — see module docstring."""
 
     cron_jobs: ClassVar = [
-        cron(refresh_materialized_views, hour=2, minute=0)  # Run nightly at 2:00 AM
+        cron(refresh_materialized_views, hour=2, minute=0),  # Run nightly at 2:00 AM
+        cron(check_compliance_expiry, hour=3, minute=0),  # Run nightly at 3:00 AM
     ]
 
     functions: ClassVar = (ping, bulk_cancel_orders, send_notification)

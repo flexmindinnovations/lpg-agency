@@ -27,7 +27,16 @@ if TYPE_CHECKING:
 #: `jsonb` specifically so a new key never needs a schema migration, only
 #: this catalog updated.
 RECOGNIZED_CONFIG_KEYS = frozenset(
-    {"gst_rate_percent", "cancellation_fee_amount", "credit_limit_default"}
+    {
+        "gst_rate_percent",
+        "cancellation_fee_amount",
+        "credit_limit_default",
+        # Nightly `check_compliance_expiry` cron's lead time (days) — how far
+        # ahead of a driver/vehicle compliance document's expiry to notify
+        # staff. Falls back to `compliance_jobs.DEFAULT_LEAD_DAYS` (30) when
+        # a tenant has never set this.
+        "compliance_expiry_lead_days",
+    }
 )
 
 

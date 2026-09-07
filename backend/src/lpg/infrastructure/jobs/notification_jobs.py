@@ -37,9 +37,13 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 "delivery_failed_staff" | "order_placed_staff",
         "tenant_id": str,
         "order_id": str,
-        # Every type resolves its recipient (customer, the assigned driver
-        # for "driver_assigned", or branch staff for "delivery_failed_staff")
-        # by fetching the order itself — the payload carries nothing else.
+        # Every order-lifecycle type resolves its recipient (customer, the
+        # assigned driver for "driver_assigned", or branch staff for
+        # "delivery_failed_staff") by fetching the order itself — the
+        # payload carries nothing else. "compliance_document_expiring_staff"
+        # is not order-scoped — it carries "document_id"/"owner_type"/
+        # "owner_id"/"doc_type"/"expiry_date" instead (see
+        # `compliance_jobs.check_compliance_expiry`, which enqueues it).
     }
     """
     structlog.contextvars.bind_contextvars(
@@ -130,13 +134,14 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif notification_type in (
                 "cash_shortfall_staff",
                 "route_load_confirmed_staff",
+                "compliance_document_expiring_staff",
             ):
                 # Tenant-wide ops team — a cash discrepancy (or a driver
-                # confirming the van load) is the office's business, not one
-                # branch's. Same identity-role resolution as
-                # `order_placed_staff` (the demo seed doesn't wire the
-                # employee -> phone -> identity hop `EmployeeBranchStaffResolver`
-                # needs).
+                # confirming the van load, or a licence/RC about to expire)
+                # is the office's business, not one branch's. Same
+                # identity-role resolution as `order_placed_staff` (the demo
+                # seed doesn't wire the employee -> phone -> identity hop
+                # `EmployeeBranchStaffResolver` needs).
                 from lpg.infrastructure.persistence.repositories.identity import (
                     SqlAlchemyStaffUserRepository,
                 )
@@ -232,6 +237,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif notification_type in ("route_ready", "route_load_confirmed_staff"):
                 reference_type = "route"
                 reference_id = uuid.UUID(payload["route_id"])
+            elif notification_type == "compliance_document_expiring_staff":
+                reference_type = "compliance_document"
+                reference_id = uuid.UUID(payload["document_id"])
             else:
                 reference_type = "order"
                 reference_id = (
@@ -391,6 +399,7 @@ def _get_title(notification_type: str) -> str:
         "route_load_confirmed_staff": "Van Load Confirmed",
         "route_ready": "Route Ready",
         "stop_cancelled": "Stop Cancelled",
+        "compliance_document_expiring_staff": "Compliance Document Expiring",
     }
     return titles.get(notification_type, "Notification")
 
@@ -411,6 +420,14 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
     if notification_type == "route_load_confirmed_staff":
         route_short = payload.get("route_id", "Unknown")[:8].upper()
         return f"The driver confirmed the van load for route #{route_short}."
+    if notification_type == "compliance_document_expiring_staff":
+        doc_label = str(payload.get("doc_type", "document")).replace("_", " ")
+        owner_label = payload.get("owner_type", "record")
+        expiry = payload.get("expiry_date") or "soon"
+        return (
+            f"A {owner_label}'s {doc_label} expires on {expiry}. "
+            "Please arrange a renewal and upload the replacement."
+        )
     bodies = {
         "order_placed": (
             f"We've received your order #{order_id_short}. "
