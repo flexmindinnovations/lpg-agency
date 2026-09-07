@@ -10,12 +10,6 @@
   block-size: 100%;
 }
 
-.search-bar {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-}
-
 ::ng-deep .expiry-filter-select {
   flex-shrink: 0;
   min-inline-size: 14rem;

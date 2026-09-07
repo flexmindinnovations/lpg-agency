@@ -1,4 +1,4 @@
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { HasPermissionDirective } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
@@ -80,7 +80,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-inventory',
   standalone: true,
-  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective, 
+  imports: [PageHeaderComponent, HeaderTitlePortalDirective, 
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,

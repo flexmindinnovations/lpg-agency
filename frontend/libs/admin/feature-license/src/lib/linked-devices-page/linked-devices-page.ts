@@ -90,10 +90,6 @@ class DeviceStatusCell {
       }
 
       .grid-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        min-block-size: 0;
         margin-block-start: var(--spacing-lg);
       }
 

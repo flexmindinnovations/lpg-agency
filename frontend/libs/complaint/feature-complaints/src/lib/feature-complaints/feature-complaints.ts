@@ -24,7 +24,7 @@ import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminStaffUserService,
   CustomerService,
@@ -61,7 +61,6 @@ function errorMessageFor(_error: unknown): string {
   selector: 'lib-feature-complaints',
   imports: [
     DatePipe,
-    HeaderPortalDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,

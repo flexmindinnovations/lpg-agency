@@ -6,58 +6,60 @@
       <p class="page-subtitle">Manage the vehicle fleet, registration, and maintenance status.</p>
     </div>
     </ng-template>
-    <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-        <button
-          *lpgHasPermission="'vehicles:manage'"
-          #registerTriggerEl
-          pButton
-          type="button"
-          (click)="openRegisterModal()"
-        >
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>Register Vehicle <kbd class="ml-1 text-xs opacity-70">Alt+N</kbd></span>
-        </button>
-      </div>
-</ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
   }
 
-  @if (vehicles().length > 0 || searchQuery().length > 0) {
-  <div class="search-bar">
-    <p-iconfield styleClass="w-full">
-      <p-inputicon styleClass="pi pi-search" />
-      <input
-        id="vehicle-search-input"
-        class="search-input"
-        pInputText
-        type="text"
-        placeholder="Search by registration, make or model... (/)"
-        [value]="searchQuery()"
-        (input)="onSearch($event)"
-      />
-    </p-iconfield>
-    <p-select
-      [options]="expiryFilterOptions"
-      optionLabel="label"
-      optionValue="value"
-      [ngModel]="expiryFilter()"
-      (ngModelChange)="expiryFilter.set($event)"
-      aria-label="Filter by document expiry"
-      styleClass="expiry-filter-select"
-    ></p-select>
+  <div class="data-toolbar">
+    <div class="search-bar data-toolbar__filters">
+      @if (vehicles().length > 0 || searchQuery().length > 0) {
+      <p-iconfield styleClass="w-full">
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          id="vehicle-search-input"
+          class="search-input"
+          pInputText
+          type="text"
+          placeholder="Search by registration, make or model... (/)"
+          [value]="searchQuery()"
+          (input)="onSearch($event)"
+        />
+      </p-iconfield>
+      <p-select
+        [options]="expiryFilterOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="expiryFilter()"
+        (ngModelChange)="expiryFilter.set($event)"
+        aria-label="Filter by document expiry"
+        styleClass="expiry-filter-select"
+      ></p-select>
+      }
+    </div>
+    <div class="data-toolbar__actions">
+      <button
+        *lpgHasPermission="'vehicles:manage'"
+        #registerTriggerEl
+        pButton
+        type="button"
+        (click)="openRegisterModal()"
+      >
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Register Vehicle</span>
+      </button>
+    </div>
   </div>
-  }
 
-  <lpg-data-grid
-    [rows]="filteredVehicles()"
-    [columns]="columns"
-    [loading]="loading()"
-    ariaLabel="Vehicles list"
-  />
+  <section class="grid-section">
+    <lpg-data-grid
+      [rows]="filteredVehicles()"
+      [columns]="columns"
+      [loading]="loading()"
+      ariaLabel="Vehicles list"
+    />
+  </section>
 
   <!-- Register Vehicle Modal -->
   <p-drawer

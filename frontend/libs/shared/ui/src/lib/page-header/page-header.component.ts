@@ -5,12 +5,15 @@ import { RouterLink } from '@angular/router';
  * The title block for a page — heading, optional subtitle, optional
  * back-link, and an `actions` slot.
  *
- * The dashboard shell renders page titles and page actions through two
- * separate header portals (`lpgHeaderTitlePortal` / `lpgHeaderPortal`), so
- * in that context a page puts `<lpg-page-header>` in the title portal and
- * leaves the `actions` slot empty, projecting its buttons into the actions
- * portal instead. Used standalone (not via portals) it renders the whole
- * header including actions.
+ * The dashboard shell portals page titles into its own fixed top bar via
+ * `lpgHeaderTitlePortal` — a page puts `<lpg-page-header>` there. Primary
+ * page actions (Add/Register/etc.) do **not** go through a header portal —
+ * they render inline in the page's own content, in its `.data-toolbar__actions`
+ * row alongside Search/Filter/Export, so they stay next to the data they
+ * act on rather than floating in the global header, disconnected from it.
+ * Used standalone (not via a title portal) this component renders the
+ * whole header including its own `actions` slot, for a page that isn't
+ * shell-wrapped.
  */
 @Component({
   selector: 'lpg-page-header',

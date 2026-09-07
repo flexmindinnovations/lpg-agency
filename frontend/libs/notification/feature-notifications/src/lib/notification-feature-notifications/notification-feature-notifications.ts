@@ -1,4 +1,3 @@
-import { HeaderPortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, forwardRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -52,7 +51,7 @@ export class NotificationActionCell {
 
 @Component({
   selector: 'lib-notification-feature-notifications',
-  imports: [HeaderPortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, DataGridComponent],
+  imports: [ButtonDirective, ButtonIcon, ButtonLabel, DataGridComponent],
   templateUrl: './notification-feature-notifications.html',
   styleUrl: './notification-feature-notifications.css',
   changeDetection: ChangeDetectionStrategy.OnPush

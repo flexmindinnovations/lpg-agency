@@ -1,4 +1,4 @@
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,7 +8,6 @@ import {
   inject,
   signal,
   viewChild,
-  DestroyRef,
 } from '@angular/core';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { map, type Observable } from 'rxjs';
@@ -22,7 +21,6 @@ import {
   type ChipSeverity,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -76,7 +74,6 @@ const MAX_LEAST_COUNT_GRAMS = 10;
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
-    HeaderPortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -104,8 +101,6 @@ export class FeatureScales implements OnInit {
   private readonly weighmentService = inject(WeighmentService);
   private readonly documentService = inject(DocumentService);
   private readonly warehouseService = inject(AdminWarehouseService);
-  private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
 
   private static readonly STATUS_SEVERITY: Record<string, ChipSeverity> = {
@@ -229,21 +224,6 @@ export class FeatureScales implements OnInit {
   ngOnInit(): void {
     this.loadWarehouses();
     this.loadScales();
-
-    const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      alt: true,
-      description: 'Register new scale',
-      handler: () => {
-        if (!this.showRegisterModal()) {
-          this.openRegisterModal();
-        }
-      },
-    });
-
-    this.destroyRef.onDestroy(() => {
-      unregisterNew();
-    });
   }
 
   protected loadWarehouses(): void {

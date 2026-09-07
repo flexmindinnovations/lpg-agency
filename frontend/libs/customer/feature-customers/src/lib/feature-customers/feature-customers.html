@@ -7,23 +7,11 @@
           subtitle="Manage customer registrations, addresses, and KYC documents."
         />
       </ng-template>
-      <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-          <a
-            *lpgHasPermission="'customers:create'"
-            pButton
-            routerLink="new"
-          >
-            <i pButtonIcon class="pi pi-plus"></i>
-            <span pButtonLabel>Register Customer <kbd class="ml-1 text-xs opacity-70">Alt+C</kbd></span>
-          </a>
-        </div>
-</ng-template>
     </div>
 
-    @if (customers().length > 0 || searchQuery().length > 0) {
     <div class="data-toolbar">
       <div class="data-toolbar__filters">
+        @if (customers().length > 0 || searchQuery().length > 0) {
         <p-iconfield class="customer-search-field">
           <p-inputicon class="pi pi-search" />
           <input
@@ -36,8 +24,10 @@
             (input)="onSearch($event)"
           />
         </p-iconfield>
+        }
       </div>
       <div class="data-toolbar__actions">
+        @if (customers().length > 0 || searchQuery().length > 0) {
         <button pButton severity="secondary" (click)="filterPopover.toggle($event)">
           <i pButtonIcon class="pi pi-filter"></i>
           <span pButtonLabel>Filter</span>
@@ -97,16 +87,22 @@
             </div>
           </ng-template>
         </p-popover>
+        }
+        <a *lpgHasPermission="'customers:create'" pButton routerLink="new">
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Register Customer</span>
+        </a>
       </div>
     </div>
-    }
 
-    <lpg-data-grid
-      [rows]="filteredCustomers()"
-      [columns]="columns"
-      [loading]="loading()"
-      ariaLabel="Customers list"
-    />
+    <section class="grid-section">
+      <lpg-data-grid
+        [rows]="filteredCustomers()"
+        [columns]="columns"
+        [loading]="loading()"
+        ariaLabel="Customers list"
+      />
+    </section>
   </div>
 </div>
 

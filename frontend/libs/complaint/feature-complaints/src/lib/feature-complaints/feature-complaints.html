@@ -5,33 +5,36 @@
   </div>
 </ng-template>
 
-<ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-    <!-- Backend gates raise/assign/resolve on a single 'complaints.manage'
-         code (routers/complaint.py), not the finer-grained 'complaints:create'/
-         'complaints:assign'/'complaints:resolve' codes this used to check —
-         'complaints:assign' doesn't even exist as a permission row, so that
-         button could never render for anyone. Matching backend reality. -->
-    <button *lpgHasPermission="'complaints.manage'"
-      #registerTriggerEl
-      pButton
-      type="button"
-      (click)="openRaiseModal()"
-    >
-      <i pButtonIcon class="pi pi-plus"></i>
-      <span pButtonLabel>Raise Complaint</span>
-    </button>
-  </div>
-</ng-template>
-
 <div class="complaint-container">
+  <div class="data-toolbar">
+    <div class="data-toolbar__filters"></div>
+    <div class="data-toolbar__actions">
+      <!-- Backend gates raise/assign/resolve on a single 'complaints.manage'
+           code (routers/complaint.py), not the finer-grained 'complaints:create'/
+           'complaints:assign'/'complaints:resolve' codes this used to check —
+           'complaints:assign' doesn't even exist as a permission row, so that
+           button could never render for anyone. Matching backend reality. -->
+      <button *lpgHasPermission="'complaints.manage'"
+        #registerTriggerEl
+        pButton
+        type="button"
+        (click)="openRaiseModal()"
+      >
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Raise Complaint</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Grid -->
-  <lpg-data-grid
-    ariaLabel="Complaints grid"
-    [rows]="complaints()"
-    [columns]="columns"
-    [loading]="loading()"
-  />
+  <section class="grid-section">
+    <lpg-data-grid
+      ariaLabel="Complaints grid"
+      [rows]="complaints()"
+      [columns]="columns"
+      [loading]="loading()"
+    />
+  </section>
 </div>
 
 <!-- Details Drawer -->

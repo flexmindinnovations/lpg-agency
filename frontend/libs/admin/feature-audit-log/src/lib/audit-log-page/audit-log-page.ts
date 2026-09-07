@@ -75,14 +75,16 @@ const ACTION_SEVERITY: Record<string, string> = {
         </div>
       </div>
 
-      <lpg-data-grid
-        [rows]="entries()"
-        [columns]="columns"
-        [loading]="loading()"
-        [selectionMode]="'single'"
-        (selectionChange)="onSelectionChange($event)"
-        ariaLabel="Audit log"
-      />
+      <section class="grid-section">
+        <lpg-data-grid
+          [rows]="entries()"
+          [columns]="columns"
+          [loading]="loading()"
+          [selectionMode]="'single'"
+          (selectionChange)="onSelectionChange($event)"
+          ariaLabel="Audit log"
+        />
+      </section>
 
       @if (nextCursor()) {
         <div class="load-more">

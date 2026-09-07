@@ -6,14 +6,6 @@
         <p class="page-subtitle">Plan routes, load vehicles, and assign orders to drivers.</p>
       </div>
     </ng-template>
-    <ng-template lpgHeaderPortal>
-      <div class="page-header__actions">
-        <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>Plan Route</span>
-        </button>
-      </div>
-    </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
@@ -23,35 +15,43 @@
     <p-message severity="success">{{ msg }}</p-message>
   }
 
-  <div class="filters-row">
-    <lpg-form-field class="filters-row__field" label="Branch" for="filter_branch">
-      <p-select
-        inputId="filter_branch"
-        [options]="branches()"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="All branches"
-        [showClear]="true"
-        [ngModel]="filterBranchId()"
-        (ngModelChange)="onFilterBranchChange($event)"
-        [fluid]="true"
-      />
-    </lpg-form-field>
-    <lpg-form-field class="filters-row__field" label="Date" for="filter_date">
-      <p-datepicker
-        inputId="filter_date"
-        iconDisplay="input"
-        [showIcon]="true"
-        [showOnFocus]="false"
-        [showButtonBar]="true"
-        dateFormat="yy-mm-dd"
-        placeholder="All dates"
-        appendTo="body"
-        [ngModel]="filterDate()"
-        (ngModelChange)="onFilterDateChange($event)"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+  <div class="data-toolbar">
+    <div class="filters-row data-toolbar__filters">
+      <lpg-form-field class="filters-row__field" label="Branch" for="filter_branch">
+        <p-select
+          inputId="filter_branch"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="All branches"
+          [showClear]="true"
+          [ngModel]="filterBranchId()"
+          (ngModelChange)="onFilterBranchChange($event)"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field class="filters-row__field" label="Date" for="filter_date">
+        <p-datepicker
+          inputId="filter_date"
+          iconDisplay="input"
+          [showIcon]="true"
+          [showOnFocus]="false"
+          [showButtonBar]="true"
+          dateFormat="yy-mm-dd"
+          placeholder="All dates"
+          appendTo="body"
+          [ngModel]="filterDate()"
+          (ngModelChange)="onFilterDateChange($event)"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+    </div>
+    <div class="data-toolbar__actions">
+      <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Plan Route</span>
+      </button>
+    </div>
   </div>
 
   <div class="dispatch-layout">

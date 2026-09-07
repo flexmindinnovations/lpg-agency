@@ -1,4 +1,4 @@
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, of, type Observable } from 'rxjs';
@@ -76,7 +76,6 @@ class FlagDefaultCell {
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
-    HeaderPortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -99,11 +98,13 @@ class FlagDefaultCell {
           <p class="page-subtitle">Manage platform-wide feature flags and rollout percentages.</p>
         </div>
     </ng-template>
-        <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-            <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Create Flag</span></button>
-          </div>
-</ng-template>
+      </div>
+
+      <div class="data-toolbar">
+        <div class="data-toolbar__filters"></div>
+        <div class="data-toolbar__actions">
+          <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Create Flag</span></button>
+        </div>
       </div>
 
       <section class="grid-section">

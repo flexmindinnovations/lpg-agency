@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
 import { FeatureScales } from './feature-scales';
 import { ApiConfiguration } from '@lpg/shared/data-access';
+import { PERMISSION_CHECKER } from '@lpg/shared/util';
 
 describe('FeatureScales', () => {
   let component: FeatureScales;
@@ -17,6 +19,7 @@ describe('FeatureScales', () => {
         provideHttpClientTesting(),
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
         MessageService,
+        { provide: PERMISSION_CHECKER, useValue: signal(null) },
       ],
     }).compileComponents();
 

@@ -1,4 +1,4 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -42,7 +42,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-price-list-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -53,11 +53,6 @@ function errorMessageFor(error: unknown): string {
           <p class="page-subtitle">Set and track cylinder prices by type, customer category, and branch.</p>
         </div>
     </ng-template>
-        <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-            <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Price</span></button>
-          </div>
-</ng-template>
       </div>
 
       @if (prices().length > 0) {
@@ -70,6 +65,7 @@ function errorMessageFor(error: unknown): string {
           </div>
           <div class="data-toolbar__actions">
             <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
+            <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Price</span></button>
           </div>
         </div>
       }
@@ -168,13 +164,6 @@ function errorMessageFor(error: unknown): string {
         display: flex;
         flex-direction: column;
         block-size: 100%;
-      }
-
-      .grid-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        min-block-size: 0;
       }
 
     `,

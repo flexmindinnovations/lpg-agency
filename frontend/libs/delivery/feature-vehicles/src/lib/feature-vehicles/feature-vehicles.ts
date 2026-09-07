@@ -1,4 +1,4 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -76,7 +76,7 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-vehicles',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
+  imports: [HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -281,17 +281,6 @@ export class FeatureVehicles implements OnInit {
     this.loadVehicleComplianceFlags();
 
 
-    const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      alt: true,
-      description: 'Register new vehicle',
-      handler: () => {
-        if (!this.showRegisterModal()) {
-          this.openRegisterModal();
-        }
-      }
-    });
-
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus vehicle search',
@@ -304,7 +293,6 @@ export class FeatureVehicles implements OnInit {
     });
 
     this.destroyRef.onDestroy(() => {
-      unregisterNew();
       unregisterSearch();
     });
   }

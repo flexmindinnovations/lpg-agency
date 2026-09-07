@@ -2,49 +2,50 @@
   <lpg-page-header title="Employees" subtitle="Manage employee registrations and profiles." />
 </ng-template>
 
-<ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-    <button
-      *lpgHasPermission="'users:manage'"
-      #registerTriggerEl
-      pButton
-      type="button"
-      (click)="openRegisterModal()"
-    >
-      <i pButtonIcon class="pi pi-plus"></i>
-      <span pButtonLabel>Register Employee <kbd class="ml-1 text-xs opacity-70">Alt+N</kbd></span>
-    </button>
-  </div>
-</ng-template>
-
 <div class="employee-container">
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
   }
 
-  @if (employees().length > 0 || searchQuery().length > 0) {
-  <div class="search-bar">
-    <p-iconfield styleClass="w-full">
-      <p-inputicon styleClass="pi pi-search" />
-      <input
-        id="employee-search-input"
-        class="search-input"
-        pInputText
-        type="text"
-        placeholder="Search by name or code... (/)"
-        [value]="searchQuery()"
-        (input)="onSearch($event)"
-      />
-    </p-iconfield>
+  <div class="data-toolbar">
+    <div class="search-bar data-toolbar__filters">
+      @if (employees().length > 0 || searchQuery().length > 0) {
+      <p-iconfield styleClass="w-full">
+        <p-inputicon styleClass="pi pi-search" />
+        <input
+          id="employee-search-input"
+          class="search-input"
+          pInputText
+          type="text"
+          placeholder="Search by name or code... (/)"
+          [value]="searchQuery()"
+          (input)="onSearch($event)"
+        />
+      </p-iconfield>
+      }
+    </div>
+    <div class="data-toolbar__actions">
+      <button
+        *lpgHasPermission="'users:manage'"
+        #registerTriggerEl
+        pButton
+        type="button"
+        (click)="openRegisterModal()"
+      >
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>Register Employee</span>
+      </button>
+    </div>
   </div>
-  }
 
-  <lpg-data-grid
-    [rows]="employees()"
-    [columns]="columns"
-    [loading]="loading()"
-    ariaLabel="Employees list"
-  />
+  <section class="grid-section">
+    <lpg-data-grid
+      [rows]="employees()"
+      [columns]="columns"
+      [loading]="loading()"
+      ariaLabel="Employees list"
+    />
+  </section>
 
   <!-- Register Employee Drawer -->
   <p-drawer

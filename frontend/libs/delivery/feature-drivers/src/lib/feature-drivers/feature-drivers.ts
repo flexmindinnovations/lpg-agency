@@ -1,4 +1,4 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -81,7 +81,7 @@ function formatDateForApi(value: unknown): string | undefined {
 @Component({
   selector: 'lpg-feature-drivers',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
+  imports: [HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -318,17 +318,6 @@ export class FeatureDrivers implements OnInit {
     });
 
 
-    const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      alt: true,
-      description: 'Register new driver',
-      handler: () => {
-        if (!this.showRegisterModal()) {
-          this.openRegisterModal();
-        }
-      }
-    });
-
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus driver search',
@@ -341,7 +330,6 @@ export class FeatureDrivers implements OnInit {
     });
 
     this.destroyRef.onDestroy(() => {
-      unregisterNew();
       unregisterSearch();
     });
   }

@@ -1,4 +1,4 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,7 +7,6 @@ import {
   input,
   signal,
   computed,
-  DestroyRef
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -17,7 +16,6 @@ import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 
-import { KeyboardShortcutsService } from '@lpg/shared/util';
 import { FormFieldComponent } from '@lpg/shared/ui';
 
 import {
@@ -41,7 +39,7 @@ interface EnrichedBalance {
 @Component({
   selector: 'lpg-feature-ledger',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
+  imports: [HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -64,8 +62,6 @@ export class FeatureLedger implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly messageService = inject(MessageService);
   private readonly fb = inject(NonNullableFormBuilder);
-  private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
-  private readonly destroyRef = inject(DestroyRef);
 
   ledger = signal<CylinderLedgerResponse | null>(null);
   cylinderTypes = signal<CylinderTypeResponse[]>([]);
@@ -120,22 +116,6 @@ export class FeatureLedger implements OnInit {
 
   ngOnInit(): void {
     this.loadData();
-    
-    
-    const unregisterAdjust = this.keyboardShortcuts.register({
-      key: 'j',
-      alt: true,
-      description: 'Adjust ledger balance',
-      handler: () => {
-        // Prevent opening if we are already loading or submitting, or if already open
-        if (!this.adjustModalVisible() && !this.loading()) {
-          this.openAdjustModal();
-        }
-      }
-    });
-    this.destroyRef.onDestroy(() => {
-      unregisterAdjust();
-    });
   }
 
   loadData() {

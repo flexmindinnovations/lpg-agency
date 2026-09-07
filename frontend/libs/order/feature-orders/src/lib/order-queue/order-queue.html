@@ -6,42 +6,44 @@
         [subtitle]="total() + ' order' + (total() === 1 ? '' : 's')"
       />
     </ng-template>
-    <ng-template lpgHeaderPortal>
-      <div class="page-header__actions">
-        <button *lpgHasPermission="'orders:create'" #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>New Booking</span>
-        </button>
-      </div>
-    </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
   }
 
-  <div class="filters">
-    <div class="filters__field">
-      <label for="status_filter">Status</label>
-      <p-select
-        id="status_filter"
-        [options]="statusOptions"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="All statuses"
-        [showClear]="true"
-        [ngModel]="statusFilter()"
-        (ngModelChange)="onStatusFilterChange($event)"
-      ></p-select>
+  <div class="data-toolbar">
+    <div class="filters data-toolbar__filters">
+      <div class="filters__field">
+        <label for="status_filter">Status</label>
+        <p-select
+          id="status_filter"
+          [options]="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="All statuses"
+          [showClear]="true"
+          [ngModel]="statusFilter()"
+          (ngModelChange)="onStatusFilterChange($event)"
+        ></p-select>
+      </div>
+    </div>
+    <div class="data-toolbar__actions">
+      <button *lpgHasPermission="'orders:create'" #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
+        <i pButtonIcon class="pi pi-plus"></i>
+        <span pButtonLabel>New Booking</span>
+      </button>
     </div>
   </div>
 
-  <lpg-data-grid
-    [rows]="orders()"
-    [columns]="orderColumns"
-    [loading]="loading()"
-    ariaLabel="Order queue"
-  />
+  <section class="grid-section">
+    <lpg-data-grid
+      [rows]="orders()"
+      [columns]="orderColumns"
+      [loading]="loading()"
+      ariaLabel="Order queue"
+    />
+  </section>
 
   <!-- Create Order Drawer -->
   <p-drawer

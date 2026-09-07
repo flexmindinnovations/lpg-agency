@@ -1,5 +1,5 @@
 
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
@@ -111,7 +111,7 @@ function toDateOnlyString(date: Date): string {
 @Component({
   selector: 'lpg-feature-dispatch',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, HeaderPortalDirective,
+  imports: [HeaderTitlePortalDirective,
     DatePipe,
     TitleCasePipe,
     FormsModule,

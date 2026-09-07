@@ -1,4 +1,4 @@
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -69,7 +69,6 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
   standalone: true,
   imports: [
     PageHeaderComponent,
-    HeaderPortalDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
@@ -186,17 +185,6 @@ export class FeatureEmployees implements OnInit {
     this.loadBranches();
     this.loadEmployees();
 
-    const unregisterNew = this.keyboardShortcuts.register({
-      key: 'n',
-      alt: true,
-      description: 'Register new employee',
-      handler: () => {
-        if (!this.showRegisterModal()) {
-          this.openRegisterModal();
-        }
-      },
-    });
-
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus employee search',
@@ -209,7 +197,6 @@ export class FeatureEmployees implements OnInit {
     });
 
     this.destroyRef.onDestroy(() => {
-      unregisterNew();
       unregisterSearch();
     });
   }

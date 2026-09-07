@@ -1,4 +1,4 @@
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
@@ -57,7 +57,6 @@ function errorMessageFor(error: unknown): string {
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
-    HeaderPortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     ButtonIcon,
@@ -81,11 +80,6 @@ function errorMessageFor(error: unknown): string {
           <p class="page-subtitle">Issue and manage every tenant's product license.</p>
         </div>
     </ng-template>
-        <ng-template lpgHeaderPortal>
-  <div class="page-header__actions">
-            <button pButton (click)="openIssueDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Issue License</span></button>
-          </div>
-</ng-template>
       </div>
 
       @if (!loading() && licenses().length === 0) {
@@ -96,6 +90,12 @@ function errorMessageFor(error: unknown): string {
           <button pButton class="mt-4" (click)="openIssueDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Issue License</span></button>
         </div>
       } @else {
+        <div class="data-toolbar">
+          <div class="data-toolbar__filters"></div>
+          <div class="data-toolbar__actions">
+            <button pButton (click)="openIssueDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Issue License</span></button>
+          </div>
+        </div>
         <section class="grid-section">
           <lpg-data-grid
             [rows]="licenses()"
@@ -329,10 +329,6 @@ function errorMessageFor(error: unknown): string {
       }
 
       .grid-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        min-block-size: 0;
         margin-block-start: var(--spacing-lg);
       }
 

@@ -1,4 +1,4 @@
-import { HeaderPortalDirective , HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -73,7 +73,7 @@ import { TitleCasePipe } from '@angular/common';
 @Component({
   selector: 'lpg-feature-customers',
   standalone: true,
-  imports: [PageHeaderComponent, HeaderTitlePortalDirective, HeaderPortalDirective,
+  imports: [PageHeaderComponent, HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -286,15 +286,6 @@ export class FeatureCustomers implements OnInit {
     this.openCustomerFromQueryParam();
 
 
-    const unregisterNew = this.keyboardShortcuts.register({
-      key: 'c',
-      alt: true,
-      description: 'Register new customer',
-      handler: () => {
-        // Navigate or do nothing
-      }
-    });
-    
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus customer search',
@@ -307,7 +298,6 @@ export class FeatureCustomers implements OnInit {
     });
 
     this.destroyRef.onDestroy(() => {
-      unregisterNew();
       unregisterSearch();
     });
   }
