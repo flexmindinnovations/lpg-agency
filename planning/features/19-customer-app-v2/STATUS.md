@@ -158,11 +158,18 @@ App's phone-OTP sign-in works with the seeded account.
 
 - Re-verify invoices / support / profile / address CRUD screens on-device
   post-rebuild (widget tests pass; not walked through the emulator).
-- iOS Firebase (`GoogleService-Info.plist` + APNs key).
-- Driver app only *views* a route + shares location — the delivery workflow
-  (mark departed, record delivery + proof-of-delivery, collect payment) still
-  lives only in the dashboard/API.
 - **iOS** — `GoogleService-Info.plist` + APNs auth key not set up.
+- ~~Driver app only *views* a route + shares location — the delivery workflow
+  (mark departed, record delivery + proof-of-delivery, collect payment) still
+  lives only in the dashboard/API.~~ **Stale — corrected 2026-09-07.** This
+  line was never updated after the driver app grew its own delivery
+  workflow; it already has all three pieces on-device, not just in the
+  dashboard/API: `StopDetailScreen`'s "Start this delivery" button calls
+  `deliveryMutationsProvider.departStop()` (mark departed, queued offline —
+  `3860416`); `RecordDeliveryScreen` captures quantities, payment method,
+  the customer's signature, a delivery photo, and GPS (proof-of-delivery +
+  payment collection — `64734e0`, refined through `26f843f`); a "Delivery
+  failed" action opens `FailedDeliverySheet` for the failure path.
 - **Driver-app background location** — DONE (commit `f57658e`): geolocator
   runs an Android foreground service / iOS background updates, so sharing
   continues when the Active Delivery screen closes or the app is backgrounded.
