@@ -957,6 +957,45 @@ hooks:
 
 ---
 
+## ADR-039: Batch-Level Weighment Records, Not Per-Cylinder Serial Tracking
+
+**Status:** Accepted
+
+**Context:** The Weighment subsystem (`docs/research/feature-gap-analysis.md` R1 · `planning/features/20-regulatory-compliance`) implements the two checks MDG 2022 requires — a 10% random sample at goods receipt (cl. 1.2(iv)) and a 100% check before load-out (cl. 1.4(c)(d)). The phase's own `PLAN.md` describes this as "per-cylinder weighment records linked to the delivery," which would mean a `WeighmentRecord` referencing individual cylinder serials. No cylinder-serial identity exists yet anywhere in the system — that is subsystem 3 of this same phase ("Cylinder Identity"), the plan document's own words calling it "the deepest schema change here," and explicitly a later, separate slice of work. Weighment could not wait for it: an agency with no working scale evidence at all is itself an MDG irregularity regardless of what else is missing, making Weighment the phase's own Tier 0 (cheap effort, high consequence) priority.
+
+**Decision:** `WeighmentRecord` (`domain/compliance/weighment_record.py`) records against `(cylinder_type_id, reference_type, reference_id)` — a goods-receipt note or a route — carrying `total_cylinders_in_batch`, `cylinders_checked`, and `underweight_cylinder_count` as counts, not a list of cylinder serials. A record answers "how many of this cylinder type were checked, out of how many in this batch, and how many failed" — the literal shape of evidence the MDG clauses ask for — without needing an identity that doesn't exist yet.
+
+**Consequences:**
+- The 100% load-out gate (ADR-040) can enforce "every cylinder type on the manifest has a passing check" by comparing `cylinders_checked == total_cylinders_in_batch` per `(cylinder_type_id, route_id)` — a count comparison, not a join against a serial-tracked inventory that doesn't exist.
+- `underweight_cylinder_count` is a count, not a set of specific serials to segregate — MDG's own remedy ("segregate and return in the same truck," R1) is satisfied by the count triggering a `fail` result and downstream staff attention; today's system has no cylinder-serial reference to attach a segregation instruction to individually. Same reasoning `compute_weighment_result()` documents inline.
+- The upgrade path is additive, not a redesign: once Cylinder Identity lands, a `cylinder_serial_ids: list[str] | None` column can be added to `WeighmentRecord` (nullable, so every record made before that migration stays valid exactly as recorded) without touching `total_cylinders_in_batch`/`cylinders_checked`/`underweight_cylinder_count`, the load-out gate's comparison, or any endpoint contract already shipped.
+- The cost accepted now: a `WeighmentRecord` cannot answer "was cylinder serial X specifically checked" — only "N of this type were checked in this batch, M failed." Acceptable because no other part of the system can answer that question yet either; per-cylinder audit granularity is a real future improvement, not a regression from an existing capability.
+
+**Alternatives Considered:**
+- **Defer Weighment until Cylinder Identity ships, then build both together** — rejected: makes the phase's own highest-priority, cheapest item wait on its own hardest item for no domain reason: the MDG checks this implements don't require per-serial identity to be evidenced correctly.
+- **Add a placeholder `cylinder_serial_ids` column now, populated with synthetic IDs** — rejected: synthetic identity is worse than no identity — it would look queryable and traceable without being either, and would need its own migration to unwind once real cylinder serials exist.
+
+---
+
+## ADR-040: Weighment Load-Out Gate as Tenant-Opt-In Configuration, Not Unconditional
+
+**Status:** Accepted
+
+**Context:** MDG 2022 cl. 1.4(c)(d) requires 100% of cylinders checked before dispatch — a real, hard requirement, not a soft default. The natural implementation wires this straight into `LoadVehicleForRouteUseCase`'s `planned → loaded` transition, raising `WeighmentCheckRequiredError` (409) when a manifest cylinder type has no passing `load_out_full_check` record for the route. Wiring it in unconditionally, however, was verified — not assumed — to break production: running the full backend test suite (not just the new Weighment unit tests) after that first wiring showed 3 pre-existing integration tests failing where they previously passed (`test_order_endpoints_smoke.py` ×2, `test_route_endpoints_smoke.py` ×1), each now getting a 409 on a `planned → loaded` transition that used to succeed. That is concrete proof, not speculation, that shipping the gate unconditionally would immediately block every tenant's real dispatch workflow on deploy — no existing tenant has ever recorded a weighment, since the feature is new.
+
+**Decision:** `LoadVehicleForRouteUseCase` resolves a `weighment_gate_enabled` `TenantConfiguration` key (default: **not set / off**) before enforcing the check — `_weighment_gate_enabled(tenant_id)` short-circuits to "allowed" whenever the flag is off, or whenever the use case wasn't constructed with both a `WeighmentRecordRepository` and a `TenantConfigurationRepository` (the same optional-dependency, backward-compatible-constructor idiom already used elsewhere in this codebase for additive preconditions). A tenant enables enforcement deliberately, once it has scales registered and staff trained on the workflow — the same "resolve from tenant configuration, default off" pattern this repo already uses for other rollout-sensitive behaviour, not a new idiom invented for this feature.
+
+**Consequences:**
+- Every existing tenant's dispatch workflow is unaffected on deploy — the 3 previously-broken integration tests pass again with the flag left at its default, verified directly rather than assumed.
+- A tenant that wants the MDG requirement enforced in the software (not just followed on paper) can turn it on once ready, and 5 dedicated unit tests cover the matrix this creates: gate off + no record (allowed), gate on + no record (blocked), gate on + failing record (blocked), gate on + passing record (allowed), and no repositories wired at all (allowed, defensive default).
+- The cost accepted: the software does not *force* MDG compliance for a tenant that never turns the flag on — enforcement is opt-in, matching how the rest of this rollout (and the tenant-configuration idiom generally) treats a hard regulatory requirement that the software can evidence but not compel a paper-only agency to adopt on a specific date. This was surfaced to and decided by the user directly, not assumed unilaterally, once the test failures made the alternative's real-world cost concrete rather than theoretical.
+
+**Alternatives Considered:**
+- **Ship the gate unconditionally, fix the 3 broken tests to route around it** — rejected: the tests weren't wrong, they were the first real evidence the change breaks production dispatch for every tenant with zero weighment history; "fixing" them would have hidden that fact rather than resolved it.
+- **Keep the gate's code but never wire it into the use case's DI** — rejected: would ship dead code with no path to ever actually enforce the MDG requirement without a further release, for no benefit over a config flag that's off by default and equally safe.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -999,6 +1038,8 @@ hooks:
 | 036 | Shell-bypass routing for unauthenticated routes — component-less parent route | Accepted |
 | 037 | Hand-written Flutter `api_client` for Phase 6, deferring spec-generation | Accepted (explicit revisit trigger) |
 | 038 | `ComplianceDocument` as a standalone aggregate, not a Driver/Vehicle child entity | Accepted |
+| 039 | Batch-level weighment records, not per-cylinder serial tracking | Accepted |
+| 040 | Weighment load-out gate as tenant-opt-in configuration, not unconditional | Accepted |
 
 ## Deferred Decisions
 
