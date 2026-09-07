@@ -937,6 +937,26 @@ hooks:
 
 ---
 
+## ADR-038: `ComplianceDocument` as a Standalone Aggregate, Not a Driver/Vehicle Child Entity
+
+**Status:** Accepted
+
+**Context:** The Driver & Vehicle Compliance Pack (`docs/research/feature-gap-analysis.md` D24 · `planning/features/20-regulatory-compliance`) needed to model statutory documents — driving licence, DL hazmat endorsement, TREM card, driver training certificate for a driver; RC, insurance, fitness, PUC, PESO transport licence for a vehicle. Both owner kinds need identical behavior: add, replace (renewal resets verification to pending), verify/reject, list, and a tenant-wide "expiring/expired" query feeding both the dashboard's Expiry filter and the nightly notification cron. Modelling this as a child entity nested inside `Driver` and again inside `Vehicle` would mean two near-duplicate collections, two sets of child-mutation methods on two otherwise-unrelated aggregates, and two repository code paths for what is, behaviourally, one concept with a two-value discriminator.
+
+**Decision:** `ComplianceDocument` is its own `AggregateRoot`, keyed by `(owner_type, owner_id)` rather than living inside `Driver`/`Vehicle`. One domain module (`domain/delivery/compliance_document.py`), one repository (`ComplianceDocumentRepository` / `SqlAlchemyComplianceDocumentRepository`), one table (`delivery.compliance_document`), one set of endpoints reused by both owner kinds (`GET/POST /drivers/{id}/documents` and `/vehicles/{id}/documents` are thin wrappers over the same use cases; `PUT/POST /compliance-documents/{id}` and `GET /compliance-documents` are owner-agnostic). `doc_types_for_owner()` and `REQUIRED_DOC_TYPE_FOR_OWNER` are the only places owner-specific behaviour lives, both pure lookups with no branching duplicated elsewhere.
+
+**Consequences:**
+- Registering a driver or a vehicle is a two-step flow (upload the scan → `POST /drivers|vehicles` with the resulting `blob_ref` + required fields) rather than the document being an optional afterthought — `RegisterDriverUseCase`/`RegisterVehicleUseCase` create the owner aggregate **and** its required `ComplianceDocument` (`driving_licence` / `vehicle_rc`) in the same `UnitOfWork`, so a driver or vehicle can never exist in the system without its one mandatory compliance document already on file.
+- The frontend gets one shared `lpg-compliance-documents-panel` component (`frontend/libs/shared/ui`) instead of two near-identical ones — it takes a `docTypeOptions` list and owner-scoped uploader/mutator functions as inputs, the same "endpoint-agnostic, functions as inputs" shape `lpg-document-upload` already established.
+- The nightly `check_compliance_expiry` cron (Part E) and the dashboard's tenant-wide `GET /compliance-documents?expiry=` filter both query one table with one `owner_type` discriminator column, rather than needing a `UNION` (or two separate queries merged in application code) across a driver-documents table and a vehicle-documents table.
+- The cost: every query that wants "this driver's documents" filters on `(owner_type='driver', owner_id=...)` instead of a natural foreign key — acceptable here since the owner-id index (`idx_delivery_compliance_document_owner`) makes that filter as cheap as a foreign-key lookup, and the alternative (two child-entity collections) would have duplicated the add/replace/verify domain logic instead of just this one composite index.
+
+**Alternatives Considered:**
+- **Child entity on `Driver`, and a second one on `Vehicle`** — rejected: doubles the domain logic (add/replace/verify) and the repository code for behaviour that is identical except for which four-vs-five-member `doc_type` set is valid, and would need a `UNION` (or two merged queries) everywhere the dashboard or the expiry cron needs a tenant-wide, owner-kind-agnostic view.
+- **A generic polymorphic "attachment" table with no `doc_type` domain vocabulary** — rejected: verification lifecycle (pending → verified / pending → rejected → pending-on-replace), the no-expiry exception for a TREM card, and the "required document type per owner" rule are real domain invariants (`ComplianceDocument._validate_dates`, `REQUIRED_DOC_TYPE_FOR_OWNER`) that belong in the aggregate, not left to callers to enforce ad hoc against an untyped blob reference.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -978,6 +998,7 @@ hooks:
 | 035 | JWT (RS256, `pyjwt[crypto]`) + Argon2id; `SECURITY DEFINER` functions resolve tenant before auth | Accepted |
 | 036 | Shell-bypass routing for unauthenticated routes — component-less parent route | Accepted |
 | 037 | Hand-written Flutter `api_client` for Phase 6, deferring spec-generation | Accepted (explicit revisit trigger) |
+| 038 | `ComplianceDocument` as a standalone aggregate, not a Driver/Vehicle child entity | Accepted |
 
 ## Deferred Decisions
 
