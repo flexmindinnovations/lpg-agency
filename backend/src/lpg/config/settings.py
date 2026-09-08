@@ -250,6 +250,18 @@ class Settings(BaseSettings):
     # nowhere else). Every other environment must supply a real key.
     kyc_encryption_key: SecretStr | None = None
 
+    # -- AI Model Gateway (Phase 21 substrate, ADR-045) ---------------------
+    # `ai_provider` picks the adapter class in `infrastructure/ai/factory.py`
+    # — this is the entire "provider configurable" story; a second provider
+    # means a new adapter + a new branch there, nothing here changes except
+    # this default. Left unset by default (`gemini_api_key`): every gateway
+    # call degrades to a provider-error `None` rather than crashing at
+    # import time, the same stub-fallback-on-unset-secret pattern as
+    # `fcm_credentials_json`.
+    ai_provider: str = "gemini"
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-2.0-flash"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: object) -> object:

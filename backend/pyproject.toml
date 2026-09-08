@@ -41,6 +41,7 @@ dependencies = [
     "gunicorn>=26.0.0",
     "rapidocr>=3.9.2",
     "onnxruntime>=1.29.0",
+    "google-genai>=2.22.0",
 ]
 
 [dependency-groups]
@@ -373,3 +374,25 @@ name = "FastAPI stays inside the api layer"
 type = "forbidden"
 source_modules = ["lpg.domain", "lpg.application", "lpg.infrastructure"]
 forbidden_modules = ["fastapi", "starlette"]
+
+[[tool.importlinter.contracts]]
+# ADR-045 — the AI Model Gateway's provider-swap story depends on no other
+# module ever importing a vendor AI SDK directly (only `infrastructure/ai/
+# factory.py` picks an adapter class). No existing contract confines a
+# specific vendor package to one infrastructure submodule — every other
+# contract here is a layer-boundary rule, not a "this package belongs to
+# exactly one subpackage" rule — so this is new territory for this
+# codebase's import-linter config, not an existing pattern being copied.
+name = "Gemini SDK stays inside infrastructure.ai"
+type = "forbidden"
+source_modules = ["lpg.domain", "lpg.application", "lpg.api", "lpg.infrastructure"]
+# `google.genai`'s own submodule imports (`from google import genai`, `from
+# google.genai import types`) resolve in import-linter's graph as the
+# top-level `google` package, not the `google.genai` submodule specifically
+# — external packages are graphed by top-level name. Forbidding `google`
+# outright is also the more correct rule here anyway: nothing else in this
+# codebase has any reason to import any `google.*` package directly.
+forbidden_modules = ["google"]
+ignore_imports = [
+    "lpg.infrastructure.ai.gemini_adapter -> google",
+]

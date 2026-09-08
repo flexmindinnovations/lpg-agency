@@ -86,6 +86,16 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # value — never silently computed server-side — so an unset key
         # means "no suggestion offered," not "no due date can be recorded."
         "cylinder_statutory_test_interval_months",
+        # AI Model Gateway (Phase 21 substrate, ADR-045) — tenant opt-in for
+        # the AI Command Center, same default-off shape as
+        # `weighment_gate_enabled`: a tenant that has never set this key
+        # sees no change, the gateway is never called.
+        "ai_gateway_enabled",
+        # Optional per-tenant override of the daily token budget the AI
+        # Model Gateway enforces before every call — falls back to
+        # `application.ai.use_cases.DEFAULT_AI_DAILY_TOKEN_BUDGET` when a
+        # tenant has never set this.
+        "ai_daily_token_budget",
     }
 )
 
