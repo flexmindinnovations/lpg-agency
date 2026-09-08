@@ -153,9 +153,7 @@ async def register_customer(
             pincode=request.pincode,
             address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
-            longitude=(
-                float(request.longitude) if request.longitude is not None else None
-            ),
+            longitude=(float(request.longitude) if request.longitude is not None else None),
         )
     )
     return CustomerResponse.model_validate(customer)
@@ -173,9 +171,7 @@ async def list_customers(
     search: str | None = None,
 ) -> CustomerPageResponse:
     use_case = ListCustomersUseCase(repository)
-    result = await use_case.execute(
-        ListCustomersQuery(skip=skip, limit=limit, search=search)
-    )
+    result = await use_case.execute(ListCustomersQuery(skip=skip, limit=limit, search=search))
     return CustomerPageResponse(
         items=[CustomerResponse.model_validate(c) for c in result.items],
         total=result.total,
@@ -194,9 +190,7 @@ async def get_my_profile(
     if not principal.user_id:
         raise HTTPException(status_code=401, detail="User ID missing")
     use_case = GetCustomerByUserIdUseCase(repository)
-    customer = await use_case.execute(
-        GetCustomerByUserIdQuery(identity_user_id=principal.user_id)
-    )
+    customer = await use_case.execute(GetCustomerByUserIdQuery(identity_user_id=principal.user_id))
     if customer is None:
         raise NotFoundError("No customer profile found for the current user.")
     return CustomerResponse.model_validate(customer)
@@ -277,9 +271,7 @@ async def add_address(
             pincode=request.pincode,
             address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
-            longitude=(
-                float(request.longitude) if request.longitude is not None else None
-            ),
+            longitude=(float(request.longitude) if request.longitude is not None else None),
         )
     )
 
@@ -309,9 +301,7 @@ async def update_address(
             pincode=request.pincode,
             address_type=request.address_type,
             latitude=float(request.latitude) if request.latitude is not None else None,
-            longitude=(
-                float(request.longitude) if request.longitude is not None else None
-            ),
+            longitude=(float(request.longitude) if request.longitude is not None else None),
         )
     )
 
@@ -326,9 +316,7 @@ async def set_primary_address(
 ) -> None:
     await _require_self_or_permission(principal, customer_id, "customers:update", repository)
     use_case = SetPrimaryAddressUseCase(repository, unit_of_work)
-    await use_case.execute(
-        SetPrimaryAddressCommand(customer_id=customer_id, address_id=address_id)
-    )
+    await use_case.execute(SetPrimaryAddressCommand(customer_id=customer_id, address_id=address_id))
 
 
 @router.post(

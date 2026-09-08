@@ -147,9 +147,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 )
 
                 staff_repo = SqlAlchemyStaffUserRepository(database, tenant_id)
-                staff = await staff_repo.list_for_tenant(
-                    tenant_id, exclude_roles=_NON_STAFF_ROLES
-                )
+                staff = await staff_repo.list_for_tenant(tenant_id, exclude_roles=_NON_STAFF_ROLES)
                 recipient_user_ids = [
                     u.id for u in staff if u.role in _STAFF_ALERT_ROLES and u.is_active
                 ]
@@ -176,13 +174,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 )
 
                 staff_repo = SqlAlchemyStaffUserRepository(database, tenant_id)
-                staff = await staff_repo.list_for_tenant(
-                    tenant_id, exclude_roles=_NON_STAFF_ROLES
-                )
+                staff = await staff_repo.list_for_tenant(tenant_id, exclude_roles=_NON_STAFF_ROLES)
                 recipient_user_ids = [
-                    u.id
-                    for u in staff
-                    if u.role in _STAFF_ALERT_ROLES and u.is_active
+                    u.id for u in staff if u.role in _STAFF_ALERT_ROLES and u.is_active
                 ]
             elif notification_type == "driver_assigned":
                 # This one goes to the driver who was just assigned, not the
@@ -198,9 +192,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                         if driver and driver.identity_user_id:
                             recipient_user_ids = [driver.identity_user_id]
                         route = await route_repo.get_by_id(owner.route_id)
-                        driver_assigned_live = (
-                            route is not None and route.status == "in_progress"
-                        )
+                        driver_assigned_live = route is not None and route.status == "in_progress"
             elif notification_type == "stop_cancelled":
                 # Only reaches the driver if they're already out running the
                 # route — a cancellation before they leave the depot needs no
@@ -242,9 +234,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 reference_id = uuid.UUID(payload["document_id"])
             else:
                 reference_type = "order"
-                reference_id = (
-                    uuid.UUID(payload["order_id"]) if "order_id" in payload else None
-                )
+                reference_id = uuid.UUID(payload["order_id"]) if "order_id" in payload else None
 
             # Channels — per instance, not just per type: a `driver_assigned`
             # only pushes for a live mid-route addition.
@@ -373,9 +363,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                             # Dead token — prune it so we stop trying.
                             await device_repo.delete_by_token(device.token)
                             push_log.mark_failed("token unregistered")
-                            _logger.info(
-                                "push_token_pruned", token_suffix=device.token[-8:]
-                            )
+                            _logger.info("push_token_pruned", token_suffix=device.token[-8:])
                         except Exception as e:
                             push_log.mark_failed(str(e))
                             _logger.exception("push_send_failed", user_id=str(user_id))
@@ -444,9 +432,7 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         "order_placed_staff": (
             f"Order #{order_id_short} was just placed and is awaiting confirmation."
         ),
-        "stop_cancelled": (
-            f"Order #{order_id_short} was cancelled — you can skip that stop."
-        ),
+        "stop_cancelled": (f"Order #{order_id_short} was cancelled — you can skip that stop."),
     }
     return bodies.get(notification_type, "You have a new notification.")
 

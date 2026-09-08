@@ -33,9 +33,7 @@ class GetLicenseStatusQuery:
 
 
 class GetLicenseStatusUseCase:
-    def __init__(
-        self, status_checker: LicenseStatusChecker, repository: LicenseRepository
-    ) -> None:
+    def __init__(self, status_checker: LicenseStatusChecker, repository: LicenseRepository) -> None:
         self._status_checker = status_checker
         self._repository = repository
 

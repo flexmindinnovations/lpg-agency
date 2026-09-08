@@ -321,9 +321,7 @@ class GetRouteCashHandoverViewUseCase:
 
     async def execute(self, query: GetRouteCashHandoverViewQuery) -> RouteCashHandoverView:
         route = await self._route_repository.get_by_id(query.route_id)
-        if route is None or (
-            query.driver_id is not None and route.driver_id != query.driver_id
-        ):
+        if route is None or (query.driver_id is not None and route.driver_id != query.driver_id):
             msg = f"No route visible with id {query.route_id}."
             raise NotFoundError(msg, route_id=str(query.route_id))
 

@@ -258,9 +258,7 @@ class TestInvoiceEndpointsThroughTheRealStack:
         token = await _login(real_lifespan_client, email=email, password=password)
         headers = {"Authorization": f"Bearer {token}"}
 
-        response = await real_lifespan_client.get(
-            f"/api/v1/invoices/{invoice_id}", headers=headers
-        )
+        response = await real_lifespan_client.get(f"/api/v1/invoices/{invoice_id}", headers=headers)
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["invoice_id"] == str(invoice_id)

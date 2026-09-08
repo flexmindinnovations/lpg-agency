@@ -659,10 +659,7 @@ class TestRouteEndpointsThroughRealStack:
             headers={**driver_headers, "Idempotency-Key": confirm_key},
         )
         assert replay.status_code == 200, replay.text
-        assert (
-            replay.json()["load_confirmed_at"]
-            == confirm_response.json()["load_confirmed_at"]
-        )
+        assert replay.json()["load_confirmed_at"] == confirm_response.json()["load_confirmed_at"]
 
         # 6. Assign an unassigned, confirmed order onto this route -> one stop.
         order = await _create_and_confirm_order(client, fixtures, admin_headers, quantity=2)
@@ -698,9 +695,7 @@ class TestRouteEndpointsThroughRealStack:
         driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
 
         # The Driver App resolves its own active route from the token.
-        my_route_response = await client.get(
-            "/api/v1/routes/active", headers=driver_headers
-        )
+        my_route_response = await client.get("/api/v1/routes/active", headers=driver_headers)
         assert my_route_response.status_code == 200, my_route_response.text
         assert my_route_response.json()["id"] == route_id
 

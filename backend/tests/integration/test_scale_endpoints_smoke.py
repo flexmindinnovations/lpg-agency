@@ -289,9 +289,7 @@ async def test_record_goods_receipt_weighment_smoke(
     # documented default (Legal Metrology Packaged Commodities Rules 2011).
     assert body["tolerance_grams_applied"] == 150
 
-    listing = await client.get(
-        f"/api/v1/goods-receipt-notes/{grn_id}/weighment", headers=headers
-    )
+    listing = await client.get(f"/api/v1/goods-receipt-notes/{grn_id}/weighment", headers=headers)
     assert listing.status_code == 200, listing.text
     assert len(listing.json()["items"]) == 1
     assert listing.json()["items"][0]["id"] == body["id"]

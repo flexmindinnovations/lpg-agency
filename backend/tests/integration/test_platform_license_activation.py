@@ -127,9 +127,7 @@ class TestPlatformLicenseActivation:
                 repository = SqlAlchemyLicenseRepository(uow)
                 activated = await ActivateLicenseUseCase(
                     repository, token_hasher, status_checker, uow
-                ).execute(
-                    ActivateLicenseCommand(tenant_id=tenant_id, presented_key=plaintext_key)
-                )
+                ).execute(ActivateLicenseCommand(tenant_id=tenant_id, presented_key=plaintext_key))
 
         assert activated.id == issued.id
         assert activated.activated_at is not None

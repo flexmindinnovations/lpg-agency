@@ -34,9 +34,7 @@ class RedisDriverLocationStore:
             _key(tenant_id, route_id), _TTL_SECONDS, json.dumps(snapshot)
         )
 
-    async def read(
-        self, tenant_id: uuid.UUID, route_id: uuid.UUID
-    ) -> dict[str, Any] | None:
+    async def read(self, tenant_id: uuid.UUID, route_id: uuid.UUID) -> dict[str, Any] | None:
         raw = await self._client.client.get(_key(tenant_id, route_id))
         if raw is None:
             return None

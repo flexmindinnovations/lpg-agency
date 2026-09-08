@@ -311,23 +311,17 @@ async def create_order(
     body: CreateOrderRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
     order_number_sequence: Annotated[OrderNumberSequence, Depends(get_order_number_sequence)],
 ) -> OrderResponse:
     """Create a booking (`draft -> booked`). Idempotency-Key required."""
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
-        raise HTTPException(
-            status_code=400, detail="Idempotency-Key header is required."
-        )
+        raise HTTPException(status_code=400, detail="Idempotency-Key header is required.")
 
     actor_id = _require_actor(principal)
     scope = await _resolve_scope(
@@ -359,9 +353,7 @@ async def create_order(
                 booking_source=body.booking_source,
                 requested_date=body.requested_date,
                 lines=[
-                    CreateOrderLine(
-                        cylinder_type_id=line.cylinder_type_id, quantity=line.quantity
-                    )
+                    CreateOrderLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
                     for line in body.lines
                 ],
                 created_by=actor_id,
@@ -387,9 +379,7 @@ async def create_order(
 async def list_orders(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     skip: int = 0,
@@ -428,9 +418,7 @@ async def get_order(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
 ) -> OrderResponse:
@@ -462,15 +450,11 @@ async def get_order_tracking(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     vehicle_repository: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
-    employee_repository: Annotated[
-        EmployeeRepository, Depends(get_employee_repository)
-    ],
+    employee_repository: Annotated[EmployeeRepository, Depends(get_employee_repository)],
 ) -> OrderTrackingResponse:
     """The order-tracking map's data: the delivery destination, the route's
     status, the driver's last-known position (from the short-TTL cache the
@@ -512,16 +496,12 @@ async def get_order_tracking(
             vehicle = await vehicle_repository.get_by_id(owner.vehicle_id)
             if employee is not None:
                 vehicle_model = (
-                    f"{vehicle.make} {vehicle.model}".strip()
-                    if vehicle is not None
-                    else None
+                    f"{vehicle.make} {vehicle.model}".strip() if vehicle is not None else None
                 )
                 driver_info = TrackingDriverInfo(
                     name=f"{employee.first_name} {employee.last_name}".strip(),
                     phone_number=employee.phone_number,
-                    vehicle_number=(
-                        vehicle.registration_number if vehicle is not None else None
-                    ),
+                    vehicle_number=(vehicle.registration_number if vehicle is not None else None),
                     vehicle_model=vehicle_model or None,
                 )
 
@@ -560,9 +540,7 @@ async def list_order_status_history(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
 ) -> list[OrderStatusHistoryEntryResponse]:
@@ -606,16 +584,10 @@ async def confirm_order(
     order_id: uuid.UUID,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
-    price_list_repository: Annotated[
-        PriceListRepository, Depends(get_price_list_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    price_list_repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
     cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
-    credit_limit_evaluator: Annotated[
-        CreditLimitEvaluator, Depends(get_credit_limit_evaluator)
-    ],
+    credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> OrderResponse:
     """`booked -> confirmed`. Resolves and snapshots unit prices; runs the
@@ -630,9 +602,7 @@ async def confirm_order(
         credit_limit_evaluator,
         unit_of_work,
     )
-    order = await use_case.execute(
-        ConfirmOrderCommand(order_id=order_id, changed_by=actor_id)
-    )
+    order = await use_case.execute(ConfirmOrderCommand(order_id=order_id, changed_by=actor_id))
     return _order_to_response(order)
 
 
@@ -691,9 +661,7 @@ async def dispatch_order(
     """`assigned -> ready_for_dispatch` ("vehicle loaded")."""
     actor_id = _require_actor(principal)
     use_case = DispatchOrderUseCase(order_repository, unit_of_work)
-    order = await use_case.execute(
-        DispatchOrderCommand(order_id=order_id, changed_by=actor_id)
-    )
+    order = await use_case.execute(DispatchOrderCommand(order_id=order_id, changed_by=actor_id))
     return _order_to_response(order)
 
 
@@ -756,15 +724,11 @@ async def depart_order(
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    customer_repository: Annotated[
-        CustomerRepository, Depends(get_customer_repository)
-    ],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
 ) -> OrderResponse:
     """`ready_for_dispatch -> out_for_delivery` ("driver departs"). Issues
     the delivery OTP to the customer's phone post-commit.
@@ -787,9 +751,7 @@ async def depart_order(
     )
 
     async def _operation() -> dict[str, Any]:
-        order = await use_case.execute(
-            DepartOrderCommand(order_id=order_id, changed_by=actor_id)
-        )
+        order = await use_case.execute(DepartOrderCommand(order_id=order_id, changed_by=actor_id))
         return _order_to_response(order).model_dump(mode="json")
 
     result = await run_idempotent(
@@ -815,9 +777,7 @@ async def reschedule_order(
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
 ) -> OrderResponse:
     """`failed_delivery -> ready_for_dispatch`. Also resets the paired
     `RouteStop` back to `pending` so the retry can reach `delivered` (see
@@ -893,14 +853,10 @@ async def deliver_order(
     inventory_location_repository: Annotated[
         InventoryLocationRepository, Depends(get_inventory_location_repository)
     ],
-    pod_repository: Annotated[
-        ProofOfDeliveryRepository, Depends(get_proof_of_delivery_repository)
-    ],
+    pod_repository: Annotated[ProofOfDeliveryRepository, Depends(get_proof_of_delivery_repository)],
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
 ) -> DeliverOrderResponse:
     """`out_for_delivery -> delivered`. Idempotency-Key required (offline-
     sync retries). Missing POD fields are a 422 (see `ProofOfDeliverySubmission`);
@@ -909,9 +865,7 @@ async def deliver_order(
     """
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
-        raise HTTPException(
-            status_code=400, detail="Idempotency-Key header is required."
-        )
+        raise HTTPException(status_code=400, detail="Idempotency-Key header is required.")
 
     await _require_own_driver_order(
         order_id, principal, order_repository, driver_repository, route_repository
@@ -977,9 +931,7 @@ async def record_failed_delivery(
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
 ) -> OrderResponse:
     """`out_for_delivery -> failed_delivery` (D-12).
 
@@ -990,9 +942,7 @@ async def record_failed_delivery(
         order_id, principal, order_repository, driver_repository, route_repository
     )
     actor_id = _require_actor(principal)
-    use_case = RecordFailedDeliveryUseCase(
-        order_repository, route_repository, unit_of_work
-    )
+    use_case = RecordFailedDeliveryUseCase(order_repository, route_repository, unit_of_work)
 
     async def _operation() -> dict[str, Any]:
         order = await use_case.execute(
@@ -1166,7 +1116,5 @@ async def close_order(
     """
     actor_id = _require_actor(principal)
     use_case = CloseOrderUseCase(order_repository, unit_of_work)
-    order = await use_case.execute(
-        CloseOrderCommand(order_id=order_id, closed_by=actor_id)
-    )
+    order = await use_case.execute(CloseOrderCommand(order_id=order_id, closed_by=actor_id))
     return _order_to_response(order)

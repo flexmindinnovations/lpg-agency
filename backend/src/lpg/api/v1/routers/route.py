@@ -309,9 +309,7 @@ async def confirm_route_load(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     use_case: Annotated[ConfirmRouteLoadUseCase, Depends(get_confirm_route_load_use_case)],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
 ) -> RouteResponse:
     """A **soft** acknowledgement that the driver has checked the van against
     the load manifest — it does *not* gate departing. Idempotent (a second

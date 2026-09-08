@@ -183,9 +183,7 @@ class Scale(AggregateRoot):
     # Commands
     # ------------------------------------------------------------------
 
-    def replace_certificate(
-        self, *, certificate_ref: str, certificate_expiry_date: date
-    ) -> None:
+    def replace_certificate(self, *, certificate_ref: str, certificate_expiry_date: date) -> None:
         """A renewed calibration certificate supersedes the old one in place —
         same asset, new validity window."""
         self._certificate_ref = certificate_ref

@@ -55,32 +55,24 @@ def test_build_returns_stub_when_credentials_not_json() -> None:
 
 
 def test_build_returns_stub_when_credentials_incomplete() -> None:
-    channel = build_push_channel(
-        _settings(fcm_credentials_json=json.dumps({"project_id": "x"}))
-    )
+    channel = build_push_channel(_settings(fcm_credentials_json=json.dumps({"project_id": "x"})))
     assert isinstance(channel, StubPushChannel)
 
 
 def test_build_returns_fcm_channel_with_valid_credentials() -> None:
-    channel = build_push_channel(
-        _settings(fcm_credentials_json=json.dumps(_service_account()))
-    )
+    channel = build_push_channel(_settings(fcm_credentials_json=json.dumps(_service_account())))
     assert isinstance(channel, FcmHttpV1PushChannel)
 
 
 def test_build_reads_credentials_from_a_file_path(tmp_path: Path) -> None:
     key_file = tmp_path / "sa.json"
     key_file.write_text(json.dumps(_service_account()), encoding="utf-8")
-    channel = build_push_channel(
-        _settings(fcm_credentials_path=str(key_file))
-    )
+    channel = build_push_channel(_settings(fcm_credentials_path=str(key_file)))
     assert isinstance(channel, FcmHttpV1PushChannel)
 
 
 def test_build_returns_stub_when_the_path_is_missing() -> None:
-    channel = build_push_channel(
-        _settings(fcm_credentials_path="/no/such/key.json")
-    )
+    channel = build_push_channel(_settings(fcm_credentials_path="/no/such/key.json"))
     assert isinstance(channel, StubPushChannel)
 
 
@@ -89,9 +81,7 @@ def test_build_returns_stub_when_the_path_is_missing() -> None:
 
 @pytest.mark.asyncio
 async def test_stub_channel_send_is_a_noop() -> None:
-    await StubPushChannel().send(
-        token="t", platform="android", title="hi", body="there", data={}
-    )
+    await StubPushChannel().send(token="t", platform="android", title="hi", body="there", data={})
 
 
 # -- FcmHttpV1PushChannel -------------------------------------------------------
@@ -132,9 +122,7 @@ async def test_fcm_send_mints_a_token_then_posts_the_message() -> None:
 
     # Second send reuses the cached access token — no new OAuth round trip.
     seen.clear()
-    await channel.send(
-        token="device-2", platform="ios", title="t", body="b", data={}
-    )
+    await channel.send(token="device-2", platform="ios", title="t", body="b", data={})
     assert [r.url.host for r in seen] == ["fcm.googleapis.com"]
 
 
@@ -147,9 +135,7 @@ async def test_fcm_send_raises_push_token_invalid_on_404() -> None:
 
     channel = _mock_channel(handler)
     with pytest.raises(PushTokenInvalidError):
-        await channel.send(
-            token="dead-token", platform="android", title="t", body="b", data={}
-        )
+        await channel.send(token="dead-token", platform="android", title="t", body="b", data={})
 
 
 @pytest.mark.asyncio
@@ -161,6 +147,4 @@ async def test_fcm_send_raises_on_other_http_errors() -> None:
 
     channel = _mock_channel(handler)
     with pytest.raises(httpx.HTTPStatusError):
-        await channel.send(
-            token="t", platform="android", title="t", body="b", data={}
-        )
+        await channel.send(token="t", platform="android", title="t", body="b", data={})

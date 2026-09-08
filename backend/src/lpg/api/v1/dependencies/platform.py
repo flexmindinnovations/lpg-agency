@@ -64,9 +64,7 @@ async def get_platform_principal(request: Request) -> PlatformPrincipal:
 
     resolver = JwtPlatformPrincipalResolver(get_jwt_signer())
     principal = await resolver.resolve(request)
-    structlog.contextvars.bind_contextvars(
-        user_id=str(principal.user_id), platform_session=True
-    )
+    structlog.contextvars.bind_contextvars(user_id=str(principal.user_id), platform_session=True)
     return principal
 
 

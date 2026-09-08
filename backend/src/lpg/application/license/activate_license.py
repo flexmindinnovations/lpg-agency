@@ -52,9 +52,7 @@ class ActivateLicenseUseCase:
             license_.activate(at=datetime.now(UTC))
         except InvariantViolation as exc:  # already activated / revoked
             msg = "This license cannot be activated."
-            raise LicenseActivationFailedError(
-                msg, tenant_id=str(command.tenant_id)
-            ) from exc
+            raise LicenseActivationFailedError(msg, tenant_id=str(command.tenant_id)) from exc
 
         await self._repository.save(license_)
         await self._unit_of_work.commit()

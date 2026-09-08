@@ -151,9 +151,7 @@ def _tenant_response(tenant: Tenant) -> TenantResponse:
 # -- Session -------------------------------------------------------------------------
 
 
-@router.get(
-    "/me", response_model=PrincipalResponse, summary="The current Super Admin session"
-)
+@router.get("/me", response_model=PrincipalResponse, summary="The current Super Admin session")
 async def me(
     principal: Annotated[PlatformPrincipal, Depends(get_platform_principal)],
 ) -> PrincipalResponse:
@@ -183,9 +181,7 @@ async def me(
 # session, confirmed with the user.
 
 
-@router.get(
-    "/agencies", response_model=list[TenantResponse], summary="List every agency (tenant)"
-)
+@router.get("/agencies", response_model=list[TenantResponse], summary="List every agency (tenant)")
 async def list_agencies(
     _principal: Annotated[
         PlatformPrincipal, Depends(require_live_platform_permission("tenant:manage_platform"))
@@ -199,9 +195,7 @@ async def list_agencies(
         return [_tenant_response(tenant) for tenant in tenants]
 
 
-@router.patch(
-    "/agencies/{tenant_id}/suspend", status_code=204, summary="Suspend an agency"
-)
+@router.patch("/agencies/{tenant_id}/suspend", status_code=204, summary="Suspend an agency")
 async def suspend_agency(
     tenant_id: str,
     _principal: Annotated[
@@ -325,9 +319,7 @@ async def activate_license(
     return _license_response(license_)
 
 
-@router.get(
-    "/license", response_model=list[LicenseResponse], summary="List every tenant's license"
-)
+@router.get("/license", response_model=list[LicenseResponse], summary="List every tenant's license")
 async def list_licenses(
     _principal: Annotated[
         PlatformPrincipal, Depends(require_live_platform_permission("license:manage_platform"))
@@ -362,9 +354,7 @@ async def revoke_license(
         await use_case.execute(RevokeLicenseCommand(tenant_id=target_tenant_id))
 
 
-@router.patch(
-    "/license/{tenant_id}/plan-tier", status_code=204, summary="Set a tenant's plan tier"
-)
+@router.patch("/license/{tenant_id}/plan-tier", status_code=204, summary="Set a tenant's plan tier")
 async def set_license_plan_tier(
     tenant_id: str,
     body: SetLicensePlanTierRequest,
@@ -515,9 +505,7 @@ async def set_feature_flag_enabled_by_default(
     async with uow_factory(None) as uow:
         repository = SqlAlchemyFeatureFlagRepository(uow)  # type: ignore[arg-type]
         use_case = SetFeatureFlagEnabledByDefaultUseCase(repository, uow)
-        await use_case.execute(
-            SetFeatureFlagEnabledByDefaultCommand(key=key, enabled=body.enabled)
-        )
+        await use_case.execute(SetFeatureFlagEnabledByDefaultCommand(key=key, enabled=body.enabled))
 
 
 @router.patch(

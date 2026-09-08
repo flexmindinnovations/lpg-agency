@@ -94,9 +94,7 @@ async def test_staff_placed_order_notifies_no_one_on_creation() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "source", ["phone", "walk_in", "whatsapp", "api"]
-)
+@pytest.mark.parametrize("source", ["phone", "walk_in", "whatsapp", "api"])
 async def test_every_non_staff_source_alerts_staff(source: str) -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
@@ -255,7 +253,4 @@ async def test_booking_confirmed_still_notifies_the_customer() -> None:
     )
     await dispatcher.dispatch([event])
 
-    assert any(
-        payload.get("type") == "booking_confirmed"
-        for _, payload in queue.enqueued
-    )
+    assert any(payload.get("type") == "booking_confirmed" for _, payload in queue.enqueued)

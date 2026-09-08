@@ -100,9 +100,7 @@ async def declare_cash_handover(
     handover_number_sequence: Annotated[
         CashHandoverNumberSequence, Depends(get_cash_handover_number_sequence)
     ],
-    idempotency_service: Annotated[
-        IdempotencyService, Depends(get_idempotency_service)
-    ],
+    idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
 ) -> CashHandoverResponse:
     """A driver (or dispatcher/manager on their behalf) declares the cash
     handed over at the end of a route. `expected_amount` is computed

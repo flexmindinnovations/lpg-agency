@@ -148,9 +148,7 @@ class TestCustomerRepository:
                 reloaded_customer = await repo.get_by_id(customer_id)
                 assert reloaded_customer is not None
                 assert reloaded_customer.consumer_number is None
-                reloaded_customer.approve(
-                    approved_by=uuid.uuid4(), consumer_number="CN-APPROVED-1"
-                )
+                reloaded_customer.approve(approved_by=uuid.uuid4(), consumer_number="CN-APPROVED-1")
                 await repo.save(reloaded_customer)
 
         async for verify_session in database.open_session(tenant_id=tenant_id):

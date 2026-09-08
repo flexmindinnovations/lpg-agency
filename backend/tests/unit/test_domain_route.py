@@ -148,7 +148,6 @@ class TestRouteStatusTransitions:
         events = [e for e in route.events if isinstance(e, VehicleLoaded)]
         assert events == []
 
-
     def test_rejects_unknown_status(self) -> None:
         route = _make_route(status="planned")
         with pytest.raises(InvariantViolation, match="Unknown route status"):

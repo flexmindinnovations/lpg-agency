@@ -37,12 +37,8 @@ def test_driver_assigned_push_and_sms_are_decided_per_instance() -> None:
 
 def test_route_ready_is_push_plus_in_app_only() -> None:
     assert _get_title("route_ready") == "Route Ready"
-    assert _get_body("route_ready", {"stop_count": "5"}) == (
-        "Your route is ready — 5 stops."
-    )
-    assert _get_body("route_ready", {"stop_count": "1"}) == (
-        "Your route is ready — 1 stop."
-    )
+    assert _get_body("route_ready", {"stop_count": "5"}) == ("Your route is ready — 5 stops.")
+    assert _get_body("route_ready", {"stop_count": "1"}) == ("Your route is ready — 1 stop.")
     assert _should_send_push("route_ready") is True
     assert _should_send_sms("route_ready") is False
     assert _should_send_email("route_ready") is False

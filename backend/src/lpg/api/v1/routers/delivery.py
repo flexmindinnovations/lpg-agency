@@ -714,9 +714,7 @@ async def list_tenant_documents(
 ) -> ComplianceDocumentListResponse:
     """Compliance Calendar (ADR-044) — the tenant's own insurance policy.
     No path param: the owner is always the caller's own tenant."""
-    return await _list_owner_documents(
-        "tenant", principal.tenant_id, repository, file_storage
-    )
+    return await _list_owner_documents("tenant", principal.tenant_id, repository, file_storage)
 
 
 @router.post(

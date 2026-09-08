@@ -42,9 +42,7 @@ class DriverLocationStore(Protocol):
         self, tenant_id: uuid.UUID, route_id: uuid.UUID, snapshot: dict[str, Any]
     ) -> None: ...
 
-    async def read(
-        self, tenant_id: uuid.UUID, route_id: uuid.UUID
-    ) -> dict[str, Any] | None: ...
+    async def read(self, tenant_id: uuid.UUID, route_id: uuid.UUID) -> dict[str, Any] | None: ...
 
 
 def _snapshot(ping: DriverLocationPing, *, at: datetime) -> dict[str, Any]:

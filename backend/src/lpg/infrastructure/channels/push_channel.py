@@ -68,9 +68,7 @@ class FcmHttpV1PushChannel:
     ) -> None:
         self._sa = service_account
         self._project_id = project_id
-        self._endpoint = (
-            f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
-        )
+        self._endpoint = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
         self._client = client or httpx.AsyncClient(timeout=10.0)
         self._access_token: str | None = None
         self._access_token_expiry: float = 0.0

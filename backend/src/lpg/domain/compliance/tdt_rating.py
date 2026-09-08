@@ -93,10 +93,7 @@ def _validate_bands(bands: Sequence[TdtStarBand]) -> None:
     for index, band in enumerate(bands):
         is_last = index == len(bands) - 1
         if band.max_days is None and not is_last:
-            msg = (
-                "Only the last TDT star band may have max_days=None "
-                "(the unbounded catch-all)."
-            )
+            msg = "Only the last TDT star band may have max_days=None (the unbounded catch-all)."
             raise InvariantViolation(msg)
         if band.max_days is not None and band.max_days <= 0:
             msg = f"TDT star band 'max_days' must be positive, got {band.max_days}."
@@ -175,9 +172,7 @@ def compute_quarterly_rating(
     )
 
 
-def compute_fine_percent(
-    consecutive_low_quarters: int, schedule: Sequence[TdtFineRule]
-) -> Decimal:
+def compute_fine_percent(consecutive_low_quarters: int, schedule: Sequence[TdtFineRule]) -> Decimal:
     """MDG's own wording is "fines scaling on repeat" — modelled as a
     threshold schedule: the highest-tier rule whose
     `consecutive_low_quarters` requirement is met applies. A tenant with no

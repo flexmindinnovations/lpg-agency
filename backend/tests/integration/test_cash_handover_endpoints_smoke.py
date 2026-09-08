@@ -564,8 +564,7 @@ class TestCashHandoverEndpointsThroughTheRealStack:
             count = (
                 await conn.execute(
                     text(
-                        "SELECT COUNT(*) FROM accounting.cash_handover "
-                        "WHERE route_id = :route_id"
+                        "SELECT COUNT(*) FROM accounting.cash_handover WHERE route_id = :route_id"
                     ),
                     {"route_id": str(route_id)},
                 )

@@ -35,16 +35,10 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
     summary="Consolidated platform-wide summary for the dashboard",
 )
 async def get_dashboard_summary(
-    principal: Annotated[
-        AuthenticatedPrincipal, Depends(require_permission("reports:read"))
-    ],
-    use_case: Annotated[
-        GetDashboardSummaryUseCase, Depends(get_dashboard_summary_use_case)
-    ],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("reports:read"))],
+    use_case: Annotated[GetDashboardSummaryUseCase, Depends(get_dashboard_summary_use_case)],
 ) -> DashboardSummaryResponse:
-    summary = await use_case.execute(
-        GetDashboardSummaryQuery(tenant_id=principal.tenant_id)
-    )
+    summary = await use_case.execute(GetDashboardSummaryQuery(tenant_id=principal.tenant_id))
     return DashboardSummaryResponse(
         customer_count=summary.customer_count,
         driver_count=summary.driver_count,

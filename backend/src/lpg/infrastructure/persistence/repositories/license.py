@@ -105,9 +105,7 @@ class SqlAlchemyLicenseRepository:
         `app.current_tenant_id` this session has set (migration
         `fdd3afde337c`) — the actual fix, not just a rename.
         """
-        result = await self._uow.session.execute(
-            text("SELECT * FROM platform.license_list_all()")
-        )
+        result = await self._uow.session.execute(text("SELECT * FROM platform.license_list_all()"))
         return [
             License(
                 row.id,

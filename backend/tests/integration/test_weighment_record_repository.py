@@ -313,9 +313,7 @@ class TestWeighmentRecordRepository:
         async for attempt in database.open_session(tenant_id=tenant_id):
             with pytest.raises(DBAPIError, match="permission denied"):
                 await attempt.execute(
-                    text(
-                        "UPDATE compliance.weighment_record SET result = 'fail' WHERE id = :id"
-                    ),
+                    text("UPDATE compliance.weighment_record SET result = 'fail' WHERE id = :id"),
                     {"id": str(record.id)},
                 )
                 await attempt.commit()

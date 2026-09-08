@@ -87,6 +87,4 @@ class ResolveLicenseEntitlementUseCase:
             return False
 
         overrides = await self._override_repository.list_for_license(license_.id)
-        return LicenseEntitlementService.is_feature_granted(
-            license_, overrides, query.feature_key
-        )
+        return LicenseEntitlementService.is_feature_granted(license_, overrides, query.feature_key)

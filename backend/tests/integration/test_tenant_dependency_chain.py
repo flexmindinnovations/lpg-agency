@@ -83,6 +83,7 @@ def _stub_tenant_status_checker(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda: _AlwaysActiveTenantStatusChecker(),
     )
 
+
 # Built lazily on first use, not at module level: a module-level `Settings()`
 # call runs at collection time, before the autouse `_no_real_dotenv` fixture
 # (`conftest.py`) has disabled `.env` loading for the test — and the `.env`

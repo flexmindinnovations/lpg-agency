@@ -484,9 +484,7 @@ class Customer(AggregateRoot):
         latitude: float | None = None,
         longitude: float | None = None,
     ) -> None:
-        index = next(
-            (i for i, a in enumerate(self._addresses) if a.id == address_id), None
-        )
+        index = next((i for i, a in enumerate(self._addresses) if a.id == address_id), None)
         if index is None:
             msg = f"Address {address_id} not found."
             raise InvariantViolation(msg, customer_id=str(self.id))
@@ -539,9 +537,7 @@ class Customer(AggregateRoot):
         # *current* Aadhaar/PAN/etc. on file. A different doc_type is a
         # genuine addition (e.g. PAN alongside an existing Aadhaar), so
         # only same-type documents are replaced.
-        self._kyc_documents = [
-            d for d in self._kyc_documents if d.doc_type != normalized_doc_type
-        ]
+        self._kyc_documents = [d for d in self._kyc_documents if d.doc_type != normalized_doc_type]
         doc = KycDocument(
             document_id=doc_id,
             doc_type=doc_type,

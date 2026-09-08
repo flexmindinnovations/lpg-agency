@@ -163,7 +163,8 @@ class TestLivePermissionCheckForTenantManagePlatform:
     `tenant:manage_platform`."""
 
     async def test_denies_a_tampered_claim_with_no_real_grant(
-        self, database: Database  # noqa: ARG002 - side effect: populates app state
+        self,
+        database: Database,  # noqa: ARG002 - side effect: populates app state
     ) -> None:
         principal = JwtPlatformPrincipal(
             user_id=uuid.uuid4(),

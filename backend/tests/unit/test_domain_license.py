@@ -232,9 +232,7 @@ class TestLicenseEntitlementService:
         license_ = _license(plan_tier="premium")
         override = LicenseFeatureOverride(uuid.uuid4(), license_.id, "module_orders", granted=False)
 
-        result = LicenseEntitlementService.is_feature_granted(
-            license_, [override], "module_orders"
-        )
+        result = LicenseEntitlementService.is_feature_granted(license_, [override], "module_orders")
 
         assert result is False
 

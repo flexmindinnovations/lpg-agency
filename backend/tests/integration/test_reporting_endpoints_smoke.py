@@ -662,9 +662,7 @@ class TestMaterializedReportsWithRealData:
         token = await _login(real_lifespan_client, email=email, password=password)
         headers = {"Authorization": f"Bearer {token}"}
 
-        response = await real_lifespan_client.get(
-            "/api/v1/reporting/consumption", headers=headers
-        )
+        response = await real_lifespan_client.get("/api/v1/reporting/consumption", headers=headers)
         assert response.status_code == 200, response.text
         body = response.json()
 

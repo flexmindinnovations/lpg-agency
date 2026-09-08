@@ -60,8 +60,7 @@ class TestParseKycDocument:
         # both are the same DD/MM/YYYY shape — a bare "first date in the
         # text" search wrongly picks the issued date as the date of birth.
         result = parse_kyc_document(
-            "Aadhaar no. issued: 24/08/2011\nVilas Rakhe\n"
-            "DOB: 30/05/1995\nMALE\n7730 0889 2163"
+            "Aadhaar no. issued: 24/08/2011\nVilas Rakhe\nDOB: 30/05/1995\nMALE\n7730 0889 2163"
         )
 
         assert result.date_of_birth == date(1995, 5, 30)

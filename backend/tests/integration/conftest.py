@@ -74,9 +74,7 @@ async def _auto_activate_licenses_for_new_tenants(postgres_available: bool) -> N
                 """)
             )
             await conn.execute(
-                text(
-                    "DROP TRIGGER IF EXISTS trg_auto_activate_test_license ON tenant.tenant"
-                )
+                text("DROP TRIGGER IF EXISTS trg_auto_activate_test_license ON tenant.tenant")
             )
             await conn.execute(
                 text("""

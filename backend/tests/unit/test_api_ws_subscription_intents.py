@@ -24,8 +24,7 @@ def test_orders_intent_requires_orders_read() -> None:
 
 def test_notifications_intent_is_always_scoped_to_the_caller() -> None:
     assert (
-        _resolve_subscription_intent("notifications", _claims())
-        == f"tenant:{_TENANT}:user:{_USER}"
+        _resolve_subscription_intent("notifications", _claims()) == f"tenant:{_TENANT}:user:{_USER}"
     )
 
 

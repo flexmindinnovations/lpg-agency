@@ -62,9 +62,7 @@ class TestInvoiceLine:
         assert line.unit_price == Decimal("0.00")
 
 
-def _make_invoice(
-    *, lines: list[InvoiceLine] | None = None, **kwargs: object
-) -> Invoice:
+def _make_invoice(*, lines: list[InvoiceLine] | None = None, **kwargs: object) -> Invoice:
     lines = lines if lines is not None else [_make_line()]
     subtotal = sum((line.subtotal for line in lines), Decimal("0"))
     tax_amount = sum((line.tax_amount for line in lines), Decimal("0"))
@@ -123,9 +121,7 @@ class TestInvoiceCreation:
             _make_line(
                 subtotal=Decimal("100"), tax_amount=Decimal("18"), total_amount=Decimal("118")
             ),
-            _make_line(
-                subtotal=Decimal("50"), tax_amount=Decimal("9"), total_amount=Decimal("59")
-            ),
+            _make_line(subtotal=Decimal("50"), tax_amount=Decimal("9"), total_amount=Decimal("59")),
         ]
         invoice = _make_invoice(lines=lines)
         assert invoice.subtotal == Decimal("150")

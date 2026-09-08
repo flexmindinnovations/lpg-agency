@@ -33,9 +33,7 @@ router = APIRouter(prefix="/customers/{customer_id}/ledger", tags=["Cylinder Led
 )
 async def get_ledger(
     customer_id: uuid.UUID,
-    use_case: Annotated[
-        GetCylinderLedgerUseCase, Depends(get_cylinder_ledger_use_case)
-    ],
+    use_case: Annotated[GetCylinderLedgerUseCase, Depends(get_cylinder_ledger_use_case)],
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
@@ -78,9 +76,7 @@ async def get_ledger(
 async def adjust_balance(
     customer_id: uuid.UUID,
     request: AdjustLedgerBalanceRequest,
-    use_case: Annotated[
-        AdjustLedgerBalanceUseCase, Depends(get_adjust_ledger_balance_use_case)
-    ],
+    use_case: Annotated[AdjustLedgerBalanceUseCase, Depends(get_adjust_ledger_balance_use_case)],
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> CylinderLedgerResponse:

@@ -251,9 +251,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
         # OpenAPI is served under the version prefix so the spec URL is
         # versioned alongside the API it describes (ADR-009).
-        openapi_url=(
-            f"{settings.api_v1_prefix}/openapi.json" if settings.docs_enabled else None
-        ),
+        openapi_url=(f"{settings.api_v1_prefix}/openapi.json" if settings.docs_enabled else None),
         docs_url=f"{settings.api_v1_prefix}/docs" if settings.docs_enabled else None,
         redoc_url=f"{settings.api_v1_prefix}/redoc" if settings.docs_enabled else None,
         # Route metadata *is* the contract — FastAPI generates the OpenAPI spec

@@ -98,9 +98,7 @@ def _scale(tenant_id: uuid.UUID, warehouse_id: uuid.UUID, **kw: object) -> Scale
 
 
 class TestScaleRepository:
-    async def test_save_and_get_by_id(
-        self, database: Database, admin_engine: AsyncEngine
-    ) -> None:
+    async def test_save_and_get_by_id(self, database: Database, admin_engine: AsyncEngine) -> None:
         tenant_id = await _seed_tenant(admin_engine)
         warehouse_id = await _seed_warehouse(admin_engine, tenant_id)
         context = RequestTenantContext(tenant_id=tenant_id)

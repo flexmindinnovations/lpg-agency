@@ -188,9 +188,9 @@ class TestLicenseReissuanceAfterRevoke:
         async for uow in _uow():
             repository = SqlAlchemyLicenseRepository(uow)
             with pytest.raises(LicenseActivationFailedError):
-                await ActivateLicenseUseCase(
-                    repository, token_hasher, status_checker, uow
-                ).execute(ActivateLicenseCommand(tenant_id=tenant_id, presented_key=first_key))
+                await ActivateLicenseUseCase(repository, token_hasher, status_checker, uow).execute(
+                    ActivateLicenseCommand(tenant_id=tenant_id, presented_key=first_key)
+                )
 
         # 6. Full history is preserved for audit purposes — both rows still
         # exist, not superseded/soft-deleted, per this fix's whole premise.
