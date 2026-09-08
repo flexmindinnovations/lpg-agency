@@ -28,6 +28,7 @@ export * from './lib/delivery.service';
 export * from './lib/document.service';
 export * from './lib/weighment.service';
 export * from './lib/tdt-rating.service';
+export * from './lib/cylinder-unit.service';
 export * from './lib/inventory.service';
 export * from './lib/dashboard.service';
 export * from './lib/order.service';

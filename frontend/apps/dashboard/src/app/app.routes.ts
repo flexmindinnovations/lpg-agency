@@ -134,6 +134,15 @@ export const appRoutes: Route[] = [
           import('@lpg/compliance/feature-scales').then((m) => m.complianceScalesRoutes),
       },
       {
+        path: 'cylinder-units',
+        canActivate: [permissionGuard('cylinder_units:read', STAFF_LIST_EXCLUDED_ROLES)],
+        data: { breadcrumbs: [{ label: 'Cylinder Units', routerLink: '/cylinder-units' }] },
+        loadChildren: () =>
+          import('@lpg/compliance/feature-cylinder-units').then(
+            (m) => m.complianceCylinderUnitsRoutes,
+          ),
+      },
+      {
         path: 'inventory',
         canActivate: [permissionGuard('inventory:read')],
         data: { breadcrumbs: [{ label: 'Inventory', routerLink: '/inventory' }] },

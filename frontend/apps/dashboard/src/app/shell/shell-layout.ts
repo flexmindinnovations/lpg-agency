@@ -252,6 +252,12 @@ export class ShellLayout {
           route: '/scales',
           condition: can('weighment:record'),
         },
+        {
+          label: 'Cylinder Units',
+          icon: 'pi pi-qrcode',
+          route: '/cylinder-units',
+          condition: can('cylinder_units:read'),
+        },
       ]),
       ...buildGroup('Administration', [
         {

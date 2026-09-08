@@ -1,0 +1,50 @@
+:host {
+  display: block;
+  block-size: 100%;
+}
+
+.cylinder-unit-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  block-size: 100%;
+}
+
+::ng-deep .due-status-filter-select {
+  flex-shrink: 0;
+  min-inline-size: 12rem;
+}
+
+.detail-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: var(--typography-caption-font-size);
+  font-weight: var(--typography-label-font-weight);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-value {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-primary);
+}
+
+.modal-actions--wrap {
+  flex-wrap: wrap;
+}
