@@ -196,6 +196,7 @@
   </ng-template>
 
   <form [formGroup]="raiseForm" (ngSubmit)="submitRaise()" class="dialog-form">
+    <div class="dialog-form__fields">
     <lpg-form-field label="Customer ID" for="customer_id" [control]="raiseForm.controls.customer_id" [messages]="fieldMessages.customer_id">
       <input pInputText id="customer_id" formControlName="customer_id" placeholder="e.g. CUST-123" [fluid]="true" />
     </lpg-form-field>
@@ -238,6 +239,7 @@
         [fluid]="true"
       ></textarea>
     </lpg-form-field>
+    </div>
   </form>
 
   <ng-template #footer>
@@ -279,9 +281,11 @@
   </ng-template>
 
   <form [formGroup]="assignForm" (ngSubmit)="submitAssign()" class="dialog-form">
+    <div class="dialog-form__fields">
     <lpg-form-field label="Assign to" for="assigned_to" [control]="assignForm.controls.assigned_to" [messages]="fieldMessages.assigned_to">
       <input pInputText id="assigned_to" formControlName="assigned_to" placeholder="e.g. Manager ID or Name" [fluid]="true" />
     </lpg-form-field>
+    </div>
   </form>
 
   <ng-template #footer>
@@ -307,6 +311,7 @@
   </ng-template>
 
   <form [formGroup]="resolveForm" (ngSubmit)="submitResolve()" class="dialog-form">
+    <div class="dialog-form__fields">
     <lpg-form-field label="Outcome" for="outcome" [control]="resolveForm.controls.outcome" [messages]="fieldMessages.outcome">
       <p-select
         inputId="outcome"
@@ -329,6 +334,7 @@
         [fluid]="true"
       ></textarea>
     </lpg-form-field>
+    </div>
   </form>
 
   <ng-template #footer>

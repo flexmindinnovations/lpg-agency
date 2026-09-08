@@ -91,6 +91,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="addBranchForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">Create a new branch and optionally assign it to a region.</p>
 
           <lpg-form-field label="Name" for="branch-name" [control]="form.controls.name" [messages]="{ required: 'Branch name is required.' }">
@@ -100,6 +101,7 @@ function errorMessageFor(error: unknown): string {
           <lpg-form-field label="Region" for="branch-region" [control]="form.controls.region" hint="Optional.">
             <input pInputText id="branch-region" type="text" formControlName="region" placeholder="e.g. Northern Region" [fluid]="true" />
           </lpg-form-field>
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

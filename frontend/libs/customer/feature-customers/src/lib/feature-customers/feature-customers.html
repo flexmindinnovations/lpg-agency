@@ -304,9 +304,11 @@
   (onHide)="addAddressTrigger()?.nativeElement?.focus()"
 >
   <form id="addAddressForm" [formGroup]="addressForm" (ngSubmit)="submitAddAddress()" class="dialog-form" novalidate>
+    <div class="dialog-form__fields">
     <lpg-form-field label="Address line" for="addr-line" [control]="addressForm.controls.address_line" [messages]="fieldMessages.address_line">
       <input pInputText id="addr-line" formControlName="address_line" placeholder="Street, Building, Area" [fluid]="true" />
     </lpg-form-field>
+    </div>
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeAddAddressModal()">
         Cancel
@@ -329,6 +331,7 @@
   (onHide)="submitKycTrigger()?.nativeElement?.focus()"
 >
   <form id="submitKycForm" [formGroup]="kycForm" (ngSubmit)="submitKyc()" class="dialog-form" novalidate>
+    <div class="dialog-form__fields">
     <lpg-form-field label="Document type" for="kyc-type" [control]="kycForm.controls.doc_type" [messages]="fieldMessages.doc_type">
       <p-select
         inputId="kyc-type"
@@ -361,6 +364,7 @@
       @if (submitKycFileError()) {
         <span class="field-error">{{ submitKycFileError() }}</span>
       }
+    </div>
     </div>
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeSubmitKycModal()">

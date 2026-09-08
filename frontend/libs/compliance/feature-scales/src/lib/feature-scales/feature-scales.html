@@ -61,6 +61,7 @@
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form id="registerScaleForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Warehouse" for="warehouse_id" [control]="registerForm.controls.warehouse_id" [messages]="fieldMessages.warehouse_id">
         <p-select
           inputId="warehouse_id"
@@ -123,6 +124,8 @@
         ></p-datepicker>
       </lpg-form-field>
 
+      </div>
+
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
@@ -147,6 +150,7 @@
     @if (selectedScale(); as scale) {
       @if (!editMode()) {
         <div class="detail-view">
+          <div class="detail-view__fields">
           <div class="detail-item">
             <span class="detail-label">Asset Tag</span>
             <span class="detail-value">{{ scale.asset_tag }}</span>
@@ -184,6 +188,8 @@
             <p-tag [value]="toSentenceCase(scale.status)" [severity]="statusSeverity(scale.status)" />
           </div>
 
+          </div>
+
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
             <button *lpgHasPermission="'weighment:manage'" pButton type="button" severity="secondary" [disabled]="saving()" (click)="toggleStatus()">
@@ -197,6 +203,7 @@
         </div>
       } @else {
         <form id="recalibrateScaleForm" [formGroup]="editForm" (ngSubmit)="saveRecalibration()" class="dialog-form">
+          <div class="dialog-form__fields">
           <lpg-form-field
             label="New calibration certificate"
             [control]="editForm.controls.certificate_ref"
@@ -223,6 +230,8 @@
               [fluid]="true"
             ></p-datepicker>
           </lpg-form-field>
+
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>

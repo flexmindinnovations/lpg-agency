@@ -95,6 +95,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="addCylinderTypeForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">Define a new LPG cylinder type by name and weight.</p>
 
           <lpg-form-field label="Name" for="cylinder-name" [control]="form.controls.name" [messages]="{ required: 'Cylinder type name is required.' }">
@@ -117,6 +118,7 @@ function errorMessageFor(error: unknown): string {
               [fluid]="true"
             />
           </lpg-form-field>
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

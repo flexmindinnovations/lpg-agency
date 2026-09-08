@@ -72,6 +72,7 @@
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form id="registerVehicleForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
         <p-select
           inputId="branch_id"
@@ -145,6 +146,8 @@
         <input pInputText type="number" id="capacity_units" formControlName="capacity_units" min="1" [fluid]="true" />
       </lpg-form-field>
 
+      </div>
+
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
@@ -169,6 +172,7 @@
     @if (selectedVehicle(); as vehicle) {
       @if (!editMode()) {
         <div class="detail-view">
+          <div class="detail-view__fields">
           <div class="detail-item">
             <span class="detail-label">Registration Number</span>
             <span class="detail-value">{{ vehicle.registration_number }}</span>
@@ -205,6 +209,7 @@
             [verifyDocument]="verifyComplianceDocument"
             (changed)="onVehicleDocumentsChanged()"
           />
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
@@ -216,6 +221,7 @@
         </div>
       } @else {
         <form id="editVehicleForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+          <div class="dialog-form__fields">
           <lpg-form-field label="Make" for="edit_vehicle_make" [control]="editForm.controls.make" [messages]="fieldMessages.make">
             <input pInputText id="edit_vehicle_make" formControlName="make" [fluid]="true" />
           </lpg-form-field>
@@ -249,6 +255,8 @@
               [fluid]="true"
             ></p-select>
           </lpg-form-field>
+
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>

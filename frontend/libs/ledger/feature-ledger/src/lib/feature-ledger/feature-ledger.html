@@ -58,6 +58,7 @@
   (onHide)="onDrawerHide()"
 >
   <form [formGroup]="adjustForm" (ngSubmit)="submitAdjustment()" class="dialog-form">
+    <div class="dialog-form__fields">
     <lpg-form-field
       label="Cylinder type"
       for="cylinder_type_id"
@@ -101,6 +102,7 @@
         [fluid]="true"
       />
     </lpg-form-field>
+    </div>
 
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeAdjustModal()">

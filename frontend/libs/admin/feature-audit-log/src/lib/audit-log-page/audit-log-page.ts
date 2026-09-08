@@ -112,6 +112,7 @@ const ACTION_SEVERITY: Record<string, string> = {
     >
       @if (selectedEntry(); as entry) {
         <div class="dialog-form">
+          <div class="dialog-form__fields">
           <div class="audit-detail-header">
             <div class="audit-detail-header__title">
               <span class="entity-name">{{ formatEntity(entry.entity_name) }}</span>
@@ -163,6 +164,7 @@ const ACTION_SEVERITY: Record<string, string> = {
               <pre class="state-code"><code>{{ entry.after_state | json }}</code></pre>
             </section>
           }
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="drawerVisible = false">Close</button>

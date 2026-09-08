@@ -117,6 +117,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="issueLicenseForm" [formGroup]="issueForm" (ngSubmit)="issue()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <lpg-form-field label="Tenant" for="issue-tenant-id" [control]="issueForm.controls.tenantId" [messages]="{ required: 'Select a tenant to issue a license for.' }">
             <p-select
               inputId="issue-tenant-id"
@@ -174,6 +175,7 @@ function errorMessageFor(error: unknown): string {
               [fluid]="true">
             </p-select>
           </lpg-form-field>
+          </div>
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="issueDrawerVisible.set(false)">Cancel</button>
             <button pButton type="submit" [disabled]="submitting() || issueForm.invalid" [loading]="submitting()">
@@ -232,6 +234,7 @@ function errorMessageFor(error: unknown): string {
       >
         @if (selectedLicense(); as license) {
           <div class="detail-view">
+            <div class="detail-view__fields">
             <div class="detail-item">
               <span class="detail-label">Tenant</span>
               <span class="detail-value">{{ license.tenant_name ?? '—' }}</span>
@@ -261,7 +264,8 @@ function errorMessageFor(error: unknown): string {
               <span class="detail-value">{{ formatDate(license.expires_at) }}</span>
             </div>
 
-            <form [formGroup]="planTierForm" (ngSubmit)="savePlanTier(license.tenant_id)" class="dialog-form">
+            <form [formGroup]="planTierForm" (ngSubmit)="savePlanTier(license.tenant_id)" class="dialog-form dialog-form--inline">
+              <div class="dialog-form__fields">
               <lpg-form-field label="Change plan tier" for="detail-plan-tier" [control]="planTierForm.controls.planTier">
                 <p-select
                   inputId="detail-plan-tier"
@@ -273,6 +277,7 @@ function errorMessageFor(error: unknown): string {
                   [fluid]="true">
                 </p-select>
               </lpg-form-field>
+              </div>
               <div class="modal-actions">
                 <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()" [loading]="savingPlanTier()">
                   Save plan tier
@@ -280,7 +285,8 @@ function errorMessageFor(error: unknown): string {
               </div>
             </form>
 
-            <form [formGroup]="deviceCapForm" (ngSubmit)="saveDeviceCap(license.tenant_id)" class="dialog-form">
+            <form [formGroup]="deviceCapForm" (ngSubmit)="saveDeviceCap(license.tenant_id)" class="dialog-form dialog-form--inline">
+              <div class="dialog-form__fields">
               <lpg-form-field label="Apps" for="detail-app-type" [control]="deviceCapForm.controls.appTypes">
                 <p-multiselect
                   inputId="detail-app-type"
@@ -297,12 +303,14 @@ function errorMessageFor(error: unknown): string {
               <lpg-form-field label="Device cap" for="detail-max-devices" [control]="deviceCapForm.controls.maxDevices" hint="Blank = unlimited.">
                 <input pInputText id="detail-max-devices" type="number" min="0" formControlName="maxDevices" [fluid]="true" />
               </lpg-form-field>
+              </div>
               <div class="modal-actions">
                 <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()" [loading]="savingDeviceCap()">
                   Save device cap
                 </button>
               </div>
             </form>
+            </div>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
@@ -365,8 +373,8 @@ function errorMessageFor(error: unknown): string {
       .detail-view {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
         flex: 1;
+        min-height: 0;
       }
 
       .detail-item {

@@ -60,6 +60,7 @@
     </ng-template>
 
     <form [formGroup]="createForm" (ngSubmit)="onSubmitCreate()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Customer"
         for="create_customer"
@@ -154,6 +155,7 @@
         }
       </div>
       }
+      </div>
     </form>
 
     <ng-template #footer>

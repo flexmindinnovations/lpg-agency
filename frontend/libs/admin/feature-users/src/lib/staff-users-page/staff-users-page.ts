@@ -111,6 +111,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="inviteUserForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">Send an invitation email to a new staff member and assign their role.</p>
 
           <lpg-form-field label="Email" for="invite-email" [control]="form.controls.email" [messages]="{ required: 'A valid email address is required.', email: 'A valid email address is required.' }">
@@ -128,6 +129,7 @@ function errorMessageFor(error: unknown): string {
               [fluid]="true">
             </p-select>
           </lpg-form-field>
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="inviteDrawerVisible.set(false)">Cancel</button>
@@ -149,6 +151,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">Reassign the role, manage specific permissions, or deactivate the account.</p>
 
           <lpg-form-field label="New role (for reassignment)" for="manage-role" [control]="manageForm.controls.newRole">
@@ -180,6 +183,7 @@ function errorMessageFor(error: unknown): string {
                </div>
                <button pButton type="button" severity="danger" (click)="deactivate()">Deactivate</button>
             </div>
+          </div>
           </div>
 
           <div class="modal-actions mt-6">

@@ -75,6 +75,7 @@
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form id="registerDriverForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
         <p-select
           inputId="branch_id"
@@ -133,6 +134,8 @@
         ></p-datepicker>
       </lpg-form-field>
 
+      </div>
+
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
@@ -157,6 +160,7 @@
     @if (selectedDriver(); as driver) {
       @if (!editMode()) {
         <div class="detail-view">
+          <div class="detail-view__fields">
           <div class="detail-item">
             <span class="detail-label">Employee Code</span>
             <span class="detail-value">{{ employeeCodeById().get(driver.employee_id) ?? driver.employee_id }}</span>
@@ -189,6 +193,7 @@
             [verifyDocument]="verifyComplianceDocument"
             (changed)="onDriverDocumentsChanged()"
           />
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
@@ -200,6 +205,7 @@
         </div>
       } @else {
         <form id="editDriverForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+          <div class="dialog-form__fields">
           <lpg-form-field label="Employee" for="edit_employee_id" [control]="editForm.controls.employee_id" [messages]="fieldMessages.employee_id">
             <p-select
               inputId="edit_employee_id"
@@ -250,6 +256,8 @@
               [fluid]="true"
             ></p-select>
           </lpg-form-field>
+
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>

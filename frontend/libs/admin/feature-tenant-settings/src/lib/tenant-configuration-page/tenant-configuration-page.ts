@@ -179,6 +179,7 @@ class ConfigKeyCell {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="setConfigForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">This creates a new historized entry — the previous value is preserved.</p>
 
           <lpg-form-field label="Key" for="config-key" [control]="form.controls.configKey" [messages]="{ required: 'Configuration key is required.' }">
@@ -196,6 +197,7 @@ class ConfigKeyCell {
           <lpg-form-field label="Value" for="config-value" [control]="form.controls.configValue" [messages]="{ required: 'Value is required.' }">
             <input pInputText id="config-value" type="text" formControlName="configValue" placeholder="e.g. 18" [fluid]="true" />
           </lpg-form-field>
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

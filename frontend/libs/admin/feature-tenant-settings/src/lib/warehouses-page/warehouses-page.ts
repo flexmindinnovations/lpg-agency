@@ -98,6 +98,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="addWarehouseForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">Create a new warehouse location and assign it to an operating branch.</p>
           
           <lpg-form-field label="Branch" for="warehouse-branch" [control]="form.controls.branchId" [messages]="{ required: 'Branch is required.' }">
@@ -119,6 +120,7 @@ function errorMessageFor(error: unknown): string {
           <lpg-form-field label="Address" for="warehouse-address" [control]="form.controls.addressLine" [messages]="{ required: 'Address is required.' }">
             <input pInputText id="warehouse-address" type="text" formControlName="addressLine" placeholder="Full street address" [fluid]="true" />
           </lpg-form-field>
+          </div>
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">

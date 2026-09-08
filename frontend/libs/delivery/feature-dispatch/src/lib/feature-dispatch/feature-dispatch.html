@@ -128,6 +128,7 @@
   (onHide)="planTrigger()?.nativeElement?.focus()"
 >
   <form [formGroup]="planForm" (ngSubmit)="onSubmitPlan()" class="dialog-form">
+    <div class="dialog-form__fields">
     <lpg-form-field label="Branch" for="plan_branch" [control]="planForm.controls.branch_id" [messages]="fieldMessages.branch_id">
       <p-select
         inputId="plan_branch"
@@ -203,6 +204,7 @@
         </div>
       </div>
     }
+    </div>
 
     <div class="modal-actions">
       <button
@@ -329,7 +331,8 @@
       @if (showLoadForm()) {
         <div class="load-form">
           <h3 class="section-title">Load Vehicle</h3>
-          <form [formGroup]="loadForm" (ngSubmit)="onSubmitLoad()" class="dialog-form">
+          <form [formGroup]="loadForm" (ngSubmit)="onSubmitLoad()" class="dialog-form dialog-form--inline">
+            <div class="dialog-form__fields">
             <lpg-form-field label="Warehouse" for="load_warehouse" [control]="loadForm.controls.warehouse_id" [messages]="fieldMessages.warehouse_id">
               <p-select
                 inputId="load_warehouse"
@@ -370,6 +373,7 @@
               <i pButtonIcon class="pi pi-plus"></i>
               <span pButtonLabel>Add Line</span>
             </button>
+            </div>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="showLoadForm.set(false)">
@@ -407,7 +411,8 @@
             </ul>
           }
 
-          <form [formGroup]="loadOutWeighmentForm" (ngSubmit)="onSubmitLoadOutWeighment()" class="dialog-form">
+          <form [formGroup]="loadOutWeighmentForm" (ngSubmit)="onSubmitLoadOutWeighment()" class="dialog-form dialog-form--inline">
+            <div class="dialog-form__fields">
             <lpg-form-field
               label="Cylinder type"
               for="wt_cylinder_type"
@@ -464,6 +469,7 @@
                 [fluid]="true"
               />
             </lpg-form-field>
+            </div>
             <div class="modal-actions">
               <button
                 pButton
@@ -490,7 +496,8 @@
       @if (showCashHandoverForm()) {
         <div class="load-form">
           <h3 class="section-title">Declare Cash Handover</h3>
-          <form [formGroup]="cashHandoverForm" (ngSubmit)="onSubmitCashHandover()" class="dialog-form">
+          <form [formGroup]="cashHandoverForm" (ngSubmit)="onSubmitCashHandover()" class="dialog-form dialog-form--inline">
+            <div class="dialog-form__fields">
             <lpg-form-field label="Cash amount handed over" for="cash_handover_amount" [control]="cashHandoverForm.controls.actual_amount" [messages]="fieldMessages.actual_amount">
               <p-inputnumber
                 inputId="cash_handover_amount"
@@ -502,6 +509,7 @@
                 [fluid]="true"
               />
             </lpg-form-field>
+            </div>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="showCashHandoverForm.set(false)">
@@ -543,7 +551,8 @@
 
       @if (showAddStopForm()) {
         <div class="load-form">
-          <form [formGroup]="addStopForm" (ngSubmit)="onSubmitAddStop()" class="dialog-form">
+          <form [formGroup]="addStopForm" (ngSubmit)="onSubmitAddStop()" class="dialog-form dialog-form--inline">
+            <div class="dialog-form__fields">
             <lpg-form-field
               label="Order"
               for="add_stop_order"
@@ -561,6 +570,7 @@
                 [appendTo]="'body'"
               />
             </lpg-form-field>
+            </div>
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="showAddStopForm.set(false)">
                 Cancel
@@ -617,6 +627,7 @@
 >
   @if (selectedOrderForAssign(); as order) {
     <form [formGroup]="assignOrderForm" (ngSubmit)="onSubmitAssignOrder()" class="dialog-form">
+      <div class="dialog-form__fields">
       <p class="assign-order-summary">
         Order <strong [pTooltip]="order.id" tooltipPosition="top">{{ order.order_number ?? order.id }}</strong> — {{ order.delivery_address.address_line }}
       </p>
@@ -637,6 +648,7 @@
           [appendTo]="'body'"
         />
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showAssignOrderDrawer.set(false)">
           Cancel

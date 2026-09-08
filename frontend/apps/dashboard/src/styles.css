@@ -385,17 +385,73 @@ body {
    FORM UTILITIES — consistent field layout across all dialogs/pages
    ======================================================================== */
 
-.p-drawer-content:has(.dialog-form),
-.p-drawer-content:has(.detail-view) {
+.p-drawer-content:has(> .dialog-form),
+.p-drawer-content:has(> .detail-view) {
   display: flex;
   flex-direction: column;
+  /* The inner `.dialog-form__fields`/`.detail-view__fields` wrapper below is
+     now the drawer's only scrolling region — same split as
+     `.lpg-notification-drawer` (toolbar/list/footer, `notification-drawer.css`).
+     Without this, PrimeNG's own `overflow-y: auto` here would make *this*
+     the scroll container instead, and `.modal-actions` — an ordinary
+     trailing child, not actually pinned by anything — would scroll away
+     with the fields on any form tall enough to need it.
+
+     `> .dialog-form`/`> .detail-view` — direct child, not just any
+     descendant: a drawer whose body is some other wrapper (e.g. dispatch's
+     Route Detail, `.route-detail`) that happens to contain a `.dialog-form`
+     buried a few levels down for an inline sub-section has no
+     `.dialog-form__fields` of its own to make the split with, and matching
+     it here would set `overflow: hidden` with nothing underneath actually
+     handling the scroll — clipping the whole drawer body, not just
+     misplacing a footer. Bare `:has(.dialog-form)` did exactly that. */
+  overflow: hidden;
 }
 
 .dialog-form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
   flex: 1;
+  min-height: 0;
+}
+
+/* The only scrolling region inside a drawer body. Wraps every field/detail
+   row so a trailing `.modal-actions` row stays a fixed sibling below it —
+   never part of the same scroll — regardless of how tall the form/detail
+   content gets. `min-height: 0` is required on a flex child for its own
+   overflow to actually take effect instead of stretching the column. */
+.dialog-form__fields,
+.detail-view__fields {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dialog-form__fields {
+  gap: var(--spacing-md);
+}
+
+/* A `.dialog-form` that's really just an inline sub-section within a larger
+   scrolling body (e.g. a nested "Save X" mini-form partway down a detail
+   drawer, or one of dispatch's Route Detail conditional forms) rather than
+   a whole drawer's own top-level body — it doesn't fill/scroll a bounded
+   region the way a top-level `.dialog-form` does, so `flex:1`/`min-height:0`
+   would be meaningless at best there; this cancels them back to normal
+   block flow while keeping `.dialog-form__fields`'s field `gap`. */
+.dialog-form--inline {
+  flex: initial;
+  min-height: auto;
+}
+.dialog-form--inline .dialog-form__fields {
+  flex: initial;
+  min-height: auto;
+  overflow: visible;
+}
+
+.detail-view__fields {
+  gap: var(--spacing-lg);
 }
 
 .form-group {
@@ -426,11 +482,11 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-sm);
-  /* auto, not a fixed value: pins the actions to the bottom of the drawer
-     (`.dialog-form` is a `flex:1` column, so this margin absorbs whatever
-     space the form fields don't use) while still sitting directly under
-     short forms rather than leaving a fixed gap either way. */
-  margin-block-start: auto;
+  /* A fixed-size sibling *after* `.dialog-form__fields`/`.detail-view__fields`
+     (that `flex: 1 1 auto` neighbour already claims all the leftover space,
+     which is what pins this at the bottom for a short form) — never itself
+     part of the scrolling region above it. */
+  flex: 0 0 auto;
   padding-block-start: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
 }
@@ -542,32 +598,16 @@ textarea {
 }
 
 .p-drawer .p-drawer-footer .modal-actions {
-  margin-block-start: 0;
   padding-block-start: 0;
   border-block-start: none;
 }
 
-/* Inline `.modal-actions` (pinned to the base of a `.dialog-form`, no footer
-   template): break its divider out of the content padding so it reaches the
-   drawer edges like the header's.
-   `.p-drawer-content` is the drawer's only scrolling region (PrimeNG's own
-   `overflow-y: auto`); a `<ng-template #footer>` drawer keeps its actions
-   genuinely pinned because `.p-drawer-footer` is a separate sibling outside
-   that region, but this inline row used to be an ordinary in-flow child of
-   it — sitting at the visual bottom only when the form was short enough to
-   need no scrolling, and otherwise scrolling away with the fields above it.
-   `position: sticky` closes that gap without touching every page's markup:
-   it's a no-op while the form fits (margin-block-start: auto above already
-   pins it there) and holds it at the scrollport's bottom edge once the form
-   overflows, matching the footer-template drawers' behaviour exactly. Needs
-   its own opaque background — sticky content still has fields scrolling
-   underneath it — matching the drawer panel's own (`.p-drawer`, above). */
+/* Inline `.modal-actions` (a fixed sibling after `.dialog-form__fields`/
+   `.detail-view__fields`, no footer template): break its divider out of the
+   content padding so it reaches the drawer edges like the header's. */
 .p-drawer .p-drawer-content .modal-actions {
   margin-inline: calc(-1 * var(--spacing-lg));
   padding-inline: var(--spacing-lg);
-  position: sticky;
-  bottom: 0;
-  background: var(--surface-acrylic);
 }
 
 /* Notification drawer: the content is a flex column with its own padding

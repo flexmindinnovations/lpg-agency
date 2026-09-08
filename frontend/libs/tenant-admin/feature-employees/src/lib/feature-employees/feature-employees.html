@@ -58,6 +58,7 @@
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
     <form id="registerEmployeeForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
         <p-select
           inputId="branch_id"
@@ -95,6 +96,8 @@
           [fluid]="true"
         ></p-select>
       </lpg-form-field>
+
+      </div>
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
@@ -182,6 +185,7 @@
     [style]="{ width: '100%', maxWidth: '36rem' }"
   >
     <form [formGroup]="editForm" (ngSubmit)="onSubmitEdit()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Branch" for="edit_branch_id" [control]="editForm.controls.branch_id" [messages]="fieldMessages.branch_id">
         <p-select
           inputId="edit_branch_id"
@@ -219,6 +223,8 @@
           [fluid]="true"
         ></p-select>
       </lpg-form-field>
+
+      </div>
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showEditDrawer.set(false)">

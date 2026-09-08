@@ -127,6 +127,7 @@ class FlagDefaultCell {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="createFlagForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <lpg-form-field label="Key" for="flag-key" [control]="form.controls.key" [messages]="{ required: 'Key is required.' }">
             <input pInputText id="flag-key" type="text" formControlName="key" [fluid]="true" />
           </lpg-form-field>
@@ -136,6 +137,7 @@ class FlagDefaultCell {
           <lpg-form-field label="Rollout %" for="flag-rollout" [control]="form.controls.rolloutPercentage" hint="Optional.">
             <input pInputText id="flag-rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
           </lpg-form-field>
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
@@ -159,6 +161,7 @@ class FlagDefaultCell {
         @if (selectedFlag(); as flag) {
           @if (!editMode()) {
             <div class="detail-view">
+              <div class="detail-view__fields">
               <div class="detail-item">
                 <span class="detail-label">Key</span>
                 <span class="detail-value">{{ flag.key }}</span>
@@ -183,6 +186,7 @@ class FlagDefaultCell {
                 <span class="detail-label">Ends At</span>
                 <span class="detail-value">{{ flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled' }}</span>
               </div>
+              </div>
 
               <div class="modal-actions">
                 <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
@@ -194,6 +198,7 @@ class FlagDefaultCell {
             </div>
           } @else {
             <form id="editFlagForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+              <div class="dialog-form__fields">
               <lpg-form-field label="Default" for="edit_default" [control]="editForm.controls.isEnabledByDefault">
                 <p-select
                   inputId="edit_default"
@@ -235,6 +240,7 @@ class FlagDefaultCell {
                   [fluid]="true"
                 ></p-datepicker>
               </lpg-form-field>
+              </div>
 
               <div class="modal-actions">
                 <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
@@ -260,8 +266,8 @@ class FlagDefaultCell {
       .detail-view {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
         flex: 1;
+        min-height: 0;
       }
 
       .detail-item {

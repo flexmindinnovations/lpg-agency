@@ -170,6 +170,7 @@
     [style]="{ width: '100%', maxWidth: '28rem' }"
   >
     <form [formGroup]="cancelForm" (ngSubmit)="onSubmitCancel()" class="dialog-form">
+      <div class="dialog-form__fields">
       @if (requiresCancelApproval()) {
       <p-message severity="warn">
         This order has already been dispatched — cancellation requires Manager approval and may
@@ -179,6 +180,7 @@
       <lpg-form-field label="Reason" for="cancel_reason" [control]="cancelForm.controls.reason" [messages]="fieldMessages.reason">
         <textarea pTextarea id="cancel_reason" formControlName="reason" rows="3" [fluid]="true"></textarea>
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showCancelDialog.set(false)">
           Close
@@ -200,6 +202,7 @@
     (onHide)="assignTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="assignForm" (ngSubmit)="onSubmitAssign()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Driver" for="assign_driver" [control]="assignForm.controls.driver_id" [messages]="fieldMessages.driver_id">
         <p-select
           inputId="assign_driver"
@@ -220,6 +223,7 @@
           [fluid]="true"
         ></p-select>
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showAssignDrawer.set(false)">
           Close
@@ -239,6 +243,7 @@
     (onHide)="failedDeliveryTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="failedDeliveryForm" (ngSubmit)="onSubmitFailedDelivery()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Reason" for="failed_reason" [control]="failedDeliveryForm.controls.reason_code" [messages]="fieldMessages.reason_code">
         <p-select
           inputId="failed_reason"
@@ -259,6 +264,7 @@
           [fluid]="true"
         ></p-select>
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showFailedDeliveryDrawer.set(false)">
           Close
@@ -280,6 +286,7 @@
     (onHide)="deliverTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="deliverForm" (ngSubmit)="onSubmitDeliver()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field label="Delivery OTP" for="deliver_otp" [control]="deliverForm.controls.otp_code" [messages]="fieldMessages.otp_code">
         <input pInputText id="deliver_otp" formControlName="otp_code" autocomplete="one-time-code" [fluid]="true" />
       </lpg-form-field>
@@ -391,6 +398,7 @@
           {{ deliverForm.controls.gps_lat.value | number: '1.4-4' }}, {{ deliverForm.controls.gps_lng.value | number: '1.4-4' }}
         </span>
         }
+      </div>
       </div>
 
       <div class="modal-actions">

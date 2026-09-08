@@ -107,6 +107,7 @@ function errorMessageFor(error: unknown): string {
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
         <form id="setPriceForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+          <div class="dialog-form__fields">
           <p class="page-lede">Set a price for a cylinder type and customer category. Leave branch empty for a tenant-wide default.</p>
 
           <lpg-form-field label="Cylinder type" for="price-cylinder-type" [control]="form.controls.cylinderTypeId" [messages]="{ required: 'Cylinder type is required.' }">
@@ -150,6 +151,7 @@ function errorMessageFor(error: unknown): string {
           <lpg-form-field label="Price" for="price-value" [control]="form.controls.price" [messages]="{ required: 'Price is required.', min: 'Price must be greater than 0.' }">
             <input pInputText id="price-value" type="number" step="0.01" formControlName="price" placeholder="0.00" [fluid]="true" />
           </lpg-form-field>
+          </div>
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>

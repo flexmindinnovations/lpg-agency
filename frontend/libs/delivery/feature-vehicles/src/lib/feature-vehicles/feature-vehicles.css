@@ -34,8 +34,8 @@
 .detail-view {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
   flex: 1;
+  min-height: 0;
 }
 
 .detail-item {

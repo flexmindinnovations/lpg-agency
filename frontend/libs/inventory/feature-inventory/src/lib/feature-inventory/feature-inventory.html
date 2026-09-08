@@ -167,6 +167,7 @@
   >
     @if (!lastGrn()) {
     <form [formGroup]="grnForm" (ngSubmit)="onSubmitGrn()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Cylinder type"
         for="grn_cylinder_type"
@@ -193,6 +194,7 @@
       <lpg-form-field label="Source OMC" for="grn_source_omc" [control]="grnForm.controls.source_omc" hint="Optional.">
         <input pInputText id="grn_source_omc" formControlName="source_omc" [fluid]="true" />
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showGrnModal.set(false)">
           Cancel
@@ -207,6 +209,7 @@
       receipt either way.
     </p-message>
     <form [formGroup]="weighmentForm" (ngSubmit)="onSubmitWeighmentSample()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Scale used"
         for="wt_scale"
@@ -257,6 +260,7 @@
           [fluid]="true"
         />
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="skipWeighmentSample()">
           Skip
@@ -286,6 +290,7 @@
     (onHide)="transferTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="transferForm" (ngSubmit)="onSubmitTransfer()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Warehouse"
         for="transfer_warehouse"
@@ -354,6 +359,7 @@
       >
         <p-inputnumber inputId="transfer_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showTransferModal.set(false)">
           Cancel
@@ -380,6 +386,7 @@
       (ngSubmit)="onSubmitDeliveryCollection()"
       class="dialog-form"
     >
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Action"
         for="dc_mode"
@@ -421,6 +428,7 @@
       >
         <p-inputnumber inputId="dc_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button
           pButton
@@ -448,6 +456,7 @@
     (onHide)="statusChangeTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="statusChangeForm" (ngSubmit)="onSubmitStatusChange()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Cylinder type"
         for="sc_cylinder_type"
@@ -501,6 +510,7 @@
       >
         <p-inputnumber inputId="sc_quantity" formControlName="quantity" [min]="1" [fluid]="true" />
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button
           pButton
@@ -528,6 +538,7 @@
     (onHide)="adjustTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="adjustForm" (ngSubmit)="onSubmitAdjust()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Cylinder type"
         for="adj_cylinder_type"
@@ -589,6 +600,7 @@
       >
         <textarea pTextarea id="adj_reason" formControlName="reason" rows="3" [fluid]="true"></textarea>
       </lpg-form-field>
+      </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showAdjustModal.set(false)">
           Cancel
@@ -609,6 +621,7 @@
     (onHide)="reconcileTrigger()?.nativeElement?.focus()"
   >
     <form [formGroup]="reconcileForm" (ngSubmit)="onSubmitReconcile()" class="dialog-form">
+      <div class="dialog-form__fields">
       <lpg-form-field
         label="Cylinder type"
         for="rec_cylinder_type"
@@ -647,6 +660,7 @@
       >
         <p-inputnumber inputId="rec_actual_quantity" formControlName="actual_quantity" [min]="0" [fluid]="true" />
       </lpg-form-field>
+      </div>
       @if (!lastReconciliationRecordId()) {
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showReconcileModal.set(false)">

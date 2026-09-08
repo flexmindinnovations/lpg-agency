@@ -76,6 +76,7 @@ function errorMessageFor(error: unknown): string {
       >
         @if (selectedAgency(); as agency) {
           <div class="detail-view">
+            <div class="detail-view__fields">
             <div class="detail-item">
               <span class="detail-label">Name</span>
               <span class="detail-value">{{ agency.name }}</span>
@@ -103,6 +104,7 @@ function errorMessageFor(error: unknown): string {
             <div class="detail-item">
               <span class="detail-label">Tenant ID</span>
               <span class="detail-value">{{ agency.id }}</span>
+            </div>
             </div>
 
             <div class="modal-actions">
@@ -149,8 +151,8 @@ function errorMessageFor(error: unknown): string {
       .detail-view {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
         flex: 1;
+        min-height: 0;
       }
 
       .detail-item {
