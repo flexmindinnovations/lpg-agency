@@ -13,9 +13,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Select, case, desc, func, select
 
 from lpg.application.compliance.ports import OrderFulfillmentRecord
+from lpg.domain.compliance.cylinder_unit import CylinderUnit
 from lpg.domain.compliance.scale import Scale
 from lpg.domain.compliance.weighment_record import WeighmentRecord
 from lpg.infrastructure.persistence.models.compliance import (
+    CylinderUnitModel,
     ScaleModel,
     WeighmentRecordModel,
 )
@@ -238,6 +240,152 @@ class SqlAlchemyWeighmentRecordRepository:
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()
         return self._to_domain(row) if row is not None else None
+
+
+class SqlAlchemyCylinderUnitRepository:
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    def next_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    # ------------------------------------------------------------------
+    # Mapping
+    # ------------------------------------------------------------------
+
+    def _to_domain(self, row: CylinderUnitModel) -> CylinderUnit:
+        unit = CylinderUnit(
+            cylinder_unit_id=row.id,
+            tenant_id=row.tenant_id,
+            cylinder_type_id=row.cylinder_type_id,
+            serial_number=row.serial_number,
+            condition_status=row.condition_status,
+            custody_type=row.custody_type,
+            custody_ref_id=row.custody_ref_id,
+            manufacture_date=row.manufacture_date,
+            owner_omc=row.owner_omc,
+            last_tested_at=row.last_tested_at,
+            test_due_date=row.test_due_date,
+            is_retired=row.is_retired,
+            version=row.version,
+        )
+        unit.clear_events()
+        self._uow.register_aggregate(unit)
+        return unit
+
+    def _sync_row(self, row: CylinderUnitModel, unit: CylinderUnit) -> None:
+        row.cylinder_type_id = unit.cylinder_type_id
+        row.serial_number = unit.serial_number
+        row.manufacture_date = unit.manufacture_date
+        row.owner_omc = unit.owner_omc
+        row.condition_status = unit.condition_status
+        row.custody_type = unit.custody_type
+        row.custody_ref_id = unit.custody_ref_id
+        row.last_tested_at = unit.last_tested_at
+        row.test_due_date = unit.test_due_date
+        row.is_retired = unit.is_retired
+        row.updated_at = datetime.now(UTC)
+        row.version = unit.version
+
+    # ------------------------------------------------------------------
+    # Repository methods
+    # ------------------------------------------------------------------
+
+    async def save(self, unit: CylinderUnit) -> None:
+        stmt = select(CylinderUnitModel).where(CylinderUnitModel.id == unit.id)
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        if row is None:
+            self._uow.session.add(
+                CylinderUnitModel(
+                    id=unit.id,
+                    tenant_id=unit.tenant_id,
+                    cylinder_type_id=unit.cylinder_type_id,
+                    serial_number=unit.serial_number,
+                    manufacture_date=unit.manufacture_date,
+                    owner_omc=unit.owner_omc,
+                    condition_status=unit.condition_status,
+                    custody_type=unit.custody_type,
+                    custody_ref_id=unit.custody_ref_id,
+                    last_tested_at=unit.last_tested_at,
+                    test_due_date=unit.test_due_date,
+                    is_retired=unit.is_retired,
+                )
+            )
+        else:
+            self._sync_row(row, unit)
+
+    async def get_by_id(self, unit_id: uuid.UUID) -> CylinderUnit | None:
+        stmt = select(CylinderUnitModel).where(
+            CylinderUnitModel.id == unit_id, CylinderUnitModel.is_deleted.is_(False)
+        )
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        return self._to_domain(row) if row is not None else None
+
+    async def get_by_serial(self, serial_number: str) -> CylinderUnit | None:
+        stmt = select(CylinderUnitModel).where(
+            CylinderUnitModel.serial_number == serial_number,
+            CylinderUnitModel.is_deleted.is_(False),
+        )
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        return self._to_domain(row) if row is not None else None
+
+    def _list_for_tenant_stmt(
+        self,
+        *,
+        due_status: str | None,
+        cylinder_type_id: uuid.UUID | None,
+        custody_type: str | None,
+    ) -> Select[tuple[CylinderUnitModel]]:
+        stmt = select(CylinderUnitModel).where(
+            CylinderUnitModel.is_deleted.is_(False), CylinderUnitModel.is_retired.is_(False)
+        )
+        if cylinder_type_id is not None:
+            stmt = stmt.where(CylinderUnitModel.cylinder_type_id == cylinder_type_id)
+        if custody_type is not None:
+            stmt = stmt.where(CylinderUnitModel.custody_type == custody_type)
+
+        today = datetime.now(UTC).date()
+        if due_status == "overdue":
+            stmt = stmt.where(CylinderUnitModel.test_due_date < today)
+        elif due_status == "due_soon":
+            stmt = stmt.where(
+                CylinderUnitModel.test_due_date >= today,
+                CylinderUnitModel.test_due_date <= today + timedelta(days=30),
+            )
+        return stmt
+
+    async def list_for_tenant(
+        self,
+        *,
+        due_status: str | None = None,
+        cylinder_type_id: uuid.UUID | None = None,
+        custody_type: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[CylinderUnit]:
+        stmt = (
+            self._list_for_tenant_stmt(
+                due_status=due_status, cylinder_type_id=cylinder_type_id, custody_type=custody_type
+            )
+            .order_by(CylinderUnitModel.test_due_date.asc().nullslast())
+            .offset(skip)
+            .limit(limit)
+        )
+        rows = (await self._uow.session.execute(stmt)).scalars().all()
+        return [self._to_domain(row) for row in rows]
+
+    async def count_for_tenant(
+        self,
+        *,
+        due_status: str | None = None,
+        cylinder_type_id: uuid.UUID | None = None,
+        custody_type: str | None = None,
+    ) -> int:
+        inner = self._list_for_tenant_stmt(
+            due_status=due_status, cylinder_type_id=cylinder_type_id, custody_type=custody_type
+        ).subquery()
+        stmt = select(func.count()).select_from(inner)
+        return (await self._uow.session.execute(stmt)).scalar_one()
 
 
 class SqlAlchemyTdtRatingRepository:

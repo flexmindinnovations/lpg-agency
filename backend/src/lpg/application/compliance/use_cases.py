@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
+from lpg.domain.compliance.cylinder_unit import CylinderUnit, default_test_due_date
 from lpg.domain.compliance.scale import Scale
 from lpg.domain.compliance.weighment_record import (
     WeighmentRecord,
@@ -18,7 +19,11 @@ if TYPE_CHECKING:
     from datetime import date
 
     from lpg.application.common.ports import UnitOfWork
-    from lpg.application.compliance.ports import ScaleRepository, WeighmentRecordRepository
+    from lpg.application.compliance.ports import (
+        CylinderUnitRepository,
+        ScaleRepository,
+        WeighmentRecordRepository,
+    )
     from lpg.application.tenant.ports import TenantConfigurationRepository
 
 #: Fallback when a tenant has no `weighment_tolerance_grams` configuration
@@ -273,3 +278,307 @@ class ListWeighmentRecordsUseCase:
 
     async def execute(self, query: ListWeighmentRecordsQuery) -> list[WeighmentRecord]:
         return await self._repository.list_for_reference(query.reference_type, query.reference_id)
+
+
+# ---------------------------------------------------------------------------
+# Cylinder Identity (Phase 20 subsystem 3)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class RegisterCylinderUnitCommand(Command):
+    tenant_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    serial_number: str
+    condition_status: str
+    custody_type: str
+    custody_ref_id: uuid.UUID | None = None
+    manufacture_date: date | None = None
+    owner_omc: str | None = None
+
+
+class RegisterCylinderUnitUseCase:
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RegisterCylinderUnitCommand) -> CylinderUnit:
+        from lpg.application.common.errors import DuplicateCylinderSerialNumberError
+
+        existing = await self._repository.get_by_serial(command.serial_number)
+        if existing is not None:
+            msg = f"A cylinder unit with serial '{command.serial_number}' is already registered."
+            raise DuplicateCylinderSerialNumberError(msg)
+
+        unit = CylinderUnit(
+            cylinder_unit_id=self._repository.next_id(),
+            tenant_id=command.tenant_id,
+            cylinder_type_id=command.cylinder_type_id,
+            serial_number=command.serial_number,
+            condition_status=command.condition_status,
+            custody_type=command.custody_type,
+            custody_ref_id=command.custody_ref_id,
+            manufacture_date=command.manufacture_date,
+            owner_omc=command.owner_omc,
+        )
+        await self._repository.save(unit)
+        await self._unit_of_work.commit()
+        return unit
+
+
+@dataclass(frozen=True, slots=True)
+class RecordStatutoryTestCommand(Command):
+    cylinder_unit_id: uuid.UUID
+    tested_at: date
+    due_date: date
+    performed_by: uuid.UUID
+
+
+class RecordStatutoryTestUseCase:
+    """`due_date` is always the caller's own value — this use case never
+    substitutes one. `suggest_due_date` (a separate read helper, not part
+    of this command) is what a caller-facing form would call first to
+    populate a suggested value the user can then confirm/override; see
+    `SuggestStatutoryTestDueDateUseCase`."""
+
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RecordStatutoryTestCommand) -> CylinderUnit:
+        from lpg.application.common.errors import NotFoundError
+
+        unit = await self._repository.get_by_id(command.cylinder_unit_id)
+        if unit is None:
+            msg = f"Cylinder unit {command.cylinder_unit_id} not found."
+            raise NotFoundError(msg)
+
+        unit.record_statutory_test(
+            tested_at=command.tested_at,
+            due_date=command.due_date,
+            performed_by=command.performed_by,
+        )
+        await self._repository.save(unit)
+        await self._unit_of_work.commit()
+        return unit
+
+
+@dataclass(frozen=True, slots=True)
+class SuggestStatutoryTestDueDateQuery(Query):
+    """Not tied to any specific unit — a tenant-wide suggestion only, the
+    caller applies it (or not) when submitting `RecordStatutoryTestCommand`."""
+
+    tenant_id: uuid.UUID
+    tested_at: date
+
+
+class SuggestStatutoryTestDueDateUseCase:
+    """Resolves `cylinder_statutory_test_interval_months` and returns a
+    suggested due date — `None` if the tenant has never set the key (no
+    guessed interval, ever). Never called by `RecordStatutoryTestUseCase`
+    itself; a caller (typically the API layer, for a form's "suggest"
+    action) uses this separately."""
+
+    def __init__(self, tenant_config_repository: TenantConfigurationRepository) -> None:
+        self._tenant_config_repository = tenant_config_repository
+
+    async def execute(self, query: SuggestStatutoryTestDueDateQuery) -> date | None:
+        from lpg.application.tenant.tenant_configuration import (
+            GetEffectiveTenantConfigurationQuery,
+            GetEffectiveTenantConfigurationUseCase,
+        )
+
+        config = await GetEffectiveTenantConfigurationUseCase(
+            self._tenant_config_repository
+        ).execute(
+            GetEffectiveTenantConfigurationQuery(
+                tenant_id=query.tenant_id, config_key="cylinder_statutory_test_interval_months"
+            )
+        )
+        if config is None:
+            return None
+        try:
+            interval_months = int(config.config_value)
+        except (TypeError, ValueError):
+            from lpg.config.logging import get_logger
+
+            get_logger(__name__).warning(
+                "cylinder_statutory_test_interval_months_invalid",
+                tenant_id=str(query.tenant_id),
+                value=config.config_value,
+            )
+            return None
+        return default_test_due_date(query.tested_at, interval_months)
+
+
+@dataclass(frozen=True, slots=True)
+class MoveCylinderCustodyCommand(Command):
+    cylinder_unit_id: uuid.UUID
+    custody_type: str
+    custody_ref_id: uuid.UUID | None
+    performed_by: uuid.UUID
+
+
+class MoveCylinderCustodyUseCase:
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: MoveCylinderCustodyCommand) -> CylinderUnit:
+        from lpg.application.common.errors import NotFoundError
+
+        unit = await self._repository.get_by_id(command.cylinder_unit_id)
+        if unit is None:
+            msg = f"Cylinder unit {command.cylinder_unit_id} not found."
+            raise NotFoundError(msg)
+
+        unit.move_custody(
+            custody_type=command.custody_type,
+            custody_ref_id=command.custody_ref_id,
+            performed_by=command.performed_by,
+        )
+        await self._repository.save(unit)
+        await self._unit_of_work.commit()
+        return unit
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeCylinderConditionStatusCommand(Command):
+    cylinder_unit_id: uuid.UUID
+    new_status: str
+    performed_by: uuid.UUID
+    reason: str | None = None
+
+
+class ChangeCylinderConditionStatusUseCase:
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ChangeCylinderConditionStatusCommand) -> CylinderUnit:
+        from lpg.application.common.errors import NotFoundError
+
+        unit = await self._repository.get_by_id(command.cylinder_unit_id)
+        if unit is None:
+            msg = f"Cylinder unit {command.cylinder_unit_id} not found."
+            raise NotFoundError(msg)
+
+        unit.change_condition_status(
+            new_status=command.new_status,
+            performed_by=command.performed_by,
+            reason=command.reason,
+        )
+        await self._repository.save(unit)
+        await self._unit_of_work.commit()
+        return unit
+
+
+@dataclass(frozen=True, slots=True)
+class ReceiveCylinderUnitCommand(Command):
+    cylinder_unit_id: uuid.UUID
+    warehouse_id: uuid.UUID
+    performed_by: uuid.UUID
+
+
+class ReceiveCylinderUnitUseCase:
+    """Rule 26, Gas Cylinders Rules 2016 — the actual regulatory block.
+    Checks `is_due_for_test()` itself and raises
+    `CylinderDueForStatutoryTestError` (409) *before* calling the domain's
+    `receive()` command, which stays pure/clock-free. Matches
+    `LoadVehicleForRouteUseCase`'s own precedent for an MDG-rule block
+    (application-layer check, 409), not `Scale`/`InventoryLocation`'s
+    domain-invariant pattern (422)."""
+
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ReceiveCylinderUnitCommand) -> CylinderUnit:
+        from datetime import UTC, datetime
+
+        from lpg.application.common.errors import CylinderDueForStatutoryTestError, NotFoundError
+
+        unit = await self._repository.get_by_id(command.cylinder_unit_id)
+        if unit is None:
+            msg = f"Cylinder unit {command.cylinder_unit_id} not found."
+            raise NotFoundError(msg)
+
+        if unit.is_due_for_test(as_of=datetime.now(UTC).date()):
+            msg = (
+                f"Cylinder unit {unit.serial_number} is due for statutory retest "
+                f"(due {unit.test_due_date}) and cannot be received into stock — "
+                "segregate and return it to the bottling plant (MDG 2022 cl. 1.4(b))."
+            )
+            raise CylinderDueForStatutoryTestError(msg, cylinder_unit_id=str(unit.id))
+
+        unit.receive(warehouse_id=command.warehouse_id, performed_by=command.performed_by)
+        await self._repository.save(unit)
+        await self._unit_of_work.commit()
+        return unit
+
+
+@dataclass(frozen=True, slots=True)
+class RetireCylinderUnitCommand(Command):
+    cylinder_unit_id: uuid.UUID
+    performed_by: uuid.UUID
+
+
+class RetireCylinderUnitUseCase:
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RetireCylinderUnitCommand) -> CylinderUnit:
+        from lpg.application.common.errors import NotFoundError
+
+        unit = await self._repository.get_by_id(command.cylinder_unit_id)
+        if unit is None:
+            msg = f"Cylinder unit {command.cylinder_unit_id} not found."
+            raise NotFoundError(msg)
+
+        unit.retire(performed_by=command.performed_by)
+        await self._repository.save(unit)
+        await self._unit_of_work.commit()
+        return unit
+
+
+@dataclass(frozen=True, slots=True)
+class GetCylinderUnitQuery(Query):
+    cylinder_unit_id: uuid.UUID
+
+
+class GetCylinderUnitUseCase:
+    def __init__(self, repository: CylinderUnitRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: GetCylinderUnitQuery) -> CylinderUnit | None:
+        return await self._repository.get_by_id(query.cylinder_unit_id)
+
+
+@dataclass(frozen=True, slots=True)
+class ListCylinderUnitsQuery(Query):
+    due_status: str | None = None
+    cylinder_type_id: uuid.UUID | None = None
+    custody_type: str | None = None
+    skip: int = 0
+    limit: int = 50
+
+
+class ListCylinderUnitsUseCase:
+    def __init__(self, repository: CylinderUnitRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: ListCylinderUnitsQuery) -> tuple[list[CylinderUnit], int]:
+        units = await self._repository.list_for_tenant(
+            due_status=query.due_status,
+            cylinder_type_id=query.cylinder_type_id,
+            custody_type=query.custody_type,
+            skip=query.skip,
+            limit=query.limit,
+        )
+        total = await self._repository.count_for_tenant(
+            due_status=query.due_status,
+            cylinder_type_id=query.cylinder_type_id,
+            custody_type=query.custody_type,
+        )
+        return units, total

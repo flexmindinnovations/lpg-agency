@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     import uuid
     from datetime import datetime
 
+    from lpg.domain.compliance.cylinder_unit import CylinderUnit
     from lpg.domain.compliance.scale import Scale
     from lpg.domain.compliance.weighment_record import WeighmentRecord
 
@@ -69,6 +70,42 @@ class WeighmentRecordRepository(Protocol):
         """The most recent `result = 'pass'` record for this reference and
         context, if any — what Part 3's load-out gate checks for."""
         ...
+
+
+class CylinderUnitRepository(Protocol):
+    """Persistence for `CylinderUnit` — tenant-scoped by RLS on
+    `compliance.cylinder_unit`."""
+
+    def next_id(self) -> uuid.UUID: ...
+
+    async def save(self, unit: CylinderUnit) -> None: ...
+
+    async def get_by_id(self, unit_id: uuid.UUID) -> CylinderUnit | None: ...
+
+    async def get_by_serial(self, serial_number: str) -> CylinderUnit | None: ...
+
+    async def list_for_tenant(
+        self,
+        *,
+        due_status: str | None = None,
+        cylinder_type_id: uuid.UUID | None = None,
+        custody_type: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[CylinderUnit]:
+        """Registry list — `due_status` is `due_soon` (<=30 days) or
+        `overdue`, same `expiry`-filter idiom `ScaleRepository.list_for_
+        tenant` already establishes. Excludes retired units unless a
+        future need for them arises — not exposed as a filter yet."""
+        ...
+
+    async def count_for_tenant(
+        self,
+        *,
+        due_status: str | None = None,
+        cylinder_type_id: uuid.UUID | None = None,
+        custody_type: str | None = None,
+    ) -> int: ...
 
 
 @dataclass(frozen=True, slots=True)

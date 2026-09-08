@@ -85,3 +85,46 @@ class WeighmentRecordModel(Base):
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )
+
+
+class CylinderUnitModel(Base):
+    """One individually identified cylinder (Cylinder Identity, Phase 20
+    subsystem 3). `cylinder_type_id` is a real FK to `tenant.cylinder_type`;
+    `custody_ref_id` is intentionally NOT an FK — it polymorphically points
+    at `tenant.warehouse`/`delivery.vehicle`/`customer.customer`/nothing
+    (`bottling_plant`), same accepted-risk convention as
+    `inventory.inventory_location.location_ref_id`."""
+
+    __tablename__ = "cylinder_unit"
+    __table_args__ = {"schema": "compliance"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    cylinder_type_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.cylinder_type.id")
+    )
+    serial_number: Mapped[str] = mapped_column(String(100))
+    manufacture_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    owner_omc: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    condition_status: Mapped[str] = mapped_column(String(20))
+    custody_type: Mapped[str] = mapped_column(String(20))
+    custody_ref_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    last_tested_at: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    test_due_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    is_retired: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
