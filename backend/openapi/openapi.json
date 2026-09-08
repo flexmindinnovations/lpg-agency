@@ -712,6 +712,30 @@
         "title": "CashHandoverResponse",
         "type": "object"
       },
+      "ChangeCylinderConditionStatusRequest": {
+        "properties": {
+          "new_status": {
+            "title": "New Status",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "new_status"
+        ],
+        "title": "ChangeCylinderConditionStatusRequest",
+        "type": "object"
+      },
       "ChangeCylinderStatusRequest": {
         "properties": {
           "cylinder_type_id": {
@@ -1882,6 +1906,136 @@
           "is_active"
         ],
         "title": "CylinderTypeResponse",
+        "type": "object"
+      },
+      "CylinderUnitListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CylinderUnitResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CylinderUnitListResponse",
+        "type": "object"
+      },
+      "CylinderUnitResponse": {
+        "properties": {
+          "condition_status": {
+            "title": "Condition Status",
+            "type": "string"
+          },
+          "custody_ref_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Ref Id"
+          },
+          "custody_type": {
+            "title": "Custody Type",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_due_for_test": {
+            "title": "Is Due For Test",
+            "type": "boolean"
+          },
+          "is_retired": {
+            "title": "Is Retired",
+            "type": "boolean"
+          },
+          "last_tested_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Tested At"
+          },
+          "manufacture_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacture Date"
+          },
+          "owner_omc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Omc"
+          },
+          "serial_number": {
+            "title": "Serial Number",
+            "type": "string"
+          },
+          "test_due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "cylinder_type_id",
+          "serial_number",
+          "manufacture_date",
+          "owner_omc",
+          "condition_status",
+          "custody_type",
+          "custody_ref_id",
+          "last_tested_at",
+          "test_due_date",
+          "is_due_for_test",
+          "is_retired"
+        ],
+        "title": "CylinderUnitResponse",
         "type": "object"
       },
       "DailySalesResponse": {
@@ -3968,6 +4122,31 @@
         "title": "LogoutRequest",
         "type": "object"
       },
+      "MoveCylinderCustodyRequest": {
+        "properties": {
+          "custody_ref_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Ref Id"
+          },
+          "custody_type": {
+            "title": "Custody Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "custody_type"
+        ],
+        "title": "MoveCylinderCustodyRequest",
+        "type": "object"
+      },
       "NextConsumerNumberResponse": {
         "properties": {
           "consumer_number": {
@@ -5174,6 +5353,20 @@
         "title": "ReassignRoleRequest",
         "type": "object"
       },
+      "ReceiveCylinderUnitRequest": {
+        "properties": {
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ],
+        "title": "ReceiveCylinderUnitRequest",
+        "type": "object"
+      },
       "RecognizeComplianceDocumentRequest": {
         "properties": {
           "blob_ref": {
@@ -5678,6 +5871,26 @@
         "title": "RecordCollectionRequest",
         "type": "object"
       },
+      "RecordCylinderStatutoryTestRequest": {
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "tested_at": {
+            "format": "date",
+            "title": "Tested At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tested_at",
+          "due_date"
+        ],
+        "title": "RecordCylinderStatutoryTestRequest",
+        "type": "object"
+      },
       "RecordDeliveryRequest": {
         "properties": {
           "cylinder_type_id": {
@@ -6049,6 +6262,71 @@
           "phone_number"
         ],
         "title": "RegisterCustomerRequest",
+        "type": "object"
+      },
+      "RegisterCylinderUnitRequest": {
+        "properties": {
+          "condition_status": {
+            "title": "Condition Status",
+            "type": "string"
+          },
+          "custody_ref_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Ref Id"
+          },
+          "custody_type": {
+            "title": "Custody Type",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "manufacture_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manufacture Date"
+          },
+          "owner_omc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Omc"
+          },
+          "serial_number": {
+            "minLength": 1,
+            "title": "Serial Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "serial_number",
+          "condition_status",
+          "custody_type"
+        ],
+        "title": "RegisterCylinderUnitRequest",
         "type": "object"
       },
       "RegisterDeviceRequest": {
@@ -7269,6 +7547,28 @@
           "document_number"
         ],
         "title": "SubmitKycDocumentRequest",
+        "type": "object"
+      },
+      "SuggestCylinderTestDueDateResponse": {
+        "description": "`suggested_due_date` is `null` when the tenant has no\n`cylinder_statutory_test_interval_months` configured — never a guessed\ninterval.",
+        "properties": {
+          "suggested_due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Due Date"
+          }
+        },
+        "required": [
+          "suggested_due_date"
+        ],
+        "title": "SuggestCylinderTestDueDateResponse",
         "type": "object"
       },
       "TdtBandDistributionResponse": {
@@ -11530,6 +11830,493 @@
         "summary": "Adjust Balance",
         "tags": [
           "Cylinder Ledger"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units": {
+      "get": {
+        "description": "`due_status` is `due_soon` (<=30 days) or `overdue` — same idiom as\nthe Scale registry's own `expiry` filter.",
+        "operationId": "list_cylinder_units_api_v1_cylinder_units_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "due_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Due Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cylinder_type_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cylinder Type Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "custody_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Custody Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cylinder Units",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      },
+      "post": {
+        "description": "Cylinder Identity (Phase 20 subsystem 3) — registers one physical\ncylinder. A narrow, additive registry; does not touch bulk inventory\nbalances.",
+        "operationId": "register_cylinder_unit_api_v1_cylinder_units_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCylinderUnitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Cylinder Unit",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/suggest-test-due-date": {
+      "get": {
+        "description": "A read-only convenience helper for a \"record test\" form — `null`\nwhen the tenant has no `cylinder_statutory_test_interval_months`\nconfigured. Registered before `/{cylinder_unit_id}` so this literal\npath is matched first.",
+        "operationId": "suggest_cylinder_test_due_date_api_v1_cylinder_units_suggest_test_due_date_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tested_at",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Tested At",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestCylinderTestDueDateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suggest Cylinder Test Due Date",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}": {
+      "get": {
+        "operationId": "get_cylinder_unit_api_v1_cylinder_units__cylinder_unit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cylinder Unit",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}/condition": {
+      "post": {
+        "operationId": "change_cylinder_condition_status_api_v1_cylinder_units__cylinder_unit_id__condition_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeCylinderConditionStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Cylinder Condition Status",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}/custody": {
+      "post": {
+        "operationId": "move_cylinder_custody_api_v1_cylinder_units__cylinder_unit_id__custody_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveCylinderCustodyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move Cylinder Custody",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}/receive": {
+      "post": {
+        "description": "Rule 26, Gas Cylinders Rules 2016 — 409 `CYLINDER_DUE_FOR_STATUTORY_\nTEST` if this unit's retest is due; segregate and return it to the\nbottling plant instead (MDG 2022 cl. 1.4(b)).",
+        "operationId": "receive_cylinder_unit_api_v1_cylinder_units__cylinder_unit_id__receive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveCylinderUnitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Receive Cylinder Unit",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}/retire": {
+      "post": {
+        "operationId": "retire_cylinder_unit_api_v1_cylinder_units__cylinder_unit_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retire Cylinder Unit",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}/test": {
+      "post": {
+        "description": "`due_date` is the caller's own value — never computed server-side\nfrom an assumed interval (see `GET .../suggest-test-due-date` for the\noptional, explicitly-opt-in suggestion).",
+        "operationId": "record_cylinder_statutory_test_api_v1_cylinder_units__cylinder_unit_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCylinderStatutoryTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Cylinder Statutory Test",
+        "tags": [
+          "Compliance — Cylinder Identity"
         ]
       }
     },
