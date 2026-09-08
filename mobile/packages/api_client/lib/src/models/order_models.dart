@@ -217,7 +217,11 @@ class DeliveredLineRequest {
 }
 
 /// Proof-of-delivery payload — mirrors the backend's
-/// `ProofOfDeliverySubmission`. Every field is required.
+/// `ProofOfDeliverySubmission`. The first five fields are required.
+/// `dacCode` is the OMC's own separate Delivery Authentication Code
+/// (Phase 20 subsystem 4) — optional (coverage is ~90%, not 100%),
+/// distinct from `otpCode` on [DeliverOrderRequest], and never gates
+/// delivery.
 class ProofOfDeliverySubmission {
   const ProofOfDeliverySubmission({
     required this.signatureBlobRef,
@@ -226,6 +230,7 @@ class ProofOfDeliverySubmission {
     required this.gpsLng,
     required this.paymentMethod,
     required this.amountCollected,
+    this.dacCode,
   });
 
   final String signatureBlobRef;
@@ -234,6 +239,7 @@ class ProofOfDeliverySubmission {
   final double gpsLng;
   final String paymentMethod;
   final double amountCollected;
+  final String? dacCode;
 
   Map<String, dynamic> toJson() => {
     'signature_blob_ref': signatureBlobRef,
@@ -242,6 +248,7 @@ class ProofOfDeliverySubmission {
     'gps_lng': gpsLng,
     'payment_method': paymentMethod,
     'amount_collected': amountCollected,
+    if (dacCode != null) 'dac_code': dacCode,
   };
 }
 

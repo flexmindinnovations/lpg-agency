@@ -40,6 +40,7 @@ class RecordDeliveryScreen extends ConsumerStatefulWidget {
 class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   final _signature = SignatureController(penStrokeWidth: 2);
   final _otpController = TextEditingController();
+  final _dacController = TextEditingController();
   final _amountController = TextEditingController();
 
   // cylinderTypeId -> (delivered, collectedEmpty)
@@ -54,6 +55,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   void dispose() {
     _signature.dispose();
     _otpController.dispose();
+    _dacController.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -120,6 +122,9 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
             amountCollected: amount,
             signatureBytes: signatureBytes,
             photoBytes: _photoBytes!,
+            dacCode: _dacController.text.trim().isEmpty
+                ? null
+                : _dacController.text.trim(),
           );
       if (!mounted) return;
 
@@ -226,6 +231,18 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Code from the customer',
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Delivery Authentication Code (Phase 20 subsystem 4) — the
+              // OMC's own separate code, distinct from the code above.
+              // Optional: coverage is ~90%, not 100%, and it never gates
+              // delivery.
+              TextField(
+                controller: _dacController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'OMC delivery code (DAC) — optional',
                 ),
               ),
               const SizedBox(height: 24),

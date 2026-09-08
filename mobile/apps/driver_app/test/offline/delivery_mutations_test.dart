@@ -16,6 +16,7 @@ class _DeliverAdapter implements HttpClientAdapter {
   int deliverStatus = 200;
   bool offline = false;
   final List<String> paths = [];
+  Object? lastDeliverBody;
 
   @override
   Future<ResponseBody> fetch(RequestOptions options, _, _) async {
@@ -26,6 +27,9 @@ class _DeliverAdapter implements HttpClientAdapter {
       );
     }
     paths.add(options.path);
+    if (options.path.endsWith('/deliver')) {
+      lastDeliverBody = options.data;
+    }
     if (options.path.endsWith('/pod-attachments')) {
       return _json({'blob_ref': 'blob-${paths.length}'}, 201);
     }
@@ -229,6 +233,72 @@ void main() {
     },
   );
 
+  test(
+    'recordDelivery offline includes dac_code in the queued payload when '
+    'supplied — this is the eventual HTTP body SyncCoordinator replays '
+    'verbatim, so a delivery captured offline must not silently drop it',
+    () async {
+      adapter.offline = true;
+      await cache.write('order', 'o3b', {
+        'id': 'o3b',
+        'status': 'out_for_delivery',
+      });
+
+      await build(online: false).recordDelivery(
+        orderId: 'o3b',
+        lines: _lines,
+        otpCode: '123456',
+        dacCode: '654321',
+        gpsLat: 1.0,
+        gpsLng: 2.0,
+        paymentMethod: 'cash',
+        amountCollected: 900,
+        signatureBytes: [1, 2, 3],
+        photoBytes: [4, 5, 6],
+      );
+
+      final op = (await onlyOpOrNull())!;
+      final payload = jsonDecode(op.payload) as Map<String, dynamic>;
+      expect(
+        payload['body']['proof_of_delivery']['dac_code'],
+        '654321',
+      );
+    },
+  );
+
+  test(
+    'recordDelivery offline omits dac_code from the queued payload when '
+    'not supplied, rather than sending a null',
+    () async {
+      adapter.offline = true;
+      await cache.write('order', 'o3c', {
+        'id': 'o3c',
+        'status': 'out_for_delivery',
+      });
+
+      await build(online: false).recordDelivery(
+        orderId: 'o3c',
+        lines: _lines,
+        otpCode: '123456',
+        gpsLat: 1.0,
+        gpsLng: 2.0,
+        paymentMethod: 'cash',
+        amountCollected: 900,
+        signatureBytes: [1, 2, 3],
+        photoBytes: [4, 5, 6],
+      );
+
+      final op = (await onlyOpOrNull())!;
+      final payload = jsonDecode(op.payload) as Map<String, dynamic>;
+      expect(
+        (payload['body']['proof_of_delivery'] as Map).containsKey(
+          'dac_code',
+        ),
+        isFalse,
+      );
+    },
+  );
+
   test('recordDelivery online delivers inline and queues nothing', () async {
     final outcome = await build(online: true).recordDelivery(
       orderId: 'o4',
@@ -246,6 +316,31 @@ void main() {
     expect(await onlyOpOrNull(), isNull);
     expect(adapter.paths.where((p) => p.endsWith('/deliver')), hasLength(1));
   });
+
+  test(
+    'recordDelivery online includes dac_code in the inline request body '
+    'when supplied',
+    () async {
+      await build(online: true).recordDelivery(
+        orderId: 'o4b',
+        lines: _lines,
+        otpCode: '123456',
+        dacCode: '112233',
+        gpsLat: 1,
+        gpsLng: 2,
+        paymentMethod: 'cash',
+        amountCollected: 0,
+        signatureBytes: [1],
+        photoBytes: [2],
+      );
+
+      final body = adapter.lastDeliverBody as Map<String, dynamic>;
+      expect(
+        (body['proof_of_delivery'] as Map)['dac_code'],
+        '112233',
+      );
+    },
+  );
 
   test(
     'recordDelivery online with a rejected OTP surfaces DeliverFailed',

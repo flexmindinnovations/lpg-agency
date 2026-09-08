@@ -122,7 +122,10 @@ class DeliveryMutations {
     );
   }
 
-  /// `out_for_delivery → delivered` with proof of delivery.
+  /// `out_for_delivery → delivered` with proof of delivery. `dacCode` is
+  /// the OMC's own separate Delivery Authentication Code (Phase 20
+  /// subsystem 4) — optional, distinct from `otpCode`, never gates
+  /// delivery.
   Future<DeliverOutcome> recordDelivery({
     required String orderId,
     required List<DeliveredLineRequest> lines,
@@ -133,6 +136,7 @@ class DeliveryMutations {
     required double amountCollected,
     required List<int> signatureBytes,
     required List<int> photoBytes,
+    String? dacCode,
   }) async {
     if (await _isOnline()) {
       final inline = await _deliverInline(
@@ -145,6 +149,7 @@ class DeliveryMutations {
         amountCollected: amountCollected,
         signatureBytes: signatureBytes,
         photoBytes: photoBytes,
+        dacCode: dacCode,
       );
       // `null` here means "the network dropped mid-submit" — fall through to
       // the queue rather than making the driver recapture everything.
@@ -161,6 +166,7 @@ class DeliveryMutations {
       amountCollected: amountCollected,
       signatureBytes: signatureBytes,
       photoBytes: photoBytes,
+      dacCode: dacCode,
     );
     return const DeliverQueued();
   }
@@ -185,6 +191,7 @@ class DeliveryMutations {
     required double amountCollected,
     required List<int> signatureBytes,
     required List<int> photoBytes,
+    String? dacCode,
   }) async {
     final sig = await _orderApi.uploadPodAttachment(
       orderId,
@@ -216,6 +223,7 @@ class DeliveryMutations {
           gpsLng: gpsLng,
           paymentMethod: paymentMethod,
           amountCollected: amountCollected,
+          dacCode: dacCode,
         ),
       ),
     );
@@ -240,6 +248,7 @@ class DeliveryMutations {
     required double amountCollected,
     required List<int> signatureBytes,
     required List<int> photoBytes,
+    String? dacCode,
   }) async {
     final mediaId = const Uuid().v4();
     final sigKey = 'pod/$mediaId/signature.png';
@@ -283,6 +292,13 @@ class DeliveryMutations {
             'gps_lng': gpsLng,
             'payment_method': paymentMethod,
             'amount_collected': amountCollected,
+            // Delivery Authentication Code (Phase 20 subsystem 4) — must
+            // stay in lockstep with ProofOfDeliverySubmission.toJson()
+            // above; this map IS the eventual HTTP body (SyncCoordinator
+            // replays it verbatim), not a re-serialization of a typed
+            // model, so a field added to one and not the other is a
+            // silent drop for every delivery captured offline.
+            'dac_code': ?dacCode,
           },
         },
       }),
