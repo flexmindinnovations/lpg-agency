@@ -57,6 +57,26 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # sees no change to route loading. A tenant sets this to a truthy
         # value only once they've actually adopted weighment.
         "weighment_gate_enabled",
+        # TDT (Targeted Delivery Time) star rating (Phase 20 subsystem 2) —
+        # `domain.compliance.tdt_rating`'s star-band day-thresholds,
+        # version-stamped with the MDG edition they came from:
+        # `{"mdg_edition": "MDG-2022", "bands": [{"stars": 5, "max_days": N},
+        # ..., {"stars": 1, "max_days": null}]}`. No default in code — a
+        # tenant with no entry for this key has no TDT rating computable
+        # yet, which is the correct behaviour until the real bands are
+        # confirmed against the tenant's own OMC (see PLAN.md's open
+        # questions — the MDG edition itself is unresolved).
+        "tdt_star_rating_bands",
+        # TDT fine schedule — the percentage owed for N consecutive
+        # sub-threshold quarters, same version-stamping requirement:
+        # `{"mdg_edition": "MDG-2022", "rules": [{"consecutive_low_quarters":
+        # N, "fine_percent": "X.XX"}, ...]}`. Kept as its own key, separate
+        # from `tdt_star_rating_bands`, because the two are independently
+        # revisable — an OMC could update the day-thresholds without
+        # touching the fine schedule, matching how `weighment_tolerance_
+        # grams` and `weighment_gate_enabled` are already two keys rather
+        # than one combined weighment-config blob.
+        "tdt_fine_schedule",
     }
 )
 
