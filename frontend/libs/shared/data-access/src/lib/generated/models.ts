@@ -177,6 +177,8 @@ export type { SetScaleStatusRequest } from './models/set-scale-status-request';
 export type { SetTenantConfigurationRequest } from './models/set-tenant-configuration-request';
 export type { StaffUserResponse } from './models/staff-user-response';
 export type { SubmitKycDocumentRequest } from './models/submit-kyc-document-request';
+export type { TdtBandDistributionResponse } from './models/tdt-band-distribution-response';
+export type { TdtQuarterlyRatingResponse } from './models/tdt-quarterly-rating-response';
 export type { TenantConfigurationResponse } from './models/tenant-configuration-response';
 export type { TenantResponse } from './models/tenant-response';
 export type { TokenResponse } from './models/token-response';

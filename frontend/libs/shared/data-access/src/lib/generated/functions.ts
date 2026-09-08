@@ -359,6 +359,10 @@ export type { CompleteRouteReconciliationApiV1RoutesRouteIdReconcilePost$Params 
 export { completeRouteReconciliationApiV1RoutesRouteIdReconcilePost as completeRouteReconciliationApiV1RoutesRouteIdReconcilePost } from './fn/routes/complete-route-reconciliation-api-v-1-routes-route-id-reconcile-post';
 export type { UpdateRouteStatusApiV1RoutesRouteIdStatusPatch$Params as UpdateRouteStatusApiV1RoutesRouteIdStatusPatch$Params } from './fn/routes/update-route-status-api-v-1-routes-route-id-status-patch';
 export { updateRouteStatusApiV1RoutesRouteIdStatusPatch as updateRouteStatusApiV1RoutesRouteIdStatusPatch } from './fn/routes/update-route-status-api-v-1-routes-route-id-status-patch';
+export type { GetLiveTdtProjectionApiV1TdtRatingLiveProjectionGet$Params as GetLiveTdtProjectionApiV1TdtRatingLiveProjectionGet$Params } from './fn/compliance-tdt-rating/get-live-tdt-projection-api-v-1-tdt-rating-live-projection-get';
+export { getLiveTdtProjectionApiV1TdtRatingLiveProjectionGet as getLiveTdtProjectionApiV1TdtRatingLiveProjectionGet } from './fn/compliance-tdt-rating/get-live-tdt-projection-api-v-1-tdt-rating-live-projection-get';
+export type { GetQuarterlyTdtRatingApiV1TdtRatingQuarterlyGet$Params as GetQuarterlyTdtRatingApiV1TdtRatingQuarterlyGet$Params } from './fn/compliance-tdt-rating/get-quarterly-tdt-rating-api-v-1-tdt-rating-quarterly-get';
+export { getQuarterlyTdtRatingApiV1TdtRatingQuarterlyGet as getQuarterlyTdtRatingApiV1TdtRatingQuarterlyGet } from './fn/compliance-tdt-rating/get-quarterly-tdt-rating-api-v-1-tdt-rating-quarterly-get';
 export type { LivenessHealthLiveGet$Params as LivenessHealthLiveGet$Params } from './fn/health/liveness-health-live-get';
 export { livenessHealthLiveGet as livenessHealthLiveGet } from './fn/health/liveness-health-live-get';
 export type { ReadinessHealthReadyGet$Params as ReadinessHealthReadyGet$Params } from './fn/health/readiness-health-ready-get';

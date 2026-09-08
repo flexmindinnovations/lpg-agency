@@ -7271,6 +7271,70 @@
         "title": "SubmitKycDocumentRequest",
         "type": "object"
       },
+      "TdtBandDistributionResponse": {
+        "properties": {
+          "order_count": {
+            "title": "Order Count",
+            "type": "integer"
+          },
+          "stars": {
+            "title": "Stars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stars",
+          "order_count"
+        ],
+        "title": "TdtBandDistributionResponse",
+        "type": "object"
+      },
+      "TdtQuarterlyRatingResponse": {
+        "description": "`overall_stars` is `null` when there is no delivered-order data for\nthe requested period — no `tdt_star_rating_bands` configured yet, or\nzero orders delivered in the window — never a guessed value.",
+        "properties": {
+          "distribution": {
+            "items": {
+              "$ref": "#/components/schemas/TdtBandDistributionResponse"
+            },
+            "title": "Distribution",
+            "type": "array"
+          },
+          "overall_stars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Stars"
+          },
+          "quarter_end": {
+            "format": "date",
+            "title": "Quarter End",
+            "type": "string"
+          },
+          "quarter_start": {
+            "format": "date",
+            "title": "Quarter Start",
+            "type": "string"
+          },
+          "total_orders": {
+            "title": "Total Orders",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "overall_stars",
+          "total_orders",
+          "distribution",
+          "quarter_start",
+          "quarter_end"
+        ],
+        "title": "TdtQuarterlyRatingResponse",
+        "type": "object"
+      },
       "TenantConfigurationResponse": {
         "properties": {
           "config_key": {
@@ -15968,6 +16032,128 @@
         "summary": "Set Scale Status",
         "tags": [
           "Compliance — Weighment"
+        ]
+      }
+    },
+    "/api/v1/tdt-rating/live-projection": {
+      "get": {
+        "description": "The current, still-open calendar quarter's rating so far — \"so the\ndistributor can still act\" (source plan), rather than only finding out\nonce the quarter has already closed.",
+        "operationId": "get_live_tdt_projection_api_v1_tdt_rating_live_projection_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TdtQuarterlyRatingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Live Tdt Projection",
+        "tags": [
+          "Compliance — TDT Rating"
+        ]
+      }
+    },
+    "/api/v1/tdt-rating/quarterly": {
+      "get": {
+        "description": "`quarter_start` is inclusive, `quarter_end` is the **exclusive**\nupper bound — pass the first day of the quarter *after* the one you\nwant (e.g. `2026-01-01`/`2026-04-01` for Q1 2026), not its last day.",
+        "operationId": "get_quarterly_tdt_rating_api_v1_tdt_rating_quarterly_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "quarter_start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Quarter Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quarter_end",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Quarter End",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TdtQuarterlyRatingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quarterly Tdt Rating",
+        "tags": [
+          "Compliance — TDT Rating"
         ]
       }
     },
