@@ -3,6 +3,7 @@
 
 export interface ProofOfDeliveryResponse {
   amount_collected: string;
+  dac_code?: (string | null);
   gps_lat: string;
   gps_lng: string;
   id: string;

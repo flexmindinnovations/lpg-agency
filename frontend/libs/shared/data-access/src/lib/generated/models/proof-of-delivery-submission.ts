@@ -3,11 +3,17 @@
 
 
 /**
- * All five fields are non-optional — a missing one is a 422 before the
- * request ever reaches `DeliverOrderUseCase`.
+ * The first five fields are non-optional — a missing one is a 422
+ * before the request ever reaches `DeliverOrderUseCase`. `dac_code` is the
+ * OMC's own separate 6-digit Delivery Authentication Code (Phase 20
+ * subsystem 4) — optional (coverage is ~90%, not 100%) and format-
+ * validated only (this platform has no OMC portal API to check a DAC's
+ * authenticity against); it never gates delivery, unlike `otp_code` on
+ * `DeliverOrderRequest` below.
  */
 export interface ProofOfDeliverySubmission {
   amount_collected: (number | string);
+  dac_code?: (string | null);
   gps_lat: (number | string);
   gps_lng: (number | string);
   payment_method: 'cash' | 'upi' | 'card' | 'online_gateway' | 'credit';

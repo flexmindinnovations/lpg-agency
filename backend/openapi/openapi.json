@@ -5068,6 +5068,17 @@
             "title": "Amount Collected",
             "type": "string"
           },
+          "dac_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dac Code"
+          },
           "gps_lat": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Gps Lat",
@@ -5203,7 +5214,7 @@
         "type": "object"
       },
       "ProofOfDeliverySubmission": {
-        "description": "All five fields are non-optional — a missing one is a 422 before the\nrequest ever reaches `DeliverOrderUseCase`.",
+        "description": "The first five fields are non-optional — a missing one is a 422\nbefore the request ever reaches `DeliverOrderUseCase`. `dac_code` is the\nOMC's own separate 6-digit Delivery Authentication Code (Phase 20\nsubsystem 4) — optional (coverage is ~90%, not 100%) and format-\nvalidated only (this platform has no OMC portal API to check a DAC's\nauthenticity against); it never gates delivery, unlike `otp_code` on\n`DeliverOrderRequest` below.",
         "properties": {
           "amount_collected": {
             "anyOf": [
@@ -5217,6 +5228,18 @@
               }
             ],
             "title": "Amount Collected"
+          },
+          "dac_code": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dac Code"
           },
           "gps_lat": {
             "anyOf": [
