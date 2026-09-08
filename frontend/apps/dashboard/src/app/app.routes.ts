@@ -143,6 +143,17 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'compliance-calendar',
+        canActivate: [permissionGuard('compliance:read', STAFF_LIST_EXCLUDED_ROLES)],
+        data: {
+          breadcrumbs: [{ label: 'Compliance Calendar', routerLink: '/compliance-calendar' }],
+        },
+        loadChildren: () =>
+          import('@lpg/compliance/feature-compliance-calendar').then(
+            (m) => m.complianceComplianceCalendarRoutes,
+          ),
+      },
+      {
         path: 'inventory',
         canActivate: [permissionGuard('inventory:read')],
         data: { breadcrumbs: [{ label: 'Inventory', routerLink: '/inventory' }] },

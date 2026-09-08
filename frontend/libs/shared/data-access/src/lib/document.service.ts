@@ -8,6 +8,10 @@ import { listDriverDocumentsApiV1DriversDriverIdDocumentsGet } from './generated
 import { addDriverDocumentApiV1DriversDriverIdDocumentsPost } from './generated/fn/delivery/add-driver-document-api-v-1-drivers-driver-id-documents-post';
 import { listVehicleDocumentsApiV1VehiclesVehicleIdDocumentsGet } from './generated/fn/delivery/list-vehicle-documents-api-v-1-vehicles-vehicle-id-documents-get';
 import { addVehicleDocumentApiV1VehiclesVehicleIdDocumentsPost } from './generated/fn/delivery/add-vehicle-document-api-v-1-vehicles-vehicle-id-documents-post';
+import { listWarehouseDocumentsApiV1WarehousesWarehouseIdDocumentsGet } from './generated/fn/delivery/list-warehouse-documents-api-v-1-warehouses-warehouse-id-documents-get';
+import { addWarehouseDocumentApiV1WarehousesWarehouseIdDocumentsPost } from './generated/fn/delivery/add-warehouse-document-api-v-1-warehouses-warehouse-id-documents-post';
+import { listTenantDocumentsApiV1TenantDocumentsGet } from './generated/fn/delivery/list-tenant-documents-api-v-1-tenant-documents-get';
+import { addTenantDocumentApiV1TenantDocumentsPost } from './generated/fn/delivery/add-tenant-document-api-v-1-tenant-documents-post';
 import { replaceComplianceDocumentApiV1ComplianceDocumentsDocumentIdPut } from './generated/fn/delivery/replace-compliance-document-api-v-1-compliance-documents-document-id-put';
 import { verifyComplianceDocumentApiV1ComplianceDocumentsDocumentIdVerifyPost } from './generated/fn/delivery/verify-compliance-document-api-v-1-compliance-documents-document-id-verify-post';
 import { listComplianceDocumentsApiV1ComplianceDocumentsGet } from './generated/fn/delivery/list-compliance-documents-api-v-1-compliance-documents-get';
@@ -20,7 +24,7 @@ import type { ReplaceComplianceDocumentRequest } from './generated/models/replac
 import type { VerifyComplianceDocumentRequest } from './generated/models/verify-compliance-document-request';
 
 export type DocumentKind = 'driving_licence' | 'vehicle_rc';
-export type ComplianceOwnerType = 'driver' | 'vehicle';
+export type ComplianceOwnerType = 'driver' | 'vehicle' | 'warehouse' | 'tenant';
 
 export interface ComplianceDocumentListFilter {
   owner_type?: ComplianceOwnerType;
@@ -85,6 +89,40 @@ export class DocumentService {
   ): Observable<ComplianceDocumentResponse> {
     return addVehicleDocumentApiV1VehiclesVehicleIdDocumentsPost(this.http, this.config.rootUrl, {
       vehicle_id: vehicleId,
+      body,
+    }).pipe(map((res) => res.body));
+  }
+
+  /** Compliance Calendar (ADR-044) — PESO Form F per warehouse. */
+  listWarehouseDocuments(warehouseId: string): Observable<ComplianceDocumentListResponse> {
+    return listWarehouseDocumentsApiV1WarehousesWarehouseIdDocumentsGet(
+      this.http,
+      this.config.rootUrl,
+      { warehouse_id: warehouseId },
+    ).pipe(map((res) => res.body));
+  }
+
+  addWarehouseDocument(
+    warehouseId: string,
+    body: AddComplianceDocumentRequest,
+  ): Observable<ComplianceDocumentResponse> {
+    return addWarehouseDocumentApiV1WarehousesWarehouseIdDocumentsPost(
+      this.http,
+      this.config.rootUrl,
+      { warehouse_id: warehouseId, body },
+    ).pipe(map((res) => res.body));
+  }
+
+  /** Compliance Calendar (ADR-044) — the tenant's own insurance policy. No
+   * owner id: the backend always scopes this to the caller's own tenant. */
+  listTenantDocuments(): Observable<ComplianceDocumentListResponse> {
+    return listTenantDocumentsApiV1TenantDocumentsGet(this.http, this.config.rootUrl).pipe(
+      map((res) => res.body),
+    );
+  }
+
+  addTenantDocument(body: AddComplianceDocumentRequest): Observable<ComplianceDocumentResponse> {
+    return addTenantDocumentApiV1TenantDocumentsPost(this.http, this.config.rootUrl, {
       body,
     }).pipe(map((res) => res.body));
   }

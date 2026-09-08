@@ -1,0 +1,38 @@
+:host {
+  display: block;
+  block-size: 100%;
+}
+
+.calendar-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  block-size: 100%;
+}
+
+.calendar-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.calendar-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.calendar-section__title {
+  font-size: var(--typography-heading3-font-size);
+  font-weight: var(--typography-heading3-font-weight);
+  line-height: var(--typography-heading3-line-height);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+::ng-deep .warehouse-select {
+  flex-shrink: 0;
+  min-inline-size: 14rem;
+}

@@ -55,6 +55,9 @@
       "@lpg/compliance/feature-tdt-rating": ["./libs/compliance/feature-tdt-rating/src/index.ts"],
       "@lpg/compliance/feature-cylinder-units": [
         "./libs/compliance/feature-cylinder-units/src/index.ts"
+      ],
+      "@lpg/compliance/feature-compliance-calendar": [
+        "./libs/compliance/feature-compliance-calendar/src/index.ts"
       ]
     }
   },

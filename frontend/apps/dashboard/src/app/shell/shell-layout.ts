@@ -258,6 +258,12 @@ export class ShellLayout {
           route: '/cylinder-units',
           condition: can('cylinder_units:read'),
         },
+        {
+          label: 'Compliance Calendar',
+          icon: 'pi pi-shield',
+          route: '/compliance-calendar',
+          condition: can('compliance:read'),
+        },
       ]),
       ...buildGroup('Administration', [
         {
