@@ -199,6 +199,19 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'admin/tenant-config/tdt-rating',
+        canActivate: [permissionGuard('tenant:configure')],
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Tenant Config', routerLink: '/admin/tenant-config' },
+            { label: 'TDT Rating', routerLink: '/admin/tenant-config/tdt-rating' },
+          ],
+        },
+        loadChildren: () =>
+          import('@lpg/compliance/feature-tdt-rating').then((m) => m.complianceTdtRatingRoutes),
+      },
+      {
         path: 'admin/price-lists',
         canActivate: [permissionGuard('tenant:configure')],
         data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Price Lists', routerLink: '/admin/price-lists' }] },

@@ -1,5 +1,6 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -113,7 +114,7 @@ class ConfigKeyCell {
 @Component({
   selector: 'lpg-tenant-configuration-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, RouterLink, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -126,6 +127,14 @@ class ConfigKeyCell {
     </ng-template>
       </div>
       <p class="page-note">Values are historized — setting a new value never overwrites the previous one.</p>
+
+      <div class="structured-editors">
+        <span class="structured-editors__label">Structured editors:</span>
+        <a routerLink="/admin/tenant-config/tdt-rating" class="structured-editors__link">
+          <i class="pi pi-star-fill" aria-hidden="true"></i>
+          TDT Rating (bands &amp; fine schedule)
+        </a>
+      </div>
 
       @if (entries().length > 0) {
         <div class="data-toolbar">
@@ -226,6 +235,44 @@ class ConfigKeyCell {
         margin: 0 0 var(--spacing-sm) 0;
         color: var(--color-text-secondary);
         font-size: var(--typography-caption-font-size);
+      }
+
+      /* Structured editors — a small number of config keys (arrays of
+         bands/rules, not a single scalar) get a dedicated sub-form instead
+         of the generic "Set Value" drawer's single-line input; linked from
+         here rather than added as a new top-level nav entry. */
+      .structured-editors {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        margin-block-end: var(--spacing-md);
+      }
+
+      .structured-editors__label {
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-text-secondary);
+      }
+
+      .structured-editors__link {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border: var(--border-width) solid var(--color-border-default);
+        border-radius: var(--radius-full);
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-text-primary);
+        text-decoration: none;
+        transition: border-color var(--motion-duration-small) var(--motion-easing-emphasized);
+      }
+
+      .structured-editors__link:hover {
+        border-color: var(--color-action-primary);
+        color: var(--color-action-primary);
+      }
+
+      .structured-editors__link i {
+        color: var(--color-status-warning);
       }
 
     `,

@@ -1,0 +1,165 @@
+<div class="tdt-config-page">
+  <ng-template lpgHeaderTitlePortal>
+    <div class="page-header__text">
+      <a class="page-header__back" routerLink="/admin/tenant-config">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Tenant Configuration</span>
+      </a>
+      <h1 class="page-title">TDT Rating Configuration</h1>
+      <p class="page-subtitle">
+        Star-rating bands and fine schedule for the OMC's quarterly delivery-turnaround
+        rating — historized, same as every other tenant setting.
+      </p>
+    </div>
+  </ng-template>
+
+  @if (!loading() && !hadExistingBands()) {
+    <p-message severity="info" [closable]="false" styleClass="tdt-config-banner">
+      No TDT rating configured yet for this tenant — showing a suggested starting template.
+      Nothing is saved until you review it and click Save.
+    </p-message>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="tdt-config-form">
+    <section class="tdt-config-section">
+      <h2 class="section-heading">MDG Edition</h2>
+      <lpg-form-field
+        label="MDG edition"
+        for="mdg_edition"
+        [control]="form.controls.mdgEdition"
+        [messages]="{ required: 'The MDG edition this configuration comes from is required.' }"
+      >
+        <input pInputText id="mdg_edition" type="text" formControlName="mdgEdition" placeholder="e.g. MDG-2022" [fluid]="true" />
+      </lpg-form-field>
+      <p class="tdt-config-hint">
+        Stamped onto both keys below so a closed quarter's rating stays reproducible against
+        the edition that was actually in effect — the applicable edition (2022 vs. an
+        unconfirmed later revision) is unconfirmed; set it once your OMC/tenant confirms it.
+      </p>
+    </section>
+
+    <section class="tdt-config-section">
+      <div class="tdt-config-section__header">
+        <h2 class="section-heading">Star Rating Bands</h2>
+        <button pButton type="button" severity="secondary" size="small" (click)="addBand()">
+          <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add band</span>
+        </button>
+      </div>
+      <p class="tdt-config-hint">
+        An order delivered within "Max days" of its booking date earns that many stars.
+        The last row is the unbounded catch-all (every slower order) and can't be removed
+        or given a day limit.
+      </p>
+
+      <div class="tdt-band-rows" formArrayName="bands">
+        @for (row of bandRows(); track row.control) {
+          <div class="tdt-band-row" [formGroupName]="row.index">
+            <div class="tdt-band-row__field">
+              <label [for]="'band_stars_' + row.index">Stars</label>
+              <p-select
+                [inputId]="'band_stars_' + row.index"
+                formControlName="stars"
+                [options]="starOptions"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+              ></p-select>
+            </div>
+            <div class="tdt-band-row__field">
+              <label [for]="'band_max_days_' + row.index">Max days</label>
+              @if (row.isLast) {
+                <input pInputText [value]="'No limit (catch-all)'" disabled [fluid]="true" />
+              } @else {
+                <p-inputnumber
+                  [inputId]="'band_max_days_' + row.index"
+                  formControlName="maxDays"
+                  [min]="1"
+                  [showButtons]="false"
+                  [fluid]="true"
+                ></p-inputnumber>
+              }
+            </div>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              [text]="true"
+              class="tdt-band-row__remove"
+              [disabled]="row.isLast || bands.length <= 1"
+              (click)="removeBand(row.index)"
+              aria-label="Remove band"
+            >
+              <i pButtonIcon class="pi pi-trash"></i>
+            </button>
+          </div>
+        }
+      </div>
+
+      @if (bandOrderError()) {
+        <p-message severity="error" [closable]="false">{{ bandOrderError() }}</p-message>
+      }
+    </section>
+
+    <section class="tdt-config-section">
+      <div class="tdt-config-section__header">
+        <h2 class="section-heading">Fine Schedule</h2>
+        <button pButton type="button" severity="secondary" size="small" (click)="addFineRule()">
+          <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add rule</span>
+        </button>
+      </div>
+      <p class="tdt-config-hint">
+        A distributor with at least this many consecutive sub-threshold quarters owes this
+        fine percentage. No rules means no fines. Leave empty if not yet known.
+      </p>
+
+      <div class="tdt-fine-rows" formArrayName="fineRules">
+        @if (fineRules.length === 0) {
+          <p class="tdt-config-hint tdt-config-hint--empty">No fine rules configured.</p>
+        }
+        @for (control of fineRules.controls; track control; let i = $index) {
+          <div class="tdt-fine-row" [formGroupName]="i">
+            <div class="tdt-band-row__field">
+              <label [for]="'fine_quarters_' + i">Consecutive low quarters</label>
+              <p-inputnumber
+                [inputId]="'fine_quarters_' + i"
+                formControlName="consecutiveLowQuarters"
+                [min]="1"
+                [showButtons]="false"
+                [fluid]="true"
+              ></p-inputnumber>
+            </div>
+            <div class="tdt-band-row__field">
+              <label [for]="'fine_percent_' + i">Fine (%)</label>
+              <p-inputnumber
+                [inputId]="'fine_percent_' + i"
+                formControlName="finePercent"
+                [min]="0"
+                [max]="100"
+                [maxFractionDigits]="2"
+                [showButtons]="false"
+                [fluid]="true"
+              ></p-inputnumber>
+            </div>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              [text]="true"
+              class="tdt-band-row__remove"
+              (click)="removeFineRule(i)"
+              aria-label="Remove fine rule"
+            >
+              <i pButtonIcon class="pi pi-trash"></i>
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+
+    <div class="tdt-config-actions">
+      <button pButton type="submit" [disabled]="saving() || loading()" [loading]="saving()">
+        Save configuration
+      </button>
+    </div>
+  </form>
+</div>

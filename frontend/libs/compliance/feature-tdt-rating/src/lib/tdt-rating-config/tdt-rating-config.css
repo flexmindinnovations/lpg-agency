@@ -1,0 +1,96 @@
+:host {
+  display: block;
+}
+
+.tdt-config-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-inline-size: 48rem;
+}
+
+.page-header__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-block-end: var(--spacing-xs);
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.page-header__back:hover {
+  color: var(--color-action-primary);
+}
+
+:host ::ng-deep .tdt-config-banner {
+  margin-block-end: var(--spacing-md);
+}
+
+.tdt-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.tdt-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  background: var(--component-card-background);
+  border: var(--border-width) solid var(--component-card-border);
+  border-radius: var(--radius-card);
+}
+
+.tdt-config-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.tdt-config-hint {
+  margin: 0;
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
+
+.tdt-config-hint--empty {
+  font-style: italic;
+}
+
+.tdt-band-rows,
+.tdt-fine-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.tdt-band-row,
+.tdt-fine-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.tdt-band-row__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+}
+
+.tdt-band-row__field label {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
+
+.tdt-band-row__remove {
+  flex-shrink: 0;
+}
+
+.tdt-config-actions {
+  display: flex;
+  justify-content: flex-end;
+}

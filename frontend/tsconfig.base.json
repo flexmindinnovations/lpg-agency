@@ -51,7 +51,8 @@
       "@lpg/complaint/feature-complaints": ["./libs/complaint/feature-complaints/src/index.ts"],
       "@lpg/reporting/feature-reports": ["./libs/reporting/feature-reports/src/index.ts"],
       "@lpg/reporting/data-access": ["./libs/reporting/data-access/src/index.ts"],
-      "@lpg/compliance/feature-scales": ["./libs/compliance/feature-scales/src/index.ts"]
+      "@lpg/compliance/feature-scales": ["./libs/compliance/feature-scales/src/index.ts"],
+      "@lpg/compliance/feature-tdt-rating": ["./libs/compliance/feature-tdt-rating/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
