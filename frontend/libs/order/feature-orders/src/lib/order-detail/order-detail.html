@@ -291,6 +291,16 @@
         <input pInputText id="deliver_otp" formControlName="otp_code" autocomplete="one-time-code" [fluid]="true" />
       </lpg-form-field>
 
+      <lpg-form-field
+        label="Delivery Authentication Code (DAC)"
+        for="deliver_dac"
+        [control]="deliverForm.controls.dac_code"
+        [messages]="fieldMessages.dac_code"
+        hint="The OMC's own separate code, if the customer received one — distinct from the OTP above. Optional."
+      >
+        <input pInputText id="deliver_dac" formControlName="dac_code" inputmode="numeric" autocomplete="off" [fluid]="true" />
+      </lpg-form-field>
+
       <label class="deliver__section-label">Quantities</label>
       <div formArrayName="lines" class="deliver-lines">
         @for (line of deliverLines.controls; track $index) {

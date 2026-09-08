@@ -196,6 +196,11 @@ export class OrderDetail implements OnInit {
 
   protected readonly deliverForm = this.fb.group({
     otp_code: ['', [Validators.required]],
+    // Delivery Authentication Code (Phase 20 subsystem 4) — the OMC's own
+    // separate 6-digit code, distinct from the OTP above. Optional
+    // (coverage is ~90%, not 100%) — the pattern validator short-circuits
+    // on an empty value, so this never blocks submission on its own.
+    dac_code: ['', [Validators.pattern(/^\d{6}$/)]],
     payment_method: ['cash', [Validators.required]],
     amount_collected: [0, [Validators.required, Validators.min(0)]],
     gps_lat: [0, [Validators.required]],
@@ -213,6 +218,7 @@ export class OrderDetail implements OnInit {
     reason_code: { required: 'Select a reason.' },
     resolution_action: { required: 'Select a resolution.' },
     otp_code: { required: 'The delivery OTP is required.' },
+    dac_code: { pattern: 'The DAC is a 6-digit code — leave it blank if the customer has none.' },
     payment_method: { required: 'Select a payment method.' },
     amount_collected: { required: 'Enter the amount collected.', min: 'Cannot be negative.' },
   };
@@ -429,6 +435,7 @@ export class OrderDetail implements OnInit {
     if (!order) return;
     this.deliverForm.reset({
       otp_code: '',
+      dac_code: '',
       payment_method: 'cash',
       amount_collected: 0,
       gps_lat: 0,
@@ -562,6 +569,7 @@ export class OrderDetail implements OnInit {
       gps_lng: val.gps_lng,
       payment_method: val.payment_method as ProofOfDeliverySubmission['payment_method'],
       amount_collected: val.amount_collected,
+      dac_code: val.dac_code || null,
     };
     this.orderService
       .deliverOrder(order.id, {
