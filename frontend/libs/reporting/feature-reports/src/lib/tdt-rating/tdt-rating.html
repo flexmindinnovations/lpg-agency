@@ -1,0 +1,48 @@
+<h2 class="section-heading">TDT (Targeted Delivery Time) Rating</h2>
+
+<div class="tdt-toolbar">
+  <div class="filters__field">
+    <label for="tdt_quarter">Period</label>
+    <p-select
+      id="tdt_quarter"
+      [options]="quarterOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="selectedQuarter()"
+      (ngModelChange)="onQuarterChange($event)"
+    ></p-select>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <lpg-empty-state tone="error" title="Couldn't load TDT rating" [description]="errorMessage() ?? ''" />
+} @else if (isEmpty()) {
+  <lpg-empty-state
+    title="No delivered orders in this period"
+    description="No TDT rating can be computed until at least one order is delivered — or band thresholds are configured for this tenant."
+  />
+} @else {
+  <div class="tdt-summary">
+    <lpg-section-card heading="Overall Rating" class="tdt-summary__rating">
+      <lpg-star-rating [stars]="overallStars()" size="lg" />
+      <p class="tdt-summary__period">{{ periodLabel() }}</p>
+    </lpg-section-card>
+
+    <lpg-stat-card
+      label="Delivered Orders"
+      [value]="totalOrders()"
+      icon="pi pi-truck"
+      [loading]="loading()"
+      caption="in this period"
+    />
+  </div>
+
+  <lpg-data-grid
+    [rows]="distribution()"
+    [columns]="columns"
+    [loading]="loading()"
+    [autoHeight]="true"
+    [pageSize]="5"
+    ariaLabel="TDT rating distribution by star band"
+  />
+}

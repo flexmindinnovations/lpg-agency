@@ -35,6 +35,11 @@ export const reportingFeatureReportsRoutes: Route[] = [
         loadComponent: () =>
           import('./gst-filing/gst-filing').then((m) => m.GstFiling),
       },
+      {
+        path: 'tdt-rating',
+        loadComponent: () =>
+          import('./tdt-rating/tdt-rating').then((m) => m.TdtRating),
+      },
     ],
   },
 ];

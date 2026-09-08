@@ -6,6 +6,7 @@ export * from './lib/empty-state/empty-state.component';
 export * from './lib/page-header/page-header.component';
 export * from './lib/section-card/section-card.component';
 export * from './lib/stat-card/stat-card.component';
+export * from './lib/star-rating/star-rating.component';
 export * from './lib/live-indicator/live-indicator.component';
 export * from './lib/activity-list/activity-list.component';
 export * from './lib/format/format';
