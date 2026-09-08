@@ -630,6 +630,30 @@ textarea {
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) !important;
 }
 
+/* `<ng-template #footer>` drawers whose body is `.dialog-form`/`.detail-view`:
+   `.p-drawer-footer` is a separate sibling of `.p-drawer-content`, not a
+   child of it — so `.p-drawer-content`'s own block-end padding above still
+   applies in full even here, leaving a bare --spacing-lg gap of nothing
+   between the scrollable content and the footer's own divider (no border,
+   no breathing room, just dead space) — inconsistent with the inline
+   `.modal-actions` case, whose divider sits flush against the fields with
+   zero gap. Safe to zero out here specifically because
+   `.dialog-form__fields`/`.detail-view__fields` already carries its own
+   `padding-block-end` (above) as the field content's breathing room, so
+   nothing is lost — only the redundant extra gap outside the scroll
+   region goes away. The footer keeps all the space needed below the
+   divider itself (its own top padding, plus the `border-top`).
+
+   Scoped to `> .dialog-form`/`> .detail-view` bodies only — a
+   footer-template drawer whose body is some other custom class (e.g.
+   Employee Details' `.detail-grid`) has no such compensating padding of
+   its own; `.p-drawer-content`'s padding is the *only* breathing room its
+   last row gets before the footer, so it must stay. */
+.p-drawer:has(.p-drawer-footer) .p-drawer-content:has(> .dialog-form),
+.p-drawer:has(.p-drawer-footer) .p-drawer-content:has(> .detail-view) {
+  padding-block-end: 0 !important;
+}
+
 /* `<ng-template #footer>` drawers: the divider belongs on the full-width
    `.p-drawer-footer`, mirroring the header — so the inner `.modal-actions`
    drops its own rule to avoid doubling up. */
