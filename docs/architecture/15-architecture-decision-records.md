@@ -996,6 +996,33 @@ hooks:
 
 ---
 
+## ADR-041: TDT Star Rating as a `domain/compliance` Module, with a Two-Pass Repository Query for Cross-Quarter Correctness
+
+**Status:** Accepted
+
+**Context:** TDT (Targeted Delivery Time) — the OMC's quarterly delivery-turnaround rating, booking date → delivery date, 5★ down to 1★, fines scaling on repeat sub-threshold quarters (`planning/features/20-regulatory-compliance/PLAN.md` §2) — is "fully computable from data already in `orders.order_status_history`," confirmed directly against the live schema: `OrderStatusHistoryModel` already records every `to_status` transition with a timestamp, append-only, and the order state machine already has real `booked`/`delivered` statuses. Two placement questions needed resolving before any code: which bounded context owns the domain logic, and how to query `order_status_history` for a quarter without corrupting exactly the slow-delivery cases the feature exists to catch.
+
+**Decision (placement):** `domain/compliance/tdt_rating.py`, sibling to `weighment_record.py`, not `application/reporting`. `application/reporting`'s existing queries (`get_driver_performance.py` et al.) are one-line passthroughs to a nightly-refreshed materialized view — zero domain logic, nothing unit-testable without a database. TDT needs real domain logic (banding a day-count into a star against tenant-configured thresholds, a fine-percent lookup) with a named future-change risk — the MDG-edition question — pulled into free functions (`compute_star_for_order`, `compute_quarterly_rating`, `compute_fine_percent`) specifically so a future edition changing a threshold is a `TenantConfiguration` value change (no code change), and a future edition changing the *banding rule itself* is a one-function change, exactly `compute_weighment_result()`'s documented reasoning (ADR-039's own sibling module). TDT also needs a **live in-quarter projection**, which a nightly-stale materialized view cannot serve — the new `TdtRatingRepository` queries `order_status_history` directly instead, scoped to the current quarter, a small bounded slice.
+
+Every band threshold and fine percentage is tenant-configured, MDG-edition-stamped reference data (`TenantConfiguration` keys `tdt_star_rating_bands`/`tdt_fine_schedule`, each embedding its own `mdg_edition` string) — never a hardcoded constant, since which MDG edition applies (2022 vs. an unconfirmed later revision) is a genuine open question this codebase cannot resolve by reading code (`PLAN.md`'s own open-questions list, item 1). Both keys resolve as of the *quarter's end date*, not "now," via `GetEffectiveTenantConfigurationQuery`'s existing `at` parameter — so a closed quarter's published rating stays reproducible even if the tenant edits its band config afterward; the live projection resolves "now" within the still-open quarter under the same rule, not a special case.
+
+**Decision (query correctness):** `order_status_history` has **no `tenant_id` column and no RLS of its own** — confirmed via migration `7c3f1a9e2b4d`'s own comment ("scoped transitively through orders.order via FK"), the same precedent `inventory.inventory_transaction` already established. Every TDT query joins through the RLS-protected `orders.order` table for tenant isolation, verified by a dedicated cross-tenant-leak test (`TestTdtRatingCrossTenantIsolation`), not left to implicit RLS-suite coverage.
+
+A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_end` applied before aggregating each order's `booked`/`delivered` timestamps — would silently drop a `booked` transition that falls in an *earlier* quarter than its matching `delivered` transition, corrupting exactly the slow-delivery cases this feature exists to catch (an order booked in month 1 of a quarter but delivered after month-end would be miscounted, or its true multi-quarter delay hidden). `SqlAlchemyTdtRatingRepository.get_fulfillment_records` instead runs two passes: a subquery finds every order with a `delivered` transition inside the requested window, then an *unfiltered* aggregation recovers each such order's true `booked_at` from its entire history, not just the rows inside the window. Regression-tested directly (`test_an_order_booked_in_a_prior_quarter_still_counts_its_true_gap`).
+
+**Consequences:**
+- The domain module is fully unit-testable with zero database (21 tests, `test_domain_tdt_rating.py`), and the two use cases (`GetQuarterlyTdtRatingUseCase`, `GetLiveTdtProjectionUseCase`) share one code path — the live projection is the quarterly use case called with `current_quarter_bounds(today)` instead of caller-supplied bounds, not a duplicated implementation.
+- `_aggregate_overall_stars` (simple arithmetic mean of per-order stars, rounded and clamped 1-5) and the fine-schedule "which quarters count as low" determination are explicitly flagged in their own docstrings as **unconfirmed** against the actual MDG clause text — isolated as their own functions for exactly the same one-function-change reason as every other rule in this module, not because the formula is settled.
+- The frontend's generic "Set a configuration value" single-line input (Tenant Config page) cannot reasonably edit either key's array-of-objects shape, so a dedicated structured sub-form (`compliance/feature-tdt-rating`) was built instead, reached via a link from that page rather than a new top-level nav entry — the same "don't force a generic editor onto structured data" reasoning, applied on the frontend.
+- The cost accepted: TDT rating cannot be computed for an order that was cancelled or never delivered within the queried window — `HAVING delivered_at IS NOT NULL` (the same "delivered/undelivered" boundary Weighment's own load-out gate already draws) excludes them from this pass entirely, an explicit open policy question (below), not a silent assumption.
+
+**Alternatives Considered:**
+- **`application/reporting`, alongside `get_driver_performance.py`** — rejected: that module's queries are deliberately dumb passthroughs to a nightly materialized view; TDT needs real domain logic and a live (not nightly-stale) projection, both of which that pattern cannot serve without becoming a different pattern in the same file.
+- **Filter `order_status_history` by the quarter window before aggregating booked/delivered per order** — rejected after being caught during design review, before it ever reached a test failure: it silently drops or corrupts exactly the slow-delivery, cross-quarter cases the feature exists to catch. The two-pass design fixes this and is covered by a dedicated regression test.
+- **Hardcode MDG 2022's day-thresholds as constants, ship the tenant-config keys later** — rejected: the applicable edition is explicitly unconfirmed (`PLAN.md` open question 1); hardcoding a guess would bake in exactly the assumption this module's own docstrings warn against, for a feature whose only purpose is a fine calculation a tenant might be legally on the hook for.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1040,6 +1067,7 @@ hooks:
 | 038 | `ComplianceDocument` as a standalone aggregate, not a Driver/Vehicle child entity | Accepted |
 | 039 | Batch-level weighment records, not per-cylinder serial tracking | Accepted |
 | 040 | Weighment load-out gate as tenant-opt-in configuration, not unconditional | Accepted |
+| 041 | TDT star rating as a `domain/compliance` module, two-pass repository query for cross-quarter correctness | Accepted |
 
 ## Deferred Decisions
 
