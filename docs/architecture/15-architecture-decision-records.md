@@ -1070,6 +1070,31 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 
 ---
 
+## ADR-044: Compliance Calendar Licence Registry as Two New `ComplianceDocument` Owner Types, Not a New Aggregate
+
+**Status:** Accepted
+
+**Context:** `planning/features/20-regulatory-compliance/PLAN.md` §7 bundles several regulatory items in one prose paragraph: PESO Form F (explosive-storage licence, per warehouse) and insurance renewal tracking — both roadmap item #4, Tier 0 — alongside biennial safety inspection (roadmap item #22, Tier 1, its own "inspection job" domain concept per research row D13) and the 12-hour accident-notification workflow (roadmap item #23, Tier 1, R5/R18). This is the same PLAN.md tiering-vs-prose-bundling pattern found and split three times already this phase (Weighment, TDT rating — ADR-041, Cylinder Identity — ADR-042). This slice builds **only** the Tier-0 licence-expiry registry, deferring the rest.
+
+**Decision (extend, don't duplicate):** `ComplianceDocument` (`domain/delivery/compliance_document.py`, D24/ADR-038) was already a generic aggregate keyed by `(owner_type, owner_id)`, with its repository, application use cases (Add/Replace/Verify/List), and the nightly `check_compliance_expiry` expiry cron all confirmed fully generic over `owner_type` before writing any code. Only three owner-type-specific spots needed widening: the DB `CHECK` constraint (`compliance_document_owner_type_check`, verified live via `docker exec lpg-postgres psql` before and after the migration), the domain `COMPLIANCE_OWNER_TYPES` frozenset (a binary `if/else` `doc_types_for_owner()` dispatch became a dict lookup, now exhaustive-safe for 4 owner types instead of 2), and the API schema `ComplianceOwnerType` Literal. A new aggregate would have duplicated all of the above for no behavioral difference — the same reasoning ADR-038 itself already established for driver vs. vehicle.
+
+**Decision (owners):** `warehouse` → the existing `Warehouse` master-data aggregate (`admin.py`'s `GET/POST /admin/warehouses`), not `InventoryLocation` (a stock-ledger construct that happens to share the string `"warehouse"` as one of its `location_type` values) — `Warehouse.id` is the correct, already-listable identity for a *licence*, as opposed to a *stock position*. `tenant` → the caller's own `principal.tenant_id`, no picker needed; the aggregate still allows multiple documents/renewals over time per owner, same as any other.
+
+**Decision (new endpoints, existing gates left alone):** four new thin wrapper endpoints (`GET`/`POST /warehouses/{id}/documents`, `GET`/`POST /tenant/documents`) mirror the existing driver/vehicle wrappers exactly, reusing the existing generic use cases verbatim — zero new application-layer code. They are gated by two new permissions, `compliance:manage`/`compliance:read`, granted only to `super_admin, agency_admin, manager` (the same role set as the existing `compliance:verify`) — these are admin-tier licences, not day-to-day operational documents like a driver's licence. The existing generic `PUT /compliance-documents/{id}` (replace) and `POST /compliance-documents/{id}/verify` endpoints are reused unchanged for the new owner types too, since neither has an owner-type check inside it; their current gates (`drivers:manage`, `compliance:verify`) were deliberately left untouched rather than narrowed, because `drivers:manage`/`drivers:read` are granted much more broadly (`dispatcher`, and `warehouse_staff`/`accountant`/`driver` respectively — confirmed via `a1b2c3d4e5f6_create_delivery_schema.py`'s role matrix) and narrowing them would have risked locking out current driver/vehicle-page callers for a benefit (tighter warehouse/tenant document permissions) achievable more narrowly by just not reusing those gates on the *new* endpoints.
+
+**Decision (frontend reuses the panel wholesale):** the new Compliance Calendar page does not build a bespoke grid — it hosts `<lpg-compliance-documents-panel>` twice, exactly the way the driver and vehicle detail drawers already do (a warehouse picker driving one panel instance, plus a second, always-visible instance for the tenant's own documents). The panel was already fully endpoint-agnostic via its `documents`/`docTypeOptions`/`managePermission`/`uploader`/`addDocument`/`replaceDocument`/`verifyDocument` inputs, confirmed by reading it in full before deciding — this reduced the frontend slice to two new service methods plus a thin page, not a new registry component.
+
+**Consequences:**
+- `dispatcher` can technically replace or verify a warehouse/tenant compliance document without holding the new `compliance:manage`/`compliance:verify`-adjacent grant, because the shared generic replace endpoint's gate (`drivers:manage`) is broader than `compliance:manage`'s role set. This is a known, pre-existing-pattern-consistent minor looseness (the same trade the driver/vehicle endpoints already accept for each other), not a regression introduced here, and is named explicitly rather than fixed by touching a shared gate.
+- Biennial safety inspection (D13), the 12-hour accident/insurance-claim workflow (R5/R18), fire NOC / trade licence (mentioned only in the broader D7 research row, not in PLAN.md §7's own text), and a `dac_coverage`-style calendar completeness KPI are all explicitly deferred, not silently dropped.
+
+**Alternatives Considered:**
+- **A new `WarehouseComplianceDocument`/`TenantComplianceDocument` aggregate** — rejected: would duplicate the repository, all four use cases, and the expiry cron's owner-iteration logic for zero behavioral difference; ADR-038 already settled this question for driver vs. vehicle and nothing about warehouse/tenant changes the answer.
+- **Narrow the existing generic replace/list endpoints' gates to `compliance:manage`/`compliance:read`** — rejected: `drivers:manage`/`drivers:read` are granted far more broadly (dispatcher; warehouse_staff, accountant, driver), so narrowing would lock out current driver/vehicle-page callers who hold the broader permission but not the new, narrower one.
+- **Build a bespoke Compliance Calendar grid/drawer component** — rejected: `<lpg-compliance-documents-panel>` already does everything the page needs and is proven in production on two other owner types; a bespoke component would duplicate its add/replace/verify/reject form logic for no new capability.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1117,6 +1142,7 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 | 041 | TDT star rating as a `domain/compliance` module, two-pass repository query for cross-quarter correctness | Accepted |
 | 042 | `CylinderUnit` as a new `domain/compliance` aggregate, not an `InventoryLocation` extension | Accepted |
 | 043 | Delivery Authentication Code as an optional, non-gating POD field — no domain-layer change | Accepted |
+| 044 | Compliance Calendar licence registry as two new `ComplianceDocument` owner types, not a new aggregate | Accepted |
 
 ## Deferred Decisions
 
