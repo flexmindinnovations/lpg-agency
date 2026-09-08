@@ -29,6 +29,15 @@
     </div>
     <div class="data-toolbar__actions">
       <button
+        pButton
+        type="button"
+        severity="secondary"
+        (click)="openLookupModal()"
+      >
+        <i pButtonIcon class="pi pi-qrcode"></i>
+        <span pButtonLabel>Quick Scan / Lookup</span>
+      </button>
+      <button
         *lpgHasPermission="'cylinder_units:manage'"
         #registerTriggerEl
         pButton
@@ -76,6 +85,10 @@
 
         <lpg-form-field label="Serial number" for="serial_number" [control]="registerForm.controls.serial_number" [messages]="fieldMessages.serial_number">
           <input pInputText id="serial_number" formControlName="serial_number" placeholder="e.g. CYL-000123" [fluid]="true" />
+        </lpg-form-field>
+
+        <lpg-form-field label="QR / Barcode (optional)" for="qr_code" hint="Leave blank to auto-generate standard format CYL-{serial}">
+          <input pInputText id="qr_code" formControlName="qr_code" placeholder="e.g. CYL-000123" [fluid]="true" />
         </lpg-form-field>
 
         <lpg-form-field label="Initial condition" for="condition_status" [control]="registerForm.controls.condition_status" [messages]="fieldMessages.condition_status">
@@ -162,6 +175,10 @@
             <span class="detail-value">{{ unit.serial_number }}</span>
           </div>
           <div class="detail-item">
+            <span class="detail-label">QR / Barcode</span>
+            <span class="detail-value font-mono">{{ unit.qr_code }}</span>
+          </div>
+          <div class="detail-item">
             <span class="detail-label">Type</span>
             <span class="detail-value">{{ cylinderTypeNameById().get(unit.cylinder_type_id) ?? unit.cylinder_type_id }}</span>
           </div>
@@ -212,6 +229,17 @@
             @case ('none') {
               <div class="modal-actions modal-actions--wrap">
                 <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+                <button
+                  *lpgHasPermission="'cylinder_units:manage'"
+                  pButton
+                  type="button"
+                  severity="secondary"
+                  [disabled]="printingLabel()"
+                  (click)="printLabel(unit.id)"
+                >
+                  <i pButtonIcon [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+                  <span pButtonLabel>Print Label</span>
+                </button>
                 <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="startAction('test')">
                   Record Test
                 </button>
@@ -382,4 +410,108 @@
       </div>
     }
   </p-drawer>
+
+  <!-- Quick Scan / Lookup Dialog -->
+  <p-dialog
+    header="Quick Cylinder Scan / Lookup"
+    [visible]="showLookupModal()"
+    (onHide)="showLookupModal.set(false)"
+    [modal]="true"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    <div class="dialog-form">
+      <p class="page-lede">
+        Scan a QR code or barcode, or enter a serial number to quickly locate a cylinder unit and check its status.
+      </p>
+
+      <div class="flex gap-2 items-center my-3">
+        <input
+          pInputText
+          [ngModel]="lookupCode()"
+          (ngModelChange)="lookupCode.set($event)"
+          (keydown.enter)="performLookup()"
+          placeholder="Scan barcode or type code..."
+          class="flex-1"
+          autofocus
+        />
+        <button
+          pButton
+          type="button"
+          (click)="performLookup()"
+          [disabled]="!lookupCode().trim() || lookupSearching()"
+        >
+          <i pButtonIcon [class]="lookupSearching() ? 'pi pi-spin pi-spinner' : 'pi pi-search'"></i>
+          <span pButtonLabel>Lookup</span>
+        </button>
+      </div>
+
+      @if (lookupNotFound()) {
+        <p-message severity="warn">No cylinder unit found matching this code.</p-message>
+      }
+
+      @if (lookupResult(); as result) {
+        <div class="detail-view__fields p-3 mt-3 border border-surface-200 dark:border-surface-700 rounded-md">
+          <div class="detail-item">
+            <span class="detail-label">Serial Number</span>
+            <span class="detail-value font-semibold">{{ result.serial_number }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">QR / Barcode</span>
+            <span class="detail-value font-mono">{{ result.qr_code }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Type</span>
+            <span class="detail-value">{{ cylinderTypeNameById().get(result.cylinder_type_id) ?? result.cylinder_type_id }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Condition</span>
+            <p-tag [value]="toSentenceCase(result.condition_status)" [severity]="conditionSeverity(result.condition_status)" />
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Current Custody</span>
+            <span class="detail-value">
+              {{ toSentenceCase(result.custody_type) }}
+              @if (result.custody_type === 'warehouse' && result.custody_ref_id) {
+                — {{ warehouseNameById().get(result.custody_ref_id) ?? result.custody_ref_id }}
+              } @else if (result.custody_ref_id) {
+                — {{ result.custody_ref_id }}
+              }
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Retest Due</span>
+            <span class="detail-value">
+              {{ result.test_due_date ? formatReportDate(result.test_due_date) : 'Never tested' }}
+              @if (result.is_due_for_test) {
+                <p-tag value="OVERDUE" severity="danger" />
+              }
+            </span>
+          </div>
+        </div>
+
+        <div class="modal-actions mt-4">
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            [disabled]="printingLabel()"
+            (click)="printLabel(result.id)"
+          >
+            <i pButtonIcon [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+            <span pButtonLabel>Print Label</span>
+          </button>
+          <button
+            pButton
+            type="button"
+            (click)="openDetailsFromLookup()"
+          >
+            <i pButtonIcon class="pi pi-arrow-right"></i>
+            <span pButtonLabel>Manage Unit</span>
+          </button>
+        </div>
+      }
+    </div>
+  </p-dialog>
 </div>

@@ -292,6 +292,7 @@ class RegisterCylinderUnitCommand(Command):
     serial_number: str
     condition_status: str
     custody_type: str
+    qr_code: str | None = None
     custody_ref_id: uuid.UUID | None = None
     manufacture_date: date | None = None
     owner_omc: str | None = None
@@ -303,18 +304,32 @@ class RegisterCylinderUnitUseCase:
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: RegisterCylinderUnitCommand) -> CylinderUnit:
-        from lpg.application.common.errors import DuplicateCylinderSerialNumberError
+        from lpg.application.common.errors import (
+            DuplicateCylinderQRCodeError,
+            DuplicateCylinderSerialNumberError,
+        )
 
         existing = await self._repository.get_by_serial(command.serial_number)
         if existing is not None:
             msg = f"A cylinder unit with serial '{command.serial_number}' is already registered."
             raise DuplicateCylinderSerialNumberError(msg)
 
+        qr_code = (
+            command.qr_code.strip()
+            if command.qr_code and command.qr_code.strip()
+            else f"CYL-{command.serial_number}"
+        )
+        existing_qr = await self._repository.get_by_qr_code(qr_code)
+        if existing_qr is not None:
+            msg = f"A cylinder unit with QR code '{qr_code}' is already registered."
+            raise DuplicateCylinderQRCodeError(msg)
+
         unit = CylinderUnit(
             cylinder_unit_id=self._repository.next_id(),
             tenant_id=command.tenant_id,
             cylinder_type_id=command.cylinder_type_id,
             serial_number=command.serial_number,
+            qr_code=qr_code,
             condition_status=command.condition_status,
             custody_type=command.custody_type,
             custody_ref_id=command.custody_ref_id,
@@ -582,3 +597,50 @@ class ListCylinderUnitsUseCase:
             custody_type=query.custody_type,
         )
         return units, total
+
+
+@dataclass(frozen=True, slots=True)
+class LookupCylinderUnitQuery(Query):
+    code: str
+
+
+class LookupCylinderUnitUseCase:
+    def __init__(self, repository: CylinderUnitRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: LookupCylinderUnitQuery) -> CylinderUnit | None:
+        return await self._repository.lookup_by_code(query.code.strip())
+
+
+@dataclass(frozen=True, slots=True)
+class BatchMoveCylinderCustodyCommand(Command):
+    cylinder_unit_ids: list[uuid.UUID]
+    custody_type: str
+    custody_ref_id: uuid.UUID | None
+    performed_by: uuid.UUID
+
+
+class BatchMoveCylinderCustodyUseCase:
+    def __init__(self, repository: CylinderUnitRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: BatchMoveCylinderCustodyCommand) -> list[CylinderUnit]:
+        from lpg.application.common.errors import NotFoundError
+
+        moved_units: list[CylinderUnit] = []
+        for unit_id in command.cylinder_unit_ids:
+            unit = await self._repository.get_by_id(unit_id)
+            if unit is None:
+                msg = f"Cylinder unit {unit_id} not found."
+                raise NotFoundError(msg)
+            unit.move_custody(
+                custody_type=command.custody_type,
+                custody_ref_id=command.custody_ref_id,
+                performed_by=command.performed_by,
+            )
+            await self._repository.save(unit)
+            moved_units.append(unit)
+
+        await self._unit_of_work.commit()
+        return moved_units

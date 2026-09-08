@@ -86,6 +86,7 @@ class CylinderUnitRegistered(DomainEvent):
     tenant_id: uuid.UUID
     cylinder_type_id: uuid.UUID
     serial_number: str
+    qr_code: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +176,7 @@ class CylinderUnit(AggregateRoot):
         "_last_tested_at",
         "_manufacture_date",
         "_owner_omc",
+        "_qr_code",
         "_serial_number",
         "_tenant_id",
         "_test_due_date",
@@ -187,6 +189,7 @@ class CylinderUnit(AggregateRoot):
         tenant_id: uuid.UUID,
         cylinder_type_id: uuid.UUID,
         serial_number: str,
+        qr_code: str,
         condition_status: str,
         custody_type: str,
         custody_ref_id: uuid.UUID | None = None,
@@ -200,12 +203,14 @@ class CylinderUnit(AggregateRoot):
         super().__init__(cylinder_unit_id, version=version)
 
         self._validate_serial_number(serial_number)
+        self._validate_qr_code(qr_code)
         self._validate_condition_status(condition_status)
         self._validate_custody(custody_type, custody_ref_id)
 
         self._tenant_id = tenant_id
         self._cylinder_type_id = cylinder_type_id
         self._serial_number = serial_number
+        self._qr_code = qr_code.strip()
         self._condition_status = condition_status
         self._custody_type = custody_type
         self._custody_ref_id = custody_ref_id
@@ -221,6 +226,7 @@ class CylinderUnit(AggregateRoot):
                 tenant_id=tenant_id,
                 cylinder_type_id=cylinder_type_id,
                 serial_number=serial_number,
+                qr_code=self._qr_code,
             )
         )
 
@@ -239,6 +245,10 @@ class CylinderUnit(AggregateRoot):
     @property
     def serial_number(self) -> str:
         return self._serial_number
+
+    @property
+    def qr_code(self) -> str:
+        return self._qr_code
 
     @property
     def condition_status(self) -> str:
@@ -403,6 +413,12 @@ class CylinderUnit(AggregateRoot):
     def _validate_serial_number(serial_number: str) -> None:
         if not serial_number or not serial_number.strip():
             msg = "Cylinder serial number must not be empty."
+            raise InvariantViolation(msg)
+
+    @staticmethod
+    def _validate_qr_code(qr_code: str) -> None:
+        if not qr_code or not qr_code.strip():
+            msg = "Cylinder QR code must not be empty."
             raise InvariantViolation(msg)
 
     @staticmethod

@@ -114,3 +114,28 @@ def test_generate_barcode() -> None:
 
     assert isinstance(barcode_bytes, bytes)
     assert len(barcode_bytes) > 100
+
+
+def test_render_cylinder_label_pdf() -> None:
+    import uuid
+    from datetime import date
+
+    from lpg.domain.compliance.cylinder_unit import CylinderUnit
+
+    engine = Xhtml2pdfPrintingEngine()
+    unit = CylinderUnit(
+        cylinder_unit_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        cylinder_type_id=uuid.uuid4(),
+        serial_number="CYL-998877",
+        qr_code="CYL-DEMO-14KG-998877",
+        condition_status="empty",
+        custody_type="warehouse",
+        custody_ref_id=uuid.uuid4(),
+        owner_omc="INDANE",
+        test_due_date=date(2028, 12, 31),
+    )
+    label_pdf = engine.render_cylinder_label_pdf(unit, cylinder_type_name="14.2 kg Domestic")
+    assert isinstance(label_pdf, bytes)
+    assert len(label_pdf) > 500
+    assert label_pdf[:5] == b"%PDF-"

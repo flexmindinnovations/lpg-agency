@@ -8,6 +8,9 @@ from lpg.infrastructure.printing.renderers.barcode_generator import (
     generate_qr_png,
 )
 from lpg.infrastructure.printing.renderers.pdf_renderer import (
+    render_cylinder_label_pdf as _render_cylinder_label_pdf,
+)
+from lpg.infrastructure.printing.renderers.pdf_renderer import (
     render_invoice_pdf as _render_invoice_pdf,
 )
 from lpg.infrastructure.printing.renderers.thermal_renderer import (
@@ -19,6 +22,7 @@ from lpg.infrastructure.printing.renderers.thermal_renderer import (
 
 if TYPE_CHECKING:
     from lpg.application.printing.models import InvoicePrintPayload
+    from lpg.domain.compliance.cylinder_unit import CylinderUnit
 
 
 class Xhtml2pdfPrintingEngine(PrintingEngine):
@@ -32,6 +36,11 @@ class Xhtml2pdfPrintingEngine(PrintingEngine):
 
     def render_invoice_thermal_html(self, payload: InvoicePrintPayload) -> bytes:
         return _render_invoice_thermal_html(payload)
+
+    def render_cylinder_label_pdf(
+        self, unit: CylinderUnit, cylinder_type_name: str | None = None
+    ) -> bytes:
+        return _render_cylinder_label_pdf(unit, cylinder_type_name=cylinder_type_name)
 
     def generate_qr_code(self, data: str, *, size: int = 200) -> bytes:
         return generate_qr_png(data, size=size)

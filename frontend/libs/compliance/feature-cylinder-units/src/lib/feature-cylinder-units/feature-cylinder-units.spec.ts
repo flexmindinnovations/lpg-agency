@@ -36,6 +36,7 @@ describe('FeatureCylinderUnits', () => {
       id: 'u1',
       cylinder_type_id: 'ct1',
       serial_number: 'CYL-1',
+      qr_code: 'CYL-1',
       manufacture_date: null,
       owner_omc: null,
       condition_status: 'filled',
@@ -48,5 +49,19 @@ describe('FeatureCylinderUnits', () => {
     });
     const allowed = component['allowedNextConditions']().map((o) => o.value);
     expect(allowed.sort()).toEqual(['empty', 'leakage']);
+  });
+
+  it('includes QR / Barcode column in grid definition', () => {
+    const qrCol = component['columns'].find((c) => c.field === 'qr_code');
+    expect(qrCol).toBeDefined();
+    expect(qrCol?.header).toBe('QR / Barcode');
+  });
+
+  it('manages quick lookup dialog state correctly', () => {
+    expect(component['showLookupModal']()).toBe(false);
+    component['openLookupModal']();
+    expect(component['showLookupModal']()).toBe(true);
+    expect(component['lookupCode']()).toBe('');
+    expect(component['lookupResult']()).toBeNull();
   });
 });

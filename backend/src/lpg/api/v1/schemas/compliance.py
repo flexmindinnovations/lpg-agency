@@ -96,6 +96,7 @@ class RegisterCylinderUnitRequest(BaseModel):
     serial_number: str = Field(min_length=1)
     condition_status: str
     custody_type: str
+    qr_code: str | None = None
     custody_ref_id: uuid.UUID | None = None
     manufacture_date: date | None = None
     owner_omc: str | None = None
@@ -107,6 +108,12 @@ class RecordCylinderStatutoryTestRequest(BaseModel):
 
 
 class MoveCylinderCustodyRequest(BaseModel):
+    custody_type: str
+    custody_ref_id: uuid.UUID | None = None
+
+
+class BatchMoveCylinderCustodyRequest(BaseModel):
+    cylinder_unit_ids: list[uuid.UUID] = Field(min_length=1)
     custody_type: str
     custody_ref_id: uuid.UUID | None = None
 
@@ -124,6 +131,7 @@ class CylinderUnitResponse(BaseModel):
     id: uuid.UUID
     cylinder_type_id: uuid.UUID
     serial_number: str
+    qr_code: str
     manufacture_date: date | None
     owner_omc: str | None
     condition_status: str
@@ -133,6 +141,11 @@ class CylinderUnitResponse(BaseModel):
     test_due_date: date | None
     is_due_for_test: bool
     is_retired: bool
+
+
+class BatchMoveCylinderCustodyResponse(BaseModel):
+    updated_count: int
+    items: list[CylinderUnitResponse]
 
 
 class CylinderUnitListResponse(BaseModel):

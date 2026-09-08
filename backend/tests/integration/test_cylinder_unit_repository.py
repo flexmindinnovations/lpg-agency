@@ -98,11 +98,13 @@ async def _seed_cylinder_type_and_warehouse(
 def _unit(
     tenant_id: uuid.UUID, cylinder_type_id: uuid.UUID, warehouse_id: uuid.UUID, **kw: object
 ) -> CylinderUnit:
+    serial = str(kw.get("serial_number", f"CYL-{uuid.uuid4().hex[:8]}"))
     defaults: dict[str, object] = {
         "cylinder_unit_id": uuid.uuid4(),
         "tenant_id": tenant_id,
         "cylinder_type_id": cylinder_type_id,
-        "serial_number": f"CYL-{uuid.uuid4().hex[:8]}",
+        "serial_number": serial,
+        "qr_code": f"CYL-{serial}",
         "condition_status": "empty",
         "custody_type": "warehouse",
         "custody_ref_id": warehouse_id,
@@ -120,7 +122,13 @@ class TestCylinderUnitRepository:
             admin_engine, tenant_id
         )
         context = RequestTenantContext(tenant_id=tenant_id)
-        unit = _unit(tenant_id, cylinder_type_id, warehouse_id, serial_number="CYL-A1")
+        unit = _unit(
+            tenant_id,
+            cylinder_type_id,
+            warehouse_id,
+            serial_number="CYL-A1",
+            qr_code="CYL-A1-QR",
+        )
 
         async for session in database.open_session(tenant_id=tenant_id):
             async with SqlAlchemyUnitOfWork(session, context) as uow:
@@ -132,10 +140,20 @@ class TestCylinderUnitRepository:
                 reloaded = await repo.get_by_id(unit.id)
                 assert reloaded is not None
                 assert reloaded.serial_number == "CYL-A1"
+                assert reloaded.qr_code == "CYL-A1-QR"
                 assert reloaded.condition_status == "empty"
 
                 by_serial = await repo.get_by_serial("CYL-A1")
                 assert by_serial is not None and by_serial.id == unit.id
+
+                by_qr = await repo.get_by_qr_code("CYL-A1-QR")
+                assert by_qr is not None and by_qr.id == unit.id
+
+                by_lookup_qr = await repo.lookup_by_code("CYL-A1-QR")
+                assert by_lookup_qr is not None and by_lookup_qr.id == unit.id
+
+                by_lookup_serial = await repo.lookup_by_code("CYL-A1")
+                assert by_lookup_serial is not None and by_lookup_serial.id == unit.id
 
     async def test_commands_persist_through_save(
         self, database: Database, admin_engine: AsyncEngine

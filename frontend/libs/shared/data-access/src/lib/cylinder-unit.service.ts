@@ -18,6 +18,8 @@ import type { ChangeCylinderConditionStatusRequest } from './generated/models/ch
 import type { CylinderUnitResponse } from './generated/models/cylinder-unit-response';
 import type { CylinderUnitListResponse } from './generated/models/cylinder-unit-list-response';
 import type { SuggestCylinderTestDueDateResponse } from './generated/models/suggest-cylinder-test-due-date-response';
+import type { BatchMoveCylinderCustodyRequest } from './generated/models/batch-move-cylinder-custody-request';
+import type { BatchMoveCylinderCustodyResponse } from './generated/models/batch-move-cylinder-custody-response';
 
 export interface CylinderUnitListFilter {
   dueStatus?: 'due_soon' | 'overdue' | null;
@@ -122,5 +124,27 @@ export class CylinderUnitService {
       this.config.rootUrl,
       { cylinder_unit_id: cylinderUnitId },
     ).pipe(map((res) => res.body));
+  }
+
+  lookupCylinderUnit(code: string): Observable<CylinderUnitResponse> {
+    return this.http.get<CylinderUnitResponse>(
+      `${this.config.rootUrl}/api/v1/cylinder-units/lookup`,
+      { params: { code } },
+    );
+  }
+
+  batchMoveCustody(body: BatchMoveCylinderCustodyRequest): Observable<BatchMoveCylinderCustodyResponse> {
+    return this.http.post<BatchMoveCylinderCustodyResponse>(
+      `${this.config.rootUrl}/api/v1/cylinder-units/batch-custody`,
+      body,
+    );
+  }
+
+  printCylinderUnitLabel(cylinderUnitId: string): Observable<Blob> {
+    return this.http.post(
+      `${this.config.rootUrl}/api/v1/cylinder-units/${cylinderUnitId}/label`,
+      {},
+      { responseType: 'blob' },
+    );
   }
 }

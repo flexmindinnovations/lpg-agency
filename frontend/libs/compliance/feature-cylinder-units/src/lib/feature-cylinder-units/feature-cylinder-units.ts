@@ -22,6 +22,7 @@ import {
 } from '@lpg/shared/ui';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
+import { Dialog } from 'primeng/dialog';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputText } from 'primeng/inputtext';
 import { DatePicker } from 'primeng/datepicker';
@@ -47,6 +48,8 @@ function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
     case 'DUPLICATE_CYLINDER_SERIAL_NUMBER':
       return 'A cylinder unit with this serial number is already registered.';
+    case 'DUPLICATE_CYLINDER_QR_CODE':
+      return 'A cylinder unit with this QR / barcode is already registered.';
     case 'PERMISSION_DENIED':
       return "You don't have permission to do that.";
     default:
@@ -108,6 +111,7 @@ type ActiveAction = 'none' | 'test' | 'custody' | 'condition' | 'receive';
     InputText,
     Drawer,
     DrawerA11yDirective,
+    Dialog,
     Message,
     Select,
     Tag,
@@ -191,6 +195,12 @@ export class FeatureCylinderUnits implements OnInit {
       onLinkClick: (row) => this.openDetails(row),
     },
     {
+      field: 'qr_code',
+      header: 'QR / Barcode',
+      sortable: true,
+      filterable: true,
+    },
+    {
       field: 'cylinder_type_id',
       header: 'Type',
       sortable: true,
@@ -222,6 +232,7 @@ export class FeatureCylinderUnits implements OnInit {
   protected readonly registerForm = this.fb.group({
     cylinder_type_id: ['', [Validators.required]],
     serial_number: ['', [Validators.required]],
+    qr_code: [''],
     condition_status: ['empty', [Validators.required]],
     custody_type: ['warehouse', [Validators.required]],
     custody_ref_id: [''],
@@ -315,6 +326,7 @@ export class FeatureCylinderUnits implements OnInit {
     this.registerForm.reset({
       cylinder_type_id: this.cylinderTypes().length > 0 ? this.cylinderTypes()[0].id : '',
       serial_number: '',
+      qr_code: '',
       condition_status: 'empty',
       custody_type: 'warehouse',
       custody_ref_id: '',
@@ -335,6 +347,7 @@ export class FeatureCylinderUnits implements OnInit {
       .registerCylinderUnit({
         cylinder_type_id: val.cylinder_type_id,
         serial_number: val.serial_number,
+        qr_code: val.qr_code.trim() ? val.qr_code.trim() : undefined,
         condition_status: val.condition_status,
         custody_type: val.custody_type,
         custody_ref_id: val.custody_ref_id || null,
@@ -518,5 +531,69 @@ export class FeatureCylinderUnits implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
       },
     });
+  }
+
+  // Printing & QR Lookup
+  protected readonly printingLabel = signal(false);
+  protected readonly showLookupModal = signal(false);
+  protected readonly lookupCode = signal('');
+  protected readonly lookupSearching = signal(false);
+  protected readonly lookupResult = signal<CylinderUnitResponse | null>(null);
+  protected readonly lookupNotFound = signal(false);
+
+  protected printLabel(unitId: string): void {
+    this.printingLabel.set(true);
+    this.cylinderUnitService.printCylinderUnitLabel(unitId).subscribe({
+      next: (blob) => {
+        this.printingLabel.set(false);
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Label Ready',
+          detail: 'Thermal sticker opened for printing.',
+        });
+      },
+      error: (err) => {
+        this.printingLabel.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Print Failed',
+          detail: errorMessageFor(err),
+        });
+      },
+    });
+  }
+
+  protected openLookupModal(): void {
+    this.lookupCode.set('');
+    this.lookupResult.set(null);
+    this.lookupNotFound.set(false);
+    this.showLookupModal.set(true);
+  }
+
+  protected performLookup(): void {
+    const code = this.lookupCode().trim();
+    if (!code) return;
+    this.lookupSearching.set(true);
+    this.lookupNotFound.set(false);
+    this.lookupResult.set(null);
+    this.cylinderUnitService.lookupCylinderUnit(code).subscribe({
+      next: (unit) => {
+        this.lookupResult.set(unit);
+        this.lookupSearching.set(false);
+      },
+      error: () => {
+        this.lookupSearching.set(false);
+        this.lookupNotFound.set(true);
+      },
+    });
+  }
+
+  protected openDetailsFromLookup(): void {
+    const result = this.lookupResult();
+    if (!result) return;
+    this.showLookupModal.set(false);
+    this.openDetails(result);
   }
 }

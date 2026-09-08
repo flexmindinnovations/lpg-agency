@@ -18,6 +18,10 @@ from lpg.application.common.errors import (
 )
 from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.compliance.use_cases import (
+    BatchMoveCylinderCustodyCommand,
+    BatchMoveCylinderCustodyUseCase,
+    LookupCylinderUnitQuery,
+    LookupCylinderUnitUseCase,
     ReceiveCylinderUnitCommand,
     ReceiveCylinderUnitUseCase,
     RegisterCylinderUnitCommand,
@@ -340,3 +344,91 @@ class TestSuggestStatutoryTestDueDate:
                     SuggestStatutoryTestDueDateQuery(tenant_id=tenant_id, tested_at=tested_at)
                 )
                 assert suggestion == datetime(2028, 1, 15, tzinfo=UTC).date()
+
+    async def test_register_and_lookup_by_code(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        cylinder_type_id, warehouse_id = await _seed_cylinder_type_and_warehouse(
+            admin_engine, tenant_id
+        )
+        context = RequestTenantContext(tenant_id=tenant_id)
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repo = SqlAlchemyCylinderUnitRepository(uow)
+                reg_use_case = RegisterCylinderUnitUseCase(repo, uow)
+                unit = await reg_use_case.execute(
+                    RegisterCylinderUnitCommand(
+                        tenant_id=tenant_id,
+                        cylinder_type_id=cylinder_type_id,
+                        serial_number="CYL-QR-TEST-1",
+                        condition_status="empty",
+                        custody_type="warehouse",
+                        custody_ref_id=warehouse_id,
+                    )
+                )
+                assert unit.qr_code == "CYL-CYL-QR-TEST-1"
+
+        async for s2 in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(s2, context) as uow:
+                repo = SqlAlchemyCylinderUnitRepository(uow)
+                lookup_use_case = LookupCylinderUnitUseCase(repo)
+
+                by_qr = await lookup_use_case.execute(
+                    LookupCylinderUnitQuery(code="CYL-CYL-QR-TEST-1")
+                )
+                assert by_qr is not None and by_qr.serial_number == "CYL-QR-TEST-1"
+
+                by_serial = await lookup_use_case.execute(
+                    LookupCylinderUnitQuery(code="CYL-QR-TEST-1")
+                )
+                assert by_serial is not None and by_serial.id == by_qr.id
+
+                not_found = await lookup_use_case.execute(
+                    LookupCylinderUnitQuery(code="NONEXISTENT")
+                )
+                assert not_found is None
+
+    async def test_batch_move_cylinder_custody(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        cylinder_type_id, warehouse_id = await _seed_cylinder_type_and_warehouse(
+            admin_engine, tenant_id
+        )
+        context = RequestTenantContext(tenant_id=tenant_id)
+
+        unit_ids: list[uuid.UUID] = []
+        for i in range(2):
+            async for session in database.open_session(tenant_id=tenant_id):
+                async with SqlAlchemyUnitOfWork(session, context) as uow:
+                    repo = SqlAlchemyCylinderUnitRepository(uow)
+                    reg_use_case = RegisterCylinderUnitUseCase(repo, uow)
+                    u = await reg_use_case.execute(
+                        RegisterCylinderUnitCommand(
+                            tenant_id=tenant_id,
+                            cylinder_type_id=cylinder_type_id,
+                            serial_number=f"CYL-BATCH-{i}",
+                            condition_status="empty",
+                            custody_type="warehouse",
+                            custody_ref_id=warehouse_id,
+                        )
+                    )
+                    unit_ids.append(u.id)
+
+        performer = uuid.uuid4()
+        async for s2 in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(s2, context) as uow:
+                repo = SqlAlchemyCylinderUnitRepository(uow)
+                batch_use_case = BatchMoveCylinderCustodyUseCase(repo, uow)
+                moved = await batch_use_case.execute(
+                    BatchMoveCylinderCustodyCommand(
+                        cylinder_unit_ids=unit_ids,
+                        custody_type="bottling_plant",
+                        custody_ref_id=None,
+                        performed_by=performer,
+                    )
+                )
+                assert len(moved) == 2
+                assert all(m.custody_type == "bottling_plant" for m in moved)

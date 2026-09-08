@@ -84,6 +84,10 @@ class CylinderUnitRepository(Protocol):
 
     async def get_by_serial(self, serial_number: str) -> CylinderUnit | None: ...
 
+    async def get_by_qr_code(self, qr_code: str) -> CylinderUnit | None: ...
+
+    async def lookup_by_code(self, code: str) -> CylinderUnit | None: ...
+
     async def list_for_tenant(
         self,
         *,

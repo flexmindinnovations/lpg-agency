@@ -8,12 +8,15 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
+from lpg.api.v1.dependencies.admin import get_cylinder_type_repository
 from lpg.api.v1.dependencies.compliance import (
+    get_batch_move_cylinder_custody_use_case,
     get_change_cylinder_condition_status_use_case,
     get_cylinder_unit_repository,
     get_live_tdt_projection_use_case,
+    get_lookup_cylinder_unit_use_case,
     get_move_cylinder_custody_use_case,
     get_quarterly_tdt_rating_use_case,
     get_receive_cylinder_unit_use_case,
@@ -27,8 +30,11 @@ from lpg.api.v1.dependencies.compliance import (
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_file_storage
+from lpg.api.v1.dependencies.printing import get_printing_engine
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.compliance import (
+    BatchMoveCylinderCustodyRequest,
+    BatchMoveCylinderCustodyResponse,
     ChangeCylinderConditionStatusRequest,
     CylinderUnitListResponse,
     CylinderUnitResponse,
@@ -63,6 +69,8 @@ from lpg.application.compliance.queries.get_tdt_rating import (
     current_quarter_bounds,
 )
 from lpg.application.compliance.use_cases import (
+    BatchMoveCylinderCustodyCommand,
+    BatchMoveCylinderCustodyUseCase,
     ChangeCylinderConditionStatusCommand,
     ChangeCylinderConditionStatusUseCase,
     GetCylinderUnitQuery,
@@ -73,6 +81,8 @@ from lpg.application.compliance.use_cases import (
     ListScalesUseCase,
     ListWeighmentRecordsQuery,
     ListWeighmentRecordsUseCase,
+    LookupCylinderUnitQuery,
+    LookupCylinderUnitUseCase,
     MoveCylinderCustodyCommand,
     MoveCylinderCustodyUseCase,
     ReceiveCylinderUnitCommand,
@@ -95,6 +105,8 @@ from lpg.application.compliance.use_cases import (
     SuggestStatutoryTestDueDateUseCase,
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
+from lpg.application.printing.ports import PrintingEngine
+from lpg.application.tenant.ports import CylinderTypeRepository
 from lpg.domain.common.base import DomainError
 
 if TYPE_CHECKING:
@@ -121,9 +133,7 @@ tdt_rating_router = APIRouter(prefix="/tdt-rating", tags=["Compliance — TDT Ra
 #: registry. `cylinder_units:manage` for every mutation, `cylinder_units:
 #: read` (wider role list, includes dispatcher) for the registry/detail
 #: reads.
-cylinder_units_router = APIRouter(
-    prefix="/cylinder-units", tags=["Compliance — Cylinder Identity"]
-)
+cylinder_units_router = APIRouter(prefix="/cylinder-units", tags=["Compliance — Cylinder Identity"])
 
 
 async def _to_response(scale: Scale, file_storage: FileStorage) -> ScaleResponse:
@@ -461,6 +471,7 @@ def _cylinder_unit_to_response(unit: CylinderUnit) -> CylinderUnitResponse:
         id=unit.id,
         cylinder_type_id=unit.cylinder_type_id,
         serial_number=unit.serial_number,
+        qr_code=unit.qr_code,
         manufacture_date=unit.manufacture_date,
         owner_omc=unit.owner_omc,
         condition_status=unit.condition_status,
@@ -482,9 +493,7 @@ def _cylinder_unit_to_response(unit: CylinderUnit) -> CylinderUnitResponse:
 async def register_cylinder_unit(
     request: RegisterCylinderUnitRequest,
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    use_case: Annotated[
-        RegisterCylinderUnitUseCase, Depends(get_register_cylinder_unit_use_case)
-    ],
+    use_case: Annotated[RegisterCylinderUnitUseCase, Depends(get_register_cylinder_unit_use_case)],
 ) -> CylinderUnitResponse:
     """Cylinder Identity (Phase 20 subsystem 3) — registers one physical
     cylinder. A narrow, additive registry; does not touch bulk inventory
@@ -497,6 +506,7 @@ async def register_cylinder_unit(
                 serial_number=request.serial_number,
                 condition_status=request.condition_status,
                 custody_type=request.custody_type,
+                qr_code=request.qr_code,
                 custody_ref_id=request.custody_ref_id,
                 manufacture_date=request.manufacture_date,
                 owner_omc=request.owner_omc,
@@ -559,6 +569,55 @@ async def suggest_cylinder_test_due_date(
         SuggestStatutoryTestDueDateQuery(tenant_id=principal.tenant_id, tested_at=tested_at)
     )
     return SuggestCylinderTestDueDateResponse(suggested_due_date=suggestion)
+
+
+@cylinder_units_router.get(
+    "/lookup",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:read"))],
+)
+async def lookup_cylinder_unit(
+    code: str,
+    use_case: Annotated[LookupCylinderUnitUseCase, Depends(get_lookup_cylinder_unit_use_case)],
+) -> CylinderUnitResponse:
+    """Quick lookup for cylinder tracking — resolves unit by QR code or serial number."""
+    unit = await use_case.execute(LookupCylinderUnitQuery(code=code))
+    if unit is None:
+        raise HTTPException(status_code=404, detail=f"Cylinder unit with code '{code}' not found.")
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/batch-custody",
+    response_model=BatchMoveCylinderCustodyResponse,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def batch_move_cylinder_custody(
+    request: BatchMoveCylinderCustodyRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[
+        BatchMoveCylinderCustodyUseCase, Depends(get_batch_move_cylinder_custody_use_case)
+    ],
+) -> BatchMoveCylinderCustodyResponse:
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        moved = await use_case.execute(
+            BatchMoveCylinderCustodyCommand(
+                cylinder_unit_ids=request.cylinder_unit_ids,
+                custody_type=request.custody_type,
+                custody_ref_id=request.custody_ref_id,
+                performed_by=principal.user_id,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return BatchMoveCylinderCustodyResponse(
+        updated_count=len(moved),
+        items=[_cylinder_unit_to_response(u) for u in moved],
+    )
 
 
 @cylinder_units_router.get(
@@ -726,3 +785,31 @@ async def retire_cylinder_unit(
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
     return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/{cylinder_unit_id}/label",
+    dependencies=[Depends(require_permission("cylinder_units:read"))],
+)
+async def print_cylinder_unit_label(
+    cylinder_unit_id: uuid.UUID,
+    repository: Annotated[CylinderUnitRepository, Depends(get_cylinder_unit_repository)],
+    cylinder_type_repo: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    printing_engine: Annotated[PrintingEngine, Depends(get_printing_engine)],
+) -> Response:
+    """Render and download thermal sticker PDF with 2D QR code for this cylinder."""
+    unit = await repository.get_by_id(cylinder_unit_id)
+    if unit is None:
+        raise HTTPException(status_code=404, detail=f"Cylinder unit {cylinder_unit_id} not found.")
+
+    cylinder_type = await cylinder_type_repo.get(unit.cylinder_type_id)
+    type_name = f"{cylinder_type.weight_kg} kg {cylinder_type.name}" if cylinder_type else None
+
+    pdf_bytes = printing_engine.render_cylinder_label_pdf(unit, cylinder_type_name=type_name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="cylinder-label-{unit.serial_number}.pdf"',
+        },
+    )

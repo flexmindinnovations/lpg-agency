@@ -410,3 +410,17 @@ class CylinderDueForStatutoryTestError(ConflictError):
 
     error_code = "CYLINDER_DUE_FOR_STATUTORY_TEST"
     title = "This cylinder's statutory retest is due and cannot be received into stock."
+
+
+class DuplicateCylinderQRCodeError(ConflictError):
+    """A cylinder unit with this QR code is already registered for this tenant."""
+
+    error_code = "DUPLICATE_CYLINDER_QR_CODE"
+    title = "A cylinder unit with this QR code is already registered."
+
+
+class CylinderUnitNotFoundError(NotFoundError):
+    """The requested cylinder unit could not be found."""
+
+    error_code = "CYLINDER_UNIT_NOT_FOUND"
+    title = "Cylinder unit not found"

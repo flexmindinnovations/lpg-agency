@@ -13,6 +13,7 @@ from lpg.infrastructure.printing.renderers.barcode_generator import generate_qr_
 
 if TYPE_CHECKING:
     from lpg.application.printing.models import InvoicePrintPayload
+    from lpg.domain.compliance.cylinder_unit import CylinderUnit
 
 _logger = get_logger(__name__)
 
@@ -54,6 +55,32 @@ def render_invoice_pdf(payload: InvoicePrintPayload) -> bytes:
     if pdf_status.err:
         _logger.error("pdf_render_failed", errors=pdf_status.err)
         msg = f"PDF rendering failed with {pdf_status.err} error(s)"
+        raise RuntimeError(msg)
+
+    return result.getvalue()
+
+
+def render_cylinder_label_pdf(
+    unit: CylinderUnit,
+    cylinder_type_name: str | None = None,
+) -> bytes:
+    """Render a cylinder QR code thermal label sticker to PDF bytes."""
+    qr_bytes = generate_qr_png(unit.qr_code, size=150)
+    qr_b64 = base64.b64encode(qr_bytes).decode("ascii")
+
+    template = _env.get_template("cylinder_label.html")
+    html = template.render(
+        unit=unit,
+        cylinder_type_name=cylinder_type_name,
+        qr_code_b64=qr_b64,
+    )
+
+    result = io.BytesIO()
+    pdf_status = pisa.CreatePDF(io.StringIO(html), dest=result)
+
+    if pdf_status.err:
+        _logger.error("cylinder_label_pdf_render_failed", errors=pdf_status.err)
+        msg = f"Cylinder label PDF rendering failed with {pdf_status.err} error(s)"
         raise RuntimeError(msg)
 
     return result.getvalue()

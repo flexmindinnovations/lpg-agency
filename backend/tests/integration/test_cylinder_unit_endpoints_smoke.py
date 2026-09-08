@@ -219,6 +219,44 @@ async def test_register_list_lifecycle_smoke(
     get_one = await client.get(f"/api/v1/cylinder-units/{unit_id}", headers=headers)
     assert get_one.status_code == 200, get_one.text
     assert get_one.json()["serial_number"] == serial
+    assert get_one.json()["qr_code"] == f"CYL-{serial}"
+
+    # Quick lookup by serial and by QR code
+    lookup_serial = await client.get(
+        "/api/v1/cylinder-units/lookup", params={"code": serial}, headers=headers
+    )
+    assert lookup_serial.status_code == 200, lookup_serial.text
+    assert lookup_serial.json()["id"] == unit_id
+
+    lookup_qr = await client.get(
+        "/api/v1/cylinder-units/lookup", params={"code": f"CYL-{serial}"}, headers=headers
+    )
+    assert lookup_qr.status_code == 200, lookup_qr.text
+    assert lookup_qr.json()["id"] == unit_id
+
+    lookup_missing = await client.get(
+        "/api/v1/cylinder-units/lookup", params={"code": "NON-EXISTENT-CODE"}, headers=headers
+    )
+    assert lookup_missing.status_code == 404
+
+    # Print label PDF
+    label_resp = await client.post(f"/api/v1/cylinder-units/{unit_id}/label", headers=headers)
+    assert label_resp.status_code == 200, label_resp.text
+    assert label_resp.headers["content-type"] == "application/pdf"
+    assert label_resp.content[:5] == b"%PDF-"
+
+    # Move custody back to warehouse before the rest of lifecycle
+    batch_resp = await client.post(
+        "/api/v1/cylinder-units/batch-custody",
+        json={
+            "cylinder_unit_ids": [unit_id],
+            "custody_type": "warehouse",
+            "custody_ref_id": str(warehouse_id),
+        },
+        headers=headers,
+    )
+    assert batch_resp.status_code == 200, batch_resp.text
+    assert batch_resp.json()["updated_count"] == 1
 
     # No cylinder_statutory_test_interval_months configured for this tenant
     # -> no guessed suggestion.

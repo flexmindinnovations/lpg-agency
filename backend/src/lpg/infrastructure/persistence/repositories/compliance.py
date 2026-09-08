@@ -10,7 +10,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Select, case, desc, func, select
+from sqlalchemy import Select, case, desc, func, or_, select
 
 from lpg.application.compliance.ports import OrderFulfillmentRecord
 from lpg.domain.compliance.cylinder_unit import CylinderUnit
@@ -93,9 +93,7 @@ class SqlAlchemyScaleRepository:
             self._sync_row(row, scale)
 
     async def get_by_id(self, scale_id: uuid.UUID) -> Scale | None:
-        stmt = select(ScaleModel).where(
-            ScaleModel.id == scale_id, ScaleModel.is_deleted.is_(False)
-        )
+        stmt = select(ScaleModel).where(ScaleModel.id == scale_id, ScaleModel.is_deleted.is_(False))
         row = (await self._uow.session.execute(stmt)).scalars().first()
         return self._to_domain(row) if row is not None else None
 
@@ -259,6 +257,7 @@ class SqlAlchemyCylinderUnitRepository:
             tenant_id=row.tenant_id,
             cylinder_type_id=row.cylinder_type_id,
             serial_number=row.serial_number,
+            qr_code=row.qr_code,
             condition_status=row.condition_status,
             custody_type=row.custody_type,
             custody_ref_id=row.custody_ref_id,
@@ -276,6 +275,7 @@ class SqlAlchemyCylinderUnitRepository:
     def _sync_row(self, row: CylinderUnitModel, unit: CylinderUnit) -> None:
         row.cylinder_type_id = unit.cylinder_type_id
         row.serial_number = unit.serial_number
+        row.qr_code = unit.qr_code
         row.manufacture_date = unit.manufacture_date
         row.owner_omc = unit.owner_omc
         row.condition_status = unit.condition_status
@@ -301,6 +301,7 @@ class SqlAlchemyCylinderUnitRepository:
                     tenant_id=unit.tenant_id,
                     cylinder_type_id=unit.cylinder_type_id,
                     serial_number=unit.serial_number,
+                    qr_code=unit.qr_code,
                     manufacture_date=unit.manufacture_date,
                     owner_omc=unit.owner_omc,
                     condition_status=unit.condition_status,
@@ -324,6 +325,22 @@ class SqlAlchemyCylinderUnitRepository:
     async def get_by_serial(self, serial_number: str) -> CylinderUnit | None:
         stmt = select(CylinderUnitModel).where(
             CylinderUnitModel.serial_number == serial_number,
+            CylinderUnitModel.is_deleted.is_(False),
+        )
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        return self._to_domain(row) if row is not None else None
+
+    async def get_by_qr_code(self, qr_code: str) -> CylinderUnit | None:
+        stmt = select(CylinderUnitModel).where(
+            CylinderUnitModel.qr_code == qr_code,
+            CylinderUnitModel.is_deleted.is_(False),
+        )
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        return self._to_domain(row) if row is not None else None
+
+    async def lookup_by_code(self, code: str) -> CylinderUnit | None:
+        stmt = select(CylinderUnitModel).where(
+            or_(CylinderUnitModel.qr_code == code, CylinderUnitModel.serial_number == code),
             CylinderUnitModel.is_deleted.is_(False),
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()

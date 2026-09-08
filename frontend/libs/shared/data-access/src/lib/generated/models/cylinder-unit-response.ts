@@ -12,6 +12,7 @@ export interface CylinderUnitResponse {
   last_tested_at: (string | null);
   manufacture_date: (string | null);
   owner_omc: (string | null);
+  qr_code: string;
   serial_number: string;
   test_due_date: (string | null);
 }

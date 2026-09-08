@@ -21,7 +21,9 @@ from lpg.application.compliance.queries.get_tdt_rating import (
     GetQuarterlyTdtRatingUseCase,
 )
 from lpg.application.compliance.use_cases import (
+    BatchMoveCylinderCustodyUseCase,
     ChangeCylinderConditionStatusUseCase,
+    LookupCylinderUnitUseCase,
     MoveCylinderCustodyUseCase,
     ReceiveCylinderUnitUseCase,
     RecordStatutoryTestUseCase,
@@ -154,3 +156,16 @@ def get_retire_cylinder_unit_use_case(
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> RetireCylinderUnitUseCase:
     return RetireCylinderUnitUseCase(repository, unit_of_work)
+
+
+def get_lookup_cylinder_unit_use_case(
+    repository: Annotated[CylinderUnitRepository, Depends(get_cylinder_unit_repository)],
+) -> LookupCylinderUnitUseCase:
+    return LookupCylinderUnitUseCase(repository)
+
+
+def get_batch_move_cylinder_custody_use_case(
+    repository: Annotated[CylinderUnitRepository, Depends(get_cylinder_unit_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> BatchMoveCylinderCustodyUseCase:
+    return BatchMoveCylinderCustodyUseCase(repository, unit_of_work)

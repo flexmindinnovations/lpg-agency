@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from lpg.application.printing.models import InvoicePrintPayload
+    from lpg.domain.compliance.cylinder_unit import CylinderUnit
 
 
 class PrintingEngine(ABC):
@@ -21,6 +22,12 @@ class PrintingEngine(ABC):
     @abstractmethod
     def render_invoice_thermal_html(self, payload: InvoicePrintPayload) -> bytes:
         """Render the thermal receipt as a print-ready HTML page (Print/Close controls)."""
+
+    @abstractmethod
+    def render_cylinder_label_pdf(
+        self, unit: CylinderUnit, cylinder_type_name: str | None = None
+    ) -> bytes:
+        """Render a cylinder QR code thermal label sticker to PDF bytes."""
 
     @abstractmethod
     def generate_qr_code(self, data: str, *, size: int = 200) -> bytes:

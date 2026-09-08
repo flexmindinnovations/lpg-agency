@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Cylinder Label {{ unit.serial_number }}</title>
+    <style>
+        @page {
+            size: 60mm 35mm;
+            margin: 2mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 8px;
+            color: #000000;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+        }
+        .label-container {
+            width: 100%;
+            border: 1px solid #333333;
+            padding: 2px;
+        }
+        table.label-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        td.qr-cell {
+            width: 32mm;
+            text-align: center;
+            vertical-align: middle;
+        }
+        td.info-cell {
+            width: 28mm;
+            vertical-align: top;
+            padding-left: 2px;
+        }
+        .omc-header {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 1px;
+        }
+        .serial-title {
+            font-size: 7px;
+            color: #555;
+            text-transform: uppercase;
+        }
+        .serial-val {
+            font-size: 11px;
+            font-weight: bold;
+            font-family: monospace;
+            margin-bottom: 2px;
+        }
+        .type-val {
+            font-size: 8px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        .code-val {
+            font-size: 7px;
+            font-family: monospace;
+            color: #333;
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+        .due-box {
+            margin-top: 2px;
+            padding: 1px 2px;
+            background-color: #f0f0f0;
+            border: 0.5px solid #666;
+            font-size: 7px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="label-container">
+        <table class="label-table">
+            <tr>
+                <td class="qr-cell">
+                    <img src="data:image/png;base64,{{ qr_code_b64 }}" width="90" height="90" />
+                </td>
+                <td class="info-cell">
+                    <div class="omc-header">{{ unit.owner_omc or "LPG CYLINDER" }}</div>
+                    <div class="serial-title">Serial No</div>
+                    <div class="serial-val">{{ unit.serial_number }}</div>
+                    <div class="type-val">{{ cylinder_type_name or "Standard" }}</div>
+                    <div class="code-val">{{ unit.qr_code }}</div>
+                    {% if unit.test_due_date %}
+                    <div class="due-box">TEST DUE: {{ unit.test_due_date }}</div>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

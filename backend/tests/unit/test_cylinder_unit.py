@@ -24,11 +24,13 @@ from lpg.domain.compliance.cylinder_unit import (
 
 
 def _unit(**overrides: object) -> CylinderUnit:
+    serial = str(overrides.get("serial_number", "CYL-000001"))
     kwargs: dict[str, object] = {
         "cylinder_unit_id": uuid.uuid4(),
         "tenant_id": uuid.uuid4(),
         "cylinder_type_id": uuid.uuid4(),
-        "serial_number": "CYL-000001",
+        "serial_number": serial,
+        "qr_code": f"CYL-{serial}",
         "condition_status": "empty",
         "custody_type": "warehouse",
         "custody_ref_id": uuid.uuid4(),
@@ -41,11 +43,16 @@ class TestConstruction:
     def test_records_a_registered_event(self) -> None:
         unit = _unit()
         assert isinstance(unit.events[0], CylinderUnitRegistered)
+        assert unit.events[0].qr_code == unit.qr_code
         assert unit.is_retired is False
 
     def test_rejects_an_empty_serial_number(self) -> None:
         with pytest.raises(InvariantViolation, match="serial number must not be empty"):
             _unit(serial_number="  ")
+
+    def test_rejects_an_empty_qr_code(self) -> None:
+        with pytest.raises(InvariantViolation, match="QR code must not be empty"):
+            _unit(qr_code="   ")
 
     def test_rejects_an_unknown_condition_status(self) -> None:
         with pytest.raises(

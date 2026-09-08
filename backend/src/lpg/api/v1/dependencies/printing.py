@@ -9,9 +9,14 @@ from lpg.api.v1.dependencies.admin import get_cylinder_type_repository
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.customer.ports import CustomerRepository
+from lpg.application.printing.ports import PrintingEngine
 from lpg.application.printing.use_cases import GeneratePrintJobUseCase
 from lpg.application.tenant.ports import CylinderTypeRepository
 from lpg.infrastructure.printing.engine import Xhtml2pdfPrintingEngine
+
+
+def get_printing_engine() -> PrintingEngine:
+    return Xhtml2pdfPrintingEngine()
 
 
 async def get_printing_use_case(

@@ -11,6 +11,8 @@ export type { ApproveCustomerRequest } from './models/approve-customer-request';
 export type { AssignComplaintRequest } from './models/assign-complaint-request';
 export type { AuditLogEntryResponse } from './models/audit-log-entry-response';
 export type { AuditLogPageResponse } from './models/audit-log-page-response';
+export type { BatchMoveCylinderCustodyRequest } from './models/batch-move-cylinder-custody-request';
+export type { BatchMoveCylinderCustodyResponse } from './models/batch-move-cylinder-custody-response';
 export type { BodyUploadDocumentAttachmentApiV1DocumentsAttachmentsPost } from './models/body-upload-document-attachment-api-v-1-documents-attachments-post';
 export type { BodyUploadKycAttachmentApiV1CustomersKycAttachmentsPost } from './models/body-upload-kyc-attachment-api-v-1-customers-kyc-attachments-post';
 export type { BodyUploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost } from './models/body-upload-pod-attachment-api-v-1-orders-order-id-pod-attachments-post';

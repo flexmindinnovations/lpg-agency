@@ -106,6 +106,7 @@ class CylinderUnitModel(Base):
         Uuid(), ForeignKey("tenant.cylinder_type.id")
     )
     serial_number: Mapped[str] = mapped_column(String(100))
+    qr_code: Mapped[str] = mapped_column(String(128))
     manufacture_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     owner_omc: Mapped[str | None] = mapped_column(String(100), nullable=True)
     condition_status: Mapped[str] = mapped_column(String(20))

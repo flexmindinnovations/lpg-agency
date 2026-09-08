@@ -8,5 +8,6 @@ export interface RegisterCylinderUnitRequest {
   cylinder_type_id: string;
   manufacture_date?: (string | null);
   owner_omc?: (string | null);
+  qr_code?: (string | null);
   serial_number: string;
 }
