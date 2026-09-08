@@ -392,3 +392,21 @@ class WeighmentCheckRequiredError(ConflictError):
 
     error_code = "WEIGHMENT_CHECK_REQUIRED"
     title = "A passing 100% weighment check is required before this route can be loaded."
+
+
+class DuplicateCylinderSerialNumberError(ConflictError):
+    """A cylinder unit with this serial number is already registered for
+    this tenant (Cylinder Identity, Phase 20 subsystem 3)."""
+
+    error_code = "DUPLICATE_CYLINDER_SERIAL_NUMBER"
+    title = "A cylinder unit with this serial number is already registered."
+
+
+class CylinderDueForStatutoryTestError(ConflictError):
+    """Rule 26, Gas Cylinders Rules 2016 — a cylinder cannot be received
+    into fillable stock while its periodical retest is due.
+    `ReceiveCylinderUnitUseCase` raises this before the domain `receive()`
+    command runs."""
+
+    error_code = "CYLINDER_DUE_FOR_STATUTORY_TEST"
+    title = "This cylinder's statutory retest is due and cannot be received into stock."

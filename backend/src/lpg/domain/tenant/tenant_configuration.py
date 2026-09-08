@@ -77,6 +77,15 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # grams` and `weighment_gate_enabled` are already two keys rather
         # than one combined weighment-config blob.
         "tdt_fine_schedule",
+        # Cylinder Identity (Phase 20 subsystem 3) — Rule 35(1), Gas
+        # Cylinders Rules 2016, defers the actual retest interval to IS
+        # 15975, which this codebase has never retrieved. Convenience
+        # prefill ONLY: `RecordStatutoryTestUseCase` suggests
+        # `tested_at + N months` as the next due date when this key is
+        # set. The due date actually persisted is always the caller's own
+        # value — never silently computed server-side — so an unset key
+        # means "no suggestion offered," not "no due date can be recorded."
+        "cylinder_statutory_test_interval_months",
     }
 )
 
