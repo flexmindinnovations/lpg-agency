@@ -52,7 +52,7 @@ class RecognizeComplianceDocumentResponse(BaseModel):
 # Compliance document CRUD
 # ==========================================================================
 
-ComplianceOwnerType = Literal["driver", "vehicle"]
+ComplianceOwnerType = Literal["driver", "vehicle", "warehouse", "tenant"]
 
 
 class AddComplianceDocumentRequest(BaseModel):

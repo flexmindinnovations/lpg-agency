@@ -1,12 +1,17 @@
 """ComplianceDocument aggregate root.
 
-A statutory document held against a driver or a vehicle — driving licence,
-vehicle RC, insurance, fitness, PUC, PESO transport licence, TREM card,
-refresher-training certificate. Modelled as its own aggregate keyed by
-``(owner_type, owner_id)`` rather than nested inside ``Driver`` / ``Vehicle``:
-both owners handle documents identically, so one aggregate + one repository is
-DRYer than duplicating child-entity logic in two places (consistent with the
-Branch/Warehouse "independent aggregate" divergence in Phase 7).
+A statutory document held against a driver, a vehicle, a warehouse, or the
+tenant itself — driving licence, vehicle RC, insurance, fitness, PUC, PESO
+transport licence, TREM card, refresher-training certificate, PESO Form F
+(explosive-storage licence), insurance policy. Modelled as its own aggregate
+keyed by ``(owner_type, owner_id)`` rather than nested inside ``Driver`` /
+``Vehicle`` / ``Warehouse``: every owner handles documents identically, so
+one aggregate + one repository is DRYer than duplicating child-entity logic
+across owner types (consistent with the Branch/Warehouse "independent
+aggregate" divergence in Phase 7). ``warehouse``/``tenant`` owners were added
+for the Compliance Calendar licence registry (ADR-044) — the registry itself
+is a thin, mostly-reused extension of driver/vehicle compliance (D24/
+ADR-038).
 
 Lifecycle of ``verification_status``:  pending → verified
                                        pending → rejected → pending (on replace)
@@ -26,7 +31,7 @@ from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolatio
 # Enumerations
 # ---------------------------------------------------------------------------
 
-COMPLIANCE_OWNER_TYPES: frozenset[str] = frozenset({"driver", "vehicle"})
+COMPLIANCE_OWNER_TYPES: frozenset[str] = frozenset({"driver", "vehicle", "warehouse", "tenant"})
 
 # doc_type → the owner it may be attached to.
 _DRIVER_DOC_TYPES: frozenset[str] = frozenset(
@@ -46,7 +51,14 @@ _VEHICLE_DOC_TYPES: frozenset[str] = frozenset(
         "peso_transport_licence",
     }
 )
-COMPLIANCE_DOC_TYPES: frozenset[str] = _DRIVER_DOC_TYPES | _VEHICLE_DOC_TYPES
+# Compliance Calendar licence registry (ADR-044) — Tier 0 only (PESO Form F +
+# insurance); biennial safety inspection, the accident-notification workflow,
+# and fire NOC/trade licence are explicitly deferred, not covered here.
+_WAREHOUSE_DOC_TYPES: frozenset[str] = frozenset({"peso_form_f"})
+_TENANT_DOC_TYPES: frozenset[str] = frozenset({"insurance_policy"})
+COMPLIANCE_DOC_TYPES: frozenset[str] = (
+    _DRIVER_DOC_TYPES | _VEHICLE_DOC_TYPES | _WAREHOUSE_DOC_TYPES | _TENANT_DOC_TYPES
+)
 
 # The one document each owner must have on file before it can be registered
 # (enforced by RegisterDriverUseCase / RegisterVehicleUseCase, not here).
@@ -61,10 +73,17 @@ _NO_EXPIRY_DOC_TYPES: frozenset[str] = frozenset({"trem_card"})
 
 COMPLIANCE_VERIFICATION_STATUSES: frozenset[str] = frozenset({"pending", "verified", "rejected"})
 
+_DOC_TYPES_BY_OWNER: dict[str, frozenset[str]] = {
+    "driver": _DRIVER_DOC_TYPES,
+    "vehicle": _VEHICLE_DOC_TYPES,
+    "warehouse": _WAREHOUSE_DOC_TYPES,
+    "tenant": _TENANT_DOC_TYPES,
+}
+
 
 def doc_types_for_owner(owner_type: str) -> frozenset[str]:
     """The document types valid for a given owner type."""
-    return _DRIVER_DOC_TYPES if owner_type == "driver" else _VEHICLE_DOC_TYPES
+    return _DOC_TYPES_BY_OWNER.get(owner_type, frozenset())
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +128,8 @@ class ComplianceDocument(AggregateRoot):
     """Compliance document aggregate root.
 
     Business invariants:
-    - ``owner_type`` ∈ {driver, vehicle}; ``doc_type`` must be valid for it.
+    - ``owner_type`` ∈ {driver, vehicle, warehouse, tenant}; ``doc_type`` must
+      be valid for it.
     - ``document_number`` non-empty.
     - ``expiry_date`` is required unless ``doc_type`` is in the no-expiry set;
       when both are set, it must be after ``issue_date``.

@@ -9,10 +9,12 @@ import pytest
 
 from lpg.domain.common.base import InvariantViolation
 from lpg.domain.delivery.compliance_document import (
+    COMPLIANCE_OWNER_TYPES,
     ComplianceDocument,
     ComplianceDocumentAdded,
     ComplianceDocumentReplaced,
     ComplianceDocumentVerified,
+    doc_types_for_owner,
 )
 
 
@@ -99,3 +101,58 @@ class TestExpiry:
         doc = _doc(expiry_date=date(2020, 1, 1))
         assert doc.is_expired(as_of=date(2026, 1, 1)) is True
         assert doc.is_expired(as_of=date(2019, 1, 1)) is False
+
+
+class TestWarehouseAndTenantOwners:
+    """Compliance Calendar (ADR-044) — widened owner types."""
+
+    def test_accepts_a_warehouse_owner_with_peso_form_f(self) -> None:
+        doc = _doc(
+            owner_type="warehouse",
+            doc_type="peso_form_f",
+            document_number="PESO/FORM-F/2026/0042",
+            expiry_date=date(2029, 1, 1),
+        )
+        assert doc.owner_type == "warehouse"
+        assert doc.doc_type == "peso_form_f"
+
+    def test_accepts_a_tenant_owner_with_insurance_policy(self) -> None:
+        doc = _doc(
+            owner_type="tenant",
+            doc_type="insurance_policy",
+            document_number="INS-2026-998877",
+            expiry_date=date(2027, 6, 1),
+        )
+        assert doc.owner_type == "tenant"
+        assert doc.doc_type == "insurance_policy"
+
+    def test_rejects_a_warehouse_doc_type_for_a_tenant_owner(self) -> None:
+        with pytest.raises(InvariantViolation, match="not valid for a tenant"):
+            _doc(owner_type="tenant", doc_type="peso_form_f", expiry_date=date(2029, 1, 1))
+
+    def test_rejects_a_driver_doc_type_for_a_warehouse_owner(self) -> None:
+        with pytest.raises(InvariantViolation, match="not valid for a warehouse"):
+            _doc(owner_type="warehouse", doc_type="driving_licence")
+
+    def test_rejects_an_unknown_owner_type(self) -> None:
+        with pytest.raises(InvariantViolation, match="not valid"):
+            _doc(owner_type="branch", doc_type="peso_form_f")
+
+
+class TestDocTypesForOwner:
+    def test_all_four_owner_types_are_recognized(self) -> None:
+        assert frozenset({"driver", "vehicle", "warehouse", "tenant"}) == COMPLIANCE_OWNER_TYPES
+
+    def test_warehouse_doc_types(self) -> None:
+        assert doc_types_for_owner("warehouse") == {"peso_form_f"}
+
+    def test_tenant_doc_types(self) -> None:
+        assert doc_types_for_owner("tenant") == {"insurance_policy"}
+
+    def test_driver_and_vehicle_doc_types_are_unchanged(self) -> None:
+        assert "driving_licence" in doc_types_for_owner("driver")
+        assert "vehicle_rc" in doc_types_for_owner("vehicle")
+        assert "peso_form_f" not in doc_types_for_owner("driver")
+
+    def test_unknown_owner_type_returns_empty(self) -> None:
+        assert doc_types_for_owner("branch") == frozenset()
