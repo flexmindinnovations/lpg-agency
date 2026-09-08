@@ -19,7 +19,7 @@ needs to be undone.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -30,7 +30,7 @@ from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseC
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
 from lpg.domain.delivery.route import Route
 from lpg.domain.order.cancellation_fee import CancellationFeeCalculator
-from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order, OrderLine
+from lpg.domain.order.order import ORDER_STATUSES, DeliveredLine, DeliveryAddress, Order, OrderLine
 from lpg.domain.tenant.price_list import EffectivePriceResolver
 from lpg.domain.tenant.tenant_configuration import TenantConfigurationResolver
 
@@ -1032,6 +1032,56 @@ class ListOrdersUseCase:
             to_date=query.to_date,
         )
         return OrderPage(items=items, total=total)
+
+
+@dataclass(frozen=True, slots=True)
+class GetTodayDeliveryStatusQuery(Query):
+    """Zero-argument — 'today' is always relative to `datetime.now(UTC)` at
+    call time, not a caller-supplied date. Built for the AI Command Center's
+    delivery-status tool (ADR-045), not as a general-purpose orders report."""
+
+
+@dataclass(frozen=True, slots=True)
+class DeliveryStatusSummary:
+    status_counts: dict[str, int]
+    #: Orders still `out_for_delivery` from *before* today — the clearest
+    #: "should have finished, didn't" signal. Deliberately narrow: a fuller
+    #: staleness sweep across every non-terminal status (booked/confirmed/
+    #: assigned/ready_for_dispatch too) is a natural follow-up, not built
+    #: here — see ADR-045.
+    stale_out_for_delivery_count: int
+
+
+class GetTodayDeliveryStatusUseCase:
+    """Tenant-wide snapshot of today's order pipeline, composed entirely
+    from `OrderRepository.count_orders` — no new domain logic, no
+    migration. One query per status (`ORDER_STATUSES` has 10 members) plus
+    one for the staleness count; acceptable for an occasional AI-tool call,
+    not a hot path."""
+
+    def __init__(self, repository: OrderRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: GetTodayDeliveryStatusQuery) -> DeliveryStatusSummary:
+        _ = query
+        now = datetime.now(UTC)
+        start_of_today = datetime(now.year, now.month, now.day, tzinfo=UTC)
+        end_of_today = start_of_today + timedelta(days=1)
+
+        status_counts: dict[str, int] = {}
+        for status in sorted(ORDER_STATUSES):
+            status_counts[status] = await self._repository.count_orders(
+                status=status, from_date=start_of_today, to_date=end_of_today
+            )
+
+        stale_out_for_delivery_count = await self._repository.count_orders(
+            status="out_for_delivery", to_date=start_of_today
+        )
+
+        return DeliveryStatusSummary(
+            status_counts=status_counts,
+            stale_out_for_delivery_count=stale_out_for_delivery_count,
+        )
 
 
 @dataclass(frozen=True, slots=True)

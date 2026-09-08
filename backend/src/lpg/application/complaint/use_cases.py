@@ -16,6 +16,8 @@ if TYPE_CHECKING:
         ResolutionOutcome,
     )
 
+from lpg.domain.complaint.value_objects import ComplaintStatus
+
 
 @dataclass
 class RaiseComplaintCommand:
@@ -105,3 +107,47 @@ class ResolveComplaintUseCase:
             )
             await self._uow.complaints.save(complaint)
             await self._uow.commit()
+
+
+@dataclass
+class GetOpenComplaintsSummaryQuery:
+    """Zero-argument — built for the AI Command Center's complaints tool
+    (ADR-045). 'Open' means the three non-terminal `ComplaintStatus`
+    values (Open/Assigned/InProgress), not a single literal status."""
+
+
+@dataclass
+class OpenComplaintsSummary:
+    open_count: int
+    assigned_count: int
+    in_progress_count: int
+
+
+class GetOpenComplaintsSummaryUseCase:
+    """Read-only — three `count_complaints` calls, one per non-terminal
+    status (the repository takes a single status, not a set). No
+    `ListComplaintsUseCase` exists yet to wrap; this is new but thin,
+    same shape as every other command/use case in this file."""
+
+    def __init__(self, uow: ComplaintUnitOfWork) -> None:
+        self._uow = uow
+
+    async def execute(
+        self, ctx: TenantContext, query: GetOpenComplaintsSummaryQuery
+    ) -> OpenComplaintsSummary:
+        _ = query
+        async with self._uow:
+            open_count = await self._uow.complaints.count_complaints(
+                ctx.tenant_id, status=ComplaintStatus.OPEN
+            )
+            assigned_count = await self._uow.complaints.count_complaints(
+                ctx.tenant_id, status=ComplaintStatus.ASSIGNED
+            )
+            in_progress_count = await self._uow.complaints.count_complaints(
+                ctx.tenant_id, status=ComplaintStatus.IN_PROGRESS
+            )
+        return OpenComplaintsSummary(
+            open_count=open_count,
+            assigned_count=assigned_count,
+            in_progress_count=in_progress_count,
+        )

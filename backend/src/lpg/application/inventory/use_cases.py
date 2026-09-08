@@ -445,3 +445,34 @@ class ListInventoryTransactionsUseCase:
         return await self._repository.list_transactions(
             location.id, cursor=query.cursor, limit=query.limit
         )
+
+
+@dataclass(frozen=True, slots=True)
+class GetInventoryOverviewQuery(Query):
+    """Zero-argument — built for the AI Command Center's inventory tool
+    (ADR-045). Tenant-wide, quantity-by-status only: not broken out by
+    cylinder type or by warehouse/vehicle, matching
+    `InventoryLocationRepository.get_balance_summary()`'s own scope."""
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryOverview:
+    #: e.g. `{"filled": 1200, "empty": 340}` — status vocabulary is
+    #: `InventoryLocation`'s own (`filled`/`empty`/etc.), not redefined here.
+    quantity_by_status: dict[str, int]
+
+
+class GetInventoryOverviewUseCase:
+    """A thin wrapper around `get_balance_summary()` — that method already
+    exists and is already tenant-wide; its only prior caller was
+    `GetDashboardSummaryUseCase`, which composes it with unrelated data.
+    This is the same read, given its own use case so a tool can call it
+    without also pulling every other dashboard field."""
+
+    def __init__(self, repository: InventoryLocationRepository) -> None:
+        self._repository = repository
+
+    async def execute(self, query: GetInventoryOverviewQuery) -> InventoryOverview:
+        _ = query
+        summary = await self._repository.get_balance_summary()
+        return InventoryOverview(quantity_by_status=summary)
