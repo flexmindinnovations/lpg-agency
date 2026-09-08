@@ -1,14 +1,18 @@
 """API router for the `compliance` bounded context — Weighment Part 1 (scale
-registry). `planning/features/20-regulatory-compliance` subsystem 1."""
+registry, `planning/features/20-regulatory-compliance` subsystem 1) and TDT
+rating (subsystem 2)."""
 
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.compliance import (
+    get_live_tdt_projection_use_case,
+    get_quarterly_tdt_rating_use_case,
     get_record_weighment_use_case,
     get_scale_repository,
     get_weighment_record_repository,
@@ -23,12 +27,21 @@ from lpg.api.v1.schemas.compliance import (
     ScaleListResponse,
     ScaleResponse,
     SetScaleStatusRequest,
+    TdtBandDistributionResponse,
+    TdtQuarterlyRatingResponse,
     WeighmentRecordListResponse,
     WeighmentRecordResponse,
 )
 from lpg.application.common.errors import ConflictError, NotFoundError
 from lpg.application.common.ports import FileStorage, UnitOfWork
 from lpg.application.compliance.ports import ScaleRepository, WeighmentRecordRepository
+from lpg.application.compliance.queries.get_tdt_rating import (
+    GetLiveTdtProjectionQuery,
+    GetLiveTdtProjectionUseCase,
+    GetQuarterlyTdtRatingQuery,
+    GetQuarterlyTdtRatingUseCase,
+    current_quarter_bounds,
+)
 from lpg.application.compliance.use_cases import (
     ListScalesQuery,
     ListScalesUseCase,
@@ -48,6 +61,7 @@ from lpg.domain.common.base import DomainError
 
 if TYPE_CHECKING:
     from lpg.domain.compliance.scale import Scale
+    from lpg.domain.compliance.tdt_rating import TdtQuarterlyRating
     from lpg.domain.compliance.weighment_record import WeighmentRecord
 
 router = APIRouter(prefix="/scales", tags=["Compliance — Weighment"])
@@ -57,6 +71,12 @@ router = APIRouter(prefix="/scales", tags=["Compliance — Weighment"])
 #: `/routes/{route_id}/weighment`), not under `/scales` — a second router,
 #: same file, both registered in `app.py`.
 weighment_router = APIRouter(tags=["Compliance — Weighment"])
+
+#: TDT rating endpoints — read-only, own `tdt:read` permission (no
+#: `tdt:configure`: the band/fine-schedule reference data is written
+#: through the existing `tenant:configure`-gated
+#: `POST /admin/tenant-configuration`, not a dedicated endpoint here).
+tdt_rating_router = APIRouter(prefix="/tdt-rating", tags=["Compliance — TDT Rating"])
 
 
 async def _to_response(scale: Scale, file_storage: FileStorage) -> ScaleResponse:
@@ -326,3 +346,64 @@ async def set_scale_status(
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
     return await _to_response(scale, file_storage)
+
+
+def _tdt_to_response(
+    rating: TdtQuarterlyRating, *, quarter_start: date, quarter_end: date
+) -> TdtQuarterlyRatingResponse:
+    return TdtQuarterlyRatingResponse(
+        overall_stars=rating.overall_stars,
+        total_orders=rating.total_orders,
+        distribution=[
+            TdtBandDistributionResponse(stars=entry.stars, order_count=entry.order_count)
+            for entry in rating.distribution
+        ],
+        quarter_start=quarter_start,
+        quarter_end=quarter_end,
+    )
+
+
+@tdt_rating_router.get(
+    "/quarterly",
+    response_model=TdtQuarterlyRatingResponse,
+    dependencies=[Depends(require_permission("tdt:read"))],
+)
+async def get_quarterly_tdt_rating(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[GetQuarterlyTdtRatingUseCase, Depends(get_quarterly_tdt_rating_use_case)],
+    quarter_start: date,
+    quarter_end: date,
+    branch_id: uuid.UUID | None = None,
+) -> TdtQuarterlyRatingResponse:
+    """`quarter_start` is inclusive, `quarter_end` is the **exclusive**
+    upper bound — pass the first day of the quarter *after* the one you
+    want (e.g. `2026-01-01`/`2026-04-01` for Q1 2026), not its last day."""
+    rating = await use_case.execute(
+        GetQuarterlyTdtRatingQuery(
+            tenant_id=principal.tenant_id,
+            quarter_start=quarter_start,
+            quarter_end=quarter_end,
+            branch_id=branch_id,
+        )
+    )
+    return _tdt_to_response(rating, quarter_start=quarter_start, quarter_end=quarter_end)
+
+
+@tdt_rating_router.get(
+    "/live-projection",
+    response_model=TdtQuarterlyRatingResponse,
+    dependencies=[Depends(require_permission("tdt:read"))],
+)
+async def get_live_tdt_projection(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[GetLiveTdtProjectionUseCase, Depends(get_live_tdt_projection_use_case)],
+    branch_id: uuid.UUID | None = None,
+) -> TdtQuarterlyRatingResponse:
+    """The current, still-open calendar quarter's rating so far — "so the
+    distributor can still act" (source plan), rather than only finding out
+    once the quarter has already closed."""
+    quarter_start, quarter_end = current_quarter_bounds(datetime.now(UTC).date())
+    rating = await use_case.execute(
+        GetLiveTdtProjectionQuery(tenant_id=principal.tenant_id, branch_id=branch_id)
+    )
+    return _tdt_to_response(rating, quarter_start=quarter_start, quarter_end=quarter_end)

@@ -1,5 +1,5 @@
 """Pydantic request/response models for `api/v1/routers/compliance.py`
-(Weighment Part 1 — scale registry)."""
+(Weighment Part 1 — scale registry; TDT rating — Phase 20 subsystem 2)."""
 
 from __future__ import annotations
 
@@ -72,3 +72,20 @@ class WeighmentRecordResponse(BaseModel):
 
 class WeighmentRecordListResponse(BaseModel):
     items: list[WeighmentRecordResponse]
+
+
+class TdtBandDistributionResponse(BaseModel):
+    stars: int
+    order_count: int
+
+
+class TdtQuarterlyRatingResponse(BaseModel):
+    """`overall_stars` is `null` when there is no delivered-order data for
+    the requested period — no `tdt_star_rating_bands` configured yet, or
+    zero orders delivered in the window — never a guessed value."""
+
+    overall_stars: int | None
+    total_orders: int
+    distribution: list[TdtBandDistributionResponse]
+    quarter_start: date
+    quarter_end: date

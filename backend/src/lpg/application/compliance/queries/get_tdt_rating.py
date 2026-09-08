@@ -67,7 +67,7 @@ def _to_fine_schedule(config_value: object) -> tuple[TdtFineRule, ...]:
     )
 
 
-def _current_quarter_bounds(today: date) -> tuple[date, date]:
+def current_quarter_bounds(today: date) -> tuple[date, date]:
     """Calendar quarter (Jan-Mar / Apr-Jun / Jul-Sep / Oct-Dec) as the
     default — the source plan's own open questions flag that whether the
     OMC actually uses the calendar quarter or the Indian financial-year
@@ -168,7 +168,7 @@ class GetLiveTdtProjectionUseCase:
         )
 
     async def execute(self, query: GetLiveTdtProjectionQuery) -> TdtQuarterlyRating:
-        quarter_start, quarter_end = _current_quarter_bounds(datetime.now(UTC).date())
+        quarter_start, quarter_end = current_quarter_bounds(datetime.now(UTC).date())
         return await self._quarterly_use_case.execute(
             GetQuarterlyTdtRatingQuery(
                 tenant_id=query.tenant_id,
