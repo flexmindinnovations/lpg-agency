@@ -663,6 +663,82 @@ async def add_vehicle_document(
     )
 
 
+@router.get(
+    "/warehouses/{warehouse_id}/documents",
+    response_model=ComplianceDocumentListResponse,
+    dependencies=[Depends(require_permission("compliance:read"))],
+)
+async def list_warehouse_documents(
+    warehouse_id: uuid.UUID,
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentListResponse:
+    """Compliance Calendar (ADR-044) — PESO Form F per warehouse."""
+    return await _list_owner_documents("warehouse", warehouse_id, repository, file_storage)
+
+
+@router.post(
+    "/warehouses/{warehouse_id}/documents",
+    response_model=ComplianceDocumentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("compliance:manage"))],
+)
+async def add_warehouse_document(
+    warehouse_id: uuid.UUID,
+    request: AddComplianceDocumentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentResponse:
+    return await _add_owner_document(
+        "warehouse", warehouse_id, request, principal, repository, unit_of_work, file_storage
+    )
+
+
+@router.get(
+    "/tenant/documents",
+    response_model=ComplianceDocumentListResponse,
+    dependencies=[Depends(require_permission("compliance:read"))],
+)
+async def list_tenant_documents(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentListResponse:
+    """Compliance Calendar (ADR-044) — the tenant's own insurance policy.
+    No path param: the owner is always the caller's own tenant."""
+    return await _list_owner_documents(
+        "tenant", principal.tenant_id, repository, file_storage
+    )
+
+
+@router.post(
+    "/tenant/documents",
+    response_model=ComplianceDocumentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("compliance:manage"))],
+)
+async def add_tenant_document(
+    request: AddComplianceDocumentRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ComplianceDocumentRepository, Depends(get_compliance_document_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ComplianceDocumentResponse:
+    return await _add_owner_document(
+        "tenant", principal.tenant_id, request, principal, repository, unit_of_work, file_storage
+    )
+
+
 @router.put(
     "/compliance-documents/{document_id}",
     response_model=ComplianceDocumentResponse,
