@@ -1047,6 +1047,29 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 
 ---
 
+## ADR-043: Delivery Authentication Code as an Optional, Non-Gating POD Field — No Domain-Layer Change
+
+**Status:** Accepted
+
+**Context:** Delivery Authentication Code (`planning/features/20-regulatory-compliance/PLAN.md` §4) — the OMC issues its own separate 6-digit code to the consumer's mobile at a large and growing share of deliveries (`docs/research/feature-gap-analysis.md` R13, coverage 53%→~90%), explicitly distinct from this platform's own internal delivery OTP, which already exists and already gates `out_for_delivery → delivered` (`OtpStore.verify()`, checked in `DeliverOrderUseCase.execute()` before `order.deliver()` runs). Unlike every other Phase 20 slice (D24, Weighment, TDT rating, Cylinder Identity — each a new, independent, additive registry), this one **modifies an existing, working, production flow**: `DeliverOrderUseCase`, the `orders.proof_of_delivery` table, and both delivery-capture UIs (Angular dashboard, Flutter driver app — the latter confirmed as the actual primary delivery-capture surface in production use).
+
+**Decision (no domain change):** `Order.deliver()` (`domain/order/order.py`) takes no POD/OTP/DAC parameters at all — its own docstring states "POD completeness (OTP, signature, photo, GPS) is validated by the use case, not here." `dac_code` slots in exactly where the existing signature/photo/gps/payment/amount fields already sit: pure persistence into `ProofOfDeliveryEntry`, written *after* the state transition already succeeded. Zero domain-layer changes were needed or made.
+
+**Decision (optional, never gates delivery):** DAC coverage is ~90%, not 100% — gating on it, the way the internal OTP gates, would incorrectly block the roughly one-in-ten deliveries that legitimately have none. `dac_code` is nullable throughout every layer (DB column, `ProofOfDeliveryEntry`, `DeliverOrderCommand`, both frontend forms) and the only validation applied is format (`^\d{6}$`, DB `CHECK` + Pydantic `pattern`) — never authenticity. This platform has no OMC portal API to check a DAC against (`PLAN.md`'s own open question elsewhere: "no public evidence of a documented distributor integration API... assume manual reconciliation"), so "validate" here is scoped explicitly to shape, not correctness.
+
+**Decision (three stacks in lockstep, not silently):** the field is threaded through the backend, the Angular dashboard's Deliver drawer, and the Flutter driver app in the same commit sequence, because a delivery recorded from either UI must carry it the same way. The Flutter side needed particular care: `packages/sync_engine/lib/src/sync_coordinator.dart` replays a queued offline operation by `jsonDecode`-ing its stored payload and POSTing it verbatim later — the hand-built JSON map in `delivery_mutations.dart`'s `_queueDelivery` **is** the eventual HTTP body, not a re-serialization of a typed model. `dacCode` had to be added to that map explicitly, separately from the typed `ProofOfDeliverySubmission` object `_deliverInline` (the online path) constructs — missing either one would silently drop DAC for exactly one of the two paths, with no error anywhere. Both paths are covered by dedicated tests asserting the field's presence (or, when omitted, its absence — never a sent `null`) in the actual outgoing payload.
+
+**Consequences:**
+- A `dac_coverage` reporting metric was scoped out of this slice, not built. The one existing precedent for a similar percentage-style column, `cash_accuracy` on the Driver Performance report, was found on inspection to be a hardcoded `1.0` literal in `rpt.mv_driver_performance_daily`'s refresh SQL — a stub, not a real computed value — so there was no safe pattern to extend. A real `dac_coverage` aggregate means touching that materialized view's refresh SQL, a separate, higher-risk change to a used, nightly-refreshed artifact; left as an explicit, named next step.
+- The dashboard's Deliver drawer turned out, while verifying this change live, to require the `driver` role's own `orders:deliver` permission — the same role that (by this codebase's own design) cannot freely browse the staff-facing order-detail page by ID. This is a pre-existing characteristic of the role/permission model, not something this slice introduced or changed; noted here only because it shaped how the frontend change was verified (a real submitted request confirmed reaching the backend with `dac_code` included, rejected only on this unrelated, pre-existing permission dimension — the full authorized round-trip is proven by the backend integration test instead).
+
+**Alternatives Considered:**
+- **Gate delivery on a present-and-valid DAC, same as the internal OTP** — rejected: would incorrectly block the ~10% of deliveries with no OMC-issued code, a regression the moment this shipped for any tenant not yet at full OMC rollout.
+- **Attempt authenticity validation against an OMC system** — rejected: no such integration exists or is documented as available anywhere in this codebase's research; would be inventing a check this platform cannot actually perform.
+- **Build the `dac_coverage` KPI in the same slice** — rejected: the only extension point (`cash_accuracy`) is itself unverified stub logic; conflating "ship the capture" with "fix a pre-existing reporting stub and add a new real metric on top of it" would have doubled this slice's risk for a benefit (a KPI) the roadmap ranks separately from capture itself.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1093,6 +1116,7 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 | 040 | Weighment load-out gate as tenant-opt-in configuration, not unconditional | Accepted |
 | 041 | TDT star rating as a `domain/compliance` module, two-pass repository query for cross-quarter correctness | Accepted |
 | 042 | `CylinderUnit` as a new `domain/compliance` aggregate, not an `InventoryLocation` extension | Accepted |
+| 043 | Delivery Authentication Code as an optional, non-gating POD field — no domain-layer change | Accepted |
 
 ## Deferred Decisions
 
