@@ -10678,7 +10678,9 @@
                 {
                   "enum": [
                     "driver",
-                    "vehicle"
+                    "vehicle",
+                    "warehouse",
+                    "tenant"
                   ],
                   "type": "string"
                 },
@@ -16967,6 +16969,67 @@
         ]
       }
     },
+    "/api/v1/tenant/documents": {
+      "get": {
+        "description": "Compliance Calendar (ADR-044) — the tenant's own insurance policy.\nNo path param: the owner is always the caller's own tenant.",
+        "operationId": "list_tenant_documents_api_v1_tenant_documents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Tenant Documents",
+        "tags": [
+          "Delivery"
+        ]
+      },
+      "post": {
+        "operationId": "add_tenant_document_api_v1_tenant_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Tenant Document",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
     "/api/v1/vehicles": {
       "get": {
         "description": "List vehicles with optional search and filter.",
@@ -17459,6 +17522,101 @@
           }
         },
         "summary": "Update Vehicle Status",
+        "tags": [
+          "Delivery"
+        ]
+      }
+    },
+    "/api/v1/warehouses/{warehouse_id}/documents": {
+      "get": {
+        "description": "Compliance Calendar (ADR-044) — PESO Form F per warehouse.",
+        "operationId": "list_warehouse_documents_api_v1_warehouses__warehouse_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Warehouse Documents",
+        "tags": [
+          "Delivery"
+        ]
+      },
+      "post": {
+        "operationId": "add_warehouse_document_api_v1_warehouses__warehouse_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddComplianceDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComplianceDocumentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Warehouse Document",
         "tags": [
           "Delivery"
         ]

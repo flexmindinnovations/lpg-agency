@@ -10,7 +10,7 @@ import { RequestBuilder } from '../../request-builder';
 import { ComplianceDocumentListResponse } from '../../models/compliance-document-list-response';
 
 export interface ListComplianceDocumentsApiV1ComplianceDocumentsGet$Params {
-  owner_type?: ('driver' | 'vehicle' | null);
+  owner_type?: ('driver' | 'vehicle' | 'warehouse' | 'tenant' | null);
   status?: (string | null);
   expiry?: (string | null);
   skip?: number;

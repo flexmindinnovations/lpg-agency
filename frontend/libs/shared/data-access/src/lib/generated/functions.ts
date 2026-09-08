@@ -127,6 +127,10 @@ export type { UpdateDriverLicenseApiV1DriversDriverIdLicensePatch$Params as Upda
 export { updateDriverLicenseApiV1DriversDriverIdLicensePatch as updateDriverLicenseApiV1DriversDriverIdLicensePatch } from './fn/delivery/update-driver-license-api-v-1-drivers-driver-id-license-patch';
 export type { UpdateDriverStatusApiV1DriversDriverIdStatusPatch$Params as UpdateDriverStatusApiV1DriversDriverIdStatusPatch$Params } from './fn/delivery/update-driver-status-api-v-1-drivers-driver-id-status-patch';
 export { updateDriverStatusApiV1DriversDriverIdStatusPatch as updateDriverStatusApiV1DriversDriverIdStatusPatch } from './fn/delivery/update-driver-status-api-v-1-drivers-driver-id-status-patch';
+export type { ListTenantDocumentsApiV1TenantDocumentsGet$Params as ListTenantDocumentsApiV1TenantDocumentsGet$Params } from './fn/delivery/list-tenant-documents-api-v-1-tenant-documents-get';
+export { listTenantDocumentsApiV1TenantDocumentsGet as listTenantDocumentsApiV1TenantDocumentsGet } from './fn/delivery/list-tenant-documents-api-v-1-tenant-documents-get';
+export type { AddTenantDocumentApiV1TenantDocumentsPost$Params as AddTenantDocumentApiV1TenantDocumentsPost$Params } from './fn/delivery/add-tenant-document-api-v-1-tenant-documents-post';
+export { addTenantDocumentApiV1TenantDocumentsPost as addTenantDocumentApiV1TenantDocumentsPost } from './fn/delivery/add-tenant-document-api-v-1-tenant-documents-post';
 export type { ListVehiclesApiV1VehiclesGet$Params as ListVehiclesApiV1VehiclesGet$Params } from './fn/delivery/list-vehicles-api-v-1-vehicles-get';
 export { listVehiclesApiV1VehiclesGet as listVehiclesApiV1VehiclesGet } from './fn/delivery/list-vehicles-api-v-1-vehicles-get';
 export type { RegisterVehicleApiV1VehiclesPost$Params as RegisterVehicleApiV1VehiclesPost$Params } from './fn/delivery/register-vehicle-api-v-1-vehicles-post';
@@ -141,6 +145,10 @@ export type { AddVehicleDocumentApiV1VehiclesVehicleIdDocumentsPost$Params as Ad
 export { addVehicleDocumentApiV1VehiclesVehicleIdDocumentsPost as addVehicleDocumentApiV1VehiclesVehicleIdDocumentsPost } from './fn/delivery/add-vehicle-document-api-v-1-vehicles-vehicle-id-documents-post';
 export type { UpdateVehicleStatusApiV1VehiclesVehicleIdStatusPatch$Params as UpdateVehicleStatusApiV1VehiclesVehicleIdStatusPatch$Params } from './fn/delivery/update-vehicle-status-api-v-1-vehicles-vehicle-id-status-patch';
 export { updateVehicleStatusApiV1VehiclesVehicleIdStatusPatch as updateVehicleStatusApiV1VehiclesVehicleIdStatusPatch } from './fn/delivery/update-vehicle-status-api-v-1-vehicles-vehicle-id-status-patch';
+export type { ListWarehouseDocumentsApiV1WarehousesWarehouseIdDocumentsGet$Params as ListWarehouseDocumentsApiV1WarehousesWarehouseIdDocumentsGet$Params } from './fn/delivery/list-warehouse-documents-api-v-1-warehouses-warehouse-id-documents-get';
+export { listWarehouseDocumentsApiV1WarehousesWarehouseIdDocumentsGet as listWarehouseDocumentsApiV1WarehousesWarehouseIdDocumentsGet } from './fn/delivery/list-warehouse-documents-api-v-1-warehouses-warehouse-id-documents-get';
+export type { AddWarehouseDocumentApiV1WarehousesWarehouseIdDocumentsPost$Params as AddWarehouseDocumentApiV1WarehousesWarehouseIdDocumentsPost$Params } from './fn/delivery/add-warehouse-document-api-v-1-warehouses-warehouse-id-documents-post';
+export { addWarehouseDocumentApiV1WarehousesWarehouseIdDocumentsPost as addWarehouseDocumentApiV1WarehousesWarehouseIdDocumentsPost } from './fn/delivery/add-warehouse-document-api-v-1-warehouses-warehouse-id-documents-post';
 export type { ListCustomersApiV1CustomersGet$Params as ListCustomersApiV1CustomersGet$Params } from './fn/customers/list-customers-api-v-1-customers-get';
 export { listCustomersApiV1CustomersGet as listCustomersApiV1CustomersGet } from './fn/customers/list-customers-api-v-1-customers-get';
 export type { RegisterCustomerApiV1CustomersPost$Params as RegisterCustomerApiV1CustomersPost$Params } from './fn/customers/register-customer-api-v-1-customers-post';
