@@ -89,3 +89,60 @@ class TdtQuarterlyRatingResponse(BaseModel):
     distribution: list[TdtBandDistributionResponse]
     quarter_start: date
     quarter_end: date
+
+
+class RegisterCylinderUnitRequest(BaseModel):
+    cylinder_type_id: uuid.UUID
+    serial_number: str = Field(min_length=1)
+    condition_status: str
+    custody_type: str
+    custody_ref_id: uuid.UUID | None = None
+    manufacture_date: date | None = None
+    owner_omc: str | None = None
+
+
+class RecordCylinderStatutoryTestRequest(BaseModel):
+    tested_at: date
+    due_date: date
+
+
+class MoveCylinderCustodyRequest(BaseModel):
+    custody_type: str
+    custody_ref_id: uuid.UUID | None = None
+
+
+class ChangeCylinderConditionStatusRequest(BaseModel):
+    new_status: str
+    reason: str | None = None
+
+
+class ReceiveCylinderUnitRequest(BaseModel):
+    warehouse_id: uuid.UUID
+
+
+class CylinderUnitResponse(BaseModel):
+    id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    serial_number: str
+    manufacture_date: date | None
+    owner_omc: str | None
+    condition_status: str
+    custody_type: str
+    custody_ref_id: uuid.UUID | None
+    last_tested_at: date | None
+    test_due_date: date | None
+    is_due_for_test: bool
+    is_retired: bool
+
+
+class CylinderUnitListResponse(BaseModel):
+    items: list[CylinderUnitResponse]
+    total: int
+
+
+class SuggestCylinderTestDueDateResponse(BaseModel):
+    """`suggested_due_date` is `null` when the tenant has no
+    `cylinder_statutory_test_interval_months` configured — never a guessed
+    interval."""
+
+    suggested_due_date: date | None

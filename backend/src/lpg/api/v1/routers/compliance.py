@@ -11,22 +11,38 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.compliance import (
+    get_change_cylinder_condition_status_use_case,
+    get_cylinder_unit_repository,
     get_live_tdt_projection_use_case,
+    get_move_cylinder_custody_use_case,
     get_quarterly_tdt_rating_use_case,
+    get_receive_cylinder_unit_use_case,
+    get_record_statutory_test_use_case,
     get_record_weighment_use_case,
+    get_register_cylinder_unit_use_case,
+    get_retire_cylinder_unit_use_case,
     get_scale_repository,
+    get_suggest_statutory_test_due_date_use_case,
     get_weighment_record_repository,
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_file_storage
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.compliance import (
+    ChangeCylinderConditionStatusRequest,
+    CylinderUnitListResponse,
+    CylinderUnitResponse,
+    MoveCylinderCustodyRequest,
+    ReceiveCylinderUnitRequest,
+    RecordCylinderStatutoryTestRequest,
     RecordWeighmentRequest,
+    RegisterCylinderUnitRequest,
     RegisterScaleRequest,
     ReplaceScaleCertificateRequest,
     ScaleListResponse,
     ScaleResponse,
     SetScaleStatusRequest,
+    SuggestCylinderTestDueDateResponse,
     TdtBandDistributionResponse,
     TdtQuarterlyRatingResponse,
     WeighmentRecordListResponse,
@@ -34,7 +50,11 @@ from lpg.api.v1.schemas.compliance import (
 )
 from lpg.application.common.errors import ConflictError, NotFoundError
 from lpg.application.common.ports import FileStorage, UnitOfWork
-from lpg.application.compliance.ports import ScaleRepository, WeighmentRecordRepository
+from lpg.application.compliance.ports import (
+    CylinderUnitRepository,
+    ScaleRepository,
+    WeighmentRecordRepository,
+)
 from lpg.application.compliance.queries.get_tdt_rating import (
     GetLiveTdtProjectionQuery,
     GetLiveTdtProjectionUseCase,
@@ -43,23 +63,42 @@ from lpg.application.compliance.queries.get_tdt_rating import (
     current_quarter_bounds,
 )
 from lpg.application.compliance.use_cases import (
+    ChangeCylinderConditionStatusCommand,
+    ChangeCylinderConditionStatusUseCase,
+    GetCylinderUnitQuery,
+    GetCylinderUnitUseCase,
+    ListCylinderUnitsQuery,
+    ListCylinderUnitsUseCase,
     ListScalesQuery,
     ListScalesUseCase,
     ListWeighmentRecordsQuery,
     ListWeighmentRecordsUseCase,
+    MoveCylinderCustodyCommand,
+    MoveCylinderCustodyUseCase,
+    ReceiveCylinderUnitCommand,
+    ReceiveCylinderUnitUseCase,
+    RecordStatutoryTestCommand,
+    RecordStatutoryTestUseCase,
     RecordWeighmentCommand,
     RecordWeighmentUseCase,
+    RegisterCylinderUnitCommand,
+    RegisterCylinderUnitUseCase,
     RegisterScaleCommand,
     RegisterScaleUseCase,
     ReplaceScaleCertificateCommand,
     ReplaceScaleCertificateUseCase,
+    RetireCylinderUnitCommand,
+    RetireCylinderUnitUseCase,
     SetScaleStatusCommand,
     SetScaleStatusUseCase,
+    SuggestStatutoryTestDueDateQuery,
+    SuggestStatutoryTestDueDateUseCase,
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.domain.common.base import DomainError
 
 if TYPE_CHECKING:
+    from lpg.domain.compliance.cylinder_unit import CylinderUnit
     from lpg.domain.compliance.scale import Scale
     from lpg.domain.compliance.tdt_rating import TdtQuarterlyRating
     from lpg.domain.compliance.weighment_record import WeighmentRecord
@@ -77,6 +116,14 @@ weighment_router = APIRouter(tags=["Compliance — Weighment"])
 #: through the existing `tenant:configure`-gated
 #: `POST /admin/tenant-configuration`, not a dedicated endpoint here).
 tdt_rating_router = APIRouter(prefix="/tdt-rating", tags=["Compliance — TDT Rating"])
+
+#: Cylinder Identity endpoints (Phase 20 subsystem 3) — a narrow, additive
+#: registry. `cylinder_units:manage` for every mutation, `cylinder_units:
+#: read` (wider role list, includes dispatcher) for the registry/detail
+#: reads.
+cylinder_units_router = APIRouter(
+    prefix="/cylinder-units", tags=["Compliance — Cylinder Identity"]
+)
 
 
 async def _to_response(scale: Scale, file_storage: FileStorage) -> ScaleResponse:
@@ -407,3 +454,275 @@ async def get_live_tdt_projection(
         GetLiveTdtProjectionQuery(tenant_id=principal.tenant_id, branch_id=branch_id)
     )
     return _tdt_to_response(rating, quarter_start=quarter_start, quarter_end=quarter_end)
+
+
+def _cylinder_unit_to_response(unit: CylinderUnit) -> CylinderUnitResponse:
+    return CylinderUnitResponse(
+        id=unit.id,
+        cylinder_type_id=unit.cylinder_type_id,
+        serial_number=unit.serial_number,
+        manufacture_date=unit.manufacture_date,
+        owner_omc=unit.owner_omc,
+        condition_status=unit.condition_status,
+        custody_type=unit.custody_type,
+        custody_ref_id=unit.custody_ref_id,
+        last_tested_at=unit.last_tested_at,
+        test_due_date=unit.test_due_date,
+        is_due_for_test=unit.is_due_for_test(as_of=datetime.now(UTC).date()),
+        is_retired=unit.is_retired,
+    )
+
+
+@cylinder_units_router.post(
+    "",
+    response_model=CylinderUnitResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def register_cylinder_unit(
+    request: RegisterCylinderUnitRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[
+        RegisterCylinderUnitUseCase, Depends(get_register_cylinder_unit_use_case)
+    ],
+) -> CylinderUnitResponse:
+    """Cylinder Identity (Phase 20 subsystem 3) — registers one physical
+    cylinder. A narrow, additive registry; does not touch bulk inventory
+    balances."""
+    try:
+        unit = await use_case.execute(
+            RegisterCylinderUnitCommand(
+                tenant_id=principal.tenant_id,
+                cylinder_type_id=request.cylinder_type_id,
+                serial_number=request.serial_number,
+                condition_status=request.condition_status,
+                custody_type=request.custody_type,
+                custody_ref_id=request.custody_ref_id,
+                manufacture_date=request.manufacture_date,
+                owner_omc=request.owner_omc,
+            )
+        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.get(
+    "",
+    response_model=CylinderUnitListResponse,
+    dependencies=[Depends(require_permission("cylinder_units:read"))],
+)
+async def list_cylinder_units(
+    repository: Annotated[CylinderUnitRepository, Depends(get_cylinder_unit_repository)],
+    due_status: str | None = None,
+    cylinder_type_id: uuid.UUID | None = None,
+    custody_type: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> CylinderUnitListResponse:
+    """`due_status` is `due_soon` (<=30 days) or `overdue` — same idiom as
+    the Scale registry's own `expiry` filter."""
+    use_case = ListCylinderUnitsUseCase(repository)
+    units, total = await use_case.execute(
+        ListCylinderUnitsQuery(
+            due_status=due_status,
+            cylinder_type_id=cylinder_type_id,
+            custody_type=custody_type,
+            skip=skip,
+            limit=limit,
+        )
+    )
+    return CylinderUnitListResponse(
+        items=[_cylinder_unit_to_response(u) for u in units], total=total
+    )
+
+
+@cylinder_units_router.get(
+    "/suggest-test-due-date",
+    response_model=SuggestCylinderTestDueDateResponse,
+    dependencies=[Depends(require_permission("cylinder_units:read"))],
+)
+async def suggest_cylinder_test_due_date(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[
+        SuggestStatutoryTestDueDateUseCase, Depends(get_suggest_statutory_test_due_date_use_case)
+    ],
+    tested_at: date,
+) -> SuggestCylinderTestDueDateResponse:
+    """A read-only convenience helper for a "record test" form — `null`
+    when the tenant has no `cylinder_statutory_test_interval_months`
+    configured. Registered before `/{cylinder_unit_id}` so this literal
+    path is matched first."""
+    suggestion = await use_case.execute(
+        SuggestStatutoryTestDueDateQuery(tenant_id=principal.tenant_id, tested_at=tested_at)
+    )
+    return SuggestCylinderTestDueDateResponse(suggested_due_date=suggestion)
+
+
+@cylinder_units_router.get(
+    "/{cylinder_unit_id}",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:read"))],
+)
+async def get_cylinder_unit(
+    cylinder_unit_id: uuid.UUID,
+    repository: Annotated[CylinderUnitRepository, Depends(get_cylinder_unit_repository)],
+) -> CylinderUnitResponse:
+    use_case = GetCylinderUnitUseCase(repository)
+    unit = await use_case.execute(GetCylinderUnitQuery(cylinder_unit_id=cylinder_unit_id))
+    if unit is None:
+        raise HTTPException(status_code=404, detail=f"Cylinder unit {cylinder_unit_id} not found.")
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/{cylinder_unit_id}/test",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def record_cylinder_statutory_test(
+    cylinder_unit_id: uuid.UUID,
+    request: RecordCylinderStatutoryTestRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[RecordStatutoryTestUseCase, Depends(get_record_statutory_test_use_case)],
+) -> CylinderUnitResponse:
+    """`due_date` is the caller's own value — never computed server-side
+    from an assumed interval (see `GET .../suggest-test-due-date` for the
+    optional, explicitly-opt-in suggestion)."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        unit = await use_case.execute(
+            RecordStatutoryTestCommand(
+                cylinder_unit_id=cylinder_unit_id,
+                tested_at=request.tested_at,
+                due_date=request.due_date,
+                performed_by=principal.user_id,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/{cylinder_unit_id}/custody",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def move_cylinder_custody(
+    cylinder_unit_id: uuid.UUID,
+    request: MoveCylinderCustodyRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[MoveCylinderCustodyUseCase, Depends(get_move_cylinder_custody_use_case)],
+) -> CylinderUnitResponse:
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        unit = await use_case.execute(
+            MoveCylinderCustodyCommand(
+                cylinder_unit_id=cylinder_unit_id,
+                custody_type=request.custody_type,
+                custody_ref_id=request.custody_ref_id,
+                performed_by=principal.user_id,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/{cylinder_unit_id}/condition",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def change_cylinder_condition_status(
+    cylinder_unit_id: uuid.UUID,
+    request: ChangeCylinderConditionStatusRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[
+        ChangeCylinderConditionStatusUseCase,
+        Depends(get_change_cylinder_condition_status_use_case),
+    ],
+) -> CylinderUnitResponse:
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        unit = await use_case.execute(
+            ChangeCylinderConditionStatusCommand(
+                cylinder_unit_id=cylinder_unit_id,
+                new_status=request.new_status,
+                performed_by=principal.user_id,
+                reason=request.reason,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/{cylinder_unit_id}/receive",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def receive_cylinder_unit(
+    cylinder_unit_id: uuid.UUID,
+    request: ReceiveCylinderUnitRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[ReceiveCylinderUnitUseCase, Depends(get_receive_cylinder_unit_use_case)],
+) -> CylinderUnitResponse:
+    """Rule 26, Gas Cylinders Rules 2016 — 409 `CYLINDER_DUE_FOR_STATUTORY_
+    TEST` if this unit's retest is due; segregate and return it to the
+    bottling plant instead (MDG 2022 cl. 1.4(b))."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        unit = await use_case.execute(
+            ReceiveCylinderUnitCommand(
+                cylinder_unit_id=cylinder_unit_id,
+                warehouse_id=request.warehouse_id,
+                performed_by=principal.user_id,
+            )
+        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _cylinder_unit_to_response(unit)
+
+
+@cylinder_units_router.post(
+    "/{cylinder_unit_id}/retire",
+    response_model=CylinderUnitResponse,
+    dependencies=[Depends(require_permission("cylinder_units:manage"))],
+)
+async def retire_cylinder_unit(
+    cylinder_unit_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[RetireCylinderUnitUseCase, Depends(get_retire_cylinder_unit_use_case)],
+) -> CylinderUnitResponse:
+    if principal.user_id is None:
+        raise HTTPException(status_code=403, detail="An acting user is required.")
+    try:
+        unit = await use_case.execute(
+            RetireCylinderUnitCommand(
+                cylinder_unit_id=cylinder_unit_id, performed_by=principal.user_id
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=exc.message) from exc
+    return _cylinder_unit_to_response(unit)
