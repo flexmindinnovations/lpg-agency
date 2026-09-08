@@ -903,6 +903,11 @@ class TestOrderFullLifecycle:
                     "gps_lng": "77.5946",
                     "payment_method": "cash",
                     "amount_collected": "1900.00",
+                    # Delivery Authentication Code (Phase 20 subsystem 4) —
+                    # the OMC's own separate code, distinct from `otp_code`
+                    # above. Optional; captured here to prove it round-trips
+                    # through the real ASGI stack, not just a unit test.
+                    "dac_code": "445566",
                 },
             },
             headers={**driver_headers, "Idempotency-Key": deliver_idempotency_key},
@@ -910,6 +915,7 @@ class TestOrderFullLifecycle:
         assert deliver_response.status_code == 200, deliver_response.text
         deliver_body = deliver_response.json()
         assert deliver_body["order"]["status"] == "delivered"
+        assert deliver_body["proof_of_delivery"]["dac_code"] == "445566"
         assert "invoice_id" not in deliver_body
         assert "ledger_transaction_id" not in deliver_body
         assert "invoice_id" not in deliver_body["order"]

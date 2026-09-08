@@ -394,6 +394,7 @@ class SqlAlchemyProofOfDeliveryRepository:
         payment_method: str,
         amount_collected: Decimal,
         recorded_by: uuid.UUID,
+        dac_code: str | None = None,
     ) -> ProofOfDeliveryEntry:
         row = ProofOfDeliveryModel(
             id=pod_id,
@@ -407,6 +408,7 @@ class SqlAlchemyProofOfDeliveryRepository:
             payment_method=payment_method,
             amount_collected=amount_collected,
             recorded_by=recorded_by,
+            dac_code=dac_code,
         )
         self._uow.session.add(row)
         await self._uow.session.flush()
@@ -423,4 +425,5 @@ class SqlAlchemyProofOfDeliveryRepository:
             amount_collected=row.amount_collected,
             recorded_by=row.recorded_by,
             recorded_at=row.recorded_at,
+            dac_code=row.dac_code,
         )

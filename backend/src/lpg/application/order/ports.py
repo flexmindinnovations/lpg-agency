@@ -68,6 +68,11 @@ class ProofOfDeliveryEntry:
     amount_collected: Decimal
     recorded_by: uuid.UUID
     recorded_at: datetime
+    # Delivery Authentication Code (Phase 20 subsystem 4) — the OMC's own
+    # separate 6-digit code, distinct from `otp_verified_at`'s internal OTP.
+    # Optional and never gates delivery — see `domain/order/order.py`'s own
+    # note that POD completeness is a use-case concern, not a domain one.
+    dac_code: str | None = None
 
 
 class OrderNumberSequence(Protocol):
@@ -154,6 +159,7 @@ class ProofOfDeliveryRepository(Protocol):
         payment_method: str,
         amount_collected: Decimal,
         recorded_by: uuid.UUID,
+        dac_code: str | None = None,
     ) -> ProofOfDeliveryEntry: ...
 
 

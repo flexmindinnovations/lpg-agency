@@ -217,6 +217,10 @@ class ProofOfDeliveryModel(Base):
     gps_lng: Mapped[Decimal] = mapped_column(Numeric(9, 6))
     payment_method: Mapped[str] = mapped_column(String(20))
     amount_collected: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    # Delivery Authentication Code (Phase 20 subsystem 4) — the OMC's own
+    # separate 6-digit code, distinct from `otp_verified_at`'s internal OTP.
+    # Optional (coverage ~90%, not 100%), never gates delivery.
+    dac_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
     recorded_by: Mapped[uuid.UUID] = mapped_column(Uuid())
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")

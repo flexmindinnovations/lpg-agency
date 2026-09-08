@@ -239,6 +239,7 @@ def _pod_to_response(entry: ProofOfDeliveryEntry) -> ProofOfDeliveryResponse:
         amount_collected=entry.amount_collected,
         recorded_by=entry.recorded_by,
         recorded_at=entry.recorded_at,
+        dac_code=entry.dac_code,
     )
 
 
@@ -945,6 +946,7 @@ async def deliver_order(
                 payment_method=body.proof_of_delivery.payment_method,
                 amount_collected=body.proof_of_delivery.amount_collected,
                 changed_by=actor_id,
+                dac_code=body.proof_of_delivery.dac_code,
             )
         )
         return DeliverOrderResponse(

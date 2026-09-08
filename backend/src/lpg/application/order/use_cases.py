@@ -445,6 +445,11 @@ class DeliverOrderCommand(Command):
     payment_method: str
     amount_collected: Decimal
     changed_by: uuid.UUID
+    # Delivery Authentication Code (Phase 20 subsystem 4) — the OMC's own
+    # separate 6-digit code, distinct from `otp_code`. Optional (coverage is
+    # ~90%, not 100%) and never gates delivery — format-validated at the API
+    # schema layer, same as `otp_code`'s own `min_length=1`.
+    dac_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -550,6 +555,7 @@ class DeliverOrderUseCase:
             payment_method=command.payment_method,
             amount_collected=command.amount_collected,
             recorded_by=command.changed_by,
+            dac_code=command.dac_code,
         )
         await self._unit_of_work.commit()
         return DeliverOrderResult(order=order, proof_of_delivery=pod)

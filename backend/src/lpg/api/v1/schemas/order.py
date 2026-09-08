@@ -177,8 +177,13 @@ class DeliveredLineRequest(BaseModel):
 
 
 class ProofOfDeliverySubmission(BaseModel):
-    """All five fields are non-optional — a missing one is a 422 before the
-    request ever reaches `DeliverOrderUseCase`.
+    """The first five fields are non-optional — a missing one is a 422
+    before the request ever reaches `DeliverOrderUseCase`. `dac_code` is the
+    OMC's own separate 6-digit Delivery Authentication Code (Phase 20
+    subsystem 4) — optional (coverage is ~90%, not 100%) and format-
+    validated only (this platform has no OMC portal API to check a DAC's
+    authenticity against); it never gates delivery, unlike `otp_code` on
+    `DeliverOrderRequest` below.
     """
 
     signature_blob_ref: str = Field(min_length=1)
@@ -187,6 +192,7 @@ class ProofOfDeliverySubmission(BaseModel):
     gps_lng: Decimal
     payment_method: PaymentMethod
     amount_collected: Decimal = Field(ge=0)
+    dac_code: str | None = Field(default=None, pattern=r"^\d{6}$")
 
 
 class DeliverOrderRequest(BaseModel):
@@ -208,6 +214,7 @@ class ProofOfDeliveryResponse(BaseModel):
     amount_collected: Decimal
     recorded_by: uuid.UUID
     recorded_at: datetime
+    dac_code: str | None = None
 
 
 class DeliverOrderResponse(BaseModel):
