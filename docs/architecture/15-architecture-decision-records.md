@@ -1023,6 +1023,30 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 
 ---
 
+## ADR-042: `CylinderUnit` as a New `compliance` Aggregate, Not an Extension of `InventoryLocation`
+
+**Status:** Accepted
+
+**Context:** Cylinder Identity (`planning/features/20-regulatory-compliance/PLAN.md` §3, its own words: "the deepest schema change here") needed to model individual, serially-identified cylinders — today, `InventoryLocation` (`domain/inventory/inventory_location.py`) tracks cylinders **only** as bulk counts by `(cylinder_type_id, status)`, confirmed directly: zero per-serial identity exists anywhere in this codebase. That gap makes two regulatory requirements structurally impossible to evidence: Rule 26, Gas Cylinders Rules 2016 (a cylinder may not be charged/filled while its periodical retest is due) and MDG 2022 cl. 1.4(b) (a due-for-test cylinder must be segregated and returned to the bottling plant, not filled or delivered) — `docs/research/feature-gap-analysis.md` R3, D1. **The exact statutory retest interval is not known** — Rule 35(1) defers to IS 15975, which prior research never retrieved (§7, item 2); the commonly-quoted "5 years" is US DOT/49 CFR, not Indian LPG cylinders.
+
+**Decision (placement):** `domain/compliance/cylinder_unit.py`, sibling to `scale.py` and `weighment_record.py`, not `domain/inventory`. Structurally, `CylinderUnit` is the closest analog to `Scale` — identity (serial, cylinder type) and a compliance-relevant date (`test_due_date`) live on **one** aggregate, the same way `Scale` holds `asset_tag` and `certificate_expiry_date` together rather than the `ComplianceDocument`-style split (a driver/vehicle's licence document is a separable, swappable attachment; a cylinder's own retest due date is intrinsic to the unit, not swappable). This mirrors ADR-038/039's own reasoning for keeping a compliance-specific serialized-asset concept out of the bounded context it's physically adjacent to but conceptually distinct from — `CylinderUnit` references `tenant.cylinder_type` and a `(custody_type, custody_ref_id)` polymorphic location (matching `WeighmentRecord`'s own no-FK precedent, extended to four custody kinds — `warehouse`/`vehicle`/`customer`/`bottling_plant` — since a unit can sit at a customer's premises, which `InventoryLocation` cannot model at all) without importing or mutating `InventoryLocation` itself.
+
+**Decision (scope):** a narrow, additive slice — matching every prior Phase 20 slice's own restraint (D24, Weighment, TDT rating all shipped this way). `CylinderUnit` is a new, independent registry; it does not touch `RecordGoodsReceiptUseCase`, `LoadTransferUseCase`, `DeliverOrderUseCase`, `LoadVehicleForRouteUseCase`, or reconciliation — all confirmed unchanged. Wiring per-unit custody into those bulk flows (so every delivery captures exactly which serial a customer received) needs a serial-carrying load manifest, which doesn't exist today (`LoadVehicleLine`/`LoadedLine` carry only `(cylinder_type_id, quantity)`) — a materially larger integration, deferred to a future slice, not attempted here. This plan's real regulatory teeth is instead the unit-level `receive()` command: an **application-layer** 409 (`CylinderDueForStatutoryTestError`), checked by `ReceiveCylinderUnitUseCase` itself before the domain command runs — matching `LoadVehicleForRouteUseCase`'s own precedent for an MDG-rule block (application-layer check, `ConflictError`, 409) rather than `Scale`/`InventoryLocation`'s domain-invariant pattern (422), since a due-for-test cylinder is a *valid request that conflicts with current state*, not a malformed one.
+
+**Consequences:**
+- `CylinderUnit`'s condition-status transition graph (`_CONDITION_TRANSITIONS`) is a deliberate **fork**, not an import, of `InventoryLocation`'s own private `_STATUS_TRANSITIONS` — that graph encodes bulk-*balance* semantics specifically (its own docstring explains `filled⇄empty` is absent there because "a different physical unit leaving to the customer" doesn't apply to a bulk counter the same way). A single serialized unit's graph legitimately differs: `filled → empty` is modelled (a unit really is delivered, later returned, as the same cylinder), and `repair → empty` (not `repair → filled`) — a repaired unit re-enters the fillable pool empty and must go through the same Rule-26-gated `receive()` as any other empty unit, not implicitly re-charged. `CYLINDER_STATUSES` itself (the public value vocabulary) **is** imported, so the two graphs can never drift on what a valid status even is, only on which moves are legal.
+- `is_due_for_test()` treats a unit with no `test_due_date` on file (never tested) as **not** due — a deliberate, documented policy choice, not a researched answer, so the registry stays usable for onboarding existing bulk stock without requiring a first test before every unit can even be registered. A real gap against Rule 26's intent, carried forward as an open question, not silently resolved.
+- `retire()` is a distinct, permanent `is_retired` flag, not an overload of `condition_status='scrap'` — a scrapped-but-tracked unit and a retired-from-the-registry unit are different things, and Rule 27's lifetime-record requirement means a retired unit's row must stay individually queryable (confirmed live: it drops out of the default listing but `GET /cylinder-units/{id}` still returns it).
+- `WeighmentRecord.cylinder_serial_ids` — already anticipated by ADR-039 as a future column once Cylinder Identity lands — is **not** added by this slice; a natural next step, not built now.
+- The cost accepted: no route-level load-out hard gate exists yet for due-for-test units (the manifest gap above) — a tenant relying solely on route loading, never on the unit-level `receive()` flow, gets no automatic block. The registry's due-status filter (`due_soon`/`overdue`) is a manual worklist for this gap today, not a substitute for the future gate.
+
+**Alternatives Considered:**
+- **Extend `InventoryLocation` with a per-unit serial list** — rejected: conflates the bulk-balance model with per-unit identity, the exact reason ADR-039 gave for keeping Weighment batch-level rather than per-serial in the first place.
+- **A generic polymorphic "asset" table spanning scales, cylinders, and future serialized things** — rejected, same reasoning ADR-038 gave against a generic "attachment" table: real domain invariants (the condition-transition graph, the custody-consistency check, the Rule-26 gate) belong on a typed aggregate, not left to callers to enforce ad hoc against an untyped blob.
+- **A route-level load-out hard gate now, alongside the unit-level one** — rejected: bulk load manifests don't carry serials yet, so a route-level block would have to key off *some* units being tracked while most bulk stock isn't — an ambiguous, likely-surprising trigger condition, the same category of risk ADR-040 found the hard way with Weighment's own unconditional gate. Deferred until a real serial manifest exists.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1068,6 +1092,7 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 | 039 | Batch-level weighment records, not per-cylinder serial tracking | Accepted |
 | 040 | Weighment load-out gate as tenant-opt-in configuration, not unconditional | Accepted |
 | 041 | TDT star rating as a `domain/compliance` module, two-pass repository query for cross-quarter correctness | Accepted |
+| 042 | `CylinderUnit` as a new `domain/compliance` aggregate, not an `InventoryLocation` extension | Accepted |
 
 ## Deferred Decisions
 
