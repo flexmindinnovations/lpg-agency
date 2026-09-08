@@ -419,7 +419,39 @@ body {
    row so a trailing `.modal-actions` row stays a fixed sibling below it —
    never part of the same scroll — regardless of how tall the form/detail
    content gets. `min-height: 0` is required on a flex child for its own
-   overflow to actually take effect instead of stretching the column. */
+   overflow to actually take effect instead of stretching the column.
+
+   Previously the scroll boundary was `.p-drawer-content` itself, whose own
+   padding (`--spacing-lg` inline, `--spacing-lg` block-end — below) was
+   *inside* the scrollable area, giving a focused field's outline room to
+   paint and the last field room to breathe before the edge — and putting
+   the scrollbar itself out at the drawer's true edge, the way a native
+   scrollable panel's always sits. Moving the scroll boundary to this
+   un-padded child broke all three: every field's own edges sat flush
+   against the new clip boundary, clipping the global `:focus-visible`
+   ring (`--component-focus-ring-width` + `-offset`, 6px total reach) on
+   both sides, and the scrollbar rendered hugging the field content
+   instead of out at the panel edge.
+
+   The leading (start) inline side only needs enough padding to clear the
+   ring — `--spacing-sm` — with a matching negative margin so the fields'
+   visible left position doesn't shift. The trailing (end) inline side
+   breaks all the way out to the drawer's true edge, mirroring
+   `.modal-actions`'s own full-bleed divider below: `--spacing-lg` is
+   exactly `.p-drawer-content`'s own end padding, so pushing out by that
+   much lands the scrollbar flush against the panel edge, not just clear
+   of the ring.
+
+   Same reasoning block-start: `.p-drawer-content`'s own top padding
+   (`--spacing-md`) sits *above* this scroll boundary now, so the
+   scrollbar's track started that far below the header divider instead of
+   flush with it — a scrollable region should read as spanning divider to
+   divider, the way it did when `.p-drawer-content` was the one scrolling.
+   Breaking out block-start by that same `--spacing-md` (again offset by a
+   matching padding so the first field doesn't visibly shift down) closes
+   that gap; block-end is already flush — `.dialog-form` sets no `gap`
+   between `.dialog-form__fields` and `.modal-actions`, so the scroll
+   container's own bottom edge already meets the footer divider directly. */
 .dialog-form__fields,
 .detail-view__fields {
   display: flex;
@@ -427,6 +459,13 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  padding-inline-start: var(--spacing-sm);
+  margin-inline-start: calc(-1 * var(--spacing-sm));
+  padding-inline-end: var(--spacing-lg);
+  margin-inline-end: calc(-1 * var(--spacing-lg));
+  padding-block-start: var(--spacing-md);
+  margin-block-start: calc(-1 * var(--spacing-md));
+  padding-block-end: var(--spacing-md);
 }
 
 .dialog-form__fields {
@@ -439,7 +478,9 @@ body {
    a whole drawer's own top-level body — it doesn't fill/scroll a bounded
    region the way a top-level `.dialog-form` does, so `flex:1`/`min-height:0`
    would be meaningless at best there; this cancels them back to normal
-   block flow while keeping `.dialog-form__fields`'s field `gap`. */
+   block flow while keeping `.dialog-form__fields`'s field `gap`. Its
+   padding/margin buffer is harmless to keep (nothing scrolls here to clip
+   a ring against in the first place), so only the sizing properties reset. */
 .dialog-form--inline {
   flex: initial;
   min-height: auto;
