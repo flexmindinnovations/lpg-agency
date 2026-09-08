@@ -1,11 +1,14 @@
-"""Repository ports for the `compliance` bounded context (Weighment Part 1)."""
+"""Repository ports for the `compliance` bounded context (Weighment Part 1,
+TDT rating Part 2)."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     import uuid
+    from datetime import datetime
 
     from lpg.domain.compliance.scale import Scale
     from lpg.domain.compliance.weighment_record import WeighmentRecord
@@ -65,4 +68,45 @@ class WeighmentRecordRepository(Protocol):
     ) -> WeighmentRecord | None:
         """The most recent `result = 'pass'` record for this reference and
         context, if any — what Part 3's load-out gate checks for."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class OrderFulfillmentRecord:
+    """One delivered order's booking-to-delivery span, for TDT rating
+    (Phase 20 subsystem 2). `booked_at`/`delivered_at` are pivoted out of
+    `orders.order_status_history`'s `to_status` transitions."""
+
+    order_id: uuid.UUID
+    branch_id: uuid.UUID
+    booked_at: datetime
+    delivered_at: datetime
+
+
+class TdtRatingRepository(Protocol):
+    """Reads `orders.order_status_history` joined to `orders.order` for TDT
+    rating. `order_status_history` carries **no `tenant_id` column and no
+    Row-Level Security policy of its own** (it's excluded from RLS, same
+    precedent as `inventory.inventory_transaction` — see the orders-schema
+    migration's own comment) — tenant isolation here comes entirely from
+    the join to `orders.order`, which *is* RLS-protected, the same way
+    every other repository in this codebase relies on the session's
+    `app.current_tenant_id` context rather than an explicit `tenant_id`
+    parameter. This is exactly why TDT rating needs its own dedicated
+    cross-tenant-isolation test rather than trusting the RLS suite alone.
+    """
+
+    async def get_fulfillment_records(
+        self,
+        quarter_start: datetime,
+        quarter_end: datetime,
+        *,
+        branch_id: uuid.UUID | None = None,
+    ) -> list[OrderFulfillmentRecord]:
+        """Every order whose `booked` transition falls within
+        `[quarter_start, quarter_end)` **and** has since reached
+        `delivered` — an order still in flight or cancelled within the
+        window is excluded from this pass (an open policy question — see
+        `SqlAlchemyTdtRatingRepository.get_fulfillment_records`'s own
+        docstring and the source plan's open questions)."""
         ...

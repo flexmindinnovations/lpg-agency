@@ -10,14 +10,16 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Select, desc, func, select
+from sqlalchemy import Select, case, desc, func, select
 
+from lpg.application.compliance.ports import OrderFulfillmentRecord
 from lpg.domain.compliance.scale import Scale
 from lpg.domain.compliance.weighment_record import WeighmentRecord
 from lpg.infrastructure.persistence.models.compliance import (
     ScaleModel,
     WeighmentRecordModel,
 )
+from lpg.infrastructure.persistence.models.order import OrderModel, OrderStatusHistoryModel
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -236,3 +238,94 @@ class SqlAlchemyWeighmentRecordRepository:
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()
         return self._to_domain(row) if row is not None else None
+
+
+class SqlAlchemyTdtRatingRepository:
+    """Implements `TdtRatingRepository`. Reads `orders.order_status_history`
+    joined to `orders.order` — tenant isolation comes entirely from
+    Row-Level Security on the `orders.order` side of that join (see the
+    port's own docstring: `order_status_history` carries no `tenant_id`
+    column or RLS policy of its own)."""
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    async def get_fulfillment_records(
+        self,
+        quarter_start: datetime,
+        quarter_end: datetime,
+        *,
+        branch_id: uuid.UUID | None = None,
+    ) -> list[OrderFulfillmentRecord]:
+        """Two passes, not one filtered-then-grouped query: an order's
+        `booked` transition can land in an earlier quarter than its
+        `delivered` one (any turnaround slower than same-quarter), so
+        filtering `order_status_history` rows by `changed_at` *before*
+        aggregating would silently drop that `booked` row whenever it
+        falls outside the window — corrupting the elapsed-days calculation
+        for exactly the slow deliveries this metric exists to catch. TDT
+        rates by *when the delivery happened*, not by requiring every
+        event in an order's timeline to fall in the same quarter.
+
+        Step 1 finds the order IDs with a `delivered` transition inside
+        `[quarter_start, quarter_end)` — this *is* the "exclude cancelled/
+        still-in-flight orders from this pass" policy (an open question,
+        see the source plan): an order that was cancelled or hasn't
+        reached `delivered` yet simply never appears here, full stop.
+        Step 2 aggregates each of those orders' *entire* history (no
+        window filter) to recover its true `booked_at`, whenever that
+        actually happened.
+        """
+        delivered_in_window = select(OrderStatusHistoryModel.order_id).where(
+            OrderStatusHistoryModel.to_status == "delivered",
+            OrderStatusHistoryModel.changed_at >= quarter_start,
+            OrderStatusHistoryModel.changed_at < quarter_end,
+        )
+
+        booked_at = func.max(
+            case(
+                (OrderStatusHistoryModel.to_status == "booked", OrderStatusHistoryModel.changed_at)
+            )
+        )
+        delivered_at = func.max(
+            case(
+                (
+                    OrderStatusHistoryModel.to_status == "delivered",
+                    OrderStatusHistoryModel.changed_at,
+                )
+            )
+        )
+        stmt = (
+            select(
+                OrderModel.id,
+                OrderModel.branch_id,
+                booked_at.label("booked_at"),
+                delivered_at.label("delivered_at"),
+            )
+            .select_from(OrderStatusHistoryModel)
+            .join(OrderModel, OrderModel.id == OrderStatusHistoryModel.order_id)
+            .where(
+                OrderModel.is_deleted.is_(False),
+                OrderStatusHistoryModel.order_id.in_(delivered_in_window),
+            )
+            .group_by(OrderModel.id, OrderModel.branch_id)
+            # Defensive, not expected to ever trigger: every order's own
+            # transition graph requires passing through `booked` before it
+            # can ever reach `delivered` (domain.order.order's
+            # _TRANSITIONS), so a delivered order missing a booked_at
+            # would indicate corrupt history data, not a normal case.
+            .having(booked_at.is_not(None))
+        )
+        if branch_id is not None:
+            stmt = stmt.where(OrderModel.branch_id == branch_id)
+
+        rows = (await self._uow.session.execute(stmt)).all()
+        return [
+            OrderFulfillmentRecord(
+                order_id=row.id,
+                branch_id=row.branch_id,
+                booked_at=row.booked_at,
+                delivered_at=row.delivered_at,
+            )
+            for row in rows
+        ]
