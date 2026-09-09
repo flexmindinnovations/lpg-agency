@@ -294,6 +294,65 @@
         "title": "ApproveCustomerRequest",
         "type": "object"
       },
+      "AskAiAssistantRequest": {
+        "properties": {
+          "question": {
+            "minLength": 3,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "AskAiAssistantRequest",
+        "type": "object"
+      },
+      "AskAiAssistantResponse": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "disabled_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "gateway_disabled",
+                  "budget_exceeded",
+                  "provider_error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled Reason"
+          },
+          "tools_used": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools Used",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "tools_used",
+          "disabled_reason"
+        ],
+        "title": "AskAiAssistantResponse",
+        "type": "object"
+      },
       "AssignComplaintRequest": {
         "properties": {
           "assigned_to": {
@@ -449,6 +508,62 @@
           "next_cursor"
         ],
         "title": "AuditLogPageResponse",
+        "type": "object"
+      },
+      "BatchMoveCylinderCustodyRequest": {
+        "properties": {
+          "custody_ref_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custody Ref Id"
+          },
+          "custody_type": {
+            "title": "Custody Type",
+            "type": "string"
+          },
+          "cylinder_unit_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Cylinder Unit Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cylinder_unit_ids",
+          "custody_type"
+        ],
+        "title": "BatchMoveCylinderCustodyRequest",
+        "type": "object"
+      },
+      "BatchMoveCylinderCustodyResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CylinderUnitResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "updated_count": {
+            "title": "Updated Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "updated_count",
+          "items"
+        ],
+        "title": "BatchMoveCylinderCustodyResponse",
         "type": "object"
       },
       "Body_upload_document_attachment_api_v1_documents_attachments_post": {
@@ -2004,6 +2119,10 @@
             ],
             "title": "Owner Omc"
           },
+          "qr_code": {
+            "title": "Qr Code",
+            "type": "string"
+          },
           "serial_number": {
             "title": "Serial Number",
             "type": "string"
@@ -2025,6 +2144,7 @@
           "id",
           "cylinder_type_id",
           "serial_number",
+          "qr_code",
           "manufacture_date",
           "owner_omc",
           "condition_status",
@@ -6337,6 +6457,17 @@
             ],
             "title": "Owner Omc"
           },
+          "qr_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qr Code"
+          },
           "serial_number": {
             "minLength": 1,
             "title": "Serial Number",
@@ -10030,6 +10161,47 @@
         ]
       }
     },
+    "/api/v1/ai/ask": {
+      "post": {
+        "operationId": "ask_ai_assistant_api_v1_ai_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskAiAssistantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskAiAssistantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask the AI Command Center an operational question",
+        "tags": [
+          "AI"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",
@@ -12001,6 +12173,90 @@
         ]
       }
     },
+    "/api/v1/cylinder-units/batch-custody": {
+      "post": {
+        "operationId": "batch_move_cylinder_custody_api_v1_cylinder_units_batch_custody_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchMoveCylinderCustodyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchMoveCylinderCustodyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Move Cylinder Custody",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/lookup": {
+      "get": {
+        "description": "Quick lookup for cylinder tracking — resolves unit by QR code or serial number.",
+        "operationId": "lookup_cylinder_unit_api_v1_cylinder_units_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderUnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Cylinder Unit",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
     "/api/v1/cylinder-units/suggest-test-due-date": {
       "get": {
         "description": "A read-only convenience helper for a \"record test\" form — `null`\nwhen the tenant has no `cylinder_statutory_test_interval_months`\nconfigured. Registered before `/{cylinder_unit_id}` so this literal\npath is matched first.",
@@ -12189,6 +12445,48 @@
           }
         },
         "summary": "Move Cylinder Custody",
+        "tags": [
+          "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/cylinder-units/{cylinder_unit_id}/label": {
+      "post": {
+        "description": "Render and download thermal sticker PDF with 2D QR code for this cylinder.",
+        "operationId": "print_cylinder_unit_label_api_v1_cylinder_units__cylinder_unit_id__label_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Print Cylinder Unit Label",
         "tags": [
           "Compliance — Cylinder Identity"
         ]

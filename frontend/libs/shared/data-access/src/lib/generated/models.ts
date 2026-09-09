@@ -8,6 +8,8 @@ export type { AdjustCylinderTypeWeightRequest } from './models/adjust-cylinder-t
 export type { AdjustInventoryRequest } from './models/adjust-inventory-request';
 export type { AdjustLedgerBalanceRequest } from './models/adjust-ledger-balance-request';
 export type { ApproveCustomerRequest } from './models/approve-customer-request';
+export type { AskAiAssistantRequest } from './models/ask-ai-assistant-request';
+export type { AskAiAssistantResponse } from './models/ask-ai-assistant-response';
 export type { AssignComplaintRequest } from './models/assign-complaint-request';
 export type { AuditLogEntryResponse } from './models/audit-log-entry-response';
 export type { AuditLogPageResponse } from './models/audit-log-page-response';
