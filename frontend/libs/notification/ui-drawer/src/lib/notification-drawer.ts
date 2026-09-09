@@ -6,7 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { BadgeModule } from 'primeng/badge';
 import { TooltipModule } from 'primeng/tooltip';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
-import { NotificationService } from '@lpg/shared/data-access';
+import { NotificationService, NotifyService, errorMessageFor } from '@lpg/shared/data-access';
 import type { NotificationResponse } from '@lpg/shared/data-access';
 
 @Component({
@@ -17,6 +17,7 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
 })
 export class NotificationDrawer {
   private readonly notificationService = inject(NotificationService);
+  private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
 
   /** Two-way bound from the shell. A signal (not a plain `@Input`) so the
@@ -62,7 +63,12 @@ export class NotificationDrawer {
     this.notificationService.list(0, 10).subscribe({
       next: (res) => {
         this.notifications.set(res.items);
-      }
+      },
+      // GET, user-initiated by opening the drawer — not covered by the
+      // global error-toast interceptor (mutating methods only), and this
+      // is a real user action that deserves feedback, unlike the bell's
+      // own silent background poll.
+      error: (err) => this.notify.error(errorMessageFor(err)),
     });
   }
 

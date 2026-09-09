@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
+import { MessageService } from 'primeng/api';
 import { ApiConfiguration, NotificationService } from '@lpg/shared/data-access';
 import { NotificationDrawer } from './notification-drawer';
 
@@ -36,6 +37,7 @@ describe('NotificationDrawer', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
+        MessageService,
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
         {
           provide: NotificationService,

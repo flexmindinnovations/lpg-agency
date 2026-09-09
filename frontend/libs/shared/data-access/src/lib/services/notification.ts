@@ -39,6 +39,12 @@ export class NotificationService {
   refreshUnreadCount(): void {
     this.getUnreadCount().subscribe({
       next: (res) => this._unreadCount.set(Math.max(0, res.count ?? 0)),
+      // Deliberately silent, not a toast — this is a background poll (every
+      // few minutes, see NotificationBell), and a toast on every transient
+      // network blip would be worse than the badge just staying stale.
+      // Logged rather than left fully uncaught, which otherwise threw an
+      // async error into the console on every failed poll.
+      error: (err) => console.debug('refreshUnreadCount failed', err),
     });
   }
 
