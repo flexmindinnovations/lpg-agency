@@ -3,10 +3,19 @@
   block-size: 100%;
 }
 
+/* Bleeds past `.shell__main`'s own block-end padding (`--spacing-lg`) the
+   same way `.thread`/`.composer` bleed past its inline padding below — the
+   container's own bottom edge would otherwise land `--spacing-lg` short of
+   the true screen edge, leaving `.composer`'s divider sitting noticeably
+   higher than `.shell__sidebar-footer`'s own divider instead of level with
+   it. `.thread` (flex:1 1 auto) absorbs all of the extra space this frees
+   up; `.composer` (flex:0 0 auto, fixed height) simply ends up sitting
+   flush at the bottom of a taller container, unchanged itself. */
 .assistant-container {
   display: flex;
   flex-direction: column;
-  block-size: 100%;
+  block-size: calc(100% + var(--spacing-lg));
+  margin-block-end: calc(-1 * var(--spacing-lg));
   min-block-size: 0;
 }
 
@@ -50,6 +59,57 @@
 
 .empty-state__icon {
   font-size: 1.75rem;
+  color: var(--color-action-primary);
+}
+
+.kpi-row {
+  inline-size: 100%;
+  max-inline-size: 44rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+  margin-block-start: var(--spacing-md);
+  text-align: start;
+}
+
+/* Overrides `lpg-stat-card`'s own default padding/min-height so a 4-up row
+   reads as a compact snapshot here rather than the full-size dashboard
+   cards it renders as on the Agency Overview page. */
+.kpi-row__card {
+  font-size: 0.9em;
+}
+
+.suggestions {
+  inline-size: 100%;
+  max-inline-size: 44rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-block-start: var(--spacing-sm);
+}
+
+.suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 8px var(--spacing-md);
+  border-radius: 999px;
+  border: 1px solid var(--color-border-default);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--typography-body-small-font-size);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.suggestion-chip:hover {
+  border-color: var(--color-action-primary);
+  background: var(--color-surface-overlay);
+}
+
+.suggestion-chip i {
   color: var(--color-action-primary);
 }
 
@@ -152,21 +212,45 @@
 
 /* Full-width divider, bled the same way `.thread` is (see above) so it
    reaches the actual screen edge on both sides, not just the width of the
-   centered reading column. */
+   centered reading column. `min-block-size` matches the sidebar footer's
+   own rendered height (`.shell__sidebar-footer`, ~72px) — with
+   `.assistant-container` above now bled to the true bottom edge too, this
+   bar simply sits flush at the bottom of it, its divider level with the
+   sidebar footer's own divider. */
 .composer {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-block-size: 72px;
   margin-inline: calc(-1 * var(--spacing-xl));
   padding-inline: var(--spacing-xl);
-  padding-block-start: var(--spacing-md);
+  padding-block: var(--spacing-sm);
   border-block-start: var(--border-width) solid var(--color-border-default);
 }
 
 .composer__inner {
   display: flex;
-  gap: var(--spacing-sm);
-  align-items: flex-end;
   max-inline-size: 56rem;
   margin-inline: auto;
+  inline-size: 100%;
+}
+
+/* The Claude/ChatGPT-style pill: input and send button share one bordered
+   container instead of sitting in two separate boxes side by side. */
+.composer__box {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-xs);
+  flex: 1;
+  padding: 6px 6px 6px var(--spacing-md);
+  border-radius: 26px;
+  border: 1px solid var(--color-border-default);
+  background: var(--color-surface-base);
+  transition: border-color 0.15s ease;
+}
+
+.composer__box:focus-within {
+  border-color: var(--color-action-primary);
 }
 
 .composer__input {
@@ -174,20 +258,25 @@
   resize: none;
   field-sizing: content;
   max-block-size: 12rem;
-  min-block-size: 2.75rem;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-input);
-  border: 1px solid var(--color-border-default);
-  background: var(--color-surface-base);
+  min-block-size: 1.75rem;
+  padding: 5px 0;
+  border: none;
+  background: transparent;
   color: var(--color-text-primary);
   font: inherit;
+  outline: none;
 }
 
-.composer__send {
+/* `pButton`'s own preset sets a border-radius via a `--p-button-*` token
+   that otherwise wins over a plain `.composer__send` rule (same scoping
+   issue `::ng-deep` solves elsewhere in this file) — `!important` forces
+   an actual circle instead of the default rounded-rectangle. */
+:host ::ng-deep .composer__send.p-button {
   flex-shrink: 0;
-  border-radius: 50%;
+  border-radius: 50% !important;
   aspect-ratio: 1;
-  inline-size: 2.75rem;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
   padding: 0;
 }
 

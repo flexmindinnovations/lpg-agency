@@ -3,10 +3,20 @@
   block-size: 100%;
 }
 
+/* Bleeds past `.shell__main`'s own block-end padding (`--spacing-lg`) the
+   same way `.tdt-config-fields`/`.tdt-config-actions` bleed past its
+   inline padding below — the page's own bottom edge would otherwise land
+   `--spacing-lg` short of the true screen edge, leaving `.tdt-config-
+   actions`'s divider sitting noticeably higher than `.shell__sidebar-
+   footer`'s own divider instead of level with it. `.tdt-config-fields`
+   (flex:1 1 auto) absorbs all of the extra space this frees up;
+   `.tdt-config-actions` (flex:0 0 auto, fixed height) simply ends up
+   sitting flush at the bottom of a taller page, unchanged itself. */
 .tdt-config-page {
   display: flex;
   flex-direction: column;
-  block-size: 100%;
+  block-size: calc(100% + var(--spacing-lg));
+  margin-block-end: calc(-1 * var(--spacing-lg));
   min-block-size: 0;
 }
 
@@ -108,12 +118,19 @@
 /* Full-width divider, bled the same way `.tdt-config-fields` is (see
    above) so it reaches the actual screen edge on both sides — the buttons
    themselves stay inset to the same reading width as the content above via
-   `.tdt-config-actions__inner`. */
+   `.tdt-config-actions__inner`. `min-block-size` matches the sidebar
+   footer's own rendered height (`.shell__sidebar-footer`, ~72px) — with
+   `.tdt-config-page` above now bled to the true bottom edge too, this bar
+   simply sits flush at the bottom of it, its divider level with the
+   sidebar footer's own divider. */
 .tdt-config-actions {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-block-size: 72px;
   margin-inline: calc(-1 * var(--spacing-xl));
   padding-inline: var(--spacing-xl);
-  padding-block-start: var(--spacing-md);
+  padding-block: var(--spacing-sm);
   border-block-start: var(--border-width) solid var(--color-border-default);
 }
 
@@ -122,4 +139,5 @@
   justify-content: space-between;
   max-inline-size: 48rem;
   margin-inline: auto;
+  inline-size: 100%;
 }

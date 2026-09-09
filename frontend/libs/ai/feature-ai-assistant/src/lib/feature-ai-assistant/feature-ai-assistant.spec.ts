@@ -22,6 +22,21 @@ describe('FeatureAiAssistant', () => {
     fixture = TestBed.createComponent(FeatureAiAssistant);
     component = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
+
+    // The empty-state KPI snapshot fetches this once, from the
+    // constructor — flush it here so every test starts from a clean
+    // request queue, matching DashboardService.getSummary()'s real shape.
+    httpMock.expectOne('http://test/api/v1/dashboard/summary').flush({
+      customer_count: 0,
+      driver_count: 0,
+      vehicle_count: 0,
+      vehicles_by_status: {},
+      warehouse_count: 0,
+      cylinder_type_count: 0,
+      inventory_by_status: {},
+      price_cards: [],
+      recent_activity: [],
+    });
   });
 
   afterEach(() => {

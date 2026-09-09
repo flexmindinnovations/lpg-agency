@@ -32,7 +32,30 @@
       @if (history().length === 0 && !asking() && !pendingQuestion()) {
         <div class="empty-state">
           <i class="pi pi-sparkles empty-state__icon" aria-hidden="true"></i>
-          <p>Ask a question to get started — e.g. "What's today's inventory situation?"</p>
+          <p>Ask a question to get started, or try one of these:</p>
+
+          <div class="kpi-row">
+            @for (kpi of kpis(); track kpi.title) {
+              <lpg-stat-card
+                *lpgHasPermission="kpi.permission"
+                class="kpi-row__card"
+                [label]="kpi.title"
+                [value]="kpi.value"
+                [icon]="kpi.icon"
+                [tone]="kpi.tone"
+                [loading]="kpisLoading()"
+              />
+            }
+          </div>
+
+          <div class="suggestions">
+            @for (prompt of suggestedPrompts; track prompt.question) {
+              <button type="button" class="suggestion-chip" (click)="ask(prompt.question)">
+                <i [class]="prompt.icon" aria-hidden="true"></i>
+                <span>{{ prompt.label }}</span>
+              </button>
+            }
+          </div>
         </div>
       }
 
@@ -84,25 +107,27 @@
        the messages above it. -->
   <div class="composer">
     <div class="composer__inner">
-      <textarea
-        class="composer__input"
-        rows="1"
-        placeholder="Ask the AI Command Center…"
-        [ngModel]="question()"
-        (ngModelChange)="question.set($event)"
-        (keydown)="onQuestionKeydown($event)"
-        [disabled]="asking()"
-      ></textarea>
-      <button
-        pButton
-        type="button"
-        class="composer__send"
-        [disabled]="asking() || !question().trim()"
-        (click)="ask()"
-        aria-label="Send"
-      >
-        <i pButtonIcon class="pi" [class.pi-send]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
-      </button>
+      <div class="composer__box">
+        <textarea
+          class="composer__input"
+          rows="1"
+          placeholder="Ask the AI Command Center…"
+          [ngModel]="question()"
+          (ngModelChange)="question.set($event)"
+          (keydown)="onQuestionKeydown($event)"
+          [disabled]="asking()"
+        ></textarea>
+        <button
+          pButton
+          type="button"
+          class="composer__send"
+          [disabled]="asking() || !question().trim()"
+          (click)="ask()"
+          aria-label="Send"
+        >
+          <i pButtonIcon class="pi" [class.pi-arrow-right]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
+        </button>
+      </div>
     </div>
   </div>
 </div>
