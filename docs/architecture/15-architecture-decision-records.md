@@ -1152,6 +1152,35 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 
 ---
 
+## ADR-047: A Single Global Error-Toast Interceptor Replaces Per-Component Toasting, Rather Than a Per-Request Opt-In Mechanism
+
+**Status:** Accepted
+
+**Context:** The user reported two related problems with a screenshot: toast detail text was nearly unreadable in dark mode, and alerts were inconsistent across the app — some mutations toasted, three real features (`order-detail`, `feature-dispatch`, `feature-inventory`) showed nothing at all on success or error beyond an inline `<p-message>` banner, and the notification bell/drawer failed completely silently (no error handler at all, an uncaught RxJS error). The user asked for a global handler, not one-off patches, and explicitly chose "Full consolidation" — one shared mechanism, migrating every existing hand-rolled call site onto it — over a smaller targeted-gap-fill alternative.
+
+Both problems were root-caused against the live source. The contrast bug: `LpgPrimeNgPreset`'s `semantic.surface[0]` remap (used for the form-field inset-well look) collides with Aura's own Toast preset, whose `detailColor` formula is the only Aura component-preset formula in this app's actually-used severity paths that reads `{surface.0}` — every other hit across 20 Aura component presets referencing that token lands in an unused `contrast`/rare variant, confirmed by auditing all of them. The inconsistency: 27 files hand-duplicated a local `isAppError`/`errorMessageFor` pair, 18 of those also hand-rolled a `messageService.add({severity:'error',...})` call — most with a switch carrying no real cases beyond a generic `default:`, a few with genuinely feature-specific codes worth keeping (login's `INVALID_CREDENTIALS`, license activation's `LICENSE_ACTIVATION_FAILED`).
+
+**Decision (the toast fix stays scoped to the preset, mirroring the existing `button.root.secondary` precedent):** a new `components.toast` entry in `primeng-preset.ts` overrides `detailColor` to `var(--color-text-primary)` for every severity — the narrowest fix that addresses the actual collision without touching `semantic.surface[0]` itself (which the form-field inset-well look still needs).
+
+**Decision (the interceptor is the sole error-toaster for mutations, not a per-request-configurable one):** Angular's generated API client (`libs/shared/data-access/generated/fn/...`, wrapped by thin hand-written services) exposes no per-call `HttpContext`/options hook at the component call site — threading one through every generated function and hand-written wrapper across 20+ files was out of scope. Rather than a component-configurable interceptor (which would have required exactly that threading to avoid double-toasting), `globalErrorToastInterceptor` became the single place that auto-toasts a failed **mutating** request (POST/PUT/PATCH/DELETE only — matching the user's own "data modification, new record" framing, and avoiding turning every incidental GET failure across dozens of data-grid loads into a toast, a much bigger behavior change than asked for). Two exclusions: auth endpoints (login/refresh/otp render their error inline via `<p-message>`, a distinct existing UX choice — double-toasting would be redundant) and any 401 (`authInterceptor`'s own "Session Expired" dialog already covers it). Registered in `app.config.ts` as `[correlationId, globalErrorToast, problemDetails, auth]` — positioned so its response handling runs after `problemDetailsInterceptor`'s conversion (needs the typed `AppError`) and after `authInterceptor`'s own 401 handling has had its chance, extending the existing ordering comment there rather than replacing it.
+
+**Decision (consolidation means centralizing specificity, not losing it):** the ~18 files' one-or-two genuinely distinct error codes (six `DUPLICATE_*` codes across cylinder units/vehicles/drivers/customers, plus the two above) were folded into one canonical `errorMessageFor` (`problem-details.ts`), replacing 18 scattered copies of the same boilerplate. Codes with no shared override fall back to the backend's own RFC 7807 `detail` text rather than a flat generic string — the existing `order-status.util.ts` precedent (2-file reuse) already did this for `RESOURCE_NOT_FOUND`; this generalizes it. `NotifyService` (`success`/`info`/`warn`/`error` over `MessageService`) is the one place every feature now reaches for a toast — replacing the per-file `MessageService.add()` calls this consolidation removed.
+
+**Decision (a real DI bug, found live-verifying this ADR's own interceptor, not assumed away):** both `ShellLayout` and `PlatformShell` declared their own component-level `MessageService` provider, shadowing the root instance (`app.config.ts`) for their whole subtree — including their own `<p-toast>`. `NotifyService` is `providedIn: 'root'`, so it always resolves its own dependencies against the root injector regardless of which component calls it; nothing published through it would ever have reached either shell's toast. Verified live: a triggered 422 produced zero toasts until both redundant providers were removed. One shared instance across the whole app is also just the correct shape for a genuinely *global* handler, not two independently-scoped toast queues.
+
+**Consequences:**
+- The 3 previously-silent gap features (`order-detail`, `feature-dispatch`, `feature-inventory`) get error coverage automatically from the interceptor, plus an explicit `NotifyService.success(...)` call added to each one's own centralized success handler (`applyUpdate`/`refreshAfterMutation`) — existing inline `<p-message>` banners stay, complementary to the toast, not a duplicate.
+- A handful of GET requests that genuinely needed error feedback (the notification drawer's user-initiated load, `manage-permissions-dialog`'s two loads, `feature-customers`' three loads) keep an explicit `NotifyService.error(...)` call, each commented with why — the interceptor's mutating-methods-only scope doesn't cover them by design. The notification bell's own background poll (`refreshUnreadCount`) deliberately stays silent-but-logged rather than toasting, to avoid nagging on transient network blips — a deliberate choice, not an oversight.
+- `login-page`/`reset-password-page` were deliberately **not** migrated — their inline-banner error UX is a distinct, pre-existing choice this feature left alone.
+- Two incidental, unrelated fixes surfaced and were folded in rather than left as new red gates: a pre-existing `no-empty-function` lint failure in `feature-cylinder-units.ts` (two already-silent GET handlers, untouched by this feature otherwise), and the shell `MessageService` DI bug above.
+
+**Alternatives Considered:**
+- **Per-request `HttpContext` opt-out/override tokens**, letting each of the 18 files keep fine-grained control while still routing through one interceptor — rejected: infeasible without threading a context parameter through every generated API function and hand-written service wrapper, a far larger change than the toast-consolidation task itself.
+- **Targeted gap-fill only** (fix the 3 silent features and the drawer/poll, leave the 18 existing toast call sites as-is) — the smaller alternative presented to the user; not chosen. The user explicitly picked full consolidation.
+- **Keep each of the 18 files' own error-toast call alongside the new interceptor**, opting into "the interceptor is a safety net only" — rejected: guaranteed double-toasting for every one of those files with no clean way to suppress it (same `HttpContext` threading problem above).
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1202,6 +1231,7 @@ A single filtered query — `WHERE changed_at BETWEEN quarter_start AND quarter_
 | 044 | Compliance Calendar licence registry as two new `ComplianceDocument` owner types, not a new aggregate | Accepted |
 | 045 | AI Model Gateway as a provider-agnostic tool-calling port, Gemini as the first adapter, a fixed read-only tool registry as the first consumer | Accepted |
 | 046 | Zero-click driver auto-assignment — deterministic scoring, opt-in kill switch, no new system-principal bypass | Accepted |
+| 047 | Global error-toast interceptor replaces per-component toasting, not a per-request opt-in mechanism | Accepted |
 
 ## Deferred Decisions
 
