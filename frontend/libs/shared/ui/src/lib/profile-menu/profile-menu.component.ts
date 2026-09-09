@@ -114,21 +114,6 @@ function initialsFor(displayName: string): string {
           <span>My Profile</span>
         </a>
 
-        <button
-          role="menuitem"
-          type="button"
-          class="profile-menu__item"
-          (click)="onAccountSettingsClick()"
-        >
-          <i class="pi pi-cog" aria-hidden="true"></i>
-          <span>Account Settings</span>
-        </button>
-        @if (accountSettingsStubVisible()) {
-          <p class="profile-menu__stub-note" aria-live="polite">
-            Account settings are coming soon.
-          </p>
-        }
-
         <a
           role="menuitem"
           class="profile-menu__item"
@@ -349,12 +334,6 @@ function initialsFor(displayName: string): string {
         outline-offset: -2px;
       }
 
-      .profile-menu__stub-note {
-        margin: 0;
-        padding: 0 var(--spacing-sm) var(--spacing-xs);
-        font-size: var(--typography-caption-font-size);
-        color: var(--color-text-secondary);
-      }
 
       .profile-menu__divider {
         block-size: var(--border-width);
@@ -401,18 +380,12 @@ export class ProfileMenuComponent {
   );
 
   protected readonly isOpen = signal(false);
-  protected readonly accountSettingsStubVisible = signal(false);
 
   private readonly triggerEl = viewChild<ElementRef<HTMLButtonElement>>('triggerEl');
 
   protected onPopoverHide(): void {
     this.isOpen.set(false);
-    this.accountSettingsStubVisible.set(false);
     this.triggerEl()?.nativeElement.focus();
-  }
-
-  protected onAccountSettingsClick(): void {
-    this.accountSettingsStubVisible.set(true);
   }
 
   protected setTheme(preference: ThemePreference): void {

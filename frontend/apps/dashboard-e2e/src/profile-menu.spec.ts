@@ -28,7 +28,7 @@ test.describe('Profile menu', () => {
     await expect(menu).toBeVisible();
 
     await expect(menu.getByRole('menuitem', { name: 'My Profile' })).toBeVisible();
-    await expect(menu.getByRole('menuitem', { name: 'Account Settings' })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Design system' })).toBeVisible();
     await expect(menu.getByRole('menuitem', { name: 'Sign Out' })).toBeVisible();
   });
 
@@ -41,7 +41,7 @@ test.describe('Profile menu', () => {
     const myProfile = menu.getByRole('menuitem', { name: 'My Profile' });
     await myProfile.focus();
     await page.keyboard.press('ArrowDown');
-    await expect(menu.getByRole('menuitem', { name: 'Account Settings' })).toBeFocused();
+    await expect(menu.getByRole('menuitem', { name: 'Design system' })).toBeFocused();
 
     await page.keyboard.press('ArrowUp');
     await expect(myProfile).toBeFocused();

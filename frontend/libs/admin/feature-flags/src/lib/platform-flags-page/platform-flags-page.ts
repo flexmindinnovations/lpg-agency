@@ -13,7 +13,14 @@ import {
   NotifyService,
   type FeatureFlagResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent, formatTimestamp } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  DetailItemComponent,
+  DetailListComponent,
+  type DataGridColumn,
+  FormFieldComponent,
+  formatTimestamp,
+} from '@lpg/shared/ui';
 
 /** `dd-mm-yyyy`-picker value → ISO date string, or `null` for an empty/
  * cleared field. */
@@ -75,6 +82,8 @@ class FlagDefaultCell {
     DatePicker,
     DataGridComponent,
     FormFieldComponent,
+    DetailListComponent,
+    DetailItemComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -149,32 +158,14 @@ class FlagDefaultCell {
         @if (selectedFlag(); as flag) {
           @if (!editMode()) {
             <div class="detail-view">
-              <div class="detail-view__fields">
-              <div class="detail-item">
-                <span class="detail-label">Key</span>
-                <span class="detail-value">{{ flag.key }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Description</span>
-                <span class="detail-value">{{ flag.description }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Default</span>
-                <span class="detail-value">{{ flag.is_enabled_by_default ? 'Enabled' : 'Disabled' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Rollout %</span>
-                <span class="detail-value">{{ flag.rollout_percentage ?? '—' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Starts At</span>
-                <span class="detail-value">{{ flag.starts_at ? formatTimestamp(flag.starts_at) : 'Not scheduled' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Ends At</span>
-                <span class="detail-value">{{ flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled' }}</span>
-              </div>
-              </div>
+              <lpg-detail-list>
+                <lpg-detail-item label="Key">{{ flag.key }}</lpg-detail-item>
+                <lpg-detail-item label="Description">{{ flag.description }}</lpg-detail-item>
+                <lpg-detail-item label="Default">{{ flag.is_enabled_by_default ? 'Enabled' : 'Disabled' }}</lpg-detail-item>
+                <lpg-detail-item label="Rollout %">{{ flag.rollout_percentage ?? '—' }}</lpg-detail-item>
+                <lpg-detail-item label="Starts At">{{ flag.starts_at ? formatTimestamp(flag.starts_at) : 'Not scheduled' }}</lpg-detail-item>
+                <lpg-detail-item label="Ends At">{{ flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled' }}</lpg-detail-item>
+              </lpg-detail-list>
 
               <div class="modal-actions">
                 <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
@@ -256,26 +247,6 @@ class FlagDefaultCell {
         flex-direction: column;
         flex: 1;
         min-height: 0;
-      }
-
-      .detail-item {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-      }
-
-      .detail-label {
-        font-size: var(--typography-caption-font-size);
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      .detail-value {
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-primary);
       }
     `,
   ],

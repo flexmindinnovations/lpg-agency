@@ -1,9 +1,16 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { formatTimestamp, FormFieldComponent } from '@lpg/shared/ui';
+import {
+  DetailItemComponent,
+  DetailListComponent,
+  SectionCardComponent,
+  formatTimestamp,
+  FormFieldComponent,
+} from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
+import { Tag } from 'primeng/tag';
 import {
   LicenseService,
   LicenseStatusStore,
@@ -19,6 +26,16 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
   revoked: 'Revoked',
 };
 
+/** Mirrors `LicenseIssuancePage`'s own `STATUS_SEVERITY` map — the tenant-
+ * side status chip should read the same as the platform-side one. */
+const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'danger'> = {
+  pending_activation: 'warn',
+  active: 'success',
+  grace: 'warn',
+  blocked: 'danger',
+  revoked: 'danger',
+};
+
 /**
  * Tenant-side license activation + status — `agency_admin`,
  * `license:manage_tenant`. The whole route is already gated by this
@@ -27,7 +44,17 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
 @Component({
   selector: 'lpg-license-activation-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, FormFieldComponent],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    FormFieldComponent,
+    SectionCardComponent,
+    DetailListComponent,
+    DetailItemComponent,
+    Tag,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -57,34 +84,20 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
           </form>
         </section>
       } @else if (status(); as s) {
-        <section class="detail-view">
-          <div class="detail-item">
-            <span class="detail-label">Status</span>
-            <span class="detail-value">{{ statusLabel(s.status) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Plan</span>
-            <span class="detail-value">{{ s.planTier ?? '—' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Key</span>
-            <span class="detail-value">{{ s.keyPrefix ?? '—' }}-****</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Activated</span>
-            <span class="detail-value">{{ formatTimestamp(s.activatedAt) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Expires</span>
-            <span class="detail-value">{{ formatTimestamp(s.expiresAt) }}</span>
-          </div>
-          @if (s.status === 'grace') {
-            <div class="detail-item">
-              <span class="detail-label">Grace period ends</span>
-              <span class="detail-value">{{ formatTimestamp(s.graceEndsAt) }}</span>
-            </div>
-          }
-        </section>
+        <lpg-section-card class="detail-view">
+          <lpg-detail-list>
+            <lpg-detail-item label="Status">
+              <p-tag [value]="statusLabel(s.status)" [severity]="statusSeverity(s.status)" />
+            </lpg-detail-item>
+            <lpg-detail-item label="Plan">{{ s.planTier ?? '—' }}</lpg-detail-item>
+            <lpg-detail-item label="Key">{{ s.keyPrefix ?? '—' }}-****</lpg-detail-item>
+            <lpg-detail-item label="Activated">{{ formatTimestamp(s.activatedAt) }}</lpg-detail-item>
+            <lpg-detail-item label="Expires">{{ formatTimestamp(s.expiresAt) }}</lpg-detail-item>
+            @if (s.status === 'grace') {
+              <lpg-detail-item label="Grace period ends">{{ formatTimestamp(s.graceEndsAt) }}</lpg-detail-item>
+            }
+          </lpg-detail-list>
+        </lpg-section-card>
       }
     </div>
   `,
@@ -112,31 +125,8 @@ const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
       }
 
       .detail-view {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-lg);
         max-inline-size: 480px;
         margin-block-start: var(--spacing-lg);
-      }
-
-      .detail-item {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-      }
-
-      .detail-label {
-        font-size: var(--typography-caption-font-size);
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      .detail-value {
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-primary);
       }
     `,
   ],
@@ -151,6 +141,7 @@ export class LicenseActivationPage implements OnInit {
   protected readonly submitting = signal(false);
   protected readonly status = this.licenseStatusStore.status;
   protected readonly statusLabel = (state: LicenseLifecycleState) => _STATUS_LABELS[state];
+  protected readonly statusSeverity = (state: LicenseLifecycleState) => _STATUS_SEVERITY[state];
   protected readonly formatTimestamp = formatTimestamp;
 
   protected readonly form = this.formBuilder.group({

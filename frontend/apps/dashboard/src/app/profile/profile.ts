@@ -1,4 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { DetailItemComponent, DetailListComponent, SectionCardComponent } from '@lpg/shared/ui';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { AuthService } from '@lpg/shared/data-access';
 
@@ -13,7 +14,7 @@ import { AuthService } from '@lpg/shared/data-access';
 @Component({
   selector: 'lpg-profile',
   standalone: true,
-  imports: [HeaderTitlePortalDirective],
+  imports: [HeaderTitlePortalDirective, SectionCardComponent, DetailListComponent, DetailItemComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="profile-page">
@@ -26,45 +27,21 @@ import { AuthService } from '@lpg/shared/data-access';
     </ng-template>
       </div>
 
-      <dl class="profile-page__list">
-        <div class="profile-page__row">
-          <dt class="info-label">Email address</dt>
-          <dd>{{ email() || 'Not set' }}</dd>
-        </div>
-        <div class="profile-page__row">
-          <dt class="info-label">Role</dt>
-          <dd class="profile-page__role">{{ role() || 'Not assigned' }}</dd>
-        </div>
-      </dl>
+      <lpg-section-card class="detail-view">
+        <lpg-detail-list>
+          <lpg-detail-item label="Email address">{{ email() || 'Not set' }}</lpg-detail-item>
+          <lpg-detail-item label="Role">
+            <span class="capitalize">{{ role() || 'Not assigned' }}</span>
+          </lpg-detail-item>
+        </lpg-detail-list>
+      </lpg-section-card>
     </div>
   `,
   styles: [
     `
-      .profile-page {
+      .detail-view {
         max-inline-size: 480px;
-      }
-
-      .profile-page__list {
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-lg);
-      }
-
-      .profile-page__row {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .profile-page__row dd {
-        margin: 0;
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-primary);
-      }
-
-      .profile-page__role {
-        text-transform: capitalize;
+        margin-block-start: var(--spacing-lg);
       }
     `,
   ],

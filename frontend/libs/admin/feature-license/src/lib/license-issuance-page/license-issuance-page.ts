@@ -18,6 +18,8 @@ import {
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
+  DetailItemComponent,
+  DetailListComponent,
   FormFieldComponent,
   StatusChipCell,
   type ChipSeverity,
@@ -57,6 +59,8 @@ const VALIDITY_OPTIONS = [
     Dialog,
     DataGridComponent,
     FormFieldComponent,
+    DetailListComponent,
+    DetailItemComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -122,22 +126,10 @@ const VALIDITY_OPTIONS = [
 
           @if (selectedIssueTenant(); as tenant) {
             <div class="tenant-preview">
-              <div class="detail-item">
-                <span class="detail-label">Slug</span>
-                <span class="detail-value">{{ tenant.slug }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Plan</span>
-                <span class="detail-value">{{ tenant.subscription_plan }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Primary contact</span>
-                <span class="detail-value">{{ tenant.primary_contact_email }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Country</span>
-                <span class="detail-value">{{ tenant.country }}</span>
-              </div>
+              <lpg-detail-item label="Slug">{{ tenant.slug }}</lpg-detail-item>
+              <lpg-detail-item label="Plan">{{ tenant.subscription_plan }}</lpg-detail-item>
+              <lpg-detail-item label="Primary contact">{{ tenant.primary_contact_email }}</lpg-detail-item>
+              <lpg-detail-item label="Country">{{ tenant.country }}</lpg-detail-item>
             </div>
           }
 
@@ -223,34 +215,15 @@ const VALIDITY_OPTIONS = [
         @if (selectedLicense(); as license) {
           <div class="detail-view">
             <div class="detail-view__fields">
-            <div class="detail-item">
-              <span class="detail-label">Tenant</span>
-              <span class="detail-value">{{ license.tenant_name ?? '—' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Tenant ID</span>
-              <span class="detail-value">{{ license.tenant_id }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Status</span>
-              <span class="detail-value">{{ statusLabel(license.status) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Plan</span>
-              <span class="detail-value">{{ license.plan_tier }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Key</span>
-              <span class="detail-value">{{ license.key_prefix }}-****</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Issued</span>
-              <span class="detail-value">{{ formatDate(license.issued_at) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Expires</span>
-              <span class="detail-value">{{ formatDate(license.expires_at) }}</span>
-            </div>
+            <lpg-detail-list>
+              <lpg-detail-item label="Tenant">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
+              <lpg-detail-item label="Tenant ID">{{ license.tenant_id }}</lpg-detail-item>
+              <lpg-detail-item label="Status">{{ statusLabel(license.status) }}</lpg-detail-item>
+              <lpg-detail-item label="Plan">{{ license.plan_tier }}</lpg-detail-item>
+              <lpg-detail-item label="Key">{{ license.key_prefix }}-****</lpg-detail-item>
+              <lpg-detail-item label="Issued">{{ formatDate(license.issued_at) }}</lpg-detail-item>
+              <lpg-detail-item label="Expires">{{ formatDate(license.expires_at) }}</lpg-detail-item>
+            </lpg-detail-list>
 
             <form [formGroup]="planTierForm" (ngSubmit)="savePlanTier(license.tenant_id)" class="dialog-form dialog-form--inline">
               <div class="dialog-form__fields">
@@ -365,24 +338,10 @@ const VALIDITY_OPTIONS = [
         min-height: 0;
       }
 
-      .detail-item {
+      .detail-view__fields {
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-      }
-
-      .detail-label {
-        font-size: var(--typography-caption-font-size);
-        font-weight: var(--typography-label-font-weight);
-        color: var(--color-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      .detail-value {
-        font-size: var(--typography-body-small-font-size);
-        color: var(--color-text-primary);
+        gap: var(--spacing-lg);
       }
     `,
   ],
