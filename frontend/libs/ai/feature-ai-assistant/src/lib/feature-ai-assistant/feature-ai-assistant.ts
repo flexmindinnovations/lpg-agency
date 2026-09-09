@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  computed,
   effect,
   inject,
   signal,
@@ -69,6 +70,26 @@ const SUGGESTED_PROMPTS: readonly SuggestedPrompt[] = [
     question: "Give me a summary of today's operations: orders, inventory, and complaints.",
     icon: 'pi pi-sparkles',
   },
+  {
+    label: 'Damaged/leaking cylinders',
+    question: 'How many cylinders are damaged or leaking right now?',
+    icon: 'pi pi-exclamation-triangle',
+  },
+  {
+    label: 'Stale deliveries',
+    question: 'How many orders are still out for delivery from previous days?',
+    icon: 'pi pi-truck',
+  },
+  {
+    label: 'Unassigned complaints',
+    question: 'What complaints are currently unassigned?',
+    icon: 'pi pi-user-minus',
+  },
+  {
+    label: 'Inventory vs. complaints table',
+    question: "Compare today's inventory and complaints in a table.",
+    icon: 'pi pi-table',
+  },
 ];
 
 /**
@@ -125,6 +146,27 @@ export class FeatureAiAssistant {
 
   protected readonly kpisLoading = signal(true);
   protected readonly kpis = signal<QuickKpi[]>([]);
+
+  /** Autocomplete-as-you-type against the same starter-question list the
+   * empty state's chips offer — filtered client-side against a fixed,
+   * small list, so no debounced backend call is needed. `composerFocused`
+   * gates visibility (no point showing suggestions once the field blurs);
+   * `highlightedIndex` drives arrow-key navigation. */
+  protected readonly composerFocused = signal(false);
+  protected readonly highlightedIndex = signal(0);
+
+  protected readonly autocompleteSuggestions = computed<SuggestedPrompt[]>(() => {
+    const query = this.question().trim().toLowerCase();
+    if (!query) return [];
+    return SUGGESTED_PROMPTS.filter(
+      (prompt) =>
+        prompt.question.toLowerCase().includes(query) || prompt.label.toLowerCase().includes(query),
+    ).slice(0, 5);
+  });
+
+  protected readonly showAutocomplete = computed(
+    () => this.composerFocused() && !this.asking() && this.autocompleteSuggestions().length > 0,
+  );
 
   constructor() {
     // Scroll the thread to the newest message whenever it changes (a new
@@ -210,10 +252,53 @@ export class FeatureAiAssistant {
   }
 
   protected onQuestionKeydown(event: KeyboardEvent): void {
+    const suggestions = this.autocompleteSuggestions();
+    if (this.showAutocomplete() && suggestions.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        this.highlightedIndex.update((i) => (i + 1) % suggestions.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        this.highlightedIndex.update((i) => (i - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.composerFocused.set(false);
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        const index = Math.min(this.highlightedIndex(), suggestions.length - 1);
+        this.selectAutocomplete(suggestions[index]);
+        return;
+      }
+    }
+
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.ask();
     }
+  }
+
+  /** Fills the composer from an autocomplete suggestion — unlike the empty
+   * state's chips (which send immediately), this only completes what the
+   * viewer was already typing, letting them edit or add to it before
+   * sending, matching every other chat product's autocomplete behavior. */
+  protected selectAutocomplete(prompt: SuggestedPrompt): void {
+    this.question.set(prompt.question);
+    this.composerFocused.set(false);
+  }
+
+  protected onComposerFocus(): void {
+    this.composerFocused.set(true);
+    this.highlightedIndex.set(0);
+  }
+
+  protected onQuestionInput(): void {
+    this.highlightedIndex.set(0);
   }
 
   protected clearConversation(): void {

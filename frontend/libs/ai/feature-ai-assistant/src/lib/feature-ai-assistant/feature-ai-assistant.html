@@ -107,6 +107,28 @@
        the messages above it. -->
   <div class="composer">
     <div class="composer__inner">
+      @if (showAutocomplete()) {
+        <ul class="autocomplete" role="listbox" aria-label="Suggested questions">
+          @for (prompt of autocompleteSuggestions(); track prompt.question; let i = $index) {
+            <li>
+              <button
+                type="button"
+                role="option"
+                class="autocomplete__item"
+                [class.autocomplete__item--active]="i === highlightedIndex()"
+                [attr.aria-selected]="i === highlightedIndex()"
+                (mousedown)="$event.preventDefault()"
+                (click)="selectAutocomplete(prompt)"
+                (mouseenter)="highlightedIndex.set(i)"
+              >
+                <i [class]="prompt.icon" aria-hidden="true"></i>
+                <span>{{ prompt.question }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
       <div class="composer__box">
         <textarea
           class="composer__input"
@@ -114,7 +136,10 @@
           placeholder="Ask the AI Command Center…"
           [ngModel]="question()"
           (ngModelChange)="question.set($event)"
+          (input)="onQuestionInput()"
           (keydown)="onQuestionKeydown($event)"
+          (focus)="onComposerFocus()"
+          (blur)="composerFocused.set(false)"
           [disabled]="asking()"
         ></textarea>
         <button
