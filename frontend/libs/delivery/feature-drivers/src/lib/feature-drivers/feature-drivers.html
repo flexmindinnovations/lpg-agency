@@ -167,7 +167,9 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">Branch</span>
-            <span class="detail-value">{{ branchNameById().get(driver.branch_id) ?? driver.branch_id }}</span>
+            <span class="detail-value">
+              <lpg-branch-link [branchId]="driver.branch_id" [branch]="branchById().get(driver.branch_id) ?? null" />
+            </span>
           </div>
           <div class="detail-item">
             <span class="detail-label">License Number</span>

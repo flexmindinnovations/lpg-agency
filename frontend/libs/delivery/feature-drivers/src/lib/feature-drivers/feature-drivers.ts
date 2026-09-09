@@ -14,6 +14,7 @@ import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } 
 import { forkJoin, map, type Observable } from 'rxjs';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import {
+  BranchLinkComponent,
   ComplianceDocumentsPanel,
   type AddComplianceDocumentCmd,
   type ComplianceDocumentItem,
@@ -86,6 +87,7 @@ function formatDateForApi(value: unknown): string | undefined {
     DocumentUploadComponent,
     HasPermissionDirective,
     ComplianceDocumentsPanel,
+    BranchLinkComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-drivers.html',
@@ -180,9 +182,9 @@ export class FeatureDrivers implements OnInit {
     })),
   );
 
-  protected readonly branchNameById = computed(() => {
-    const map = new Map<string, string>();
-    for (const b of this.branches()) map.set(b.id, b.name);
+  protected readonly branchById = computed(() => {
+    const map = new Map<string, BranchResponse>();
+    for (const b of this.branches()) map.set(b.id, b);
     return map;
   });
   protected readonly loading = signal(false);

@@ -7,6 +7,7 @@ export * from './lib/page-header/page-header.component';
 export * from './lib/section-card/section-card.component';
 export * from './lib/detail-list/detail-list.component';
 export * from './lib/detail-list/detail-item.component';
+export * from './lib/branch-link/branch-link.component';
 export * from './lib/stat-card/stat-card.component';
 export * from './lib/star-rating/star-rating.component';
 export * from './lib/live-indicator/live-indicator.component';

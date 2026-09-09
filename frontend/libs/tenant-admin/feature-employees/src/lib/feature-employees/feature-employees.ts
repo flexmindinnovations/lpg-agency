@@ -30,6 +30,7 @@ import {
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
 import {
+  BranchLinkComponent,
   DataGridComponent,
   type DataGridColumn,
   FormFieldComponent,
@@ -85,6 +86,7 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
     IconField,
     InputIcon,
     FormFieldComponent,
+    BranchLinkComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-employees.html',
@@ -125,9 +127,9 @@ export class FeatureEmployees implements OnInit {
     role: { required: 'Select a role.' },
   };
 
-  protected readonly branchNameById = computed(() => {
-    const map = new Map<string, string>();
-    for (const b of this.branches()) map.set(b.id, b.name);
+  protected readonly branchById = computed(() => {
+    const map = new Map<string, BranchResponse>();
+    for (const b of this.branches()) map.set(b.id, b);
     return map;
   });
 

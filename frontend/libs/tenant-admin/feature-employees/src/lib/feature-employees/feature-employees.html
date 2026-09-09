@@ -135,7 +135,9 @@
         </div>
         <div class="info-item">
           <span class="info-label">Branch</span>
-          <span class="info-value">{{ branchNameById().get(e.branch_id) ?? e.branch_id }}</span>
+          <span class="info-value">
+            <lpg-branch-link [branchId]="e.branch_id" [branch]="branchById().get(e.branch_id) ?? null" />
+          </span>
         </div>
         <div class="info-item">
           <span class="info-label">Role</span>
