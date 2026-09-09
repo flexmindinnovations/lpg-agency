@@ -16,6 +16,28 @@ import {
 import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell } from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
+/** AG Grid renders a boolean-valued column with its own checkbox cell by
+ * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
+ * "Status" column) — this swaps that for plain "Active"/"Inactive" text. */
+@Component({
+  selector: 'lpg-staff-user-status-cell',
+  standalone: true,
+  template: `{{ label() }}`,
+})
+class StaffUserStatusCell {
+  protected readonly label = signal('');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
+  agInit(params: any): void {
+    this.label.set(params.value ? 'Active' : 'Inactive');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  refresh(params: any): boolean {
+    this.agInit(params);
+    return true;
+  }
+}
+
 const STAFF_ROLES = [
   { label: 'Super Admin (super_admin)', value: 'super_admin' },
   { label: 'Agency Admin (agency_admin)', value: 'agency_admin' },
@@ -233,7 +255,25 @@ export class StaffUsersPage implements OnInit {
       onLinkClick: (row) => this.openManageDrawer(row) 
     },
     { field: 'role', header: 'Role', sortable: true, filterable: true, cellRenderer: StatusChipCell },
-    { field: 'is_active', header: 'Active', sortable: true },
+    {
+      field: 'is_active',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: StaffUserStatusCell,
+    },
+    {
+      field: 'id',
+      header: '',
+      // A boolean-valued field re-used purely as the link column's
+      // clickable label ("Deactivate" for an active user, nothing for
+      // an already-deactivated one — no reactivate endpoint exists) —
+      // `onLinkClick` itself no-ops defensively for an already-inactive
+      // row. Matches Linked Devices' own Revoke column exactly.
+      valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : ''),
+      onLinkClick: (row) => {
+        if (row.is_active) this.deactivateUser(row);
+      },
+    },
   ];
 
   protected readonly form = this.formBuilder.group({
@@ -288,6 +328,18 @@ export class StaffUsersPage implements OnInit {
       next: () => {
         this.notify.success('User deactivated.');
         this.manageDrawerVisible.set(false);
+        this.reload();
+      },
+    });
+  }
+
+  /** The grid's own "Deactivate" action column — a direct, one-click path
+   * distinct from `deactivate()` above, which operates on whichever user
+   * is currently loaded into the "Manage User" drawer's form. */
+  protected deactivateUser(user: StaffUserResponse): void {
+    this.staffUserService.deactivateStaffUser(user.id).subscribe({
+      next: () => {
+        this.notify.success(`"${user.email}" deactivated.`);
         this.reload();
       },
     });

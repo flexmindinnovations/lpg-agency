@@ -14,6 +14,29 @@ import {
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
+/** AG Grid renders a boolean-valued column with its own checkbox cell by
+ * default, ignoring `valueFormatter` (same issue fixed for Platform
+ * Flags' "Default" column and Linked Devices' "Status" column) — this
+ * swaps that for plain "Active"/"Inactive" text. */
+@Component({
+  selector: 'lpg-cylinder-type-status-cell',
+  standalone: true,
+  template: `{{ label() }}`,
+})
+class CylinderTypeStatusCell {
+  protected readonly label = signal('');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
+  agInit(params: any): void {
+    this.label.set(params.value ? 'Active' : 'Inactive');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  refresh(params: any): boolean {
+    this.agInit(params);
+    return true;
+  }
+}
+
 /** Cylinder type list + create drawer â€” `tenant:configure`. */
 @Component({
   selector: 'lpg-cylinder-types-page',
@@ -148,7 +171,18 @@ export class CylinderTypesPage implements OnInit {
   protected readonly columns: DataGridColumn<CylinderTypeResponse>[] = [
     { field: 'name', header: 'Name', sortable: true, filterable: true },
     { field: 'weight_kg', header: 'Weight (kg)', sortable: true, numeric: true },
-    { field: 'is_active', header: 'Active', sortable: true },
+    {
+      field: 'is_active',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: CylinderTypeStatusCell,
+    },
+    {
+      field: 'id',
+      header: '',
+      valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : 'Activate'),
+      onLinkClick: (row) => this.toggleActive(row),
+    },
   ];
 
   protected readonly form = this.formBuilder.group({
@@ -197,6 +231,16 @@ export class CylinderTypesPage implements OnInit {
         this.reload();
       },
       error: () => this.submitting.set(false),
+    });
+  }
+
+  protected toggleActive(cylinderType: CylinderTypeResponse): void {
+    const nextActive = !cylinderType.is_active;
+    this.cylinderTypeService.setActive(cylinderType.id, nextActive).subscribe({
+      next: () => {
+        this.notify.success(`"${cylinderType.name}" ${nextActive ? 'activated' : 'deactivated'}.`);
+        this.reload();
+      },
     });
   }
 }
