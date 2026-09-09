@@ -12,6 +12,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { Avatar } from 'primeng/avatar';
 import { Popover } from 'primeng/popover';
+import { Tooltip } from 'primeng/tooltip';
 import { ThemeService, type ThemePreference } from '@lpg/shared/design-tokens';
 
 export function displayNameFromEmail(email: string | null, fallback: string): string {
@@ -36,7 +37,7 @@ function initialsFor(displayName: string): string {
 @Component({
   selector: 'lpg-profile-menu',
   standalone: true,
-  imports: [RouterLink, Avatar, Popover],
+  imports: [RouterLink, Avatar, Popover, Tooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button
@@ -92,7 +93,8 @@ function initialsFor(displayName: string): string {
               [class.is-active]="themePreference() === option.value"
               [attr.aria-checked]="themePreference() === option.value"
               [attr.aria-label]="option.label"
-              [title]="option.label"
+              [pTooltip]="option.label"
+              tooltipPosition="bottom"
               (click)="setTheme(option.value)"
             >
               <i [class]="option.icon" aria-hidden="true"></i>
@@ -269,8 +271,13 @@ function initialsFor(displayName: string): string {
           var(--motion-easing-standard);
       }
 
+      /* Not --color-surface-overlay: this menu lives inside a p-popover
+         whose own background IS --color-surface-overlay (primeng-preset.ts's
+         overlay.popover.background) — using the same token here made the
+         hover state fire but be visually invisible. --color-surface-raised
+         is a distinct step, visible against the popover's own background. */
       .profile-menu__item:hover {
-        background: var(--color-surface-overlay);
+        background: var(--color-surface-raised);
       }
 
       .profile-menu__item i {
@@ -321,7 +328,14 @@ function initialsFor(displayName: string): string {
         font-size: 14px;
       }
 
+      /* --color-surface-overlay, not --color-surface-raised: the segmented
+         control's own container (.profile-menu__theme) already sits on
+         --color-surface-raised, so a same-token hover would be invisible
+         here too — the opposite step from .profile-menu__item's fix above,
+         for the same reason (each needs a step distinct from its own
+         ambient background, not a single token app-wide). */
       .profile-menu__theme-btn:hover {
+        background: var(--color-surface-overlay);
         color: var(--color-text-primary);
       }
 
