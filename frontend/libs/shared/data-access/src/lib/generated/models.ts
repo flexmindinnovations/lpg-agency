@@ -175,6 +175,7 @@ export type { SaveOnboardingDraftRequest } from './models/save-onboarding-draft-
 export type { ScaleListResponse } from './models/scale-list-response';
 export type { ScaleResponse } from './models/scale-response';
 export type { ScheduleFeatureFlagRequest } from './models/schedule-feature-flag-request';
+export type { SetBranchActiveRequest } from './models/set-branch-active-request';
 export type { SetBranchRegionRequest } from './models/set-branch-region-request';
 export type { SetCylinderTypeActiveRequest } from './models/set-cylinder-type-active-request';
 export type { SetFeatureFlagEnabledByDefaultRequest } from './models/set-feature-flag-enabled-by-default-request';
@@ -186,6 +187,7 @@ export type { SetLicensePlanTierRequest } from './models/set-license-plan-tier-r
 export type { SetPriceRequest } from './models/set-price-request';
 export type { SetScaleStatusRequest } from './models/set-scale-status-request';
 export type { SetTenantConfigurationRequest } from './models/set-tenant-configuration-request';
+export type { SetWarehouseActiveRequest } from './models/set-warehouse-active-request';
 export type { StaffUserResponse } from './models/staff-user-response';
 export type { SubmitKycDocumentRequest } from './models/submit-kyc-document-request';
 export type { SuggestCylinderTestDueDateResponse } from './models/suggest-cylinder-test-due-date-response';

@@ -5,5 +5,6 @@ export interface WarehouseResponse {
   address_line: string;
   branch_id: string;
   id: string;
+  is_active: boolean;
   name: string;
 }

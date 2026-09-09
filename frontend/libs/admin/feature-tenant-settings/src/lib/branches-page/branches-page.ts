@@ -10,6 +10,28 @@ import { InputIcon } from 'primeng/inputicon';
 import { AdminBranchService, NotifyService, type BranchResponse } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
+/** AG Grid renders a boolean-valued column with its own checkbox cell by
+ * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
+ * "Status" column) — this swaps that for plain "Active"/"Inactive" text. */
+@Component({
+  selector: 'lpg-branch-status-cell',
+  standalone: true,
+  template: `{{ label() }}`,
+})
+class BranchStatusCell {
+  protected readonly label = signal('');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
+  agInit(params: any): void {
+    this.label.set(params.value ? 'Active' : 'Inactive');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  refresh(params: any): boolean {
+    this.agInit(params);
+    return true;
+  }
+}
+
 /** Branch list + create drawer — `tenant:configure` (`permissionGuard`, route level). */
 @Component({
   selector: 'lpg-branches-page',
@@ -134,6 +156,18 @@ export class BranchesPage implements OnInit {
   protected readonly columns: DataGridColumn<BranchResponse>[] = [
     { field: 'name', header: 'Name', sortable: true, filterable: true },
     { field: 'region', header: 'Region', sortable: true, filterable: true },
+    {
+      field: 'is_active',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: BranchStatusCell,
+    },
+    {
+      field: 'id',
+      header: '',
+      valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : 'Activate'),
+      onLinkClick: (row) => this.toggleActive(row),
+    },
   ];
 
   protected readonly form = this.formBuilder.group({
@@ -182,6 +216,16 @@ export class BranchesPage implements OnInit {
         this.reload();
       },
       error: () => this.submitting.set(false),
+    });
+  }
+
+  protected toggleActive(branch: BranchResponse): void {
+    const nextActive = !branch.is_active;
+    this.branchService.setActive(branch.id, nextActive).subscribe({
+      next: () => {
+        this.notify.success(`"${branch.name}" ${nextActive ? 'activated' : 'deactivated'}.`);
+        this.reload();
+      },
     });
   }
 }

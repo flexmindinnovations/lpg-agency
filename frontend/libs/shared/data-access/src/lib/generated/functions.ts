@@ -7,6 +7,8 @@ export type { ListBranchesApiV1AdminBranchesGet$Params as ListBranchesApiV1Admin
 export { listBranchesApiV1AdminBranchesGet as listBranchesApiV1AdminBranchesGet } from './fn/administration/list-branches-api-v-1-admin-branches-get';
 export type { CreateBranchApiV1AdminBranchesPost$Params as CreateBranchApiV1AdminBranchesPost$Params } from './fn/administration/create-branch-api-v-1-admin-branches-post';
 export { createBranchApiV1AdminBranchesPost as createBranchApiV1AdminBranchesPost } from './fn/administration/create-branch-api-v-1-admin-branches-post';
+export type { SetBranchActiveApiV1AdminBranchesBranchIdActivePatch$Params as SetBranchActiveApiV1AdminBranchesBranchIdActivePatch$Params } from './fn/administration/set-branch-active-api-v-1-admin-branches-branch-id-active-patch';
+export { setBranchActiveApiV1AdminBranchesBranchIdActivePatch as setBranchActiveApiV1AdminBranchesBranchIdActivePatch } from './fn/administration/set-branch-active-api-v-1-admin-branches-branch-id-active-patch';
 export type { SetBranchRegionApiV1AdminBranchesBranchIdRegionPatch$Params as SetBranchRegionApiV1AdminBranchesBranchIdRegionPatch$Params } from './fn/administration/set-branch-region-api-v-1-admin-branches-branch-id-region-patch';
 export { setBranchRegionApiV1AdminBranchesBranchIdRegionPatch as setBranchRegionApiV1AdminBranchesBranchIdRegionPatch } from './fn/administration/set-branch-region-api-v-1-admin-branches-branch-id-region-patch';
 export type { RenameBranchApiV1AdminBranchesBranchIdRenamePatch$Params as RenameBranchApiV1AdminBranchesBranchIdRenamePatch$Params } from './fn/administration/rename-branch-api-v-1-admin-branches-branch-id-rename-patch';
@@ -69,6 +71,8 @@ export type { ListWarehousesApiV1AdminWarehousesGet$Params as ListWarehousesApiV
 export { listWarehousesApiV1AdminWarehousesGet as listWarehousesApiV1AdminWarehousesGet } from './fn/administration/list-warehouses-api-v-1-admin-warehouses-get';
 export type { CreateWarehouseApiV1AdminWarehousesPost$Params as CreateWarehouseApiV1AdminWarehousesPost$Params } from './fn/administration/create-warehouse-api-v-1-admin-warehouses-post';
 export { createWarehouseApiV1AdminWarehousesPost as createWarehouseApiV1AdminWarehousesPost } from './fn/administration/create-warehouse-api-v-1-admin-warehouses-post';
+export type { SetWarehouseActiveApiV1AdminWarehousesWarehouseIdActivePatch$Params as SetWarehouseActiveApiV1AdminWarehousesWarehouseIdActivePatch$Params } from './fn/administration/set-warehouse-active-api-v-1-admin-warehouses-warehouse-id-active-patch';
+export { setWarehouseActiveApiV1AdminWarehousesWarehouseIdActivePatch as setWarehouseActiveApiV1AdminWarehousesWarehouseIdActivePatch } from './fn/administration/set-warehouse-active-api-v-1-admin-warehouses-warehouse-id-active-patch';
 export type { RelocateWarehouseApiV1AdminWarehousesWarehouseIdRelocatePatch$Params as RelocateWarehouseApiV1AdminWarehousesWarehouseIdRelocatePatch$Params } from './fn/administration/relocate-warehouse-api-v-1-admin-warehouses-warehouse-id-relocate-patch';
 export { relocateWarehouseApiV1AdminWarehousesWarehouseIdRelocatePatch as relocateWarehouseApiV1AdminWarehousesWarehouseIdRelocatePatch } from './fn/administration/relocate-warehouse-api-v-1-admin-warehouses-warehouse-id-relocate-patch';
 export type { RenameWarehouseApiV1AdminWarehousesWarehouseIdRenamePatch$Params as RenameWarehouseApiV1AdminWarehousesWarehouseIdRenamePatch$Params } from './fn/administration/rename-warehouse-api-v-1-admin-warehouses-warehouse-id-rename-patch';

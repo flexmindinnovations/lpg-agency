@@ -5,6 +5,7 @@ import { ApiConfiguration } from './generated/api-configuration';
 import { createBranchApiV1AdminBranchesPost } from './generated/fn/administration/create-branch-api-v-1-admin-branches-post';
 import { listBranchesApiV1AdminBranchesGet } from './generated/fn/administration/list-branches-api-v-1-admin-branches-get';
 import { renameBranchApiV1AdminBranchesBranchIdRenamePatch } from './generated/fn/administration/rename-branch-api-v-1-admin-branches-branch-id-rename-patch';
+import { setBranchActiveApiV1AdminBranchesBranchIdActivePatch } from './generated/fn/administration/set-branch-active-api-v-1-admin-branches-branch-id-active-patch';
 import { setBranchRegionApiV1AdminBranchesBranchIdRegionPatch } from './generated/fn/administration/set-branch-region-api-v-1-admin-branches-branch-id-region-patch';
 import type { BranchResponse } from './generated/models/branch-response';
 
@@ -37,6 +38,13 @@ export class AdminBranchService {
     return setBranchRegionApiV1AdminBranchesBranchIdRegionPatch(this.http, this.config.rootUrl, {
       branch_id: branchId,
       body: { region },
+    }).pipe(map(() => undefined));
+  }
+
+  setActive(branchId: string, isActive: boolean): Observable<void> {
+    return setBranchActiveApiV1AdminBranchesBranchIdActivePatch(this.http, this.config.rootUrl, {
+      branch_id: branchId,
+      body: { is_active: isActive },
     }).pipe(map(() => undefined));
   }
 }

@@ -6,6 +6,7 @@ import { createWarehouseApiV1AdminWarehousesPost } from './generated/fn/administ
 import { listWarehousesApiV1AdminWarehousesGet } from './generated/fn/administration/list-warehouses-api-v-1-admin-warehouses-get';
 import { relocateWarehouseApiV1AdminWarehousesWarehouseIdRelocatePatch } from './generated/fn/administration/relocate-warehouse-api-v-1-admin-warehouses-warehouse-id-relocate-patch';
 import { renameWarehouseApiV1AdminWarehousesWarehouseIdRenamePatch } from './generated/fn/administration/rename-warehouse-api-v-1-admin-warehouses-warehouse-id-rename-patch';
+import { setWarehouseActiveApiV1AdminWarehousesWarehouseIdActivePatch } from './generated/fn/administration/set-warehouse-active-api-v-1-admin-warehouses-warehouse-id-active-patch';
 import type { WarehouseResponse } from './generated/models/warehouse-response';
 
 /** Thin wrapper over the generated `/admin/warehouses` client functions. */
@@ -43,6 +44,14 @@ export class AdminWarehouseService {
       this.http,
       this.config.rootUrl,
       { warehouse_id: warehouseId, body: { address_line: addressLine } },
+    ).pipe(map(() => undefined));
+  }
+
+  setActive(warehouseId: string, isActive: boolean): Observable<void> {
+    return setWarehouseActiveApiV1AdminWarehousesWarehouseIdActivePatch(
+      this.http,
+      this.config.rootUrl,
+      { warehouse_id: warehouseId, body: { is_active: isActive } },
     ).pipe(map(() => undefined));
   }
 }

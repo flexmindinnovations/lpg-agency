@@ -17,6 +17,28 @@ import {
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
+/** AG Grid renders a boolean-valued column with its own checkbox cell by
+ * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
+ * "Status" column) — this swaps that for plain "Active"/"Inactive" text. */
+@Component({
+  selector: 'lpg-warehouse-status-cell',
+  standalone: true,
+  template: `{{ label() }}`,
+})
+class WarehouseStatusCell {
+  protected readonly label = signal('');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
+  agInit(params: any): void {
+    this.label.set(params.value ? 'Active' : 'Inactive');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  refresh(params: any): boolean {
+    this.agInit(params);
+    return true;
+  }
+}
+
 /** Warehouse list + create form — `tenant:configure`. */
 @Component({
   selector: 'lpg-warehouses-page',
@@ -152,6 +174,18 @@ export class WarehousesPage implements OnInit {
   protected readonly columns: DataGridColumn<WarehouseResponse>[] = [
     { field: 'name', header: 'Name', sortable: true, filterable: true },
     { field: 'address_line', header: 'Address', sortable: true, filterable: true },
+    {
+      field: 'is_active',
+      header: 'Status',
+      sortable: true,
+      cellRenderer: WarehouseStatusCell,
+    },
+    {
+      field: 'id',
+      header: '',
+      valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : 'Activate'),
+      onLinkClick: (row) => this.toggleActive(row),
+    },
   ];
 
   protected readonly form = this.formBuilder.group({
@@ -202,6 +236,16 @@ export class WarehousesPage implements OnInit {
         this.reload();
       },
       error: () => this.submitting.set(false),
+    });
+  }
+
+  protected toggleActive(warehouse: WarehouseResponse): void {
+    const nextActive = !warehouse.is_active;
+    this.warehouseService.setActive(warehouse.id, nextActive).subscribe({
+      next: () => {
+        this.notify.success(`"${warehouse.name}" ${nextActive ? 'activated' : 'deactivated'}.`);
+        this.reload();
+      },
     });
   }
 }
