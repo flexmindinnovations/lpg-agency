@@ -53,6 +53,11 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       'Tenant opt-in for zero-click automatic driver assignment on order confirmation — defaults to off (any falsy or absent value). When enabled, a just-confirmed order with an eligible idle driver in its own branch is assigned automatically; otherwise it falls back to manual assignment exactly as today, with a staff notification if nothing was eligible. Set to true to enable; set to false to disable.',
   },
+  stale_unassigned_order_hours: {
+    label: 'Stale Unassigned Order Alert (Hours)',
+    description:
+      'How many hours an order may sit confirmed with no driver assigned before branch staff are alerted — a tuning knob, not an on/off switch (this alert is a pure notification, not a mutation, so it has no kill switch). Falls back to a platform default (4 hours) when unset. A whole number, e.g. 6.',
+  },
 };
 
 const RECOGNIZED_CONFIG_KEYS = [
@@ -62,6 +67,7 @@ const RECOGNIZED_CONFIG_KEYS = [
   'ai_gateway_enabled',
   'ai_daily_token_budget',
   'auto_assignment_enabled',
+  'stale_unassigned_order_hours',
 ] as const;
 
 /** Best-effort label for a config key the frontend's catalog doesn't
