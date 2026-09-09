@@ -245,5 +245,23 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
         },
       },
     },
+    // Aura's own detailColor formula (`light-dark({surface.700},
+    // {surface.0})`) resolves `{surface.0}` through this preset's own
+    // `semantic.surface[0]` remap (used for the form-field inset-well look,
+    // above) to --color-surface-base — near-black in dark mode — while the
+    // toast's own background (styles.css's .p-toast-message override) is a
+    // different, only slightly lighter token (--color-surface-overlay).
+    // Near-black text on a dark-navy background is unreadable; every
+    // severity's formula shares the same `{surface.0}` reference, so every
+    // one needs the same override, not just the reported "success" case.
+    toast: {
+      normal: { detailColor: 'var(--color-text-primary)' },
+      info: { detailColor: 'var(--color-text-primary)' },
+      success: { detailColor: 'var(--color-text-primary)' },
+      warn: { detailColor: 'var(--color-text-primary)' },
+      error: { detailColor: 'var(--color-text-primary)' },
+      secondary: { detailColor: 'var(--color-text-primary)' },
+      contrast: { detailColor: 'var(--color-text-primary)' },
+    },
   },
 });
