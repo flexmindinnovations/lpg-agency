@@ -185,6 +185,13 @@ export const appRoutes: Route[] = [
         loadChildren: () => import('@lpg/reporting/feature-reports').then((m) => m.reportingFeatureReportsRoutes),
       },
       {
+        path: 'ai-assistant',
+        canActivate: [permissionGuard('ai:read')],
+        data: { breadcrumbs: [{ label: 'AI Command Center', routerLink: '/ai-assistant' }] },
+        loadChildren: () =>
+          import('@lpg/ai/feature-ai-assistant').then((m) => m.aiFeatureAiAssistantRoutes),
+      },
+      {
         path: 'admin/branches',
         canActivate: [permissionGuard('tenant:configure')],
         data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Branches', routerLink: '/admin/branches' }] },

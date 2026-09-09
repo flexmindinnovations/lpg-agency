@@ -190,6 +190,12 @@ export class ShellLayout {
         // No permission guard on this route (any authenticated user's own
         // notifications) — always shown, matching Dashboard above.
         { label: 'Notifications', icon: 'pi pi-bell', route: '/notifications' },
+        {
+          label: 'AI Command Center',
+          icon: 'pi pi-comments',
+          route: '/ai-assistant',
+          condition: can('ai:read'),
+        },
       ]),
       ...buildGroup('Operations', [
         {

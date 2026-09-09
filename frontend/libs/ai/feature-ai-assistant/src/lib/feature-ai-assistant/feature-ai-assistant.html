@@ -1,0 +1,61 @@
+<div class="assistant-container">
+  <div class="page-header">
+    <ng-template lpgHeaderTitlePortal>
+      <div class="page-header__text">
+        <h1 class="page-title">AI Command Center</h1>
+        <p class="page-subtitle">
+          Ask about today's orders, inventory, or complaints. Answers are read-only and
+          advisory — nothing here changes any record.
+        </p>
+      </div>
+    </ng-template>
+  </div>
+
+  <div class="ask-box">
+    <textarea
+      class="ask-box__input"
+      rows="2"
+      placeholder="e.g. What's today's inventory situation?"
+      [ngModel]="question()"
+      (ngModelChange)="question.set($event)"
+      (keydown)="onQuestionKeydown($event)"
+      [disabled]="asking()"
+    ></textarea>
+    <button
+      pButton
+      type="button"
+      [disabled]="asking() || !question().trim()"
+      (click)="ask()"
+    >
+      <i pButtonIcon class="pi" [class.pi-send]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
+      <span pButtonLabel>{{ asking() ? 'Asking…' : 'Ask' }}</span>
+    </button>
+  </div>
+
+  @if (history().length === 0) {
+    <p class="empty-state">Ask a question to get started.</p>
+  }
+
+  <div class="history">
+    @for (entry of history(); track $index) {
+      <article class="qa-entry">
+        <p class="qa-entry__question">{{ entry.question }}</p>
+
+        @if (entry.error) {
+          <p-message severity="error">
+            Something went wrong asking the assistant. Please try again.
+          </p-message>
+        } @else if (entry.response; as response) {
+          @if (response.disabled_reason; as reason) {
+            <p-message severity="info">{{ disabledReasonMessages[reason] }}</p-message>
+          } @else {
+            <p class="qa-entry__answer">{{ response.answer }}</p>
+            @if (response.tools_used.length) {
+              <p class="qa-entry__tools">Data from: {{ response.tools_used.join(', ') }}</p>
+            }
+          }
+        }
+      </article>
+    }
+  </div>
+</div>

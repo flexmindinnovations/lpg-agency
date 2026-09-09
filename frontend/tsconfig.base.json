@@ -58,7 +58,8 @@
       ],
       "@lpg/compliance/feature-compliance-calendar": [
         "./libs/compliance/feature-compliance-calendar/src/index.ts"
-      ]
+      ],
+      "@lpg/ai/feature-ai-assistant": ["./libs/ai/feature-ai-assistant/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

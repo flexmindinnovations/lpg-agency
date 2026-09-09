@@ -33,6 +33,7 @@ export * from './lib/inventory.service';
 export * from './lib/dashboard.service';
 export * from './lib/order.service';
 export * from './lib/cylinder-ledger.service';
+export * from './lib/ai-assistant.service';
 
 // ng-openapi-gen output (ADR-032) — regenerated, never hand-edited.
 export * from './lib/generated/api-configuration';

@@ -38,12 +38,24 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       "Default outstanding-balance credit limit applied to a customer's account when no more specific override exists.",
   },
+  ai_gateway_enabled: {
+    label: 'AI Gateway Enabled',
+    description:
+      'Tenant opt-in for the AI Command Center (ADR-045) — defaults to off (any falsy or absent value). Set to true to enable; set to false to disable. Live-verified: a value of the literal text "false" is correctly read as disabled, not truthy.',
+  },
+  ai_daily_token_budget: {
+    label: 'AI Daily Token Budget',
+    description:
+      "Optional override of the AI Command Center's daily token ceiling — falls back to a platform default (100,000) when unset. A whole number, e.g. 50000.",
+  },
 };
 
 const RECOGNIZED_CONFIG_KEYS = [
   'gst_rate_percent',
   'cancellation_fee_amount',
   'credit_limit_default',
+  'ai_gateway_enabled',
+  'ai_daily_token_budget',
 ] as const;
 
 /** Best-effort label for a config key the frontend's catalog doesn't
