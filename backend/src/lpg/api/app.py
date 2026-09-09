@@ -23,6 +23,7 @@ from lpg.api.middleware.correlation import CorrelationIdMiddleware
 from lpg.api.middleware.problem_details import register_exception_handlers
 from lpg.api.v1.routers import (
     admin,
+    ai,
     auth,
     cash_handover,
     complaint,
@@ -292,6 +293,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # API v1
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(admin.router, prefix=settings.api_v1_prefix)
+    app.include_router(ai.router, prefix=settings.api_v1_prefix)
     app.include_router(platform.router, prefix=settings.api_v1_prefix)
     # `onboarding_draft.router`'s literal `/customers/onboarding-drafts` path
     # must be registered before `customer.router`'s `/customers/{customer_id}`

@@ -367,6 +367,10 @@ ignore_imports = [
     "lpg.api.v1.dependencies.notification -> lpg.infrastructure.persistence.unit_of_work",
     # R5: dependencies/reporting.py wires the reporting repository.
     "lpg.api.v1.dependencies.reporting -> lpg.infrastructure.persistence.repositories.reporting",
+    # ADR-045: dependencies/ai.py wires the model gateway factory and the
+    # assistant-run ledger repository.
+    "lpg.api.v1.dependencies.ai -> lpg.infrastructure.ai.factory",
+    "lpg.api.v1.dependencies.ai -> lpg.infrastructure.persistence.repositories.ai",
 ]
 
 [[tool.importlinter.contracts]]

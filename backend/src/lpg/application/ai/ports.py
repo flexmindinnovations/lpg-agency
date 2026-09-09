@@ -21,7 +21,11 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    import uuid
+    from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,13 +42,20 @@ class ToolDeclaration:
 @dataclass(frozen=True, slots=True)
 class AgentRunResult:
     """The outcome of one `run_with_tools` call — a possibly-multi-turn tool
-    calling loop that ended in a final natural-language answer."""
+    calling loop that ended in a final natural-language answer.
+
+    Carries its own `provider`/`model` rather than the caller supplying
+    them: the use case that calls this port is provider-agnostic by design
+    (that's the whole point of the abstraction), so it has no business
+    knowing which adapter answered — only the adapter itself does."""
 
     final_answer: str
     tools_used: tuple[str, ...]
     prompt_tokens: int
     completion_tokens: int
     tool_turns: int
+    provider: str
+    model: str
 
 
 #: `(tool_name, arguments) -> JSON-safe result dict`. Supplied by the
@@ -74,4 +85,54 @@ class ModelGatewayPort(Protocol):
         (`AskAiAssistantUseCase`), matching how `weighment_gate_enabled` is
         checked in the use case, not a lower layer.
         """
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class AssistantRun:
+    """One `POST /ai/ask` call, append-only — same "plain entity, not an
+    `AggregateRoot`" shape as `WeighmentRecord`/`ProofOfDeliveryEntry`: it
+    never changes after creation, so there's no invariant-protecting
+    aggregate to model, just a record of what happened. Written inside the
+    same UoW as everything else in `AskAiAssistantUseCase`, which rides
+    `AuditRecorder`'s existing generic `before_flush` hook for a free audit
+    trail — no bespoke audit-write path needed.
+
+    Deliberately does not store the raw question/answer text bodies beyond
+    what this slice actually uses — full prompt/response capture for
+    evaluation is Phase 21's own later scope (a DPDP retention-policy
+    question, not just a schema one), explicitly deferred, not silently
+    dropped.
+    """
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID | None
+    role: str | None
+    question: str
+    tools_used: list[str]
+    provider: str
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    tool_turns: int
+    latency_ms: int | None
+    status: str
+    error_message: str | None
+    correlation_id: str | None
+    created_at: datetime
+
+
+@runtime_checkable
+class AssistantRunRepository(Protocol):
+    def next_id(self) -> uuid.UUID: ...
+
+    async def add(self, run: AssistantRun) -> None: ...
+
+    async def get_todays_token_usage(self) -> int:
+        """Sum of `prompt_tokens + completion_tokens` across every run for
+        the current tenant (RLS-scoped, same as `get_balance_summary()`'s
+        own convention — no explicit `tenant_id` filter needed) since the
+        start of today (UTC). The pre-call budget check reads this before
+        touching the gateway."""
         ...

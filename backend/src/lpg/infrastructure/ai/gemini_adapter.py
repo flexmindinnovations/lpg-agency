@@ -108,6 +108,8 @@ class GeminiModelGateway:
                         prompt_tokens=prompt_tokens,
                         completion_tokens=completion_tokens,
                         tool_turns=tool_turn,
+                        provider="gemini",
+                        model=self._model,
                     )
 
                 candidates = response.candidates
