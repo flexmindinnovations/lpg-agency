@@ -371,6 +371,17 @@ ignore_imports = [
     # assistant-run ledger repository.
     "lpg.api.v1.dependencies.ai -> lpg.infrastructure.ai.factory",
     "lpg.api.v1.dependencies.ai -> lpg.infrastructure.persistence.repositories.ai",
+    # Weighment Part 1 & 2 / TDT rating (Phase 20 subsystem 2) / Cylinder
+    # Identity (ADR-042): dependencies/compliance.py wires the scale,
+    # weighment-record, TDT-rating, and cylinder-unit repositories — all
+    # four concrete classes live in the same
+    # infrastructure.persistence.repositories.compliance module, same
+    # composition-root role as every other entry in this list. This was a
+    # genuine gap (the file already used the correct lazy-import-inside-
+    # the-provider-function pattern every other dependencies/*.py module
+    # uses; only this allowlist entry was missing) rather than a code
+    # structure problem.
+    "lpg.api.v1.dependencies.compliance -> lpg.infrastructure.persistence.repositories.compliance",
 ]
 
 [[tool.importlinter.contracts]]
