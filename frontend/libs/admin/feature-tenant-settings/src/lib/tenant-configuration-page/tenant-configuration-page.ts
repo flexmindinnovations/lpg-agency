@@ -48,6 +48,11 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       "Optional override of the AI Command Center's daily token ceiling — falls back to a platform default (100,000) when unset. A whole number, e.g. 50000.",
   },
+  auto_assignment_enabled: {
+    label: 'Auto-Assign Driver Enabled',
+    description:
+      'Tenant opt-in for zero-click automatic driver assignment on order confirmation — defaults to off (any falsy or absent value). When enabled, a just-confirmed order with an eligible idle driver in its own branch is assigned automatically; otherwise it falls back to manual assignment exactly as today, with a staff notification if nothing was eligible. Set to true to enable; set to false to disable.',
+  },
 };
 
 const RECOGNIZED_CONFIG_KEYS = [
@@ -56,6 +61,7 @@ const RECOGNIZED_CONFIG_KEYS = [
   'credit_limit_default',
   'ai_gateway_enabled',
   'ai_daily_token_budget',
+  'auto_assignment_enabled',
 ] as const;
 
 /** Best-effort label for a config key the frontend's catalog doesn't
