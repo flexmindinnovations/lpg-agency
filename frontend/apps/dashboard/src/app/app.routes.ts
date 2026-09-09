@@ -187,7 +187,7 @@ export const appRoutes: Route[] = [
       {
         path: 'ai-assistant',
         canActivate: [permissionGuard('ai:read')],
-        data: { breadcrumbs: [{ label: 'AI Command Center', routerLink: '/ai-assistant' }] },
+        data: { breadcrumbs: [] },
         loadChildren: () =>
           import('@lpg/ai/feature-ai-assistant').then((m) => m.aiFeatureAiAssistantRoutes),
       },
@@ -289,6 +289,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'notifications',
+        data: { breadcrumbs: [{ label: 'Notifications', routerLink: '/notifications' }] },
         loadChildren: () =>
           import('@lpg/notification/feature-notifications').then(
             (m) => m.notificationFeatureNotificationsRoutes,

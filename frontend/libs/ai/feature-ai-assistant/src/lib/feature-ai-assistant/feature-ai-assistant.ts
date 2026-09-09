@@ -1,4 +1,4 @@
-import { HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { BreadcrumbService, HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { HasPermissionDirective, MarkdownPipe, StatCardComponent, type StatTone } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
@@ -130,6 +130,7 @@ const SUGGESTED_PROMPTS: readonly SuggestedPrompt[] = [
 export class FeatureAiAssistant {
   private readonly aiAssistantService = inject(AiAssistantService);
   private readonly dashboardService = inject(DashboardService);
+  private readonly breadcrumbService = inject(BreadcrumbService);
   private readonly threadEl = viewChild<ElementRef<HTMLElement>>('threadEl');
 
   protected readonly question = signal('');
@@ -169,6 +170,8 @@ export class FeatureAiAssistant {
   );
 
   constructor() {
+    this.breadcrumbService.clear();
+
     // Scroll the thread to the newest message whenever it changes (a new
     // question, a new answer, or the "thinking" indicator appearing) — the
     // same behavior as every chat product this page is modeled on. Runs

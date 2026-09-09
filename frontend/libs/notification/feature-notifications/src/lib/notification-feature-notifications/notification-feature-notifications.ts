@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal, forwardRef 
 import { Router } from '@angular/router';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { ButtonModule } from 'primeng/button';
+import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { MessageService } from 'primeng/api';
 import { NotificationService } from '@lpg/shared/data-access';
@@ -51,7 +52,7 @@ export class NotificationActionCell {
 
 @Component({
   selector: 'lib-notification-feature-notifications',
-  imports: [ButtonDirective, ButtonIcon, ButtonLabel, DataGridComponent],
+  imports: [HeaderTitlePortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, DataGridComponent],
   templateUrl: './notification-feature-notifications.html',
   styleUrl: './notification-feature-notifications.css',
   changeDetection: ChangeDetectionStrategy.OnPush

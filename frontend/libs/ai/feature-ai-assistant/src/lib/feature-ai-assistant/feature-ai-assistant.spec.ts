@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { FeatureAiAssistant } from './feature-ai-assistant';
 import { ApiConfiguration } from '@lpg/shared/data-access';
+import { BreadcrumbService } from '@lpg/shared/ui/app-shell';
 
 describe('FeatureAiAssistant', () => {
   let component: FeatureAiAssistant;
@@ -81,5 +82,10 @@ describe('FeatureAiAssistant', () => {
     const entry = component['history']()[0];
     expect(entry.error).toBe(false);
     expect(entry.response?.disabled_reason).toBe('gateway_disabled');
+  });
+
+  it('clears breadcrumbs on initialization', () => {
+    const breadcrumbService = TestBed.inject(BreadcrumbService);
+    expect(breadcrumbService.items()).toEqual([]);
   });
 });
