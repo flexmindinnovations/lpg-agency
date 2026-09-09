@@ -26,7 +26,7 @@ class BranchRenamed(DomainEvent):
 
 
 class Branch(AggregateRoot):
-    __slots__ = ("_name", "_region", "_tenant_id")
+    __slots__ = ("_is_active", "_name", "_region", "_tenant_id")
 
     def __init__(
         self,
@@ -35,12 +35,14 @@ class Branch(AggregateRoot):
         name: str,
         region: str | None = None,
         *,
+        is_active: bool = True,
         version: int = 1,
     ) -> None:
         super().__init__(branch_id, version=version)
         self._tenant_id = tenant_id
         self._name = name
         self._region = region
+        self._is_active = is_active
 
     @property
     def tenant_id(self) -> uuid.UUID:
@@ -54,6 +56,10 @@ class Branch(AggregateRoot):
     def region(self) -> str | None:
         return self._region
 
+    @property
+    def is_active(self) -> bool:
+        return self._is_active
+
     def rename(self, new_name: str) -> None:
         stripped = new_name.strip()
         if not stripped:
@@ -65,3 +71,9 @@ class Branch(AggregateRoot):
 
     def set_region(self, region: str | None) -> None:
         self._region = region.strip() if region else None
+
+    def activate(self) -> None:
+        self._is_active = True
+
+    def deactivate(self) -> None:
+        self._is_active = False

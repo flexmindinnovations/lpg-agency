@@ -12,8 +12,18 @@ import pytest
 from sqlalchemy import text
 
 from lpg.application.common.tenant import RequestTenantContext
-from lpg.application.tenant.branch import CreateBranchCommand, CreateBranchUseCase
-from lpg.application.tenant.warehouse import CreateWarehouseCommand, CreateWarehouseUseCase
+from lpg.application.tenant.branch import (
+    CreateBranchCommand,
+    CreateBranchUseCase,
+    SetBranchActiveCommand,
+    SetBranchActiveUseCase,
+)
+from lpg.application.tenant.warehouse import (
+    CreateWarehouseCommand,
+    CreateWarehouseUseCase,
+    SetWarehouseActiveCommand,
+    SetWarehouseActiveUseCase,
+)
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.repositories.tenant import (
     SqlAlchemyBranchRepository,
@@ -96,6 +106,46 @@ class TestBranchRepository:
             assert reloaded is not None
             assert reloaded.name == "Nashik West"
             assert reloaded.region == "MH"
+            assert reloaded.is_active is True
+
+    async def test_deactivate_then_reactivate_persists_across_reload(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        context = RequestTenantContext(tenant_id=tenant_id)
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repository = SqlAlchemyBranchRepository(uow)
+                branch = await CreateBranchUseCase(repository, uow).execute(
+                    CreateBranchCommand(tenant_id=tenant_id, name="Pune South")
+                )
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                await SetBranchActiveUseCase(SqlAlchemyBranchRepository(uow), uow).execute(
+                    SetBranchActiveCommand(branch_id=branch.id, is_active=False)
+                )
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            deactivated = await SqlAlchemyBranchRepository(
+                SqlAlchemyUnitOfWork(session, context)
+            ).get(branch.id)
+            assert deactivated is not None
+            assert deactivated.is_active is False
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                await SetBranchActiveUseCase(SqlAlchemyBranchRepository(uow), uow).execute(
+                    SetBranchActiveCommand(branch_id=branch.id, is_active=True)
+                )
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            reactivated = await SqlAlchemyBranchRepository(
+                SqlAlchemyUnitOfWork(session, context)
+            ).get(branch.id)
+            assert reactivated is not None
+            assert reactivated.is_active is True
 
     async def test_cannot_see_another_tenants_branch(
         self, database: Database, admin_engine: AsyncEngine
@@ -157,3 +207,36 @@ class TestWarehouseRepository:
             assert reloaded is not None
             assert reloaded.name == "Nashik Central"
             assert reloaded.branch_id == branch_id
+            assert reloaded.is_active is True
+
+    async def test_deactivate_then_reactivate_persists_across_reload(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        branch_id = await _seed_branch(admin_engine, tenant_id=tenant_id, name="Nashik West")
+        context = RequestTenantContext(tenant_id=tenant_id)
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repository = SqlAlchemyWarehouseRepository(uow)
+                warehouse = await CreateWarehouseUseCase(repository, uow).execute(
+                    CreateWarehouseCommand(
+                        tenant_id=tenant_id,
+                        branch_id=branch_id,
+                        name="Nashik Central",
+                        address_line="Plot 12, MIDC Ambad",
+                    )
+                )
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                await SetWarehouseActiveUseCase(SqlAlchemyWarehouseRepository(uow), uow).execute(
+                    SetWarehouseActiveCommand(warehouse_id=warehouse.id, is_active=False)
+                )
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            deactivated = await SqlAlchemyWarehouseRepository(
+                SqlAlchemyUnitOfWork(session, context)
+            ).get(warehouse.id)
+            assert deactivated is not None
+            assert deactivated.is_active is False

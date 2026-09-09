@@ -130,7 +130,14 @@ class SqlAlchemyBranchRepository:
         if row is None:
             return None
 
-        branch = Branch(row.id, row.tenant_id, row.name, row.region, version=row.version)
+        branch = Branch(
+            row.id,
+            row.tenant_id,
+            row.name,
+            row.region,
+            is_active=row.is_active,
+            version=row.version,
+        )
         self._uow.register_aggregate(branch)
         return branch
 
@@ -144,7 +151,14 @@ class SqlAlchemyBranchRepository:
             .order_by(BranchModel.name)
         )
         return [
-            Branch(row.id, row.tenant_id, row.name, row.region, version=row.version)
+            Branch(
+                row.id,
+                row.tenant_id,
+                row.name,
+                row.region,
+                is_active=row.is_active,
+                version=row.version,
+            )
             for row in result.scalars()
         ]
 
@@ -155,6 +169,7 @@ class SqlAlchemyBranchRepository:
                 tenant_id=branch.tenant_id,
                 name=branch.name,
                 region=branch.region,
+                is_active=branch.is_active,
             )
         )
         self._uow.register_aggregate(branch)
@@ -167,6 +182,7 @@ class SqlAlchemyBranchRepository:
 
         row.name = branch.name
         row.region = branch.region
+        row.is_active = branch.is_active
 
 
 class SqlAlchemyWarehouseRepository:
@@ -181,7 +197,13 @@ class SqlAlchemyWarehouseRepository:
             return None
 
         warehouse = Warehouse(
-            row.id, row.tenant_id, row.branch_id, row.name, row.address_line, version=row.version
+            row.id,
+            row.tenant_id,
+            row.branch_id,
+            row.name,
+            row.address_line,
+            is_active=row.is_active,
+            version=row.version,
         )
         self._uow.register_aggregate(warehouse)
         return warehouse
@@ -199,6 +221,7 @@ class SqlAlchemyWarehouseRepository:
                 row.branch_id,
                 row.name,
                 row.address_line,
+                is_active=row.is_active,
                 version=row.version,
             )
             for row in result.scalars()
@@ -212,6 +235,7 @@ class SqlAlchemyWarehouseRepository:
                 branch_id=warehouse.branch_id,
                 name=warehouse.name,
                 address_line=warehouse.address_line,
+                is_active=warehouse.is_active,
             )
         )
         self._uow.register_aggregate(warehouse)
@@ -224,6 +248,7 @@ class SqlAlchemyWarehouseRepository:
 
         row.name = warehouse.name
         row.address_line = warehouse.address_line
+        row.is_active = warehouse.is_active
 
 
 class SqlAlchemyCylinderTypeRepository:

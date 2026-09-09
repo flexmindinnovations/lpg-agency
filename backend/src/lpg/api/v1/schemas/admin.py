@@ -39,6 +39,7 @@ class BranchResponse(BaseModel):
     id: str
     name: str
     region: str | None
+    is_active: bool
 
 
 class CreateBranchRequest(BaseModel):
@@ -54,6 +55,10 @@ class SetBranchRegionRequest(BaseModel):
     region: str | None = None
 
 
+class SetBranchActiveRequest(BaseModel):
+    is_active: bool
+
+
 # -- Warehouse ----------------------------------------------------------------
 
 
@@ -62,6 +67,7 @@ class WarehouseResponse(BaseModel):
     branch_id: str
     name: str
     address_line: str
+    is_active: bool
 
 
 class CreateWarehouseRequest(BaseModel):
@@ -76,6 +82,10 @@ class RenameWarehouseRequest(BaseModel):
 
 class RelocateWarehouseRequest(BaseModel):
     address_line: str = Field(min_length=1)
+
+
+class SetWarehouseActiveRequest(BaseModel):
+    is_active: bool
 
 
 # -- Cylinder Type --------------------------------------------------------------

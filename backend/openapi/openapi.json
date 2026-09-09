@@ -614,6 +614,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -633,7 +637,8 @@
         "required": [
           "id",
           "name",
-          "region"
+          "region",
+          "is_active"
         ],
         "title": "BranchResponse",
         "type": "object"
@@ -7383,6 +7388,19 @@
         "title": "ScheduleFeatureFlagRequest",
         "type": "object"
       },
+      "SetBranchActiveRequest": {
+        "properties": {
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "SetBranchActiveRequest",
+        "type": "object"
+      },
       "SetBranchRegionRequest": {
         "properties": {
           "region": {
@@ -7598,6 +7616,19 @@
           "config_value"
         ],
         "title": "SetTenantConfigurationRequest",
+        "type": "object"
+      },
+      "SetWarehouseActiveRequest": {
+        "properties": {
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_active"
+        ],
+        "title": "SetWarehouseActiveRequest",
         "type": "object"
       },
       "StaffUserResponse": {
@@ -8581,6 +8612,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -8590,7 +8625,8 @@
           "id",
           "branch_id",
           "name",
-          "address_line"
+          "address_line",
+          "is_active"
         ],
         "title": "WarehouseResponse",
         "type": "object"
@@ -8884,6 +8920,52 @@
           }
         },
         "summary": "Create a branch",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/branches/{branch_id}/active": {
+      "patch": {
+        "operationId": "set_branch_active_api_v1_admin_branches__branch_id__active_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "branch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Branch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBranchActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate or deactivate a branch",
         "tags": [
           "Administration"
         ]
@@ -10064,6 +10146,52 @@
           }
         },
         "summary": "Create a warehouse",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/warehouses/{warehouse_id}/active": {
+      "patch": {
+        "operationId": "set_warehouse_active_api_v1_admin_warehouses__warehouse_id__active_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWarehouseActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate or deactivate a warehouse",
         "tags": [
           "Administration"
         ]

@@ -83,6 +83,7 @@ class BranchModel(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid())
     name: Mapped[str] = mapped_column(String(200))
     region: Mapped[str | None] = mapped_column(String(200))
+    is_active: Mapped[bool] = mapped_column(Boolean(), server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )
@@ -108,6 +109,7 @@ class WarehouseModel(Base):
     branch_id: Mapped[uuid.UUID] = mapped_column(Uuid())
     name: Mapped[str] = mapped_column(String(200))
     address_line: Mapped[str] = mapped_column(String(500))
+    is_active: Mapped[bool] = mapped_column(Boolean(), server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

@@ -23,7 +23,7 @@ class WarehouseRenamed(DomainEvent):
 
 
 class Warehouse(AggregateRoot):
-    __slots__ = ("_address_line", "_branch_id", "_name", "_tenant_id")
+    __slots__ = ("_address_line", "_branch_id", "_is_active", "_name", "_tenant_id")
 
     def __init__(
         self,
@@ -33,6 +33,7 @@ class Warehouse(AggregateRoot):
         name: str,
         address_line: str,
         *,
+        is_active: bool = True,
         version: int = 1,
     ) -> None:
         super().__init__(warehouse_id, version=version)
@@ -40,6 +41,7 @@ class Warehouse(AggregateRoot):
         self._branch_id = branch_id
         self._name = name
         self._address_line = address_line
+        self._is_active = is_active
 
     @property
     def tenant_id(self) -> uuid.UUID:
@@ -57,6 +59,10 @@ class Warehouse(AggregateRoot):
     def address_line(self) -> str:
         return self._address_line
 
+    @property
+    def is_active(self) -> bool:
+        return self._is_active
+
     def rename(self, new_name: str) -> None:
         stripped = new_name.strip()
         if not stripped:
@@ -73,3 +79,9 @@ class Warehouse(AggregateRoot):
             raise InvariantViolation(msg, warehouse_id=str(self.id))
 
         self._address_line = stripped
+
+    def activate(self) -> None:
+        self._is_active = True
+
+    def deactivate(self) -> None:
+        self._is_active = False

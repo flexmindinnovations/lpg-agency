@@ -88,6 +88,32 @@ class SetBranchRegionUseCase:
 
 
 @dataclass(frozen=True, slots=True)
+class SetBranchActiveCommand(Command):
+    branch_id: uuid.UUID
+    is_active: bool
+
+
+class SetBranchActiveUseCase:
+    def __init__(self, repository: BranchRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: SetBranchActiveCommand) -> None:
+        branch = await self._repository.get(command.branch_id)
+        if branch is None:
+            msg = f"No branch visible with id {command.branch_id}."
+            raise NotFoundError(msg, branch_id=str(command.branch_id))
+
+        if command.is_active:
+            branch.activate()
+        else:
+            branch.deactivate()
+
+        await self._repository.save(branch)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
 class ListBranchesQuery:
     tenant_id: uuid.UUID
 

@@ -80,11 +80,13 @@ from lpg.api.v1.schemas.admin import (
     RenameCylinderTypeRequest,
     RenameTenantRequest,
     RenameWarehouseRequest,
+    SetBranchActiveRequest,
     SetBranchRegionRequest,
     SetCylinderTypeActiveRequest,
     SetFeatureFlagOverrideRequest,
     SetPriceRequest,
     SetTenantConfigurationRequest,
+    SetWarehouseActiveRequest,
     StaffUserResponse,
     TenantConfigurationResponse,
     TenantResponse,
@@ -161,6 +163,8 @@ from lpg.application.tenant.branch import (
     ListBranchesUseCase,
     RenameBranchCommand,
     RenameBranchUseCase,
+    SetBranchActiveCommand,
+    SetBranchActiveUseCase,
     SetBranchRegionCommand,
     SetBranchRegionUseCase,
 )
@@ -210,6 +214,8 @@ from lpg.application.tenant.warehouse import (
     RelocateWarehouseUseCase,
     RenameWarehouseCommand,
     RenameWarehouseUseCase,
+    SetWarehouseActiveCommand,
+    SetWarehouseActiveUseCase,
 )
 from lpg.config.settings import Settings, get_settings
 from lpg.domain.license.license import License
@@ -273,7 +279,10 @@ async def list_branches(
 ) -> list[BranchResponse]:
     use_case = ListBranchesUseCase(repository)
     branches = await use_case.execute(ListBranchesQuery(tenant_id=principal.tenant_id))
-    return [BranchResponse(id=str(b.id), name=b.name, region=b.region) for b in branches]
+    return [
+        BranchResponse(id=str(b.id), name=b.name, region=b.region, is_active=b.is_active)
+        for b in branches
+    ]
 
 
 @router.post("/branches", response_model=BranchResponse, status_code=201, summary="Create a branch")
@@ -287,7 +296,9 @@ async def create_branch(
     branch = await use_case.execute(
         CreateBranchCommand(tenant_id=principal.tenant_id, name=body.name, region=body.region)
     )
-    return BranchResponse(id=str(branch.id), name=branch.name, region=branch.region)
+    return BranchResponse(
+        id=str(branch.id), name=branch.name, region=branch.region, is_active=branch.is_active
+    )
 
 
 @router.patch("/branches/{branch_id}/rename", status_code=204, summary="Rename a branch")
@@ -314,6 +325,22 @@ async def set_branch_region(
     await use_case.execute(SetBranchRegionCommand(branch_id=branch_id, region=body.region))
 
 
+@router.patch(
+    "/branches/{branch_id}/active",
+    status_code=204,
+    summary="Activate or deactivate a branch",
+)
+async def set_branch_active(
+    branch_id: uuid.UUID,
+    body: SetBranchActiveRequest,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[BranchRepository, Depends(get_branch_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = SetBranchActiveUseCase(repository, unit_of_work)
+    await use_case.execute(SetBranchActiveCommand(branch_id=branch_id, is_active=body.is_active))
+
+
 # -- Warehouses -----------------------------------------------------------------
 
 
@@ -326,7 +353,11 @@ async def list_warehouses(
     warehouses = await use_case.execute(ListWarehousesQuery(tenant_id=principal.tenant_id))
     return [
         WarehouseResponse(
-            id=str(w.id), branch_id=str(w.branch_id), name=w.name, address_line=w.address_line
+            id=str(w.id),
+            branch_id=str(w.branch_id),
+            name=w.name,
+            address_line=w.address_line,
+            is_active=w.is_active,
         )
         for w in warehouses
     ]
@@ -355,6 +386,7 @@ async def create_warehouse(
         branch_id=str(warehouse.branch_id),
         name=warehouse.name,
         address_line=warehouse.address_line,
+        is_active=warehouse.is_active,
     )
 
 
@@ -383,6 +415,24 @@ async def relocate_warehouse(
     use_case = RelocateWarehouseUseCase(repository, unit_of_work)
     await use_case.execute(
         RelocateWarehouseCommand(warehouse_id=warehouse_id, new_address_line=body.address_line)
+    )
+
+
+@router.patch(
+    "/warehouses/{warehouse_id}/active",
+    status_code=204,
+    summary="Activate or deactivate a warehouse",
+)
+async def set_warehouse_active(
+    warehouse_id: uuid.UUID,
+    body: SetWarehouseActiveRequest,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[WarehouseRepository, Depends(get_warehouse_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    use_case = SetWarehouseActiveUseCase(repository, unit_of_work)
+    await use_case.execute(
+        SetWarehouseActiveCommand(warehouse_id=warehouse_id, is_active=body.is_active)
     )
 
 

@@ -92,6 +92,32 @@ class RelocateWarehouseUseCase:
 
 
 @dataclass(frozen=True, slots=True)
+class SetWarehouseActiveCommand(Command):
+    warehouse_id: uuid.UUID
+    is_active: bool
+
+
+class SetWarehouseActiveUseCase:
+    def __init__(self, repository: WarehouseRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: SetWarehouseActiveCommand) -> None:
+        warehouse = await self._repository.get(command.warehouse_id)
+        if warehouse is None:
+            msg = f"No warehouse visible with id {command.warehouse_id}."
+            raise NotFoundError(msg, warehouse_id=str(command.warehouse_id))
+
+        if command.is_active:
+            warehouse.activate()
+        else:
+            warehouse.deactivate()
+
+        await self._repository.save(warehouse)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
 class ListWarehousesQuery:
     tenant_id: uuid.UUID
 

@@ -35,6 +35,20 @@ def _make_warehouse(**overrides: object) -> Warehouse:
 
 
 class TestBranch:
+    def test_is_active_defaults_to_true(self) -> None:
+        branch = _make_branch()
+
+        assert branch.is_active is True
+
+    def test_deactivate_then_activate_round_trips(self) -> None:
+        branch = _make_branch()
+
+        branch.deactivate()
+        assert branch.is_active is False
+
+        branch.activate()
+        assert branch.is_active is True
+
     def test_rename_changes_the_name_and_records_an_event(self) -> None:
         branch = _make_branch()
 
@@ -65,6 +79,20 @@ class TestBranch:
 
 
 class TestWarehouse:
+    def test_is_active_defaults_to_true(self) -> None:
+        warehouse = _make_warehouse()
+
+        assert warehouse.is_active is True
+
+    def test_deactivate_then_activate_round_trips(self) -> None:
+        warehouse = _make_warehouse()
+
+        warehouse.deactivate()
+        assert warehouse.is_active is False
+
+        warehouse.activate()
+        assert warehouse.is_active is True
+
     def test_rename_changes_the_name_and_records_an_event(self) -> None:
         warehouse = _make_warehouse()
 
