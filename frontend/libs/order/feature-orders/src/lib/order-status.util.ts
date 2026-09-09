@@ -1,4 +1,4 @@
-import type { AppError } from '@lpg/shared/data-access';
+export { errorMessageFor } from '@lpg/shared/data-access';
 
 export const STATUS_SEVERITY: Record<
   string,
@@ -27,32 +27,9 @@ export function statusLabel(status: string): string {
     .join(' ');
 }
 
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-export function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
-    case 'RESOURCE_NOT_FOUND':
-      // Covers more than "order not found" — e.g. confirm() surfaces a
-      // missing price-list entry via this same error code. The backend's
-      // `detail` already names the specific resource, so prefer it.
-      return isAppError(error) && error.detail ? error.detail : 'That resource could not be found.';
-    case 'INVALID_STATE_TRANSITION':
-      return 'That action is not valid for the order in its current state.';
-    case 'INSUFFICIENT_VEHICLE_STOCK':
-      return 'Not enough stock reserved on the vehicle for that quantity.';
-    case 'INCOMPLETE_PROOF_OF_DELIVERY':
-      return 'Proof of delivery is incomplete or invalid.';
-    case 'OTP_MISMATCH':
-      return 'The OTP entered is incorrect.';
-    case 'OTP_EXPIRED':
-      return 'The OTP has expired — depart again to issue a new one.';
-    case 'IDEMPOTENCY_KEY_CONFLICT':
-      return 'This request was already submitted with different details.';
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
+// errorMessageFor is now the canonical version from @lpg/shared/data-access
+// (re-exported above) — it already covers every case this file used to
+// hand-roll (PERMISSION_DENIED, RESOURCE_NOT_FOUND with detail-preference,
+// INVALID_STATE_TRANSITION, INSUFFICIENT_VEHICLE_STOCK,
+// INCOMPLETE_PROOF_OF_DELIVERY, OTP_MISMATCH, OTP_EXPIRED,
+// IDEMPOTENCY_KEY_CONFLICT).

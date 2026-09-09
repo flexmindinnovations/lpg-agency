@@ -32,6 +32,64 @@ export interface AppError {
   readonly isNetworkError: boolean;
 }
 
+/**
+ * True when `value` is a normalised `AppError` — the type every HTTP
+ * failure becomes via `toAppError`/`problemDetailsInterceptor`.
+ *
+ * The one canonical version of a check 27+ feature files used to
+ * hand-duplicate. Anything that still needs its own copy is wrong, not
+ * this one.
+ */
+export function isAppError(value: unknown): value is AppError {
+  return typeof value === 'object' && value !== null && 'errorCode' in value;
+}
+
+/**
+ * A human-readable message for any caught error, for direct display
+ * (a toast, an inline banner).
+ *
+ * Covers the error codes that recur across features (permission, not
+ * found, OTP, idempotency, ...) plus the couple of codes worth a
+ * dedicated message app-wide. Anything unmapped falls back to the
+ * backend's own RFC 7807 `detail` text (already written for a human)
+ * rather than a flat generic string, so this stays useful even for
+ * domain errors it doesn't know about by name.
+ */
+export function errorMessageFor(
+  error: unknown,
+  fallback = 'Something went wrong. Please try again.',
+): string {
+  if (!isAppError(error)) {
+    return fallback;
+  }
+  if (error.isNetworkError) {
+    return 'Cannot reach the server. Check your connection and try again.';
+  }
+  switch (error.errorCode) {
+    case 'PERMISSION_DENIED':
+      return "You don't have permission to do that.";
+    case 'RESOURCE_NOT_FOUND':
+      // The backend's own detail already names the specific resource.
+      return error.detail || 'That resource could not be found.';
+    case 'INVALID_STATE_TRANSITION':
+      return 'That action is not valid for the order in its current state.';
+    case 'INSUFFICIENT_VEHICLE_STOCK':
+      return 'Not enough stock reserved on the vehicle for that quantity.';
+    case 'INCOMPLETE_PROOF_OF_DELIVERY':
+      return 'Proof of delivery is incomplete or invalid.';
+    case 'OTP_MISMATCH':
+      return 'The OTP entered is incorrect.';
+    case 'OTP_EXPIRED':
+      return 'The OTP has expired — depart again to issue a new one.';
+    case 'IDEMPOTENCY_KEY_CONFLICT':
+      return 'This request was already submitted with different details.';
+    case 'LICENSE_ACTIVATION_FAILED':
+      return 'That key is invalid, already activated, or has been revoked.';
+    default:
+      return error.detail || fallback;
+  }
+}
+
 const isProblemDetails = (value: unknown): value is ProblemDetails =>
   typeof value === 'object' &&
   value !== null &&
