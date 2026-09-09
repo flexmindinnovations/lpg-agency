@@ -108,7 +108,7 @@
       <button pButton type="button" severity="secondary" (click)="closeAdjustModal()">
         Cancel
       </button>
-      <button pButton type="submit" [loading]="isSubmitting()">Apply Adjustment</button>
+      <button pButton type="submit" [disabled]="isSubmitting()">@if (isSubmitting()) {<i class="pi pi-spin pi-spinner"></i> }Apply Adjustment</button>
     </div>
   </form>
 </p-drawer>

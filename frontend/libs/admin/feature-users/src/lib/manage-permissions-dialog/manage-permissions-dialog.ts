@@ -94,7 +94,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 
             <div class="modal-actions mt-6">
               <button pButton type="button" severity="secondary" (click)="visibleChange.emit(false)">Cancel</button>
-              <button pButton type="submit" [disabled]="submitting()" [loading]="submitting()">Save Permissions</button>
+              <button pButton type="submit" [disabled]="submitting()">@if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save Permissions</button>
             </div>
           </form>
         }

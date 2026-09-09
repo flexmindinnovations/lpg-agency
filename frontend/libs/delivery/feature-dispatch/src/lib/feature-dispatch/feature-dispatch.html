@@ -218,10 +218,9 @@
       <button
         pButton
         type="submit"
-        [loading]="loading()"
-        [disabled]="planForm.invalid"
+        [disabled]="loading() || planForm.invalid"
       >
-        Plan Route
+        @if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Plan Route
       </button>
     </div>
   </form>
@@ -276,8 +275,8 @@
           </button>
         }
         @if (canStartRoute()) {
-          <button pButton type="button" [loading]="loading()" (click)="onStartRoute()">
-            <i class="pi pi-play"></i>
+          <button pButton type="button" [disabled]="loading()" (click)="onStartRoute()">
+            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-play'"></i>
             <span>Start Route</span>
           </button>
         }
@@ -286,10 +285,10 @@
             pButton
             type="button"
             severity="danger"
-            [loading]="loading()"
+            [disabled]="loading()"
             (click)="onCancelRoute()"
           >
-            <i class="pi pi-times"></i>
+            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-times'"></i>
             <span>Cancel Route</span>
           </button>
         }
@@ -297,10 +296,10 @@
           <button
             pButton
             type="button"
-            [loading]="loading()"
+            [disabled]="loading()"
             (click)="onReconcileRoute()"
           >
-            <i class="pi pi-check-square"></i>
+            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check-square'"></i>
             <span>Reconcile</span>
           </button>
         }
@@ -310,10 +309,10 @@
             pButton
             type="button"
             severity="secondary"
-            [loading]="loading()"
+            [disabled]="loading()"
             (click)="openCashHandoverForm()"
           >
-            <i class="pi pi-wallet"></i>
+            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-wallet'"></i>
             <span>Declare Cash Handover</span>
           </button>
         }

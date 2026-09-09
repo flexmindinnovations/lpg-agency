@@ -61,8 +61,8 @@ import {
           @if (canManageLicense()) {
             <button pButton type="button" (click)="goToActivation()">Manage license</button>
           }
-          <button pButton type="button" severity="secondary" [loading]="checking()" (click)="recheck()">
-            Check again
+          <button pButton type="button" severity="secondary" [disabled]="checking()" (click)="recheck()">
+            @if (checking()) {<i class="pi pi-spin pi-spinner"></i> }Check again
           </button>
           <button pButton type="button" severity="secondary" (click)="signOut()">Sign out</button>
         </div>

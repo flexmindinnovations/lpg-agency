@@ -166,10 +166,10 @@
             pButton
             type="button"
             severity="danger"
-            [loading]="loading()"
+            [disabled]="loading()"
             (click)="confirmDeactivate()"
           >
-            <i class="pi pi-user-minus"></i>
+            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-user-minus'"></i>
             <span>Deactivate</span>
           </button>
         }

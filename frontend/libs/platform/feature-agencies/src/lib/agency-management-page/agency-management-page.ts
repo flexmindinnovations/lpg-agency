@@ -98,18 +98,18 @@ import type { TenantResponse } from '@lpg/shared/data-access';
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="closeDetails()">Close panel</button>
               @if (agency.status === 'active') {
-                <button pButton type="button" severity="warn" [loading]="acting()" (click)="suspend(agency.id)">
-                  Suspend
+                <button pButton type="button" severity="warn" [disabled]="acting()" (click)="suspend(agency.id)">
+                  @if (acting()) {<i class="pi pi-spin pi-spinner"></i> }Suspend
                 </button>
               }
               @if (agency.status === 'suspended') {
-                <button pButton type="button" severity="success" [loading]="acting()" (click)="reactivate(agency.id)">
-                  Reactivate
+                <button pButton type="button" severity="success" [disabled]="acting()" (click)="reactivate(agency.id)">
+                  @if (acting()) {<i class="pi pi-spin pi-spinner"></i> }Reactivate
                 </button>
               }
               @if (agency.status !== 'closed') {
-                <button pButton type="button" severity="danger" [loading]="acting()" (click)="closeAgency(agency.id)">
-                  Close agency
+                <button pButton type="button" severity="danger" [disabled]="acting()" (click)="closeAgency(agency.id)">
+                  @if (acting()) {<i class="pi pi-spin pi-spinner"></i> }Close agency
                 </button>
               }
             </div>

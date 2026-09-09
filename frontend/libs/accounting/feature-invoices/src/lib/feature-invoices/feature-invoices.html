@@ -114,20 +114,20 @@
         <button
           pButton
           type="button"
-          [loading]="isPrinting()"
+          [disabled]="isPrinting()"
           (click)="printPdf()"
         >
-          <i class="pi pi-file-pdf"></i>
+          <i [class]="isPrinting() ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
           <span>Print PDF</span>
         </button>
         <button
           pButton
           type="button"
           severity="secondary"
-          [loading]="isPrinting()"
+          [disabled]="isPrinting()"
           (click)="printThermal()"
         >
-          <i class="pi pi-print"></i>
+          <i [class]="isPrinting() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
           <span>Print Thermal</span>
         </button>
       </div>

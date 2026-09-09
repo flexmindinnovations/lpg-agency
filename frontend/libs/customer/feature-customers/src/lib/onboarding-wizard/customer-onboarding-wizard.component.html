@@ -111,9 +111,9 @@
                   type="button"
                   severity="secondary"
                   text
-                  [loading]="savingDraft()"
+                  [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i class="pi pi-save"></i><span>Save & Exit</span></button>
+                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
                 <button pButton type="button" (click)="currentStep.set(2)"><span>Next</span><i class="pi pi-arrow-right"></i></button>
               </div>
             </div>
@@ -201,9 +201,9 @@
                   type="button"
                   severity="secondary"
                   text
-                  [loading]="savingDraft()"
+                  [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i class="pi pi-save"></i><span>Save & Exit</span></button>
+                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
                 <button pButton type="button" (click)="nextStep(registrationForm, 3)"><span>Next</span><i class="pi pi-arrow-right"></i></button>
               </div>
             </div>
@@ -274,9 +274,9 @@
                   type="button"
                   severity="secondary"
                   text
-                  [loading]="savingDraft()"
+                  [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i class="pi pi-save"></i><span>Save & Exit</span></button>
+                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
                 <button pButton type="button" (click)="nextStep(addressForm, 4)"><span>Next</span><i class="pi pi-arrow-right"></i></button>
               </div>
             </div>
@@ -337,9 +337,9 @@
                   type="button"
                   severity="secondary"
                   text
-                  [loading]="savingDraft()"
+                  [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i class="pi pi-save"></i><span>Save & Exit</span></button>
+                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
                 <button pButton type="button" (click)="nextStep(kycForm, 5)"><span>Review</span><i class="pi pi-arrow-right"></i></button>
               </div>
             </div>
@@ -386,10 +386,10 @@
                   type="button"
                   severity="secondary"
                   text
-                  [loading]="savingDraft()"
+                  [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i class="pi pi-save"></i><span>Save & Exit</span></button>
-                <button pButton type="button" severity="success" (click)="submitWizard()" [loading]="isSubmitting()"><i class="pi pi-check"></i><span>Submit & Approve</span></button>
+                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
+                <button pButton type="button" severity="success" (click)="submitWizard()" [disabled]="isSubmitting()"><i [class]="isSubmitting() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i><span>Submit & Approve</span></button>
               </div>
             </div>
           </ng-template>
@@ -409,7 +409,7 @@
     <div class="leave-dialog-actions">
       <button pButton type="button" severity="secondary" text (click)="onCancelLeave()">Cancel</button>
       <button pButton type="button" severity="danger" text (click)="onDiscardAndLeave()">Discard & Leave</button>
-      <button pButton type="button" [loading]="savingDraft()" (click)="onSaveAndLeave()">Save & Leave</button>
+      <button pButton type="button" [disabled]="savingDraft()" (click)="onSaveAndLeave()">@if (savingDraft()) {<i class="pi pi-spin pi-spinner"></i> }Save & Leave</button>
     </div>
   </p-dialog>
 </div>

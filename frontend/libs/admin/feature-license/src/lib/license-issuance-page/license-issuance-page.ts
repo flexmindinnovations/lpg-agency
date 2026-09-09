@@ -156,8 +156,8 @@ const VALIDITY_OPTIONS = [
           </div>
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="issueDrawerVisible.set(false)">Cancel</button>
-            <button pButton type="submit" [disabled]="submitting() || issueForm.invalid" [loading]="submitting()">
-              Issue license
+            <button pButton type="submit" [disabled]="submitting() || issueForm.invalid">
+              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Issue license
             </button>
           </div>
         </form>
@@ -191,8 +191,8 @@ const VALIDITY_OPTIONS = [
               <span>Copy</span>
             </button>
             @if (!activatedLicense()) {
-              <button pButton type="button" severity="success" [loading]="activating()" (click)="activateIssuedLicense(issued)">
-                Activate license
+              <button pButton type="button" severity="success" [disabled]="activating()" (click)="activateIssuedLicense(issued)">
+                @if (activating()) {<i class="pi pi-spin pi-spinner"></i> }Activate license
               </button>
             }
             <button pButton type="button" (click)="dismissIssuedKey()">Done</button>
@@ -238,8 +238,8 @@ const VALIDITY_OPTIONS = [
               </lpg-form-field>
               </div>
               <div class="modal-actions">
-                <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()" [loading]="savingPlanTier()">
-                  Save plan tier
+                <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()">
+                  @if (savingPlanTier()) {<i class="pi pi-spin pi-spinner"></i> }Save plan tier
                 </button>
               </div>
             </form>
@@ -264,8 +264,8 @@ const VALIDITY_OPTIONS = [
               </lpg-form-field>
               </div>
               <div class="modal-actions">
-                <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()" [loading]="savingDeviceCap()">
-                  Save device cap
+                <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()">
+                  @if (savingDeviceCap()) {<i class="pi pi-spin pi-spinner"></i> }Save device cap
                 </button>
               </div>
             </form>

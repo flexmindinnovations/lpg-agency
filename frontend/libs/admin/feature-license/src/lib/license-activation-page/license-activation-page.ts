@@ -77,8 +77,8 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
               <input pInputText id="license-key" type="text" formControlName="key" placeholder="LPG-XXXX-XXXX-XXXX-XXXX" [fluid]="true" />
             </lpg-form-field>
             <div class="admin-form-actions">
-              <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
-                Activate
+              <button pButton type="submit" [disabled]="submitting() || form.invalid">
+                @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Activate
               </button>
             </div>
           </form>

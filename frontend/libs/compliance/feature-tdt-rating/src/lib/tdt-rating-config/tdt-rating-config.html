@@ -163,8 +163,8 @@
         <button pButton type="button" severity="secondary" routerLink="/admin/tenant-config">
           <i class="pi pi-arrow-left"></i><span>Back to Tenant Configuration</span>
         </button>
-        <button pButton type="submit" [disabled]="saving() || loading()" [loading]="saving()">
-          Save configuration
+        <button pButton type="submit" [disabled]="saving() || loading()">
+          @if (saving()) {<i class="pi pi-spin pi-spinner"></i> }Save configuration
         </button>
       </div>
     </div>

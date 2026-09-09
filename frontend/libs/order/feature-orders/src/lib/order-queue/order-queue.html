@@ -172,10 +172,9 @@
         <button
           pButton
           type="button"
-          [loading]="loading()"
           [disabled]="createForm.invalid || !selectedAddress() || loading()"
           (click)="onSubmitCreate()"
-        >Create Booking</button>
+        >@if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Create Booking</button>
       </div>
     </ng-template>
   </p-drawer>

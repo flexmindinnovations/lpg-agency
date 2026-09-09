@@ -143,8 +143,8 @@ const STAFF_ROLES = [
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="inviteDrawerVisible.set(false)">Cancel</button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
-              Send invite
+            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Send invite
             </button>
           </div>
         </form>

@@ -143,8 +143,8 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid" [loading]="submitting()">
-              Save price
+            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save price
             </button>
           </div>
         </form>

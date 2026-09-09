@@ -257,10 +257,9 @@
         pButton
         type="button"
         (click)="submitRaise()"
-        [loading]="registerLoading()"
-        [disabled]="raiseForm.invalid"
+        [disabled]="registerLoading() || raiseForm.invalid"
       >
-        Raise Complaint
+        @if (registerLoading()) {<i class="pi pi-spin pi-spinner"></i> }Raise Complaint
       </button>
     </div>
   </ng-template>
@@ -291,7 +290,7 @@
   <ng-template #footer>
     <div class="modal-actions">
       <button pButton type="button" class="p-button-text p-button-secondary" (click)="closeAssignModal()">Cancel</button>
-      <button pButton type="button" (click)="submitAssign()" [loading]="assignLoading()" [disabled]="assignForm.invalid">Assign</button>
+      <button pButton type="button" (click)="submitAssign()" [disabled]="assignLoading() || assignForm.invalid">@if (assignLoading()) {<i class="pi pi-spin pi-spinner"></i> }Assign</button>
     </div>
   </ng-template>
 </p-drawer>
@@ -340,7 +339,7 @@
   <ng-template #footer>
     <div class="modal-actions">
       <button pButton type="button" class="p-button-text p-button-secondary" (click)="closeResolveModal()">Cancel</button>
-      <button pButton type="button" (click)="submitResolve()" [loading]="resolveLoading()" [disabled]="resolveForm.invalid">Resolve</button>
+      <button pButton type="button" (click)="submitResolve()" [disabled]="resolveLoading() || resolveForm.invalid">@if (resolveLoading()) {<i class="pi pi-spin pi-spinner"></i> }Resolve</button>
     </div>
   </ng-template>
 </p-drawer>

@@ -19,8 +19,8 @@
       </button>
       <div class="page-header__actions-buttons">
       @if (canConfirm()) {
-      <button *lpgHasPermission="'orders:confirm'" pButton type="button" [loading]="loading()" (click)="onConfirm()">
-        <i class="pi pi-check"></i>
+      <button *lpgHasPermission="'orders:confirm'" pButton type="button" [disabled]="loading()" (click)="onConfirm()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i>
         <span>Confirm</span>
       </button>
       } @if (canAssign()) {
@@ -29,13 +29,13 @@
         <span>Assign</span>
       </button>
       } @if (canDispatch()) {
-      <button *lpgHasPermission="'orders:dispatch'" pButton type="button" [loading]="loading()" (click)="onDispatch()">
-        <i class="pi pi-box"></i>
+      <button *lpgHasPermission="'orders:dispatch'" pButton type="button" [disabled]="loading()" (click)="onDispatch()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-box'"></i>
         <span>Dispatch</span>
       </button>
       } @if (canDepart()) {
-      <button *lpgHasPermission="'orders:deliver'" pButton type="button" [loading]="loading()" (click)="onDepart()">
-        <i class="pi pi-send"></i>
+      <button *lpgHasPermission="'orders:deliver'" pButton type="button" [disabled]="loading()" (click)="onDepart()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-send'"></i>
         <span>Depart</span>
       </button>
       } @if (canDeliverOrFail()) {
@@ -55,13 +55,13 @@
         <span>Failed Delivery</span>
       </button>
       } @if (canReschedule()) {
-      <button *lpgHasPermission="'orders:assign'" pButton type="button" [loading]="loading()" (click)="onReschedule()">
-        <i class="pi pi-refresh"></i>
+      <button *lpgHasPermission="'orders:assign'" pButton type="button" [disabled]="loading()" (click)="onReschedule()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>
         <span>Reschedule</span>
       </button>
       } @if (canClose()) {
-      <button *lpgHasPermission="'orders:close'" pButton type="button" [loading]="loading()" (click)="onClose()">
-        <i class="pi pi-lock"></i>
+      <button *lpgHasPermission="'orders:close'" pButton type="button" [disabled]="loading()" (click)="onClose()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-lock'"></i>
         <span>Close Order</span>
       </button>
       } @if (canCancelFree() || requiresCancelApproval()) {
@@ -371,10 +371,10 @@
             pButton
             type="button"
             text
-            [loading]="uploadingSignature()"
+            [disabled]="uploadingSignature()"
             (click)="uploadSignature()"
           >
-            Save Signature
+            @if (uploadingSignature()) {<i class="pi pi-spin pi-spinner"></i> }Save Signature
           </button>
           @if (signatureBlobRef()) {
           <span class="pod-status pod-status--ok"><i class="pi pi-check"></i> Saved</span>
