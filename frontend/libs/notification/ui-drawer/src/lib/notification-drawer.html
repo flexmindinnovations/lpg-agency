@@ -46,9 +46,11 @@
               rounded
               severity="secondary"
               size="small"
+              iconOnly
+              aria-label="Mark as read"
               pTooltip="Mark as read"
               (click)="markAsRead(notification.id); $event.stopPropagation()">
-              <i pButtonIcon class="pi pi-check"></i>
+              <i class="pi pi-check"></i>
             </button>
             }
           </div>

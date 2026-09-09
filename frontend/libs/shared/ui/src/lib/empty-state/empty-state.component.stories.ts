@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { moduleMetadata } from '@storybook/angular';
 import { Component, Input } from '@angular/core';
-import { ButtonDirective, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { EmptyStateComponent, type EmptyStateTone } from './empty-state.component';
 
 @Component({
   selector: 'lpg-empty-state-story-host',
   standalone: true,
-  imports: [EmptyStateComponent, ButtonDirective, ButtonLabel],
+  imports: [EmptyStateComponent, ButtonDirective],
   template: `
     <div style="max-inline-size: 480px;">
       <lpg-empty-state [title]="title" [description]="description" [tone]="tone" [icon]="icon">
@@ -17,7 +17,7 @@ import { EmptyStateComponent, type EmptyStateTone } from './empty-state.componen
             actions
             type="button"
             [severity]="tone === 'error' ? 'secondary' : undefined"
-          ><span pButtonLabel>{{ tone === 'error' ? 'Retry' : 'Schedule delivery' }}</span></button>
+          ><span>{{ tone === 'error' ? 'Retry' : 'Schedule delivery' }}</span></button>
         }
       </lpg-empty-state>
     </div>
@@ -34,7 +34,7 @@ class EmptyStateStoryHost {
 const meta: Meta<EmptyStateStoryHost> = {
   title: 'Shared UI/Empty State',
   component: EmptyStateStoryHost,
-  decorators: [moduleMetadata({ imports: [EmptyStateComponent, ButtonDirective, ButtonLabel] })],
+  decorators: [moduleMetadata({ imports: [EmptyStateComponent, ButtonDirective] })],
 };
 export default meta;
 type Story = StoryObj<EmptyStateStoryHost>;

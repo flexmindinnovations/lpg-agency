@@ -3,11 +3,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NotificationService, WebSocketService } from '@lpg/shared/data-access';
 import { interval, startWith } from 'rxjs';
 import { OverlayBadge } from 'primeng/overlaybadge';
-import { ButtonDirective, ButtonIcon } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 
 @Component({
   selector: 'lib-notification-bell',
-  imports: [OverlayBadge, ButtonDirective, ButtonIcon],
+  imports: [OverlayBadge, ButtonDirective],
   templateUrl: './notification-bell.html',
   styleUrl: './notification-bell.css'
 })

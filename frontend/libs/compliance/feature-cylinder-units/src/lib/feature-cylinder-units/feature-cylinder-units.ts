@@ -20,7 +20,7 @@ import {
   formatReportDate,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { Dialog } from 'primeng/dialog';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -93,8 +93,6 @@ type ActiveAction = 'none' | 'test' | 'custody' | 'condition' | 'receive';
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     Drawer,
     DrawerA11yDirective,

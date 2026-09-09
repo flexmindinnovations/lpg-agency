@@ -10,7 +10,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { forkJoin } from 'rxjs';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { InputNumber } from 'primeng/inputnumber';
 import { Select } from 'primeng/select';
@@ -76,8 +76,6 @@ interface RawFineRule {
     RouterLink,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     InputNumber,
     Select,

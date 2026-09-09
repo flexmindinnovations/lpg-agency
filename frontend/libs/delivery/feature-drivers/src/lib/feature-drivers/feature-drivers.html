@@ -47,8 +47,8 @@
         type="button"
         (click)="openRegisterModal()"
       >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Register Driver</span>
+        <i class="pi pi-plus"></i>
+        <span>Register Driver</span>
       </button>
     </div>
   </div>
@@ -200,8 +200,8 @@
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
             <button *lpgHasPermission="'drivers:manage'" pButton type="button" (click)="startEdit()">
-              <i pButtonIcon class="pi pi-pencil"></i>
-              <span pButtonLabel>Edit</span>
+              <i class="pi pi-pencil"></i>
+              <span>Edit</span>
             </button>
           </div>
         </div>

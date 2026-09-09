@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { Observable } from 'rxjs';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
@@ -90,8 +90,6 @@ const VERIFICATION_SEVERITY: Record<string, ChipSeverity> = {
   imports: [
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     DatePicker,
     InputText,
     Message,

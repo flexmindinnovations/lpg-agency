@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom, map, tap, type Observable } from 'rxjs';
 
 import { StepperModule } from 'primeng/stepper';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -39,8 +39,6 @@ const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
     ReactiveFormsModule,
     StepperModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputTextModule,
     SelectModule,
     CheckboxModule,

@@ -1,7 +1,7 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
@@ -56,7 +56,7 @@ const STAFF_ROLES = [
 @Component({
   selector: 'lpg-staff-users-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon, ManagePermissionsDialogComponent],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon, ManagePermissionsDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -85,8 +85,8 @@ const STAFF_ROLES = [
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
-            <button pButton (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
+            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
+            <button pButton (click)="openInviteDrawer()"><i class="pi pi-user-plus"></i><span>Invite User</span></button>
           </div>
         </div>
       }
@@ -96,7 +96,7 @@ const STAFF_ROLES = [
           <i class="pi pi-users empty-state__icon"></i>
           <p class="empty-state__title">No staff users found</p>
           <p class="empty-state__description">Invite the first staff member to get started.</p>
-          <button pButton class="mt-4" (click)="openInviteDrawer()"><i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Invite User</span></button>
+          <button pButton class="mt-4" (click)="openInviteDrawer()"><i class="pi pi-user-plus"></i><span>Invite User</span></button>
         </div>
       } @else {
         <section class="grid-section">

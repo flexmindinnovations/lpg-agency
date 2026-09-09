@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { ConfirmationService } from 'primeng/api';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -73,8 +73,6 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     Drawer,
     DrawerA11yDirective,

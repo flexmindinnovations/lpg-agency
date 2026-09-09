@@ -40,7 +40,7 @@
         <div class="tdt-config-section__header">
           <h2 class="section-heading">Star Rating Bands</h2>
           <button pButton type="button" severity="secondary" size="small" (click)="addBand()">
-            <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add band</span>
+            <i class="pi pi-plus"></i><span>Add band</span>
           </button>
         </div>
         <p class="tdt-config-hint">
@@ -82,12 +82,13 @@
                 type="button"
                 severity="secondary"
                 [text]="true"
+                iconOnly
                 class="tdt-band-row__remove"
                 [disabled]="row.isLast || bands.length <= 1"
                 (click)="removeBand(row.index)"
                 aria-label="Remove band"
               >
-                <i pButtonIcon class="pi pi-trash"></i>
+                <i class="pi pi-trash"></i>
               </button>
             </div>
           }
@@ -102,7 +103,7 @@
         <div class="tdt-config-section__header">
           <h2 class="section-heading">Fine Schedule</h2>
           <button pButton type="button" severity="secondary" size="small" (click)="addFineRule()">
-            <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Add rule</span>
+            <i class="pi pi-plus"></i><span>Add rule</span>
           </button>
         </div>
         <p class="tdt-config-hint">
@@ -143,11 +144,12 @@
                 type="button"
                 severity="secondary"
                 [text]="true"
+                iconOnly
                 class="tdt-band-row__remove"
                 (click)="removeFineRule(i)"
                 aria-label="Remove fine rule"
               >
-                <i pButtonIcon class="pi pi-trash"></i>
+                <i class="pi pi-trash"></i>
               </button>
             </div>
           }
@@ -159,7 +161,7 @@
     <div class="tdt-config-actions">
       <div class="tdt-config-actions__inner">
         <button pButton type="button" severity="secondary" routerLink="/admin/tenant-config">
-          <i pButtonIcon class="pi pi-arrow-left"></i><span pButtonLabel>Back to Tenant Configuration</span>
+          <i class="pi pi-arrow-left"></i><span>Back to Tenant Configuration</span>
         </button>
         <button pButton type="submit" [disabled]="saving() || loading()" [loading]="saving()">
           Save configuration

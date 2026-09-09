@@ -34,8 +34,8 @@
         severity="secondary"
         (click)="openLookupModal()"
       >
-        <i pButtonIcon class="pi pi-qrcode"></i>
-        <span pButtonLabel>Quick Scan / Lookup</span>
+        <i class="pi pi-qrcode"></i>
+        <span>Quick Scan / Lookup</span>
       </button>
       <button
         *lpgHasPermission="'cylinder_units:manage'"
@@ -44,8 +44,8 @@
         type="button"
         (click)="openRegisterModal()"
       >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Register Cylinder</span>
+        <i class="pi pi-plus"></i>
+        <span>Register Cylinder</span>
       </button>
     </div>
   </div>
@@ -261,8 +261,8 @@
                   [disabled]="printingLabel()"
                   (click)="printLabel(unit.id)"
                 >
-                  <i pButtonIcon [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
-                  <span pButtonLabel>Print Label</span>
+                  <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+                  <span>Print Label</span>
                 </button>
                 <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="startAction('test')">
                   Record Test
@@ -277,8 +277,8 @@
                 }
                 @if (unit.condition_status === 'empty') {
                   <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" (click)="startAction('receive')">
-                    <i pButtonIcon class="pi pi-check"></i>
-                    <span pButtonLabel>Receive</span>
+                    <i class="pi pi-check"></i>
+                    <span>Receive</span>
                   </button>
                 }
                 <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="danger" [disabled]="saving()" (click)="retire()">
@@ -427,8 +427,8 @@
           (click)="performLookup()"
           [disabled]="!lookupCode().trim() || lookupSearching()"
         >
-          <i pButtonIcon [class]="lookupSearching() ? 'pi pi-spin pi-spinner' : 'pi pi-search'"></i>
-          <span pButtonLabel>Lookup</span>
+          <i [class]="lookupSearching() ? 'pi pi-spin pi-spinner' : 'pi pi-search'"></i>
+          <span>Lookup</span>
         </button>
       </div>
 
@@ -485,8 +485,8 @@
             [disabled]="printingLabel()"
             (click)="printLabel(result.id)"
           >
-            <i pButtonIcon [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
-            <span pButtonLabel>Print Label</span>
+            <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+            <span>Print Label</span>
           </button>
           <button
             *lpgHasPermission="'cylinder_units:manage'"
@@ -495,16 +495,16 @@
             severity="secondary"
             (click)="openMoveCustodyFromLookup()"
           >
-            <i pButtonIcon class="pi pi-arrows-alt"></i>
-            <span pButtonLabel>Move Custody</span>
+            <i class="pi pi-arrows-alt"></i>
+            <span>Move Custody</span>
           </button>
           <button
             pButton
             type="button"
             (click)="openDetailsFromLookup()"
           >
-            <i pButtonIcon class="pi pi-arrow-right"></i>
-            <span pButtonLabel>Manage Unit</span>
+            <i class="pi pi-arrow-right"></i>
+            <span>Manage Unit</span>
           </button>
         </div>
       } @else {

@@ -17,7 +17,7 @@ import { type Observable, map } from 'rxjs';
 
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -57,8 +57,6 @@ import { TitleCasePipe } from '@angular/common';
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     Drawer,
     DrawerA11yDirective,

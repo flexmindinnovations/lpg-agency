@@ -48,8 +48,8 @@
     </div>
     <div class="data-toolbar__actions">
       <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Plan Route</span>
+        <i class="pi pi-plus"></i>
+        <span>Plan Route</span>
       </button>
     </div>
   </div>
@@ -259,8 +259,8 @@
       <div class="detail-actions">
         @if (canLoadRoute()) {
           <button pButton type="button" severity="secondary" (click)="openLoadForm()">
-            <i pButtonIcon class="pi pi-inbox"></i>
-            <span pButtonLabel>Load Vehicle</span>
+            <i class="pi pi-inbox"></i>
+            <span>Load Vehicle</span>
           </button>
           <button
             *lpgHasPermission="'weighment:record'"
@@ -271,14 +271,14 @@
             pTooltip="MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch."
             (click)="openLoadOutWeighmentForm()"
           >
-            <i pButtonIcon class="pi pi-verified"></i>
-            <span pButtonLabel>Log Load-Out Weighment</span>
+            <i class="pi pi-verified"></i>
+            <span>Log Load-Out Weighment</span>
           </button>
         }
         @if (canStartRoute()) {
           <button pButton type="button" [loading]="loading()" (click)="onStartRoute()">
-            <i pButtonIcon class="pi pi-play"></i>
-            <span pButtonLabel>Start Route</span>
+            <i class="pi pi-play"></i>
+            <span>Start Route</span>
           </button>
         }
         @if (canCancelRoute()) {
@@ -289,8 +289,8 @@
             [loading]="loading()"
             (click)="onCancelRoute()"
           >
-            <i pButtonIcon class="pi pi-times"></i>
-            <span pButtonLabel>Cancel Route</span>
+            <i class="pi pi-times"></i>
+            <span>Cancel Route</span>
           </button>
         }
         @if (canReconcileRoute()) {
@@ -300,8 +300,8 @@
             [loading]="loading()"
             (click)="onReconcileRoute()"
           >
-            <i pButtonIcon class="pi pi-check-square"></i>
-            <span pButtonLabel>Reconcile</span>
+            <i class="pi pi-check-square"></i>
+            <span>Reconcile</span>
           </button>
         }
         @if (canDeclareCashHandover()) {
@@ -313,8 +313,8 @@
             [loading]="loading()"
             (click)="openCashHandoverForm()"
           >
-            <i pButtonIcon class="pi pi-wallet"></i>
-            <span pButtonLabel>Declare Cash Handover</span>
+            <i class="pi pi-wallet"></i>
+            <span>Declare Cash Handover</span>
           </button>
         }
       </div>
@@ -364,17 +364,19 @@
                     type="button"
                     text
                     severity="danger"
+                    iconOnly
+                    aria-label="Remove line"
                     [disabled]="loadLines.length <= 1"
                     (click)="removeLoadLine($index)"
                   >
-                    <i pButtonIcon class="pi pi-trash"></i>
+                    <i class="pi pi-trash"></i>
                   </button>
                 </div>
               }
             </div>
             <button pButton type="button" text class="add-line-button" (click)="addLoadLine()">
-              <i pButtonIcon class="pi pi-plus"></i>
-              <span pButtonLabel>Add Line</span>
+              <i class="pi pi-plus"></i>
+              <span>Add Line</span>
             </button>
             </div>
 
@@ -546,8 +548,8 @@
         <h3 class="section-title">Stops</h3>
         @if (canAddStopToSelectedRoute()) {
           <button pButton type="button" text (click)="openAddStopForm()">
-            <i pButtonIcon class="pi pi-plus"></i>
-            <span pButtonLabel>Add Stop</span>
+            <i class="pi pi-plus"></i>
+            <span>Add Stop</span>
           </button>
         }
       </div>

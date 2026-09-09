@@ -1,7 +1,7 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { MultiSelect } from 'primeng/multiselect';
@@ -49,8 +49,6 @@ const VALIDITY_OPTIONS = [
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     Select,
     MultiSelect,
@@ -79,13 +77,13 @@ const VALIDITY_OPTIONS = [
           <i class="pi pi-key empty-state__icon"></i>
           <p class="empty-state__title">No licenses issued yet</p>
           <p class="empty-state__description">Issue the first license to get started.</p>
-          <button pButton class="mt-4" (click)="openIssueDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Issue License</span></button>
+          <button pButton class="mt-4" (click)="openIssueDrawer()"><i class="pi pi-plus"></i><span>Issue License</span></button>
         </div>
       } @else {
         <div class="data-toolbar">
           <div class="data-toolbar__filters"></div>
           <div class="data-toolbar__actions">
-            <button pButton (click)="openIssueDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Issue License</span></button>
+            <button pButton (click)="openIssueDrawer()"><i class="pi pi-plus"></i><span>Issue License</span></button>
           </div>
         </div>
         <section class="grid-section">
@@ -189,8 +187,8 @@ const VALIDITY_OPTIONS = [
 
           <div class="modal-actions">
             <button pButton type="button" severity="secondary" (click)="copyIssuedKey(issued.plaintext_key)">
-              <i pButtonIcon class="pi pi-copy"></i>
-              <span pButtonLabel>Copy</span>
+              <i class="pi pi-copy"></i>
+              <span>Copy</span>
             </button>
             @if (!activatedLicense()) {
               <button pButton type="button" severity="success" [loading]="activating()" (click)="activateIssuedLicense(issued)">

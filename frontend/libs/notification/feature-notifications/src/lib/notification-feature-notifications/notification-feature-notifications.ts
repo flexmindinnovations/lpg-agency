@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, forwardRef } from '@angular/core';
 import { Router } from '@angular/router';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { NotificationService, NotifyService } from '@lpg/shared/data-access';
@@ -9,7 +9,7 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
 @Component({
   selector: 'lib-notification-action-cell',
   standalone: true,
-  imports: [ButtonDirective, ButtonIcon],
+  imports: [ButtonDirective],
   template: `
     <div class="flex items-center h-full">
       @if (!row?.is_read) {
@@ -20,8 +20,10 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
         rounded
         severity="secondary"
         size="small"
+        iconOnly
+        aria-label="Mark as read"
         (click)="handleClick()">
-        <i pButtonIcon class="pi pi-check"></i>
+        <i class="pi pi-check"></i>
       </button>
       }
     </div>
@@ -52,7 +54,7 @@ export class NotificationActionCell {
 
 @Component({
   selector: 'lib-notification-feature-notifications',
-  imports: [HeaderTitlePortalDirective, ButtonDirective, ButtonIcon, ButtonLabel, DataGridComponent],
+  imports: [HeaderTitlePortalDirective, ButtonDirective, DataGridComponent],
   templateUrl: './notification-feature-notifications.html',
   styleUrl: './notification-feature-notifications.css',
   changeDetection: ChangeDetectionStrategy.OnPush

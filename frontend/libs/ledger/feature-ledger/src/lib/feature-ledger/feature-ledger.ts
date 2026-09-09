@@ -9,7 +9,7 @@ import {
   computed,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { InputText } from 'primeng/inputtext';
@@ -42,8 +42,6 @@ interface EnrichedBalance {
   imports: [HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     Select,
     InputText,
     Drawer,

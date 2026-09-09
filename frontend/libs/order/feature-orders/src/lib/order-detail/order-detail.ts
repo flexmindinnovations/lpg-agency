@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, injec
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputGroup } from 'primeng/inputgroup';
@@ -69,8 +69,6 @@ const PAYMENT_METHODS = [
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     Drawer,
     DrawerA11yDirective,
     InputGroup,

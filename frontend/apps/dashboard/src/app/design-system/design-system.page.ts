@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective, ButtonIcon } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DatePickerModule } from 'primeng/datepicker';
@@ -109,7 +109,6 @@ const PRINCIPLES = [
     FormFieldComponent,
     DataGridComponent,
     ButtonDirective,
-    ButtonIcon,
     InputTextModule,
     SelectModule,
     DatePickerModule,

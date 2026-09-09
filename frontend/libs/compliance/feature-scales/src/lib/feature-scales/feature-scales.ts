@@ -21,7 +21,7 @@ import {
   type ChipSeverity,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputText } from 'primeng/inputtext';
@@ -77,8 +77,6 @@ const MAX_LEAST_COUNT_GRAMS = 10;
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     InputNumber,
     Drawer,

@@ -1,7 +1,7 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
@@ -30,7 +30,7 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
 @Component({
   selector: 'lpg-price-list-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -59,8 +59,8 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
-            <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Price</span></button>
+            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
+            <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Price</span></button>
           </div>
         </div>
       }
@@ -70,7 +70,7 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
           <i class="pi pi-tag empty-state__icon"></i>
           <p class="empty-state__title">No prices set</p>
           <p class="empty-state__description">Set the first price to get started.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Price</span></button>
+          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Price</span></button>
         </div>
       } @else {
         <section class="grid-section">

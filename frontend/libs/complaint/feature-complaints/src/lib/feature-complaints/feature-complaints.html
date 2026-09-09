@@ -20,8 +20,8 @@
         type="button"
         (click)="openRaiseModal()"
       >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Raise Complaint</span>
+        <i class="pi pi-plus"></i>
+        <span>Raise Complaint</span>
       </button>
     </div>
   </div>
@@ -164,8 +164,8 @@
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
           (click)="openAssignModal()"
         >
-          <i pButtonIcon class="pi pi-user-plus"></i>
-          <span pButtonLabel>Assign</span>
+          <i class="pi pi-user-plus"></i>
+          <span>Assign</span>
         </button>
         <button
           *lpgHasPermission="'complaints.manage'"
@@ -173,8 +173,8 @@
           [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
           (click)="openResolveModal()"
         >
-          <i pButtonIcon class="pi pi-check"></i>
-          <span pButtonLabel>Resolve</span>
+          <i class="pi pi-check"></i>
+          <span>Resolve</span>
         </button>
       </div>
     }

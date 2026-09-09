@@ -117,8 +117,8 @@
           [loading]="isPrinting()"
           (click)="printPdf()"
         >
-          <i pButtonIcon class="pi pi-file-pdf"></i>
-          <span pButtonLabel>Print PDF</span>
+          <i class="pi pi-file-pdf"></i>
+          <span>Print PDF</span>
         </button>
         <button
           pButton
@@ -127,8 +127,8 @@
           [loading]="isPrinting()"
           (click)="printThermal()"
         >
-          <i pButtonIcon class="pi pi-print"></i>
-          <span pButtonLabel>Print Thermal</span>
+          <i class="pi pi-print"></i>
+          <span>Print Thermal</span>
         </button>
       </div>
     </div>
@@ -148,12 +148,12 @@
   }
   <div class="preview-footer">
     <button pButton type="button" severity="secondary" (click)="openThermalReceiptInNewTab()">
-      <i pButtonIcon class="pi pi-external-link"></i>
-      <span pButtonLabel>Open in New Tab</span>
+      <i class="pi pi-external-link"></i>
+      <span>Open in New Tab</span>
     </button>
     <button pButton type="button" (click)="printThermalReceipt()">
-      <i pButtonIcon class="pi pi-print"></i>
-      <span pButtonLabel>Print Receipt</span>
+      <i class="pi pi-print"></i>
+      <span>Print Receipt</span>
     </button>
   </div>
 </p-dialog>

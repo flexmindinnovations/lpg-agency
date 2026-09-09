@@ -29,7 +29,7 @@ import {
   type ChipSeverity,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
@@ -71,8 +71,6 @@ function formatDateForApi(value: unknown): string | undefined {
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     Drawer,
     DrawerA11yDirective,

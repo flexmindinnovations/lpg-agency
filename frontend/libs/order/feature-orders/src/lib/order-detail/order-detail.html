@@ -14,34 +14,34 @@
     @if (order(); as o) {
     <div class="page-header__actions">
       <button pButton type="button" text severity="secondary" (click)="backToQueue()">
-        <i pButtonIcon class="pi pi-arrow-left"></i>
-        <span pButtonLabel>Back</span>
+        <i class="pi pi-arrow-left"></i>
+        <span>Back</span>
       </button>
       <div class="page-header__actions-buttons">
       @if (canConfirm()) {
       <button *lpgHasPermission="'orders:confirm'" pButton type="button" [loading]="loading()" (click)="onConfirm()">
-        <i pButtonIcon class="pi pi-check"></i>
-        <span pButtonLabel>Confirm</span>
+        <i class="pi pi-check"></i>
+        <span>Confirm</span>
       </button>
       } @if (canAssign()) {
       <button *lpgHasPermission="'orders:assign'" #assignTriggerEl pButton type="button" (click)="openAssignDrawer()">
-        <i pButtonIcon class="pi pi-user-plus"></i>
-        <span pButtonLabel>Assign</span>
+        <i class="pi pi-user-plus"></i>
+        <span>Assign</span>
       </button>
       } @if (canDispatch()) {
       <button *lpgHasPermission="'orders:dispatch'" pButton type="button" [loading]="loading()" (click)="onDispatch()">
-        <i pButtonIcon class="pi pi-box"></i>
-        <span pButtonLabel>Dispatch</span>
+        <i class="pi pi-box"></i>
+        <span>Dispatch</span>
       </button>
       } @if (canDepart()) {
       <button *lpgHasPermission="'orders:deliver'" pButton type="button" [loading]="loading()" (click)="onDepart()">
-        <i pButtonIcon class="pi pi-send"></i>
-        <span pButtonLabel>Depart</span>
+        <i class="pi pi-send"></i>
+        <span>Depart</span>
       </button>
       } @if (canDeliverOrFail()) {
       <button *lpgHasPermission="'orders:deliver'" #deliverTriggerEl pButton type="button" (click)="openDeliverDrawer()">
-        <i pButtonIcon class="pi pi-verified"></i>
-        <span pButtonLabel>Deliver</span>
+        <i class="pi pi-verified"></i>
+        <span>Deliver</span>
       </button>
       <button
         *lpgHasPermission="'orders:deliver'"
@@ -51,28 +51,28 @@
         severity="warn"
         (click)="openFailedDeliveryDrawer()"
       >
-        <i pButtonIcon class="pi pi-exclamation-triangle"></i>
-        <span pButtonLabel>Failed Delivery</span>
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>Failed Delivery</span>
       </button>
       } @if (canReschedule()) {
       <button *lpgHasPermission="'orders:assign'" pButton type="button" [loading]="loading()" (click)="onReschedule()">
-        <i pButtonIcon class="pi pi-refresh"></i>
-        <span pButtonLabel>Reschedule</span>
+        <i class="pi pi-refresh"></i>
+        <span>Reschedule</span>
       </button>
       } @if (canClose()) {
       <button *lpgHasPermission="'orders:close'" pButton type="button" [loading]="loading()" (click)="onClose()">
-        <i pButtonIcon class="pi pi-lock"></i>
-        <span pButtonLabel>Close Order</span>
+        <i class="pi pi-lock"></i>
+        <span>Close Order</span>
       </button>
       } @if (canCancelFree() || requiresCancelApproval()) {
       <button *lpgHasPermission="'orders:cancel'" pButton type="button" severity="danger" (click)="openCancelDialog()">
-        <i pButtonIcon class="pi pi-times"></i>
-        <span pButtonLabel>Cancel Order</span>
+        <i class="pi pi-times"></i>
+        <span>Cancel Order</span>
       </button>
       } @if (canApproveCancellation()) {
       <button *lpgHasPermission="'orders:cancel_approve'" pButton type="button" (click)="onApproveCancellation()">
-        <i pButtonIcon class="pi pi-check"></i>
-        <span pButtonLabel>Approve Cancellation</span>
+        <i class="pi pi-check"></i>
+        <span>Approve Cancellation</span>
       </button>
       }
       </div>
@@ -399,8 +399,8 @@
 
       <div class="form-group">
         <button pButton type="button" text (click)="captureLocation()">
-          <i pButtonIcon class="pi pi-map-marker"></i>
-          <span pButtonLabel>Use Current Location</span>
+          <i class="pi pi-map-marker"></i>
+          <span>Use Current Location</span>
         </button>
         @if (gpsCaptured()) {
         <span class="pod-status pod-status--ok">

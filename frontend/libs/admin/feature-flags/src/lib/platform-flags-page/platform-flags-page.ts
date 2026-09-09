@@ -2,7 +2,7 @@ import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, of, type Observable } from 'rxjs';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -73,8 +73,6 @@ class FlagDefaultCell {
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     Drawer,
     DrawerA11yDirective,
@@ -100,7 +98,7 @@ class FlagDefaultCell {
       <div class="data-toolbar">
         <div class="data-toolbar__filters"></div>
         <div class="data-toolbar__actions">
-          <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Create Flag</span></button>
+          <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Create Flag</span></button>
         </div>
       </div>
 
@@ -170,8 +168,8 @@ class FlagDefaultCell {
               <div class="modal-actions">
                 <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
                 <button pButton type="button" (click)="startEdit()">
-                  <i pButtonIcon class="pi pi-pencil"></i>
-                  <span pButtonLabel>Edit</span>
+                  <i class="pi pi-pencil"></i>
+                  <span>Edit</span>
                 </button>
               </div>
             </div>

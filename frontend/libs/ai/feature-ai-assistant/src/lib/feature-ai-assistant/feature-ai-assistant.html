@@ -15,7 +15,7 @@
       [disabled]="history().length === 0"
       (click)="clearConversation()"
     >
-      <i pButtonIcon class="pi pi-refresh"></i><span pButtonLabel>Clear conversation</span>
+      <i class="pi pi-refresh"></i><span>Clear conversation</span>
     </button>
   </ng-template>
 
@@ -141,12 +141,13 @@
         <button
           pButton
           type="button"
+          iconOnly
           class="composer__send"
           [disabled]="asking() || !question().trim()"
           (click)="ask()"
           aria-label="Send"
         >
-          <i pButtonIcon class="pi" [class.pi-arrow-right]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
+          <i class="pi" [class.pi-arrow-right]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
         </button>
       </div>
     </div>

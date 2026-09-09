@@ -2,7 +2,7 @@ import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
@@ -126,7 +126,7 @@ class ConfigKeyCell {
 @Component({
   selector: 'lpg-tenant-configuration-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, RouterLink, ReactiveFormsModule, ButtonDirective, ButtonIcon, ButtonLabel, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, RouterLink, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -164,8 +164,8 @@ class ConfigKeyCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i pButtonIcon class="pi pi-file-excel"></i><span pButtonLabel>Export</span></button>
-            <button pButton (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Value</span></button>
+            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
+            <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Value</span></button>
           </div>
         </div>
       }
@@ -175,7 +175,7 @@ class ConfigKeyCell {
           <i class="pi pi-sliders-h empty-state__icon"></i>
           <p class="empty-state__title">No configuration values</p>
           <p class="empty-state__description">Set the first configuration value to get started.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Set Value</span></button>
+          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Value</span></button>
         </div>
       } @else {
         <section class="grid-section">

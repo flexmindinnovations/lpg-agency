@@ -14,7 +14,7 @@ import {
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputNumber } from 'primeng/inputnumber';
@@ -118,8 +118,6 @@ function toDateOnlyString(date: Date): string {
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     Drawer,
     DrawerA11yDirective,
     InputNumber,

@@ -55,8 +55,8 @@
         [disabled]="!locationRefId()"
         (click)="openGrnModal()"
       >
-        <i pButtonIcon class="pi pi-inbox"></i>
-        <span pButtonLabel>Receive Goods</span>
+        <i class="pi pi-inbox"></i>
+        <span>Receive Goods</span>
       </button>
       }
       <button
@@ -67,8 +67,8 @@
         severity="secondary"
         (click)="openTransferModal()"
       >
-        <i pButtonIcon class="pi pi-arrow-right-arrow-left"></i>
-        <span pButtonLabel>Load Transfer</span>
+        <i class="pi pi-arrow-right-arrow-left"></i>
+        <span>Load Transfer</span>
       </button>
       @if (locationType() === 'vehicle') {
       <button
@@ -80,8 +80,8 @@
         [disabled]="!locationRefId()"
         (click)="openDeliveryCollectionModal()"
       >
-        <i pButtonIcon class="pi pi-truck"></i>
-        <span pButtonLabel>Delivery / Collection</span>
+        <i class="pi pi-truck"></i>
+        <span>Delivery / Collection</span>
       </button>
       }
       <button
@@ -93,8 +93,8 @@
         [disabled]="!locationRefId()"
         (click)="openStatusChangeModal()"
       >
-        <i pButtonIcon class="pi pi-sync"></i>
-        <span pButtonLabel>Change Status</span>
+        <i class="pi pi-sync"></i>
+        <span>Change Status</span>
       </button>
       <button
         *lpgHasPermission="'inventory:adjust'"
@@ -105,8 +105,8 @@
         [disabled]="!locationRefId()"
         (click)="openAdjustModal()"
       >
-        <i pButtonIcon class="pi pi-pencil"></i>
-        <span pButtonLabel>Adjust</span>
+        <i class="pi pi-pencil"></i>
+        <span>Adjust</span>
       </button>
       <button
         *lpgHasPermission="'inventory:load'"
@@ -117,8 +117,8 @@
         [disabled]="!locationRefId()"
         (click)="openReconcileModal()"
       >
-        <i pButtonIcon class="pi pi-check-square"></i>
-        <span pButtonLabel>Reconcile</span>
+        <i class="pi pi-check-square"></i>
+        <span>Reconcile</span>
       </button>
     </div>
   </div>

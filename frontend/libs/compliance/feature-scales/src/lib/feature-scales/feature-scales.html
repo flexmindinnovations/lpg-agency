@@ -35,8 +35,8 @@
         type="button"
         (click)="openRegisterModal()"
       >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Register Scale</span>
+        <i class="pi pi-plus"></i>
+        <span>Register Scale</span>
       </button>
     </div>
   </div>
@@ -196,8 +196,8 @@
               {{ scale.status === 'active' ? 'Deactivate' : 'Activate' }}
             </button>
             <button *lpgHasPermission="'weighment:manage'" pButton type="button" (click)="startRecalibrate()">
-              <i pButtonIcon class="pi pi-pencil"></i>
-              <span pButtonLabel>Recalibrate</span>
+              <i class="pi pi-pencil"></i>
+              <span>Recalibrate</span>
             </button>
           </div>
         </div>

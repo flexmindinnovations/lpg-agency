@@ -32,8 +32,8 @@
         type="button"
         (click)="openRegisterModal()"
       >
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>Register Employee</span>
+        <i class="pi pi-plus"></i>
+        <span>Register Employee</span>
       </button>
     </div>
   </div>
@@ -157,8 +157,8 @@
     <ng-template #footer>
       <div class="modal-actions">
         <button *lpgHasPermission="'users:manage'" pButton type="button" severity="secondary" (click)="openEditDrawer()">
-          <i pButtonIcon class="pi pi-pencil"></i>
-          <span pButtonLabel>Edit</span>
+          <i class="pi pi-pencil"></i>
+          <span>Edit</span>
         </button>
         @if (canDeactivate()) {
           <button
@@ -169,8 +169,8 @@
             [loading]="loading()"
             (click)="confirmDeactivate()"
           >
-            <i pButtonIcon class="pi pi-user-minus"></i>
-            <span pButtonLabel>Deactivate</span>
+            <i class="pi pi-user-minus"></i>
+            <span>Deactivate</span>
           </button>
         }
       </div>

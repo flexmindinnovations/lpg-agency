@@ -75,15 +75,15 @@ async function logout(page: Page): Promise<void> {
 }
 
 /** Clicks a `pButton` by its exact visible label, matched on the inner
- * `.p-button-label` span rather than the button's computed accessible name
- * — every `pButtonIcon`+`pButtonLabel` button's accessible name picks up a
- * leading space (the icon isn't `aria-hidden`, so its empty text
- * alternative still gets joined with a separator space per the accname
- * spec), which trips up both `exact: true` string matches and regex
- * matches inconsistently. Also sidesteps "Deliver" being a substring of
- * "Failed Delivery" that a loose name match would ambiguously catch. */
+ * `<span>` rather than the button's computed accessible name — every
+ * icon+label button's accessible name picks up a leading space (the icon
+ * isn't `aria-hidden`, so its empty text alternative still gets joined
+ * with a separator space per the accname spec), which trips up both
+ * `exact: true` string matches and regex matches inconsistently. Also
+ * sidesteps "Deliver" being a substring of "Failed Delivery" that a loose
+ * name match would ambiguously catch. */
 function buttonWithLabel(page: Page, label: string) {
-  return page.locator(`button:has(span.p-button-label:text-is("${label}"))`);
+  return page.locator(`button:has(span:text-is("${label}"))`);
 }
 
 /** Opens a PrimeNG `p-select`/`p-autocomplete` trigger and picks the option
@@ -133,8 +133,8 @@ test.describe('Order to delivery — full workflow', () => {
     await page.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
     const orderUrl = page.url();
 
-    // Not `exact: true` — every `pButtonIcon`+`pButtonLabel` button computes
-    // an accessible name with a leading space (the icon isn't `aria-hidden`,
+    // Not `exact: true` — every icon+label button computes an accessible
+    // name with a leading space (the icon isn't `aria-hidden`,
     // so its empty text alternative still gets joined with a separator
     // space per the accname spec) — harmless for real screen-reader users,
     // but fails exact matching. No ambiguity risk here: "Confirm" is the

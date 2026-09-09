@@ -30,8 +30,8 @@
     </div>
     <div class="data-toolbar__actions">
       <button *lpgHasPermission="'orders:create'" #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
-        <i pButtonIcon class="pi pi-plus"></i>
-        <span pButtonLabel>New Booking</span>
+        <i class="pi pi-plus"></i>
+        <span>New Booking</span>
       </button>
     </div>
   </div>
@@ -130,8 +130,8 @@
       <div class="lines-header">
         <label>Cylinders</label>
         <button pButton type="button" text size="small" severity="secondary" (click)="addLine()">
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>Add line</span>
+          <i class="pi pi-plus"></i>
+          <span>Add line</span>
         </button>
       </div>
       <div class="lines" formArrayName="lines">
@@ -152,10 +152,12 @@
             type="button"
             text
             severity="danger"
+            iconOnly
+            aria-label="Remove line"
             [disabled]="lines.length <= 1"
             (click)="removeLine($index)"
           >
-            <i pButtonIcon class="pi pi-trash"></i>
+            <i class="pi pi-trash"></i>
           </button>
         </div>
         }

@@ -29,8 +29,8 @@
       <div class="data-toolbar__actions">
         @if (customers().length > 0 || searchQuery().length > 0) {
         <button pButton severity="secondary" (click)="filterPopover.toggle($event)">
-          <i pButtonIcon class="pi pi-filter"></i>
-          <span pButtonLabel>Filter</span>
+          <i class="pi pi-filter"></i>
+          <span>Filter</span>
           @if (activeFilterCount() > 0) {
             <p-badge [value]="activeFilterCount().toString()" severity="info" />
           }
@@ -82,15 +82,15 @@
                 [disabled]="activeFilterCount() === 0"
                 (click)="clearFilters()"
               >
-                <span pButtonLabel>Clear filters</span>
+                <span>Clear filters</span>
               </button>
             </div>
           </ng-template>
         </p-popover>
         }
         <a *lpgHasPermission="'customers:create'" pButton routerLink="new">
-          <i pButtonIcon class="pi pi-plus"></i>
-          <span pButtonLabel>Register Customer</span>
+          <i class="pi pi-plus"></i>
+          <span>Register Customer</span>
         </a>
       </div>
     </div>
@@ -143,8 +143,8 @@
           severity="info" 
           size="small" 
           [routerLink]="['/ledger', customer.id]">
-          <i pButtonIcon class="pi pi-book"></i>
-          <span pButtonLabel>View Ledger</span>
+          <i class="pi pi-book"></i>
+          <span>View Ledger</span>
         </a>
       </div>
     </div>
@@ -184,8 +184,8 @@
                 size="small"
                 (click)="openAddAddressModal()"
               >
-                <i pButtonIcon class="pi pi-plus"></i>
-                <span pButtonLabel>Add Address</span>
+                <i class="pi pi-plus"></i>
+                <span>Add Address</span>
               </button>
             </div>
             <div class="address-list">
@@ -228,8 +228,8 @@
                 size="small"
                 (click)="openSubmitKycModal()"
               >
-                <i pButtonIcon class="pi pi-upload"></i>
-                <span pButtonLabel>Submit KYC</span>
+                <i class="pi pi-upload"></i>
+                <span>Submit KYC</span>
               </button>
             </div>
             <div class="kyc-doc-list">

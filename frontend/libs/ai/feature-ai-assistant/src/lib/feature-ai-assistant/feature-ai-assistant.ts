@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, of } from 'rxjs';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { Message } from 'primeng/message';
 import { AiAssistantService, DashboardService, type AskAiAssistantResponse } from '@lpg/shared/data-access';
 
@@ -116,8 +116,6 @@ const SUGGESTED_PROMPTS: readonly SuggestedPrompt[] = [
     HeaderPortalDirective,
     FormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     Message,
     MarkdownPipe,
     StatCardComponent,

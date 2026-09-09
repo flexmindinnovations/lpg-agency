@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { JsonPipe, UpperCasePipe } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
+import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
@@ -31,8 +31,6 @@ const ACTION_SEVERITY: Record<string, string> = {
   imports: [HeaderTitlePortalDirective, 
     ReactiveFormsModule,
     ButtonDirective,
-    ButtonIcon,
-    ButtonLabel,
     InputText,
     IconFieldModule,
     InputIconModule,
@@ -71,7 +69,7 @@ const ACTION_SEVERITY: Record<string, string> = {
           </p-iconfield>
         </div>
         <div class="data-toolbar__actions">
-          <button pButton type="button" severity="secondary" aria-label="Refresh" (click)="applyFilters()" pTooltip="Refresh" tooltipPosition="left"><i pButtonIcon class="pi pi-refresh"></i></button>
+          <button pButton type="button" severity="secondary" iconOnly aria-label="Refresh" (click)="applyFilters()" pTooltip="Refresh" tooltipPosition="left"><i class="pi pi-refresh"></i></button>
         </div>
       </div>
 
@@ -94,7 +92,7 @@ const ACTION_SEVERITY: Record<string, string> = {
             severity="secondary"
             (click)="loadMore()"
             [disabled]="loading()"
-          ><i pButtonIcon class="pi pi-chevron-down"></i><span pButtonLabel>Load more</span></button>
+          ><i class="pi pi-chevron-down"></i><span>Load more</span></button>
         </div>
       }
     </div>
