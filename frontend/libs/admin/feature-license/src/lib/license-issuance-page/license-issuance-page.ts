@@ -246,6 +246,14 @@ const VALIDITY_OPTIONS = [
 
             <form [formGroup]="deviceCapForm" (ngSubmit)="saveDeviceCap(license.tenant_id)" class="dialog-form dialog-form--inline">
               <div class="dialog-form__fields">
+              <!-- p-multiselect is deprecated in favor of p-select [multiple]="true", but
+                   Select's #selectedItem template hook only ever exposes a single selected
+                   option (findSelectedOptionIndex() returns the first match, even in
+                   multiple mode) — there's no supported way to render one chip per selection
+                   through it. Reproducing display="chip" would mean hand-rolling the whole
+                   closed-box display ourselves, fragile against future PrimeNG internals.
+                   Left as-is, same as primeng/chart: deprecated with no equivalent-UX
+                   replacement available today. -->
               <lpg-form-field label="Apps" for="detail-app-type" [control]="deviceCapForm.controls.appTypes">
                 <p-multiselect
                   inputId="detail-app-type"
