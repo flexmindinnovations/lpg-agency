@@ -143,18 +143,20 @@ async def _seed_staff_user(
     role: str,
 ) -> None:
     async with engine.begin() as conn:
+        phone_number = f"+91{uuid.uuid4().int % 10**9:09d}"
         user_id = (
             await conn.execute(
                 text(
                     "INSERT INTO identity.identity_user "
-                    "(id, tenant_id, branch_id, email, password_hash, role) "
-                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :email, "
+                    "(id, tenant_id, branch_id, email, phone_number, password_hash, role) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :email, :phone_number, "
                     ":password_hash, :role) RETURNING id"
                 ),
                 {
                     "tenant_id": str(tenant_id),
                     "branch_id": str(branch_id),
                     "email": email,
+                    "phone_number": phone_number,
                     "password_hash": password_hash,
                     "role": role,
                 },
@@ -170,6 +172,27 @@ async def _seed_staff_user(
                 "WHERE r.code = :role"
             ),
             {"user_id": user_id, "role": role},
+        )
+        # `EmployeeBranchStaffResolver` (used by `delivery_failed_staff`/
+        # `order_unassignable_staff`) resolves branch staff via
+        # `tenant.employee` -> phone number -> `identity.identity_user`, not
+        # directly off the identity role — this row is what makes that join
+        # actually find this admin.
+        await conn.execute(
+            text(
+                "INSERT INTO tenant.employee "
+                "(id, tenant_id, branch_id, employee_code, first_name, last_name, "
+                "phone_number, role, status) "
+                "VALUES (gen_random_uuid(), :tenant_id, :branch_id, :employee_code, "
+                "'Test', 'Admin', :phone_number, :role, 'active')"
+            ),
+            {
+                "tenant_id": str(tenant_id),
+                "branch_id": str(branch_id),
+                "employee_code": f"EMP-{uuid.uuid4().hex[:6]}",
+                "phone_number": phone_number,
+                "role": role,
+            },
         )
 
 
@@ -449,6 +472,7 @@ async def _run_auto_assign_worker_burst(integration_settings: Settings) -> None:
     from arq.worker import Worker
 
     from lpg.infrastructure.jobs.auto_assignment_jobs import auto_assign_driver
+    from lpg.infrastructure.jobs.notification_jobs import send_notification
     from lpg.infrastructure.jobs.pool import JobQueue
     from lpg.infrastructure.persistence.database import build_database
 
@@ -457,8 +481,12 @@ async def _run_auto_assign_worker_burst(integration_settings: Settings) -> None:
     job_queue = JobQueue(integration_settings)
     await job_queue.connect()
     try:
+        # `send_notification` registered too -- the no-eligible-driver path
+        # chains straight into it (`auto_assign_driver` enqueues it), same
+        # as a real worker process would have both registered
+        # (`WorkerSettings.functions`).
         worker = Worker(
-            functions=[auto_assign_driver],
+            functions=[auto_assign_driver, send_notification],
             redis_settings=RedisSettings.from_dsn(str(integration_settings.redis_url)),
             burst=True,
             poll_delay=0,
@@ -543,3 +571,13 @@ class TestAutoAssignmentThroughRealStack:
         # Nothing eligible -> a safe no-op, ready for the existing manual
         # assign flow -- never a crash, never a stuck/half-mutated order.
         assert order_response.json()["status"] == "confirmed"
+
+        # The failure path isn't silent either -- the admin (an agency_admin,
+        # in `_STAFF_ALERT_ROLES`) gets the `order_unassignable_staff`
+        # in-app notification, the "ranked queue for human review" pattern.
+        notifications_response = await stack.client.get(
+            "/api/v1/notifications", headers=admin_headers
+        )
+        assert notifications_response.status_code == 200, notifications_response.text
+        notifications = notifications_response.json()["items"]
+        assert any(n["notification_type"] == "order_unassignable_staff" for n in notifications)

@@ -34,16 +34,18 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
     {
         "type": "order_placed" | "booking_confirmed" | "driver_assigned" |
                 "out_for_delivery" | "delivery_confirmed" | "invoice_generated" |
-                "delivery_failed_staff" | "order_placed_staff",
+                "delivery_failed_staff" | "order_placed_staff" |
+                "order_unassignable_staff",
         "tenant_id": str,
         "order_id": str,
         # Every order-lifecycle type resolves its recipient (customer, the
         # assigned driver for "driver_assigned", or branch staff for
-        # "delivery_failed_staff") by fetching the order itself — the
-        # payload carries nothing else. "compliance_document_expiring_staff"
-        # is not order-scoped — it carries "document_id"/"owner_type"/
-        # "owner_id"/"doc_type"/"expiry_date" instead (see
-        # `compliance_jobs.check_compliance_expiry`, which enqueues it).
+        # "delivery_failed_staff"/"order_unassignable_staff") by fetching
+        # the order itself — the payload carries nothing else.
+        # "compliance_document_expiring_staff" is not order-scoped — it
+        # carries "document_id"/"owner_type"/"owner_id"/"doc_type"/
+        # "expiry_date" instead (see `compliance_jobs.
+        # check_compliance_expiry`, which enqueues it).
     }
     """
     structlog.contextvars.bind_contextvars(
@@ -154,6 +156,20 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif order is None:
                 _logger.warning("order_not_found", order_id=payload.get("order_id"))
             elif notification_type == "delivery_failed_staff":
+                employee_repo = SqlAlchemyEmployeeRepository(uow)
+                resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
+                recipient_user_ids = await resolver.resolve_for_branch(
+                    tenant_id=tenant_id,
+                    branch_id=order.branch_id,
+                    eligible_roles=_STAFF_ALERT_ROLES,
+                )
+            elif notification_type == "order_unassignable_staff":
+                # Auto-assignment (order-to-delivery fulfillment automation)
+                # found no eligible idle driver/vehicle in the order's own
+                # branch -- the "ranked queue for human review" pattern this
+                # codebase already uses for diversion detection, applied to
+                # automation's own failure path. Same branch-scoped
+                # resolution as `delivery_failed_staff`.
                 employee_repo = SqlAlchemyEmployeeRepository(uow)
                 resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
                 recipient_user_ids = await resolver.resolve_for_branch(
@@ -382,6 +398,7 @@ def _get_title(notification_type: str) -> str:
         "delivery_confirmed": "Delivery Confirmed",
         "invoice_generated": "Invoice Generated",
         "delivery_failed_staff": "Delivery Failed Alert",
+        "order_unassignable_staff": "Order Needs Manual Assignment",
         "order_placed_staff": "New Order",
         "cash_shortfall_staff": "Cash Shortfall Declared",
         "route_load_confirmed_staff": "Van Load Confirmed",
@@ -428,6 +445,10 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         "invoice_generated": f"An invoice has been generated for your order #{order_id_short}.",
         "delivery_failed_staff": (
             f"Delivery failed for order #{order_id_short}. Please check the system."
+        ),
+        "order_unassignable_staff": (
+            f"Order #{order_id_short} has no available driver in its branch and needs "
+            "manual assignment."
         ),
         "order_placed_staff": (
             f"Order #{order_id_short} was just placed and is awaiting confirmation."

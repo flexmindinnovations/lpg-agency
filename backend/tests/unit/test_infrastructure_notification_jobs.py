@@ -140,3 +140,20 @@ def test_route_load_confirmed_staff_is_dashboard_only() -> None:
     assert _should_send_email("route_load_confirmed_staff") is False
     assert _should_send_sms("route_load_confirmed_staff") is False
     assert _should_send_push("route_load_confirmed_staff") is False
+
+
+def test_order_unassignable_staff_title_and_body() -> None:
+    assert _get_title("order_unassignable_staff") == "Order Needs Manual Assignment"
+    body = _get_body("order_unassignable_staff", {"order_id": "abcd1234-0000"})
+    assert "ABCD1234" in body
+    assert "no available driver" in body
+    assert "manual assignment" in body
+
+
+def test_order_unassignable_staff_is_dashboard_only() -> None:
+    # Auto-assignment's own no-eligible-candidate fallback -- same
+    # "staff use the dashboard, not the mobile apps" restraint as
+    # `delivery_failed_staff`.
+    assert _should_send_email("order_unassignable_staff") is False
+    assert _should_send_sms("order_unassignable_staff") is False
+    assert _should_send_push("order_unassignable_staff") is False
