@@ -16,7 +16,7 @@ module.exports = {
   // — same fix already applied in apps/dashboard and libs/shared/ui's own
   // jest configs, needed here for the same reason (login-page imports
   // ButtonDirective).
-  transformIgnorePatterns: ['node_modules/(?!(@primeui|@noble)|.*\\.mjs$)'],
+  transformIgnorePatterns: ['node_modules/(?!(@primeui|@noble|marked)|.*\\.mjs$)'],
   snapshotSerializers: [
     'jest-preset-angular/build/serializers/no-ng-attributes',
     'jest-preset-angular/build/serializers/ng-snapshot',

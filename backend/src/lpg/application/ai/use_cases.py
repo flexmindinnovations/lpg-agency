@@ -44,10 +44,13 @@ _SYSTEM_PROMPT = (
     "and complaints using only the tools available to you -- never guess a "
     "number you could look up. If a question needs data no available tool "
     "can provide, say so plainly rather than inventing an answer. Keep "
-    "answers concise and concrete. Reply in plain text only -- no markdown "
-    "(no **bold**, no # headers, no bullet-point asterisks); use short "
-    "sentences or a simple 'Label: value' line per fact instead, since the "
-    "answer is rendered as plain text, not formatted markdown."
+    "answers concise and concrete. Your reply is rendered as formatted "
+    "markdown, so use it purposefully: a heading or **bold** label for "
+    "structure, a bullet or numbered list for enumerations, and a markdown "
+    "table when comparing multiple records or metrics side by side. Prefer "
+    "short paragraphs and plain sentences when a single fact or a brief "
+    "explanation is all that's needed -- do not force structure where "
+    "none is warranted."
 )
 
 

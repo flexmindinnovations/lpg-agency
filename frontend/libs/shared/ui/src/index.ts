@@ -10,6 +10,7 @@ export * from './lib/star-rating/star-rating.component';
 export * from './lib/live-indicator/live-indicator.component';
 export * from './lib/activity-list/activity-list.component';
 export * from './lib/format/format';
+export * from './lib/format/markdown.pipe';
 export * from './lib/activity-cells/activity-cells';
 export * from './lib/status-chip-cell/status-chip-cell';
 export * from './lib/preview-dialog/preview-dialog';
