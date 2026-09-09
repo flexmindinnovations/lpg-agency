@@ -21,6 +21,7 @@ import {
   AdminEmployeeService,
   AuthService,
   DeliveryService,
+  NotifyService,
   OrderService,
   type CylinderTypeResponse,
   type DriverResponse,
@@ -93,6 +94,7 @@ export class OrderDetail implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly deliveryService = inject(DeliveryService);
   private readonly employeeService = inject(AdminEmployeeService);
+  private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
@@ -283,6 +285,7 @@ export class OrderDetail implements OnInit {
     this.infoMessage.set(message);
     this.errorMessage.set(null);
     this.loading.set(false);
+    this.notify.success(message);
     this.refresh();
   }
 
@@ -607,11 +610,11 @@ export class OrderDetail implements OnInit {
     this.orderService.cancelOrder(order.id, { reason }).subscribe({
       next: (result) => {
         this.showCancelDialog.set(false);
-        this.infoMessage.set(
-          result.pending_approval
-            ? 'Cancellation requested — awaiting Manager approval.'
-            : 'Order cancelled.',
-        );
+        const message = result.pending_approval
+          ? 'Cancellation requested — awaiting Manager approval.'
+          : 'Order cancelled.';
+        this.infoMessage.set(message);
+        this.notify.success(message);
         this.order.set(result.order);
         this.loading.set(false);
         this.refresh();

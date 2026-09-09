@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
+import { MessageService } from 'primeng/api';
 import { ApiConfiguration } from '@lpg/shared/data-access';
 import { OrderDetail } from './order-detail';
 
@@ -13,6 +14,7 @@ describe('OrderDetail', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        MessageService,
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
         {
           provide: ActivatedRoute,

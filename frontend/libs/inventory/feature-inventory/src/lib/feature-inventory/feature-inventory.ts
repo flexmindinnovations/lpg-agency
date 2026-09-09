@@ -29,6 +29,7 @@ import {
   AdminWarehouseService,
   DeliveryService,
   InventoryService,
+  NotifyService,
   WeighmentService,
   type AppError,
   type CylinderTypeResponse,
@@ -108,6 +109,7 @@ export class FeatureInventory implements OnInit {
   private readonly deliveryService = inject(DeliveryService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly weighmentService = inject(WeighmentService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
@@ -354,6 +356,7 @@ export class FeatureInventory implements OnInit {
   private refreshAfterMutation(): void {
     this.successMessage.set('Done.');
     this.loading.set(false);
+    this.notify.success('Done.');
     this.loadBalance();
     this.loadTransactions();
   }

@@ -29,6 +29,7 @@ import {
   AdminEmployeeService,
   AdminWarehouseService,
   DeliveryService,
+  NotifyService,
   OrderService,
   WeighmentService,
   type AppError,
@@ -144,6 +145,7 @@ export class FeatureDispatch implements OnInit {
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly weighmentService = inject(WeighmentService);
+  private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
 
   protected readonly routes = signal<RouteResponse[]>([]);
@@ -421,6 +423,7 @@ export class FeatureDispatch implements OnInit {
           this.infoMessage.set('Weighment recorded.');
           this.errorMessage.set(null);
           this.loading.set(false);
+          this.notify.success('Weighment recorded.');
         },
         error: (err) => {
           this.errorMessage.set(errorMessageFor(err));
@@ -575,6 +578,7 @@ export class FeatureDispatch implements OnInit {
     this.infoMessage.set(message);
     this.errorMessage.set(null);
     this.loading.set(false);
+    this.notify.success(message);
     this.loadRoutes();
     this.loadUnassignedOrders();
   }
@@ -724,6 +728,7 @@ export class FeatureDispatch implements OnInit {
           this.infoMessage.set('Cash handover declared.');
           this.errorMessage.set(null);
           this.loading.set(false);
+          this.notify.success('Cash handover declared.');
         },
         error: (err) => {
           this.errorMessage.set(errorMessageFor(err));
