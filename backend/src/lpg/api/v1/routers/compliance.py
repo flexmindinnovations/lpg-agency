@@ -803,7 +803,12 @@ async def print_cylinder_unit_label(
         raise HTTPException(status_code=404, detail=f"Cylinder unit {cylinder_unit_id} not found.")
 
     cylinder_type = await cylinder_type_repo.get(unit.cylinder_type_id)
-    type_name = f"{cylinder_type.weight_kg} kg {cylinder_type.name}" if cylinder_type else None
+    type_name: str | None = None
+    if cylinder_type:
+        if "kg" in cylinder_type.name.lower():
+            type_name = cylinder_type.name
+        else:
+            type_name = f"{cylinder_type.name} ({cylinder_type.weight_kg} kg)"
 
     pdf_bytes = printing_engine.render_cylinder_label_pdf(unit, cylinder_type_name=type_name)
     return Response(

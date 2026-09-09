@@ -34,9 +34,13 @@ import {
   AdminCylinderTypeService,
   AdminWarehouseService,
   CylinderUnitService,
+  CustomerService,
+  DeliveryService,
   type AppError,
   type CylinderTypeResponse,
   type CylinderUnitResponse,
+  type CustomerResponse,
+  type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
 
@@ -131,6 +135,9 @@ export class FeatureCylinderUnits implements OnInit {
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly messageService = inject(MessageService);
 
+  private readonly deliveryService = inject(DeliveryService);
+  private readonly customerService = inject(CustomerService);
+
   private static readonly CONDITION_SEVERITY: Record<string, ChipSeverity> = {
     filled: 'success',
     empty: 'secondary',
@@ -167,6 +174,9 @@ export class FeatureCylinderUnits implements OnInit {
   protected readonly units = signal<CylinderUnitResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
+  protected readonly vehicles = signal<VehicleResponse[]>([]);
+  protected readonly customers = signal<CustomerResponse[]>([]);
+  protected readonly showMoveCustodyModal = signal(false);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly dueStatusFilter = signal<'all' | 'due_soon' | 'overdue'>('all');
@@ -182,6 +192,60 @@ export class FeatureCylinderUnits implements OnInit {
     for (const w of this.warehouses()) map.set(w.id, w.name);
     return map;
   });
+
+  protected readonly vehicleNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const v of this.vehicles()) {
+      map.set(v.id, `${v.registration_number}${v.model ? ' (' + v.model + ')' : ''}`);
+    }
+    return map;
+  });
+
+  protected readonly customerNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const c of this.customers()) {
+      map.set(c.id, `${c.consumer_number} — ${c.full_name}`);
+    }
+    return map;
+  });
+
+  protected readonly warehouseOptions = computed(() =>
+    this.warehouses().map((w) => ({ label: w.name, value: w.id }))
+  );
+
+  protected readonly vehicleOptions = computed(() =>
+    this.vehicles().map((v) => ({
+      label: `${v.registration_number}${v.model ? ' (' + v.model + ')' : ''}`,
+      value: v.id,
+    }))
+  );
+
+  protected readonly customerOptions = computed(() =>
+    this.customers().map((c) => ({
+      label: `${c.consumer_number} — ${c.full_name}`,
+      value: c.id,
+    }))
+  );
+
+  protected formatCustodyDisplay(custodyType: string, refId?: string | null): string {
+    const typeLabel = toSentenceCase(custodyType);
+    if (!refId) {
+      return typeLabel;
+    }
+    if (custodyType === 'warehouse') {
+      const name = this.warehouseNameById().get(refId);
+      return name ? `Warehouse — ${name}` : `Warehouse (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+    }
+    if (custodyType === 'vehicle') {
+      const name = this.vehicleNameById().get(refId);
+      return name ? `Vehicle — ${name}` : `Vehicle (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+    }
+    if (custodyType === 'customer') {
+      const name = this.customerNameById().get(refId);
+      return name ? `Customer — ${name}` : `Customer (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+    }
+    return `${typeLabel} — ${refId}`;
+  }
 
   protected readonly registerTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
@@ -217,7 +281,7 @@ export class FeatureCylinderUnits implements OnInit {
       field: 'custody_type',
       header: 'Custody',
       sortable: true,
-      valueFormatter: (value) => toSentenceCase(value as string),
+      valueFormatter: (value, row) => this.formatCustodyDisplay(value as string, row?.custody_ref_id),
     },
     {
       field: 'test_due_date',
@@ -283,7 +347,31 @@ export class FeatureCylinderUnits implements OnInit {
   ngOnInit(): void {
     this.loadCylinderTypes();
     this.loadWarehouses();
+    this.loadVehicles();
+    this.loadCustomers();
     this.loadUnits();
+
+    this.custodyForm.controls.custody_type.valueChanges.subscribe((type) => {
+      this.syncCustodyRefId(this.custodyForm, type);
+    });
+    this.registerForm.controls.custody_type.valueChanges.subscribe((type) => {
+      this.syncCustodyRefId(this.registerForm, type);
+    });
+  }
+
+  private syncCustodyRefId(form: typeof this.custodyForm | typeof this.registerForm, type: string): void {
+    if (type === 'warehouse') {
+      const wh = this.warehouses();
+      form.controls.custody_ref_id.setValue(wh.length > 0 ? wh[0].id : '');
+    } else if (type === 'vehicle') {
+      const v = this.vehicles();
+      form.controls.custody_ref_id.setValue(v.length > 0 ? v[0].id : '');
+    } else if (type === 'customer') {
+      const c = this.customers();
+      form.controls.custody_ref_id.setValue(c.length > 0 ? c[0].id : '');
+    } else {
+      form.controls.custody_ref_id.setValue('');
+    }
   }
 
   protected loadCylinderTypes(): void {
@@ -295,8 +383,27 @@ export class FeatureCylinderUnits implements OnInit {
 
   protected loadWarehouses(): void {
     this.warehouseService.listWarehouses().subscribe({
-      next: (warehouses) => this.warehouses.set(warehouses),
+      next: (warehouses) => {
+        this.warehouses.set(warehouses);
+        if (this.registerForm.controls.custody_type.value === 'warehouse' && !this.registerForm.controls.custody_ref_id.value && warehouses.length > 0) {
+          this.registerForm.controls.custody_ref_id.setValue(warehouses[0].id);
+        }
+      },
       error: () => this.errorMessage.set('Failed to load warehouses.'),
+    });
+  }
+
+  protected loadVehicles(): void {
+    this.deliveryService.listVehicles(0, 200).subscribe({
+      next: (page) => this.vehicles.set(page.items),
+      error: () => {},
+    });
+  }
+
+  protected loadCustomers(): void {
+    this.customerService.list(0, 200).subscribe({
+      next: (page) => this.customers.set(page.items),
+      error: () => {},
     });
   }
 
@@ -383,6 +490,31 @@ export class FeatureCylinderUnits implements OnInit {
     this.activeAction.set('none');
   }
 
+  protected openMoveCustody(unit?: CylinderUnitResponse): void {
+    const target = unit ?? this.selectedUnit();
+    if (!target) return;
+    this.selectedUnit.set(target);
+    this.custodyForm.reset({
+      custody_type: target.custody_type,
+      custody_ref_id: target.custody_ref_id ?? '',
+    });
+    if (!this.custodyForm.controls.custody_ref_id.value) {
+      this.syncCustodyRefId(this.custodyForm, target.custody_type);
+    }
+    this.showMoveCustodyModal.set(true);
+  }
+
+  protected closeMoveCustody(): void {
+    this.showMoveCustodyModal.set(false);
+  }
+
+  protected openMoveCustodyFromLookup(): void {
+    const result = this.lookupResult();
+    if (!result) return;
+    this.showLookupModal.set(false);
+    this.openMoveCustody(result);
+  }
+
   protected startAction(action: ActiveAction): void {
     const unit = this.selectedUnit();
     if (!unit) return;
@@ -390,7 +522,8 @@ export class FeatureCylinderUnits implements OnInit {
       this.testForm.reset({ tested_at: new Date(), due_date: null });
       this.suggestedDueDate.set(null);
     } else if (action === 'custody') {
-      this.custodyForm.reset({ custody_type: unit.custody_type, custody_ref_id: unit.custody_ref_id ?? '' });
+      this.openMoveCustody();
+      return;
     } else if (action === 'condition') {
       this.conditionForm.reset({ new_status: '', reason: '' });
     } else if (action === 'receive') {
@@ -462,6 +595,7 @@ export class FeatureCylinderUnits implements OnInit {
         next: (updated) => {
           this.selectedUnit.set(updated);
           this.activeAction.set('none');
+          this.showMoveCustodyModal.set(false);
           this.saving.set(false);
           this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Custody updated.' });
           this.loadUnits();

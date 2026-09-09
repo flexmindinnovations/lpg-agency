@@ -68,10 +68,15 @@ def render_cylinder_label_pdf(
     qr_bytes = generate_qr_png(unit.qr_code, size=150)
     qr_b64 = base64.b64encode(qr_bytes).decode("ascii")
 
+    formatted_test_due = None
+    if unit.test_due_date:
+        formatted_test_due = unit.test_due_date.strftime("%d-%b-%Y").upper()
+
     template = _env.get_template("cylinder_label.html")
     html = template.render(
         unit=unit,
         cylinder_type_name=cylinder_type_name,
+        formatted_test_due=formatted_test_due,
         qr_code_b64=qr_b64,
     )
 

@@ -675,6 +675,61 @@ textarea {
   padding-inline: var(--spacing-lg);
 }
 
+/* ========================================================================
+   DIALOGS — matching drawer layout hierarchy (pinned header & footer,
+   independently scrollable content)
+   ======================================================================== */
+
+.p-dialog {
+  border-radius: var(--radius-lg) !important;
+  border: var(--border-width) solid var(--color-border-default) !important;
+  background-color: var(--color-surface-raised) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 85vh !important;
+  overflow: hidden !important;
+}
+
+.p-dialog .p-dialog-header {
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) !important;
+  border-bottom: var(--border-width) solid var(--color-border-default) !important;
+  flex-shrink: 0 !important;
+}
+
+.p-dialog .p-dialog-header .p-dialog-title {
+  font-size: var(--typography-heading2-font-size) !important;
+  font-weight: var(--typography-heading2-font-weight) !important;
+  letter-spacing: -0.01em;
+}
+
+.p-dialog .p-dialog-content {
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+.p-dialog:has(.p-dialog-footer) .p-dialog-content {
+  padding-block-end: var(--spacing-md) !important;
+}
+
+.p-dialog .p-dialog-footer {
+  padding: var(--spacing-md) var(--spacing-lg) !important;
+  border-top: var(--border-width) solid var(--color-border-default) !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  background-color: var(--color-surface-raised) !important;
+}
+
+.p-dialog .p-dialog-footer .modal-actions {
+  padding-block-start: 0 !important;
+  border-block-start: none !important;
+  width: 100% !important;
+}
+
 /* Notification drawer: the content is a flex column with its own padding
    removed, so the notification list scrolls independently while the
    toolbar and the "View All Notifications" footer stay pinned in view. */

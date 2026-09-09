@@ -120,17 +120,48 @@
             <p-select
               inputId="custody_ref_id"
               formControlName="custody_ref_id"
-              [options]="warehouses()"
-              optionLabel="name"
-              optionValue="id"
+              [options]="warehouseOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Warehouse"
               appendTo="body"
               [fluid]="true"
             ></p-select>
           </lpg-form-field>
-        } @else if (registerForm.controls.custody_type.value !== 'bottling_plant') {
-          <lpg-form-field label="Custody reference ID" for="custody_ref_id" hint="Vehicle or customer ID — no picker wired for this custody kind yet.">
-            <input pInputText id="custody_ref_id" formControlName="custody_ref_id" [fluid]="true" />
+        } @else if (registerForm.controls.custody_type.value === 'vehicle') {
+          <lpg-form-field label="Vehicle" for="custody_ref_id">
+            <p-select
+              inputId="custody_ref_id"
+              formControlName="custody_ref_id"
+              [options]="vehicleOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Vehicle"
+              [filter]="true"
+              filterBy="label"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
           </lpg-form-field>
+        } @else if (registerForm.controls.custody_type.value === 'customer') {
+          <lpg-form-field label="Customer" for="custody_ref_id">
+            <p-select
+              inputId="custody_ref_id"
+              formControlName="custody_ref_id"
+              [options]="customerOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Customer"
+              [filter]="true"
+              filterBy="label"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+        } @else if (registerForm.controls.custody_type.value === 'bottling_plant') {
+          <p-message severity="info" [closable]="false" styleClass="w-full">
+            Cylinders dispatched to the bottling plant leave agency possession. No reference ID is needed.
+          </p-message>
         }
 
         <lpg-form-field label="Manufacture date (optional)" for="manufacture_date">
@@ -188,14 +219,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">Custody</span>
-            <span class="detail-value">
-              {{ toSentenceCase(unit.custody_type) }}
-              @if (unit.custody_type === 'warehouse' && unit.custody_ref_id) {
-                — {{ warehouseNameById().get(unit.custody_ref_id) ?? unit.custody_ref_id }}
-              } @else if (unit.custody_ref_id) {
-                — {{ unit.custody_ref_id }}
-              }
-            </span>
+            <span class="detail-value">{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Statutory Test</span>
@@ -310,46 +334,6 @@
               </form>
             }
 
-            @case ('custody') {
-              <form [formGroup]="custodyForm" (ngSubmit)="saveCustody()" class="dialog-form">
-                <div class="dialog-form__fields">
-                  <lpg-form-field label="Custody type" for="move_custody_type" [control]="custodyForm.controls.custody_type">
-                    <p-select
-                      inputId="move_custody_type"
-                      formControlName="custody_type"
-                      [options]="custodyTypeOptions"
-                      optionLabel="label"
-                      optionValue="value"
-                      appendTo="body"
-                      [fluid]="true"
-                    ></p-select>
-                  </lpg-form-field>
-
-                  @if (custodyForm.controls.custody_type.value === 'warehouse') {
-                    <lpg-form-field label="Warehouse" for="move_custody_ref_id">
-                      <p-select
-                        inputId="move_custody_ref_id"
-                        formControlName="custody_ref_id"
-                        [options]="warehouses()"
-                        optionLabel="name"
-                        optionValue="id"
-                        appendTo="body"
-                        [fluid]="true"
-                      ></p-select>
-                    </lpg-form-field>
-                  } @else if (custodyForm.controls.custody_type.value !== 'bottling_plant') {
-                    <lpg-form-field label="Custody reference ID" for="move_custody_ref_id">
-                      <input pInputText id="move_custody_ref_id" formControlName="custody_ref_id" [fluid]="true" />
-                    </lpg-form-field>
-                  }
-                </div>
-                <div class="modal-actions">
-                  <button pButton type="button" severity="secondary" (click)="cancelAction()">Cancel</button>
-                  <button pButton type="submit" [disabled]="custodyForm.invalid || saving()">Save</button>
-                </div>
-              </form>
-            }
-
             @case ('condition') {
               <form [formGroup]="conditionForm" (ngSubmit)="saveCondition()" class="dialog-form">
                 <div class="dialog-form__fields">
@@ -417,7 +401,7 @@
     [visible]="showLookupModal()"
     (onHide)="showLookupModal.set(false)"
     [modal]="true"
-    [style]="{ width: '100%', maxWidth: '32rem' }"
+    [style]="{ width: '100%', maxWidth: '38rem' }"
     [draggable]="false"
     [resizable]="false"
   >
@@ -426,19 +410,20 @@
         Scan a QR code or barcode, or enter a serial number to quickly locate a cylinder unit and check its status.
       </p>
 
-      <div class="flex gap-2 items-center my-3">
+      <div class="lookup-input-row">
         <input
           pInputText
           [ngModel]="lookupCode()"
           (ngModelChange)="lookupCode.set($event)"
           (keydown.enter)="performLookup()"
           placeholder="Scan barcode or type code..."
-          class="flex-1"
+          class="lookup-input"
           autofocus
         />
         <button
           pButton
           type="button"
+          class="lookup-btn"
           (click)="performLookup()"
           [disabled]="!lookupCode().trim() || lookupSearching()"
         >
@@ -448,50 +433,51 @@
       </div>
 
       @if (lookupNotFound()) {
-        <p-message severity="warn">No cylinder unit found matching this code.</p-message>
+        <div class="lookup-not-found-msg">
+          <p-message severity="warn">No cylinder unit found matching this code.</p-message>
+        </div>
       }
 
       @if (lookupResult(); as result) {
-        <div class="detail-view__fields p-3 mt-3 border border-surface-200 dark:border-surface-700 rounded-md">
-          <div class="detail-item">
-            <span class="detail-label">Serial Number</span>
-            <span class="detail-value font-semibold">{{ result.serial_number }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">QR / Barcode</span>
-            <span class="detail-value font-mono">{{ result.qr_code }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Type</span>
-            <span class="detail-value">{{ cylinderTypeNameById().get(result.cylinder_type_id) ?? result.cylinder_type_id }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Condition</span>
-            <p-tag [value]="toSentenceCase(result.condition_status)" [severity]="conditionSeverity(result.condition_status)" />
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Current Custody</span>
-            <span class="detail-value">
-              {{ toSentenceCase(result.custody_type) }}
-              @if (result.custody_type === 'warehouse' && result.custody_ref_id) {
-                — {{ warehouseNameById().get(result.custody_ref_id) ?? result.custody_ref_id }}
-              } @else if (result.custody_ref_id) {
-                — {{ result.custody_ref_id }}
-              }
-            </span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Retest Due</span>
-            <span class="detail-value">
-              {{ result.test_due_date ? formatReportDate(result.test_due_date) : 'Never tested' }}
-              @if (result.is_due_for_test) {
-                <p-tag value="OVERDUE" severity="danger" />
-              }
-            </span>
+        <div class="lookup-result-card">
+          <div class="lookup-result-fields">
+            <div class="detail-item">
+              <span class="detail-label">Serial Number</span>
+              <span class="detail-value font-semibold">{{ result.serial_number }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">QR / Barcode</span>
+              <span class="detail-value font-mono">{{ result.qr_code }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Type</span>
+              <span class="detail-value">{{ cylinderTypeNameById().get(result.cylinder_type_id) ?? result.cylinder_type_id }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Condition</span>
+              <p-tag [value]="toSentenceCase(result.condition_status)" [severity]="conditionSeverity(result.condition_status)" />
+            </div>
+            <div class="detail-item detail-item--span-2">
+              <span class="detail-label">Retest Due</span>
+              <span class="detail-value">
+                {{ result.test_due_date ? formatReportDate(result.test_due_date) : 'Never tested' }}
+                @if (result.is_due_for_test) {
+                  <p-tag value="OVERDUE" severity="danger" />
+                }
+              </span>
+            </div>
+            <div class="detail-item detail-item--full-width">
+              <span class="detail-label">Current Custody</span>
+              <span class="detail-value">{{ formatCustodyDisplay(result.custody_type, result.custody_ref_id) }}</span>
+            </div>
           </div>
         </div>
+      }
+    </div>
 
-        <div class="modal-actions mt-4">
+    <ng-template #footer>
+      @if (lookupResult(); as result) {
+        <div class="modal-actions modal-actions--wrap w-full">
           <button
             pButton
             type="button"
@@ -503,6 +489,16 @@
             <span pButtonLabel>Print Label</span>
           </button>
           <button
+            *lpgHasPermission="'cylinder_units:manage'"
+            pButton
+            type="button"
+            severity="secondary"
+            (click)="openMoveCustodyFromLookup()"
+          >
+            <i pButtonIcon class="pi pi-arrows-alt"></i>
+            <span pButtonLabel>Move Custody</span>
+          </button>
+          <button
             pButton
             type="button"
             (click)="openDetailsFromLookup()"
@@ -511,7 +507,113 @@
             <span pButtonLabel>Manage Unit</span>
           </button>
         </div>
+      } @else {
+        <div class="modal-actions w-full">
+          <button pButton type="button" severity="secondary" (click)="showLookupModal.set(false)">Close</button>
+        </div>
       }
-    </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Dedicated Move Custody Dialog -->
+  <p-dialog
+    header="Move Cylinder Custody"
+    [visible]="showMoveCustodyModal()"
+    (onHide)="closeMoveCustody()"
+    [modal]="true"
+    [style]="{ width: '100%', maxWidth: '34rem' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    @if (selectedUnit(); as unit) {
+      <div class="dialog-form">
+        <div class="custody-header-summary">
+          <div class="custody-summary-item">
+            <span class="custody-summary-label">Serial Number</span>
+            <span class="custody-summary-val font-semibold">{{ unit.serial_number }}</span>
+          </div>
+          <div class="custody-summary-item">
+            <span class="custody-summary-label">QR / Barcode</span>
+            <span class="custody-summary-val font-mono">{{ unit.qr_code }}</span>
+          </div>
+          <div class="custody-summary-item">
+            <span class="custody-summary-label">Current Custody</span>
+            <span class="custody-summary-val">{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span>
+          </div>
+        </div>
+
+        <form [formGroup]="custodyForm" (ngSubmit)="saveCustody()">
+          <div class="dialog-form__fields">
+            <lpg-form-field label="Destination custody type" for="move_custody_type" [control]="custodyForm.controls.custody_type">
+              <p-select
+                inputId="move_custody_type"
+                formControlName="custody_type"
+                [options]="custodyTypeOptions"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              ></p-select>
+            </lpg-form-field>
+
+            @if (custodyForm.controls.custody_type.value === 'warehouse') {
+              <lpg-form-field label="Destination Warehouse" for="move_custody_ref_id">
+                <p-select
+                  inputId="move_custody_ref_id"
+                  formControlName="custody_ref_id"
+                  [options]="warehouseOptions()"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Select Warehouse"
+                  appendTo="body"
+                  [fluid]="true"
+                ></p-select>
+              </lpg-form-field>
+            } @else if (custodyForm.controls.custody_type.value === 'vehicle') {
+              <lpg-form-field label="Destination Vehicle" for="move_custody_ref_id">
+                <p-select
+                  inputId="move_custody_ref_id"
+                  formControlName="custody_ref_id"
+                  [options]="vehicleOptions()"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Select Vehicle"
+                  [filter]="true"
+                  filterBy="label"
+                  appendTo="body"
+                  [fluid]="true"
+                ></p-select>
+              </lpg-form-field>
+            } @else if (custodyForm.controls.custody_type.value === 'customer') {
+              <lpg-form-field label="Destination Customer" for="move_custody_ref_id">
+                <p-select
+                  inputId="move_custody_ref_id"
+                  formControlName="custody_ref_id"
+                  [options]="customerOptions()"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Select Customer"
+                  [filter]="true"
+                  filterBy="label"
+                  appendTo="body"
+                  [fluid]="true"
+                ></p-select>
+              </lpg-form-field>
+            } @else if (custodyForm.controls.custody_type.value === 'bottling_plant') {
+              <p-message severity="info" [closable]="false" styleClass="w-full">
+                Cylinders dispatched to the bottling plant leave agency possession. No reference ID is needed.
+              </p-message>
+            }
+          </div>
+        </form>
+      </div>
+
+      <ng-template #footer>
+        <div class="modal-actions w-full">
+          <button pButton type="button" severity="secondary" (click)="closeMoveCustody()">Cancel</button>
+          <button pButton type="button" [disabled]="custodyForm.invalid || saving()" (click)="saveCustody()">Update Custody</button>
+        </div>
+      </ng-template>
+    }
   </p-dialog>
 </div>
