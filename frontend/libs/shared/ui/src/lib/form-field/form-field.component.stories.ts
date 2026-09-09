@@ -35,6 +35,10 @@ import { FormFieldComponent } from './form-field.component';
           optionValue="value"
         />
       </lpg-form-field>
+
+      <lpg-form-field label="Alternate mobile" for="sb-alt-mobile" [control]="altMobile" [optional]="true">
+        <input id="sb-alt-mobile" pInputText [formControl]="altMobile" />
+      </lpg-form-field>
     </div>
   `,
 })
@@ -42,6 +46,7 @@ class FormFieldStoryHost {
   name = new FormControl('', { validators: [Validators.required] });
   email = new FormControl('not-an-email', { validators: [Validators.email] });
   role = new FormControl(null, { validators: [Validators.required] });
+  altMobile = new FormControl('');
   roles = [
     { label: 'Dispatcher', value: 'dispatcher' },
     { label: 'Manager', value: 'manager' },

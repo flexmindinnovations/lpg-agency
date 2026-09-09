@@ -19,6 +19,9 @@ import { of, startWith, switchMap } from 'rxjs';
  * the matching `for` so the label and the input are associated for assistive
  * tech. Give the control `[fluid]="true"` (or let the wrapper's fallback
  * stretch it to full width).
+ *
+ * `[optional]="true"` puts a muted "(Optional)" suffix next to the label
+ * itself, rather than as separate hint text below the control.
  */
 @Component({
   selector: 'lpg-form-field',
@@ -28,7 +31,7 @@ import { of, startWith, switchMap } from 'rxjs';
   template: `
     <div class="lpg-field" [class.lpg-field--invalid]="showError()">
       <label class="lpg-field__label" [attr.for]="for()">
-        {{ label() }}@if (isRequired()) {<span class="lpg-field__req" aria-hidden="true">*</span>}
+        {{ label() }}@if (isRequired()) {<span class="lpg-field__req" aria-hidden="true">*</span>} @else if (optional()) {<span class="lpg-field__optional">(Optional)</span>}
       </label>
 
       <ng-content />
@@ -65,6 +68,12 @@ import { of, startWith, switchMap } from 'rxjs';
       .lpg-field__req {
         color: var(--color-status-danger);
         margin-inline-start: 2px;
+      }
+
+      .lpg-field__optional {
+        color: var(--color-text-secondary);
+        font-weight: normal;
+        margin-inline-start: 4px;
       }
 
       /* Stretch the projected control to the field width unless the call site
@@ -121,6 +130,9 @@ export class FormFieldComponent {
   readonly messages = input<Record<string, string>>({});
   /** Force the required asterisk on/off; otherwise inferred from the control. */
   readonly required = input<boolean | null>(null);
+  /** Shows a muted "(Optional)" suffix next to the label. Ignored when the
+   *  field is required — a field is never both. */
+  readonly optional = input(false);
 
   /**
    * `AbstractControl`'s validity / touched / dirty flags are plain

@@ -191,7 +191,7 @@
       >
         <p-inputnumber inputId="grn_quantity" formControlName="quantity_received" [min]="1" [fluid]="true" />
       </lpg-form-field>
-      <lpg-form-field label="Source OMC" for="grn_source_omc" [control]="grnForm.controls.source_omc" hint="Optional.">
+      <lpg-form-field label="Source OMC" for="grn_source_omc" [control]="grnForm.controls.source_omc" [optional]="true">
         <input pInputText id="grn_source_omc" formControlName="source_omc" [fluid]="true" />
       </lpg-form-field>
       </div>

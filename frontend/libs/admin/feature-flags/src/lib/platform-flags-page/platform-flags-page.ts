@@ -131,7 +131,7 @@ class FlagDefaultCell {
           <lpg-form-field label="Description" for="flag-description" [control]="form.controls.description" [messages]="{ required: 'Description is required.' }">
             <input pInputText id="flag-description" type="text" formControlName="description" [fluid]="true" />
           </lpg-form-field>
-          <lpg-form-field label="Rollout %" for="flag-rollout" [control]="form.controls.rolloutPercentage" hint="Optional.">
+          <lpg-form-field label="Rollout %" for="flag-rollout" [control]="form.controls.rolloutPercentage" [optional]="true">
             <input pInputText id="flag-rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
           </lpg-form-field>
           </div>
@@ -192,11 +192,11 @@ class FlagDefaultCell {
                 ></p-select>
               </lpg-form-field>
 
-              <lpg-form-field label="Rollout %" for="edit_rollout" [control]="editForm.controls.rolloutPercentage" hint="Optional.">
+              <lpg-form-field label="Rollout %" for="edit_rollout" [control]="editForm.controls.rolloutPercentage" [optional]="true">
                 <input pInputText id="edit_rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
               </lpg-form-field>
 
-              <lpg-form-field label="Starts at" for="edit_starts_at" [control]="editForm.controls.startsAt" hint="Optional.">
+              <lpg-form-field label="Starts at" for="edit_starts_at" [control]="editForm.controls.startsAt" [optional]="true">
                 <p-datepicker
                   inputId="edit_starts_at"
                   formControlName="startsAt"
@@ -208,7 +208,7 @@ class FlagDefaultCell {
                 ></p-datepicker>
               </lpg-form-field>
 
-              <lpg-form-field label="Ends at" for="edit_ends_at" [control]="editForm.controls.endsAt" hint="Optional.">
+              <lpg-form-field label="Ends at" for="edit_ends_at" [control]="editForm.controls.endsAt" [optional]="true">
                 <p-datepicker
                   inputId="edit_ends_at"
                   formControlName="endsAt"

@@ -108,7 +108,7 @@ class BranchStatusCell {
             <input pInputText id="branch-name" type="text" formControlName="name" placeholder="e.g. North City Branch" [fluid]="true" />
           </lpg-form-field>
 
-          <lpg-form-field label="Region" for="branch-region" [control]="form.controls.region" hint="Optional.">
+          <lpg-form-field label="Region" for="branch-region" [control]="form.controls.region" [optional]="true">
             <input pInputText id="branch-region" type="text" formControlName="region" placeholder="e.g. Northern Region" [fluid]="true" />
           </lpg-form-field>
           </div>

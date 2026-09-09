@@ -82,7 +82,7 @@
         <input pInputText id="phone_number" formControlName="phone_number" [fluid]="true" />
       </lpg-form-field>
 
-      <lpg-form-field label="Email" for="email" [control]="registerForm.controls.email" [messages]="fieldMessages.email" hint="Optional.">
+      <lpg-form-field label="Email" for="email" [control]="registerForm.controls.email" [messages]="fieldMessages.email" [optional]="true">
         <input pInputText id="email" type="email" formControlName="email" [fluid]="true" />
       </lpg-form-field>
 
@@ -209,7 +209,7 @@
         <input pInputText id="edit_phone_number" formControlName="phone_number" [fluid]="true" />
       </lpg-form-field>
 
-      <lpg-form-field label="Email" for="edit_email" [control]="editForm.controls.email" [messages]="fieldMessages.email" hint="Optional.">
+      <lpg-form-field label="Email" for="edit_email" [control]="editForm.controls.email" [messages]="fieldMessages.email" [optional]="true">
         <input pInputText id="edit_email" type="email" formControlName="email" [fluid]="true" />
       </lpg-form-field>
 
