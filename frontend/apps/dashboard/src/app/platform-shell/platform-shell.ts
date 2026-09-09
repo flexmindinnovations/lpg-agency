@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { Router, RouterOutlet } from '@angular/router';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
 import { AuthService, AuthTokenStore } from '@lpg/shared/data-access';
-import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
@@ -23,7 +22,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
   selector: 'lpg-platform-shell',
   standalone: true,
   imports: [RouterOutlet, AppShellComponent, ToastModule, ConfirmDialogModule],
-  providers: [MessageService],
+  // No component-level MessageService provider — see ShellLayout's own
+  // comment on the same removal; it's already provided at root.
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-app-shell

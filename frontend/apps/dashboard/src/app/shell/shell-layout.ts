@@ -45,7 +45,15 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
     NotificationDrawer,
     CommandPaletteComponent,
   ],
-  providers: [MessageService],
+  // No component-level MessageService provider — it's already provided at
+  // root (app.config.ts). A local override here used to shadow that root
+  // instance for this shell's whole subtree, meaning NotifyService (root-
+  // scoped, providedIn: 'root') and this <p-toast> ended up bound to two
+  // different MessageService instances: NotifyService always resolves its
+  // own dependencies against the root injector (where it's registered),
+  // regardless of which component ends up calling it — messages it
+  // published were never seen by this shell's toast. One shared instance
+  // is also just correct for a genuinely *global* handler.
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-app-shell
