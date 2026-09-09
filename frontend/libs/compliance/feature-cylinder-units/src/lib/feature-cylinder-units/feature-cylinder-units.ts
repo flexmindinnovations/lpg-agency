@@ -29,37 +29,20 @@ import { DatePicker } from 'primeng/datepicker';
 import { Select } from 'primeng/select';
 import { Message } from 'primeng/message';
 import { Tag } from 'primeng/tag';
-import { MessageService } from 'primeng/api';
 import {
   AdminCylinderTypeService,
   AdminWarehouseService,
   CylinderUnitService,
   CustomerService,
   DeliveryService,
-  type AppError,
+  NotifyService,
+  errorMessageFor,
   type CylinderTypeResponse,
   type CylinderUnitResponse,
   type CustomerResponse,
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'DUPLICATE_CYLINDER_SERIAL_NUMBER':
-      return 'A cylinder unit with this serial number is already registered.';
-    case 'DUPLICATE_CYLINDER_QR_CODE':
-      return 'A cylinder unit with this QR / barcode is already registered.';
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
 
 /** `dd-mm-yyyy`-picker value → `yyyy-mm-dd` API string, or `undefined`. */
 function formatDateForApi(value: unknown): string | undefined {
@@ -133,7 +116,7 @@ export class FeatureCylinderUnits implements OnInit {
   private readonly cylinderUnitService = inject(CylinderUnitService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly warehouseService = inject(AdminWarehouseService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   private readonly deliveryService = inject(DeliveryService);
   private readonly customerService = inject(CustomerService);
@@ -396,14 +379,16 @@ export class FeatureCylinderUnits implements OnInit {
   protected loadVehicles(): void {
     this.deliveryService.listVehicles(0, 200).subscribe({
       next: (page) => this.vehicles.set(page.items),
-      error: () => {},
+      // Custody options just stay empty on failure — deliberately silent,
+      // pre-existing (not part of this pass's toast consolidation).
+      error: () => undefined,
     });
   }
 
   protected loadCustomers(): void {
     this.customerService.list(0, 200).subscribe({
       next: (page) => this.customers.set(page.items),
-      error: () => {},
+      error: () => undefined,
     });
   }
 
@@ -469,11 +454,6 @@ export class FeatureCylinderUnits implements OnInit {
         error: (err) => {
           this.errorMessage.set(errorMessageFor(err));
           this.loading.set(false);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: errorMessageFor(err),
-          });
         },
       });
   }
@@ -571,13 +551,10 @@ export class FeatureCylinderUnits implements OnInit {
         this.selectedUnit.set(updated);
         this.activeAction.set('none');
         this.saving.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Test recorded.' });
+        this.notify.success('Test recorded.');
         this.loadUnits();
       },
-      error: (err) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 
@@ -597,13 +574,10 @@ export class FeatureCylinderUnits implements OnInit {
           this.activeAction.set('none');
           this.showMoveCustodyModal.set(false);
           this.saving.set(false);
-          this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Custody updated.' });
+          this.notify.success('Custody updated.');
           this.loadUnits();
         },
-        error: (err) => {
-          this.saving.set(false);
-          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-        },
+        error: () => this.saving.set(false),
       });
   }
 
@@ -619,13 +593,10 @@ export class FeatureCylinderUnits implements OnInit {
           this.selectedUnit.set(updated);
           this.activeAction.set('none');
           this.saving.set(false);
-          this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Condition updated.' });
+          this.notify.success('Condition updated.');
           this.loadUnits();
         },
-        error: (err) => {
-          this.saving.set(false);
-          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-        },
+        error: () => this.saving.set(false),
       });
   }
 
@@ -639,13 +610,10 @@ export class FeatureCylinderUnits implements OnInit {
         this.selectedUnit.set(updated);
         this.activeAction.set('none');
         this.saving.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Received', detail: 'Cylinder received into stock.' });
+        this.notify.success('Cylinder received into stock.', 'Received');
         this.loadUnits();
       },
-      error: (err) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 
@@ -657,13 +625,10 @@ export class FeatureCylinderUnits implements OnInit {
       next: (updated) => {
         this.selectedUnit.set(updated);
         this.saving.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Retired', detail: 'Cylinder unit retired.' });
+        this.notify.success('Cylinder unit retired.', 'Retired');
         this.loadUnits();
       },
-      error: (err) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 
@@ -682,20 +647,9 @@ export class FeatureCylinderUnits implements OnInit {
         this.printingLabel.set(false);
         const url = window.URL.createObjectURL(blob);
         window.open(url, '_blank');
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Label Ready',
-          detail: 'Thermal sticker opened for printing.',
-        });
+        this.notify.success('Thermal sticker opened for printing.', 'Label Ready');
       },
-      error: (err) => {
-        this.printingLabel.set(false);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Print Failed',
-          detail: errorMessageFor(err),
-        });
-      },
+      error: () => this.printingLabel.set(false),
     });
   }
 

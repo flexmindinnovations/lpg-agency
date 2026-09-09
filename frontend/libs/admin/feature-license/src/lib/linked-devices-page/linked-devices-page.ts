@@ -1,19 +1,7 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { MessageService } from 'primeng/api';
-import { LicenseService, type AppError, type LinkedDeviceResponse } from '@lpg/shared/data-access';
+import { LicenseService, NotifyService, type LinkedDeviceResponse } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, toSentenceCase } from '@lpg/shared/ui';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong revoking the device. Please try again.';
-  }
-}
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
  * default, ignoring `valueFormatter` (same issue fixed for Platform
@@ -98,7 +86,7 @@ class DeviceStatusCell {
 })
 export class LinkedDevicesPage implements OnInit {
   private readonly licenseService = inject(LicenseService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly devices = signal<LinkedDeviceResponse[]>([]);
   protected readonly loading = signal(false);
@@ -152,11 +140,8 @@ export class LinkedDevicesPage implements OnInit {
   protected revoke(deviceId: string): void {
     this.licenseService.revokeDevice(deviceId).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Device revoked.' });
+        this.notify.success('Device revoked.');
         this.reload();
-      },
-      error: (error: unknown) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }

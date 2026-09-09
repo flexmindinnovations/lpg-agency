@@ -35,7 +35,6 @@ import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
-import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { DatePicker } from 'primeng/datepicker';
@@ -44,27 +43,13 @@ import {
   DocumentService,
   AdminBranchService,
   AdminEmployeeService,
-  type AppError,
+  NotifyService,
+  errorMessageFor,
   type BranchResponse,
   type DriverResponse,
   type EmployeeResponse,
   type RecognizeComplianceDocumentResponse,
 } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'DUPLICATE_EMPLOYEE_CODE':
-      return 'A driver with this employee code already exists.';
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
 
 /** `dd-mm-yyyy`-picker value → `yyyy-mm-dd` API string, or `undefined` for
  * an empty/cleared field. Shared by Register and Edit — both post through
@@ -114,7 +99,7 @@ export class FeatureDrivers implements OnInit {
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   private static readonly STATUS_SEVERITY: Record<string, ChipSeverity> = {
     active: 'success',
@@ -522,11 +507,7 @@ export class FeatureDrivers implements OnInit {
     const driver = this.selectedDriver();
     if (driver) this.loadDriverDocuments(driver.id);
     this.loadDriverComplianceFlags();
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Compliance documents updated.',
-    });
+    this.notify.success('Compliance documents updated.');
   }
 
   protected startEdit(): void {
@@ -594,13 +575,10 @@ export class FeatureDrivers implements OnInit {
         this.selectedDriver.set(results[results.length - 1]);
         this.editMode.set(false);
         this.saving.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Driver updated.' });
+        this.notify.success('Driver updated.');
         this.loadDrivers();
       },
-      error: (err) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 }

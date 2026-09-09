@@ -85,6 +85,20 @@ export function errorMessageFor(
       return 'This request was already submitted with different details.';
     case 'LICENSE_ACTIVATION_FAILED':
       return 'That key is invalid, already activated, or has been revoked.';
+    case 'DUPLICATE_CYLINDER_SERIAL_NUMBER':
+      return 'A cylinder unit with this serial number is already registered.';
+    case 'DUPLICATE_CYLINDER_QR_CODE':
+      return 'A cylinder unit with this QR / barcode is already registered.';
+    case 'DUPLICATE_REGISTRATION_NUMBER':
+      return 'A vehicle with this registration number already exists.';
+    case 'DUPLICATE_EMPLOYEE_CODE':
+      return 'A driver with this employee code already exists.';
+    case 'DUPLICATE_PHONE':
+      return 'A customer with this phone number already exists.';
+    case 'DUPLICATE_CONSUMER_NUMBER':
+      return 'This Consumer Number is already assigned.';
+    case 'DUPLICATE_LPG_SUBSIDY_ID':
+      return 'This LPG ID is already linked to another customer.';
     default:
       return error.detail || fallback;
   }

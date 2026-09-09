@@ -4,8 +4,7 @@ import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
 import { ButtonModule } from 'primeng/button';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
-import { MessageService } from 'primeng/api';
-import { NotificationService } from '@lpg/shared/data-access';
+import { NotificationService, NotifyService } from '@lpg/shared/data-access';
 import type { NotificationResponse } from '@lpg/shared/data-access';
 
 @Component({
@@ -59,7 +58,7 @@ export class NotificationActionCell {
 })
 export class NotificationFeatureNotifications implements OnInit {
   private readonly notificationService = inject(NotificationService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
 
   protected readonly notifications = signal<NotificationResponse[]>([]);
@@ -123,9 +122,11 @@ export class NotificationFeatureNotifications implements OnInit {
         this.notifications.set(res.items);
         this.loading.set(false);
       },
+      // GET — not covered by the global error-toast interceptor
+      // (mutating methods only).
       error: () => {
         this.loading.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load notifications' });
+        this.notify.error('Failed to load notifications');
       }
     });
   }
@@ -134,13 +135,10 @@ export class NotificationFeatureNotifications implements OnInit {
     this.loading.set(true);
     this.notificationService.markRead(id).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Notification marked as read' });
+        this.notify.success('Notification marked as read');
         this.loadNotifications();
       },
-      error: () => {
-        this.loading.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to mark as read' });
-      }
+      error: () => this.loading.set(false),
     });
   }
 
@@ -148,13 +146,10 @@ export class NotificationFeatureNotifications implements OnInit {
     this.loading.set(true);
     this.notificationService.markAllRead().subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'All notifications marked as read' });
+        this.notify.success('All notifications marked as read');
         this.loadNotifications();
       },
-      error: () => {
-        this.loading.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to mark all as read' });
-      }
+      error: () => this.loading.set(false),
     });
   }
 }

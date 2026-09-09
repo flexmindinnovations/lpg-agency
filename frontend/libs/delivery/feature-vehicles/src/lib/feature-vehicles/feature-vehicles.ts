@@ -35,7 +35,6 @@ import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
-import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { Tag } from 'primeng/tag';
@@ -43,15 +42,12 @@ import {
   AdminBranchService,
   DeliveryService,
   DocumentService,
-  type AppError,
+  NotifyService,
+  errorMessageFor,
   type BranchResponse,
   type RecognizeComplianceDocumentResponse,
   type VehicleResponse,
 } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
 
 /** `dd-mm-yyyy`-picker value → `yyyy-mm-dd` API string, or `undefined`. */
 function formatDateForApi(value: unknown): string | undefined {
@@ -60,17 +56,6 @@ function formatDateForApi(value: unknown): string | undefined {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
     d.getDate(),
   ).padStart(2, '0')}`;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'DUPLICATE_REGISTRATION_NUMBER':
-      return 'A vehicle with this registration number already exists.';
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
-    default:
-      return 'Something went wrong. Please try again.';
-  }
 }
 
 @Component({
@@ -108,7 +93,7 @@ export class FeatureVehicles implements OnInit {
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   private static readonly STATUS_SEVERITY: Record<string, ChipSeverity> = {
     active: 'success',
@@ -465,11 +450,7 @@ export class FeatureVehicles implements OnInit {
     const vehicle = this.selectedVehicle();
     if (vehicle) this.loadVehicleDocuments(vehicle.id);
     this.loadVehicleComplianceFlags();
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Compliance documents updated.',
-    });
+    this.notify.success('Compliance documents updated.');
   }
 
   protected startEdit(): void {
@@ -529,13 +510,10 @@ export class FeatureVehicles implements OnInit {
         this.selectedVehicle.set(results[results.length - 1]);
         this.editMode.set(false);
         this.saving.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Vehicle updated.' });
+        this.notify.success('Vehicle updated.');
         this.loadVehicles();
       },
-      error: (err) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 }

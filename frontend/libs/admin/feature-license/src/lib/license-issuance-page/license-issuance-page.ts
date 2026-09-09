@@ -8,11 +8,10 @@ import { MultiSelect } from 'primeng/multiselect';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
-import { MessageService } from 'primeng/api';
 import {
   AgencyService,
   LicenseService,
-  type AppError,
+  NotifyService,
   type IssuedLicenseResponse,
   type LicenseResponse,
   type TenantResponse,
@@ -35,17 +34,6 @@ const VALIDITY_OPTIONS = [
   { label: '2 years', value: 730 },
   { label: '3 years', value: 1095 },
 ] as const;
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
 
 /**
  * Platform-side license management — `super_admin`,
@@ -403,7 +391,7 @@ export class LicenseIssuancePage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly licenseService = inject(LicenseService);
   private readonly agencyService = inject(AgencyService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
@@ -547,16 +535,13 @@ export class LicenseIssuancePage implements OnInit {
         this.issuedKey.set(issued);
         this.reload();
       },
-      error: (error: unknown) => {
-        this.submitting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.submitting.set(false),
     });
   }
 
   protected copyIssuedKey(key: string): void {
     void navigator.clipboard.writeText(key);
-    this.messageService.add({ severity: 'success', summary: 'Copied', detail: 'Key copied to clipboard.' });
+    this.notify.success('Key copied to clipboard.', 'Copied');
   }
 
   protected activateIssuedLicense(issued: IssuedLicenseResponse): void {
@@ -567,13 +552,10 @@ export class LicenseIssuancePage implements OnInit {
       next: (activated) => {
         this.activating.set(false);
         this.activatedLicense.set(activated);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'License activated.' });
+        this.notify.success('License activated.');
         this.reload();
       },
-      error: (error: unknown) => {
-        this.activating.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.activating.set(false),
     });
   }
 
@@ -601,14 +583,11 @@ export class LicenseIssuancePage implements OnInit {
     this.licenseService.setPlanTier(tenantId, planTier).subscribe({
       next: () => {
         this.savingPlanTier.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Plan tier updated.' });
+        this.notify.success('Plan tier updated.');
         this.reload();
         this.closeDetails();
       },
-      error: (error: unknown) => {
-        this.savingPlanTier.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.savingPlanTier.set(false),
     });
   }
 
@@ -623,24 +602,18 @@ export class LicenseIssuancePage implements OnInit {
     ).subscribe({
       next: () => {
         this.savingDeviceCap.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Device cap updated.' });
+        this.notify.success('Device cap updated.');
       },
-      error: (error: unknown) => {
-        this.savingDeviceCap.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.savingDeviceCap.set(false),
     });
   }
 
   protected revoke(tenantId: string): void {
     this.licenseService.revokeLicense(tenantId).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'License revoked.' });
+        this.notify.success('License revoked.');
         this.reload();
         this.closeDetails();
-      },
-      error: (error: unknown) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }

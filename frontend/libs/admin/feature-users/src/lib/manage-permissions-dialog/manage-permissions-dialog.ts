@@ -3,22 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
-import { MessageService } from 'primeng/api';
 import { CheckboxModule } from 'primeng/checkbox';
 import { FieldsetModule } from 'primeng/fieldset';
 import { TooltipModule } from 'primeng/tooltip';
-import { AdminStaffUserService, type AppError } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
+import { AdminStaffUserService, NotifyService, errorMessageFor } from '@lpg/shared/data-access';
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   'audit:read': 'View system audit logs tracking user activity.',
@@ -135,7 +123,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 })
 export class ManagePermissionsDialogComponent {
   private readonly staffUserService = inject(AdminStaffUserService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
   private readonly fb = inject(FormBuilder);
 
   readonly visible = input.required<boolean>();
@@ -208,14 +196,17 @@ export class ManagePermissionsDialogComponent {
             this.form.patchValue(patchValue);
             this.loading.set(false);
           },
+          // GET requests aren't covered by the global error-toast
+          // interceptor (mutating methods only) — these two reads need
+          // their own explicit toast.
           error: (err) => {
-            this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
+            this.notify.error(errorMessageFor(err));
             this.loading.set(false);
           }
         });
       },
       error: (err) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
+        this.notify.error(errorMessageFor(err));
         this.loading.set(false);
       }
     });
@@ -230,15 +221,12 @@ export class ManagePermissionsDialogComponent {
 
     this.staffUserService.updateUserPermissions(this.userId(), selectedPermissions).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Permissions updated successfully.' });
+        this.notify.success('Permissions updated successfully.');
         this.submitting.set(false);
         this.permissionsUpdated.emit();
         this.visibleChange.emit(false);
       },
-      error: (err) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(err) });
-        this.submitting.set(false);
-      }
+      error: () => this.submitting.set(false),
     });
   }
 

@@ -8,26 +8,14 @@ import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { MessageService } from 'primeng/api';
 import {
   AdminBranchService,
   AdminWarehouseService,
-  type AppError,
+  NotifyService,
   type BranchResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong saving the warehouse. Please try again.';
-  }
-}
 
 /** Warehouse list + create form — `tenant:configure`. */
 @Component({
@@ -151,7 +139,7 @@ export class WarehousesPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly branchService = inject(AdminBranchService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
@@ -208,15 +196,12 @@ export class WarehousesPage implements OnInit {
     this.warehouseService.createWarehouse(branchId, name, addressLine).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: `Warehouse "${name}" added.` });
+        this.notify.success(`Warehouse "${name}" added.`);
         this.createDrawerVisible.set(false);
         this.form.reset();
         this.reload();
       },
-      error: (error: unknown) => {
-        this.submitting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.submitting.set(false),
     });
   }
 }

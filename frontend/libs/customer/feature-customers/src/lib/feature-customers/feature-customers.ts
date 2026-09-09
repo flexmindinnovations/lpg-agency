@@ -29,11 +29,10 @@ import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { Badge } from 'primeng/badge';
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from 'primeng/tabs';
-import { MessageService } from 'primeng/api';
 import {
   CustomerService,
   AdminBranchService,
-  type AppError,
+  NotifyService,
   type BranchResponse,
   type CustomerResponse,
   type KycDocumentResponse,
@@ -47,25 +46,6 @@ import {
   PageHeaderComponent,
   StatusChipCell,
 } from '@lpg/shared/ui';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'DUPLICATE_PHONE':
-      return 'A customer with this phone number already exists.';
-    case 'DUPLICATE_CONSUMER_NUMBER':
-      return 'This Consumer Number is already assigned.';
-    case 'DUPLICATE_LPG_SUBSIDY_ID':
-      return 'This LPG ID is already linked to another customer.';
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
 
 import { RouterLink } from '@angular/router';
 import { TitleCasePipe } from '@angular/common';
@@ -109,7 +89,7 @@ export class FeatureCustomers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly customerService = inject(CustomerService);
   private readonly branchService = inject(AdminBranchService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly sanitizer = inject(DomSanitizer);
@@ -316,9 +296,11 @@ export class FeatureCustomers implements OnInit {
           this.selectedCustomer.set(updated ?? null);
         }
       },
+      // GET — not covered by the global error-toast interceptor
+      // (mutating methods only).
       error: () => {
         this.loading.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load customers.' });
+        this.notify.error('Failed to load customers.');
       }
     });
   }
@@ -340,11 +322,7 @@ export class FeatureCustomers implements OnInit {
         this.location.replaceState(this.location.path().split('?')[0]);
       },
       error: () => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'That customer could not be found.',
-        });
+        this.notify.error('That customer could not be found.');
       },
     });
   }
@@ -352,8 +330,9 @@ export class FeatureCustomers implements OnInit {
   private loadBranches(): void {
     this.branchService.listBranches().subscribe({
       next: (branches) => this.branches.set(branches),
+      // GET — not covered by the global error-toast interceptor.
       error: () => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load branches.' });
+        this.notify.error('Failed to load branches.');
       }
     });
   }
@@ -404,12 +383,9 @@ export class FeatureCustomers implements OnInit {
     const { address_line } = this.addressForm.getRawValue();
     this.customerService.addAddress(customer.id, { line_1: address_line }).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Address added successfully.' });
+        this.notify.success('Address added successfully.');
         this.closeAddAddressModal();
         this.reloadList();
-      },
-      error: (error: unknown) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }
@@ -420,11 +396,8 @@ export class FeatureCustomers implements OnInit {
 
     this.customerService.setPrimaryAddress(customer.id, addressId).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Primary address updated.' });
+        this.notify.success('Primary address updated.');
         this.reloadList();
-      },
-      error: (error: unknown) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }
@@ -497,15 +470,12 @@ export class FeatureCustomers implements OnInit {
     this.customerService.submitKyc(customerId, docType, docReference, fileUrl).subscribe({
       next: () => {
         this.submitKycUploading.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'KYC Document submitted.' });
+        this.notify.success('KYC Document submitted.');
         this.closeSubmitKycModal();
         this.loadKycDocuments(customerId);
         this.reloadList();
       },
-      error: (error: unknown) => {
-        this.submitKycUploading.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.submitKycUploading.set(false),
     });
   }
 
@@ -523,12 +493,9 @@ export class FeatureCustomers implements OnInit {
 
     this.customerService.verifyKyc(customer.id, docId, status).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: `KYC Document ${status}.` });
+        this.notify.success(`KYC Document ${status}.`);
         this.loadKycDocuments(customer.id);
         this.reloadList();
-      },
-      error: (error: unknown) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
       },
     });
   }

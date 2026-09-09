@@ -107,6 +107,19 @@ describe('errorMessageFor', () => {
       'LICENSE_ACTIVATION_FAILED',
       'That key is invalid, already activated, or has been revoked.',
     ],
+    [
+      'DUPLICATE_CYLINDER_SERIAL_NUMBER',
+      'A cylinder unit with this serial number is already registered.',
+    ],
+    [
+      'DUPLICATE_CYLINDER_QR_CODE',
+      'A cylinder unit with this QR / barcode is already registered.',
+    ],
+    ['DUPLICATE_REGISTRATION_NUMBER', 'A vehicle with this registration number already exists.'],
+    ['DUPLICATE_EMPLOYEE_CODE', 'A driver with this employee code already exists.'],
+    ['DUPLICATE_PHONE', 'A customer with this phone number already exists.'],
+    ['DUPLICATE_CONSUMER_NUMBER', 'This Consumer Number is already assigned.'],
+    ['DUPLICATE_LPG_SUBSIDY_ID', 'This LPG ID is already linked to another customer.'],
   ])('maps %s to a friendly message', (code, expected) => {
     expect(errorMessageFor(appError({ errorCode: code }))).toBe(expected);
   });

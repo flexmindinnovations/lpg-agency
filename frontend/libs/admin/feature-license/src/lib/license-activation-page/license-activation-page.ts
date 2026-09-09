@@ -4,26 +4,12 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
-import { MessageService } from 'primeng/api';
 import {
   LicenseService,
   LicenseStatusStore,
-  type AppError,
+  NotifyService,
   type LicenseLifecycleState,
 } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'LICENSE_ACTIVATION_FAILED':
-      return 'That key is invalid, already activated, or has been revoked.';
-    default:
-      return 'Something went wrong activating the license. Please try again.';
-  }
-}
 
 const _STATUS_LABELS: Record<LicenseLifecycleState, string> = {
   pending_activation: 'Not activated',
@@ -159,7 +145,7 @@ export class LicenseActivationPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly licenseService = inject(LicenseService);
   private readonly licenseStatusStore = inject(LicenseStatusStore);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
@@ -208,18 +194,11 @@ export class LicenseActivationPage implements OnInit {
     this.licenseService.activate(key).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'License activated.',
-        });
+        this.notify.success('License activated.');
         this.form.reset();
         this.reload();
       },
-      error: (error: unknown) => {
-        this.submitting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.submitting.set(false),
     });
   }
 }

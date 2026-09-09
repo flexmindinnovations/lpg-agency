@@ -8,12 +8,11 @@ import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { MessageService } from 'primeng/api';
 import {
   AdminBranchService,
   AdminCylinderTypeService,
   AdminPriceListService,
-  type AppError,
+  NotifyService,
   type BranchResponse,
   type CylinderTypeResponse,
   type PriceListEntryResponse,
@@ -21,17 +20,6 @@ import {
 import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong saving the price. Please try again.';
-  }
-}
 
 /**
  * Price list history + set-price drawer — `tenant:configure`.
@@ -184,7 +172,7 @@ export class PriceListPage implements OnInit {
   private readonly priceListService = inject(AdminPriceListService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly branchService = inject(AdminBranchService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly prices = signal<PriceListEntryResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
@@ -261,15 +249,12 @@ export class PriceListPage implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Price saved.' });
+          this.notify.success('Price saved.');
           this.createDrawerVisible.set(false);
           this.form.reset({ price: 0 });
           this.reload();
         },
-        error: (error: unknown) => {
-          this.submitting.set(false);
-          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-        },
+        error: () => this.submitting.set(false),
       });
   }
 }

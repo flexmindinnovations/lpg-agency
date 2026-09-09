@@ -8,24 +8,12 @@ import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
-import { MessageService } from 'primeng/api';
 import {
   AdminFeatureFlagService,
-  type AppError,
+  NotifyService,
   type FeatureFlagResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent, formatTimestamp } from '@lpg/shared/ui';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong saving the flag. Please try again.';
-  }
-}
 
 /** `dd-mm-yyyy`-picker value → ISO date string, or `null` for an empty/
  * cleared field. */
@@ -295,7 +283,7 @@ class FlagDefaultCell {
 export class PlatformFlagsPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly featureFlagService = inject(AdminFeatureFlagService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly formatTimestamp = formatTimestamp;
 
@@ -378,15 +366,12 @@ export class PlatformFlagsPage implements OnInit {
     this.featureFlagService.createFlag(key, description, false, rolloutPercentage).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: `Flag "${key}" created.` });
+        this.notify.success(`Flag "${key}" created.`);
         this.createDrawerVisible.set(false);
         this.form.reset();
         this.reload();
       },
-      error: (error: unknown) => {
-        this.submitting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.submitting.set(false),
     });
   }
 
@@ -456,14 +441,11 @@ export class PlatformFlagsPage implements OnInit {
             this.selectedFlag.set(flags.find((f) => f.key === flag.key) ?? null);
             this.editMode.set(false);
             this.saving.set(false);
-            this.messageService.add({ severity: 'success', summary: 'Success', detail: `Flag "${flag.key}" updated.` });
+            this.notify.success(`Flag "${flag.key}" updated.`);
           },
         });
       },
-      error: (error: unknown) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 }

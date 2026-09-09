@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
-import { MessageService } from 'primeng/api';
-import { AgencyService, type AppError } from '@lpg/shared/data-access';
+import { AgencyService, NotifyService } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
   StatusChipCell,
@@ -13,17 +12,6 @@ import {
 } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import type { TenantResponse } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
 
 /**
  * Platform Console landing page — lists every agency (tenant) with its
@@ -185,7 +173,7 @@ function errorMessageFor(error: unknown): string {
 })
 export class AgencyManagementPage implements OnInit {
   private readonly agencyService = inject(AgencyService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly loading = signal(false);
   protected readonly acting = signal(false);
@@ -266,14 +254,11 @@ export class AgencyManagementPage implements OnInit {
     this.agencyService.suspend(tenantId).subscribe({
       next: () => {
         this.acting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Agency suspended.' });
+        this.notify.success('Agency suspended.');
         this.reload();
         this.closeDetails();
       },
-      error: (error: unknown) => {
-        this.acting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.acting.set(false),
     });
   }
 
@@ -282,14 +267,11 @@ export class AgencyManagementPage implements OnInit {
     this.agencyService.reactivate(tenantId).subscribe({
       next: () => {
         this.acting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Agency reactivated.' });
+        this.notify.success('Agency reactivated.');
         this.reload();
         this.closeDetails();
       },
-      error: (error: unknown) => {
-        this.acting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.acting.set(false),
     });
   }
 
@@ -298,14 +280,11 @@ export class AgencyManagementPage implements OnInit {
     this.agencyService.close(tenantId).subscribe({
       next: () => {
         this.acting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Agency closed.' });
+        this.notify.success('Agency closed.');
         this.reload();
         this.closeDetails();
       },
-      error: (error: unknown) => {
-        this.acting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.acting.set(false),
     });
   }
 }

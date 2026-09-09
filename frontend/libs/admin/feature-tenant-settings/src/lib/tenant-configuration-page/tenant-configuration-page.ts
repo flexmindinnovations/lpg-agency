@@ -10,10 +10,9 @@ import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { TooltipModule } from 'primeng/tooltip';
-import { MessageService } from 'primeng/api';
 import {
   AdminTenantConfigurationService,
-  type AppError,
+  NotifyService,
   type TenantConfigurationResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent, formatTimestamp } from '@lpg/shared/ui';
@@ -77,17 +76,6 @@ const RECOGNIZED_CONFIG_KEYS = [
  * showing nothing. */
 function humanizeConfigKey(key: string): string {
   return CONFIG_KEY_INFO[key]?.label ?? key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-}
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong saving the configuration value. Please try again.';
-  }
 }
 
 /** AG Grid cell renderer for the config-key column: an info icon (hover for
@@ -305,7 +293,7 @@ class ConfigKeyCell {
 export class TenantConfigurationPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly configService = inject(AdminTenantConfigurationService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly entries = signal<TenantConfigurationResponse[]>([]);
   protected readonly loading = signal(false);
@@ -372,15 +360,13 @@ export class TenantConfigurationPage implements OnInit {
     this.configService.setConfiguration(configKey, configValue).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: `"${humanizeConfigKey(configKey)}" saved.` });
+        this.notify.success(`"${humanizeConfigKey(configKey)}" saved.`);
         this.createDrawerVisible.set(false);
         this.form.reset();
         this.reload();
       },
-      error: (error: unknown) => {
-        this.submitting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      // Error toast is handled globally by globalErrorToastInterceptor.
+      error: () => this.submitting.set(false),
     });
   }
 }

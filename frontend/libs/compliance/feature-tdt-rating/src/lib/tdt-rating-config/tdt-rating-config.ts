@@ -15,8 +15,7 @@ import { InputText } from 'primeng/inputtext';
 import { InputNumber } from 'primeng/inputnumber';
 import { Select } from 'primeng/select';
 import { Message } from 'primeng/message';
-import { MessageService } from 'primeng/api';
-import { AdminTenantConfigurationService, type AppError } from '@lpg/shared/data-access';
+import { AdminTenantConfigurationService, NotifyService } from '@lpg/shared/data-access';
 import { FormFieldComponent } from '@lpg/shared/ui';
 
 type BandGroup = FormGroup<{
@@ -51,19 +50,6 @@ interface RawBand {
 interface RawFineRule {
   consecutive_low_quarters: number;
   fine_percent: string;
-}
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
-    default:
-      return 'Something went wrong saving the configuration. Please try again.';
-  }
 }
 
 /**
@@ -105,7 +91,7 @@ function errorMessageFor(error: unknown): string {
 export class TdtRatingConfig implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly configService = inject(AdminTenantConfigurationService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly starOptions = STAR_OPTIONS;
   protected readonly loading = signal(false);
@@ -260,16 +246,9 @@ export class TdtRatingConfig implements OnInit {
         this.saving.set(false);
         this.hadExistingBands.set(true);
         this.hadExistingFineSchedule.set(true);
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'TDT rating configuration saved.',
-        });
+        this.notify.success('TDT rating configuration saved.');
       },
-      error: (error: unknown) => {
-        this.saving.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.saving.set(false),
     });
   }
 }

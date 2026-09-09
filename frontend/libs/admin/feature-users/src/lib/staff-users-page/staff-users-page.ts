@@ -8,10 +8,9 @@ import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { MessageService } from 'primeng/api';
 import {
   AdminStaffUserService,
-  type AppError,
+  NotifyService,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell } from '@lpg/shared/ui';
@@ -25,17 +24,6 @@ const STAFF_ROLES = [
   { label: 'Dispatcher (dispatcher)', value: 'dispatcher' },
   { label: 'Accountant (accountant)', value: 'accountant' },
 ];
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
-  switch (isAppError(error) ? error.errorCode : null) {
-    default:
-      return 'Something went wrong. Please try again.';
-  }
-}
 
 /**
  * Staff list + invite drawer + manage-user drawer —
@@ -221,7 +209,7 @@ function errorMessageFor(error: unknown): string {
 export class StaffUsersPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly staffUserService = inject(AdminStaffUserService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly users = signal<StaffUserResponse[]>([]);
   protected readonly loading = signal(false);
@@ -298,12 +286,10 @@ export class StaffUsersPage implements OnInit {
     }
     this.staffUserService.deactivateStaffUser(userId).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'User deactivated.' });
+        this.notify.success('User deactivated.');
         this.manageDrawerVisible.set(false);
         this.reload();
       },
-      error: (error: unknown) =>
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) }),
     });
   }
 
@@ -315,12 +301,10 @@ export class StaffUsersPage implements OnInit {
     }
     this.staffUserService.reassignRole(userId, newRole).subscribe({
       next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Role reassigned.' });
+        this.notify.success('Role reassigned.');
         this.manageDrawerVisible.set(false);
         this.reload();
       },
-      error: (error: unknown) =>
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) }),
     });
   }
 
@@ -339,15 +323,12 @@ export class StaffUsersPage implements OnInit {
     this.staffUserService.inviteStaffUser(email, role).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: `Invite sent to ${email}.` });
+        this.notify.success(`Invite sent to ${email}.`);
         this.inviteDrawerVisible.set(false);
         this.form.reset();
         this.reload();
       },
-      error: (error: unknown) => {
-        this.submitting.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorMessageFor(error) });
-      },
+      error: () => this.submitting.set(false),
     });
   }
 }
