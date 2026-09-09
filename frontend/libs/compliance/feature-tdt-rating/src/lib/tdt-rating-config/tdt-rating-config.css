@@ -1,36 +1,51 @@
 :host {
   display: block;
+  block-size: 100%;
 }
 
 .tdt-config-page {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  max-inline-size: 48rem;
-}
-
-.page-header__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-block-end: var(--spacing-xs);
-  font-size: var(--typography-caption-font-size);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.page-header__back:hover {
-  color: var(--color-action-primary);
+  block-size: 100%;
+  min-block-size: 0;
 }
 
 :host ::ng-deep .tdt-config-banner {
   margin-block-end: var(--spacing-md);
 }
 
+/* Same scrollable-content + pinned-footer split as every `p-drawer` form in
+   this app (`.dialog-form`/`.dialog-form__fields`/`.modal-actions` in
+   `apps/dashboard/src/styles.css`) and the Notification drawer — applied
+   here to a full routed page instead of a drawer panel. */
 .tdt-config-form {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-block-size: 0;
+}
+
+/* Bleeds past `.shell__main`'s own inline padding (`--spacing-xl`, see
+   `app-shell.component.ts`) so the scrollbar this container's `overflow-y`
+   creates renders flush against the screen edge instead of floating inside
+   the centered reading column — `padding-inline` below adds that same
+   inset back so the content doesn't touch the new edges.
+   `.tdt-config-fields__inner` re-applies the reading-width centering. */
+.tdt-config-fields {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--spacing-xl));
+  padding-inline: var(--spacing-xl);
+  padding-block: var(--spacing-lg);
+}
+
+.tdt-config-fields__inner {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-xl);
+  max-inline-size: 48rem;
+  margin-inline: auto;
 }
 
 .tdt-config-section {
@@ -90,7 +105,21 @@
   flex-shrink: 0;
 }
 
+/* Full-width divider, bled the same way `.tdt-config-fields` is (see
+   above) so it reaches the actual screen edge on both sides — the buttons
+   themselves stay inset to the same reading width as the content above via
+   `.tdt-config-actions__inner`. */
 .tdt-config-actions {
+  flex: 0 0 auto;
+  margin-inline: calc(-1 * var(--spacing-xl));
+  padding-inline: var(--spacing-xl);
+  padding-block-start: var(--spacing-md);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+.tdt-config-actions__inner {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  max-inline-size: 48rem;
+  margin-inline: auto;
 }
