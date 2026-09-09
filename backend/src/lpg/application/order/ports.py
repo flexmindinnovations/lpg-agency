@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     import uuid
     from collections.abc import Sequence
-    from datetime import datetime
+    from datetime import datetime, timedelta
     from decimal import Decimal
 
     from lpg.domain.order.order import Order
@@ -116,6 +116,18 @@ class OrderRepository(Protocol):
     ) -> int: ...
 
     async def list_status_history(self, order_id: uuid.UUID) -> list[OrderStatusHistoryEntry]: ...
+
+    async def list_stale_unassigned(self, stale_after: timedelta) -> list[Order]:
+        """Orders still `confirmed` (unassigned, by construction --
+        `route_stop_id` is only ever set by `assign()`) whose `confirmed`
+        transition happened before `stale_after` ago, and which haven't
+        already been notified within that same window
+        (`last_stale_notified_at`) -- the stale-unassigned-order alert
+        cron's (`infrastructure/jobs/stale_order_jobs.py`) work list.
+        """
+        ...
+
+    async def mark_stale_notified(self, order_id: uuid.UUID) -> None: ...
 
 
 class CancellationRecordRepository(Protocol):

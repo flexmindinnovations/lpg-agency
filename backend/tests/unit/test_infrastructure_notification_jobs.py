@@ -157,3 +157,18 @@ def test_order_unassignable_staff_is_dashboard_only() -> None:
     assert _should_send_email("order_unassignable_staff") is False
     assert _should_send_sms("order_unassignable_staff") is False
     assert _should_send_push("order_unassignable_staff") is False
+
+
+def test_order_stale_unassigned_staff_title_and_body() -> None:
+    assert _get_title("order_stale_unassigned_staff") == "Order Awaiting Assignment"
+    body = _get_body("order_stale_unassigned_staff", {"order_id": "abcd1234-0000"})
+    assert "ABCD1234" in body
+    assert "no driver assigned" in body
+
+
+def test_order_stale_unassigned_staff_is_dashboard_only() -> None:
+    # The hourly stale-order alert cron's own notification -- same
+    # dashboard-only restraint as every other `*_staff` alert type.
+    assert _should_send_email("order_stale_unassigned_staff") is False
+    assert _should_send_sms("order_stale_unassigned_staff") is False
+    assert _should_send_push("order_stale_unassigned_staff") is False

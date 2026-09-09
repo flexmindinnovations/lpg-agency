@@ -7,7 +7,7 @@ All queries are automatically tenant-scoped via Row-Level Security (RLS).
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -135,6 +135,39 @@ class SqlAlchemyOrderRepository:
             )
             for row in rows
         ]
+
+    async def list_stale_unassigned(self, stale_after: timedelta) -> list[Order]:
+        # `confirmed` is reachable only from `booked` and never revisited
+        # from any later state (`Order._TRANSITIONS`) -- so for any order
+        # currently `status == "confirmed"` there is exactly one
+        # `order_status_history` row with `to_status = "confirmed"`, no
+        # `DISTINCT ON`/window function needed to pick "the" one.
+        cutoff = datetime.now(UTC) - stale_after
+        notified_cutoff = datetime.now(UTC) - stale_after
+        stmt = (
+            select(OrderModel)
+            .options(selectinload(OrderModel.lines))
+            .join(
+                OrderStatusHistoryModel,
+                (OrderStatusHistoryModel.order_id == OrderModel.id)
+                & (OrderStatusHistoryModel.to_status == "confirmed"),
+            )
+            .where(
+                OrderModel.status == "confirmed",
+                OrderStatusHistoryModel.changed_at <= cutoff,
+                (OrderModel.last_stale_notified_at.is_(None))
+                | (OrderModel.last_stale_notified_at < notified_cutoff),
+            )
+            .order_by(OrderStatusHistoryModel.changed_at)
+        )
+        rows = (await self._uow.session.execute(stmt)).scalars().all()
+        return [self._to_domain(row) for row in rows]
+
+    async def mark_stale_notified(self, order_id: uuid.UUID) -> None:
+        stmt = select(OrderModel).where(OrderModel.id == order_id)
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        if row is not None:
+            row.last_stale_notified_at = datetime.now(UTC)
 
     @staticmethod
     def _filters(

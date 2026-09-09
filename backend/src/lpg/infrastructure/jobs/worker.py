@@ -50,6 +50,7 @@ from lpg.infrastructure.jobs.compliance_jobs import check_compliance_expiry
 from lpg.infrastructure.jobs.notification_jobs import send_notification
 from lpg.infrastructure.jobs.pool import build_job_queue
 from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
+from lpg.infrastructure.jobs.stale_order_jobs import check_stale_unassigned_orders
 from lpg.infrastructure.persistence.database import build_database
 
 if TYPE_CHECKING:
@@ -206,6 +207,10 @@ class WorkerSettings:
     cron_jobs: ClassVar = [
         cron(refresh_materialized_views, hour=2, minute=0),  # Run nightly at 2:00 AM
         cron(check_compliance_expiry, hour=3, minute=0),  # Run nightly at 3:00 AM
+        # Hourly, not nightly like compliance -- an unassigned order is
+        # time-sensitive in a way a slowly-expiring compliance document
+        # isn't.
+        cron(check_stale_unassigned_orders, minute=0),
     ]
 
     functions: ClassVar = (ping, bulk_cancel_orders, send_notification, auto_assign_driver)

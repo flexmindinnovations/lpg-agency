@@ -74,6 +74,15 @@ class OrderModel(Base):
         Uuid(), ForeignKey("delivery.route_stop.id"), nullable=True
     )
     total_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Dedupe timestamp for the hourly stale-unassigned-order alert cron
+    # (`infrastructure/jobs/stale_order_jobs.py`) -- same shape as
+    # `compliance.compliance_document.last_expiry_notified_at`. Set only
+    # once a notification for this order's staleness has actually been
+    # enqueued, so a retried/overlapping cron run doesn't re-notify inside
+    # the same window.
+    last_stale_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(

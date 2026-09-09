@@ -106,6 +106,16 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # same jsonb-string-"false" footgun named for `ai_gateway_enabled`
         # applies here too.
         "auto_assignment_enabled",
+        # Stale-unassigned-order alert (order-to-delivery fulfillment
+        # automation's own survey of other automatable processes) — how
+        # many hours an order may sit `confirmed` (unassigned) before
+        # branch staff are alerted. Optional per-tenant override; falls
+        # back to `infrastructure.jobs.stale_order_jobs.
+        # DEFAULT_STALE_HOURS` (4) when unset. A tuning knob, not a kill
+        # switch — this alert is a pure read + notify, not an
+        # irreversible action, so unlike `auto_assignment_enabled` it has
+        # no on/off gate of its own.
+        "stale_unassigned_order_hours",
     }
 )
 

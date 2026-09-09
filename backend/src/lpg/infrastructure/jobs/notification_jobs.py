@@ -35,13 +35,14 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
         "type": "order_placed" | "booking_confirmed" | "driver_assigned" |
                 "out_for_delivery" | "delivery_confirmed" | "invoice_generated" |
                 "delivery_failed_staff" | "order_placed_staff" |
-                "order_unassignable_staff",
+                "order_unassignable_staff" | "order_stale_unassigned_staff",
         "tenant_id": str,
         "order_id": str,
         # Every order-lifecycle type resolves its recipient (customer, the
         # assigned driver for "driver_assigned", or branch staff for
-        # "delivery_failed_staff"/"order_unassignable_staff") by fetching
-        # the order itself — the payload carries nothing else.
+        # "delivery_failed_staff"/"order_unassignable_staff"/
+        # "order_stale_unassigned_staff") by fetching the order itself —
+        # the payload carries nothing else.
         # "compliance_document_expiring_staff" is not order-scoped — it
         # carries "document_id"/"owner_type"/"owner_id"/"doc_type"/
         # "expiry_date" instead (see `compliance_jobs.
@@ -170,6 +171,23 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 # codebase already uses for diversion detection, applied to
                 # automation's own failure path. Same branch-scoped
                 # resolution as `delivery_failed_staff`.
+                employee_repo = SqlAlchemyEmployeeRepository(uow)
+                resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
+                recipient_user_ids = await resolver.resolve_for_branch(
+                    tenant_id=tenant_id,
+                    branch_id=order.branch_id,
+                    eligible_roles=_STAFF_ALERT_ROLES,
+                )
+            elif notification_type == "order_stale_unassigned_staff":
+                # The hourly stale-unassigned-order alert cron
+                # (`stale_order_jobs.check_stale_unassigned_orders`) --
+                # a tenant-wide safety net beyond auto-assignment's own
+                # per-order `order_unassignable_staff` fallback: this
+                # fires for ANY order that's simply never gotten an
+                # assignment attempt (auto-assignment disabled, or a
+                # dispatcher hasn't gotten to it yet), not just the ones
+                # auto-assignment itself tried and failed. Same
+                # branch-scoped resolution as `order_unassignable_staff`.
                 employee_repo = SqlAlchemyEmployeeRepository(uow)
                 resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
                 recipient_user_ids = await resolver.resolve_for_branch(
@@ -399,6 +417,7 @@ def _get_title(notification_type: str) -> str:
         "invoice_generated": "Invoice Generated",
         "delivery_failed_staff": "Delivery Failed Alert",
         "order_unassignable_staff": "Order Needs Manual Assignment",
+        "order_stale_unassigned_staff": "Order Awaiting Assignment",
         "order_placed_staff": "New Order",
         "cash_shortfall_staff": "Cash Shortfall Declared",
         "route_load_confirmed_staff": "Van Load Confirmed",
@@ -449,6 +468,10 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         "order_unassignable_staff": (
             f"Order #{order_id_short} has no available driver in its branch and needs "
             "manual assignment."
+        ),
+        "order_stale_unassigned_staff": (
+            f"Order #{order_id_short} is still confirmed with no driver assigned. "
+            "Please assign it manually."
         ),
         "order_placed_staff": (
             f"Order #{order_id_short} was just placed and is awaiting confirmation."
