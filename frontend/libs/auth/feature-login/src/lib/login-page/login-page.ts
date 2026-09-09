@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { InputPassword } from 'primeng/inputpassword';
@@ -220,7 +220,6 @@ export class LoginPage {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
 
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -264,13 +263,17 @@ export class LoginPage {
         // else holding `ai:read` lands on the AI Command Center instead of
         // the Agency Overview dashboard, per the user's own request — it's
         // the page most of this feature's audience actually wants first.
-        // An explicit `redirectTo` (e.g. a deep link) still wins either way.
+        // Always this smart default now, never a preserved `redirectTo` —
+        // `authGuard` deliberately stopped setting one (see its own
+        // docstring): it can't tell "session just expired mid-use" apart
+        // from "never authenticated, deep link", and bouncing back to
+        // whatever page triggered a forced re-login was the wrong default
+        // for the former.
         const principal = this.authService.principal();
         const isPlatformSession = principal?.role === 'super_admin';
         const isAiEligible = !isPlatformSession && !!principal?.permissions.has('ai:read');
         const defaultRoute = isPlatformSession ? '/platform' : isAiEligible ? '/ai-assistant' : '/';
-        const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo') ?? defaultRoute;
-        void this.router.navigateByUrl(redirectTo);
+        void this.router.navigateByUrl(defaultRoute);
       },
       error: (error: unknown) => {
         this.submitting.set(false);

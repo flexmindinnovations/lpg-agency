@@ -1,28 +1,30 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '@lpg/shared/data-access';
 import { LoginPage } from './login-page';
 
 describe('LoginPage', () => {
   let authServiceMock: { login: jest.Mock; principal: jest.Mock };
-  let routerMock: { navigateByUrl: jest.Mock };
+  let navigateByUrlSpy: jest.SpyInstance;
 
   beforeEach(async () => {
     authServiceMock = { login: jest.fn(), principal: jest.fn().mockReturnValue(null) };
-    routerMock = { navigateByUrl: jest.fn() };
 
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [
         { provide: AuthService, useValue: authServiceMock },
-        { provide: Router, useValue: routerMock },
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
-        },
+        // A real router (not a bare-object mock) — the template's own
+        // `routerLink` directive needs the router's real internal state
+        // (routerState.root) to resolve, which a plain
+        // `{ navigateByUrl: jest.fn() }` object doesn't have. Spy on the
+        // real instance's navigateByUrl instead of replacing the token.
+        provideRouter([]),
       ],
     }).compileComponents();
+
+    navigateByUrlSpy = jest.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
   });
 
   it('renders', () => {
@@ -41,13 +43,9 @@ describe('LoginPage', () => {
     expect(fixture.componentInstance['form'].touched).toBe(true);
   });
 
-  it('logs in and navigates to redirectTo on success', () => {
+  it('logs in and navigates to the smart default on success', () => {
     authServiceMock.login.mockReturnValue(of(undefined));
-    TestBed.overrideProvider(ActivatedRoute, {
-      useValue: {
-        snapshot: { queryParamMap: convertToParamMap({ redirectTo: '/orders' }) },
-      },
-    });
+    authServiceMock.principal.mockReturnValue({ role: 'dispatcher', permissions: new Set() });
 
     const fixture = TestBed.createComponent(LoginPage);
     fixture.detectChanges();
@@ -60,10 +58,10 @@ describe('LoginPage', () => {
       'staff@example.com',
       'correct-horse-battery',
     );
-    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/orders');
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/');
   });
 
-  it('defaults a super_admin session to /platform with no redirectTo', () => {
+  it('defaults a super_admin session to /platform', () => {
     authServiceMock.login.mockReturnValue(of(undefined));
     authServiceMock.principal.mockReturnValue({ role: 'super_admin' });
 
@@ -74,10 +72,10 @@ describe('LoginPage', () => {
 
     component['submit']();
 
-    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/platform');
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/platform');
   });
 
-  it('defaults a non-platform session with no redirectTo to /', () => {
+  it('defaults a non-platform session to /', () => {
     authServiceMock.login.mockReturnValue(of(undefined));
     authServiceMock.principal.mockReturnValue({ role: 'dispatcher', permissions: new Set() });
 
@@ -88,10 +86,10 @@ describe('LoginPage', () => {
 
     component['submit']();
 
-    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/');
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/');
   });
 
-  it('defaults an ai:read-holding non-platform session with no redirectTo to /ai-assistant', () => {
+  it('defaults an ai:read-holding non-platform session to /ai-assistant', () => {
     authServiceMock.login.mockReturnValue(of(undefined));
     authServiceMock.principal.mockReturnValue({
       role: 'manager',
@@ -105,7 +103,7 @@ describe('LoginPage', () => {
 
     component['submit']();
 
-    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/ai-assistant');
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/ai-assistant');
   });
 
   it('a super_admin session still defaults to /platform even if it somehow also holds ai:read', () => {
@@ -122,7 +120,7 @@ describe('LoginPage', () => {
 
     component['submit']();
 
-    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/platform');
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/platform');
   });
 
   it('surfaces a friendly message for invalid credentials', () => {
