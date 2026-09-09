@@ -6,6 +6,7 @@ import { providePrimeNG } from 'primeng/config';
 import {
   authInterceptor,
   correlationIdInterceptor,
+  globalErrorToastInterceptor,
   problemDetailsInterceptor,
   provideApiConfiguration,
 } from '@lpg/shared/data-access';
@@ -74,7 +75,17 @@ export const appConfig: ApplicationConfig = {
       // session-expired dialog) caused by exactly this ordering being
       // backwards. correlationIdInterceptor is request-only (no response
       // pipe), so its position relative to the other two doesn't matter.
-      withInterceptors([correlationIdInterceptor, problemDetailsInterceptor, authInterceptor]),
+      // globalErrorToastInterceptor sits between correlationId and
+      // problemDetails for the same reason authInterceptor sits last: it
+      // needs the *converted* AppError (for errorMessageFor), so its
+      // response handling must run after problemDetailsInterceptor's —
+      // which this ordering gives it, since it's earlier in the array.
+      withInterceptors([
+        correlationIdInterceptor,
+        globalErrorToastInterceptor,
+        problemDetailsInterceptor,
+        authInterceptor,
+      ]),
     ),
     // Overlay/transition animations (Dialog, Drawer, Toast, dropdowns) need
     // Angular's animation system. Loaded async so it is not in the initial
