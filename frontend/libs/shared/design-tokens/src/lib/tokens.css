@@ -338,9 +338,12 @@ have always been hand-edited directly. Edit them here.
   --color-status-warning: #e7b94a;
   --color-status-danger: #f06a6a;
   --color-status-info: #62a8ff;
-  /* A low-opacity primary tint for selected rows/menu items (doc §18),
-     rather than the old solid gas-blue-700 block. */
-  --color-highlight-background: rgba(79,141,247,0.22);
+  /* Same solid fill as --component-button-primary-background, not a
+     translucent tint (doc §18's original rationale) — unified on request
+     so the sidebar's "active" state reads as the same color as a primary
+     button. Inherits that token's own verified white-text contrast
+     (5.55-5.7:1) since --color-highlight-color is the same #ffffff. */
+  --color-highlight-background: #2864cc;
   --color-highlight-color: #ffffff;
   --border-width: 1px;
   /* Tight, restrained elevation — borders do most of the separation work on
@@ -453,7 +456,8 @@ have always been hand-edited directly. Edit them here.
     --color-status-warning: #e7b94a;
     --color-status-danger: #f06a6a;
     --color-status-info: #62a8ff;
-    --color-highlight-background: rgba(79,141,247,0.22);
+    /* Mirrors the [data-theme='dark'] block above — see its comment. */
+    --color-highlight-background: #2864cc;
     --color-highlight-color: #ffffff;
     --border-width: 1px;
     --elevation-0: none;
