@@ -260,10 +260,15 @@ export class LoginPage {
     this.authService.login(email, password).subscribe({
       next: () => {
         // A genuine `super_admin` session has no tenant dashboard to land
-        // on (D-01) — default it into the Platform Console instead. An
-        // explicit `redirectTo` (e.g. a deep link) still wins either way.
-        const isPlatformSession = this.authService.principal()?.role === 'super_admin';
-        const defaultRoute = isPlatformSession ? '/platform' : '/';
+        // on (D-01) — default it into the Platform Console instead. Anyone
+        // else holding `ai:read` lands on the AI Command Center instead of
+        // the Agency Overview dashboard, per the user's own request — it's
+        // the page most of this feature's audience actually wants first.
+        // An explicit `redirectTo` (e.g. a deep link) still wins either way.
+        const principal = this.authService.principal();
+        const isPlatformSession = principal?.role === 'super_admin';
+        const isAiEligible = !isPlatformSession && !!principal?.permissions.has('ai:read');
+        const defaultRoute = isPlatformSession ? '/platform' : isAiEligible ? '/ai-assistant' : '/';
         const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo') ?? defaultRoute;
         void this.router.navigateByUrl(redirectTo);
       },

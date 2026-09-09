@@ -1,61 +1,108 @@
 <div class="assistant-container">
-  <div class="page-header">
-    <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-        <h1 class="page-title">AI Command Center</h1>
-        <p class="page-subtitle">
-          Ask about today's orders, inventory, or complaints. Answers are read-only and
-          advisory — nothing here changes any record.
-        </p>
-      </div>
-    </ng-template>
-  </div>
+  <ng-template lpgHeaderTitlePortal>
+    <div class="page-header__text">
+      <h1 class="page-title">AI Command Center</h1>
+      <p class="page-subtitle">
+        Ask about today's orders, inventory, or complaints. Answers are read-only and
+        advisory — nothing here changes any record.
+      </p>
+    </div>
+  </ng-template>
 
-  <div class="ask-box">
-    <textarea
-      class="ask-box__input"
-      rows="2"
-      placeholder="e.g. What's today's inventory situation?"
-      [ngModel]="question()"
-      (ngModelChange)="question.set($event)"
-      (keydown)="onQuestionKeydown($event)"
-      [disabled]="asking()"
-    ></textarea>
+  <ng-template lpgHeaderPortal>
     <button
       pButton
       type="button"
-      [disabled]="asking() || !question().trim()"
-      (click)="ask()"
+      severity="secondary"
+      [text]="true"
+      size="small"
+      [disabled]="history().length === 0"
+      (click)="clearConversation()"
     >
-      <i pButtonIcon class="pi" [class.pi-send]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
-      <span pButtonLabel>{{ asking() ? 'Asking…' : 'Ask' }}</span>
+      <i pButtonIcon class="pi pi-refresh"></i><span pButtonLabel>Clear conversation</span>
     </button>
+  </ng-template>
+
+  <!-- `.thread` is the actual scroll container, bled out to the shell's own
+       edge (see .css) so its scrollbar sits flush against the screen edge
+       instead of floating inside the centered reading column; `.thread__inner`
+       re-applies that reading-width centering to the messages themselves. -->
+  <div class="thread" #threadEl>
+    <div class="thread__inner">
+      @if (history().length === 0 && !asking() && !pendingQuestion()) {
+        <div class="empty-state">
+          <i class="pi pi-sparkles empty-state__icon" aria-hidden="true"></i>
+          <p>Ask a question to get started — e.g. "What's today's inventory situation?"</p>
+        </div>
+      }
+
+      @for (entry of history(); track $index) {
+        <div class="message message--user">
+          <div class="message__bubble">{{ entry.question }}</div>
+        </div>
+
+        <div class="message message--assistant">
+          <div class="message__avatar" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
+          <div class="message__bubble">
+            @if (entry.error) {
+              <p-message severity="error">
+                Something went wrong asking the assistant. Please try again.
+              </p-message>
+            } @else if (entry.response; as response) {
+              @if (response.disabled_reason; as reason) {
+                <p-message severity="info">{{ disabledReasonMessages[reason] }}</p-message>
+              } @else {
+                <div class="qa-entry__answer" [innerHTML]="response.answer | lpgMarkdown"></div>
+                @if (response.tools_used.length) {
+                  <p class="qa-entry__tools">Data from: {{ response.tools_used.join(', ') }}</p>
+                }
+              }
+            }
+          </div>
+        </div>
+      }
+
+      @if (pendingQuestion(); as pq) {
+        <div class="message message--user">
+          <div class="message__bubble">{{ pq }}</div>
+        </div>
+      }
+
+      @if (asking()) {
+        <div class="message message--assistant">
+          <div class="message__avatar" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
+          <div class="message__bubble message__bubble--thinking" aria-label="Thinking">
+            <span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>
+          </div>
+        </div>
+      }
+    </div>
   </div>
 
-  @if (history().length === 0) {
-    <p class="empty-state">Ask a question to get started.</p>
-  }
-
-  <div class="history">
-    @for (entry of history(); track $index) {
-      <article class="qa-entry">
-        <p class="qa-entry__question">{{ entry.question }}</p>
-
-        @if (entry.error) {
-          <p-message severity="error">
-            Something went wrong asking the assistant. Please try again.
-          </p-message>
-        } @else if (entry.response; as response) {
-          @if (response.disabled_reason; as reason) {
-            <p-message severity="info">{{ disabledReasonMessages[reason] }}</p-message>
-          } @else {
-            <p class="qa-entry__answer">{{ response.answer }}</p>
-            @if (response.tools_used.length) {
-              <p class="qa-entry__tools">Data from: {{ response.tools_used.join(', ') }}</p>
-            }
-          }
-        }
-      </article>
-    }
+  <!-- `.composer` carries the full-width top divider; `.composer__inner`
+       matches `.thread__inner`'s reading width so the input aligns with
+       the messages above it. -->
+  <div class="composer">
+    <div class="composer__inner">
+      <textarea
+        class="composer__input"
+        rows="1"
+        placeholder="Ask the AI Command Center…"
+        [ngModel]="question()"
+        (ngModelChange)="question.set($event)"
+        (keydown)="onQuestionKeydown($event)"
+        [disabled]="asking()"
+      ></textarea>
+      <button
+        pButton
+        type="button"
+        class="composer__send"
+        [disabled]="asking() || !question().trim()"
+        (click)="ask()"
+        aria-label="Send"
+      >
+        <i pButtonIcon class="pi" [class.pi-send]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
+      </button>
+    </div>
   </div>
 </div>

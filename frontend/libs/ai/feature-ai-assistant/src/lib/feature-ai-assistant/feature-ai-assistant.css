@@ -6,22 +6,176 @@
 .assistant-container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
   block-size: 100%;
-  max-inline-size: 48rem;
+  min-block-size: 0;
 }
 
-.ask-box {
+/* ---- Thread (scrollable) ---- */
+
+/* Bleeds past `.shell__main`'s own inline padding (`--spacing-xl`, see
+   `app-shell.component.ts`) so the scrollbar this container's `overflow-y`
+   creates renders flush against the screen edge instead of floating inside
+   the centered reading column — `padding-inline` below adds that same
+   inset back so the content doesn't touch the new edges. */
+.thread {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--spacing-xl));
+  padding-inline: var(--spacing-xl);
+  padding-block: var(--spacing-lg);
+}
+
+.thread__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  min-block-size: 100%;
+  max-inline-size: 56rem;
+  margin-inline: auto;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--typography-body-small-font-size);
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.empty-state__icon {
+  font-size: 1.75rem;
+  color: var(--color-action-primary);
+}
+
+/* ---- Messages ---- */
+
+.message {
+  display: flex;
+  gap: var(--spacing-sm);
+  max-inline-size: 88%;
+}
+
+.message--user {
+  align-self: flex-end;
+  justify-content: flex-end;
+}
+
+.message--assistant {
+  align-self: flex-start;
+}
+
+.message__avatar {
+  flex-shrink: 0;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+  font-size: 0.8rem;
+}
+
+.message__bubble {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-card);
+  color: var(--color-text-primary);
+  min-inline-size: 0;
+}
+
+.message--user .message__bubble {
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+  border-end-end-radius: var(--radius-sm);
+  white-space: pre-wrap;
+}
+
+.message--assistant .message__bubble {
+  background: var(--color-surface-raised);
+  border: var(--border-width) solid var(--color-border-default);
+  border-start-start-radius: var(--radius-sm);
+  flex: 1;
+}
+
+/* ---- "Thinking" indicator ---- */
+
+.message__bubble--thinking {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-block: 14px;
+}
+
+.thinking-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  animation: thinking-bounce 1.1s infinite ease-in-out;
+}
+
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes thinking-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dot {
+    animation: none;
+  }
+}
+
+/* ---- Composer (pinned) ---- */
+
+/* Full-width divider, bled the same way `.thread` is (see above) so it
+   reaches the actual screen edge on both sides, not just the width of the
+   centered reading column. */
+.composer {
+  flex: 0 0 auto;
+  margin-inline: calc(-1 * var(--spacing-xl));
+  padding-inline: var(--spacing-xl);
+  padding-block-start: var(--spacing-md);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+.composer__inner {
   display: flex;
   gap: var(--spacing-sm);
   align-items: flex-end;
+  max-inline-size: 56rem;
+  margin-inline: auto;
 }
 
-.ask-box__input {
+.composer__input {
   flex: 1;
-  resize: vertical;
-  min-block-size: 2.5rem;
-  padding: var(--spacing-sm);
+  resize: none;
+  field-sizing: content;
+  max-block-size: 12rem;
+  min-block-size: 2.75rem;
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-input);
   border: 1px solid var(--color-border-default);
   background: var(--color-surface-base);
@@ -29,36 +183,126 @@
   font: inherit;
 }
 
-.empty-state {
-  color: var(--color-text-secondary);
-  font-size: var(--typography-body-small-font-size);
-}
-
-.history {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.qa-entry {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-card);
-  background: var(--color-surface-raised);
-}
-
-.qa-entry__question {
-  font-weight: var(--typography-label-font-weight);
-  color: var(--color-text-primary);
-  margin: 0;
+.composer__send {
+  flex-shrink: 0;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  inline-size: 2.75rem;
+  padding: 0;
 }
 
 .qa-entry__answer {
   color: var(--color-text-primary);
-  white-space: pre-wrap;
-  margin: 0;
+  line-height: 1.55;
+}
+
+/* `[innerHTML]`-injected markdown output never goes through Angular's
+   template compiler, so it never receives the `_ngcontent-*` attribute
+   emulated view encapsulation adds — a plain scoped `.qa-entry__answer h1`
+   rule silently never matches it. `::ng-deep` is this codebase's own
+   established escape hatch for exactly this (see `:host ::ng-deep
+   .shell__breadcrumb` in `app-shell.component.ts`), needed here for every
+   rule that reaches past the `[innerHTML]` boundary. */
+:host ::ng-deep .qa-entry__answer > :first-child {
+  margin-block-start: 0;
+}
+
+:host ::ng-deep .qa-entry__answer > :last-child {
+  margin-block-end: 0;
+}
+
+:host ::ng-deep .qa-entry__answer :is(h1, h2, h3, h4, h5, h6) {
+  margin: var(--spacing-md) 0 var(--spacing-xs);
+  font-weight: var(--typography-label-font-weight);
+  line-height: 1.3;
+}
+
+:host ::ng-deep .qa-entry__answer h1 {
+  font-size: var(--typography-heading1-font-size);
+}
+
+:host ::ng-deep .qa-entry__answer h2 {
+  font-size: var(--typography-heading2-font-size);
+}
+
+:host ::ng-deep .qa-entry__answer :is(h3, h4, h5, h6) {
+  font-size: var(--typography-heading3-font-size);
+}
+
+:host ::ng-deep .qa-entry__answer p {
+  margin: var(--spacing-sm) 0;
+}
+
+:host ::ng-deep .qa-entry__answer strong {
+  font-weight: var(--typography-label-font-weight);
+}
+
+:host ::ng-deep .qa-entry__answer :is(ul, ol) {
+  margin: var(--spacing-sm) 0;
+  padding-inline-start: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:host ::ng-deep .qa-entry__answer blockquote {
+  margin: var(--spacing-sm) 0;
+  padding-inline-start: var(--spacing-md);
+  border-inline-start: 3px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+:host ::ng-deep .qa-entry__answer code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-default);
+}
+
+:host ::ng-deep .qa-entry__answer pre {
+  margin: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-default);
+  overflow-x: auto;
+}
+
+:host ::ng-deep .qa-entry__answer pre code {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+:host ::ng-deep .qa-entry__answer table {
+  margin: var(--spacing-sm) 0;
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--typography-body-small-font-size);
+}
+
+:host ::ng-deep .qa-entry__answer :is(th, td) {
+  padding: 6px var(--spacing-sm);
+  border: 1px solid var(--color-border-default);
+  text-align: start;
+}
+
+:host ::ng-deep .qa-entry__answer th {
+  font-weight: var(--typography-label-font-weight);
+  background: var(--color-surface-base);
+}
+
+:host ::ng-deep .qa-entry__answer a {
+  color: var(--color-action-primary);
+}
+
+:host ::ng-deep .qa-entry__answer hr {
+  border: none;
+  border-block-start: 1px solid var(--color-border-default);
+  margin: var(--spacing-md) 0;
 }
 
 .qa-entry__tools {

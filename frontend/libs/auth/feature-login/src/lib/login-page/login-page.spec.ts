@@ -77,6 +77,54 @@ describe('LoginPage', () => {
     expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/platform');
   });
 
+  it('defaults a non-platform session with no redirectTo to /', () => {
+    authServiceMock.login.mockReturnValue(of(undefined));
+    authServiceMock.principal.mockReturnValue({ role: 'dispatcher', permissions: new Set() });
+
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 'staff@example.com', password: 'correct-horse-battery' });
+
+    component['submit']();
+
+    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+
+  it('defaults an ai:read-holding non-platform session with no redirectTo to /ai-assistant', () => {
+    authServiceMock.login.mockReturnValue(of(undefined));
+    authServiceMock.principal.mockReturnValue({
+      role: 'manager',
+      permissions: new Set(['ai:read']),
+    });
+
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 'manager@example.com', password: 'correct-horse-battery' });
+
+    component['submit']();
+
+    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/ai-assistant');
+  });
+
+  it('a super_admin session still defaults to /platform even if it somehow also holds ai:read', () => {
+    authServiceMock.login.mockReturnValue(of(undefined));
+    authServiceMock.principal.mockReturnValue({
+      role: 'super_admin',
+      permissions: new Set(['ai:read']),
+    });
+
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 's_admin@lpg.com', password: 's_admin_1234' });
+
+    component['submit']();
+
+    expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/platform');
+  });
+
   it('surfaces a friendly message for invalid credentials', () => {
     authServiceMock.login.mockReturnValue(
       throwError(() => ({ errorCode: 'INVALID_CREDENTIALS', status: 401 })),
