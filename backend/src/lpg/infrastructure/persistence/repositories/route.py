@@ -156,6 +156,27 @@ class SqlAlchemyRouteRepository:
 
         return self._to_domain(model, list(stops_models))
 
+    async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
+        stmt = (
+            select(RouteModel)
+            .where(RouteModel.vehicle_id == vehicle_id)
+            .where(RouteModel.status.in_(["planned", "loaded", "in_progress"]))
+            .order_by(RouteModel.created_at.desc())
+            .limit(1)
+        )
+        model = await self._uow.session.scalar(stmt)
+        if model is None:
+            return None
+
+        stmt_stops = (
+            select(RouteStopModel)
+            .where(RouteStopModel.route_id == model.id)
+            .order_by(RouteStopModel.sequence_number)
+        )
+        stops_models = (await self._uow.session.scalars(stmt_stops)).all()
+
+        return self._to_domain(model, list(stops_models))
+
     async def get_route_with_open_stop_for(
         self, driver_id: uuid.UUID, vehicle_id: uuid.UUID, route_date: datetime.date
     ) -> Route | None:

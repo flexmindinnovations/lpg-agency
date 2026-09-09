@@ -104,6 +104,13 @@ class RouteRepository(Protocol):
 
     async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None: ...
 
+    async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
+        """Same shape as `get_active_route_for_driver` — the auto-assignment
+        suggestion engine (`application/delivery/auto_assignment.py`) needs
+        both, since a driver and vehicle are independent aggregates with no
+        pairing concept; each is checked for idleness separately."""
+        ...
+
     async def get_route_with_open_stop_for(
         self, driver_id: uuid.UUID, vehicle_id: uuid.UUID, route_date: datetime.date
     ) -> Route | None:
