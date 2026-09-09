@@ -359,13 +359,16 @@
                     [appendTo]="'body'"
                   />
                   <p-inputnumber formControlName="quantity" [min]="1" [fluid]="true" />
-                  <p-button
-                    [text]="true"
+                  <button
+                    pButton
+                    type="button"
+                    text
                     severity="danger"
-                    icon="pi pi-trash"
                     [disabled]="loadLines.length <= 1"
-                    (onClick)="removeLoadLine($index)"
-                  ></p-button>
+                    (click)="removeLoadLine($index)"
+                  >
+                    <i pButtonIcon class="pi pi-trash"></i>
+                  </button>
                 </div>
               }
             </div>

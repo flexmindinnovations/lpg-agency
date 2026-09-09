@@ -129,7 +129,10 @@
 
       <div class="lines-header">
         <label>Cylinders</label>
-        <p-button [text]="true" size="small" severity="secondary" icon="pi pi-plus" label="Add line" (onClick)="addLine()"></p-button>
+        <button pButton type="button" text size="small" severity="secondary" (click)="addLine()">
+          <i pButtonIcon class="pi pi-plus"></i>
+          <span pButtonLabel>Add line</span>
+        </button>
       </div>
       <div class="lines" formArrayName="lines">
         @for (line of lines.controls; track $index) {
@@ -144,13 +147,16 @@
             [fluid]="true"
           ></p-select>
           <p-inputnumber formControlName="quantity" [min]="1" class="line-row__qty" [fluid]="true" />
-          <p-button
-            [text]="true"
+          <button
+            pButton
+            type="button"
+            text
             severity="danger"
-            icon="pi pi-trash"
             [disabled]="lines.length <= 1"
-            (onClick)="removeLine($index)"
-          ></p-button>
+            (click)="removeLine($index)"
+          >
+            <i pButtonIcon class="pi pi-trash"></i>
+          </button>
         </div>
         }
       </div>
@@ -160,14 +166,14 @@
 
     <ng-template #footer>
       <div class="modal-actions">
-        <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="closeCreateDrawer()"></p-button>
-        <p-button
+        <button pButton type="button" severity="secondary" text (click)="closeCreateDrawer()">Cancel</button>
+        <button
+          pButton
           type="button"
-          label="Create Booking"
           [loading]="loading()"
           [disabled]="createForm.invalid || !selectedAddress() || loading()"
-          (onClick)="onSubmitCreate()"
-        ></p-button>
+          (click)="onSubmitCreate()"
+        >Create Booking</button>
       </div>
     </ng-template>
   </p-drawer>

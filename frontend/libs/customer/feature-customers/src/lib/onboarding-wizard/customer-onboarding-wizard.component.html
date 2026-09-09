@@ -17,8 +17,8 @@
         Would you like to resume it?
       </p>
       <div class="resume-banner-actions">
-        <p-button label="Discard" icon="pi pi-trash" severity="secondary" (onClick)="discardBannerDraft()"></p-button>
-        <p-button label="Resume Draft" icon="pi pi-play" (onClick)="resumeDraft()"></p-button>
+        <button pButton type="button" severity="secondary" (click)="discardBannerDraft()"><i pButtonIcon class="pi pi-trash"></i><span pButtonLabel>Discard</span></button>
+        <button pButton type="button" (click)="resumeDraft()"><i pButtonIcon class="pi pi-play"></i><span pButtonLabel>Resume Draft</span></button>
       </div>
     </div>
   }
@@ -44,18 +44,18 @@
               </div>
 
               <div class="kyc-mode-toggle">
-                <p-button
-                  label="Auto-fill from Document"
-                  icon="pi pi-camera"
+                <button
+                  pButton
+                  type="button"
                   [outlined]="entryMode() !== 'auto'"
-                  (onClick)="setEntryMode('auto')"
-                ></p-button>
-                <p-button
-                  label="Manual Entry"
-                  icon="pi pi-pencil"
+                  (click)="setEntryMode('auto')"
+                ><i pButtonIcon class="pi pi-camera"></i><span pButtonLabel>Auto-fill from Document</span></button>
+                <button
+                  pButton
+                  type="button"
                   [outlined]="entryMode() !== 'manual'"
-                  (onClick)="setEntryMode('manual')"
-                ></p-button>
+                  (click)="setEntryMode('manual')"
+                ><i pButtonIcon class="pi pi-pencil"></i><span pButtonLabel>Manual Entry</span></button>
               </div>
 
               @if (entryMode() === 'auto') {
@@ -106,15 +106,15 @@
             <div class="step-actions">
               <div class="step-actions-left"></div>
               <div class="step-actions-right">
-                <p-button
-                  label="Save & Exit"
-                  icon="pi pi-save"
+                <button
+                  pButton
+                  type="button"
                   severity="secondary"
-                  [text]="true"
+                  text
                   [loading]="savingDraft()"
-                  (onClick)="onSaveAndExit()"
-                ></p-button>
-                <p-button label="Next" icon="pi pi-arrow-right" iconPos="right" (onClick)="currentStep.set(2)"></p-button>
+                  (click)="onSaveAndExit()"
+                ><i pButtonIcon class="pi pi-save"></i><span pButtonLabel>Save & Exit</span></button>
+                <button pButton type="button" (click)="currentStep.set(2)"><span pButtonLabel>Next</span><i pButtonIcon class="pi pi-arrow-right"></i></button>
               </div>
             </div>
           </ng-template>
@@ -193,18 +193,18 @@
             
             <div class="step-actions">
               <div class="step-actions-left">
-                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(1)"></p-button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(1)"><i pButtonIcon class="pi pi-arrow-left"></i><span pButtonLabel>Back</span></button>
               </div>
               <div class="step-actions-right">
-                <p-button
-                  label="Save & Exit"
-                  icon="pi pi-save"
+                <button
+                  pButton
+                  type="button"
                   severity="secondary"
-                  [text]="true"
+                  text
                   [loading]="savingDraft()"
-                  (onClick)="onSaveAndExit()"
-                ></p-button>
-                <p-button label="Next" icon="pi pi-arrow-right" iconPos="right" (onClick)="nextStep(registrationForm, 3)"></p-button>
+                  (click)="onSaveAndExit()"
+                ><i pButtonIcon class="pi pi-save"></i><span pButtonLabel>Save & Exit</span></button>
+                <button pButton type="button" (click)="nextStep(registrationForm, 3)"><span pButtonLabel>Next</span><i pButtonIcon class="pi pi-arrow-right"></i></button>
               </div>
             </div>
           </ng-template>
@@ -266,18 +266,18 @@
             
             <div class="step-actions">
               <div class="step-actions-left">
-                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(2)"></p-button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(2)"><i pButtonIcon class="pi pi-arrow-left"></i><span pButtonLabel>Back</span></button>
               </div>
               <div class="step-actions-right">
-                <p-button
-                  label="Save & Exit"
-                  icon="pi pi-save"
+                <button
+                  pButton
+                  type="button"
                   severity="secondary"
-                  [text]="true"
+                  text
                   [loading]="savingDraft()"
-                  (onClick)="onSaveAndExit()"
-                ></p-button>
-                <p-button label="Next" icon="pi pi-arrow-right" iconPos="right" (onClick)="nextStep(addressForm, 4)"></p-button>
+                  (click)="onSaveAndExit()"
+                ><i pButtonIcon class="pi pi-save"></i><span pButtonLabel>Save & Exit</span></button>
+                <button pButton type="button" (click)="nextStep(addressForm, 4)"><span pButtonLabel>Next</span><i pButtonIcon class="pi pi-arrow-right"></i></button>
               </div>
             </div>
           </ng-template>
@@ -329,18 +329,18 @@
             
             <div class="step-actions">
               <div class="step-actions-left">
-                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(3)"></p-button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(3)"><i pButtonIcon class="pi pi-arrow-left"></i><span pButtonLabel>Back</span></button>
               </div>
               <div class="step-actions-right">
-                <p-button
-                  label="Save & Exit"
-                  icon="pi pi-save"
+                <button
+                  pButton
+                  type="button"
                   severity="secondary"
-                  [text]="true"
+                  text
                   [loading]="savingDraft()"
-                  (onClick)="onSaveAndExit()"
-                ></p-button>
-                <p-button label="Review" icon="pi pi-arrow-right" iconPos="right" (onClick)="nextStep(kycForm, 5)"></p-button>
+                  (click)="onSaveAndExit()"
+                ><i pButtonIcon class="pi pi-save"></i><span pButtonLabel>Save & Exit</span></button>
+                <button pButton type="button" (click)="nextStep(kycForm, 5)"><span pButtonLabel>Review</span><i pButtonIcon class="pi pi-arrow-right"></i></button>
               </div>
             </div>
           </ng-template>
@@ -378,18 +378,18 @@
             
             <div class="step-actions">
               <div class="step-actions-left">
-                <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="prevStep(4)"></p-button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(4)"><i pButtonIcon class="pi pi-arrow-left"></i><span pButtonLabel>Back</span></button>
               </div>
               <div class="step-actions-right">
-                <p-button
-                  label="Save & Exit"
-                  icon="pi pi-save"
+                <button
+                  pButton
+                  type="button"
                   severity="secondary"
-                  [text]="true"
+                  text
                   [loading]="savingDraft()"
-                  (onClick)="onSaveAndExit()"
-                ></p-button>
-                <p-button label="Submit & Approve" icon="pi pi-check" severity="success" (onClick)="submitWizard()" [loading]="isSubmitting()"></p-button>
+                  (click)="onSaveAndExit()"
+                ><i pButtonIcon class="pi pi-save"></i><span pButtonLabel>Save & Exit</span></button>
+                <button pButton type="button" severity="success" (click)="submitWizard()" [loading]="isSubmitting()"><i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Submit & Approve</span></button>
               </div>
             </div>
           </ng-template>
@@ -407,9 +407,9 @@
   >
     <p>You have unsaved changes on this registration. What would you like to do?</p>
     <div class="leave-dialog-actions">
-      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="onCancelLeave()"></p-button>
-      <p-button label="Discard & Leave" severity="danger" [text]="true" (onClick)="onDiscardAndLeave()"></p-button>
-      <p-button label="Save & Leave" [loading]="savingDraft()" (onClick)="onSaveAndLeave()"></p-button>
+      <button pButton type="button" severity="secondary" text (click)="onCancelLeave()">Cancel</button>
+      <button pButton type="button" severity="danger" text (click)="onDiscardAndLeave()">Discard & Leave</button>
+      <button pButton type="button" [loading]="savingDraft()" (click)="onSaveAndLeave()">Save & Leave</button>
     </div>
   </p-dialog>
 </div>

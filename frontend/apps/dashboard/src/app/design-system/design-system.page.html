@@ -102,15 +102,15 @@
   <!-- ============ BUTTONS ============ -->
   <lpg-section-card heading="Buttons">
     <div class="ds-buttons">
-      <p-button label="Primary" />
-      <p-button label="Secondary" severity="secondary" />
-      <p-button label="Tertiary" [text]="true" />
-      <p-button label="Outline" [outlined]="true" />
-      <p-button label="Danger" severity="danger" />
-      <p-button label="Ghost" [text]="true" [plain]="true" />
-      <p-button label="Loading" [loading]="true" />
-      <p-button label="Disabled" [disabled]="true" />
-      <p-button icon="pi pi-plus" [rounded]="true" aria-label="Add" />
+      <button pButton type="button">Primary</button>
+      <button pButton type="button" severity="secondary">Secondary</button>
+      <button pButton type="button" text>Tertiary</button>
+      <button pButton type="button" outlined>Outline</button>
+      <button pButton type="button" severity="danger">Danger</button>
+      <button pButton type="button" text plain>Ghost</button>
+      <button pButton type="button" [loading]="true">Loading</button>
+      <button pButton type="button" [disabled]="true">Disabled</button>
+      <button pButton type="button" rounded aria-label="Add"><i pButtonIcon class="pi pi-plus"></i></button>
     </div>
   </lpg-section-card>
 

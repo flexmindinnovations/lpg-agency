@@ -2,12 +2,12 @@ import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NotificationService, WebSocketService } from '@lpg/shared/data-access';
 import { interval, startWith } from 'rxjs';
-import { BadgeModule } from 'primeng/badge';
-import { ButtonModule } from 'primeng/button';
+import { OverlayBadge } from 'primeng/overlaybadge';
+import { ButtonDirective, ButtonIcon } from 'primeng/button';
 
 @Component({
   selector: 'lib-notification-bell',
-  imports: [BadgeModule, ButtonModule],
+  imports: [OverlayBadge, ButtonDirective, ButtonIcon],
   templateUrl: './notification-bell.html',
   styleUrl: './notification-bell.css'
 })

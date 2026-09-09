@@ -1,9 +1,8 @@
-<p-button 
-  icon="pi pi-bell" 
-  [text]="true" 
-  [rounded]="true" 
-  severity="secondary" 
-  (onClick)="toggled.emit()"
-  [badge]="unreadCount() > 0 ? unreadCount().toString() : ''" 
-  badgeClass="p-badge-danger">
-</p-button>
+<p-overlaybadge
+  [value]="unreadCount() > 0 ? unreadCount().toString() : ''"
+  [badgeDisabled]="unreadCount() === 0"
+  severity="danger">
+  <button pButton type="button" text rounded severity="secondary" (click)="toggled.emit()">
+    <i pButtonIcon class="pi pi-bell"></i>
+  </button>
+</p-overlaybadge>

@@ -39,14 +39,17 @@
           </h4>
           <div class="notification-actions">
             @if (!notification.is_read) {
-            <p-button icon="pi pi-check"
-                      [text]="true"
-                      [rounded]="true"
-                      severity="secondary"
-                      size="small"
-                      pTooltip="Mark as read"
-                      (onClick)="markAsRead(notification.id); $event.stopPropagation()">
-            </p-button>
+            <button
+              pButton
+              type="button"
+              text
+              rounded
+              severity="secondary"
+              size="small"
+              pTooltip="Mark as read"
+              (click)="markAsRead(notification.id); $event.stopPropagation()">
+              <i pButtonIcon class="pi pi-check"></i>
+            </button>
             }
           </div>
         </div>

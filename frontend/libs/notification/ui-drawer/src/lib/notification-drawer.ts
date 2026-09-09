@@ -2,8 +2,7 @@ import { Component, computed, effect, inject, model, signal } from '@angular/cor
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { DrawerModule } from 'primeng/drawer';
-import { ButtonModule } from 'primeng/button';
-import { BadgeModule } from 'primeng/badge';
+import { ButtonDirective, ButtonIcon } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { NotificationService, NotifyService, errorMessageFor } from '@lpg/shared/data-access';
@@ -11,7 +10,7 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
 
 @Component({
   selector: 'lib-notification-drawer',
-  imports: [DatePipe, RouterLink, DrawerModule, DrawerA11yDirective, ButtonModule, BadgeModule, TooltipModule],
+  imports: [DatePipe, RouterLink, DrawerModule, DrawerA11yDirective, ButtonDirective, ButtonIcon, TooltipModule],
   templateUrl: './notification-drawer.html',
   styleUrl: './notification-drawer.css'
 })

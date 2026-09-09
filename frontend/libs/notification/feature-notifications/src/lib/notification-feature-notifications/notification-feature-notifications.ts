@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, forwardRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonDirective, ButtonIcon, ButtonLabel } from 'primeng/button';
-import { ButtonModule } from 'primeng/button';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
 import { NotificationService, NotifyService } from '@lpg/shared/data-access';
@@ -10,18 +9,20 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
 @Component({
   selector: 'lib-notification-action-cell',
   standalone: true,
-  imports: [ButtonModule],
+  imports: [ButtonDirective, ButtonIcon],
   template: `
     <div class="flex items-center h-full">
       @if (!row?.is_read) {
-      <p-button
-        icon="pi pi-check"
-        [text]="true"
-        [rounded]="true"
+      <button
+        pButton
+        type="button"
+        text
+        rounded
         severity="secondary"
         size="small"
-        (onClick)="handleClick()">
-      </p-button>
+        (click)="handleClick()">
+        <i pButtonIcon class="pi pi-check"></i>
+      </button>
       }
     </div>
   `
