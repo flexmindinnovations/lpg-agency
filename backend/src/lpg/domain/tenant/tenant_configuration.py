@@ -96,6 +96,16 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # `application.ai.use_cases.DEFAULT_AI_DAILY_TOKEN_BUDGET` when a
         # tenant has never set this.
         "ai_daily_token_budget",
+        # Zero-click driver auto-assignment (order-to-delivery fulfillment
+        # automation) — tenant opt-in, same default-off shape as
+        # `weighment_gate_enabled`/`ai_gateway_enabled`: a tenant that has
+        # never set this key sees zero behavior change,
+        # `auto_assign_driver` always no-ops and the order waits for the
+        # existing manual assign flow, exactly as it does today. Checked
+        # with `application.common.config.is_truthy_config_value()` — the
+        # same jsonb-string-"false" footgun named for `ai_gateway_enabled`
+        # applies here too.
+        "auto_assignment_enabled",
     }
 )
 

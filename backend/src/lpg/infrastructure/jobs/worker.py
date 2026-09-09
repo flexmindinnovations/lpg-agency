@@ -45,6 +45,7 @@ from arq.connections import RedisSettings
 
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import get_settings
+from lpg.infrastructure.jobs.auto_assignment_jobs import auto_assign_driver
 from lpg.infrastructure.jobs.compliance_jobs import check_compliance_expiry
 from lpg.infrastructure.jobs.notification_jobs import send_notification
 from lpg.infrastructure.jobs.pool import build_job_queue
@@ -207,7 +208,7 @@ class WorkerSettings:
         cron(check_compliance_expiry, hour=3, minute=0),  # Run nightly at 3:00 AM
     ]
 
-    functions: ClassVar = (ping, bulk_cancel_orders, send_notification)
+    functions: ClassVar = (ping, bulk_cancel_orders, send_notification, auto_assign_driver)
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(str(get_settings().redis_url))

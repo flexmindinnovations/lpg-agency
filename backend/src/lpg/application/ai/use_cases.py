@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Literal
 
 from lpg.application.ai.ports import AssistantRun
 from lpg.application.ai.tools import TOOL_REGISTRY
+from lpg.application.common.config import is_truthy_config_value
 from lpg.application.common.cqrs import Query
 from lpg.application.tenant.tenant_configuration import (
     GetEffectiveTenantConfigurationQuery,
@@ -52,21 +53,6 @@ _SYSTEM_PROMPT = (
     "explanation is all that's needed -- do not force structure where "
     "none is warranted."
 )
-
-
-def _is_truthy_config_value(value: object) -> bool:
-    """`TenantConfiguration.config_value` is `jsonb` and the generic Set
-    Value admin form (no dedicated toggle UI for this key) sends whatever
-    string the operator typed, not a JSON boolean — so a stored value of
-    `"false"` is a real, live possibility, not a hypothetical. Plain
-    `bool(value)` is wrong here: `bool("false")` is `True` in Python, since
-    it only checks for a non-empty string. Confirmed live: setting this key
-    to the literal text "false" through the real admin UI and asking a
-    question came back answered, not disabled, before this helper existed.
-    """
-    if isinstance(value, str):
-        return value.strip().lower() not in ("", "false", "0", "no")
-    return bool(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,7 +93,7 @@ class AskAiAssistantUseCase:
                 tenant_id=tenant_id, config_key="ai_gateway_enabled"
             )
         )
-        return _is_truthy_config_value(config.config_value) if config is not None else False
+        return is_truthy_config_value(config.config_value) if config is not None else False
 
     async def _effective_daily_budget(self, tenant_id: uuid.UUID) -> int:
         config = await GetEffectiveTenantConfigurationUseCase(

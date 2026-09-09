@@ -52,6 +52,9 @@ from lpg.config.settings import Settings, get_settings
 from lpg.infrastructure.events.accounting_handlers import (
     register_accounting_handlers,
 )
+from lpg.infrastructure.events.auto_assignment_handlers import (
+    register_auto_assignment_handlers,
+)
 from lpg.infrastructure.events.cylinder_ledger_handlers import (
     register_cylinder_ledger_handlers,
 )
@@ -181,6 +184,7 @@ async def lifespan(
     register_tenant_admin_handlers(_state.event_dispatcher, database)
     register_accounting_handlers(_state.event_dispatcher, database)
     register_notification_handlers(_state.event_dispatcher, job_queue)
+    register_auto_assignment_handlers(_state.event_dispatcher, job_queue)
     _state.job_queue = job_queue
 
     connection_manager = ConnectionManager()
