@@ -10,11 +10,22 @@ mapping (see `models/compliance.py`'s identical note).
 from __future__ import annotations
 
 import uuid  # noqa: TC003
-from datetime import datetime  # noqa: TC003
+from datetime import date, datetime  # noqa: TC003
 from decimal import Decimal  # noqa: TC003
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, text
+from sqlalchemy import (
+    JSON,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Uuid,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -78,6 +89,30 @@ class PredictionModel(Base):
     input_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     value: Mapped[dict[str, Any]] = mapped_column(JSONB())
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+
+
+class FeatureSnapshotModel(Base):
+    """Append-only point-in-time feature store — one row per
+    `(entity_type, entity_id)` per `as_of_date`, written by the nightly
+    `build_feature_snapshots` job. `features` is an opaque JSONB blob the
+    computing job and the consuming heuristic agree on; a day's snapshot is
+    history and is never rewritten (`SELECT, INSERT` only at the DB level).
+    """
+
+    __tablename__ = "feature_snapshot"
+    __table_args__ = {"schema": "ai"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    entity_type: Mapped[str] = mapped_column(String(50))
+    entity_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    as_of_date: Mapped[date] = mapped_column(Date())
+    features: Mapped[dict[str, Any]] = mapped_column(JSONB())
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

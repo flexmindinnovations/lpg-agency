@@ -9,14 +9,24 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from lpg.application.ai.feature_store import FeatureSnapshot
 from lpg.application.ai.prediction import Prediction
-from lpg.infrastructure.persistence.models.ai import AssistantRunModel, PredictionModel
+from lpg.infrastructure.persistence.models.ai import (
+    AssistantRunModel,
+    FeatureSnapshotModel,
+    PredictionModel,
+)
 
 if TYPE_CHECKING:
+    from datetime import date
+
+    from sqlalchemy import CursorResult
+
     from lpg.application.ai.ports import AssistantRun
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -119,3 +129,72 @@ class SqlAlchemyPredictionRepository:
             confidence=row.confidence,
             created_at=row.created_at,
         )
+
+
+class SqlAlchemyFeatureSnapshotRepository:
+    """Append-only point-in-time feature store. `add_ignoring_conflicts`
+    uses PostgreSQL `ON CONFLICT DO NOTHING` so the nightly job is
+    idempotent on re-run."""
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    def next_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    async def add_ignoring_conflicts(self, snapshots: list[FeatureSnapshot]) -> int:
+        if not snapshots:
+            return 0
+        stmt = pg_insert(FeatureSnapshotModel).values(
+            [
+                {
+                    "id": s.id,
+                    "tenant_id": s.tenant_id,
+                    "entity_type": s.entity_type,
+                    "entity_id": s.entity_id,
+                    "as_of_date": s.as_of_date,
+                    "features": s.features,
+                }
+                for s in snapshots
+            ]
+        )
+        stmt = stmt.on_conflict_do_nothing(constraint="uq_ai_feature_snapshot_dimension")
+        result = cast("CursorResult[Any]", await self._uow.session.execute(stmt))
+        return result.rowcount or 0
+
+    async def get(
+        self, *, entity_type: str, entity_id: uuid.UUID, as_of_date: date
+    ) -> FeatureSnapshot | None:
+        stmt = select(FeatureSnapshotModel).where(
+            FeatureSnapshotModel.entity_type == entity_type,
+            FeatureSnapshotModel.entity_id == entity_id,
+            FeatureSnapshotModel.as_of_date == as_of_date,
+        )
+        row = (await self._uow.session.execute(stmt)).scalar_one_or_none()
+        return _to_feature_snapshot(row) if row is not None else None
+
+    async def latest(
+        self, *, entity_type: str, entity_id: uuid.UUID
+    ) -> FeatureSnapshot | None:
+        stmt = (
+            select(FeatureSnapshotModel)
+            .where(
+                FeatureSnapshotModel.entity_type == entity_type,
+                FeatureSnapshotModel.entity_id == entity_id,
+            )
+            .order_by(FeatureSnapshotModel.as_of_date.desc())
+            .limit(1)
+        )
+        row = (await self._uow.session.execute(stmt)).scalar_one_or_none()
+        return _to_feature_snapshot(row) if row is not None else None
+
+
+def _to_feature_snapshot(row: FeatureSnapshotModel) -> FeatureSnapshot:
+    return FeatureSnapshot(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        entity_type=row.entity_type,
+        entity_id=row.entity_id,
+        as_of_date=row.as_of_date,
+        features=row.features,
+    )
