@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     # authentication error.
     database_url: PostgresDsn = Field(
         default=PostgresDsn(
-            "postgresql+asyncpg://lpg_app:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
+            "postgresql+asyncpg://lpg_app:dev_only_not_a_real_secret@localhost:5433/lpg_dev"
         )
     )
 

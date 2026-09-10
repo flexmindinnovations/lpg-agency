@@ -213,7 +213,7 @@ async def _reseed_employee_counters(conn) -> None:
 async def main() -> None:
     settings = get_settings()
     dsn = settings.migration_database_url or (
-        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
+        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_dev"
     )
     print(f"Connecting to database using DSN: {dsn}")
     engine = create_async_engine(str(dsn))

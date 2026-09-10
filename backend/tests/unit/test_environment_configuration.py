@@ -69,7 +69,7 @@ class TestDevConfiguration:
         assert settings.is_local is False
         url = settings.effective_database_url
         assert "localhost" in url
-        assert "55432" in url
+        assert "5433" in url
         assert "lpg_dev" in url
         assert "lpg_app" in url
         assert "supabase" not in url

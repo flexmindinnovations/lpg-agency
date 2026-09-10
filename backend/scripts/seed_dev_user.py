@@ -18,7 +18,7 @@ async def main():
             "LPG_MIGRATION_DATABASE_URL not set in environment or .env. "
             "Trying default dev admin DSN..."
         )
-        dsn = "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
+        dsn = "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_dev"
 
     print(f"Connecting to database using DSN: {dsn}")
     engine = create_async_engine(str(dsn))

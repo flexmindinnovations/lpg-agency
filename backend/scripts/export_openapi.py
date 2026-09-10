@@ -45,7 +45,7 @@ from pathlib import Path
 os.environ.setdefault("LPG_ENVIRONMENT", "local")
 os.environ.setdefault(
     "LPG_MIGRATION_DATABASE_URL",
-    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev",
+    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_dev",
 )
 os.environ.setdefault("LPG_REDIS_URL", "redis://localhost:56379/0")
 

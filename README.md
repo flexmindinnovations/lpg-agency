@@ -47,7 +47,7 @@ Python 3.13+ · [uv](https://docs.astral.sh/uv/) · Node.js 22+ · Flutter 3.24+
 
 | What | Command | URL |
 |---|---|---|
-| PostgreSQL + Redis | `./scripts/dev-up.sh` | `localhost:55432` / `localhost:56379` |
+| PostgreSQL + Redis | `./scripts/dev-up.sh` | `localhost:5433` / `localhost:56379` |
 | Backend | `cd backend && uv run uvicorn lpg.api.app:app --reload` | `http://localhost:8000` |
 | API docs | — | `http://localhost:8000/api/v1/docs` |
 | Frontend | `cd frontend && npx nx serve dashboard` | `http://localhost:4200` |

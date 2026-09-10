@@ -44,7 +44,7 @@ target_metadata = Base.metadata
 
 
 _LOCAL_DEV_FALLBACK = (
-    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
+    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_dev"
 )
 
 

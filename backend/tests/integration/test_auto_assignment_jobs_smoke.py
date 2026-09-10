@@ -93,7 +93,7 @@ async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[Async
     if not postgres_available:
         pytest.skip("PostgreSQL is not reachable")
     engine = create_async_engine(
-        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_test"
+        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_test"
     )
     try:
         yield engine

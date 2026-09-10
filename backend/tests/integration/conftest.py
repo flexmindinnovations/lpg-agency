@@ -20,7 +20,7 @@ def _admin_database_url() -> str:
     # same self-containment reason `_redis_url` below already is.
     return os.environ.get(
         "LPG_TEST_ADMIN_DATABASE_URL",
-        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_test",
+        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_test",
     )
 
 

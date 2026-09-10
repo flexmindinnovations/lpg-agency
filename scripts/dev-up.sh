@@ -16,6 +16,6 @@ done
 
 docker compose -f infrastructure/docker/docker-compose.yml ps
 echo
-echo "PostgreSQL : localhost:${POSTGRES_PORT:-55432}  (databases: lpg_dev, lpg_test)"
+echo "PostgreSQL : localhost:${POSTGRES_PORT:-5433}  (databases: lpg_dev, lpg_test)"
 echo "Redis      : localhost:${REDIS_PORT:-56379}"
 echo "MinIO      : localhost:${MINIO_API_PORT:-59000}  (console: localhost:${MINIO_CONSOLE_PORT:-59001})"

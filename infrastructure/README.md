@@ -12,7 +12,7 @@
 
 | Service | Host port | Notes |
 |---|---|---|
-| PostgreSQL 17 | `55432` | databases `lpg_dev`, `lpg_uat`, `lpg_test` |
+| PostgreSQL 17 | `5433` | databases `lpg_dev`, `lpg_uat`, `lpg_test` |
 | Redis 7 | `56379` | cache, sessions, job queue, real-time backplane |
 
 ### Environments

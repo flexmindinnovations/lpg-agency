@@ -2,7 +2,7 @@
 
 Run against one database::
 
-    LPG_SEED_DATABASE_URL="postgresql+asyncpg://lpg_admin:...@localhost:55432/lpg_dev" \
+    LPG_SEED_DATABASE_URL="postgresql+asyncpg://lpg_admin:...@localhost:5433/lpg_dev" \
         uv run python scripts/seed_demo_data.py
 
 With no `LPG_SEED_DATABASE_URL` it falls back to `LPG_MIGRATION_DATABASE_URL`,
@@ -44,7 +44,7 @@ from lpg.config.settings import get_settings
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 
 _LOCAL_DEV_FALLBACK = (
-    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:55432/lpg_dev"
+    "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_dev"
 )
 
 # Fixed namespace so ids are reproducible across runs *and* across machines.
