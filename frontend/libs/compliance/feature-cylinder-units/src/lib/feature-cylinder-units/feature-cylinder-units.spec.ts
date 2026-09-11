@@ -64,4 +64,48 @@ describe('FeatureCylinderUnits', () => {
     expect(component['lookupCode']()).toBe('');
     expect(component['lookupResult']()).toBeNull();
   });
+
+  it('correctly tracks isAnyModalOpen for all action and utility modals', () => {
+    expect(component['isAnyModalOpen']()).toBe(false);
+
+    component['showMoveCustodyModal'].set(true);
+    expect(component['isAnyModalOpen']()).toBe(true);
+    component['showMoveCustodyModal'].set(false);
+
+    component['showTestModal'].set(true);
+    expect(component['isAnyModalOpen']()).toBe(true);
+    component['showTestModal'].set(false);
+
+    component['showConditionModal'].set(true);
+    expect(component['isAnyModalOpen']()).toBe(true);
+    component['showConditionModal'].set(false);
+
+    component['showLookupModal'].set(true);
+    expect(component['isAnyModalOpen']()).toBe(true);
+    component['showLookupModal'].set(false);
+
+    component['showRegisterModal'].set(true);
+    expect(component['isAnyModalOpen']()).toBe(true);
+    component['showRegisterModal'].set(false);
+
+    expect(component['isAnyModalOpen']()).toBe(false);
+  });
+
+  it('does not close the detail drawer on Escape when a modal dialog is open', () => {
+    component['showDetailDrawer'].set(true);
+    component['showMoveCustodyModal'].set(true);
+
+    component['onDocumentEscape']();
+
+    expect(component['showDetailDrawer']()).toBe(true);
+    expect(component['showMoveCustodyModal']()).toBe(true);
+  });
+
+  it('closes the detail drawer on Escape when no modal dialog is open', () => {
+    component['showDetailDrawer'].set(true);
+
+    component['onDocumentEscape']();
+
+    expect(component['showDetailDrawer']()).toBe(false);
+  });
 });

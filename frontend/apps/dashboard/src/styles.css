@@ -52,6 +52,21 @@
    icon button = Ghost. All colours + states come from the preset
    (primeng-preset.ts components.button); no --p-button-* overrides here. */
 
+/* Select / Dropdown option hover and transition:
+   PrimeNG's base styling omits a hover pseudo-class for already-selected options
+   (.p-select-option-selected:hover) and defaults option transition to 0s. Adding
+   a subtle transition and supporting hover on selected items completes the interaction. */
+.p-select-option {
+  transition:
+    background-color var(--motion-duration-micro, 120ms) var(--motion-easing-standard, ease),
+    color var(--motion-duration-micro, 120ms) var(--motion-easing-standard, ease);
+}
+
+.p-select-option.p-select-option-selected:hover {
+  background: var(--p-select-option-selected-focus-background, color-mix(in srgb, var(--color-action-primary), transparent 76%));
+  color: var(--p-select-option-selected-focus-color, var(--color-text-primary));
+}
+
 /* ========================================================================
    FOUNDATION
    ======================================================================== */
@@ -795,6 +810,37 @@ textarea {
   padding: 2px 8px !important;
   border-radius: var(--radius-sm) !important;
   letter-spacing: 0.01em;
+}
+
+.p-tag.p-tag-danger {
+  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent) !important;
+  color: #991b1b !important;
+  border: 1px solid color-mix(in srgb, var(--color-status-danger) 24%, transparent) !important;
+  font-weight: 600 !important;
+}
+
+[data-theme='dark'] .p-tag.p-tag-danger {
+  background: color-mix(in srgb, var(--color-status-danger) 20%, transparent) !important;
+  color: #f87171 !important;
+  border: 1px solid color-mix(in srgb, var(--color-status-danger) 35%, transparent) !important;
+}
+
+/* Danger Button refinements — high-contrast solid fill with white text */
+.p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text) {
+  background-color: var(--color-status-danger) !important;
+  border-color: var(--color-status-danger) !important;
+  color: #ffffff !important;
+}
+
+.p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text):hover {
+  background-color: color-mix(in srgb, var(--color-status-danger), black 15%) !important;
+  border-color: color-mix(in srgb, var(--color-status-danger), black 15%) !important;
+  color: #ffffff !important;
+}
+
+.p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text):active {
+  background-color: color-mix(in srgb, var(--color-status-danger), black 28%) !important;
+  border-color: color-mix(in srgb, var(--color-status-danger), black 28%) !important;
 }
 
 /* Message refinements */

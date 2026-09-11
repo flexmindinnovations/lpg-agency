@@ -55,7 +55,7 @@ import type { TenantResponse } from '@lpg/shared/data-access';
 
       <p-drawer
         header="Agency Details"
-        [visible]="showDetailDrawer()"
+        [(visible)]="showDetailDrawer"
         (onHide)="closeDetails()"
         position="right"
         [modal]="true"

@@ -146,7 +146,7 @@ class FlagDefaultCell {
       <!-- Flag Details Drawer -->
       <p-drawer
         header="Flag Details"
-        [visible]="showDetailDrawer()"
+        [(visible)]="showDetailDrawer"
         (onHide)="closeDetails()"
         position="right"
         [modal]="true"

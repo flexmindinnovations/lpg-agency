@@ -27,11 +27,19 @@ import { DrawerA11yDirective } from './drawer-a11y.directive';
 class StubDrawerComponent {
   @Output() onShow = new EventEmitter<void>();
   @Output() onHide = new EventEmitter<void>();
+  @Output() visibleChange = new EventEmitter<boolean>();
 }
 
 @Component({
+  selector: 'p-dialog',
   standalone: true,
-  imports: [StubDrawerComponent, DrawerA11yDirective],
+  template: '<ng-content />',
+})
+class StubDialogComponent {}
+
+@Component({
+  standalone: true,
+  imports: [StubDrawerComponent, StubDialogComponent, DrawerA11yDirective],
   template: `
     <button id="trigger" type="button">Open</button>
     <div class="page-body"><a id="bg-link" href="#">background link</a></div>
@@ -39,6 +47,7 @@ class StubDrawerComponent {
       <input id="first-field" />
       <button id="save" type="button">Save</button>
     </p-drawer>
+    <p-dialog id="sibling-dialog"><button type="button">Action</button></p-dialog>
   `,
 })
 class HostComponent {}
@@ -103,6 +112,7 @@ describe('DrawerA11yDirective', () => {
     expect(isInert('#trigger')).toBe(true);
     expect(isInert('.page-body')).toBe(true);
     expect(isInert('p-drawer')).toBe(false);
+    expect(isInert('#sibling-dialog')).toBe(false);
   });
 
   it('clears inert and restores focus to the opener on close', () => {
@@ -112,6 +122,19 @@ describe('DrawerA11yDirective', () => {
     drawer.onShow.emit();
 
     drawer.onHide.emit();
+
+    expect(isInert('#trigger')).toBe(false);
+    expect(isInert('.page-body')).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('clears inert and restores focus when visibleChange emits false', () => {
+    const { drawer, q, isInert } = setup();
+    const trigger = q('#trigger');
+    trigger.focus();
+    drawer.onShow.emit();
+
+    drawer.visibleChange.emit(false);
 
     expect(isInert('#trigger')).toBe(false);
     expect(isInert('.page-body')).toBe(false);

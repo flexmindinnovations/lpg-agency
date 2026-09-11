@@ -203,7 +203,7 @@ const VALIDITY_OPTIONS = [
       <!-- Flag Details Drawer -->
       <p-drawer
         header="License Details"
-        [visible]="showDetailDrawer()"
+        [(visible)]="showDetailDrawer"
         (onHide)="closeDetails()"
         position="right"
         [modal]="true"

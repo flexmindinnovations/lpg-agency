@@ -4,9 +4,11 @@ import {
   HostListener,
   OnDestroy,
   PLATFORM_ID,
+  effect,
   inject,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { Drawer } from 'primeng/drawer';
 
 /**
  * Retro-fits the ARIA modal-dialog contract onto PrimeNG's `p-drawer`.
@@ -40,11 +42,29 @@ import { isPlatformBrowser } from '@angular/common';
 export class DrawerA11yDirective implements OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly drawer = inject(Drawer, { optional: true });
 
   /** Element focus returns to when the drawer closes. */
   private trigger: HTMLElement | null = null;
   /** Background elements this instance marked `inert`, reverted on close. */
   private readonly inerted: HTMLElement[] = [];
+
+  constructor() {
+    // PrimeNG's `Drawer` only emits `(onHide)` when closed via its internal header 'X'
+    // button (`close()`). When closed programmatically (e.g. `visible.set(false)` from
+    // a form Cancel/Close button or Escape handler), `Drawer` calls `hide(false)` on
+    // transition leave, which deliberately suppresses `(onHide)`. Reactively monitoring
+    // `drawer.visible()` guarantees `inert` is immediately cleared and focus restored
+    // regardless of which trigger or binding closed the drawer.
+    if (this.drawer && this.isBrowser) {
+      effect(() => {
+        const isVisible = this.drawer?.visible();
+        if (!isVisible && (this.inerted.length > 0 || this.trigger !== null)) {
+          this.onHide();
+        }
+      });
+    }
+  }
 
   @HostListener('onShow')
   protected onShow(): void {
@@ -68,8 +88,10 @@ export class DrawerA11yDirective implements OnDestroy {
   }
 
   @HostListener('onHide')
-  protected onHide(): void {
+  @HostListener('visibleChange', ['$event'])
+  protected onHide(visible?: unknown): void {
     if (!this.isBrowser) return;
+    if (visible === true) return;
     this.revert();
     const previous = this.trigger;
     this.trigger = null;
@@ -129,6 +151,7 @@ export class DrawerA11yDirective implements OnDestroy {
     while (parent && parent !== document.body) {
       for (const sibling of Array.from(parent.children)) {
         if (sibling === node || !(sibling instanceof HTMLElement)) continue;
+        if (sibling.matches('p-dialog, p-drawer, .p-dialog, .p-drawer')) continue;
         if (sibling.hasAttribute('inert')) continue;
         sibling.setAttribute('inert', '');
         this.inerted.push(sibling);

@@ -140,7 +140,7 @@
   <!-- Scale Details Drawer -->
   <p-drawer
     header="Scale Details"
-    [visible]="showDetailDrawer()"
+    [(visible)]="showDetailDrawer"
     (onHide)="closeDetails()"
     position="right"
     [modal]="true"

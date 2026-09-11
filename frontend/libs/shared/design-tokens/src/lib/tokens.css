@@ -9,6 +9,7 @@ have always been hand-edited directly. Edit them here.
 */
 
 :root {
+  color-scheme: light;
   /* ---- Neutral scale (Fluent Glass, Phase 29) ----
      Dark-first: 100 is the primary dark surface, 900/950 the primary-theme
      text colours. Used directly by [data-theme='dark'] below; kept as
@@ -317,6 +318,7 @@ have always been hand-edited directly. Edit them here.
    --component-button-primary-background below and primeng-preset.ts's
    components.button override that wires it up. */
 [data-theme='dark'] {
+  color-scheme: dark;
   --color-text-primary: #e2e7ec;
   --color-text-secondary: #7d8b99;
   --color-text-disabled: #526273;
@@ -438,6 +440,7 @@ have always been hand-edited directly. Edit them here.
      (Stage 0), this path is only exercised by that explicit "System"
      choice, but it must never drift from the primary dark theme above. */
   :root:not([data-theme]) {
+    color-scheme: dark;
     --color-text-primary: #e2e7ec;
     --color-text-secondary: #7d8b99;
     --color-text-disabled: #526273;

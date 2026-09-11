@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  HostListener,
   OnInit,
   computed,
   inject,
@@ -158,6 +159,8 @@ export class FeatureCylinderUnits implements OnInit {
   protected readonly vehicles = signal<VehicleResponse[]>([]);
   protected readonly customers = signal<CustomerResponse[]>([]);
   protected readonly showMoveCustodyModal = signal(false);
+  protected readonly showTestModal = signal(false);
+  protected readonly showConditionModal = signal(false);
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly dueStatusFilter = signal<'all' | 'due_soon' | 'overdue'>('all');
@@ -493,23 +496,50 @@ export class FeatureCylinderUnits implements OnInit {
     this.openMoveCustody(result);
   }
 
+  protected openRecordTest(unit?: CylinderUnitResponse): void {
+    const target = unit ?? this.selectedUnit();
+    if (!target) return;
+    this.selectedUnit.set(target);
+    this.testForm.reset({ tested_at: new Date(), due_date: null });
+    this.suggestedDueDate.set(null);
+    this.showTestModal.set(true);
+  }
+
+  protected closeRecordTest(): void {
+    this.showTestModal.set(false);
+    this.suggestedDueDate.set(null);
+  }
+
+  protected openChangeCondition(unit?: CylinderUnitResponse): void {
+    const target = unit ?? this.selectedUnit();
+    if (!target) return;
+    this.selectedUnit.set(target);
+    this.conditionForm.reset({ new_status: '', reason: '' });
+    this.showConditionModal.set(true);
+  }
+
+  protected closeChangeCondition(): void {
+    this.showConditionModal.set(false);
+  }
+
   protected startAction(action: ActiveAction): void {
     const unit = this.selectedUnit();
     if (!unit) return;
     if (action === 'test') {
-      this.testForm.reset({ tested_at: new Date(), due_date: null });
-      this.suggestedDueDate.set(null);
+      this.openRecordTest();
+      return;
     } else if (action === 'custody') {
       this.openMoveCustody();
       return;
     } else if (action === 'condition') {
-      this.conditionForm.reset({ new_status: '', reason: '' });
+      this.openChangeCondition();
+      return;
     } else if (action === 'receive') {
       this.receiveForm.reset({
         warehouse_id: this.warehouses().length > 0 ? this.warehouses()[0].id : '',
       });
+      this.activeAction.set(action);
     }
-    this.activeAction.set(action);
   }
 
   protected cancelAction(): void {
@@ -548,6 +578,7 @@ export class FeatureCylinderUnits implements OnInit {
       next: (updated) => {
         this.selectedUnit.set(updated);
         this.activeAction.set('none');
+        this.showTestModal.set(false);
         this.saving.set(false);
         this.notify.success('Test recorded.');
         this.loadUnits();
@@ -590,6 +621,7 @@ export class FeatureCylinderUnits implements OnInit {
         next: (updated) => {
           this.selectedUnit.set(updated);
           this.activeAction.set('none');
+          this.showConditionModal.set(false);
           this.saving.set(false);
           this.notify.success('Condition updated.');
           this.loadUnits();
@@ -681,5 +713,24 @@ export class FeatureCylinderUnits implements OnInit {
     if (!result) return;
     this.showLookupModal.set(false);
     this.openDetails(result);
+  }
+
+  protected readonly isAnyModalOpen = computed(
+    () =>
+      this.showMoveCustodyModal() ||
+      this.showTestModal() ||
+      this.showConditionModal() ||
+      this.showLookupModal() ||
+      this.showRegisterModal()
+  );
+
+  @HostListener('document:keydown.escape')
+  protected onDocumentEscape(): void {
+    if (this.isAnyModalOpen()) {
+      return;
+    }
+    if (this.showDetailDrawer()) {
+      this.closeDetails();
+    }
   }
 }

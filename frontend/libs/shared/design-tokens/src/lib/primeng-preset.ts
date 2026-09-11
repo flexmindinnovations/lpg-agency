@@ -144,6 +144,21 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
         activeBackground: 'var(--color-surface-overlay)',
       },
     },
+    // Dropdown options (Select, MultiSelect, Listbox, AutoComplete) read hover
+    // and active states from here. Aura's base preset points focusBackground at
+    // `{surface.100}`/`{surface.800}` which on light surfaces matches
+    // `--color-surface-overlay` (#f3f4f6 vs #f1f5f9), rendering hover invisible.
+    // A 10% text-primary tint provides a crisp, WCAG AAA-compliant hover
+    // highlight on both light and dark dropdown surfaces without clashing with
+    // the primary-hue highlight on selected options.
+    list: {
+      option: {
+        focusBackground: 'color-mix(in srgb, var(--color-text-primary), transparent 90%)',
+        selectedFocusBackground: 'color-mix(in srgb, var(--color-action-primary), transparent 76%)',
+        color: 'var(--color-text-primary)',
+        focusColor: 'var(--color-text-primary)',
+      },
+    },
     overlay: {
       // Floating panels — select dropdowns, popovers — are solid surfaces one
       // step up from the page (`--color-surface-overlay`), a 1px border and a
@@ -243,6 +258,21 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
           hoverColor: 'var(--color-text-primary)',
           activeColor: 'var(--color-text-primary)',
         },
+        danger: {
+          background: 'var(--color-status-danger)',
+          hoverBackground: 'color-mix(in srgb, var(--color-status-danger), black 15%)',
+          activeBackground: 'color-mix(in srgb, var(--color-status-danger), black 30%)',
+          borderColor: 'var(--color-status-danger)',
+          hoverBorderColor: 'color-mix(in srgb, var(--color-status-danger), black 15%)',
+          activeBorderColor: 'color-mix(in srgb, var(--color-status-danger), black 30%)',
+          color: '#ffffff',
+          hoverColor: '#ffffff',
+          activeColor: '#ffffff',
+          focusRing: {
+            color: 'var(--color-status-danger)',
+            shadow: 'none',
+          },
+        },
       },
     },
     // Aura's own detailColor formula (`light-dark({surface.700},
@@ -262,6 +292,14 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       error: { detailColor: 'var(--color-text-primary)' },
       secondary: { detailColor: 'var(--color-text-primary)' },
       contrast: { detailColor: 'var(--color-text-primary)' },
+    },
+    select: {
+      option: {
+        focusBackground: 'color-mix(in srgb, var(--color-text-primary), transparent 90%)',
+        selectedFocusBackground: 'color-mix(in srgb, var(--color-action-primary), transparent 76%)',
+        color: 'var(--color-text-primary)',
+        focusColor: 'var(--color-text-primary)',
+      },
     },
   },
 });

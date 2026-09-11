@@ -191,10 +191,12 @@
   <!-- Cylinder Unit Details Drawer -->
   <p-drawer
     header="Cylinder Unit Details"
-    [visible]="showDetailDrawer()"
+    [(visible)]="showDetailDrawer"
     (onHide)="closeDetails()"
     position="right"
     [modal]="true"
+    [dismissible]="false"
+    [closeOnEscape]="false"
     styleClass="w-full"
     [style]="{ width: '100%', maxWidth: '32rem' }"
   >
@@ -249,142 +251,65 @@
         </div>
 
         @if (!unit.is_retired) {
-          @switch (activeAction()) {
-            @case ('none') {
-              <div class="modal-actions modal-actions--wrap">
-                <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
-                <button
-                  *lpgHasPermission="'cylinder_units:manage'"
-                  pButton
-                  type="button"
-                  severity="secondary"
-                  [disabled]="printingLabel()"
-                  (click)="printLabel(unit.id)"
-                >
-                  <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
-                  <span>Print Label</span>
-                </button>
-                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="startAction('test')">
-                  Record Test
-                </button>
-                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="startAction('custody')">
-                  Move Custody
-                </button>
-                @if (allowedNextConditions().length > 0) {
-                  <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="startAction('condition')">
-                    Change Condition
-                  </button>
-                }
-                @if (unit.condition_status === 'empty') {
-                  <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" (click)="startAction('receive')">
-                    <i class="pi pi-check"></i>
-                    <span>Receive</span>
-                  </button>
-                }
-                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="danger" [disabled]="saving()" (click)="retire()">
-                  Retire
-                </button>
+          @if (activeAction() === 'receive') {
+            <form [formGroup]="receiveForm" (ngSubmit)="saveReceive()" class="dialog-form">
+              <div class="dialog-form__fields">
+                <p class="page-lede">
+                  Charges this cylinder into fillable stock. Blocked with a 409 if the
+                  statutory retest is due (Rule 26, Gas Cylinders Rules 2016).
+                </p>
+                <lpg-form-field label="Receiving warehouse" for="receive_warehouse_id" [control]="receiveForm.controls.warehouse_id">
+                  <p-select
+                    inputId="receive_warehouse_id"
+                    formControlName="warehouse_id"
+                    [options]="warehouses()"
+                    optionLabel="name"
+                    optionValue="id"
+                    appendTo="body"
+                    [fluid]="true"
+                  ></p-select>
+                </lpg-form-field>
               </div>
-            }
-
-            @case ('test') {
-              <form [formGroup]="testForm" (ngSubmit)="saveTest()" class="dialog-form">
-                <div class="dialog-form__fields">
-                  <lpg-form-field label="Tested on" for="tested_at" [control]="testForm.controls.tested_at">
-                    <p-datepicker
-                      inputId="tested_at"
-                      formControlName="tested_at"
-                      [showIcon]="true"
-                      iconDisplay="input"
-                      dateFormat="dd-mm-yy"
-                      appendTo="body"
-                      [fluid]="true"
-                      (onSelect)="onTestedAtChange()"
-                    ></p-datepicker>
-                  </lpg-form-field>
-
-                  <lpg-form-field
-                    label="Next due date"
-                    for="due_date"
-                    [control]="testForm.controls.due_date"
-                    hint="The exact statutory retest interval is unconfirmed — enter the date from the cylinder's own stamp or the tenant's own records."
-                  >
-                    <p-datepicker
-                      inputId="due_date"
-                      formControlName="due_date"
-                      [showIcon]="true"
-                      iconDisplay="input"
-                      dateFormat="dd-mm-yy"
-                      appendTo="body"
-                      [fluid]="true"
-                    ></p-datepicker>
-                  </lpg-form-field>
-
-                  @if (suggestedDueDate(); as suggestion) {
-                    <p-message severity="info" [closable]="false">
-                      Suggested due date from tenant configuration: {{ formatReportDate(suggestion) }}
-                      <button pButton type="button" [text]="true" size="small" (click)="applySuggestedDueDate()">Use this</button>
-                    </p-message>
-                  }
-                </div>
-                <div class="modal-actions">
-                  <button pButton type="button" severity="secondary" (click)="cancelAction()">Cancel</button>
-                  <button pButton type="submit" [disabled]="testForm.invalid || saving()">Save</button>
-                </div>
-              </form>
-            }
-
-            @case ('condition') {
-              <form [formGroup]="conditionForm" (ngSubmit)="saveCondition()" class="dialog-form">
-                <div class="dialog-form__fields">
-                  <lpg-form-field label="New condition" for="new_status" [control]="conditionForm.controls.new_status">
-                    <p-select
-                      inputId="new_status"
-                      formControlName="new_status"
-                      [options]="allowedNextConditions()"
-                      optionLabel="label"
-                      optionValue="value"
-                      appendTo="body"
-                      [fluid]="true"
-                    ></p-select>
-                  </lpg-form-field>
-
-                  <lpg-form-field label="Reason (optional)" for="condition_reason">
-                    <input pInputText id="condition_reason" formControlName="reason" [fluid]="true" />
-                  </lpg-form-field>
-                </div>
-                <div class="modal-actions">
-                  <button pButton type="button" severity="secondary" (click)="cancelAction()">Cancel</button>
-                  <button pButton type="submit" [disabled]="conditionForm.invalid || saving()">Save</button>
-                </div>
-              </form>
-            }
-
-            @case ('receive') {
-              <form [formGroup]="receiveForm" (ngSubmit)="saveReceive()" class="dialog-form">
-                <div class="dialog-form__fields">
-                  <p class="page-lede">
-                    Charges this cylinder into fillable stock. Blocked with a 409 if the
-                    statutory retest is due (Rule 26, Gas Cylinders Rules 2016).
-                  </p>
-                  <lpg-form-field label="Receiving warehouse" for="receive_warehouse_id" [control]="receiveForm.controls.warehouse_id">
-                    <p-select
-                      inputId="receive_warehouse_id"
-                      formControlName="warehouse_id"
-                      [options]="warehouses()"
-                      optionLabel="name"
-                      optionValue="id"
-                      appendTo="body"
-                      [fluid]="true"
-                    ></p-select>
-                  </lpg-form-field>
-                </div>
-                <div class="modal-actions">
-                  <button pButton type="button" severity="secondary" (click)="cancelAction()">Cancel</button>
-                  <button pButton type="submit" [disabled]="receiveForm.invalid || saving()">Receive</button>
-                </div>
-              </form>
-            }
+              <div class="modal-actions">
+                <button pButton type="button" severity="secondary" (click)="cancelAction()">Cancel</button>
+                <button pButton type="submit" [disabled]="receiveForm.invalid || saving()">Receive</button>
+              </div>
+            </form>
+          } @else {
+            <div class="modal-actions modal-actions--wrap">
+              <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+              <button
+                *lpgHasPermission="'cylinder_units:manage'"
+                pButton
+                type="button"
+                severity="secondary"
+                [disabled]="printingLabel()"
+                (click)="printLabel(unit.id)"
+              >
+                <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+                <span>Print Label</span>
+              </button>
+              <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="openRecordTest()">
+                Record Test
+              </button>
+              <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="openMoveCustody()">
+                Move Custody
+              </button>
+              @if (allowedNextConditions().length > 0) {
+                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="openChangeCondition()">
+                  Change Condition
+                </button>
+              }
+              @if (unit.condition_status === 'empty') {
+                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" (click)="startAction('receive')">
+                  <i class="pi pi-check"></i>
+                  <span>Receive</span>
+                </button>
+              }
+              <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="danger" [disabled]="saving()" (click)="retire()">
+                Retire
+              </button>
+            </div>
           }
         } @else {
           <div class="modal-actions">
@@ -401,6 +326,7 @@
     [visible]="showLookupModal()"
     (onHide)="showLookupModal.set(false)"
     [modal]="true"
+    appendTo="body"
     [style]="{ width: '100%', maxWidth: '38rem' }"
     [draggable]="false"
     [resizable]="false"
@@ -521,24 +447,25 @@
     [visible]="showMoveCustodyModal()"
     (onHide)="closeMoveCustody()"
     [modal]="true"
+    appendTo="body"
     [style]="{ width: '100%', maxWidth: '34rem' }"
     [draggable]="false"
     [resizable]="false"
   >
     @if (selectedUnit(); as unit) {
       <div class="dialog-form">
-        <div class="custody-header-summary">
-          <div class="custody-summary-item">
-            <span class="custody-summary-label">Serial Number</span>
-            <span class="custody-summary-val font-semibold">{{ unit.serial_number }}</span>
+        <div class="dialog-summary-card">
+          <div class="summary-field">
+            <span class="summary-label">Serial Number</span>
+            <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
           </div>
-          <div class="custody-summary-item">
-            <span class="custody-summary-label">QR / Barcode</span>
-            <span class="custody-summary-val font-mono">{{ unit.qr_code }}</span>
+          <div class="summary-field">
+            <span class="summary-label">QR / Barcode</span>
+            <span class="summary-value font-mono">{{ unit.qr_code }}</span>
           </div>
-          <div class="custody-summary-item">
-            <span class="custody-summary-label">Current Custody</span>
-            <span class="custody-summary-val">{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span>
+          <div class="summary-field">
+            <span class="summary-label">Current Custody</span>
+            <span class="summary-value">{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span>
           </div>
         </div>
 
@@ -612,6 +539,150 @@
         <div class="modal-actions w-full">
           <button pButton type="button" severity="secondary" (click)="closeMoveCustody()">Cancel</button>
           <button pButton type="button" [disabled]="custodyForm.invalid || saving()" (click)="saveCustody()">Update Custody</button>
+        </div>
+      </ng-template>
+    }
+  </p-dialog>
+
+  <!-- Dedicated Record Test Dialog -->
+  <p-dialog
+    header="Record Statutory Test"
+    [visible]="showTestModal()"
+    (onHide)="closeRecordTest()"
+    [modal]="true"
+    appendTo="body"
+    [focusOnShow]="false"
+    [style]="{ width: '100%', maxWidth: '34rem' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    @if (selectedUnit(); as unit) {
+      <div class="dialog-form">
+        <div class="dialog-summary-card">
+          <div class="summary-field">
+            <span class="summary-label">Serial Number</span>
+            <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
+          </div>
+          <div class="summary-field">
+            <span class="summary-label">QR / Barcode</span>
+            <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+          </div>
+          <div class="summary-field">
+            <span class="summary-label">Current Test Due</span>
+            <span class="summary-value">
+              {{ unit.test_due_date ? formatReportDate(unit.test_due_date) : 'Never tested' }}
+            </span>
+          </div>
+        </div>
+
+        <form [formGroup]="testForm" (ngSubmit)="saveTest()">
+          <div class="dialog-form__fields">
+            <lpg-form-field label="Tested on" for="dialog_tested_at" [control]="testForm.controls.tested_at">
+              <p-datepicker
+                inputId="dialog_tested_at"
+                formControlName="tested_at"
+                [showIcon]="true"
+                iconDisplay="input"
+                dateFormat="dd-mm-yy"
+                appendTo="body"
+                [fluid]="true"
+                [showOnFocus]="false"
+                (onSelect)="onTestedAtChange()"
+              ></p-datepicker>
+            </lpg-form-field>
+
+            <lpg-form-field
+              label="Next due date"
+              for="dialog_due_date"
+              [control]="testForm.controls.due_date"
+              hint="The exact statutory retest interval is unconfirmed — enter the date from the cylinder's own stamp or the tenant's own records."
+            >
+              <p-datepicker
+                inputId="dialog_due_date"
+                formControlName="due_date"
+                [showIcon]="true"
+                iconDisplay="input"
+                dateFormat="dd-mm-yy"
+                appendTo="body"
+                [fluid]="true"
+                [showOnFocus]="false"
+              ></p-datepicker>
+            </lpg-form-field>
+
+            @if (suggestedDueDate(); as suggestion) {
+              <p-message severity="info" [closable]="false" styleClass="w-full">
+                Suggested due date from tenant configuration: {{ formatReportDate(suggestion) }}
+                <button pButton type="button" [text]="true" size="small" (click)="applySuggestedDueDate()">Use this</button>
+              </p-message>
+            }
+          </div>
+        </form>
+      </div>
+
+      <ng-template #footer>
+        <div class="modal-actions w-full">
+          <button pButton type="button" severity="secondary" (click)="closeRecordTest()">Cancel</button>
+          <button pButton type="button" [disabled]="testForm.invalid || saving()" (click)="saveTest()">Save Test</button>
+        </div>
+      </ng-template>
+    }
+  </p-dialog>
+
+  <!-- Dedicated Change Condition Dialog -->
+  <p-dialog
+    header="Change Cylinder Condition"
+    [visible]="showConditionModal()"
+    (onHide)="closeChangeCondition()"
+    [modal]="true"
+    appendTo="body"
+    [style]="{ width: '100%', maxWidth: '34rem' }"
+    [draggable]="false"
+    [resizable]="false"
+  >
+    @if (selectedUnit(); as unit) {
+      <div class="dialog-form">
+        <div class="dialog-summary-card">
+          <div class="summary-field">
+            <span class="summary-label">Serial Number</span>
+            <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
+          </div>
+          <div class="summary-field">
+            <span class="summary-label">QR / Barcode</span>
+            <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+          </div>
+          <div class="summary-field">
+            <span class="summary-label">Current Condition</span>
+            <div class="summary-value">
+              <p-tag [value]="toSentenceCase(unit.condition_status)" [severity]="conditionSeverity(unit.condition_status)" />
+            </div>
+          </div>
+        </div>
+
+        <form [formGroup]="conditionForm" (ngSubmit)="saveCondition()">
+          <div class="dialog-form__fields">
+            <lpg-form-field label="New condition" for="dialog_new_status" [control]="conditionForm.controls.new_status">
+              <p-select
+                inputId="dialog_new_status"
+                formControlName="new_status"
+                [options]="allowedNextConditions()"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              ></p-select>
+            </lpg-form-field>
+
+            <lpg-form-field label="Reason (optional)" for="dialog_condition_reason">
+              <input pInputText id="dialog_condition_reason" formControlName="reason" [fluid]="true" />
+            </lpg-form-field>
+          </div>
+        </form>
+      </div>
+
+      <ng-template #footer>
+        <div class="modal-actions w-full">
+          <button pButton type="button" severity="secondary" (click)="closeChangeCondition()">Cancel</button>
+          <button pButton type="button" [disabled]="conditionForm.invalid || saving()" (click)="saveCondition()">Update Condition</button>
         </div>
       </ng-template>
     }

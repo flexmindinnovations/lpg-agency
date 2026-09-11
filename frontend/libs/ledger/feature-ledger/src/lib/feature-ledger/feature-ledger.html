@@ -48,8 +48,7 @@
 <!-- Adjust Balance Drawer -->
 <p-drawer
   header="Adjust Balance"
-  [visible]="adjustModalVisible()"
-  (visibleChange)="closeAdjustModal()"
+  [(visible)]="adjustModalVisible"
   position="right"
   [modal]="true"
   styleClass="w-full md:w-[30rem]"
