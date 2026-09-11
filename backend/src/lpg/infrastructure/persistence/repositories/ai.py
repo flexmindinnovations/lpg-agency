@@ -117,18 +117,35 @@ class SqlAlchemyPredictionRepository:
         row = (await self._uow.session.execute(stmt)).scalar_one_or_none()
         if row is None:
             return None
-        return Prediction(
-            id=row.id,
-            tenant_id=row.tenant_id,
-            prediction_type=row.prediction_type,
-            subject_type=row.subject_type,
-            subject_id=row.subject_id,
-            model_version=row.model_version,
-            value=row.value,
-            input_hash=row.input_hash,
-            confidence=row.confidence,
-            created_at=row.created_at,
+        return _to_prediction(row)
+
+    async def list_latest_by_type(self, *, prediction_type: str) -> list[Prediction]:
+        # DISTINCT ON (subject_id) picks each subject's newest row —
+        # `ai.prediction` is append-only, so a subject can have many rows
+        # of the same `prediction_type` (one per cron run).
+        stmt = (
+            select(PredictionModel)
+            .distinct(PredictionModel.subject_id)
+            .where(PredictionModel.prediction_type == prediction_type)
+            .order_by(PredictionModel.subject_id, PredictionModel.created_at.desc())
         )
+        rows = (await self._uow.session.execute(stmt)).scalars().all()
+        return [_to_prediction(row) for row in rows]
+
+
+def _to_prediction(row: PredictionModel) -> Prediction:
+    return Prediction(
+        id=row.id,
+        tenant_id=row.tenant_id,
+        prediction_type=row.prediction_type,
+        subject_type=row.subject_type,
+        subject_id=row.subject_id,
+        model_version=row.model_version,
+        value=row.value,
+        input_hash=row.input_hash,
+        confidence=row.confidence,
+        created_at=row.created_at,
+    )
 
 
 class SqlAlchemyFeatureSnapshotRepository:
@@ -187,6 +204,16 @@ class SqlAlchemyFeatureSnapshotRepository:
         )
         row = (await self._uow.session.execute(stmt)).scalar_one_or_none()
         return _to_feature_snapshot(row) if row is not None else None
+
+    async def list_latest_by_entity_type(self, *, entity_type: str) -> list[FeatureSnapshot]:
+        stmt = (
+            select(FeatureSnapshotModel)
+            .distinct(FeatureSnapshotModel.entity_id)
+            .where(FeatureSnapshotModel.entity_type == entity_type)
+            .order_by(FeatureSnapshotModel.entity_id, FeatureSnapshotModel.as_of_date.desc())
+        )
+        rows = (await self._uow.session.execute(stmt)).scalars().all()
+        return [_to_feature_snapshot(row) for row in rows]
 
 
 def _to_feature_snapshot(row: FeatureSnapshotModel) -> FeatureSnapshot:

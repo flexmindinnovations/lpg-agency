@@ -62,3 +62,10 @@ class FeatureSnapshotRepository(Protocol):
         heuristic run 'today' actually wants when today's job may not have
         run yet."""
         ...
+
+    async def list_latest_by_entity_type(self, *, entity_type: str) -> list[FeatureSnapshot]:
+        """Every entity's most recent snapshot for `entity_type`, one row
+        per `entity_id` (RLS-scoped to the current tenant) — what a daily
+        heuristic cron (Stage 2's `predict_refill_due`) iterates instead of
+        re-listing every customer itself."""
+        ...

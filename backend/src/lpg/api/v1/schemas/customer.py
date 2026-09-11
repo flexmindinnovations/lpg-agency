@@ -171,6 +171,26 @@ class CustomerPageResponse(BaseModel):
     total: int
 
 
+class RefillDueCustomerResponse(BaseModel):
+    """One row of the AI Operational Intelligence refill-due read model
+    (`GET /customers/refill-due`, Horizon 1 Stage 2) — a heuristic
+    prediction, not a guarantee; `model_version` on the underlying
+    `ai.prediction` row is `refill_heuristic_v1`."""
+
+    customer_id: uuid.UUID
+    full_name: str
+    phone_number: str
+    branch_id: uuid.UUID
+    refill_due_date: date
+    interval_days: float
+    last_delivered_at: date
+
+
+class RefillDueCustomerListResponse(BaseModel):
+    items: list[RefillDueCustomerResponse]
+    total: int
+
+
 class KycDocumentListResponse(BaseModel):
     items: list[KycDocumentResponse]
 

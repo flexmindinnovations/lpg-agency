@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
+from lpg.api.v1.dependencies.ai import get_prediction_repository
 from lpg.api.v1.dependencies.customer import (
     get_consumer_number_sequence,
     get_customer_repository,
@@ -25,6 +27,8 @@ from lpg.api.v1.schemas.customer import (
     NextConsumerNumberResponse,
     RecognizeKycDocumentRequest,
     RecognizeKycDocumentResponse,
+    RefillDueCustomerListResponse,
+    RefillDueCustomerResponse,
     RegisterCustomerRequest,
     SubmitKycDocumentRequest,
     UpdateCustomerAddressRequest,
@@ -32,12 +36,17 @@ from lpg.api.v1.schemas.customer import (
     VerifyKycDocumentRequest,
 )
 from lpg.application.accounting.ports import InvoiceRepository
+from lpg.application.ai.prediction import PredictionRepository
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import FileStorage, UnitOfWork
 from lpg.application.customer.ports import (
     ConsumerNumberSequence,
     CustomerRepository,
     DocumentOcrPort,
+)
+from lpg.application.customer.refill_prediction import (
+    ListRefillDueCustomersQuery,
+    ListRefillDueCustomersUseCase,
 )
 from lpg.application.customer.use_cases import (
     AddCustomerAddressCommand,
@@ -194,6 +203,42 @@ async def get_my_profile(
     if customer is None:
         raise NotFoundError("No customer profile found for the current user.")
     return CustomerResponse.model_validate(customer)
+
+
+@router.get(
+    "/refill-due",
+    response_model=RefillDueCustomerListResponse,
+    dependencies=[Depends(require_permission("customers:read"))],
+)
+async def list_refill_due_customers(
+    prediction_repository: Annotated[PredictionRepository, Depends(get_prediction_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    within_days: int = 7,
+) -> RefillDueCustomerListResponse:
+    """Customers whose predicted refill date falls within `within_days`
+    (overdue included) — AI Operational Intelligence, Horizon 1 Stage 2's
+    'Refills due this week' dashboard tile. Reads `ai.prediction`
+    (`prediction_type="refill_due"`), refreshed nightly by
+    `predict_refill_due`; does not compute anything itself."""
+    use_case = ListRefillDueCustomersUseCase(prediction_repository, customer_repository)
+    items = await use_case.execute(
+        ListRefillDueCustomersQuery(as_of=datetime.now(UTC).date(), within_days=within_days)
+    )
+    return RefillDueCustomerListResponse(
+        items=[
+            RefillDueCustomerResponse(
+                customer_id=r.customer_id,
+                full_name=r.full_name,
+                phone_number=r.phone_number,
+                branch_id=r.branch_id,
+                refill_due_date=r.refill_due_date,
+                interval_days=r.interval_days,
+                last_delivered_at=r.last_delivered_at,
+            )
+            for r in items
+        ],
+        total=len(items),
+    )
 
 
 @router.get(

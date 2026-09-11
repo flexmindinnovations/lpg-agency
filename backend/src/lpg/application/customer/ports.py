@@ -12,6 +12,7 @@ from lpg.application.common.ports import DocumentOcrResult as DocumentOcrResult
 
 if TYPE_CHECKING:
     import uuid
+    from datetime import datetime
 
     from lpg.domain.customer.customer import Customer
     from lpg.domain.customer.onboarding_draft import OnboardingDraftEntry
@@ -54,6 +55,19 @@ class CustomerRepository(Protocol):
     ) -> list[Customer]: ...
 
     async def count_customers(self, search: str | None = None) -> int: ...
+
+    async def get_last_refill_nudge_sent_at(self, customer_id: uuid.UUID) -> datetime | None:
+        """A lean column read (no domain reconstruction) — used only by the
+        refill-due nudge cron's dedupe gate (`infrastructure/jobs/
+        refill_jobs.py`), the same shape as `OrderRepository.
+        list_stale_unassigned`'s own `last_stale_notified_at` check."""
+        ...
+
+    async def mark_refill_nudge_sent(self, customer_id: uuid.UUID) -> None:
+        """Records that a `refill_due_customer` notification was just
+        enqueued for this customer — mirrors `OrderRepository.
+        mark_stale_notified`."""
+        ...
 
 
 class ConsumerNumberSequence(Protocol):

@@ -37,6 +37,13 @@ class _FakePredictionRepository:
         ]
         return matches[-1] if matches else None
 
+    async def list_latest_by_type(self, *, prediction_type: str) -> list[Prediction]:
+        latest_by_subject: dict[uuid.UUID, Prediction] = {}
+        for p in self.added:
+            if p.prediction_type == prediction_type:
+                latest_by_subject[p.subject_id] = p
+        return list(latest_by_subject.values())
+
 
 @pytest.mark.asyncio
 async def test_records_a_prediction_with_the_supplied_fields() -> None:

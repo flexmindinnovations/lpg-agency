@@ -47,6 +47,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
         # carries "document_id"/"owner_type"/"owner_id"/"doc_type"/
         # "expiry_date" instead (see `compliance_jobs.
         # check_compliance_expiry`, which enqueues it).
+        # "refill_due_customer" is not order-scoped either — it carries
+        # "customer_id"/"refill_due_date" instead (see `refill_jobs.
+        # predict_refill_due`, which enqueues it).
     }
     """
     structlog.contextvars.bind_contextvars(
@@ -134,6 +137,14 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     uuid.UUID(payload["route_id"])
                 )
                 payload["stop_count"] = str(len(route.stops)) if route is not None else "?"
+            elif notification_type == "refill_due_customer":
+                # Not order-scoped — the daily refill-due cron
+                # (`infrastructure/jobs/refill_jobs.predict_refill_due`)
+                # carries `customer_id` directly instead of an `order_id`.
+                customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                customer = await customer_repo.get_by_id(uuid.UUID(payload["customer_id"]))
+                if customer and customer.identity_user_id:
+                    recipient_user_ids = [customer.identity_user_id]
             elif notification_type in (
                 "cash_shortfall_staff",
                 "route_load_confirmed_staff",
@@ -266,6 +277,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif notification_type == "compliance_document_expiring_staff":
                 reference_type = "compliance_document"
                 reference_id = uuid.UUID(payload["document_id"])
+            elif notification_type == "refill_due_customer":
+                reference_type = "customer"
+                reference_id = uuid.UUID(payload["customer_id"])
             else:
                 reference_type = "order"
                 reference_id = uuid.UUID(payload["order_id"]) if "order_id" in payload else None
@@ -424,6 +438,7 @@ def _get_title(notification_type: str) -> str:
         "route_ready": "Route Ready",
         "stop_cancelled": "Stop Cancelled",
         "compliance_document_expiring_staff": "Compliance Document Expiring",
+        "refill_due_customer": "Time for a Refill?",
     }
     return titles.get(notification_type, "Notification")
 
@@ -444,6 +459,9 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
     if notification_type == "route_load_confirmed_staff":
         route_short = payload.get("route_id", "Unknown")[:8].upper()
         return f"The driver confirmed the van load for route #{route_short}."
+    if notification_type == "refill_due_customer":
+        due = payload.get("refill_due_date") or "soon"
+        return f"Your cylinder is expected to run low around {due}. Book a refill anytime."
     if notification_type == "compliance_document_expiring_staff":
         doc_label = str(payload.get("doc_type", "document")).replace("_", " ")
         owner_label = payload.get("owner_type", "record")
@@ -518,4 +536,5 @@ def _should_send_push(notification_type: str) -> bool:
         "invoice_generated",
         "route_ready",
         "stop_cancelled",
+        "refill_due_customer",
     }

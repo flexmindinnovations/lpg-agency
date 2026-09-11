@@ -61,6 +61,13 @@ class PredictionRepository(Protocol):
         read-side endpoints that surface predictions in the UI."""
         ...
 
+    async def list_latest_by_type(self, *, prediction_type: str) -> list[Prediction]:
+        """Every subject's most recent prediction of this type, one row per
+        `subject_id` (RLS-scoped to the current tenant) — what a dashboard
+        read endpoint (`GET /customers/refill-due`, Stage 2) lists instead
+        of querying per-subject one at a time."""
+        ...
+
 
 def hash_inputs(inputs: dict[str, Any]) -> str:
     """A stable SHA-256 over the feature inputs, so an identical

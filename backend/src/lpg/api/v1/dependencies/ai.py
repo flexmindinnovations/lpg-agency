@@ -13,6 +13,7 @@ from lpg.api.v1.dependencies.inventory import get_inventory_location_repository
 from lpg.api.v1.dependencies.order import get_order_repository
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.ai.ports import AssistantRunRepository, ModelGatewayPort
+from lpg.application.ai.prediction import PredictionRepository
 from lpg.application.ai.tools import ToolContext
 from lpg.application.ai.use_cases import AskAiAssistantUseCase
 from lpg.application.common.ports import UnitOfWork
@@ -36,6 +37,16 @@ def get_assistant_run_repository(
     from lpg.infrastructure.persistence.repositories.ai import SqlAlchemyAssistantRunRepository
 
     return SqlAlchemyAssistantRunRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_prediction_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> PredictionRepository:
+    """`ai.prediction` reader — used by read endpoints that surface a
+    heuristic's output (Stage 2's `GET /customers/refill-due`)."""
+    from lpg.infrastructure.persistence.repositories.ai import SqlAlchemyPredictionRepository
+
+    return SqlAlchemyPredictionRepository(unit_of_work)  # type: ignore[arg-type]
 
 
 def get_tool_context(

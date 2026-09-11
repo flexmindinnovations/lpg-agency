@@ -52,6 +52,14 @@ class CustomerModel(Base):
     status: Mapped[str] = mapped_column(String(50), server_default="onboarding")
     lpg_subsidy_id: Mapped[str | None] = mapped_column(String(17))
     identity_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    # Refill-due proactive nudge dedupe (AI Operational Intelligence,
+    # Horizon 1 Stage 2) — same infra-only shape as
+    # `orders.order.last_stale_notified_at`. Not part of the `Customer`
+    # domain dataclass; set/read directly by `infrastructure/jobs/
+    # refill_jobs.py` via lean repository methods.
+    last_refill_nudge_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Audit Columns
     created_at: Mapped[datetime] = mapped_column(

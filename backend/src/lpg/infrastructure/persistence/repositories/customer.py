@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -366,6 +367,18 @@ class SqlAlchemyCustomerRepository:
             )
         result = await self._uow.session.execute(stmt)
         return result.scalar() or 0
+
+    async def get_last_refill_nudge_sent_at(self, customer_id: uuid.UUID) -> datetime | None:
+        stmt = select(CustomerModel.last_refill_nudge_sent_at).where(
+            CustomerModel.id == customer_id
+        )
+        return (await self._uow.session.execute(stmt)).scalar_one_or_none()
+
+    async def mark_refill_nudge_sent(self, customer_id: uuid.UUID) -> None:
+        stmt = select(CustomerModel).where(CustomerModel.id == customer_id)
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        if row is not None:
+            row.last_refill_nudge_sent_at = datetime.now(UTC)
 
 
 class SqlAlchemyConsumerNumberSequence:

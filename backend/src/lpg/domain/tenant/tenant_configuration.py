@@ -116,6 +116,25 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # irreversible action, so unlike `auto_assignment_enabled` it has
         # no on/off gate of its own.
         "stale_unassigned_order_hours",
+        # Refill-due proactive nudge (AI Operational Intelligence, Horizon
+        # 1 Stage 2) — tenant opt-in, same default-off shape as
+        # `auto_assignment_enabled`/`ai_gateway_enabled`: a tenant that has
+        # never set this sees zero behavior change — `predict_refill_due`
+        # still writes today's `ai.prediction` row for every customer (the
+        # traceable read model `GET /customers/refill-due` serves), it
+        # just never enqueues a `refill_due_customer` notification.
+        "refill_nudge_enabled",
+        # How many days before a customer's predicted refill date to nudge
+        # them. Optional per-tenant override; falls back to
+        # `infrastructure.jobs.refill_jobs.DEFAULT_LEAD_DAYS` (3) when unset.
+        "refill_nudge_lead_days",
+        # Minimum days since a customer's last delivery before this nudge
+        # will ever fire — a sanity floor against a short/noisy blended
+        # interval estimate, not an enforced order-placement rule elsewhere
+        # in this codebase (there isn't one). Optional per-tenant override;
+        # falls back to `infrastructure.jobs.refill_jobs.
+        # DEFAULT_MIN_GAP_DAYS` (5) when unset.
+        "refill_nudge_min_gap_days",
     }
 )
 
