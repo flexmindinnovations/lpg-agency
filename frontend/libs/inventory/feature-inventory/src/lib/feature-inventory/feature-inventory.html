@@ -14,6 +14,16 @@
   <p-message severity="success">{{ msg }}</p-message>
   }
 
+  <!-- Low-stock banner -- AI Operational Intelligence, Horizon 1 Stage 4.
+       A heuristic threshold comparison, not a guarantee; refreshed on
+       every page load, no polling. -->
+  @if (reorderSignals().length > 0) {
+  <p-message severity="warn" styleClass="reorder-banner">
+    {{ reorderSignals().length }} cylinder type{{ reorderSignals().length === 1 ? '' : 's' }} at or
+    below its reorder point — see Reorder Policy for details.
+  </p-message>
+  }
+
   <div class="data-toolbar">
     <div class="location-picker data-toolbar__filters">
       <div class="location-picker__field">
@@ -119,6 +129,17 @@
       >
         <i class="pi pi-check-square"></i>
         <span>Reconcile</span>
+      </button>
+      <button
+        *lpgHasPermission="'inventory:adjust'"
+        #reorderPolicyTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        (click)="openReorderPolicyModal()"
+      >
+        <i class="pi pi-bell"></i>
+        <span>Reorder Policy</span>
       </button>
     </div>
   </div>
@@ -690,5 +711,93 @@
       </div>
       }
     </form>
+  </p-drawer>
+
+  <!-- Reorder Policy Drawer -- AI Operational Intelligence, Horizon 1
+       Stage 4. v1 scope is warehouses only -- a vehicle's load is
+       transient, not something you reorder from an OMC. -->
+  <p-drawer
+    header="Reorder Policy"
+    [(visible)]="showReorderPolicyModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '36rem' }"
+    (onHide)="reorderPolicyTrigger()?.nativeElement?.focus()"
+  >
+    <form [formGroup]="reorderPolicyForm" (ngSubmit)="onSubmitReorderPolicy()" class="dialog-form">
+      <div class="dialog-form__fields">
+      <p class="page-lede">
+        Set the filled-stock level a warehouse x cylinder type combination should trigger a
+        low-stock alert at. Selecting an existing pair edits it in place.
+      </p>
+      <lpg-form-field
+        label="Warehouse"
+        for="rp_warehouse"
+        [control]="reorderPolicyForm.controls.warehouse_id"
+        [messages]="fieldMessages.warehouse_id"
+      >
+        <p-select
+          inputId="rp_warehouse"
+          formControlName="warehouse_id"
+          [options]="warehouses()"
+          optionLabel="name"
+          optionValue="id"
+          [fluid]="true"
+        ></p-select>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Cylinder type"
+        for="rp_cylinder_type"
+        [control]="reorderPolicyForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
+        <p-select
+          inputId="rp_cylinder_type"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+          [fluid]="true"
+        ></p-select>
+      </lpg-form-field>
+      <lpg-form-field
+        label="Reorder point"
+        for="rp_reorder_point"
+        [control]="reorderPolicyForm.controls.reorder_point"
+        [messages]="{ required: 'Enter a reorder point.', min: 'Cannot be negative.' }"
+        hint="Alert when filled stock falls to this level or below."
+      >
+        <p-inputnumber inputId="rp_reorder_point" formControlName="reorder_point" [min]="0" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Safety stock"
+        for="rp_safety_stock"
+        [control]="reorderPolicyForm.controls.safety_stock"
+        [messages]="{ required: 'Enter a safety stock level.', min: 'Cannot be negative.' }"
+        [optional]="true"
+      >
+        <p-inputnumber inputId="rp_safety_stock" formControlName="safety_stock" [min]="0" [fluid]="true" />
+      </lpg-form-field>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showReorderPolicyModal.set(false)">
+          Close
+        </button>
+        <button pButton type="submit" [disabled]="reorderPolicyForm.invalid || loading()">
+          Save
+        </button>
+      </div>
+    </form>
+
+    @if (reorderPolicies().length > 0) {
+    <h2 class="section-title">Current Policies</h2>
+    <lpg-data-grid
+      style="min-block-size: 220px"
+      [rows]="reorderPolicies()"
+      [columns]="reorderPolicyColumns"
+      ariaLabel="Reorder policies"
+    />
+    }
   </p-drawer>
 </div>

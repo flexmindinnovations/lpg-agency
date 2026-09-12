@@ -69,6 +69,11 @@ class ReorderPolicy:
     id: uuid.UUID
     tenant_id: uuid.UUID
     inventory_location_id: uuid.UUID
+    #: The warehouse (`tenant.warehouse.id`) this internal location
+    #: resolves to — carried through so a client can show a friendly name
+    #: without a second round trip; v1 scope is warehouses only, so this
+    #: is always a warehouse id, never a vehicle's.
+    location_ref_id: uuid.UUID
     cylinder_type_id: uuid.UUID
     reorder_point: int
     safety_stock: int
@@ -85,6 +90,8 @@ class ReorderSignal:
 
     policy_id: uuid.UUID
     inventory_location_id: uuid.UUID
+    #: See `ReorderPolicy.location_ref_id` — same warehouse-id passthrough.
+    location_ref_id: uuid.UUID
     cylinder_type_id: uuid.UUID
     on_hand: int
     reorder_point: int

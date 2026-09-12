@@ -181,6 +181,7 @@ def _reorder_policy_to_response(policy: ReorderPolicy) -> ReorderPolicyResponse:
         id=policy.id,
         tenant_id=policy.tenant_id,
         inventory_location_id=policy.inventory_location_id,
+        location_ref_id=policy.location_ref_id,
         cylinder_type_id=policy.cylinder_type_id,
         reorder_point=policy.reorder_point,
         safety_stock=policy.safety_stock,
@@ -194,6 +195,7 @@ def _reorder_signal_to_response(signal: ReorderSignal) -> ReorderSignalResponse:
     return ReorderSignalResponse(
         policy_id=signal.policy_id,
         inventory_location_id=signal.inventory_location_id,
+        location_ref_id=signal.location_ref_id,
         cylinder_type_id=signal.cylinder_type_id,
         on_hand=signal.on_hand,
         reorder_point=signal.reorder_point,

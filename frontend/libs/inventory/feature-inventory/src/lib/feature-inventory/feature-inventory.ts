@@ -38,6 +38,8 @@ import {
   type InventoryBalanceResponse,
   type InventoryLocationType,
   type InventoryTransactionResponse,
+  type ReorderPolicyResponse,
+  type ReorderSignalResponse,
   type ScaleResponse,
   type VehicleResponse,
   type WarehouseResponse,
@@ -143,6 +145,8 @@ export class FeatureInventory implements OnInit {
       required: 'Enter the underweight count (0 if none).',
       min: 'Cannot be negative.',
     },
+    reorder_point: { required: 'Enter a reorder point.', min: 'Cannot be negative.' },
+    safety_stock: { required: 'Enter a safety stock level.', min: 'Cannot be negative.' },
   };
 
   protected readonly locationType = signal<InventoryLocationType>('warehouse');
@@ -283,6 +287,48 @@ export class FeatureInventory implements OnInit {
 
   protected readonly lastReconciliationRecordId = signal<string | null>(null);
 
+  // ---------------------------------------------------------------------------
+  // Reorder policy (AI Operational Intelligence, Horizon 1 Stage 4)
+  // ---------------------------------------------------------------------------
+
+  protected readonly reorderPolicies = signal<ReorderPolicyResponse[]>([]);
+  protected readonly reorderSignals = signal<ReorderSignalResponse[]>([]);
+  protected readonly showReorderPolicyModal = signal(false);
+  protected readonly reorderPolicyTrigger =
+    viewChild<ElementRef<HTMLButtonElement>>('reorderPolicyTriggerEl');
+
+  protected readonly warehouseNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const w of this.warehouses()) map.set(w.id, w.name);
+    return map;
+  });
+
+  protected readonly reorderPolicyForm = this.fb.group({
+    warehouse_id: ['', [Validators.required]],
+    cylinder_type_id: ['', [Validators.required]],
+    reorder_point: [10, [Validators.required, Validators.min(0)]],
+    safety_stock: [0, [Validators.required, Validators.min(0)]],
+  });
+
+  protected readonly reorderPolicyColumns: DataGridColumn<ReorderPolicyResponse>[] = [
+    {
+      field: 'location_ref_id',
+      header: 'Warehouse',
+      sortable: true,
+      valueFormatter: (value) =>
+        this.warehouseNameById().get(value as string) ?? (value as string),
+    },
+    {
+      field: 'cylinder_type_id',
+      header: 'Cylinder Type',
+      sortable: true,
+      valueFormatter: (value) =>
+        this.cylinderTypeNameById().get(value as string) ?? (value as string),
+    },
+    { field: 'reorder_point', header: 'Reorder Point', numeric: true },
+    { field: 'safety_stock', header: 'Safety Stock', numeric: true },
+  ];
+
 
   ngOnInit(): void {
     this.warehouseService.listWarehouses().subscribe({ next: (w) => this.warehouses.set(w) });
@@ -295,6 +341,8 @@ export class FeatureInventory implements OnInit {
     this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
       next: (res) => this.scales.set(res.items),
     });
+    this.loadReorderPolicies();
+    this.loadReorderSignals();
   }
 
   protected onLocationTypeChange(value: InventoryLocationType): void {
@@ -631,5 +679,56 @@ export class FeatureInventory implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reorder policy (AI Operational Intelligence, Horizon 1 Stage 4)
+  // ---------------------------------------------------------------------------
+
+  private loadReorderPolicies(): void {
+    this.inventoryService.listReorderPolicies().subscribe({
+      next: (policies) => this.reorderPolicies.set(policies),
+    });
+  }
+
+  private loadReorderSignals(): void {
+    this.inventoryService.listReorderSignals().subscribe({
+      next: (signals) => this.reorderSignals.set(signals),
+    });
+  }
+
+  protected openReorderPolicyModal(): void {
+    this.reorderPolicyForm.reset({
+      warehouse_id: this.warehouses()[0]?.id ?? '',
+      cylinder_type_id: '',
+      reorder_point: 10,
+      safety_stock: 0,
+    });
+    this.showReorderPolicyModal.set(true);
+  }
+
+  protected onSubmitReorderPolicy(): void {
+    if (this.reorderPolicyForm.invalid) return;
+    const val = this.reorderPolicyForm.getRawValue();
+    this.loading.set(true);
+    this.inventoryService
+      .setReorderPolicy({
+        warehouse_id: val.warehouse_id,
+        cylinder_type_id: val.cylinder_type_id,
+        reorder_point: val.reorder_point,
+        safety_stock: val.safety_stock,
+      })
+      .subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.notify.success('Reorder policy saved.');
+          this.loadReorderPolicies();
+          this.loadReorderSignals();
+        },
+        error: (err) => {
+          this.errorMessage.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
   }
 }

@@ -7005,6 +7005,179 @@
         "title": "RenameWarehouseRequest",
         "type": "object"
       },
+      "ReorderPolicyListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReorderPolicyResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReorderPolicyListResponse",
+        "type": "object"
+      },
+      "ReorderPolicyResponse": {
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inventory_location_id": {
+            "format": "uuid",
+            "title": "Inventory Location Id",
+            "type": "string"
+          },
+          "last_reorder_notified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reorder Notified At"
+          },
+          "location_ref_id": {
+            "format": "uuid",
+            "title": "Location Ref Id",
+            "type": "string"
+          },
+          "reorder_point": {
+            "title": "Reorder Point",
+            "type": "integer"
+          },
+          "safety_stock": {
+            "title": "Safety Stock",
+            "type": "integer"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "inventory_location_id",
+          "location_ref_id",
+          "cylinder_type_id",
+          "reorder_point",
+          "safety_stock",
+          "last_reorder_notified_at",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "ReorderPolicyResponse",
+        "type": "object"
+      },
+      "ReorderSignalListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReorderSignalResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReorderSignalListResponse",
+        "type": "object"
+      },
+      "ReorderSignalResponse": {
+        "description": "One currently-breached `(location, cylinder_type)` — a heuristic\nthreshold comparison, not a guarantee; recorded to `ai.prediction`\n(`model_version=\"reorder_threshold_v1\"`) by the daily cron.",
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "inventory_location_id": {
+            "format": "uuid",
+            "title": "Inventory Location Id",
+            "type": "string"
+          },
+          "last_reorder_notified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reorder Notified At"
+          },
+          "location_ref_id": {
+            "format": "uuid",
+            "title": "Location Ref Id",
+            "type": "string"
+          },
+          "on_hand": {
+            "title": "On Hand",
+            "type": "integer"
+          },
+          "policy_id": {
+            "format": "uuid",
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "reorder_point": {
+            "title": "Reorder Point",
+            "type": "integer"
+          },
+          "safety_stock": {
+            "title": "Safety Stock",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy_id",
+          "inventory_location_id",
+          "location_ref_id",
+          "cylinder_type_id",
+          "on_hand",
+          "reorder_point",
+          "safety_stock",
+          "last_reorder_notified_at"
+        ],
+        "title": "ReorderSignalResponse",
+        "type": "object"
+      },
       "ReplaceComplianceDocumentRequest": {
         "properties": {
           "document_number": {
@@ -7765,6 +7938,39 @@
           "price"
         ],
         "title": "SetPriceRequest",
+        "type": "object"
+      },
+      "SetReorderPolicyRequest": {
+        "description": "Addressed by `warehouse_id`, not the internal `inventory_location_id`\n— v1 scope is warehouses only; see `application/inventory/reorder.py`'s\nmodule docstring. The location row is lazily created if this warehouse\nhas never had inventory activity yet.",
+        "properties": {
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "reorder_point": {
+            "minimum": 0.0,
+            "title": "Reorder Point",
+            "type": "integer"
+          },
+          "safety_stock": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Safety Stock",
+            "type": "integer"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id",
+          "cylinder_type_id",
+          "reorder_point"
+        ],
+        "title": "SetReorderPolicyRequest",
         "type": "object"
       },
       "SetScaleStatusRequest": {
@@ -14427,6 +14633,89 @@
           }
         },
         "summary": "Create Load Transfer",
+        "tags": [
+          "Inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/reorder-policy": {
+      "get": {
+        "operationId": "list_reorder_policies_api_v1_inventory_reorder_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderPolicyListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Reorder Policies",
+        "tags": [
+          "Inventory"
+        ]
+      },
+      "put": {
+        "description": "Set or edit the reorder threshold for one warehouse x cylinder type.\nAddressed by `warehouse_id` (v1 scope is warehouses only — see\n`application/inventory/reorder.py`'s module docstring), lazily\npersisting the `InventoryLocation` row if this warehouse has never had\ninventory activity yet — the same \"no row until first mutation\" shape\n`GetOrCreateInventoryLocationUseCase` already documents, made real\nhere since `reorder_policy.inventory_location_id` is a genuine FK.",
+        "operationId": "set_reorder_policy_api_v1_inventory_reorder_policy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetReorderPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderPolicyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Reorder Policy",
+        "tags": [
+          "Inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/reorder-signals": {
+      "get": {
+        "description": "Pure read — a heuristic threshold comparison, not a guarantee; the\ndaily `check_reorder_levels` cron is what actually records these to\n`ai.prediction` and notifies staff. This endpoint recomputes the same\ncomparison live, with no side effect of its own.",
+        "operationId": "list_reorder_signals_api_v1_inventory_reorder_signals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderSignalListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Currently-breached reorder thresholds",
         "tags": [
           "Inventory"
         ]

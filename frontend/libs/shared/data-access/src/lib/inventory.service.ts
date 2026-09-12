@@ -10,9 +10,12 @@ import { createLoadTransferApiV1InventoryLoadTransfersPost } from './generated/f
 import { createReconciliationRecordApiV1InventoryLocationsLocationTypeLocationRefIdReconciliationRecordsPost } from './generated/fn/inventory/create-reconciliation-record-api-v-1-inventory-locations-location-type-location-ref-id-reconciliation-records-post';
 import { getInventoryBalanceApiV1InventoryLocationsLocationTypeLocationRefIdBalanceGet } from './generated/fn/inventory/get-inventory-balance-api-v-1-inventory-locations-location-type-location-ref-id-balance-get';
 import { listInventoryTransactionsApiV1InventoryLocationsLocationTypeLocationRefIdTransactionsGet } from './generated/fn/inventory/list-inventory-transactions-api-v-1-inventory-locations-location-type-location-ref-id-transactions-get';
+import { listReorderPoliciesApiV1InventoryReorderPolicyGet } from './generated/fn/inventory/list-reorder-policies-api-v-1-inventory-reorder-policy-get';
+import { listReorderSignalsApiV1InventoryReorderSignalsGet } from './generated/fn/inventory/list-reorder-signals-api-v-1-inventory-reorder-signals-get';
 import { recordCollectionApiV1VehiclesVehicleIdCollectionsPost } from './generated/fn/inventory/record-collection-api-v-1-vehicles-vehicle-id-collections-post';
 import { recordDeliveryApiV1VehiclesVehicleIdDeliveriesPost } from './generated/fn/inventory/record-delivery-api-v-1-vehicles-vehicle-id-deliveries-post';
 import { recordGoodsReceiptApiV1WarehousesWarehouseIdGoodsReceiptNotesPost } from './generated/fn/inventory/record-goods-receipt-api-v-1-warehouses-warehouse-id-goods-receipt-notes-post';
+import { setReorderPolicyApiV1InventoryReorderPolicyPut } from './generated/fn/inventory/set-reorder-policy-api-v-1-inventory-reorder-policy-put';
 
 import type { AdjustInventoryRequest } from './generated/models/adjust-inventory-request';
 import type { ChangeCylinderStatusRequest } from './generated/models/change-cylinder-status-request';
@@ -26,6 +29,9 @@ import type { ReconciliationRecordCreateRequest } from './generated/models/recon
 import type { ReconciliationRecordResponse } from './generated/models/reconciliation-record-response';
 import type { RecordCollectionRequest } from './generated/models/record-collection-request';
 import type { RecordDeliveryRequest } from './generated/models/record-delivery-request';
+import type { ReorderPolicyResponse } from './generated/models/reorder-policy-response';
+import type { ReorderSignalResponse } from './generated/models/reorder-signal-response';
+import type { SetReorderPolicyRequest } from './generated/models/set-reorder-policy-request';
 
 export type InventoryLocationType = 'warehouse' | 'vehicle';
 
@@ -157,5 +163,29 @@ export class InventoryService {
       this.config.rootUrl,
       { record_id: recordId },
     ).pipe(map((res) => res.body));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reorder policy (AI Operational Intelligence, Horizon 1 Stage 4)
+  // ---------------------------------------------------------------------------
+
+  setReorderPolicy(request: SetReorderPolicyRequest): Observable<ReorderPolicyResponse> {
+    return setReorderPolicyApiV1InventoryReorderPolicyPut(this.http, this.config.rootUrl, {
+      body: request,
+    }).pipe(map((res) => res.body));
+  }
+
+  listReorderPolicies(): Observable<ReorderPolicyResponse[]> {
+    return listReorderPoliciesApiV1InventoryReorderPolicyGet(this.http, this.config.rootUrl).pipe(
+      map((res) => res.body.items),
+    );
+  }
+
+  /** Currently-breached thresholds — a heuristic comparison, not a
+   * guarantee; refreshed live on every call, no side effect of its own. */
+  listReorderSignals(): Observable<ReorderSignalResponse[]> {
+    return listReorderSignalsApiV1InventoryReorderSignalsGet(this.http, this.config.rootUrl).pipe(
+      map((res) => res.body.items),
+    );
   }
 }

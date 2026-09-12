@@ -190,6 +190,9 @@ class ReorderPolicyResponse(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     inventory_location_id: uuid.UUID
+    #: The warehouse this policy is set on — always a `warehouse_id`,
+    #: since v1 scope is warehouses only.
+    location_ref_id: uuid.UUID
     cylinder_type_id: uuid.UUID
     reorder_point: int
     safety_stock: int
@@ -209,6 +212,7 @@ class ReorderSignalResponse(BaseModel):
 
     policy_id: uuid.UUID
     inventory_location_id: uuid.UUID
+    location_ref_id: uuid.UUID
     cylinder_type_id: uuid.UUID
     on_hand: int
     reorder_point: int

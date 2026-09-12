@@ -463,19 +463,35 @@ class SqlAlchemyReorderPolicyRepository:
 
         row = (
             await self._uow.session.execute(
-                select(ReorderPolicyModel).where(
+                select(ReorderPolicyModel, InventoryLocationModel.location_ref_id)
+                .join(
+                    InventoryLocationModel,
+                    InventoryLocationModel.id == ReorderPolicyModel.inventory_location_id,
+                )
+                .where(
                     ReorderPolicyModel.tenant_id == tenant_id,
                     ReorderPolicyModel.inventory_location_id == inventory_location_id,
                     ReorderPolicyModel.cylinder_type_id == cylinder_type_id,
                 )
             )
-        ).scalars().one()
-        return self._to_policy(row)
+        ).one()
+        policy_row, location_ref_id = row
+        return self._to_policy(policy_row, location_ref_id)
 
     async def list_for_tenant(self, tenant_id: uuid.UUID) -> list[ReorderPolicy]:
-        stmt = select(ReorderPolicyModel).where(ReorderPolicyModel.tenant_id == tenant_id)
+        stmt = (
+            select(ReorderPolicyModel, InventoryLocationModel.location_ref_id)
+            .join(
+                InventoryLocationModel,
+                InventoryLocationModel.id == ReorderPolicyModel.inventory_location_id,
+            )
+            .where(ReorderPolicyModel.tenant_id == tenant_id)
+        )
         result = await self._uow.session.execute(stmt)
-        return [self._to_policy(row) for row in result.scalars()]
+        return [
+            self._to_policy(policy_row, location_ref_id)
+            for policy_row, location_ref_id in result
+        ]
 
     async def list_breached_for_tenant(self, tenant_id: uuid.UUID) -> list[ReorderSignal]:
         on_hand = func.coalesce(InventoryBalanceModel.quantity, 0)
@@ -483,11 +499,16 @@ class SqlAlchemyReorderPolicyRepository:
             select(
                 ReorderPolicyModel.id,
                 ReorderPolicyModel.inventory_location_id,
+                InventoryLocationModel.location_ref_id,
                 ReorderPolicyModel.cylinder_type_id,
                 on_hand.label("on_hand"),
                 ReorderPolicyModel.reorder_point,
                 ReorderPolicyModel.safety_stock,
                 ReorderPolicyModel.last_reorder_notified_at,
+            )
+            .join(
+                InventoryLocationModel,
+                InventoryLocationModel.id == ReorderPolicyModel.inventory_location_id,
             )
             .outerjoin(
                 InventoryBalanceModel,
@@ -509,6 +530,7 @@ class SqlAlchemyReorderPolicyRepository:
             ReorderSignal(
                 policy_id=row.id,
                 inventory_location_id=row.inventory_location_id,
+                location_ref_id=row.location_ref_id,
                 cylinder_type_id=row.cylinder_type_id,
                 on_hand=int(row.on_hand),
                 reorder_point=row.reorder_point,
@@ -524,11 +546,12 @@ class SqlAlchemyReorderPolicyRepository:
             row.last_reorder_notified_at = datetime.now(UTC)
 
     @staticmethod
-    def _to_policy(row: ReorderPolicyModel) -> ReorderPolicy:
+    def _to_policy(row: ReorderPolicyModel, location_ref_id: uuid.UUID) -> ReorderPolicy:
         return ReorderPolicy(
             id=row.id,
             tenant_id=row.tenant_id,
             inventory_location_id=row.inventory_location_id,
+            location_ref_id=location_ref_id,
             cylinder_type_id=row.cylinder_type_id,
             reorder_point=row.reorder_point,
             safety_stock=row.safety_stock,

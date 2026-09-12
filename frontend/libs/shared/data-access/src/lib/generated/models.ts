@@ -165,6 +165,10 @@ export type { RenameBranchRequest } from './models/rename-branch-request';
 export type { RenameCylinderTypeRequest } from './models/rename-cylinder-type-request';
 export type { RenameTenantRequest } from './models/rename-tenant-request';
 export type { RenameWarehouseRequest } from './models/rename-warehouse-request';
+export type { ReorderPolicyListResponse } from './models/reorder-policy-list-response';
+export type { ReorderPolicyResponse } from './models/reorder-policy-response';
+export type { ReorderSignalListResponse } from './models/reorder-signal-list-response';
+export type { ReorderSignalResponse } from './models/reorder-signal-response';
 export type { ReplaceComplianceDocumentRequest } from './models/replace-compliance-document-request';
 export type { ReplaceScaleCertificateRequest } from './models/replace-scale-certificate-request';
 export type { RequestRefundRequest } from './models/request-refund-request';
@@ -190,6 +194,7 @@ export type { SetLicenseDeviceCapRequest } from './models/set-license-device-cap
 export type { SetLicenseFeatureOverrideRequest } from './models/set-license-feature-override-request';
 export type { SetLicensePlanTierRequest } from './models/set-license-plan-tier-request';
 export type { SetPriceRequest } from './models/set-price-request';
+export type { SetReorderPolicyRequest } from './models/set-reorder-policy-request';
 export type { SetScaleStatusRequest } from './models/set-scale-status-request';
 export type { SetTenantConfigurationRequest } from './models/set-tenant-configuration-request';
 export type { SetWarehouseActiveRequest } from './models/set-warehouse-active-request';
