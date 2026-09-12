@@ -31,7 +31,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.admin import (
     get_audit_log_repository,
@@ -39,6 +39,7 @@ from lpg.api.v1.dependencies.admin import (
     get_cylinder_type_repository,
     get_feature_flag_override_repository,
     get_feature_flag_repository,
+    get_price_list_proposal_repository,
     get_price_list_repository,
     get_staff_user_repository,
     get_tenant_configuration_repository,
@@ -74,12 +75,15 @@ from lpg.api.v1.schemas.admin import (
     FeatureFlagSummaryResponse,
     InviteStaffUserRequest,
     PriceListEntryResponse,
+    PriceListProposalListResponse,
+    PriceListProposalResponse,
     ReassignRoleRequest,
     RelocateWarehouseRequest,
     RenameBranchRequest,
     RenameCylinderTypeRequest,
     RenameTenantRequest,
     RenameWarehouseRequest,
+    ReviewPriceListProposalRequest,
     SetBranchActiveRequest,
     SetBranchRegionRequest,
     SetCylinderTypeActiveRequest,
@@ -183,6 +187,7 @@ from lpg.application.tenant.cylinder_type import (
 from lpg.application.tenant.ports import (
     BranchRepository,
     CylinderTypeRepository,
+    PriceListProposalRepository,
     PriceListRepository,
     TenantConfigurationRepository,
     TenantRepository,
@@ -195,6 +200,14 @@ from lpg.application.tenant.price_list import (
     ListPricesUseCase,
     SetPriceCommand,
     SetPriceUseCase,
+)
+from lpg.application.tenant.price_list_proposal import (
+    AcceptPriceListProposalCommand,
+    AcceptPriceListProposalUseCase,
+    ListPendingPriceListProposalsQuery,
+    ListPendingPriceListProposalsUseCase,
+    RejectPriceListProposalCommand,
+    RejectPriceListProposalUseCase,
 )
 from lpg.application.tenant.rename_tenant import RenameTenantCommand, RenameTenantUseCase
 from lpg.application.tenant.tenant_configuration import (
@@ -220,6 +233,7 @@ from lpg.application.tenant.warehouse import (
 from lpg.config.settings import Settings, get_settings
 from lpg.domain.license.license import License
 from lpg.domain.license.linked_device import LinkedDevice
+from lpg.domain.tenant.price_list_proposal import PriceListProposal
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
@@ -704,6 +718,83 @@ async def get_effective_price(
         price=entry.price,
         effective_from=entry.effective_from,
     )
+
+
+def _proposal_response(proposal: PriceListProposal) -> PriceListProposalResponse:
+    return PriceListProposalResponse(
+        id=str(proposal.id),
+        cylinder_type_id=str(proposal.cylinder_type_id),
+        customer_type=proposal.customer_type,
+        branch_id=str(proposal.branch_id) if proposal.branch_id else None,
+        proposed_price=proposal.proposed_price,
+        effective_from=proposal.effective_from,
+        source_url=proposal.source_url,
+        status=proposal.status,
+        fetched_at=proposal.fetched_at,
+        reviewed_by=str(proposal.reviewed_by) if proposal.reviewed_by else None,
+        reviewed_at=proposal.reviewed_at,
+    )
+
+
+@router.get(
+    "/price-list/proposals",
+    response_model=PriceListProposalListResponse,
+    summary="Pending OMC rate proposals awaiting review",
+    dependencies=[Depends(require_permission("tenant:configure"))],
+)
+async def list_price_list_proposals(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        PriceListProposalRepository, Depends(get_price_list_proposal_repository)
+    ],
+) -> PriceListProposalListResponse:
+    use_case = ListPendingPriceListProposalsUseCase(repository)
+    proposals = await use_case.execute(
+        ListPendingPriceListProposalsQuery(tenant_id=principal.tenant_id)
+    )
+    return PriceListProposalListResponse(items=[_proposal_response(p) for p in proposals])
+
+
+@router.patch(
+    "/price-list/proposals/{proposal_id}",
+    response_model=PriceListProposalResponse,
+    summary="Accept or reject a pending OMC rate proposal",
+)
+async def review_price_list_proposal(
+    proposal_id: uuid.UUID,
+    body: ReviewPriceListProposalRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    proposal_repository: Annotated[
+        PriceListProposalRepository, Depends(get_price_list_proposal_repository)
+    ],
+    price_list_repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> PriceListProposalResponse:
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+
+    if body.action == "accept":
+        use_case = AcceptPriceListProposalUseCase(
+            proposal_repository, price_list_repository, unit_of_work
+        )
+        await use_case.execute(
+            AcceptPriceListProposalCommand(
+                proposal_id=proposal_id, reviewed_by=principal.user_id
+            )
+        )
+    else:
+        reject_use_case = RejectPriceListProposalUseCase(proposal_repository, unit_of_work)
+        await reject_use_case.execute(
+            RejectPriceListProposalCommand(
+                proposal_id=proposal_id, reviewed_by=principal.user_id
+            )
+        )
+
+    proposal = await proposal_repository.get(proposal_id)
+    if proposal is None:
+        msg = f"No price list proposal visible with id {proposal_id}."
+        raise NotFoundError(msg, proposal_id=str(proposal_id))
+    return _proposal_response(proposal)
 
 
 # -- Feature Flags (tenant read) ---------------------------------------------------

@@ -25,6 +25,7 @@ from lpg.application.platform.ports import FeatureFlagOverrideRepository, Featur
 from lpg.application.tenant.ports import (
     BranchRepository,
     CylinderTypeRepository,
+    PriceListProposalRepository,
     PriceListRepository,
     TenantConfigurationRepository,
     TenantRepository,
@@ -100,6 +101,16 @@ def get_price_list_repository(
     from lpg.infrastructure.persistence.repositories.tenant import SqlAlchemyPriceListRepository
 
     return SqlAlchemyPriceListRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_price_list_proposal_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> PriceListProposalRepository:
+    from lpg.infrastructure.persistence.repositories.tenant import (
+        SqlAlchemyPriceListProposalRepository,
+    )
+
+    return SqlAlchemyPriceListProposalRepository(unit_of_work)  # type: ignore[arg-type]
 
 
 def get_feature_flag_repository(

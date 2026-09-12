@@ -50,6 +50,8 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
         # "refill_due_customer" is not order-scoped either — it carries
         # "customer_id"/"refill_due_date" instead (see `refill_jobs.
         # predict_refill_due`, which enqueues it).
+        # "lpg_rate_review_staff" carries "proposal_count" instead (see
+        # `pricing_jobs.fetch_omc_rates`, which enqueues it).
     }
     """
     structlog.contextvars.bind_contextvars(
@@ -149,6 +151,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 "cash_shortfall_staff",
                 "route_load_confirmed_staff",
                 "compliance_document_expiring_staff",
+                "lpg_rate_review_staff",
             ):
                 # Tenant-wide ops team — a cash discrepancy (or a driver
                 # confirming the van load, or a licence/RC about to expire)
@@ -280,6 +283,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif notification_type == "refill_due_customer":
                 reference_type = "customer"
                 reference_id = uuid.UUID(payload["customer_id"])
+            elif notification_type == "lpg_rate_review_staff":
+                reference_type = "price_list_proposal"
+                reference_id = None
             else:
                 reference_type = "order"
                 reference_id = uuid.UUID(payload["order_id"]) if "order_id" in payload else None
@@ -439,6 +445,7 @@ def _get_title(notification_type: str) -> str:
         "stop_cancelled": "Stop Cancelled",
         "compliance_document_expiring_staff": "Compliance Document Expiring",
         "refill_due_customer": "Time for a Refill?",
+        "lpg_rate_review_staff": "New LPG Rate Proposals to Review",
     }
     return titles.get(notification_type, "Notification")
 
@@ -462,6 +469,13 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
     if notification_type == "refill_due_customer":
         due = payload.get("refill_due_date") or "soon"
         return f"Your cylinder is expected to run low around {due}. Book a refill anytime."
+    if notification_type == "lpg_rate_review_staff":
+        count = payload.get("proposal_count", "New")
+        plural = "" if count == "1" else "s"
+        return (
+            f"{count} LPG rate proposal{plural} for next month are ready for review on the "
+            "Price List page."
+        )
     if notification_type == "compliance_document_expiring_staff":
         doc_label = str(payload.get("doc_type", "document")).replace("_", " ")
         owner_label = payload.get("owner_type", "record")
@@ -507,6 +521,7 @@ def _should_send_email(notification_type: str) -> bool:
         "delivery_confirmed",
         "invoice_generated",
         "cash_shortfall_staff",
+        "lpg_rate_review_staff",
     }
 
 

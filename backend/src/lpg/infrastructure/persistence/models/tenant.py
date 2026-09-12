@@ -30,7 +30,7 @@ from datetime import datetime  # noqa: TC003
 from decimal import Decimal  # noqa: TC003
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, Uuid, text
+from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, Text, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -187,6 +187,34 @@ class PriceListModel(Base):
     branch_id: Mapped[uuid.UUID | None] = mapped_column(Uuid())
     price: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=2))
     effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+
+
+class PriceListProposalModel(Base):
+    """Maps `tenant.price_list_proposal` (migration `b7f3e1a9c2d5`). A real
+    review queue, unlike `PriceListModel` — `status`/`reviewed_by`/
+    `reviewed_at` are updated in place, matching the table's own
+    `SELECT, INSERT, UPDATE` grant.
+    """
+
+    __tablename__ = "price_list_proposal"
+    __table_args__ = {"schema": "tenant"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    cylinder_type_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    customer_type: Mapped[str] = mapped_column(String(20))
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    proposed_price: Mapped[Decimal] = mapped_column(Numeric(precision=10, scale=2))
+    effective_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    source_url: Mapped[str] = mapped_column(Text())
+    status: Mapped[str] = mapped_column(String(20), server_default="pending")
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid())
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

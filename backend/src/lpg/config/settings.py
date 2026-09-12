@@ -262,6 +262,15 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
 
+    # -- OMC Rate Ingestion (AI Operational Intelligence, Horizon 1 Stage 3) --
+    # `omc_rate_provider` picks the adapter class in
+    # `infrastructure/pricing/factory.py`, same "provider configurable"
+    # story as `ai_provider` above. Defaults to `"none"` —
+    # `NullOmcRateSource`, the documented placeholder — because no
+    # scrapeable public OMC source was found (see `infrastructure/pricing/
+    # omc_scraper.py`'s module docstring for what was actually tried).
+    omc_rate_provider: str = "none"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: object) -> object:

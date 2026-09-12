@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -149,6 +149,33 @@ class SetPriceRequest(BaseModel):
     price: Decimal = Field(gt=0)
     branch_id: str | None = None
     effective_from: datetime | None = None
+
+
+class PriceListProposalResponse(BaseModel):
+    """One row of the OMC rate-review queue (AI Operational Intelligence,
+    Horizon 1 Stage 3) — a heuristic-fetched proposal awaiting staff
+    accept/reject, not yet a price. `source_url` is where the number came
+    from, so a reviewer can verify it before accepting."""
+
+    id: str
+    cylinder_type_id: str
+    customer_type: str
+    branch_id: str | None
+    proposed_price: Decimal
+    effective_from: datetime
+    source_url: str
+    status: str
+    fetched_at: datetime
+    reviewed_by: str | None
+    reviewed_at: datetime | None
+
+
+class PriceListProposalListResponse(BaseModel):
+    items: list[PriceListProposalResponse]
+
+
+class ReviewPriceListProposalRequest(BaseModel):
+    action: Literal["accept", "reject"]
 
 
 # -- Feature Flags ----------------------------------------------------------------

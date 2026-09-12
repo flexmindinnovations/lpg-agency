@@ -50,6 +50,7 @@ from lpg.infrastructure.jobs.compliance_jobs import check_compliance_expiry
 from lpg.infrastructure.jobs.feature_store_jobs import build_feature_snapshots
 from lpg.infrastructure.jobs.notification_jobs import send_notification
 from lpg.infrastructure.jobs.pool import build_job_queue
+from lpg.infrastructure.jobs.pricing_jobs import fetch_omc_rates
 from lpg.infrastructure.jobs.refill_jobs import predict_refill_due
 from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 from lpg.infrastructure.jobs.stale_order_jobs import check_stale_unassigned_orders
@@ -219,6 +220,9 @@ class WorkerSettings:
         # time-sensitive in a way a slowly-expiring compliance document
         # isn't.
         cron(check_stale_unassigned_orders, minute=0),
+        # Monthly, day 1 -- a fresh set of OMC rate proposals for the
+        # month ahead (`effective_from` = the 1st of next month).
+        cron(fetch_omc_rates, day=1, hour=6, minute=0),
     ]
 
     functions: ClassVar = (ping, bulk_cancel_orders, send_notification, auto_assign_driver)

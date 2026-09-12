@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from lpg.domain.tenant.branch import Branch
     from lpg.domain.tenant.cylinder_type import CylinderType
     from lpg.domain.tenant.price_list import PriceListEntry
+    from lpg.domain.tenant.price_list_proposal import PriceListProposal
     from lpg.domain.tenant.tenant import Tenant
     from lpg.domain.tenant.tenant_configuration import TenantConfiguration
     from lpg.domain.tenant.warehouse import Warehouse
@@ -108,3 +109,27 @@ class PriceListRepository(Protocol):
     async def list_for_tenant(self, tenant_id: uuid.UUID) -> Sequence[PriceListEntry]: ...
 
     async def add(self, entry: PriceListEntry) -> None: ...
+
+
+@runtime_checkable
+class PriceListProposalRepository(Protocol):
+    """A real review queue, unlike `PriceListRepository` — `save()` updates
+    a proposal's `status`/`reviewed_by`/`reviewed_at` in place."""
+
+    def next_id(self) -> uuid.UUID: ...
+
+    async def add_ignoring_conflicts(self, proposals: list[PriceListProposal]) -> int:
+        """Bulk-insert; a proposal whose `(tenant_id, cylinder_type_id,
+        customer_type, branch_id, effective_from)` already exists is
+        silently skipped (`ON CONFLICT DO NOTHING`) — a re-run of the
+        monthly fetch job is a no-op. Returns the number actually
+        inserted."""
+        ...
+
+    async def get(self, proposal_id: uuid.UUID) -> PriceListProposal | None: ...
+
+    async def list_pending_for_tenant(
+        self, tenant_id: uuid.UUID
+    ) -> Sequence[PriceListProposal]: ...
+
+    async def save(self, proposal: PriceListProposal) -> None: ...

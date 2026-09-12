@@ -10,14 +10,17 @@ doesn't know about" — otherwise `collect_events()` would miss it).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import uuid
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from lpg.domain.platform.feature_flag import FeatureFlagOverride
 from lpg.domain.tenant.branch import Branch
 from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list import PriceListEntry
+from lpg.domain.tenant.price_list_proposal import PriceListProposal
 from lpg.domain.tenant.tenant import Tenant
 from lpg.domain.tenant.tenant_configuration import TenantConfiguration
 from lpg.domain.tenant.warehouse import Warehouse
@@ -26,14 +29,17 @@ from lpg.infrastructure.persistence.models.tenant import (
     CylinderTypeModel,
     FeatureFlagOverrideModel,
     PriceListModel,
+    PriceListProposalModel,
     TenantConfigurationModel,
     TenantModel,
     WarehouseModel,
 )
 
 if TYPE_CHECKING:
-    import uuid
     from collections.abc import Sequence
+    from typing import Any
+
+    from sqlalchemy import CursorResult
 
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -418,6 +424,94 @@ class SqlAlchemyPriceListRepository:
             row.price,
             row.effective_from,
             branch_id=row.branch_id,
+        )
+
+
+class SqlAlchemyPriceListProposalRepository:
+    """Implements `PriceListProposalRepository`
+    (`lpg.application.tenant.ports`). A real review queue, unlike
+    `SqlAlchemyPriceListRepository` — `save()` updates a proposal's
+    `status`/`reviewed_by`/`reviewed_at` in place.
+    """
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    def next_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    async def add_ignoring_conflicts(self, proposals: list[PriceListProposal]) -> int:
+        if not proposals:
+            return 0
+        stmt = pg_insert(PriceListProposalModel).values(
+            [
+                {
+                    "id": p.id,
+                    "tenant_id": p.tenant_id,
+                    "cylinder_type_id": p.cylinder_type_id,
+                    "customer_type": p.customer_type,
+                    "branch_id": p.branch_id,
+                    "proposed_price": p.proposed_price,
+                    "effective_from": p.effective_from,
+                    "source_url": p.source_url,
+                    "status": p.status,
+                    "fetched_at": p.fetched_at,
+                }
+                for p in proposals
+            ]
+        )
+        stmt = stmt.on_conflict_do_nothing(
+            constraint="uq_price_list_proposal_dimension_effective"
+        )
+        result = cast("CursorResult[Any]", await self._uow.session.execute(stmt))
+        return result.rowcount or 0
+
+    async def get(self, proposal_id: uuid.UUID) -> PriceListProposal | None:
+        row = await self._uow.session.get(PriceListProposalModel, proposal_id)
+        if row is None:
+            return None
+        proposal = self._to_domain(row)
+        self._uow.register_aggregate(proposal)
+        return proposal
+
+    async def list_pending_for_tenant(
+        self, tenant_id: uuid.UUID
+    ) -> Sequence[PriceListProposal]:
+        result = await self._uow.session.execute(
+            select(PriceListProposalModel)
+            .where(
+                PriceListProposalModel.tenant_id == tenant_id,
+                PriceListProposalModel.status == "pending",
+            )
+            .order_by(PriceListProposalModel.effective_from)
+        )
+        return [self._to_domain(row) for row in result.scalars()]
+
+    async def save(self, proposal: PriceListProposal) -> None:
+        row = await self._uow.session.get(PriceListProposalModel, proposal.id)
+        if row is None:
+            msg = f"Cannot save price list proposal {proposal.id} — no matching row was loaded."
+            raise LookupError(msg)
+
+        row.status = proposal.status
+        row.reviewed_by = proposal.reviewed_by
+        row.reviewed_at = proposal.reviewed_at
+
+    @staticmethod
+    def _to_domain(row: PriceListProposalModel) -> PriceListProposal:
+        return PriceListProposal(
+            row.id,
+            row.tenant_id,
+            row.cylinder_type_id,
+            row.customer_type,
+            row.proposed_price,
+            row.effective_from,
+            row.source_url,
+            row.fetched_at,
+            branch_id=row.branch_id,
+            status=row.status,
+            reviewed_by=row.reviewed_by,
+            reviewed_at=row.reviewed_at,
         )
 
 

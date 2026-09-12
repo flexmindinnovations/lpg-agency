@@ -135,6 +135,21 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # falls back to `infrastructure.jobs.refill_jobs.
         # DEFAULT_MIN_GAP_DAYS` (5) when unset.
         "refill_nudge_min_gap_days",
+        # OMC rate ingestion (AI Operational Intelligence, Horizon 1 Stage
+        # 3) — tenant opt-in, same default-off shape as
+        # `refill_nudge_enabled`/`auto_assignment_enabled`: a tenant that
+        # has never set this sees zero behavior change —
+        # `fetch_omc_rates` still no-ops even when set, since no working
+        # `OmcRateSourcePort` adapter exists yet (`infrastructure/
+        # pricing/omc_scraper.py`), but the review-queue/notification/
+        # admin-UI pipeline built around it is real.
+        "omc_rate_ingestion_enabled",
+        # Which OMC (e.g. "IOCL", "HPCL", "BPCL") this tenant buys from —
+        # passed to `OmcRateSourcePort.fetch_rates` once a real adapter
+        # can act on it.
+        "omc_provider",
+        # Which city's published rates apply to this tenant.
+        "omc_city",
     }
 )
 
