@@ -70,6 +70,14 @@ class SqlAlchemyRouteRepository:
                 stop_model = existing_stops[stop.id]
                 stop_model.status = stop.status
                 stop_model.failure_reason = stop.failure_reason
+                # `Route.resequence_stops()` (AI Operational Intelligence,
+                # Horizon 1 Stage 5) mutates an existing stop's
+                # `sequence_number` in place — this branch previously never
+                # wrote it back, a real bug found while adding that method:
+                # nothing before Stage 5 ever changed an *existing* stop's
+                # sequence (`assign_order()` only sets it once, on a
+                # brand-new stop, handled by the `else` branch below).
+                stop_model.sequence_number = stop.sequence_number
                 if stop.proof_of_delivery:
                     stop_model.otp_verified = stop.proof_of_delivery.otp_verified
                     stop_model.signature_url = stop.proof_of_delivery.signature_url

@@ -15,6 +15,7 @@ from lpg.domain.delivery.route import (
     OrderDeliveryFailed,
     RoutePlanned,
     RouteStatusChanged,
+    RouteStopsResequenced,
 )
 from lpg.domain.inventory.inventory_location import GoodsReceived, InventoryAdjusted
 from lpg.domain.notification.in_app_notification import InAppNotificationCreated
@@ -94,7 +95,8 @@ def register_realtime_handlers(
         | RouteStatusChanged
         | OrderAssignedToRoute
         | OrderDelivered
-        | OrderDeliveryFailed,
+        | OrderDeliveryFailed
+        | RouteStopsResequenced,
     ) -> None:
         """Notify dispatch and drivers of route updates."""
         message = {
@@ -138,6 +140,7 @@ def register_realtime_handlers(
     dispatcher.register(OrderAssignedToRoute, on_route_status_changed)  # type: ignore[arg-type]
     dispatcher.register(OrderDelivered, on_route_status_changed)  # type: ignore[arg-type]
     dispatcher.register(OrderDeliveryFailed, on_route_status_changed)  # type: ignore[arg-type]
+    dispatcher.register(RouteStopsResequenced, on_route_status_changed)  # type: ignore[arg-type]
 
     # Drivers
     dispatcher.register(DriverRegistered, on_driver_updated)  # type: ignore[arg-type]

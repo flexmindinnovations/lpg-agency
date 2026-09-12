@@ -925,3 +925,159 @@ class TestRouteEndpointsThroughRealStack:
             headers={"Authorization": f"Bearer {other_token}"},
         )
         assert response.status_code == 404, response.text
+
+
+async def _create_and_confirm_order_at(
+    client: AsyncClient,
+    fixtures: _Fixtures,
+    headers: dict[str, str],
+    *,
+    latitude: float,
+    longitude: float,
+) -> dict[str, Any]:
+    """Same shape as `_create_and_confirm_order`, but with real delivery
+    coordinates — needed to exercise `OptimizeRouteSequenceUseCase`, which
+    has nothing to reorder without them."""
+    create_payload = {
+        "branch_id": str(fixtures.branch_id),
+        "customer_id": str(fixtures.customer_id),
+        "address_id": str(fixtures.address_id),
+        "delivery_address": {
+            "address_line": "123 Test St",
+            "latitude": latitude,
+            "longitude": longitude,
+        },
+        "booking_source": "staff",
+        "requested_date": datetime.now(UTC).isoformat(),
+        "lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 2}],
+    }
+    create_response = await client.post(
+        "/api/v1/orders",
+        json=create_payload,
+        headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert create_response.status_code == 201, create_response.text
+    order = create_response.json()
+
+    confirm_response = await client.post(f"/api/v1/orders/{order['id']}/confirm", headers=headers)
+    assert confirm_response.status_code == 200, confirm_response.text
+    result: dict[str, Any] = confirm_response.json()
+    return result
+
+
+class TestRouteOptimization:
+    """AI Operational Intelligence, Horizon 1 Stage 5."""
+
+    async def test_optimize_reorders_stops_and_persists_the_new_sequence(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        # Off by default -- opt in.
+        config_response = await client.post(
+            "/api/v1/admin/tenant-configuration",
+            json={"config_key": "route_optimization_enabled", "config_value": "true"},
+            headers=admin_headers,
+        )
+        assert config_response.status_code == 201, config_response.text
+
+        plan_response = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        assert plan_response.status_code == 201, plan_response.text
+        route_id = plan_response.json()["id"]
+
+        load_response = await client.post(
+            f"/api/v1/routes/{route_id}/load",
+            json={
+                "warehouse_id": str(fixtures.warehouse_id),
+                "lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 20}],
+            },
+            headers=admin_headers,
+        )
+        assert load_response.status_code == 200, load_response.text
+
+        # Three stops on a line, assigned in a deliberately poor order.
+        far = await _create_and_confirm_order_at(
+            client, fixtures, admin_headers, latitude=0.0, longitude=10.0
+        )
+        near = await _create_and_confirm_order_at(
+            client, fixtures, admin_headers, latitude=0.0, longitude=0.0
+        )
+        middle = await _create_and_confirm_order_at(
+            client, fixtures, admin_headers, latitude=0.0, longitude=5.0
+        )
+        for order in (far, near, middle):
+            assign_response = await client.post(
+                f"/api/v1/routes/{route_id}/assign-order",
+                json={"order_id": order["id"]},
+                headers=admin_headers,
+            )
+            assert assign_response.status_code == 200, assign_response.text
+
+        optimize_response = await client.post(
+            f"/api/v1/routes/{route_id}/optimize", headers=admin_headers
+        )
+        assert optimize_response.status_code == 200, optimize_response.text
+        body = optimize_response.json()
+        assert body["km_saved"] >= 0.0
+
+        by_order = {s["order_id"]: s["sequence_number"] for s in body["route"]["stops"]}
+        # `middle` must land between the other two regardless of which
+        # direction the solver walked the line (see the equivalent unit
+        # test for why direction isn't fixed).
+        assert by_order[middle["id"]] == 2
+        assert {by_order[near["id"]], by_order[far["id"]]} == {1, 3}
+
+        # Real round trip through a fresh GET -- proves the new
+        # sequence_number values actually persisted to Postgres, not just
+        # reflected in this one response (the exact bug this stage found
+        # and fixed in `SqlAlchemyRouteRepository.save()`).
+        refetch_response = await client.get(f"/api/v1/routes/{route_id}", headers=admin_headers)
+        assert refetch_response.status_code == 200, refetch_response.text
+        refetched_by_order = {
+            s["order_id"]: s["sequence_number"] for s in refetch_response.json()["stops"]
+        }
+        assert refetched_by_order == by_order
+
+        async with admin_engine_lpg_test.begin() as conn:
+            prediction_count = (
+                await conn.execute(
+                    text(
+                        "SELECT count(*) FROM ai.prediction "
+                        "WHERE subject_id = :route_id AND prediction_type = 'route_sequence'"
+                    ),
+                    {"route_id": route_id},
+                )
+            ).scalar_one()
+        assert prediction_count == 1
+
+    async def test_optimize_is_rejected_when_the_tenant_has_not_opted_in(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        plan_response = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        route_id = plan_response.json()["id"]
+
+        response = await client.post(f"/api/v1/routes/{route_id}/optimize", headers=admin_headers)
+        assert response.status_code == 409, response.text
+        assert response.json()["error_code"] == "ROUTE_OPTIMIZATION_DISABLED"

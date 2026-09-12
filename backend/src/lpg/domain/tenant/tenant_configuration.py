@@ -150,6 +150,14 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         "omc_provider",
         # Which city's published rates apply to this tenant.
         "omc_city",
+        # Auto-route stop resequencing (AI Operational Intelligence,
+        # Horizon 1 Stage 5) — tenant opt-in, same default-off shape as
+        # `auto_assignment_enabled`/`refill_nudge_enabled`: a tenant that
+        # has never set this sees zero behavior change — the frontend
+        # hides "Optimise stop order", and a direct API call is rejected
+        # with `RouteOptimizationDisabledError` rather than silently
+        # reordering stops.
+        "route_optimization_enabled",
     }
 )
 

@@ -59,8 +59,20 @@ class RouteResponse(BaseModel):
 class RoutePageResponse(BaseModel):
     items: list[RouteResponse]
     total: int
-    page: int
-    page_size: int
+
+
+class OptimizeRouteResponse(BaseModel):
+    """AI Operational Intelligence, Horizon 1 Stage 5 — the result of
+    `POST /routes/{id}/optimize`. `km_saved` is a heuristic straight-line
+    (haversine) estimate, not a routed-road distance; `route` is the
+    already-resequenced route (the reorder is applied immediately, not
+    proposed for a separate accept step — fully reversible, since only
+    sequence numbers moved)."""
+
+    route: RouteResponse
+    km_before: float
+    km_after: float
+    km_saved: float
 
 
 class PlanRouteRequest(BaseModel):

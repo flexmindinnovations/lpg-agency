@@ -28,6 +28,7 @@ from lpg.domain.delivery.route import (
     RoutePlanned,
     RouteStatusChanged,
     RouteStop,
+    RouteStopsResequenced,
     VehicleLoaded,
 )
 
@@ -619,3 +620,111 @@ class TestRouteStopStatusTransitions:
         )
         with pytest.raises(InvariantViolation, match="Unknown stop status"):
             stop.change_status("teleported")
+
+
+class TestResequenceStops:
+    """AI Operational Intelligence, Horizon 1 Stage 5."""
+
+    @staticmethod
+    def _route_with_n_pending_stops(n: int, *, status: str = "planned") -> Route:
+        route = _make_route(status="planned")
+        for _ in range(n):
+            route.assign_order(uuid.uuid4())
+        if status != "planned":
+            route = _make_route(status=status, stops=list(route.stops))
+        return route
+
+    def test_reorders_pending_stops_to_the_requested_order(self) -> None:
+        route = self._route_with_n_pending_stops(3)
+        a, b, c = (s.id for s in route.stops)
+        new_order = [c, a, b]
+
+        route.resequence_stops(new_order)
+
+        by_id = {s.id: s for s in route.stops}
+        assert by_id[c].sequence_number == 1
+        assert by_id[a].sequence_number == 2
+        assert by_id[b].sequence_number == 3
+
+    def test_route_stops_iterates_in_the_new_sequence_order(self) -> None:
+        route = self._route_with_n_pending_stops(3)
+        a, b, c = (s.id for s in route.stops)
+        route.resequence_stops([c, a, b])
+        assert [s.id for s in route.stops] == [c, a, b]
+
+    def test_emits_route_stops_resequenced_with_old_and_new_order(self) -> None:
+        route = self._route_with_n_pending_stops(3)
+        a, b, c = (s.id for s in route.stops)
+        route.resequence_stops([c, a, b])
+
+        events = [e for e in route.events if isinstance(e, RouteStopsResequenced)]
+        assert len(events) == 1
+        assert events[0].route_id == route.id
+        assert events[0].tenant_id == route.tenant_id
+        assert events[0].old_order == (a, b, c)
+        assert events[0].new_order == (c, a, b)
+
+    def test_legal_when_loaded(self) -> None:
+        route = self._route_with_n_pending_stops(2, status="loaded")
+        a, b = (s.id for s in route.stops)
+        route.resequence_stops([b, a])
+        assert [s.id for s in route.stops] == [b, a]
+
+    @pytest.mark.parametrize("status", ["in_progress", "completed", "cancelled"])
+    def test_rejected_outside_planned_or_loaded(self, status: str) -> None:
+        route = self._route_with_n_pending_stops(2, status=status)
+        stop_ids = [s.id for s in route.stops]
+        with pytest.raises(InvariantViolation, match="Cannot resequence"):
+            route.resequence_stops(list(reversed(stop_ids)))
+
+    def test_rejects_a_set_that_omits_a_pending_stop(self) -> None:
+        route = self._route_with_n_pending_stops(3)
+        a, _b, c = (s.id for s in route.stops)
+        with pytest.raises(InvariantViolation, match="must contain exactly"):
+            route.resequence_stops([a, c])
+
+    def test_rejects_a_set_with_an_id_not_on_the_route(self) -> None:
+        route = self._route_with_n_pending_stops(2)
+        a, b = (s.id for s in route.stops)
+        with pytest.raises(InvariantViolation, match="must contain exactly"):
+            route.resequence_stops([a, b, uuid.uuid4()])
+
+    def test_rejects_duplicate_stop_ids(self) -> None:
+        route = self._route_with_n_pending_stops(2)
+        a, _b = (s.id for s in route.stops)
+        with pytest.raises(InvariantViolation, match="duplicate"):
+            route.resequence_stops([a, a])
+
+    def test_a_cancelled_stop_keeps_its_own_position_and_is_excluded_from_the_request(
+        self,
+    ) -> None:
+        """A route can have a `cancelled` stop even while `planned`/`loaded`
+        (`cancel_stop()` doesn't gate on route status) — resequencing must
+        leave it alone and only require the *pending* stops in the request.
+        """
+        route = self._route_with_n_pending_stops(3)
+        a, b, c = (s.id for s in route.stops)
+        route.cancel_stop(b)  # now sequence: a=1 (pending), b=2 (cancelled), c=3 (pending)
+
+        route.resequence_stops([c, a])
+
+        by_id = {s.id: s for s in route.stops}
+        assert by_id[b].status == "cancelled"
+        assert by_id[b].sequence_number == 2  # untouched
+        # Pending stops reuse exactly the {1, 3} values b's own slot didn't
+        # take, in the newly requested order -- never colliding with b's.
+        assert by_id[c].sequence_number == 1
+        assert by_id[a].sequence_number == 3
+
+    def test_every_stops_sequence_number_stays_unique_with_a_cancelled_stop_present(
+        self,
+    ) -> None:
+        route = self._route_with_n_pending_stops(4)
+        stops = list(route.stops)
+        route.cancel_stop(stops[1].id)
+        pending_ids = [s.id for s in route.stops if s.status == "pending"]
+
+        route.resequence_stops(list(reversed(pending_ids)))
+
+        numbers = [s.sequence_number for s in route.stops]
+        assert len(numbers) == len(set(numbers))

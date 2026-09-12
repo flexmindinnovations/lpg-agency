@@ -31,6 +31,7 @@ from lpg.api.v1.dependencies.delivery import (
     get_confirm_route_load_use_case,
     get_driver_repository,
     get_load_vehicle_for_route_use_case,
+    get_optimize_route_sequence_use_case,
     get_route_repository,
 )
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
@@ -40,6 +41,7 @@ from lpg.api.v1.schemas.route import (
     AssignOrderRequest,
     DriverLocationPingRequest,
     LoadVehicleRequest,
+    OptimizeRouteResponse,
     PlanRouteRequest,
     RoutePageResponse,
     RouteResponse,
@@ -48,6 +50,10 @@ from lpg.api.v1.schemas.route import (
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.delivery.ports import DriverRepository, RouteRepository
+from lpg.application.delivery.route_optimization import (
+    OptimizeRouteSequenceCommand,
+    OptimizeRouteSequenceUseCase,
+)
 from lpg.application.delivery.use_cases import (
     AssignOrderToRouteCommand,
     AssignOrderToRouteUseCase,
@@ -267,6 +273,39 @@ async def assign_order(
         AssignOrderToRouteCommand(route_id=route_id, order_id=request.order_id, changed_by=actor_id)
     )
     return RouteResponse.model_validate(result.route)
+
+
+@router.post(
+    "/{route_id}/optimize",
+    response_model=OptimizeRouteResponse,
+    summary="Reorder this route's pending stops for a shorter total distance",
+    dependencies=[Depends(require_permission("routes:manage"))],
+)
+async def optimize_route_sequence(
+    route_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[
+        OptimizeRouteSequenceUseCase, Depends(get_optimize_route_sequence_use_case)
+    ],
+) -> OptimizeRouteResponse:
+    """AI Operational Intelligence, Horizon 1 Stage 5 — nearest-neighbour +
+    2-opt over each pending stop's delivery coordinates. Applies
+    immediately (fully reversible — only sequence numbers move) and
+    publishes `delivery.route_updated` to the tenant's dispatch channel
+    via the usual domain-event path (`RouteStopsResequenced`), so the
+    Dispatch Board updates live without a manual refresh. Disabled by
+    default per tenant (`route_optimization_enabled`) — see
+    `RouteOptimizationDisabledError`.
+    """
+    result = await use_case.execute(
+        OptimizeRouteSequenceCommand(tenant_id=principal.tenant_id, route_id=route_id)
+    )
+    return OptimizeRouteResponse(
+        route=RouteResponse.model_validate(result.route),
+        km_before=result.km_before,
+        km_after=result.km_after,
+        km_saved=result.km_saved,
+    )
 
 
 @router.post(

@@ -82,6 +82,22 @@ class VehicleLoaded(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class RouteStopsResequenced(DomainEvent):
+    """AI Operational Intelligence, Horizon 1 Stage 5 — the stop order for
+    this route's pending stops changed, either by a dispatcher's manual
+    drag-reorder (future) or `OptimizeRouteSequenceUseCase`'s nearest-
+    neighbour + 2-opt proposal. `old_order`/`new_order` list only the
+    reordered (pending) stops, not the whole route — see
+    `Route.resequence_stops()`'s own docstring for why terminal stops are
+    excluded."""
+
+    route_id: uuid.UUID
+    tenant_id: uuid.UUID
+    old_order: tuple[uuid.UUID, ...]
+    new_order: tuple[uuid.UUID, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class RouteLoadConfirmed(DomainEvent):
     """The driver has checked the van against the load manifest. Not a gate
     on departing — accountability, and it unlocks the Driver App's
@@ -394,6 +410,66 @@ class Route(AggregateRoot):
                 stop_id=stop_id,
                 order_id=order_id,
                 tenant_id=self.tenant_id,
+            )
+        )
+
+    def resequence_stops(self, ordered_stop_ids: Sequence[uuid.UUID]) -> None:
+        """Reorders this route's `pending` stops to `ordered_stop_ids`
+        (AI Operational Intelligence, Horizon 1 Stage 5). Legal only in
+        `planned`/`loaded` — the same guard `assign_order()` uses; once a
+        route is `in_progress` a driver may already be en route to the
+        current first stop, so reordering underneath them is out of scope.
+
+        Only `pending` stops participate — a stop can be `cancelled` (its
+        order was cancelled) even on a `planned`/`loaded` route
+        (`cancel_stop()` doesn't gate on route status), and leaving a
+        cancelled stop's position alone rather than forcing the caller to
+        account for it keeps the proposal's job (order the *deliverable*
+        stops) separate from bookkeeping for ones that no longer matter.
+        `ordered_stop_ids` must be exactly this route's current pending
+        stop ids, as a set — no more, no fewer, no duplicates.
+        """
+        if self._status not in ("planned", "loaded"):
+            msg = f"Cannot resequence stops on route in status '{self._status}'."
+            raise InvariantViolation(msg)
+
+        pending_stops = [stop for stop in self._stops if stop.status == "pending"]
+        new_order = list(ordered_stop_ids)
+        if len(new_order) != len(set(new_order)):
+            msg = "The proposed stop order contains duplicate stop ids."
+            raise InvariantViolation(msg)
+        if {stop.id for stop in pending_stops} != set(new_order):
+            msg = "The proposed stop order must contain exactly this route's pending stops."
+            raise InvariantViolation(msg)
+
+        old_order = tuple(
+            stop.id for stop in sorted(pending_stops, key=lambda s: s.sequence_number)
+        )
+        # Reuse the exact sequence-number *values* pending stops already
+        # occupy (sorted), just reassigned to the new order — not a plain
+        # 1..N renumbering. A route can have a `cancelled` stop sitting at
+        # any position (`cancel_stop()` doesn't gate on route status), and
+        # that stop's own number is deliberately left untouched; reusing
+        # the same value set guarantees the reassignment never collides
+        # with a `cancelled` stop's number, so every stop's
+        # `sequence_number` stays unique across the whole route.
+        available_numbers = sorted(stop.sequence_number for stop in pending_stops)
+        stops_by_id = {stop.id: stop for stop in pending_stops}
+        for number, stop_id in zip(available_numbers, new_order, strict=True):
+            stops_by_id[stop_id].sequence_number = number
+
+        # Keep `self.stops`' own iteration order matching `sequence_number`
+        # order (the invariant `assign_order()`'s simple append already
+        # holds before any resequencing ever happens) — a caller iterating
+        # `route.stops` shouldn't have to re-sort to see delivery order.
+        self._stops.sort(key=lambda s: s.sequence_number)
+
+        self.record_event(
+            RouteStopsResequenced(
+                route_id=self.id,
+                tenant_id=self.tenant_id,
+                old_order=old_order,
+                new_order=tuple(new_order),
             )
         )
 

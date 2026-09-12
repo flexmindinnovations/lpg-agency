@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from lpg.api.v1.dependencies.admin import get_tenant_configuration_repository
+from lpg.api.v1.dependencies.ai import get_prediction_repository
 from lpg.api.v1.dependencies.compliance import get_weighment_record_repository
 from lpg.api.v1.dependencies.inventory import (
     get_inventory_location_repository,
@@ -14,6 +15,7 @@ from lpg.api.v1.dependencies.inventory import (
 )
 from lpg.api.v1.dependencies.order import get_order_repository
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
+from lpg.application.ai.prediction import PredictionRepository
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.compliance.ports import WeighmentRecordRepository
 from lpg.application.delivery.ports import (
@@ -22,6 +24,7 @@ from lpg.application.delivery.ports import (
     RouteRepository,
     VehicleRepository,
 )
+from lpg.application.delivery.route_optimization import OptimizeRouteSequenceUseCase
 from lpg.application.delivery.use_cases import (
     AssignOrderToRouteUseCase,
     CompleteRouteReconciliationUseCase,
@@ -92,6 +95,24 @@ def get_assign_order_to_route_use_case(
 ) -> AssignOrderToRouteUseCase:
     return AssignOrderToRouteUseCase(
         route_repository, order_repository, inventory_location_repository, unit_of_work
+    )
+
+
+def get_optimize_route_sequence_use_case(
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    prediction_repository: Annotated[PredictionRepository, Depends(get_prediction_repository)],
+    tenant_config_repository: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OptimizeRouteSequenceUseCase:
+    return OptimizeRouteSequenceUseCase(
+        route_repository,
+        order_repository,
+        prediction_repository,
+        tenant_config_repository,
+        unit_of_work,
     )
 
 

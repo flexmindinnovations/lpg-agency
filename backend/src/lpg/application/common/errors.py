@@ -424,3 +424,14 @@ class CylinderUnitNotFoundError(NotFoundError):
 
     error_code = "CYLINDER_UNIT_NOT_FOUND"
     title = "Cylinder unit not found"
+
+
+class RouteOptimizationDisabledError(ConflictError):
+    """`OptimizeRouteSequenceUseCase` raises this when the tenant has not
+    opted into `route_optimization_enabled` (AI Operational Intelligence,
+    Horizon 1 Stage 5) — the frontend already hides the "Optimise stop
+    order" button when this is off, so reaching this means a stale UI
+    state or a direct API call; a clear 409 either way, not a silent no-op."""
+
+    error_code = "ROUTE_OPTIMIZATION_DISABLED"
+    title = "Route optimization is not enabled for this tenant."
