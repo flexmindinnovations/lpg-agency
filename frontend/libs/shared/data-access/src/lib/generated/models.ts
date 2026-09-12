@@ -148,6 +148,8 @@ export type { RecordDeliveryRequest } from './models/record-delivery-request';
 export type { RecordFailedDeliveryRequest } from './models/record-failed-delivery-request';
 export type { RecordPaymentRequest } from './models/record-payment-request';
 export type { RecordWeighmentRequest } from './models/record-weighment-request';
+export type { RefillDueCustomerListResponse } from './models/refill-due-customer-list-response';
+export type { RefillDueCustomerResponse } from './models/refill-due-customer-response';
 export type { RefreshRequest } from './models/refresh-request';
 export type { RegisterCustomerRequest } from './models/register-customer-request';
 export type { RegisterCylinderUnitRequest } from './models/register-cylinder-unit-request';

@@ -6160,6 +6160,75 @@
         "title": "RecordWeighmentRequest",
         "type": "object"
       },
+      "RefillDueCustomerListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RefillDueCustomerResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "RefillDueCustomerListResponse",
+        "type": "object"
+      },
+      "RefillDueCustomerResponse": {
+        "description": "One row of the AI Operational Intelligence refill-due read model\n(`GET /customers/refill-due`, Horizon 1 Stage 2) — a heuristic\nprediction, not a guarantee; `model_version` on the underlying\n`ai.prediction` row is `refill_heuristic_v1`.",
+        "properties": {
+          "branch_id": {
+            "format": "uuid",
+            "title": "Branch Id",
+            "type": "string"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "interval_days": {
+            "title": "Interval Days",
+            "type": "number"
+          },
+          "last_delivered_at": {
+            "format": "date",
+            "title": "Last Delivered At",
+            "type": "string"
+          },
+          "phone_number": {
+            "title": "Phone Number",
+            "type": "string"
+          },
+          "refill_due_date": {
+            "format": "date",
+            "title": "Refill Due Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "full_name",
+          "phone_number",
+          "branch_id",
+          "refill_due_date",
+          "interval_days",
+          "last_delivered_at"
+        ],
+        "title": "RefillDueCustomerResponse",
+        "type": "object"
+      },
       "RefreshRequest": {
         "description": "`refresh_token` is optional in the body — the Dashboard's browser\nclient relies on the `HttpOnly` cookie instead\n(`api/v1/routers/auth.py`'s module docstring). Mobile clients, which\ncan't rely on a cookie, supply it here.",
         "properties": {
@@ -11548,6 +11617,50 @@
         "summary": "Get Onboarding Draft",
         "tags": [
           "Customer Onboarding Drafts"
+        ]
+      }
+    },
+    "/api/v1/customers/refill-due": {
+      "get": {
+        "description": "Customers whose predicted refill date falls within `within_days`\n(overdue included) — AI Operational Intelligence, Horizon 1 Stage 2's\n'Refills due this week' dashboard tile. Reads `ai.prediction`\n(`prediction_type=\"refill_due\"`), refreshed nightly by\n`predict_refill_due`; does not compute anything itself.",
+        "operationId": "list_refill_due_customers_api_v1_customers_refill_due_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "within_days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "title": "Within Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefillDueCustomerListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Refill Due Customers",
+        "tags": [
+          "Customers"
         ]
       }
     },

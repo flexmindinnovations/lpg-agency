@@ -6,6 +6,7 @@ import { addAddressApiV1CustomersCustomerIdAddressesPost } from './generated/fn/
 import { getCustomerApiV1CustomersCustomerIdGet } from './generated/fn/customers/get-customer-api-v-1-customers-customer-id-get';
 import { listCustomersApiV1CustomersGet } from './generated/fn/customers/list-customers-api-v-1-customers-get';
 import { listKycDocumentsApiV1CustomersCustomerIdKycGet } from './generated/fn/customers/list-kyc-documents-api-v-1-customers-customer-id-kyc-get';
+import { listRefillDueCustomersApiV1CustomersRefillDueGet } from './generated/fn/customers/list-refill-due-customers-api-v-1-customers-refill-due-get';
 import { peekNextConsumerNumberApiV1CustomersNextConsumerNumberPost } from './generated/fn/customers/peek-next-consumer-number-api-v-1-customers-next-consumer-number-post';
 import { registerCustomerApiV1CustomersPost } from './generated/fn/customers/register-customer-api-v-1-customers-post';
 import { setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut } from './generated/fn/customers/set-primary-address-api-v-1-customers-customer-id-addresses-address-id-primary-put';
@@ -27,6 +28,7 @@ import type { NextConsumerNumberResponse } from './generated/models/next-consume
 import type { OnboardingDraftListResponse } from './generated/models/onboarding-draft-list-response';
 import type { OnboardingDraftResponse } from './generated/models/onboarding-draft-response';
 import type { RecognizeKycDocumentResponse } from './generated/models/recognize-kyc-document-response';
+import type { RefillDueCustomerListResponse } from './generated/models/refill-due-customer-list-response';
 import type { RegisterCustomerRequest } from './generated/models/register-customer-request';
 import type { SaveOnboardingDraftRequest } from './generated/models/save-onboarding-draft-request';
 import type { UpdateCustomerProfileRequest } from './generated/models/update-customer-profile-request';
@@ -54,6 +56,16 @@ export class CustomerService {
       skip,
       limit,
       search,
+    }).pipe(map((res) => res.body));
+  }
+
+  /** Customers whose predicted refill date falls within `withinDays`
+   * (overdue included) — AI Operational Intelligence, Horizon 1 Stage 2's
+   * "Refills due this week" dashboard tile. A heuristic prediction, not a
+   * guarantee. */
+  listRefillDue(withinDays = 7): Observable<RefillDueCustomerListResponse> {
+    return listRefillDueCustomersApiV1CustomersRefillDueGet(this.http, this.config.rootUrl, {
+      within_days: withinDays,
     }).pipe(map((res) => res.body));
   }
 

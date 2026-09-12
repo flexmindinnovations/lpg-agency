@@ -28,10 +28,12 @@ import {
   type StatTone,
 } from '@lpg/shared/ui';
 import {
+  CustomerService,
   DashboardService,
   type CylinderTypePriceCardResponse,
   type DashboardActivityEntryResponse,
   DashboardSummaryResponse,
+  type RefillDueCustomerResponse,
   WebSocketService,
 } from '@lpg/shared/data-access';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -159,6 +161,19 @@ function statusLabel(status: string): string {
         }
       </lpg-section-card>
 
+      <!-- Refills Due Soon — AI Operational Intelligence Horizon 1 Stage 2.
+           A heuristic prediction (ai.prediction, model refill_heuristic_v1),
+           not a guarantee. -->
+      <lpg-section-card *lpgHasPermission="'customers:read'" heading="Refills Due This Week">
+        @if (refillsDueItems().length > 0) {
+          <lpg-activity-list [items]="refillsDueItems()" />
+        } @else if (refillsDueLoading()) {
+          <lpg-skeleton variant="text" [lines]="4" />
+        } @else {
+          <lpg-empty-state title="No refills due this week" description="Predicted refill dates are refreshed nightly from delivery history." />
+        }
+      </lpg-section-card>
+
       <!-- Recent Activity -->
       <lpg-section-card *lpgHasPermission="'audit:read'" heading="Recent Activity">
         @if (activityItems().length > 0) {
@@ -240,6 +255,7 @@ export class Home implements OnDestroy {
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly el = inject(ElementRef);
   private readonly dashboardService = inject(DashboardService);
+  private readonly customerService = inject(CustomerService);
   private readonly wsService = inject(WebSocketService);
 
   protected readonly loading = signal(true);
@@ -256,6 +272,31 @@ export class Home implements OnDestroy {
   protected readonly priceCards = signal<CylinderTypePriceCardResponse[]>([]);
 
   protected readonly recentActivity = signal<DashboardActivityEntryResponse[]>([]);
+
+  // Refills Due Soon — a separate, independently-loaded read model (AI
+  // Operational Intelligence Horizon 1 Stage 2), not part of the
+  // server-composed `summary` above: it reads `ai.prediction`, a
+  // different bounded context to the Customer/Driver/Vehicle/Warehouse/
+  // Inventory/PriceList/Audit repositories `GetDashboardSummaryUseCase`
+  // already aggregates.
+  protected readonly refillsDueLoading = signal(true);
+  protected readonly refillsDueSoon = signal<RefillDueCustomerResponse[]>([]);
+
+  protected readonly refillsDueItems = computed<ActivityItem[]>(() =>
+    this.refillsDueSoon()
+      .slice(0, 8)
+      .map((customer) => {
+        const overdue = customer.refill_due_date < this.todayIso;
+        return {
+          time: formatTimestamp(customer.last_delivered_at),
+          icon: 'pi pi-bell',
+          title: customer.full_name,
+          description: customer.phone_number,
+          status: overdue ? 'Overdue' : `Due ${customer.refill_due_date}`,
+          statusTone: overdue ? 'danger' : 'warning',
+        };
+      }),
+  );
 
   /** The "Recent Activity" list (doc §17) — a lighter projection than the
    *  full audit grid at /admin/audit-log. */
@@ -283,6 +324,7 @@ export class Home implements OnDestroy {
   protected readonly doughnutChartOptions = signal<any>({});
 
   private themeObserver: MutationObserver | null = null;
+  private readonly todayIso = new Date().toISOString().slice(0, 10);
 
   constructor() {
     effect(() => {
@@ -291,6 +333,7 @@ export class Home implements OnDestroy {
       }
     });
     this.loadDashboardData();
+    this.loadRefillsDueSoon();
 
     this.wsService.subscribeTo('dashboard');
     this.wsService.on('dashboard.metrics_stale')
@@ -341,6 +384,18 @@ export class Home implements OnDestroy {
         this.rebuildKpis();
         this.updateChartTheme();
         this.loading.set(false);
+      });
+  }
+
+  private loadRefillsDueSoon(): void {
+    this.refillsDueLoading.set(true);
+    this.customerService
+      .listRefillDue(7)
+      .pipe(catchError(() => of(null)))
+      .subscribe((response) => {
+        this.refillsDueSoon.set(response?.items ?? []);
+        this.refillsDueLoading.set(false);
+        this.rebuildKpis();
       });
   }
 
@@ -399,6 +454,14 @@ export class Home implements OnDestroy {
         tone: 'danger',
         permission: 'inventory:read',
         route: '/inventory',
+      },
+      {
+        title: 'Refills Due This Week',
+        value: this.refillsDueSoon().length.toLocaleString(),
+        icon: 'pi pi-bell',
+        tone: 'warning',
+        permission: 'customers:read',
+        route: '/customers',
       },
     ]);
   }

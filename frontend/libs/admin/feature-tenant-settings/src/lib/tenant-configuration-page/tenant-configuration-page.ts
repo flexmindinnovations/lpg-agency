@@ -57,6 +57,21 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       'How many hours an order may sit confirmed with no driver assigned before branch staff are alerted — a tuning knob, not an on/off switch (this alert is a pure notification, not a mutation, so it has no kill switch). Falls back to a platform default (4 hours) when unset. A whole number, e.g. 6.',
   },
+  refill_nudge_enabled: {
+    label: 'Refill Nudge Enabled',
+    description:
+      'Tenant opt-in for the proactive "time for a refill?" customer nudge (AI Operational Intelligence) — defaults to off (any falsy or absent value). The refill-due prediction itself always runs; this only controls whether a customer is notified. Set to true to enable; set to false to disable.',
+  },
+  refill_nudge_lead_days: {
+    label: 'Refill Nudge Lead Time (Days)',
+    description:
+      "How many days before a customer's predicted refill date to send the nudge. Falls back to a platform default (3 days) when unset. A whole number, e.g. 3.",
+  },
+  refill_nudge_min_gap_days: {
+    label: 'Refill Nudge Minimum Gap (Days)',
+    description:
+      "Minimum days since a customer's last delivery before the refill nudge will ever fire — a sanity floor against a short/noisy predicted interval, not an enforced booking rule. Falls back to a platform default (5 days) when unset. A whole number, e.g. 5.",
+  },
 };
 
 const RECOGNIZED_CONFIG_KEYS = [
@@ -67,6 +82,9 @@ const RECOGNIZED_CONFIG_KEYS = [
   'ai_daily_token_budget',
   'auto_assignment_enabled',
   'stale_unassigned_order_hours',
+  'refill_nudge_enabled',
+  'refill_nudge_lead_days',
+  'refill_nudge_min_gap_days',
 ] as const;
 
 /** Best-effort label for a config key the frontend's catalog doesn't
