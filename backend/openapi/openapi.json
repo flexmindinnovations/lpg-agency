@@ -4458,6 +4458,34 @@
         "title": "OnboardingDraftResponse",
         "type": "object"
       },
+      "OptimizeRouteResponse": {
+        "description": "AI Operational Intelligence, Horizon 1 Stage 5 — the result of\n`POST /routes/{id}/optimize`. `km_saved` is a heuristic straight-line\n(haversine) estimate, not a routed-road distance; `route` is the\nalready-resequenced route (the reorder is applied immediately, not\nproposed for a separate accept step — fully reversible, since only\nsequence numbers moved).",
+        "properties": {
+          "km_after": {
+            "title": "Km After",
+            "type": "number"
+          },
+          "km_before": {
+            "title": "Km Before",
+            "type": "number"
+          },
+          "km_saved": {
+            "title": "Km Saved",
+            "type": "number"
+          },
+          "route": {
+            "$ref": "#/components/schemas/RouteResponse"
+          }
+        },
+        "required": [
+          "route",
+          "km_before",
+          "km_after",
+          "km_saved"
+        ],
+        "title": "OptimizeRouteResponse",
+        "type": "object"
+      },
       "OrderLineResponse": {
         "properties": {
           "cylinder_type_id": {
@@ -7396,14 +7424,6 @@
             "title": "Items",
             "type": "array"
           },
-          "page": {
-            "title": "Page",
-            "type": "integer"
-          },
-          "page_size": {
-            "title": "Page Size",
-            "type": "integer"
-          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -7411,9 +7431,7 @@
         },
         "required": [
           "items",
-          "total",
-          "page",
-          "page_size"
+          "total"
         ],
         "title": "RoutePageResponse",
         "type": "object"
@@ -17441,6 +17459,50 @@
           }
         },
         "summary": "Report the driver's live location",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/optimize": {
+      "post": {
+        "description": "AI Operational Intelligence, Horizon 1 Stage 5 — nearest-neighbour +\n2-opt over each pending stop's delivery coordinates. Applies\nimmediately (fully reversible — only sequence numbers move) and\npublishes `delivery.route_updated` to the tenant's dispatch channel\nvia the usual domain-event path (`RouteStopsResequenced`), so the\nDispatch Board updates live without a manual refresh. Disabled by\ndefault per tenant (`route_optimization_enabled`) — see\n`RouteOptimizationDisabledError`.",
+        "operationId": "optimize_route_sequence_api_v1_routes__route_id__optimize_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizeRouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder this route's pending stops for a shorter total distance",
         "tags": [
           "Routes"
         ]

@@ -330,6 +330,16 @@ export class FeatureDispatch implements OnInit {
     const status = this.selectedRoute()?.status;
     return status === 'planned' || status === 'loaded';
   });
+  // AI Operational Intelligence, Horizon 1 Stage 5 — same planned/loaded
+  // gate as adding a stop (`Route.resequence_stops()`'s own guard), plus
+  // a minimum of 3 pending stops: reordering 1-2 stops has nothing to
+  // optimize, so the button stays hidden rather than offering a no-op.
+  protected readonly canOptimizeSelectedRoute = computed(() => {
+    const route = this.selectedRoute();
+    if (!route || (route.status !== 'planned' && route.status !== 'loaded')) return false;
+    const pendingStops = (route.stops ?? []).filter((s) => s.status === 'pending');
+    return pendingStops.length >= 3;
+  });
   protected readonly canReconcileRoute = computed(
     () => this.selectedRoute()?.status === 'completed',
   );
@@ -673,6 +683,27 @@ export class FeatureDispatch implements OnInit {
       next: () => {
         this.refreshSelectedRoute();
         this.refreshAfterMutation('Route cancelled.');
+      },
+      error: (err) => {
+        this.errorMessage.set(errorMessageFor(err));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  protected onOptimizeRoute(): void {
+    const route = this.selectedRoute();
+    if (!route) return;
+    this.loading.set(true);
+    this.deliveryService.optimizeRoute(route.id).subscribe({
+      next: (result) => {
+        this.selectedRoute.set(result.route);
+        const saved = result.km_saved;
+        const message =
+          saved > 0.05
+            ? `Stop order optimised — ~${saved.toFixed(1)} km saved.`
+            : 'Stop order optimised — already close to optimal.';
+        this.refreshAfterMutation(message);
       },
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));

@@ -112,6 +112,7 @@ export type { NextConsumerNumberResponse } from './models/next-consumer-number-r
 export type { NotificationResponse } from './models/notification-response';
 export type { OnboardingDraftListResponse } from './models/onboarding-draft-list-response';
 export type { OnboardingDraftResponse } from './models/onboarding-draft-response';
+export type { OptimizeRouteResponse } from './models/optimize-route-response';
 export type { OrderLineResponse } from './models/order-line-response';
 export type { OrderPageResponse } from './models/order-page-response';
 export type { OrderResponse } from './models/order-response';

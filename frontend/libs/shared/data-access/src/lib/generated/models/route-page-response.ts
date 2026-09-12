@@ -4,7 +4,5 @@
 import { RouteResponse } from '../models/route-response';
 export interface RoutePageResponse {
   items: Array<RouteResponse>;
-  page: number;
-  page_size: number;
   total: number;
 }

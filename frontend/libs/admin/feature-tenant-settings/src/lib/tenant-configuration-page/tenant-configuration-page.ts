@@ -72,6 +72,25 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       "Minimum days since a customer's last delivery before the refill nudge will ever fire — a sanity floor against a short/noisy predicted interval, not an enforced booking rule. Falls back to a platform default (5 days) when unset. A whole number, e.g. 5.",
   },
+  omc_rate_ingestion_enabled: {
+    label: 'OMC Rate Ingestion Enabled',
+    description:
+      'Tenant opt-in for the monthly OMC rate-fetch cron (AI Operational Intelligence) — defaults to off. No working rate source exists yet (every public OMC page is bot-protected or has no LPG data), so this currently has no effect even when enabled; the review-queue pipeline itself is otherwise ready. Set to true to enable; set to false to disable.',
+  },
+  omc_provider: {
+    label: 'OMC Provider',
+    description:
+      'Which OMC (e.g. "IOCL", "HPCL", "BPCL") this tenant buys from — passed to the rate source once a working adapter exists.',
+  },
+  omc_city: {
+    label: 'OMC Rate City',
+    description: "Which city's published OMC rates apply to this tenant.",
+  },
+  route_optimization_enabled: {
+    label: 'Route Optimization Enabled',
+    description:
+      'Tenant opt-in for "Optimise stop order" on the Dispatch Board (AI Operational Intelligence) — defaults to off; the button stays hidden until this is set. A deterministic nearest-neighbour + 2-opt reorder of a route\'s pending stops by estimated distance, not a trained model. Set to true to enable; set to false to disable.',
+  },
 };
 
 const RECOGNIZED_CONFIG_KEYS = [
@@ -85,6 +104,10 @@ const RECOGNIZED_CONFIG_KEYS = [
   'refill_nudge_enabled',
   'refill_nudge_lead_days',
   'refill_nudge_min_gap_days',
+  'omc_rate_ingestion_enabled',
+  'omc_provider',
+  'omc_city',
+  'route_optimization_enabled',
 ] as const;
 
 /** Best-effort label for a config key the frontend's catalog doesn't

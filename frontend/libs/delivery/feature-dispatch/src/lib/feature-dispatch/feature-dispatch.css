@@ -196,6 +196,12 @@
   margin: 0;
 }
 
+.stops-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
 .load-form {
   display: flex;
   flex-direction: column;

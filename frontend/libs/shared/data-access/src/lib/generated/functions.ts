@@ -405,6 +405,8 @@ export type { LoadVehicleForRouteApiV1RoutesRouteIdLoadPost$Params as LoadVehicl
 export { loadVehicleForRouteApiV1RoutesRouteIdLoadPost as loadVehicleForRouteApiV1RoutesRouteIdLoadPost } from './fn/routes/load-vehicle-for-route-api-v-1-routes-route-id-load-post';
 export type { ReportDriverLocationApiV1RoutesRouteIdLocationPost$Params as ReportDriverLocationApiV1RoutesRouteIdLocationPost$Params } from './fn/routes/report-driver-location-api-v-1-routes-route-id-location-post';
 export { reportDriverLocationApiV1RoutesRouteIdLocationPost as reportDriverLocationApiV1RoutesRouteIdLocationPost } from './fn/routes/report-driver-location-api-v-1-routes-route-id-location-post';
+export type { OptimizeRouteSequenceApiV1RoutesRouteIdOptimizePost$Params as OptimizeRouteSequenceApiV1RoutesRouteIdOptimizePost$Params } from './fn/routes/optimize-route-sequence-api-v-1-routes-route-id-optimize-post';
+export { optimizeRouteSequenceApiV1RoutesRouteIdOptimizePost as optimizeRouteSequenceApiV1RoutesRouteIdOptimizePost } from './fn/routes/optimize-route-sequence-api-v-1-routes-route-id-optimize-post';
 export type { CompleteRouteReconciliationApiV1RoutesRouteIdReconcilePost$Params as CompleteRouteReconciliationApiV1RoutesRouteIdReconcilePost$Params } from './fn/routes/complete-route-reconciliation-api-v-1-routes-route-id-reconcile-post';
 export { completeRouteReconciliationApiV1RoutesRouteIdReconcilePost as completeRouteReconciliationApiV1RoutesRouteIdReconcilePost } from './fn/routes/complete-route-reconciliation-api-v-1-routes-route-id-reconcile-post';
 export type { UpdateRouteStatusApiV1RoutesRouteIdStatusPatch$Params as UpdateRouteStatusApiV1RoutesRouteIdStatusPatch$Params } from './fn/routes/update-route-status-api-v-1-routes-route-id-status-patch';
