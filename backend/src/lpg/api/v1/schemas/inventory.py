@@ -167,3 +167,54 @@ class InventoryTransactionResponse(BaseModel):
 class InventoryTransactionPageResponse(BaseModel):
     items: list[InventoryTransactionResponse]
     next_cursor: str | None
+
+
+# ==========================================================================
+# Reorder policy (AI Operational Intelligence, Horizon 1 Stage 4)
+# ==========================================================================
+
+
+class SetReorderPolicyRequest(BaseModel):
+    """Addressed by `warehouse_id`, not the internal `inventory_location_id`
+    — v1 scope is warehouses only; see `application/inventory/reorder.py`'s
+    module docstring. The location row is lazily created if this warehouse
+    has never had inventory activity yet."""
+
+    warehouse_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    reorder_point: int = Field(ge=0)
+    safety_stock: int = Field(ge=0, default=0)
+
+
+class ReorderPolicyResponse(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    inventory_location_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    reorder_point: int
+    safety_stock: int
+    last_reorder_notified_at: datetime | None
+    updated_by: uuid.UUID | None
+    updated_at: datetime
+
+
+class ReorderPolicyListResponse(BaseModel):
+    items: list[ReorderPolicyResponse]
+
+
+class ReorderSignalResponse(BaseModel):
+    """One currently-breached `(location, cylinder_type)` — a heuristic
+    threshold comparison, not a guarantee; recorded to `ai.prediction`
+    (`model_version="reorder_threshold_v1"`) by the daily cron."""
+
+    policy_id: uuid.UUID
+    inventory_location_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    on_hand: int
+    reorder_point: int
+    safety_stock: int
+    last_reorder_notified_at: datetime | None
+
+
+class ReorderSignalListResponse(BaseModel):
+    items: list[ReorderSignalResponse]

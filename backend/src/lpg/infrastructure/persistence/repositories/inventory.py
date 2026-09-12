@@ -10,7 +10,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, literal, select, tuple_
+from sqlalchemy import and_, func, literal, select, tuple_
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from lpg.application.common.errors import NotFoundError
 from lpg.application.inventory.ports import (
@@ -18,6 +19,8 @@ from lpg.application.inventory.ports import (
     InventoryTransactionEntry,
     InventoryTransactionPage,
     ReconciliationRecordEntry,
+    ReorderPolicy,
+    ReorderSignal,
 )
 from lpg.domain.inventory.inventory_location import InventoryLocation
 from lpg.infrastructure.persistence.models.inventory import (
@@ -26,6 +29,7 @@ from lpg.infrastructure.persistence.models.inventory import (
     InventoryLocationModel,
     InventoryTransactionModel,
     ReconciliationRecordModel,
+    ReorderPolicyModel,
 )
 
 if TYPE_CHECKING:
@@ -413,4 +417,122 @@ class SqlAlchemyReconciliationRecordRepository:
             recorded_by=row.recorded_by,
             approved_by=row.approved_by,
             approved_at=row.approved_at,
+        )
+
+
+class SqlAlchemyReorderPolicyRepository:
+    """Implements `ReorderPolicyRepository` (`lpg.application.inventory.ports`)."""
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    def next_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    async def upsert(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        inventory_location_id: uuid.UUID,
+        cylinder_type_id: uuid.UUID,
+        reorder_point: int,
+        safety_stock: int,
+        updated_by: uuid.UUID | None,
+    ) -> ReorderPolicy:
+        now = datetime.now(UTC)
+        stmt = pg_insert(ReorderPolicyModel).values(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            inventory_location_id=inventory_location_id,
+            cylinder_type_id=cylinder_type_id,
+            reorder_point=reorder_point,
+            safety_stock=safety_stock,
+            updated_by=updated_by,
+            updated_at=now,
+        )
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_reorder_policy_dimension",
+            set_={
+                "reorder_point": stmt.excluded.reorder_point,
+                "safety_stock": stmt.excluded.safety_stock,
+                "updated_by": stmt.excluded.updated_by,
+                "updated_at": stmt.excluded.updated_at,
+            },
+        )
+        await self._uow.session.execute(stmt)
+
+        row = (
+            await self._uow.session.execute(
+                select(ReorderPolicyModel).where(
+                    ReorderPolicyModel.tenant_id == tenant_id,
+                    ReorderPolicyModel.inventory_location_id == inventory_location_id,
+                    ReorderPolicyModel.cylinder_type_id == cylinder_type_id,
+                )
+            )
+        ).scalars().one()
+        return self._to_policy(row)
+
+    async def list_for_tenant(self, tenant_id: uuid.UUID) -> list[ReorderPolicy]:
+        stmt = select(ReorderPolicyModel).where(ReorderPolicyModel.tenant_id == tenant_id)
+        result = await self._uow.session.execute(stmt)
+        return [self._to_policy(row) for row in result.scalars()]
+
+    async def list_breached_for_tenant(self, tenant_id: uuid.UUID) -> list[ReorderSignal]:
+        on_hand = func.coalesce(InventoryBalanceModel.quantity, 0)
+        stmt = (
+            select(
+                ReorderPolicyModel.id,
+                ReorderPolicyModel.inventory_location_id,
+                ReorderPolicyModel.cylinder_type_id,
+                on_hand.label("on_hand"),
+                ReorderPolicyModel.reorder_point,
+                ReorderPolicyModel.safety_stock,
+                ReorderPolicyModel.last_reorder_notified_at,
+            )
+            .outerjoin(
+                InventoryBalanceModel,
+                and_(
+                    InventoryBalanceModel.inventory_location_id
+                    == ReorderPolicyModel.inventory_location_id,
+                    InventoryBalanceModel.cylinder_type_id == ReorderPolicyModel.cylinder_type_id,
+                    InventoryBalanceModel.status == "filled",
+                    InventoryBalanceModel.is_deleted.is_(False),
+                ),
+            )
+            .where(
+                ReorderPolicyModel.tenant_id == tenant_id,
+                on_hand <= ReorderPolicyModel.reorder_point,
+            )
+        )
+        rows = (await self._uow.session.execute(stmt)).all()
+        return [
+            ReorderSignal(
+                policy_id=row.id,
+                inventory_location_id=row.inventory_location_id,
+                cylinder_type_id=row.cylinder_type_id,
+                on_hand=int(row.on_hand),
+                reorder_point=row.reorder_point,
+                safety_stock=row.safety_stock,
+                last_reorder_notified_at=row.last_reorder_notified_at,
+            )
+            for row in rows
+        ]
+
+    async def mark_reorder_notified(self, policy_id: uuid.UUID) -> None:
+        row = await self._uow.session.get(ReorderPolicyModel, policy_id)
+        if row is not None:
+            row.last_reorder_notified_at = datetime.now(UTC)
+
+    @staticmethod
+    def _to_policy(row: ReorderPolicyModel) -> ReorderPolicy:
+        return ReorderPolicy(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            inventory_location_id=row.inventory_location_id,
+            cylinder_type_id=row.cylinder_type_id,
+            reorder_point=row.reorder_point,
+            safety_stock=row.safety_stock,
+            last_reorder_notified_at=row.last_reorder_notified_at,
+            updated_by=row.updated_by,
+            updated_at=row.updated_at,
         )

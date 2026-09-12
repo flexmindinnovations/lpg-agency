@@ -200,3 +200,34 @@ class ReconciliationRecordModel(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
     version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
+class ReorderPolicyModel(Base):
+    """Maps `inventory.reorder_policy` (migration `c4a8d6f2e9b3`). Mutable —
+    an admin edits a threshold in place, not historized.
+    """
+
+    __tablename__ = "reorder_policy"
+    __table_args__ = {"schema": "inventory"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    inventory_location_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("inventory.inventory_location.id")
+    )
+    cylinder_type_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.cylinder_type.id")
+    )
+    reorder_point: Mapped[int] = mapped_column(Integer())
+    safety_stock: Mapped[int] = mapped_column(Integer(), server_default=text("0"))
+    last_reorder_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)

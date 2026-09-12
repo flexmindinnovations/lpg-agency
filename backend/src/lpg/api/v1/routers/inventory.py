@@ -45,6 +45,7 @@ from lpg.api.v1.dependencies.inventory import (
     get_grn_number_sequence,
     get_inventory_location_repository,
     get_reconciliation_record_repository,
+    get_reorder_policy_repository,
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.inventory import (
@@ -63,6 +64,11 @@ from lpg.api.v1.schemas.inventory import (
     ReconciliationRecordResponse,
     RecordCollectionRequest,
     RecordDeliveryRequest,
+    ReorderPolicyListResponse,
+    ReorderPolicyResponse,
+    ReorderSignalListResponse,
+    ReorderSignalResponse,
+    SetReorderPolicyRequest,
 )
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.identity.ports import AuthenticatedPrincipal
@@ -74,6 +80,17 @@ from lpg.application.inventory.ports import (
     InventoryTransactionEntry,
     ReconciliationRecordEntry,
     ReconciliationRecordRepository,
+    ReorderPolicy,
+    ReorderPolicyRepository,
+    ReorderSignal,
+)
+from lpg.application.inventory.reorder import (
+    ListReorderPoliciesQuery,
+    ListReorderPoliciesUseCase,
+    ListReorderSignalsQuery,
+    ListReorderSignalsUseCase,
+    SetReorderPolicyCommand,
+    SetReorderPolicyUseCase,
 )
 from lpg.application.inventory.use_cases import (
     AdjustInventoryCommand,
@@ -86,6 +103,7 @@ from lpg.application.inventory.use_cases import (
     CreateReconciliationRecordUseCase,
     GetInventoryBalanceQuery,
     GetInventoryBalanceUseCase,
+    GetOrCreateInventoryLocationUseCase,
     ListInventoryTransactionsQuery,
     ListInventoryTransactionsUseCase,
     LoadTransferCommand,
@@ -155,6 +173,32 @@ def _grn_to_response(entry: GoodsReceiptNoteEntry) -> GoodsReceiptResponse:
         source_omc=entry.source_omc,
         received_by=entry.received_by,
         received_at=entry.received_at,
+    )
+
+
+def _reorder_policy_to_response(policy: ReorderPolicy) -> ReorderPolicyResponse:
+    return ReorderPolicyResponse(
+        id=policy.id,
+        tenant_id=policy.tenant_id,
+        inventory_location_id=policy.inventory_location_id,
+        cylinder_type_id=policy.cylinder_type_id,
+        reorder_point=policy.reorder_point,
+        safety_stock=policy.safety_stock,
+        last_reorder_notified_at=policy.last_reorder_notified_at,
+        updated_by=policy.updated_by,
+        updated_at=policy.updated_at,
+    )
+
+
+def _reorder_signal_to_response(signal: ReorderSignal) -> ReorderSignalResponse:
+    return ReorderSignalResponse(
+        policy_id=signal.policy_id,
+        inventory_location_id=signal.inventory_location_id,
+        cylinder_type_id=signal.cylinder_type_id,
+        on_hand=signal.on_hand,
+        reorder_point=signal.reorder_point,
+        safety_stock=signal.safety_stock,
+        last_reorder_notified_at=signal.last_reorder_notified_at,
     )
 
 
@@ -518,3 +562,91 @@ async def approve_reconciliation_record(
         ApproveReconciliationCommand(record_id=record_id, approved_by=actor_id)
     )
     return _reconciliation_to_response(record)
+
+
+# ==========================================================================
+# Reorder policy (AI Operational Intelligence, Horizon 1 Stage 4)
+# ==========================================================================
+
+
+@router.put(
+    "/inventory/reorder-policy",
+    response_model=ReorderPolicyResponse,
+    dependencies=[Depends(require_permission("inventory:adjust"))],
+)
+async def set_reorder_policy(
+    request: SetReorderPolicyRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
+    reorder_policy_repository: Annotated[
+        ReorderPolicyRepository, Depends(get_reorder_policy_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> ReorderPolicyResponse:
+    """Set or edit the reorder threshold for one warehouse x cylinder type.
+    Addressed by `warehouse_id` (v1 scope is warehouses only — see
+    `application/inventory/reorder.py`'s module docstring), lazily
+    persisting the `InventoryLocation` row if this warehouse has never had
+    inventory activity yet — the same "no row until first mutation" shape
+    `GetOrCreateInventoryLocationUseCase` already documents, made real
+    here since `reorder_policy.inventory_location_id` is a genuine FK.
+    """
+    actor_id = _require_actor(principal)
+    location = await GetOrCreateInventoryLocationUseCase(location_repository).execute(
+        tenant_id=principal.tenant_id,
+        location_type="warehouse",
+        location_ref_id=request.warehouse_id,
+    )
+    await location_repository.save(location)
+
+    use_case = SetReorderPolicyUseCase(reorder_policy_repository, unit_of_work)
+    policy = await use_case.execute(
+        SetReorderPolicyCommand(
+            tenant_id=principal.tenant_id,
+            inventory_location_id=location.id,
+            cylinder_type_id=request.cylinder_type_id,
+            reorder_point=request.reorder_point,
+            safety_stock=request.safety_stock,
+            updated_by=actor_id,
+        )
+    )
+    return _reorder_policy_to_response(policy)
+
+
+@router.get(
+    "/inventory/reorder-policy",
+    response_model=ReorderPolicyListResponse,
+    dependencies=[Depends(require_permission("inventory:read"))],
+)
+async def list_reorder_policies(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    reorder_policy_repository: Annotated[
+        ReorderPolicyRepository, Depends(get_reorder_policy_repository)
+    ],
+) -> ReorderPolicyListResponse:
+    use_case = ListReorderPoliciesUseCase(reorder_policy_repository)
+    policies = await use_case.execute(ListReorderPoliciesQuery(tenant_id=principal.tenant_id))
+    return ReorderPolicyListResponse(items=[_reorder_policy_to_response(p) for p in policies])
+
+
+@router.get(
+    "/inventory/reorder-signals",
+    response_model=ReorderSignalListResponse,
+    summary="Currently-breached reorder thresholds",
+    dependencies=[Depends(require_permission("inventory:read"))],
+)
+async def list_reorder_signals(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    reorder_policy_repository: Annotated[
+        ReorderPolicyRepository, Depends(get_reorder_policy_repository)
+    ],
+) -> ReorderSignalListResponse:
+    """Pure read — a heuristic threshold comparison, not a guarantee; the
+    daily `check_reorder_levels` cron is what actually records these to
+    `ai.prediction` and notifies staff. This endpoint recomputes the same
+    comparison live, with no side effect of its own."""
+    use_case = ListReorderSignalsUseCase(reorder_policy_repository)
+    signals = await use_case.execute(ListReorderSignalsQuery(tenant_id=principal.tenant_id))
+    return ReorderSignalListResponse(items=[_reorder_signal_to_response(s) for s in signals])

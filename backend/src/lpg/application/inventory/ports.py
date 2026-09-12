@@ -60,6 +60,39 @@ class GoodsReceiptNoteEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class ReorderPolicy:
+    """An admin-set reorder threshold for one `(inventory_location,
+    cylinder_type)` — AI Operational Intelligence, Horizon 1 Stage 4.
+    Mutable, not historized; `application/inventory/reorder.py`'s module
+    docstring covers why."""
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    inventory_location_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    reorder_point: int
+    safety_stock: int
+    last_reorder_notified_at: datetime | None
+    updated_by: uuid.UUID | None
+    updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ReorderSignal:
+    """One breached `(location, cylinder_type)` — `on_hand` already
+    includes the `COALESCE(..., 0)` for a policy with no `inventory_balance`
+    row at all (zero stock is the most urgent breach, not a missing one)."""
+
+    policy_id: uuid.UUID
+    inventory_location_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    on_hand: int
+    reorder_point: int
+    safety_stock: int
+    last_reorder_notified_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
 class ReconciliationRecordEntry:
     id: uuid.UUID
     tenant_id: uuid.UUID
@@ -170,3 +203,32 @@ class ReconciliationRecordRepository(Protocol):
     async def approve(
         self, record_id: uuid.UUID, *, approved_by: uuid.UUID
     ) -> ReconciliationRecordEntry: ...
+
+
+class ReorderPolicyRepository(Protocol):
+    def next_id(self) -> uuid.UUID: ...
+
+    async def upsert(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        inventory_location_id: uuid.UUID,
+        cylinder_type_id: uuid.UUID,
+        reorder_point: int,
+        safety_stock: int,
+        updated_by: uuid.UUID | None,
+    ) -> ReorderPolicy:
+        """Insert or edit-in-place the threshold for this dimension —
+        `ON CONFLICT (tenant_id, inventory_location_id, cylinder_type_id)
+        DO UPDATE`. Never creates a second row for the same dimension."""
+        ...
+
+    async def list_for_tenant(self, tenant_id: uuid.UUID) -> Sequence[ReorderPolicy]: ...
+
+    async def list_breached_for_tenant(self, tenant_id: uuid.UUID) -> Sequence[ReorderSignal]:
+        """Every policy whose `filled` on-hand quantity (0 when there is no
+        `inventory_balance` row at all) is `<= reorder_point` — the whole
+        comparison happens in one query, not fetch-then-filter-in-Python."""
+        ...
+
+    async def mark_reorder_notified(self, policy_id: uuid.UUID) -> None: ...

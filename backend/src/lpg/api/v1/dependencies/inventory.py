@@ -15,6 +15,7 @@ from lpg.application.inventory.ports import (
     GrnNumberSequence,
     InventoryLocationRepository,
     ReconciliationRecordRepository,
+    ReorderPolicyRepository,
 )
 
 
@@ -62,3 +63,13 @@ def get_reconciliation_record_repository(
     )
 
     return SqlAlchemyReconciliationRecordRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_reorder_policy_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> ReorderPolicyRepository:
+    from lpg.infrastructure.persistence.repositories.inventory import (
+        SqlAlchemyReorderPolicyRepository,
+    )
+
+    return SqlAlchemyReorderPolicyRepository(unit_of_work)  # type: ignore[arg-type]

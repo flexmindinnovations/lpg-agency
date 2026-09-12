@@ -48,6 +48,7 @@ from lpg.config.settings import get_settings
 from lpg.infrastructure.jobs.auto_assignment_jobs import auto_assign_driver
 from lpg.infrastructure.jobs.compliance_jobs import check_compliance_expiry
 from lpg.infrastructure.jobs.feature_store_jobs import build_feature_snapshots
+from lpg.infrastructure.jobs.inventory_jobs import check_reorder_levels
 from lpg.infrastructure.jobs.notification_jobs import send_notification
 from lpg.infrastructure.jobs.pool import build_job_queue
 from lpg.infrastructure.jobs.pricing_jobs import fetch_omc_rates
@@ -223,6 +224,9 @@ class WorkerSettings:
         # Monthly, day 1 -- a fresh set of OMC rate proposals for the
         # month ahead (`effective_from` = the 1st of next month).
         cron(fetch_omc_rates, day=1, hour=6, minute=0),
+        # Daily -- a threshold breach is worth catching same-day, not
+        # batched with the monthly rate check.
+        cron(check_reorder_levels, hour=7, minute=0),
     ]
 
     functions: ClassVar = (ping, bulk_cancel_orders, send_notification, auto_assign_driver)

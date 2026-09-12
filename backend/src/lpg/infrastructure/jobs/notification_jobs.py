@@ -52,6 +52,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
         # predict_refill_due`, which enqueues it).
         # "lpg_rate_review_staff" carries "proposal_count" instead (see
         # `pricing_jobs.fetch_omc_rates`, which enqueues it).
+        # "inventory_low_stock_staff" carries "inventory_location_id"/
+        # "cylinder_type_id"/"on_hand"/"reorder_point" instead (see
+        # `inventory_jobs.check_reorder_levels`, which enqueues it).
     }
     """
     structlog.contextvars.bind_contextvars(
@@ -152,6 +155,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 "route_load_confirmed_staff",
                 "compliance_document_expiring_staff",
                 "lpg_rate_review_staff",
+                "inventory_low_stock_staff",
             ):
                 # Tenant-wide ops team — a cash discrepancy (or a driver
                 # confirming the van load, or a licence/RC about to expire)
@@ -286,6 +290,9 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif notification_type == "lpg_rate_review_staff":
                 reference_type = "price_list_proposal"
                 reference_id = None
+            elif notification_type == "inventory_low_stock_staff":
+                reference_type = "inventory_location"
+                reference_id = uuid.UUID(payload["inventory_location_id"])
             else:
                 reference_type = "order"
                 reference_id = uuid.UUID(payload["order_id"]) if "order_id" in payload else None
@@ -446,6 +453,7 @@ def _get_title(notification_type: str) -> str:
         "compliance_document_expiring_staff": "Compliance Document Expiring",
         "refill_due_customer": "Time for a Refill?",
         "lpg_rate_review_staff": "New LPG Rate Proposals to Review",
+        "inventory_low_stock_staff": "Low Stock Alert",
     }
     return titles.get(notification_type, "Notification")
 
@@ -475,6 +483,13 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         return (
             f"{count} LPG rate proposal{plural} for next month are ready for review on the "
             "Price List page."
+        )
+    if notification_type == "inventory_low_stock_staff":
+        on_hand = payload.get("on_hand", "?")
+        reorder_point = payload.get("reorder_point", "?")
+        return (
+            f"Filled stock is down to {on_hand}, at or below the reorder point of "
+            f"{reorder_point}. Time to reorder."
         )
     if notification_type == "compliance_document_expiring_staff":
         doc_label = str(payload.get("doc_type", "document")).replace("_", " ")
@@ -522,6 +537,7 @@ def _should_send_email(notification_type: str) -> bool:
         "invoice_generated",
         "cash_shortfall_staff",
         "lpg_rate_review_staff",
+        "inventory_low_stock_staff",
     }
 
 
