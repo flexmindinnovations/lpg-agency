@@ -45,6 +45,10 @@ export type { SetPriceApiV1AdminPriceListPost$Params as SetPriceApiV1AdminPriceL
 export { setPriceApiV1AdminPriceListPost as setPriceApiV1AdminPriceListPost } from './fn/administration/set-price-api-v-1-admin-price-list-post';
 export type { GetEffectivePriceApiV1AdminPriceListEffectiveGet$Params as GetEffectivePriceApiV1AdminPriceListEffectiveGet$Params } from './fn/administration/get-effective-price-api-v-1-admin-price-list-effective-get';
 export { getEffectivePriceApiV1AdminPriceListEffectiveGet as getEffectivePriceApiV1AdminPriceListEffectiveGet } from './fn/administration/get-effective-price-api-v-1-admin-price-list-effective-get';
+export type { ListPriceListProposalsApiV1AdminPriceListProposalsGet$Params as ListPriceListProposalsApiV1AdminPriceListProposalsGet$Params } from './fn/administration/list-price-list-proposals-api-v-1-admin-price-list-proposals-get';
+export { listPriceListProposalsApiV1AdminPriceListProposalsGet as listPriceListProposalsApiV1AdminPriceListProposalsGet } from './fn/administration/list-price-list-proposals-api-v-1-admin-price-list-proposals-get';
+export type { ReviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch$Params as ReviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch$Params } from './fn/administration/review-price-list-proposal-api-v-1-admin-price-list-proposals-proposal-id-patch';
+export { reviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch as reviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch } from './fn/administration/review-price-list-proposal-api-v-1-admin-price-list-proposals-proposal-id-patch';
 export type { GetTenantApiV1AdminTenantGet$Params as GetTenantApiV1AdminTenantGet$Params } from './fn/administration/get-tenant-api-v-1-admin-tenant-get';
 export { getTenantApiV1AdminTenantGet as getTenantApiV1AdminTenantGet } from './fn/administration/get-tenant-api-v-1-admin-tenant-get';
 export type { ListTenantConfigurationApiV1AdminTenantConfigurationGet$Params as ListTenantConfigurationApiV1AdminTenantConfigurationGet$Params } from './fn/administration/list-tenant-configuration-api-v-1-admin-tenant-configuration-get';

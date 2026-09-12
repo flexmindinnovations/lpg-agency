@@ -126,6 +126,8 @@ export type { PaymentResponse } from './models/payment-response';
 export type { PlanRouteRequest } from './models/plan-route-request';
 export type { PodAttachmentResponse } from './models/pod-attachment-response';
 export type { PriceListEntryResponse } from './models/price-list-entry-response';
+export type { PriceListProposalListResponse } from './models/price-list-proposal-list-response';
+export type { PriceListProposalResponse } from './models/price-list-proposal-response';
 export type { PrincipalResponse } from './models/principal-response';
 export type { PrintJobRequest } from './models/print-job-request';
 export type { PrintJobResponse } from './models/print-job-response';
@@ -168,6 +170,7 @@ export type { ReplaceScaleCertificateRequest } from './models/replace-scale-cert
 export type { RequestRefundRequest } from './models/request-refund-request';
 export type { ResolutionOutcome } from './models/resolution-outcome';
 export type { ResolveComplaintRequest } from './models/resolve-complaint-request';
+export type { ReviewPriceListProposalRequest } from './models/review-price-list-proposal-request';
 export type { RouteCashHandoverResponse } from './models/route-cash-handover-response';
 export type { RouteLoadLineResponse } from './models/route-load-line-response';
 export type { RoutePageResponse } from './models/route-page-response';

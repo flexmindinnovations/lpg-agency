@@ -16,8 +16,9 @@ import {
   type BranchResponse,
   type CylinderTypeResponse,
   type PriceListEntryResponse,
+  type PriceListProposalResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
+import { DataGridComponent, type DataGridColumn, FormFieldComponent, SectionCardComponent, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
 
@@ -30,7 +31,7 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
 @Component({
   selector: 'lpg-price-list-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, SectionCardComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -42,6 +43,45 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
         </div>
     </ng-template>
       </div>
+
+      <!-- Pending Rate Proposals — AI Operational Intelligence, Horizon 1
+           Stage 3. Heuristic-fetched (or manually staged) proposals
+           awaiting review; accepting one writes a real price below through
+           the same append-only path "Set Price" uses. Hidden when there's
+           nothing pending, same as every other empty section on this page. -->
+      @if (proposals().length > 0) {
+        <lpg-section-card heading="Pending Rate Proposals">
+          <div class="proposal-list">
+            @for (p of proposals(); track p.id) {
+              <div class="proposal-row">
+                <div class="proposal-row__info">
+                  <span class="proposal-row__title">
+                    {{ cylinderTypeName(p.cylinder_type_id) }} · {{ toSentenceCase(p.customer_type) }}
+                  </span>
+                  <span class="proposal-row__meta">
+                    ₹{{ p.proposed_price }} effective {{ formatTimestamp(p.effective_from) }}
+                    · <a [href]="p.source_url" target="_blank" rel="noopener noreferrer">source</a>
+                  </span>
+                </div>
+                <div class="proposal-row__actions">
+                  <button
+                    pButton
+                    type="button"
+                    severity="secondary"
+                    [disabled]="reviewingId() === p.id"
+                    (click)="review(p.id, 'reject')"
+                  >
+                    Reject
+                  </button>
+                  <button pButton type="button" [disabled]="reviewingId() === p.id" (click)="review(p.id, 'accept')">
+                    @if (reviewingId() === p.id) {<i class="pi pi-spin pi-spinner"></i> }Accept
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </lpg-section-card>
+      }
 
       @if (prices().length > 0) {
         <div class="data-toolbar">
@@ -164,6 +204,50 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
         block-size: 100%;
       }
 
+      .proposal-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+
+      .proposal-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: var(--color-surface-overlay);
+        border-radius: var(--radius-input);
+        flex-wrap: wrap;
+      }
+
+      .proposal-row__info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-inline-size: 0;
+      }
+
+      .proposal-row__title {
+        font-weight: 600;
+        color: var(--color-text-primary);
+      }
+
+      .proposal-row__meta {
+        font-size: var(--typography-caption-font-size);
+        color: var(--color-text-secondary);
+      }
+
+      .proposal-row__meta a {
+        color: var(--color-action-primary);
+      }
+
+      .proposal-row__actions {
+        display: flex;
+        gap: var(--spacing-sm);
+        flex-shrink: 0;
+      }
+
     `,
   ],
 })
@@ -182,6 +266,11 @@ export class PriceListPage implements OnInit {
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
   protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({ label: toSentenceCase(t), value: t }));
+  protected readonly toSentenceCase = toSentenceCase;
+  protected readonly formatTimestamp = formatTimestamp;
+
+  protected readonly proposals = signal<PriceListProposalResponse[]>([]);
+  protected readonly reviewingId = signal<string | null>(null);
 
   protected readonly columns: DataGridColumn<PriceListEntryResponse>[] = [
     {
@@ -214,6 +303,39 @@ export class PriceListPage implements OnInit {
       .subscribe((types) => this.cylinderTypes.set(types));
     this.branchService.listBranches().subscribe((branches) => this.branches.set(branches));
     this.reload();
+    this.loadProposals();
+  }
+
+  protected cylinderTypeName(cylinderTypeId: string): string {
+    return this.cylinderTypes().find((t) => t.id === cylinderTypeId)?.name ?? cylinderTypeId;
+  }
+
+  private loadProposals(): void {
+    this.priceListService.listProposals().subscribe({
+      next: (proposals) => this.proposals.set(proposals),
+      // Error toast is handled globally by globalErrorToastInterceptor —
+      // an empty pending-proposals panel on failure is a reasonable
+      // degrade, not a blocking one.
+      error: () => this.proposals.set([]),
+    });
+  }
+
+  protected review(proposalId: string, action: 'accept' | 'reject'): void {
+    if (this.reviewingId()) {
+      return;
+    }
+    this.reviewingId.set(proposalId);
+    this.priceListService.reviewProposal(proposalId, action).subscribe({
+      next: () => {
+        this.reviewingId.set(null);
+        this.notify.success(action === 'accept' ? 'Proposal accepted — price saved.' : 'Proposal rejected.');
+        this.loadProposals();
+        if (action === 'accept') {
+          this.reload();
+        }
+      },
+      error: () => this.reviewingId.set(null),
+    });
   }
 
   private reload(): void {

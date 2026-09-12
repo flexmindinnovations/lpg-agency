@@ -5089,6 +5089,111 @@
         "title": "PriceListEntryResponse",
         "type": "object"
       },
+      "PriceListProposalListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PriceListProposalResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PriceListProposalListResponse",
+        "type": "object"
+      },
+      "PriceListProposalResponse": {
+        "description": "One row of the OMC rate-review queue (AI Operational Intelligence,\nHorizon 1 Stage 3) — a heuristic-fetched proposal awaiting staff\naccept/reject, not yet a price. `source_url` is where the number came\nfrom, so a reviewer can verify it before accepting.",
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "cylinder_type_id": {
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "effective_from": {
+            "format": "date-time",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "proposed_price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Proposed Price",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cylinder_type_id",
+          "customer_type",
+          "branch_id",
+          "proposed_price",
+          "effective_from",
+          "source_url",
+          "status",
+          "fetched_at",
+          "reviewed_by",
+          "reviewed_at"
+        ],
+        "title": "PriceListProposalResponse",
+        "type": "object"
+      },
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
@@ -7018,6 +7123,23 @@
           "resolution_notes"
         ],
         "title": "ResolveComplaintRequest",
+        "type": "object"
+      },
+      "ReviewPriceListProposalRequest": {
+        "properties": {
+          "action": {
+            "enum": [
+              "accept",
+              "reject"
+            ],
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ReviewPriceListProposalRequest",
         "type": "object"
       },
       "RouteCashHandoverResponse": {
@@ -9738,6 +9860,80 @@
           }
         },
         "summary": "The effective price for a cylinder type x customer type",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/price-list/proposals": {
+      "get": {
+        "operationId": "list_price_list_proposals_api_v1_admin_price_list_proposals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceListProposalListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pending OMC rate proposals awaiting review",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/price-list/proposals/{proposal_id}": {
+      "patch": {
+        "operationId": "review_price_list_proposal_api_v1_admin_price_list_proposals__proposal_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewPriceListProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceListProposalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept or reject a pending OMC rate proposal",
         "tags": [
           "Administration"
         ]
