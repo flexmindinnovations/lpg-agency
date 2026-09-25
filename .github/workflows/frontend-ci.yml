@@ -34,15 +34,23 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # @ngrx/signals@21 declares an Angular 21 peer range while the workspace is
+      # on Angular 22, so plain `npm ci` fails with ERESOLVE.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
-      # Tokens are generated from a single source (docs/ui/09-design-tokens.md).
-      # A hand-edited generated file would silently diverge from Flutter's copy,
-      # and the symptom is a mobile screen that is subtly the wrong colour.
-      - name: Design tokens are up to date
-        run: node scripts/generate-tokens.mjs --check
+      # app.config.ts imports the git-ignored prime-license.ts (a licence key that
+      # is never committed); the committed template builds PrimeNG unlicensed.
+      - name: Provide the PrimeNG licence template
+        run: cp -n apps/dashboard/src/app/prime-license.example.ts apps/dashboard/src/app/prime-license.ts
+        working-directory: frontend
+
+      # The former "design tokens are up to date" step was removed 2026-09-25:
+      # `tokens.css` has been hand-maintained since the dashboard theme moved to
+      # solid surfaces (Phase 29), so regenerating from design-tokens/tokens.json
+      # would overwrite the current design and the check could only ever fail.
+      # `scripts/generate-tokens.mjs` is stale, not authoritative.
 
       - name: Format check
         run: npx prettier --check .
