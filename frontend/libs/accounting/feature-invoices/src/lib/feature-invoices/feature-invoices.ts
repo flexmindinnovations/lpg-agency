@@ -20,7 +20,16 @@ import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
 import { ButtonDirective } from 'primeng/button';
 import { MessageService } from 'primeng/api';
-import { DataGridComponent, type DataGridColumn, PreviewDialog, type PreviewData, StatusChipCell, type ChipSeverity, toSentenceCase, shortId } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  PreviewDialog,
+  type PreviewData,
+  StatusChipCell,
+  type ChipSeverity,
+  toSentenceCase,
+  shortId,
+} from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminCylinderTypeService,
@@ -101,7 +110,8 @@ export class FeatureInvoices implements OnInit {
   // through the shared `PreviewDialog` (also used by `feature-complaints`);
   // Order preview keeps its own dialog since it has richer content (a line
   // item list) that doesn't fit the shared component's simple field-grid shape.
-  protected readonly customerPreviewDialog = viewChild.required<PreviewDialog>('customerPreviewDialog');
+  protected readonly customerPreviewDialog =
+    viewChild.required<PreviewDialog>('customerPreviewDialog');
 
   protected readonly showOrderPreview = signal(false);
   protected readonly orderPreview = signal<OrderResponse | null>(null);
@@ -171,15 +181,29 @@ export class FeatureInvoices implements OnInit {
       onLinkClick: (row) => this.onInvoiceSelected(row),
       valueFormatter: (val, row) => (val as string | null) ?? shortId(row.invoice_id),
     },
-    { field: 'issued_at', header: 'Date', sortable: true, valueFormatter: (val) => new Date(val as string).toLocaleDateString() },
+    {
+      field: 'issued_at',
+      header: 'Date',
+      sortable: true,
+      valueFormatter: (val) => new Date(val as string).toLocaleDateString(),
+    },
     {
       field: 'customer_consumer_number',
       header: 'Customer',
       sortable: false,
       valueFormatter: (val, row) =>
-        this.customerNameById().get(row.customer_id) ?? (val as string | null) ?? shortId(row.customer_id),
+        this.customerNameById().get(row.customer_id) ??
+        (val as string | null) ??
+        shortId(row.customer_id),
     },
-    { field: 'total_amount', header: 'Total Amount', sortable: true, numeric: true, valueFormatter: (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(val)) },
+    {
+      field: 'total_amount',
+      header: 'Total Amount',
+      sortable: true,
+      numeric: true,
+      valueFormatter: (val) =>
+        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(val)),
+    },
     {
       field: 'status',
       header: 'Status',
@@ -341,8 +365,14 @@ export class FeatureInvoices implements OnInit {
       title: customer.full_name,
       subtitle: `Consumer No: ${customer.consumer_number ?? '—'}`,
       tags: [
-        { label: toSentenceCase(customer.status), severity: this.customerStatusSeverity(customer.status) },
-        { label: 'KYC: ' + toSentenceCase(customer.kyc_status), severity: this.kycStatusSeverity(customer.kyc_status) },
+        {
+          label: toSentenceCase(customer.status),
+          severity: this.customerStatusSeverity(customer.status),
+        },
+        {
+          label: 'KYC: ' + toSentenceCase(customer.kyc_status),
+          severity: this.kycStatusSeverity(customer.kyc_status),
+        },
       ],
       fields: [
         { label: 'Phone', value: customer.phone_number },
@@ -355,7 +385,14 @@ export class FeatureInvoices implements OnInit {
   protected customerPreviewAddress(customer: CustomerResponse): string | null {
     const address = customer.addresses.find((a) => a.is_primary) ?? customer.addresses[0];
     if (!address) return null;
-    return [address.line_1, address.line_2, address.area, address.city, address.state, address.pincode]
+    return [
+      address.line_1,
+      address.line_2,
+      address.area,
+      address.city,
+      address.state,
+      address.pincode,
+    ]
       .filter(Boolean)
       .join(', ');
   }

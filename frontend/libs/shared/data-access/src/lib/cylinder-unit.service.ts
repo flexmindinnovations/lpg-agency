@@ -133,7 +133,9 @@ export class CylinderUnitService {
     );
   }
 
-  batchMoveCustody(body: BatchMoveCylinderCustodyRequest): Observable<BatchMoveCylinderCustodyResponse> {
+  batchMoveCustody(
+    body: BatchMoveCylinderCustodyRequest,
+  ): Observable<BatchMoveCylinderCustodyResponse> {
     return this.http.post<BatchMoveCylinderCustodyResponse>(
       `${this.config.rootUrl}/api/v1/cylinder-units/batch-custody`,
       body,

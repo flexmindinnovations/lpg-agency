@@ -9,6 +9,9 @@ export const featureCustomersRoutes: Route[] = [
     path: 'new',
     canActivate: [permissionGuard('customers:create')],
     canDeactivate: [onboardingUnsavedChangesGuard],
-    loadComponent: () => import('./onboarding-wizard/customer-onboarding-wizard.component').then(m => m.CustomerOnboardingWizardComponent)
-  }
+    loadComponent: () =>
+      import('./onboarding-wizard/customer-onboarding-wizard.component').then(
+        (m) => m.CustomerOnboardingWizardComponent,
+      ),
+  },
 ];

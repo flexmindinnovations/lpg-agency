@@ -45,9 +45,7 @@ describe('NotificationDrawer', () => {
             list,
             markRead,
             routeFor: (n: { reference_type?: string; reference_id?: string }) =>
-              n.reference_type === 'order' && n.reference_id
-                ? ['/orders', n.reference_id]
-                : null,
+              n.reference_type === 'order' && n.reference_id ? ['/orders', n.reference_id] : null,
           },
         },
       ],

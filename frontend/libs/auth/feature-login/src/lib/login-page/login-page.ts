@@ -66,7 +66,10 @@ function errorMessageFor(error: unknown): string {
             label="Email"
             for="login-email"
             [control]="form.controls.email"
-            [messages]="{ required: 'Enter a valid email address.', email: 'Enter a valid email address.' }"
+            [messages]="{
+              required: 'Enter a valid email address.',
+              email: 'Enter a valid email address.',
+            }"
           >
             <input
               pInputText
@@ -83,7 +86,10 @@ function errorMessageFor(error: unknown): string {
             label="Password"
             for="login-password"
             [control]="form.controls.password"
-            [messages]="{ required: 'Password is required.', minlength: 'Password must be at least 12 characters.' }"
+            [messages]="{
+              required: 'Password is required.',
+              minlength: 'Password must be at least 12 characters.',
+            }"
           >
             <div class="password-field">
               <input
@@ -103,7 +109,11 @@ function errorMessageFor(error: unknown): string {
                 (click)="togglePasswordVisibility()"
                 [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
               >
-                <i class="pi" [class.pi-eye]="!passwordVisible()" [class.pi-eye-slash]="passwordVisible()"></i>
+                <i
+                  class="pi"
+                  [class.pi-eye]="!passwordVisible()"
+                  [class.pi-eye-slash]="passwordVisible()"
+                ></i>
               </button>
             </div>
           </lpg-form-field>

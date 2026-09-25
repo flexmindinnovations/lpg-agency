@@ -9,10 +9,9 @@
   </div>
 
   @if (errorMessage(); as msg) {
-    <p-message severity="error">{{ msg }}</p-message>
-  }
-  @if (infoMessage(); as msg) {
-    <p-message severity="success">{{ msg }}</p-message>
+  <p-message severity="error">{{ msg }}</p-message>
+  } @if (infoMessage(); as msg) {
+  <p-message severity="success">{{ msg }}</p-message>
   }
 
   <div class="data-toolbar">
@@ -57,36 +56,39 @@
   <div class="dispatch-layout">
     <div class="route-board">
       @for (status of statusColumns; track status) {
-        <div class="route-column">
-          <div class="route-column__header">
-            <span>{{ statusLabel(status) }}</span>
-            <span class="route-column__count">{{ (routesByStatus().get(status) ?? []).length }}</span>
-          </div>
-          <div class="route-column__cards">
-            @for (route of routesByStatus().get(status); track route.id) {
-              <button type="button" class="route-card" (click)="openRouteDetail(route)">
-                <div class="route-card__row">
-                  <span class="route-card__date">{{ route.date | date: 'mediumDate' }}</span>
-                  <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
-                </div>
-                <div class="route-card__row">
-                  <i class="pi pi-id-card"></i>
-                  <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
-                </div>
-                <div class="route-card__row">
-                  <i class="pi pi-truck"></i>
-                  <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
-                </div>
-                <div class="route-card__row">
-                  <i class="pi pi-map-marker"></i>
-                  <span>{{ route.stops?.length ?? 0 }} stop(s)</span>
-                </div>
-              </button>
-            } @empty {
-              <p class="empty-hint">No routes.</p>
-            }
-          </div>
+      <div class="route-column">
+        <div class="route-column__header">
+          <span>{{ statusLabel(status) }}</span>
+          <span class="route-column__count">{{ (routesByStatus().get(status) ?? []).length }}</span>
         </div>
+        <div class="route-column__cards">
+          @for (route of routesByStatus().get(status); track route.id) {
+          <button type="button" class="route-card" (click)="openRouteDetail(route)">
+            <div class="route-card__row">
+              <span class="route-card__date">{{ route.date | date: 'mediumDate' }}</span>
+              <p-tag
+                [severity]="statusSeverity(route.status)"
+                [value]="statusLabel(route.status)"
+              />
+            </div>
+            <div class="route-card__row">
+              <i class="pi pi-id-card"></i>
+              <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+            </div>
+            <div class="route-card__row">
+              <i class="pi pi-truck"></i>
+              <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+            </div>
+            <div class="route-card__row">
+              <i class="pi pi-map-marker"></i>
+              <span>{{ route.stops?.length ?? 0 }} stop(s)</span>
+            </div>
+          </button>
+          } @empty {
+          <p class="empty-hint">No routes.</p>
+          }
+        </div>
+      </div>
       }
     </div>
 
@@ -94,24 +96,26 @@
       <h2 class="section-title">Unassigned Orders</h2>
       <div class="unassigned-list">
         @for (order of unassignedOrders(); track order.id) {
-          <div class="unassigned-card">
-            <div class="unassigned-card__info">
-              <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top">{{ order.order_number ?? order.id }}</span>
-              <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
-            </div>
-            <button
-              pButton
-              type="button"
-              severity="secondary"
-              size="small"
-              [disabled]="assignableRoutes().length === 0"
-              (click)="openAssignOrderDrawer(order)"
+        <div class="unassigned-card">
+          <div class="unassigned-card__info">
+            <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top"
+              >{{ order.order_number ?? order.id }}</span
             >
-              Assign
-            </button>
+            <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
           </div>
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            size="small"
+            [disabled]="assignableRoutes().length === 0"
+            (click)="openAssignOrderDrawer(order)"
+          >
+            Assign
+          </button>
+        </div>
         } @empty {
-          <p class="empty-hint">All confirmed orders are assigned to a route.</p>
+        <p class="empty-hint">All confirmed orders are assigned to a route.</p>
         }
       </div>
     </aside>
@@ -129,56 +133,76 @@
 >
   <form [formGroup]="planForm" (ngSubmit)="onSubmitPlan()" class="dialog-form">
     <div class="dialog-form__fields">
-    <lpg-form-field label="Branch" for="plan_branch" [control]="planForm.controls.branch_id" [messages]="fieldMessages.branch_id">
-      <p-select
-        inputId="plan_branch"
-        formControlName="branch_id"
-        [options]="branches()"
-        optionLabel="name"
-        optionValue="id"
-        [fluid]="true"
-        [appendTo]="'body'"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Branch"
+        for="plan_branch"
+        [control]="planForm.controls.branch_id"
+        [messages]="fieldMessages.branch_id"
+      >
+        <p-select
+          inputId="plan_branch"
+          formControlName="branch_id"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Date" for="date" [control]="planForm.controls.date" [messages]="fieldMessages.date">
-      <p-datepicker
-        inputId="date"
-        formControlName="date"
-        iconDisplay="input"
-        [showIcon]="true"
-        [showOnFocus]="false"
-        dateFormat="yy-mm-dd"
-        appendTo="body"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Date"
+        for="date"
+        [control]="planForm.controls.date"
+        [messages]="fieldMessages.date"
+      >
+        <p-datepicker
+          inputId="date"
+          formControlName="date"
+          iconDisplay="input"
+          [showIcon]="true"
+          [showOnFocus]="false"
+          dateFormat="yy-mm-dd"
+          appendTo="body"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Driver" for="driver_id" [control]="planForm.controls.driver_id" [messages]="fieldMessages.driver_id">
-      <p-select
-        inputId="driver_id"
-        formControlName="driver_id"
-        [options]="driverOptions()"
-        optionLabel="label"
-        optionValue="id"
-        [fluid]="true"
-        [appendTo]="'body'"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Driver"
+        for="driver_id"
+        [control]="planForm.controls.driver_id"
+        [messages]="fieldMessages.driver_id"
+      >
+        <p-select
+          inputId="driver_id"
+          formControlName="driver_id"
+          [options]="driverOptions()"
+          optionLabel="label"
+          optionValue="id"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Vehicle" for="vehicle_id" [control]="planForm.controls.vehicle_id" [messages]="fieldMessages.vehicle_id">
-      <p-select
-        inputId="vehicle_id"
-        formControlName="vehicle_id"
-        [options]="vehicleOptions()"
-        optionLabel="label"
-        optionValue="id"
-        [fluid]="true"
-        [appendTo]="'body'"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Vehicle"
+        for="vehicle_id"
+        [control]="planForm.controls.vehicle_id"
+        [messages]="fieldMessages.vehicle_id"
+      >
+        <p-select
+          inputId="vehicle_id"
+          formControlName="vehicle_id"
+          [options]="vehicleOptions()"
+          optionLabel="label"
+          optionValue="id"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+      </lpg-form-field>
 
-    @if (selectedVehicle(); as v) {
+      @if (selectedVehicle(); as v) {
       <div class="vehicle-summary">
         <div class="detail-grid">
           <div class="detail-field">
@@ -203,23 +227,14 @@
           </div>
         </div>
       </div>
-    }
+      }
     </div>
 
     <div class="modal-actions">
-      <button
-        pButton
-        type="button"
-        severity="secondary"
-        (click)="showPlanModal.set(false)"
-      >
+      <button pButton type="button" severity="secondary" (click)="showPlanModal.set(false)">
         Cancel
       </button>
-      <button
-        pButton
-        type="submit"
-        [disabled]="loading() || planForm.invalid"
-      >
+      <button pButton type="submit" [disabled]="loading() || planForm.invalid">
         @if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Plan Route
       </button>
     </div>
@@ -235,406 +250,417 @@
   header="Route Detail"
 >
   @if (selectedRoute(); as route) {
-    <div class="route-detail">
-      <div class="detail-grid">
-        <div class="detail-field">
-          <span class="detail-field__label">Status</span>
-          <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
-        </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Date</span>
-          <span>{{ route.date | date: 'mediumDate' }}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Driver</span>
-          <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
-        </div>
-        <div class="detail-field">
-          <span class="detail-field__label">Vehicle</span>
-          <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
-        </div>
+  <div class="route-detail">
+    <div class="detail-grid">
+      <div class="detail-field">
+        <span class="detail-field__label">Status</span>
+        <p-tag [severity]="statusSeverity(route.status)" [value]="statusLabel(route.status)" />
       </div>
-
-      <div class="detail-actions">
-        @if (canLoadRoute()) {
-          <button pButton type="button" severity="secondary" (click)="openLoadForm()">
-            <i class="pi pi-inbox"></i>
-            <span>Load Vehicle</span>
-          </button>
-          <button
-            *lpgHasPermission="'weighment:record'"
-            pButton
-            type="button"
-            severity="secondary"
-            [text]="true"
-            pTooltip="MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch."
-            (click)="openLoadOutWeighmentForm()"
-          >
-            <i class="pi pi-verified"></i>
-            <span>Log Load-Out Weighment</span>
-          </button>
-        }
-        @if (canStartRoute()) {
-          <button pButton type="button" [disabled]="loading()" (click)="onStartRoute()">
-            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-play'"></i>
-            <span>Start Route</span>
-          </button>
-        }
-        @if (canCancelRoute()) {
-          <button
-            pButton
-            type="button"
-            severity="danger"
-            [disabled]="loading()"
-            (click)="onCancelRoute()"
-          >
-            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-times'"></i>
-            <span>Cancel Route</span>
-          </button>
-        }
-        @if (canReconcileRoute()) {
-          <button
-            pButton
-            type="button"
-            [disabled]="loading()"
-            (click)="onReconcileRoute()"
-          >
-            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check-square'"></i>
-            <span>Reconcile</span>
-          </button>
-        }
-        @if (canDeclareCashHandover()) {
-          <button
-            *lpgHasPermission="'cash_handovers:declare'"
-            pButton
-            type="button"
-            severity="secondary"
-            [disabled]="loading()"
-            (click)="openCashHandoverForm()"
-          >
-            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-wallet'"></i>
-            <span>Declare Cash Handover</span>
-          </button>
-        }
+      <div class="detail-field">
+        <span class="detail-field__label">Date</span>
+        <span>{{ route.date | date: 'mediumDate' }}</span>
       </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Driver</span>
+        <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-field__label">Vehicle</span>
+        <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+      </div>
+    </div>
 
-      @if (route.status === 'completed') {
-        <p-message severity="info">
-          <span>Reconciling requires an approved reconciliation record for this vehicle.</span>
-          <button pButton type="button" text (click)="goToInventoryReconciliation()">
-            Go to Inventory
-          </button>
-        </p-message>
+    <div class="detail-actions">
+      @if (canLoadRoute()) {
+      <button pButton type="button" severity="secondary" (click)="openLoadForm()">
+        <i class="pi pi-inbox"></i>
+        <span>Load Vehicle</span>
+      </button>
+      <button
+        *lpgHasPermission="'weighment:record'"
+        pButton
+        type="button"
+        severity="secondary"
+        [text]="true"
+        pTooltip="MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch."
+        (click)="openLoadOutWeighmentForm()"
+      >
+        <i class="pi pi-verified"></i>
+        <span>Log Load-Out Weighment</span>
+      </button>
+      } @if (canStartRoute()) {
+      <button pButton type="button" [disabled]="loading()" (click)="onStartRoute()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-play'"></i>
+        <span>Start Route</span>
+      </button>
+      } @if (canCancelRoute()) {
+      <button
+        pButton
+        type="button"
+        severity="danger"
+        [disabled]="loading()"
+        (click)="onCancelRoute()"
+      >
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-times'"></i>
+        <span>Cancel Route</span>
+      </button>
+      } @if (canReconcileRoute()) {
+      <button pButton type="button" [disabled]="loading()" (click)="onReconcileRoute()">
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check-square'"></i>
+        <span>Reconcile</span>
+      </button>
+      } @if (canDeclareCashHandover()) {
+      <button
+        *lpgHasPermission="'cash_handovers:declare'"
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="loading()"
+        (click)="openCashHandoverForm()"
+      >
+        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-wallet'"></i>
+        <span>Declare Cash Handover</span>
+      </button>
       }
+    </div>
 
-      @if (showLoadForm()) {
-        <div class="load-form">
-          <h3 class="section-title">Load Vehicle</h3>
-          <form [formGroup]="loadForm" (ngSubmit)="onSubmitLoad()" class="dialog-form dialog-form--inline">
-            <div class="dialog-form__fields">
-            <lpg-form-field label="Warehouse" for="load_warehouse" [control]="loadForm.controls.warehouse_id" [messages]="fieldMessages.warehouse_id">
+    @if (route.status === 'completed') {
+    <p-message severity="info">
+      <span>Reconciling requires an approved reconciliation record for this vehicle.</span>
+      <button pButton type="button" text (click)="goToInventoryReconciliation()">
+        Go to Inventory
+      </button>
+    </p-message>
+    } @if (showLoadForm()) {
+    <div class="load-form">
+      <h3 class="section-title">Load Vehicle</h3>
+      <form
+        [formGroup]="loadForm"
+        (ngSubmit)="onSubmitLoad()"
+        class="dialog-form dialog-form--inline"
+      >
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="Warehouse"
+            for="load_warehouse"
+            [control]="loadForm.controls.warehouse_id"
+            [messages]="fieldMessages.warehouse_id"
+          >
+            <p-select
+              inputId="load_warehouse"
+              formControlName="warehouse_id"
+              [options]="warehouses()"
+              optionLabel="name"
+              optionValue="id"
+              [fluid]="true"
+              [appendTo]="'body'"
+            />
+          </lpg-form-field>
+
+          <span class="load-form__section-label">Cylinder Lines</span>
+          <div formArrayName="lines" class="load-lines">
+            @for (line of loadLines.controls; track $index) {
+            <div [formGroupName]="$index" class="load-line">
               <p-select
-                inputId="load_warehouse"
-                formControlName="warehouse_id"
-                [options]="warehouses()"
-                optionLabel="name"
-                optionValue="id"
-                [fluid]="true"
-                [appendTo]="'body'"
-              />
-            </lpg-form-field>
-
-            <span class="load-form__section-label">Cylinder Lines</span>
-            <div formArrayName="lines" class="load-lines">
-              @for (line of loadLines.controls; track $index) {
-                <div [formGroupName]="$index" class="load-line">
-                  <p-select
-                    formControlName="cylinder_type_id"
-                    [options]="cylinderTypes()"
-                    optionLabel="name"
-                    optionValue="id"
-                    placeholder="Cylinder type"
-                    [fluid]="true"
-                    [appendTo]="'body'"
-                  />
-                  <p-inputnumber formControlName="quantity" [min]="1" [fluid]="true" />
-                  <button
-                    pButton
-                    type="button"
-                    text
-                    severity="danger"
-                    iconOnly
-                    aria-label="Remove line"
-                    [disabled]="loadLines.length <= 1"
-                    (click)="removeLoadLine($index)"
-                  >
-                    <i class="pi pi-trash"></i>
-                  </button>
-                </div>
-              }
-            </div>
-            <button pButton type="button" text class="add-line-button" (click)="addLoadLine()">
-              <i class="pi pi-plus"></i>
-              <span>Add Line</span>
-            </button>
-            </div>
-
-            <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="showLoadForm.set(false)">
-                Cancel
-              </button>
-              <button pButton type="submit" [disabled]="loadForm.invalid || loading()">
-                Load
-              </button>
-            </div>
-          </form>
-        </div>
-      }
-
-      @if (showLoadOutWeighmentForm()) {
-        <div class="load-form">
-          <h3 class="section-title">Log Load-Out Weighment</h3>
-          <p-message severity="info">
-            MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before
-            dispatch. Log one record per cylinder type; this only blocks loading for tenants
-            that have opted into the weighment gate.
-          </p-message>
-
-          @if (routeWeighments().length > 0) {
-            <ul class="weighment-record-list">
-              @for (record of routeWeighments(); track record.id) {
-                <li>
-                  <span>{{ cylinderTypeName(record.cylinder_type_id) }}</span>
-                  <span>{{ record.cylinders_checked }}/{{ record.total_cylinders_in_batch }} checked</span>
-                  <p-tag
-                    [severity]="record.result === 'pass' ? 'success' : 'danger'"
-                    [value]="record.result === 'pass' ? 'Pass' : 'Fail'"
-                  />
-                </li>
-              }
-            </ul>
-          }
-
-          <form [formGroup]="loadOutWeighmentForm" (ngSubmit)="onSubmitLoadOutWeighment()" class="dialog-form dialog-form--inline">
-            <div class="dialog-form__fields">
-            <lpg-form-field
-              label="Cylinder type"
-              for="wt_cylinder_type"
-              [control]="loadOutWeighmentForm.controls.cylinder_type_id"
-              [messages]="fieldMessages.cylinder_type_id"
-            >
-              <p-select
-                inputId="wt_cylinder_type"
                 formControlName="cylinder_type_id"
                 [options]="cylinderTypes()"
                 optionLabel="name"
                 optionValue="id"
+                placeholder="Cylinder type"
                 [fluid]="true"
                 [appendTo]="'body'"
               />
-            </lpg-form-field>
-            <lpg-form-field
-              label="Scale used"
-              for="wt_scale"
-              [control]="loadOutWeighmentForm.controls.scale_id"
-              [messages]="fieldMessages.scale_id"
-              [hint]="activeScaleOptions().length === 0 ? 'No active certified scale registered yet.' : ''"
-            >
-              <p-select
-                inputId="wt_scale"
-                formControlName="scale_id"
-                [options]="activeScaleOptions()"
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Select a scale"
-                [fluid]="true"
-                [appendTo]="'body'"
-              />
-            </lpg-form-field>
-            <lpg-form-field
-              label="Cylinders checked (100% of this type)"
-              for="wt_total"
-              [control]="loadOutWeighmentForm.controls.total_cylinders"
-              [messages]="fieldMessages.total_cylinders"
-            >
-              <p-inputnumber inputId="wt_total" formControlName="total_cylinders" [min]="1" [fluid]="true" />
-            </lpg-form-field>
-            <lpg-form-field
-              label="Underweight cylinders found"
-              for="wt_underweight"
-              [control]="loadOutWeighmentForm.controls.underweight_cylinder_count"
-              [messages]="fieldMessages.underweight_cylinder_count"
-              hint="Any underweight cylinder is segregated and returned in the same truck."
-            >
-              <p-inputnumber
-                inputId="wt_underweight"
-                formControlName="underweight_cylinder_count"
-                [min]="0"
-                [fluid]="true"
-              />
-            </lpg-form-field>
-            </div>
-            <div class="modal-actions">
+              <p-inputnumber formControlName="quantity" [min]="1" [fluid]="true" />
               <button
                 pButton
                 type="button"
-                severity="secondary"
-                (click)="showLoadOutWeighmentForm.set(false)"
+                text
+                severity="danger"
+                iconOnly
+                aria-label="Remove line"
+                [disabled]="loadLines.length <= 1"
+                (click)="removeLoadLine($index)"
               >
-                Close
-              </button>
-              <button
-                pButton
-                type="submit"
-                [disabled]="
-                  loadOutWeighmentForm.invalid || loading() || activeScaleOptions().length === 0
-                "
-              >
-                Record Weighment
+                <i class="pi pi-trash"></i>
               </button>
             </div>
-          </form>
-        </div>
-      }
-
-      @if (showCashHandoverForm()) {
-        <div class="load-form">
-          <h3 class="section-title">Declare Cash Handover</h3>
-          <form [formGroup]="cashHandoverForm" (ngSubmit)="onSubmitCashHandover()" class="dialog-form dialog-form--inline">
-            <div class="dialog-form__fields">
-            <lpg-form-field label="Cash amount handed over" for="cash_handover_amount" [control]="cashHandoverForm.controls.actual_amount" [messages]="fieldMessages.actual_amount">
-              <p-inputnumber
-                inputId="cash_handover_amount"
-                formControlName="actual_amount"
-                mode="currency"
-                currency="INR"
-                locale="en-IN"
-                [min]="0"
-                [fluid]="true"
-              />
-            </lpg-form-field>
-            </div>
-
-            <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="showCashHandoverForm.set(false)">
-                Cancel
-              </button>
-              <button pButton type="submit" [disabled]="cashHandoverForm.invalid || loading()">
-                Declare
-              </button>
-            </div>
-          </form>
-        </div>
-      }
-
-      @if (lastCashHandover(); as handover) {
-        <p-message
-          [severity]="handover.shortfall === '0' || handover.shortfall === '0.00' ? 'success' : 'warn'"
-        >
-          <span>
-            Handover {{ handover.handover_number ?? handover.id }}: expected
-            ₹{{ handover.expected_amount }}, collected ₹{{ handover.actual_amount }}
-            @if (handover.shortfall !== '0' && handover.shortfall !== '0.00') {
-              — shortfall of ₹{{ handover.shortfall }}.
-            } @else {
-              — matched in full.
-            }
-          </span>
-        </p-message>
-      }
-
-      <div class="stops-header">
-        <h3 class="section-title">Stops</h3>
-        <div class="stops-header__actions">
-          @if (canOptimizeSelectedRoute()) {
-            <button
-              pButton
-              type="button"
-              severity="secondary"
-              text
-              [disabled]="loading()"
-              (click)="onOptimizeRoute()"
-              pTooltip="Reorder stops for a shorter total distance (AI-estimated)"
-              tooltipPosition="top"
-            >
-              <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"></i>
-              <span>Optimise stop order</span>
-            </button>
-          }
-          @if (canAddStopToSelectedRoute()) {
-            <button pButton type="button" text (click)="openAddStopForm()">
-              <i class="pi pi-plus"></i>
-              <span>Add Stop</span>
-            </button>
-          }
-        </div>
-      </div>
-
-      @if (showAddStopForm()) {
-        <div class="load-form">
-          <form [formGroup]="addStopForm" (ngSubmit)="onSubmitAddStop()" class="dialog-form dialog-form--inline">
-            <div class="dialog-form__fields">
-            <lpg-form-field
-              label="Order"
-              for="add_stop_order"
-              [control]="addStopForm.controls.order_id"
-              [messages]="fieldMessages.order_id"
-              [hint]="unassignedOrderOptions().length === 0 ? 'No unassigned orders are available right now.' : ''"
-            >
-              <p-select
-                inputId="add_stop_order"
-                formControlName="order_id"
-                [options]="unassignedOrderOptions()"
-                optionLabel="label"
-                optionValue="id"
-                [fluid]="true"
-                [appendTo]="'body'"
-              />
-            </lpg-form-field>
-            </div>
-            <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="showAddStopForm.set(false)">
-                Cancel
-              </button>
-              <button pButton type="submit" [disabled]="addStopForm.invalid || loading()">
-                Add
-              </button>
-            </div>
-          </form>
-        </div>
-      }
-
-      <div class="stops-list">
-        @for (stop of route.stops ?? []; track stop.id) {
-          <div class="stop-card">
-            <div class="stop-card__row">
-              <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
-              <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top">Order {{ orderNumberById().get(stop.order_id) ?? shortId(stop.order_id) }}</span>
-              <p-tag [severity]="statusSeverity(stop.status)" [value]="statusLabel(stop.status)" />
-            </div>
-            @if (stop.failure_reason) {
-              <span class="stop-card__failure">{{ stop.failure_reason }}</span>
-            }
-            @if (stop.proof_of_delivery; as pod) {
-              <div class="stop-card__pod">
-                <span>POD:</span>
-                <span>{{ pod.otp_verified ? 'OTP verified' : 'OTP not verified' }}</span>
-                @if (pod.signature_url) {
-                  <span>Signature captured</span>
-                }
-                @if (pod.photo_url) {
-                  <span>Photo captured</span>
-                }
-              </div>
             }
           </div>
-        } @empty {
-          <p class="empty-hint">No stops on this route yet.</p>
+          <button pButton type="button" text class="add-line-button" (click)="addLoadLine()">
+            <i class="pi pi-plus"></i>
+            <span>Add Line</span>
+          </button>
+        </div>
+
+        <div class="modal-actions">
+          <button pButton type="button" severity="secondary" (click)="showLoadForm.set(false)">
+            Cancel
+          </button>
+          <button pButton type="submit" [disabled]="loadForm.invalid || loading()">Load</button>
+        </div>
+      </form>
+    </div>
+    } @if (showLoadOutWeighmentForm()) {
+    <div class="load-form">
+      <h3 class="section-title">Log Load-Out Weighment</h3>
+      <p-message severity="info">
+        MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch.
+        Log one record per cylinder type; this only blocks loading for tenants that have opted into
+        the weighment gate.
+      </p-message>
+
+      @if (routeWeighments().length > 0) {
+      <ul class="weighment-record-list">
+        @for (record of routeWeighments(); track record.id) {
+        <li>
+          <span>{{ cylinderTypeName(record.cylinder_type_id) }}</span>
+          <span>{{ record.cylinders_checked }}/{{ record.total_cylinders_in_batch }} checked</span>
+          <p-tag
+            [severity]="record.result === 'pass' ? 'success' : 'danger'"
+            [value]="record.result === 'pass' ? 'Pass' : 'Fail'"
+          />
+        </li>
+        }
+      </ul>
+      }
+
+      <form
+        [formGroup]="loadOutWeighmentForm"
+        (ngSubmit)="onSubmitLoadOutWeighment()"
+        class="dialog-form dialog-form--inline"
+      >
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="Cylinder type"
+            for="wt_cylinder_type"
+            [control]="loadOutWeighmentForm.controls.cylinder_type_id"
+            [messages]="fieldMessages.cylinder_type_id"
+          >
+            <p-select
+              inputId="wt_cylinder_type"
+              formControlName="cylinder_type_id"
+              [options]="cylinderTypes()"
+              optionLabel="name"
+              optionValue="id"
+              [fluid]="true"
+              [appendTo]="'body'"
+            />
+          </lpg-form-field>
+          <lpg-form-field
+            label="Scale used"
+            for="wt_scale"
+            [control]="loadOutWeighmentForm.controls.scale_id"
+            [messages]="fieldMessages.scale_id"
+            [hint]="activeScaleOptions().length === 0 ? 'No active certified scale registered yet.' : ''"
+          >
+            <p-select
+              inputId="wt_scale"
+              formControlName="scale_id"
+              [options]="activeScaleOptions()"
+              optionLabel="label"
+              optionValue="id"
+              placeholder="Select a scale"
+              [fluid]="true"
+              [appendTo]="'body'"
+            />
+          </lpg-form-field>
+          <lpg-form-field
+            label="Cylinders checked (100% of this type)"
+            for="wt_total"
+            [control]="loadOutWeighmentForm.controls.total_cylinders"
+            [messages]="fieldMessages.total_cylinders"
+          >
+            <p-inputnumber
+              inputId="wt_total"
+              formControlName="total_cylinders"
+              [min]="1"
+              [fluid]="true"
+            />
+          </lpg-form-field>
+          <lpg-form-field
+            label="Underweight cylinders found"
+            for="wt_underweight"
+            [control]="loadOutWeighmentForm.controls.underweight_cylinder_count"
+            [messages]="fieldMessages.underweight_cylinder_count"
+            hint="Any underweight cylinder is segregated and returned in the same truck."
+          >
+            <p-inputnumber
+              inputId="wt_underweight"
+              formControlName="underweight_cylinder_count"
+              [min]="0"
+              [fluid]="true"
+            />
+          </lpg-form-field>
+        </div>
+        <div class="modal-actions">
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            (click)="showLoadOutWeighmentForm.set(false)"
+          >
+            Close
+          </button>
+          <button
+            pButton
+            type="submit"
+            [disabled]="
+                  loadOutWeighmentForm.invalid || loading() || activeScaleOptions().length === 0
+                "
+          >
+            Record Weighment
+          </button>
+        </div>
+      </form>
+    </div>
+    } @if (showCashHandoverForm()) {
+    <div class="load-form">
+      <h3 class="section-title">Declare Cash Handover</h3>
+      <form
+        [formGroup]="cashHandoverForm"
+        (ngSubmit)="onSubmitCashHandover()"
+        class="dialog-form dialog-form--inline"
+      >
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="Cash amount handed over"
+            for="cash_handover_amount"
+            [control]="cashHandoverForm.controls.actual_amount"
+            [messages]="fieldMessages.actual_amount"
+          >
+            <p-inputnumber
+              inputId="cash_handover_amount"
+              formControlName="actual_amount"
+              mode="currency"
+              currency="INR"
+              locale="en-IN"
+              [min]="0"
+              [fluid]="true"
+            />
+          </lpg-form-field>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            (click)="showCashHandoverForm.set(false)"
+          >
+            Cancel
+          </button>
+          <button pButton type="submit" [disabled]="cashHandoverForm.invalid || loading()">
+            Declare
+          </button>
+        </div>
+      </form>
+    </div>
+    } @if (lastCashHandover(); as handover) {
+    <p-message
+      [severity]="handover.shortfall === '0' || handover.shortfall === '0.00' ? 'success' : 'warn'"
+    >
+      <span>
+        Handover {{ handover.handover_number ?? handover.id }}: expected ₹{{
+        handover.expected_amount }}, collected ₹{{ handover.actual_amount }} @if (handover.shortfall
+        !== '0' && handover.shortfall !== '0.00') { — shortfall of ₹{{ handover.shortfall }}. }
+        @else { — matched in full. }
+      </span>
+    </p-message>
+    }
+
+    <div class="stops-header">
+      <h3 class="section-title">Stops</h3>
+      <div class="stops-header__actions">
+        @if (canOptimizeSelectedRoute()) {
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          text
+          [disabled]="loading()"
+          (click)="onOptimizeRoute()"
+          pTooltip="Reorder stops for a shorter total distance (AI-estimated)"
+          tooltipPosition="top"
+        >
+          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"></i>
+          <span>Optimise stop order</span>
+        </button>
+        } @if (canAddStopToSelectedRoute()) {
+        <button pButton type="button" text (click)="openAddStopForm()">
+          <i class="pi pi-plus"></i>
+          <span>Add Stop</span>
+        </button>
         }
       </div>
     </div>
+
+    @if (showAddStopForm()) {
+    <div class="load-form">
+      <form
+        [formGroup]="addStopForm"
+        (ngSubmit)="onSubmitAddStop()"
+        class="dialog-form dialog-form--inline"
+      >
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="Order"
+            for="add_stop_order"
+            [control]="addStopForm.controls.order_id"
+            [messages]="fieldMessages.order_id"
+            [hint]="unassignedOrderOptions().length === 0 ? 'No unassigned orders are available right now.' : ''"
+          >
+            <p-select
+              inputId="add_stop_order"
+              formControlName="order_id"
+              [options]="unassignedOrderOptions()"
+              optionLabel="label"
+              optionValue="id"
+              [fluid]="true"
+              [appendTo]="'body'"
+            />
+          </lpg-form-field>
+        </div>
+        <div class="modal-actions">
+          <button pButton type="button" severity="secondary" (click)="showAddStopForm.set(false)">
+            Cancel
+          </button>
+          <button pButton type="submit" [disabled]="addStopForm.invalid || loading()">Add</button>
+        </div>
+      </form>
+    </div>
+    }
+
+    <div class="stops-list">
+      @for (stop of route.stops ?? []; track stop.id) {
+      <div class="stop-card">
+        <div class="stop-card__row">
+          <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
+          <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top"
+            >Order {{ orderNumberById().get(stop.order_id) ?? shortId(stop.order_id) }}</span
+          >
+          <p-tag [severity]="statusSeverity(stop.status)" [value]="statusLabel(stop.status)" />
+        </div>
+        @if (stop.failure_reason) {
+        <span class="stop-card__failure">{{ stop.failure_reason }}</span>
+        } @if (stop.proof_of_delivery; as pod) {
+        <div class="stop-card__pod">
+          <span>POD:</span>
+          <span>{{ pod.otp_verified ? 'OTP verified' : 'OTP not verified' }}</span>
+          @if (pod.signature_url) {
+          <span>Signature captured</span>
+          } @if (pod.photo_url) {
+          <span>Photo captured</span>
+          }
+        </div>
+        }
+      </div>
+      } @empty {
+      <p class="empty-hint">No stops on this route yet.</p>
+      }
+    </div>
+  </div>
   } @else {
-    <p class="empty-hint">Loading route…</p>
+  <p class="empty-hint">Loading route…</p>
   }
 </p-drawer>
 
@@ -647,10 +673,14 @@
   header="Assign Order to Route"
 >
   @if (selectedOrderForAssign(); as order) {
-    <form [formGroup]="assignOrderForm" (ngSubmit)="onSubmitAssignOrder()" class="dialog-form">
-      <div class="dialog-form__fields">
+  <form [formGroup]="assignOrderForm" (ngSubmit)="onSubmitAssignOrder()" class="dialog-form">
+    <div class="dialog-form__fields">
       <p class="assign-order-summary">
-        Order <strong [pTooltip]="order.id" tooltipPosition="top">{{ order.order_number ?? order.id }}</strong> — {{ order.delivery_address.address_line }}
+        Order
+        <strong [pTooltip]="order.id" tooltipPosition="top"
+          >{{ order.order_number ?? order.id }}</strong
+        >
+        — {{ order.delivery_address.address_line }}
       </p>
       <lpg-form-field
         label="Target route"
@@ -669,15 +699,15 @@
           [appendTo]="'body'"
         />
       </lpg-form-field>
-      </div>
-      <div class="modal-actions">
-        <button pButton type="button" severity="secondary" (click)="showAssignOrderDrawer.set(false)">
-          Cancel
-        </button>
-        <button pButton type="submit" [disabled]="assignOrderForm.invalid || loading()">
-          Assign
-        </button>
-      </div>
-    </form>
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="showAssignOrderDrawer.set(false)">
+        Cancel
+      </button>
+      <button pButton type="submit" [disabled]="assignOrderForm.invalid || loading()">
+        Assign
+      </button>
+    </div>
+  </form>
   }
 </p-drawer>

@@ -2,21 +2,16 @@
   <div class="page-header">
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
-      <h1 class="page-title">Cylinder Balances</h1>
-      <p class="page-subtitle">Manage customer cylinder balances and adjustments.</p>
-    </div>
+        <h1 class="page-title">Cylinder Balances</h1>
+        <p class="page-subtitle">Manage customer cylinder balances and adjustments.</p>
+      </div>
     </ng-template>
   </div>
 
   <div class="data-toolbar">
     <div class="data-toolbar__filters"></div>
     <div class="data-toolbar__actions">
-      <button
-        id="adjust-balance-btn"
-        pButton
-        type="button"
-        (click)="openAdjustModal()"
-      >
+      <button id="adjust-balance-btn" pButton type="button" (click)="openAdjustModal()">
         <i class="pi pi-sliders-h"></i>
         <span>Adjust Balance</span>
       </button>
@@ -24,24 +19,24 @@
   </div>
 
   @if (loading()) {
-    <p class="empty-hint">Loading ledger...</p>
+  <p class="empty-hint">Loading ledger...</p>
   } @else {
-    <div class="balance-list">
-      @for (balance of enrichedBalances(); track balance.cylinder_type_id) {
-        <div class="balance-item">
-          <div>
-            <span class="text-sm font-medium">{{ balance.name }}</span>
-          </div>
-          <div class="balance-quantity">
-            <span [class.negative]="balance.quantity < 0" [class.positive]="balance.quantity > 0">
-              {{ balance.quantity }}
-            </span>
-          </div>
-        </div>
-      } @empty {
-        <p class="empty-hint">No cylinder balances recorded yet.</p>
-      }
+  <div class="balance-list">
+    @for (balance of enrichedBalances(); track balance.cylinder_type_id) {
+    <div class="balance-item">
+      <div>
+        <span class="text-sm font-medium">{{ balance.name }}</span>
+      </div>
+      <div class="balance-quantity">
+        <span [class.negative]="balance.quantity < 0" [class.positive]="balance.quantity > 0">
+          {{ balance.quantity }}
+        </span>
+      </div>
     </div>
+    } @empty {
+    <p class="empty-hint">No cylinder balances recorded yet.</p>
+    }
+  </div>
   }
 </div>
 
@@ -58,56 +53,58 @@
 >
   <form [formGroup]="adjustForm" (ngSubmit)="submitAdjustment()" class="dialog-form">
     <div class="dialog-form__fields">
-    <lpg-form-field
-      label="Cylinder type"
-      for="cylinder_type_id"
-      [control]="adjustForm.controls.cylinder_type_id"
-      [messages]="fieldMessages.cylinder_type_id"
-    >
-      <p-select
-        inputId="cylinder_type_id"
-        formControlName="cylinder_type_id"
-        [options]="cylinderTypes()"
-        optionLabel="name"
-        optionValue="id"
-        appendTo="body"
-        [autofocus]="true"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Cylinder type"
+        for="cylinder_type_id"
+        [control]="adjustForm.controls.cylinder_type_id"
+        [messages]="fieldMessages.cylinder_type_id"
+      >
+        <p-select
+          inputId="cylinder_type_id"
+          formControlName="cylinder_type_id"
+          [options]="cylinderTypes()"
+          optionLabel="name"
+          optionValue="id"
+          appendTo="body"
+          [autofocus]="true"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field
-      label="Delta (quantity)"
-      for="delta"
-      [control]="adjustForm.controls.delta"
-      [messages]="fieldMessages.delta"
-      hint="Use negative numbers for cylinders the customer owes the agency."
-    >
-      <input pInputText id="delta" type="number" formControlName="delta" [fluid]="true" />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Delta (quantity)"
+        for="delta"
+        [control]="adjustForm.controls.delta"
+        [messages]="fieldMessages.delta"
+        hint="Use negative numbers for cylinders the customer owes the agency."
+      >
+        <input pInputText id="delta" type="number" formControlName="delta" [fluid]="true" />
+      </lpg-form-field>
 
-    <lpg-form-field
-      label="Reason for adjustment"
-      for="reason"
-      [control]="adjustForm.controls.reason"
-      [messages]="fieldMessages.reason"
-    >
-      <input
-        pInputText
-        id="reason"
-        type="text"
-        formControlName="reason"
-        placeholder="e.g. Lost cylinder, manual correction"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Reason for adjustment"
+        for="reason"
+        [control]="adjustForm.controls.reason"
+        [messages]="fieldMessages.reason"
+      >
+        <input
+          pInputText
+          id="reason"
+          type="text"
+          formControlName="reason"
+          placeholder="e.g. Lost cylinder, manual correction"
+          [fluid]="true"
+        />
+      </lpg-form-field>
     </div>
 
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeAdjustModal()">
         Cancel
       </button>
-      <button pButton type="submit" [disabled]="isSubmitting()">@if (isSubmitting()) {<i class="pi pi-spin pi-spinner"></i> }Apply Adjustment</button>
+      <button pButton type="submit" [disabled]="isSubmitting()">
+        @if (isSubmitting()) {<i class="pi pi-spin pi-spinner"></i> }Apply Adjustment
+      </button>
     </div>
   </form>
 </p-drawer>

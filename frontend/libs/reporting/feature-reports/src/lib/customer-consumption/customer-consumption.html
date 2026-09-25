@@ -1,17 +1,17 @@
 <h2 class="section-heading">Customer Consumption Report</h2>
 
 @if (store.error()) {
-  <lpg-empty-state
-    tone="error"
-    title="Couldn't load customer consumption"
-    [description]="store.error() ?? ''"
-  />
+<lpg-empty-state
+  tone="error"
+  title="Couldn't load customer consumption"
+  [description]="store.error() ?? ''"
+/>
 } @else {
-  <lpg-data-grid
-    [rows]="store.customerConsumption()"
-    [columns]="columns"
-    [loading]="store.loading()"
-    [autoHeight]="true"
-    ariaLabel="Customer consumption report"
-  />
+<lpg-data-grid
+  [rows]="store.customerConsumption()"
+  [columns]="columns"
+  [loading]="store.loading()"
+  [autoHeight]="true"
+  ariaLabel="Customer consumption report"
+/>
 }

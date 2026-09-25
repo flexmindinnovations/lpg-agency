@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal, forwardRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  forwardRef,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
@@ -13,21 +20,22 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
   template: `
     <div class="flex items-center h-full">
       @if (!row?.is_read) {
-      <button
-        pButton
-        type="button"
-        text
-        rounded
-        severity="secondary"
-        size="small"
-        iconOnly
-        aria-label="Mark as read"
-        (click)="handleClick()">
-        <i class="pi pi-check"></i>
-      </button>
+        <button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="secondary"
+          size="small"
+          iconOnly
+          aria-label="Mark as read"
+          (click)="handleClick()"
+        >
+          <i class="pi pi-check"></i>
+        </button>
       }
     </div>
-  `
+  `,
 })
 export class NotificationActionCell {
   private readonly notificationService = inject(NotificationService);
@@ -37,7 +45,7 @@ export class NotificationActionCell {
   agInit(params: any): void {
     this.row = params.data;
   }
-  
+
   refresh(params: any): boolean {
     this.agInit(params);
     return true;
@@ -57,7 +65,7 @@ export class NotificationActionCell {
   imports: [HeaderTitlePortalDirective, ButtonDirective, DataGridComponent],
   templateUrl: './notification-feature-notifications.html',
   styleUrl: './notification-feature-notifications.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationFeatureNotifications implements OnInit {
   private readonly notificationService = inject(NotificationService);
@@ -80,23 +88,23 @@ export class NotificationFeatureNotifications implements OnInit {
         this.notificationService.routeFor(row) ? 'Open' : row.title,
     },
     { field: 'body', header: 'Message', sortable: true, flex: 3 },
-    { 
-      field: 'is_read', 
-      header: 'Status', 
+    {
+      field: 'is_read',
+      header: 'Status',
       sortable: true,
-      valueFormatter: (value: unknown) => value ? 'Read' : 'Unread'
+      valueFormatter: (value: unknown) => (value ? 'Read' : 'Unread'),
     },
-    { 
-      field: 'created_at', 
-      header: 'Date', 
+    {
+      field: 'created_at',
+      header: 'Date',
       sortable: true,
-      valueFormatter: (value: unknown) => new Date(value as string).toLocaleString()
+      valueFormatter: (value: unknown) => new Date(value as string).toLocaleString(),
     },
     {
       field: 'id',
       header: 'Actions',
-      cellRenderer: NotificationActionCell
-    }
+      cellRenderer: NotificationActionCell,
+    },
   ];
 
   ngOnInit(): void {
@@ -130,7 +138,7 @@ export class NotificationFeatureNotifications implements OnInit {
       error: () => {
         this.loading.set(false);
         this.notify.error('Failed to load notifications');
-      }
+      },
     });
   }
 

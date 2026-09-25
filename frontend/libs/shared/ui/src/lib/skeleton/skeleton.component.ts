@@ -39,10 +39,7 @@ export type SkeletonVariant = 'block' | 'text' | 'circle' | 'table';
       @case ('text') {
         <div class="skeleton-text" [attr.aria-hidden]="true">
           @for (l of lineList(); track $index) {
-            <span
-              class="skeleton-bar"
-              [style.inline-size]="$last ? '60%' : '100%'"
-            ></span>
+            <span class="skeleton-bar" [style.inline-size]="$last ? '60%' : '100%'"></span>
           }
         </div>
       }

@@ -1,18 +1,18 @@
 <h2 class="section-heading">Driver Performance (Last 30 Days)</h2>
 
 @if (store.error()) {
-  <lpg-empty-state
-    tone="error"
-    title="Couldn't load driver performance"
-    [description]="store.error() ?? ''"
-  />
+<lpg-empty-state
+  tone="error"
+  title="Couldn't load driver performance"
+  [description]="store.error() ?? ''"
+/>
 } @else {
-  <lpg-data-grid
-    [rows]="store.driverPerformance()"
-    [columns]="columns"
-    [loading]="store.loading()"
-    [autoHeight]="true"
-    [pageSize]="15"
-    ariaLabel="Driver performance, last 30 days"
-  />
+<lpg-data-grid
+  [rows]="store.driverPerformance()"
+  [columns]="columns"
+  [loading]="store.loading()"
+  [autoHeight]="true"
+  [pageSize]="15"
+  ariaLabel="Driver performance, last 30 days"
+/>
 }

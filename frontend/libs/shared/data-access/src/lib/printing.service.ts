@@ -15,10 +15,7 @@ export class PrintingService {
    * (PDF or thermal receipt) and returns a pre-signed download URL.
    */
   createPrintJob(request: PrintJobRequest): Observable<PrintJobResponse> {
-    return this.http.post<PrintJobResponse>(
-      `${this.config.rootUrl}/api/v1/print-jobs`,
-      request,
-    );
+    return this.http.post<PrintJobResponse>(`${this.config.rootUrl}/api/v1/print-jobs`, request);
   }
 
   /**

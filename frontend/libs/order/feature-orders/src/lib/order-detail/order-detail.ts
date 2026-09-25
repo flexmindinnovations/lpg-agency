@@ -1,8 +1,22 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
@@ -62,7 +76,8 @@ const PAYMENT_METHODS = [
 @Component({
   selector: 'lpg-order-detail',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, 
+  imports: [
+    HeaderTitlePortalDirective,
     HasPermissionDirective,
     DatePipe,
     DecimalPipe,
@@ -158,27 +173,13 @@ export class OrderDetail implements OnInit {
     return !!status && APPROVAL_CANCEL_STATUSES.has(status);
   });
 
-  protected readonly canConfirm = computed(() => 
-    this.order()?.status === 'booked'
-  );
-  protected readonly canAssign = computed(() => 
-    this.order()?.status === 'confirmed'
-  );
-  protected readonly canDispatch = computed(() => 
-    this.order()?.status === 'assigned'
-  );
-  protected readonly canDepart = computed(() => 
-    this.order()?.status === 'ready_for_dispatch'
-  );
-  protected readonly canDeliverOrFail = computed(() => 
-    this.order()?.status === 'out_for_delivery'
-  );
-  protected readonly canReschedule = computed(() => 
-    this.order()?.status === 'failed_delivery'
-  );
-  protected readonly canClose = computed(() => 
-    this.order()?.status === 'delivered'
-  );
+  protected readonly canConfirm = computed(() => this.order()?.status === 'booked');
+  protected readonly canAssign = computed(() => this.order()?.status === 'confirmed');
+  protected readonly canDispatch = computed(() => this.order()?.status === 'assigned');
+  protected readonly canDepart = computed(() => this.order()?.status === 'ready_for_dispatch');
+  protected readonly canDeliverOrFail = computed(() => this.order()?.status === 'out_for_delivery');
+  protected readonly canReschedule = computed(() => this.order()?.status === 'failed_delivery');
+  protected readonly canClose = computed(() => this.order()?.status === 'delivered');
 
   protected readonly cancelForm = this.fb.group({
     reason: ['', [Validators.required, Validators.minLength(3)]],
@@ -229,8 +230,7 @@ export class OrderDetail implements OnInit {
   protected readonly uploadingPhoto = signal(false);
   protected readonly gpsCaptured = signal(false);
 
-  protected readonly signatureCanvas =
-    viewChild<ElementRef<HTMLCanvasElement>>('signatureCanvas');
+  protected readonly signatureCanvas = viewChild<ElementRef<HTMLCanvasElement>>('signatureCanvas');
   private drawing = false;
   private hasSignatureStrokes = false;
 
@@ -403,8 +403,7 @@ export class OrderDetail implements OnInit {
     this.loading.set(true);
     const request: RecordFailedDeliveryRequest = {
       reason_code: reason_code as RecordFailedDeliveryRequest['reason_code'],
-      resolution_action:
-        resolution_action as RecordFailedDeliveryRequest['resolution_action'],
+      resolution_action: resolution_action as RecordFailedDeliveryRequest['resolution_action'],
     };
     this.orderService.recordFailedDelivery(order.id, request).subscribe({
       next: (updated) => {
@@ -445,7 +444,10 @@ export class OrderDetail implements OnInit {
     this.deliverForm.controls.lines.clear();
     for (const line of order.lines) {
       this.deliverForm.controls.lines.push(
-        this.buildDeliverLineGroup(line.cylinder_type_id, line.quantity_ordered - line.quantity_pending),
+        this.buildDeliverLineGroup(
+          line.cylinder_type_id,
+          line.quantity_ordered - line.quantity_pending,
+        ),
       );
     }
     this.signatureBlobRef.set(null);

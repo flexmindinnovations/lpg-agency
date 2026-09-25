@@ -4,15 +4,15 @@
       <div class="page-header__text">
         <h1 class="page-title">Cylinder Units</h1>
         <p class="page-subtitle">
-          Per-cylinder identity registry — Rule 26/27, Gas Cylinders Rules 2016. A cylinder
-          due for statutory retest cannot be received into fillable stock.
+          Per-cylinder identity registry — Rule 26/27, Gas Cylinders Rules 2016. A cylinder due for
+          statutory retest cannot be received into fillable stock.
         </p>
       </div>
     </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
-    <p-message severity="error">{{ msg }}</p-message>
+  <p-message severity="error">{{ msg }}</p-message>
   }
 
   <div class="data-toolbar">
@@ -28,12 +28,7 @@
       ></p-select>
     </div>
     <div class="data-toolbar__actions">
-      <button
-        pButton
-        type="button"
-        severity="secondary"
-        (click)="openLookupModal()"
-      >
+      <button pButton type="button" severity="secondary" (click)="openLookupModal()">
         <i class="pi pi-qrcode"></i>
         <span>Quick Scan / Lookup</span>
       </button>
@@ -69,9 +64,19 @@
     [style]="{ width: '100%', maxWidth: '36rem' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
-    <form id="registerCylinderUnitForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+    <form
+      id="registerCylinderUnitForm"
+      [formGroup]="registerForm"
+      (ngSubmit)="onSubmitRegister()"
+      class="dialog-form"
+    >
       <div class="dialog-form__fields">
-        <lpg-form-field label="Cylinder type" for="cylinder_type_id" [control]="registerForm.controls.cylinder_type_id" [messages]="fieldMessages.cylinder_type_id">
+        <lpg-form-field
+          label="Cylinder type"
+          for="cylinder_type_id"
+          [control]="registerForm.controls.cylinder_type_id"
+          [messages]="fieldMessages.cylinder_type_id"
+        >
           <p-select
             inputId="cylinder_type_id"
             formControlName="cylinder_type_id"
@@ -83,15 +88,41 @@
           ></p-select>
         </lpg-form-field>
 
-        <lpg-form-field label="Serial number" for="serial_number" [control]="registerForm.controls.serial_number" [messages]="fieldMessages.serial_number">
-          <input pInputText id="serial_number" formControlName="serial_number" placeholder="e.g. CYL-000123" [fluid]="true" />
+        <lpg-form-field
+          label="Serial number"
+          for="serial_number"
+          [control]="registerForm.controls.serial_number"
+          [messages]="fieldMessages.serial_number"
+        >
+          <input
+            pInputText
+            id="serial_number"
+            formControlName="serial_number"
+            placeholder="e.g. CYL-000123"
+            [fluid]="true"
+          />
         </lpg-form-field>
 
-        <lpg-form-field label="QR / Barcode (optional)" for="qr_code" hint="Leave blank to auto-generate standard format CYL-{serial}">
-          <input pInputText id="qr_code" formControlName="qr_code" placeholder="e.g. CYL-000123" [fluid]="true" />
+        <lpg-form-field
+          label="QR / Barcode (optional)"
+          for="qr_code"
+          hint="Leave blank to auto-generate standard format CYL-{serial}"
+        >
+          <input
+            pInputText
+            id="qr_code"
+            formControlName="qr_code"
+            placeholder="e.g. CYL-000123"
+            [fluid]="true"
+          />
         </lpg-form-field>
 
-        <lpg-form-field label="Initial condition" for="condition_status" [control]="registerForm.controls.condition_status" [messages]="fieldMessages.condition_status">
+        <lpg-form-field
+          label="Initial condition"
+          for="condition_status"
+          [control]="registerForm.controls.condition_status"
+          [messages]="fieldMessages.condition_status"
+        >
           <p-select
             inputId="condition_status"
             formControlName="condition_status"
@@ -103,7 +134,12 @@
           ></p-select>
         </lpg-form-field>
 
-        <lpg-form-field label="Custody type" for="custody_type" [control]="registerForm.controls.custody_type" [messages]="fieldMessages.custody_type">
+        <lpg-form-field
+          label="Custody type"
+          for="custody_type"
+          [control]="registerForm.controls.custody_type"
+          [messages]="fieldMessages.custody_type"
+        >
           <p-select
             inputId="custody_type"
             formControlName="custody_type"
@@ -116,52 +152,53 @@
         </lpg-form-field>
 
         @if (registerForm.controls.custody_type.value === 'warehouse') {
-          <lpg-form-field label="Warehouse" for="custody_ref_id">
-            <p-select
-              inputId="custody_ref_id"
-              formControlName="custody_ref_id"
-              [options]="warehouseOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select Warehouse"
-              appendTo="body"
-              [fluid]="true"
-            ></p-select>
-          </lpg-form-field>
+        <lpg-form-field label="Warehouse" for="custody_ref_id">
+          <p-select
+            inputId="custody_ref_id"
+            formControlName="custody_ref_id"
+            [options]="warehouseOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Warehouse"
+            appendTo="body"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
         } @else if (registerForm.controls.custody_type.value === 'vehicle') {
-          <lpg-form-field label="Vehicle" for="custody_ref_id">
-            <p-select
-              inputId="custody_ref_id"
-              formControlName="custody_ref_id"
-              [options]="vehicleOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select Vehicle"
-              [filter]="true"
-              filterBy="label"
-              appendTo="body"
-              [fluid]="true"
-            ></p-select>
-          </lpg-form-field>
+        <lpg-form-field label="Vehicle" for="custody_ref_id">
+          <p-select
+            inputId="custody_ref_id"
+            formControlName="custody_ref_id"
+            [options]="vehicleOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Vehicle"
+            [filter]="true"
+            filterBy="label"
+            appendTo="body"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
         } @else if (registerForm.controls.custody_type.value === 'customer') {
-          <lpg-form-field label="Customer" for="custody_ref_id">
-            <p-select
-              inputId="custody_ref_id"
-              formControlName="custody_ref_id"
-              [options]="customerOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select Customer"
-              [filter]="true"
-              filterBy="label"
-              appendTo="body"
-              [fluid]="true"
-            ></p-select>
-          </lpg-form-field>
+        <lpg-form-field label="Customer" for="custody_ref_id">
+          <p-select
+            inputId="custody_ref_id"
+            formControlName="custody_ref_id"
+            [options]="customerOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Customer"
+            [filter]="true"
+            filterBy="label"
+            appendTo="body"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
         } @else if (registerForm.controls.custody_type.value === 'bottling_plant') {
-          <p-message severity="info" [closable]="false" styleClass="w-full">
-            Cylinders dispatched to the bottling plant leave agency possession. No reference ID is needed.
-          </p-message>
+        <p-message severity="info" [closable]="false" styleClass="w-full">
+          Cylinders dispatched to the bottling plant leave agency possession. No reference ID is
+          needed.
+        </p-message>
         }
 
         <lpg-form-field label="Manufacture date (optional)" for="manufacture_date">
@@ -177,13 +214,23 @@
         </lpg-form-field>
 
         <lpg-form-field label="Owner OMC (optional)" for="owner_omc">
-          <input pInputText id="owner_omc" formControlName="owner_omc" placeholder="e.g. HPCL" [fluid]="true" />
+          <input
+            pInputText
+            id="owner_omc"
+            formControlName="owner_omc"
+            placeholder="e.g. HPCL"
+            [fluid]="true"
+          />
         </lpg-form-field>
       </div>
 
       <div class="modal-actions">
-        <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">Cancel</button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">Register</button>
+        <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
+          Register
+        </button>
       </div>
     </form>
   </p-drawer>
@@ -201,122 +248,159 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
   >
     @if (selectedUnit(); as unit) {
-      <div class="detail-view">
-        <div class="detail-view__fields">
-          <div class="detail-item">
-            <span class="detail-label">Serial</span>
-            <span class="detail-value">{{ unit.serial_number }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">QR / Barcode</span>
-            <span class="detail-value font-mono">{{ unit.qr_code }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Type</span>
-            <span class="detail-value">{{ cylinderTypeNameById().get(unit.cylinder_type_id) ?? unit.cylinder_type_id }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Condition</span>
-            <p-tag [value]="toSentenceCase(unit.condition_status)" [severity]="conditionSeverity(unit.condition_status)" />
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Custody</span>
-            <span class="detail-value">{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Statutory Test</span>
-            <span class="detail-value">
-              @if (unit.test_due_date) {
-                Due {{ formatReportDate(unit.test_due_date) }}
-                @if (unit.is_due_for_test) {
-                  <p-tag value="OVERDUE" severity="danger" />
-                }
-              } @else {
-                Never tested
-              }
-            </span>
-          </div>
-          @if (unit.owner_omc) {
-            <div class="detail-item">
-              <span class="detail-label">Owner OMC</span>
-              <span class="detail-value">{{ unit.owner_omc }}</span>
-            </div>
-          }
-          @if (unit.is_retired) {
-            <div class="detail-item">
-              <span class="detail-label">Status</span>
-              <p-tag value="RETIRED" severity="secondary" />
-            </div>
-          }
+    <div class="detail-view">
+      <div class="detail-view__fields">
+        <div class="detail-item">
+          <span class="detail-label">Serial</span>
+          <span class="detail-value">{{ unit.serial_number }}</span>
         </div>
-
-        @if (!unit.is_retired) {
-          @if (activeAction() === 'receive') {
-            <form [formGroup]="receiveForm" (ngSubmit)="saveReceive()" class="dialog-form">
-              <div class="dialog-form__fields">
-                <p class="page-lede">
-                  Charges this cylinder into fillable stock. Blocked with a 409 if the
-                  statutory retest is due (Rule 26, Gas Cylinders Rules 2016).
-                </p>
-                <lpg-form-field label="Receiving warehouse" for="receive_warehouse_id" [control]="receiveForm.controls.warehouse_id">
-                  <p-select
-                    inputId="receive_warehouse_id"
-                    formControlName="warehouse_id"
-                    [options]="warehouses()"
-                    optionLabel="name"
-                    optionValue="id"
-                    appendTo="body"
-                    [fluid]="true"
-                  ></p-select>
-                </lpg-form-field>
-              </div>
-              <div class="modal-actions">
-                <button pButton type="button" severity="secondary" (click)="cancelAction()">Cancel</button>
-                <button pButton type="submit" [disabled]="receiveForm.invalid || saving()">Receive</button>
-              </div>
-            </form>
-          } @else {
-            <div class="modal-actions modal-actions--wrap">
-              <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
-              <button
-                *lpgHasPermission="'cylinder_units:manage'"
-                pButton
-                type="button"
-                severity="secondary"
-                [disabled]="printingLabel()"
-                (click)="printLabel(unit.id)"
-              >
-                <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
-                <span>Print Label</span>
-              </button>
-              <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="openRecordTest()">
-                Record Test
-              </button>
-              <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="openMoveCustody()">
-                Move Custody
-              </button>
-              @if (allowedNextConditions().length > 0) {
-                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="secondary" (click)="openChangeCondition()">
-                  Change Condition
-                </button>
-              }
-              @if (unit.condition_status === 'empty') {
-                <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" (click)="startAction('receive')">
-                  <i class="pi pi-check"></i>
-                  <span>Receive</span>
-                </button>
-              }
-              <button *lpgHasPermission="'cylinder_units:manage'" pButton type="button" severity="danger" [disabled]="saving()" (click)="retire()">
-                Retire
-              </button>
-            </div>
-          }
-        } @else {
-          <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
-          </div>
+        <div class="detail-item">
+          <span class="detail-label">QR / Barcode</span>
+          <span class="detail-value font-mono">{{ unit.qr_code }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Type</span>
+          <span class="detail-value"
+            >{{ cylinderTypeNameById().get(unit.cylinder_type_id) ?? unit.cylinder_type_id }}</span
+          >
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Condition</span>
+          <p-tag
+            [value]="toSentenceCase(unit.condition_status)"
+            [severity]="conditionSeverity(unit.condition_status)"
+          />
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Custody</span>
+          <span class="detail-value"
+            >{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span
+          >
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Statutory Test</span>
+          <span class="detail-value">
+            @if (unit.test_due_date) { Due {{ formatReportDate(unit.test_due_date) }} @if
+            (unit.is_due_for_test) {
+            <p-tag value="OVERDUE" severity="danger" />
+            } } @else { Never tested }
+          </span>
+        </div>
+        @if (unit.owner_omc) {
+        <div class="detail-item">
+          <span class="detail-label">Owner OMC</span>
+          <span class="detail-value">{{ unit.owner_omc }}</span>
+        </div>
+        } @if (unit.is_retired) {
+        <div class="detail-item">
+          <span class="detail-label">Status</span>
+          <p-tag value="RETIRED" severity="secondary" />
+        </div>
         }
       </div>
+
+      @if (!unit.is_retired) { @if (activeAction() === 'receive') {
+      <form [formGroup]="receiveForm" (ngSubmit)="saveReceive()" class="dialog-form">
+        <div class="dialog-form__fields">
+          <p class="page-lede">
+            Charges this cylinder into fillable stock. Blocked with a 409 if the statutory retest is
+            due (Rule 26, Gas Cylinders Rules 2016).
+          </p>
+          <lpg-form-field
+            label="Receiving warehouse"
+            for="receive_warehouse_id"
+            [control]="receiveForm.controls.warehouse_id"
+          >
+            <p-select
+              inputId="receive_warehouse_id"
+              formControlName="warehouse_id"
+              [options]="warehouses()"
+              optionLabel="name"
+              optionValue="id"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+        </div>
+        <div class="modal-actions">
+          <button pButton type="button" severity="secondary" (click)="cancelAction()">
+            Cancel
+          </button>
+          <button pButton type="submit" [disabled]="receiveForm.invalid || saving()">
+            Receive
+          </button>
+        </div>
+      </form>
+      } @else {
+      <div class="modal-actions modal-actions--wrap">
+        <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="printingLabel()"
+          (click)="printLabel(unit.id)"
+        >
+          <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+          <span>Print Label</span>
+        </button>
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openRecordTest()"
+        >
+          Record Test
+        </button>
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openMoveCustody()"
+        >
+          Move Custody
+        </button>
+        @if (allowedNextConditions().length > 0) {
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openChangeCondition()"
+        >
+          Change Condition
+        </button>
+        } @if (unit.condition_status === 'empty') {
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          (click)="startAction('receive')"
+        >
+          <i class="pi pi-check"></i>
+          <span>Receive</span>
+        </button>
+        }
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          severity="danger"
+          [disabled]="saving()"
+          (click)="retire()"
+        >
+          Retire
+        </button>
+      </div>
+      } } @else {
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+      </div>
+      }
+    </div>
     }
   </p-drawer>
 
@@ -333,7 +417,8 @@
   >
     <div class="dialog-form">
       <p class="page-lede">
-        Scan a QR code or barcode, or enter a serial number to quickly locate a cylinder unit and check its status.
+        Scan a QR code or barcode, or enter a serial number to quickly locate a cylinder unit and
+        check its status.
       </p>
 
       <div class="lookup-input-row">
@@ -359,84 +444,88 @@
       </div>
 
       @if (lookupNotFound()) {
-        <div class="lookup-not-found-msg">
-          <p-message severity="warn">No cylinder unit found matching this code.</p-message>
-        </div>
-      }
-
-      @if (lookupResult(); as result) {
-        <div class="lookup-result-card">
-          <div class="lookup-result-fields">
-            <div class="detail-item">
-              <span class="detail-label">Serial Number</span>
-              <span class="detail-value font-semibold">{{ result.serial_number }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">QR / Barcode</span>
-              <span class="detail-value font-mono">{{ result.qr_code }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Type</span>
-              <span class="detail-value">{{ cylinderTypeNameById().get(result.cylinder_type_id) ?? result.cylinder_type_id }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Condition</span>
-              <p-tag [value]="toSentenceCase(result.condition_status)" [severity]="conditionSeverity(result.condition_status)" />
-            </div>
-            <div class="detail-item detail-item--span-2">
-              <span class="detail-label">Retest Due</span>
-              <span class="detail-value">
-                {{ result.test_due_date ? formatReportDate(result.test_due_date) : 'Never tested' }}
-                @if (result.is_due_for_test) {
-                  <p-tag value="OVERDUE" severity="danger" />
-                }
-              </span>
-            </div>
-            <div class="detail-item detail-item--full-width">
-              <span class="detail-label">Current Custody</span>
-              <span class="detail-value">{{ formatCustodyDisplay(result.custody_type, result.custody_ref_id) }}</span>
-            </div>
+      <div class="lookup-not-found-msg">
+        <p-message severity="warn">No cylinder unit found matching this code.</p-message>
+      </div>
+      } @if (lookupResult(); as result) {
+      <div class="lookup-result-card">
+        <div class="lookup-result-fields">
+          <div class="detail-item">
+            <span class="detail-label">Serial Number</span>
+            <span class="detail-value font-semibold">{{ result.serial_number }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">QR / Barcode</span>
+            <span class="detail-value font-mono">{{ result.qr_code }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Type</span>
+            <span class="detail-value"
+              >{{ cylinderTypeNameById().get(result.cylinder_type_id) ?? result.cylinder_type_id
+              }}</span
+            >
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Condition</span>
+            <p-tag
+              [value]="toSentenceCase(result.condition_status)"
+              [severity]="conditionSeverity(result.condition_status)"
+            />
+          </div>
+          <div class="detail-item detail-item--span-2">
+            <span class="detail-label">Retest Due</span>
+            <span class="detail-value">
+              {{ result.test_due_date ? formatReportDate(result.test_due_date) : 'Never tested' }}
+              @if (result.is_due_for_test) {
+              <p-tag value="OVERDUE" severity="danger" />
+              }
+            </span>
+          </div>
+          <div class="detail-item detail-item--full-width">
+            <span class="detail-label">Current Custody</span>
+            <span class="detail-value"
+              >{{ formatCustodyDisplay(result.custody_type, result.custody_ref_id) }}</span
+            >
           </div>
         </div>
+      </div>
       }
     </div>
 
     <ng-template #footer>
       @if (lookupResult(); as result) {
-        <div class="modal-actions modal-actions--wrap w-full">
-          <button
-            pButton
-            type="button"
-            severity="secondary"
-            [disabled]="printingLabel()"
-            (click)="printLabel(result.id)"
-          >
-            <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
-            <span>Print Label</span>
-          </button>
-          <button
-            *lpgHasPermission="'cylinder_units:manage'"
-            pButton
-            type="button"
-            severity="secondary"
-            (click)="openMoveCustodyFromLookup()"
-          >
-            <i class="pi pi-arrows-alt"></i>
-            <span>Move Custody</span>
-          </button>
-          <button
-            pButton
-            type="button"
-            (click)="openDetailsFromLookup()"
-          >
-            <i class="pi pi-arrow-right"></i>
-            <span>Manage Unit</span>
-          </button>
-        </div>
+      <div class="modal-actions modal-actions--wrap w-full">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="printingLabel()"
+          (click)="printLabel(result.id)"
+        >
+          <i [class]="printingLabel() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+          <span>Print Label</span>
+        </button>
+        <button
+          *lpgHasPermission="'cylinder_units:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openMoveCustodyFromLookup()"
+        >
+          <i class="pi pi-arrows-alt"></i>
+          <span>Move Custody</span>
+        </button>
+        <button pButton type="button" (click)="openDetailsFromLookup()">
+          <i class="pi pi-arrow-right"></i>
+          <span>Manage Unit</span>
+        </button>
+      </div>
       } @else {
-        <div class="modal-actions w-full">
-          <button pButton type="button" severity="secondary" (click)="showLookupModal.set(false)">Close</button>
-        </div>
+      <div class="modal-actions w-full">
+        <button pButton type="button" severity="secondary" (click)="showLookupModal.set(false)">
+          Close
+        </button>
+      </div>
       }
     </ng-template>
   </p-dialog>
@@ -453,94 +542,110 @@
     [resizable]="false"
   >
     @if (selectedUnit(); as unit) {
-      <div class="dialog-form">
-        <div class="dialog-summary-card">
-          <div class="summary-field">
-            <span class="summary-label">Serial Number</span>
-            <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
-          </div>
-          <div class="summary-field">
-            <span class="summary-label">QR / Barcode</span>
-            <span class="summary-value font-mono">{{ unit.qr_code }}</span>
-          </div>
-          <div class="summary-field">
-            <span class="summary-label">Current Custody</span>
-            <span class="summary-value">{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span>
-          </div>
+    <div class="dialog-form">
+      <div class="dialog-summary-card">
+        <div class="summary-field">
+          <span class="summary-label">Serial Number</span>
+          <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
         </div>
-
-        <form [formGroup]="custodyForm" (ngSubmit)="saveCustody()">
-          <div class="dialog-form__fields">
-            <lpg-form-field label="Destination custody type" for="move_custody_type" [control]="custodyForm.controls.custody_type">
-              <p-select
-                inputId="move_custody_type"
-                formControlName="custody_type"
-                [options]="custodyTypeOptions"
-                optionLabel="label"
-                optionValue="value"
-                appendTo="body"
-                [fluid]="true"
-              ></p-select>
-            </lpg-form-field>
-
-            @if (custodyForm.controls.custody_type.value === 'warehouse') {
-              <lpg-form-field label="Destination Warehouse" for="move_custody_ref_id">
-                <p-select
-                  inputId="move_custody_ref_id"
-                  formControlName="custody_ref_id"
-                  [options]="warehouseOptions()"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Warehouse"
-                  appendTo="body"
-                  [fluid]="true"
-                ></p-select>
-              </lpg-form-field>
-            } @else if (custodyForm.controls.custody_type.value === 'vehicle') {
-              <lpg-form-field label="Destination Vehicle" for="move_custody_ref_id">
-                <p-select
-                  inputId="move_custody_ref_id"
-                  formControlName="custody_ref_id"
-                  [options]="vehicleOptions()"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Vehicle"
-                  [filter]="true"
-                  filterBy="label"
-                  appendTo="body"
-                  [fluid]="true"
-                ></p-select>
-              </lpg-form-field>
-            } @else if (custodyForm.controls.custody_type.value === 'customer') {
-              <lpg-form-field label="Destination Customer" for="move_custody_ref_id">
-                <p-select
-                  inputId="move_custody_ref_id"
-                  formControlName="custody_ref_id"
-                  [options]="customerOptions()"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Customer"
-                  [filter]="true"
-                  filterBy="label"
-                  appendTo="body"
-                  [fluid]="true"
-                ></p-select>
-              </lpg-form-field>
-            } @else if (custodyForm.controls.custody_type.value === 'bottling_plant') {
-              <p-message severity="info" [closable]="false" styleClass="w-full">
-                Cylinders dispatched to the bottling plant leave agency possession. No reference ID is needed.
-              </p-message>
-            }
-          </div>
-        </form>
+        <div class="summary-field">
+          <span class="summary-label">QR / Barcode</span>
+          <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Current Custody</span>
+          <span class="summary-value"
+            >{{ formatCustodyDisplay(unit.custody_type, unit.custody_ref_id) }}</span
+          >
+        </div>
       </div>
 
-      <ng-template #footer>
-        <div class="modal-actions w-full">
-          <button pButton type="button" severity="secondary" (click)="closeMoveCustody()">Cancel</button>
-          <button pButton type="button" [disabled]="custodyForm.invalid || saving()" (click)="saveCustody()">Update Custody</button>
+      <form [formGroup]="custodyForm" (ngSubmit)="saveCustody()">
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="Destination custody type"
+            for="move_custody_type"
+            [control]="custodyForm.controls.custody_type"
+          >
+            <p-select
+              inputId="move_custody_type"
+              formControlName="custody_type"
+              [options]="custodyTypeOptions"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+
+          @if (custodyForm.controls.custody_type.value === 'warehouse') {
+          <lpg-form-field label="Destination Warehouse" for="move_custody_ref_id">
+            <p-select
+              inputId="move_custody_ref_id"
+              formControlName="custody_ref_id"
+              [options]="warehouseOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Warehouse"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+          } @else if (custodyForm.controls.custody_type.value === 'vehicle') {
+          <lpg-form-field label="Destination Vehicle" for="move_custody_ref_id">
+            <p-select
+              inputId="move_custody_ref_id"
+              formControlName="custody_ref_id"
+              [options]="vehicleOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Vehicle"
+              [filter]="true"
+              filterBy="label"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+          } @else if (custodyForm.controls.custody_type.value === 'customer') {
+          <lpg-form-field label="Destination Customer" for="move_custody_ref_id">
+            <p-select
+              inputId="move_custody_ref_id"
+              formControlName="custody_ref_id"
+              [options]="customerOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Customer"
+              [filter]="true"
+              filterBy="label"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+          } @else if (custodyForm.controls.custody_type.value === 'bottling_plant') {
+          <p-message severity="info" [closable]="false" styleClass="w-full">
+            Cylinders dispatched to the bottling plant leave agency possession. No reference ID is
+            needed.
+          </p-message>
+          }
         </div>
-      </ng-template>
+      </form>
+    </div>
+
+    <ng-template #footer>
+      <div class="modal-actions w-full">
+        <button pButton type="button" severity="secondary" (click)="closeMoveCustody()">
+          Cancel
+        </button>
+        <button
+          pButton
+          type="button"
+          [disabled]="custodyForm.invalid || saving()"
+          (click)="saveCustody()"
+        >
+          Update Custody
+        </button>
+      </div>
+    </ng-template>
     }
   </p-dialog>
 
@@ -557,74 +662,95 @@
     [resizable]="false"
   >
     @if (selectedUnit(); as unit) {
-      <div class="dialog-form">
-        <div class="dialog-summary-card">
-          <div class="summary-field">
-            <span class="summary-label">Serial Number</span>
-            <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
-          </div>
-          <div class="summary-field">
-            <span class="summary-label">QR / Barcode</span>
-            <span class="summary-value font-mono">{{ unit.qr_code }}</span>
-          </div>
-          <div class="summary-field">
-            <span class="summary-label">Current Test Due</span>
-            <span class="summary-value">
-              {{ unit.test_due_date ? formatReportDate(unit.test_due_date) : 'Never tested' }}
-            </span>
-          </div>
+    <div class="dialog-form">
+      <div class="dialog-summary-card">
+        <div class="summary-field">
+          <span class="summary-label">Serial Number</span>
+          <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
         </div>
-
-        <form [formGroup]="testForm" (ngSubmit)="saveTest()">
-          <div class="dialog-form__fields">
-            <lpg-form-field label="Tested on" for="dialog_tested_at" [control]="testForm.controls.tested_at">
-              <p-datepicker
-                inputId="dialog_tested_at"
-                formControlName="tested_at"
-                [showIcon]="true"
-                iconDisplay="input"
-                dateFormat="dd-mm-yy"
-                appendTo="body"
-                [fluid]="true"
-                [showOnFocus]="false"
-                (onSelect)="onTestedAtChange()"
-              ></p-datepicker>
-            </lpg-form-field>
-
-            <lpg-form-field
-              label="Next due date"
-              for="dialog_due_date"
-              [control]="testForm.controls.due_date"
-              hint="The exact statutory retest interval is unconfirmed — enter the date from the cylinder's own stamp or the tenant's own records."
-            >
-              <p-datepicker
-                inputId="dialog_due_date"
-                formControlName="due_date"
-                [showIcon]="true"
-                iconDisplay="input"
-                dateFormat="dd-mm-yy"
-                appendTo="body"
-                [fluid]="true"
-                [showOnFocus]="false"
-              ></p-datepicker>
-            </lpg-form-field>
-
-            @if (suggestedDueDate(); as suggestion) {
-              <p-message severity="info" [closable]="false" styleClass="w-full">
-                Suggested due date from tenant configuration: {{ formatReportDate(suggestion) }}
-                <button pButton type="button" [text]="true" size="small" (click)="applySuggestedDueDate()">Use this</button>
-              </p-message>
-            }
-          </div>
-        </form>
+        <div class="summary-field">
+          <span class="summary-label">QR / Barcode</span>
+          <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Current Test Due</span>
+          <span class="summary-value">
+            {{ unit.test_due_date ? formatReportDate(unit.test_due_date) : 'Never tested' }}
+          </span>
+        </div>
       </div>
 
-      <ng-template #footer>
-        <div class="modal-actions w-full">
-          <button pButton type="button" severity="secondary" (click)="closeRecordTest()">Cancel</button>
-          <button pButton type="button" [disabled]="testForm.invalid || saving()" (click)="saveTest()">Save Test</button>
+      <form [formGroup]="testForm" (ngSubmit)="saveTest()">
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="Tested on"
+            for="dialog_tested_at"
+            [control]="testForm.controls.tested_at"
+          >
+            <p-datepicker
+              inputId="dialog_tested_at"
+              formControlName="tested_at"
+              [showIcon]="true"
+              iconDisplay="input"
+              dateFormat="dd-mm-yy"
+              appendTo="body"
+              [fluid]="true"
+              [showOnFocus]="false"
+              (onSelect)="onTestedAtChange()"
+            ></p-datepicker>
+          </lpg-form-field>
+
+          <lpg-form-field
+            label="Next due date"
+            for="dialog_due_date"
+            [control]="testForm.controls.due_date"
+            hint="The exact statutory retest interval is unconfirmed — enter the date from the cylinder's own stamp or the tenant's own records."
+          >
+            <p-datepicker
+              inputId="dialog_due_date"
+              formControlName="due_date"
+              [showIcon]="true"
+              iconDisplay="input"
+              dateFormat="dd-mm-yy"
+              appendTo="body"
+              [fluid]="true"
+              [showOnFocus]="false"
+            ></p-datepicker>
+          </lpg-form-field>
+
+          @if (suggestedDueDate(); as suggestion) {
+          <p-message severity="info" [closable]="false" styleClass="w-full">
+            Suggested due date from tenant configuration: {{ formatReportDate(suggestion) }}
+            <button
+              pButton
+              type="button"
+              [text]="true"
+              size="small"
+              (click)="applySuggestedDueDate()"
+            >
+              Use this
+            </button>
+          </p-message>
+          }
         </div>
-      </ng-template>
+      </form>
+    </div>
+
+    <ng-template #footer>
+      <div class="modal-actions w-full">
+        <button pButton type="button" severity="secondary" (click)="closeRecordTest()">
+          Cancel
+        </button>
+        <button
+          pButton
+          type="button"
+          [disabled]="testForm.invalid || saving()"
+          (click)="saveTest()"
+        >
+          Save Test
+        </button>
+      </div>
+    </ng-template>
     }
   </p-dialog>
 
@@ -640,51 +766,72 @@
     [resizable]="false"
   >
     @if (selectedUnit(); as unit) {
-      <div class="dialog-form">
-        <div class="dialog-summary-card">
-          <div class="summary-field">
-            <span class="summary-label">Serial Number</span>
-            <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
-          </div>
-          <div class="summary-field">
-            <span class="summary-label">QR / Barcode</span>
-            <span class="summary-value font-mono">{{ unit.qr_code }}</span>
-          </div>
-          <div class="summary-field">
-            <span class="summary-label">Current Condition</span>
-            <div class="summary-value">
-              <p-tag [value]="toSentenceCase(unit.condition_status)" [severity]="conditionSeverity(unit.condition_status)" />
-            </div>
+    <div class="dialog-form">
+      <div class="dialog-summary-card">
+        <div class="summary-field">
+          <span class="summary-label">Serial Number</span>
+          <span class="summary-value font-semibold">{{ unit.serial_number }}</span>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">QR / Barcode</span>
+          <span class="summary-value font-mono">{{ unit.qr_code }}</span>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Current Condition</span>
+          <div class="summary-value">
+            <p-tag
+              [value]="toSentenceCase(unit.condition_status)"
+              [severity]="conditionSeverity(unit.condition_status)"
+            />
           </div>
         </div>
-
-        <form [formGroup]="conditionForm" (ngSubmit)="saveCondition()">
-          <div class="dialog-form__fields">
-            <lpg-form-field label="New condition" for="dialog_new_status" [control]="conditionForm.controls.new_status">
-              <p-select
-                inputId="dialog_new_status"
-                formControlName="new_status"
-                [options]="allowedNextConditions()"
-                optionLabel="label"
-                optionValue="value"
-                appendTo="body"
-                [fluid]="true"
-              ></p-select>
-            </lpg-form-field>
-
-            <lpg-form-field label="Reason (optional)" for="dialog_condition_reason">
-              <input pInputText id="dialog_condition_reason" formControlName="reason" [fluid]="true" />
-            </lpg-form-field>
-          </div>
-        </form>
       </div>
 
-      <ng-template #footer>
-        <div class="modal-actions w-full">
-          <button pButton type="button" severity="secondary" (click)="closeChangeCondition()">Cancel</button>
-          <button pButton type="button" [disabled]="conditionForm.invalid || saving()" (click)="saveCondition()">Update Condition</button>
+      <form [formGroup]="conditionForm" (ngSubmit)="saveCondition()">
+        <div class="dialog-form__fields">
+          <lpg-form-field
+            label="New condition"
+            for="dialog_new_status"
+            [control]="conditionForm.controls.new_status"
+          >
+            <p-select
+              inputId="dialog_new_status"
+              formControlName="new_status"
+              [options]="allowedNextConditions()"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              [fluid]="true"
+            ></p-select>
+          </lpg-form-field>
+
+          <lpg-form-field label="Reason (optional)" for="dialog_condition_reason">
+            <input
+              pInputText
+              id="dialog_condition_reason"
+              formControlName="reason"
+              [fluid]="true"
+            />
+          </lpg-form-field>
         </div>
-      </ng-template>
+      </form>
+    </div>
+
+    <ng-template #footer>
+      <div class="modal-actions w-full">
+        <button pButton type="button" severity="secondary" (click)="closeChangeCondition()">
+          Cancel
+        </button>
+        <button
+          pButton
+          type="button"
+          [disabled]="conditionForm.invalid || saving()"
+          (click)="saveCondition()"
+        >
+          Update Condition
+        </button>
+      </div>
+    </ng-template>
     }
   </p-dialog>
 </div>

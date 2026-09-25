@@ -43,7 +43,9 @@ describe('globalErrorToastInterceptor', () => {
     const errorSpy = jest.spyOn(notifyService, 'error');
 
     http.post('/api/v1/admin/branches', {}).subscribe({ error: () => undefined });
-    httpTesting.expectOne('/api/v1/admin/branches').flush(problem(), { status: 400, statusText: 'Bad Request' });
+    httpTesting
+      .expectOne('/api/v1/admin/branches')
+      .flush(problem(), { status: 400, statusText: 'Bad Request' });
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
   });
@@ -52,7 +54,9 @@ describe('globalErrorToastInterceptor', () => {
     const errorSpy = jest.spyOn(notifyService, 'error');
 
     http.get('/api/v1/orders').subscribe({ error: () => undefined });
-    httpTesting.expectOne('/api/v1/orders').flush(problem(), { status: 400, statusText: 'Bad Request' });
+    httpTesting
+      .expectOne('/api/v1/orders')
+      .flush(problem(), { status: 400, statusText: 'Bad Request' });
 
     expect(errorSpy).not.toHaveBeenCalled();
   });
@@ -63,7 +67,10 @@ describe('globalErrorToastInterceptor', () => {
     http.post('/api/v1/auth/login', {}).subscribe({ error: () => undefined });
     httpTesting
       .expectOne('/api/v1/auth/login')
-      .flush(problem({ error_code: 'INVALID_CREDENTIALS' }), { status: 401, statusText: 'Unauthorized' });
+      .flush(problem({ error_code: 'INVALID_CREDENTIALS' }), {
+        status: 401,
+        statusText: 'Unauthorized',
+      });
 
     expect(errorSpy).not.toHaveBeenCalled();
   });
@@ -82,8 +89,12 @@ describe('globalErrorToastInterceptor', () => {
   it('still rethrows the error to the caller after toasting', () => {
     let observedError: unknown;
 
-    http.post('/api/v1/admin/branches', {}).subscribe({ error: (error) => (observedError = error) });
-    httpTesting.expectOne('/api/v1/admin/branches').flush(problem(), { status: 400, statusText: 'Bad Request' });
+    http
+      .post('/api/v1/admin/branches', {})
+      .subscribe({ error: (error) => (observedError = error) });
+    httpTesting
+      .expectOne('/api/v1/admin/branches')
+      .flush(problem(), { status: 400, statusText: 'Bad Request' });
 
     expect(observedError).toBeTruthy();
   });
@@ -104,7 +115,11 @@ describe('globalErrorToastInterceptor composed in production order', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(
-          withInterceptors([globalErrorToastInterceptor, problemDetailsInterceptor, authInterceptor]),
+          withInterceptors([
+            globalErrorToastInterceptor,
+            problemDetailsInterceptor,
+            authInterceptor,
+          ]),
         ),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -127,7 +142,10 @@ describe('globalErrorToastInterceptor composed in production order', () => {
     http.post('/api/v1/admin/branches', {}).subscribe({ error: () => undefined });
     httpTesting
       .expectOne('/api/v1/admin/branches')
-      .flush(problem({ error_code: 'PERMISSION_DENIED' }), { status: 403, statusText: 'Forbidden' });
+      .flush(problem({ error_code: 'PERMISSION_DENIED' }), {
+        status: 403,
+        statusText: 'Forbidden',
+      });
 
     expect(errorSpy).toHaveBeenCalledWith("You don't have permission to do that.");
   });
@@ -140,7 +158,9 @@ describe('globalErrorToastInterceptor composed in production order', () => {
     httpTesting
       .expectOne('/api/v1/admin/branches/b1/rename')
       .flush(null, { status: 401, statusText: 'Unauthorized' });
-    httpTesting.expectOne('/api/v1/auth/refresh').flush(null, { status: 401, statusText: 'Unauthorized' });
+    httpTesting
+      .expectOne('/api/v1/auth/refresh')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(errorSpy).not.toHaveBeenCalled();
   });

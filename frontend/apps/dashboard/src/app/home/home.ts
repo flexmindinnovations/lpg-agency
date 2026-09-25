@@ -83,7 +83,17 @@ function statusLabel(status: string): string {
 @Component({
   selector: 'lpg-home',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ChartModule, HasPermissionDirective, PageHeaderComponent, SectionCardComponent, StatCardComponent, ActivityListComponent, EmptyStateComponent, SkeletonComponent],
+  imports: [
+    HeaderTitlePortalDirective,
+    ChartModule,
+    HasPermissionDirective,
+    PageHeaderComponent,
+    SectionCardComponent,
+    StatCardComponent,
+    ActivityListComponent,
+    EmptyStateComponent,
+    SkeletonComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
@@ -114,14 +124,25 @@ function statusLabel(status: string): string {
         <lpg-section-card *lpgHasPermission="'vehicles:read'" heading="Fleet Status">
           <div class="chart-container">
             @if (isBrowser) {
-              <p-chart type="bar" [data]="vehicleStatusChartData()" [options]="barChartOptions()"></p-chart>
+              <p-chart
+                type="bar"
+                [data]="vehicleStatusChartData()"
+                [options]="barChartOptions()"
+              ></p-chart>
             }
           </div>
         </lpg-section-card>
-        <lpg-section-card *lpgHasPermission="'inventory:read'" heading="Cylinder Inventory (All Locations)">
+        <lpg-section-card
+          *lpgHasPermission="'inventory:read'"
+          heading="Cylinder Inventory (All Locations)"
+        >
           <div class="chart-container">
             @if (isBrowser) {
-              <p-chart type="doughnut" [data]="inventoryChartData()" [options]="doughnutChartOptions()"></p-chart>
+              <p-chart
+                type="doughnut"
+                [data]="inventoryChartData()"
+                [options]="doughnutChartOptions()"
+              ></p-chart>
             }
           </div>
         </lpg-section-card>
@@ -139,12 +160,18 @@ function statusLabel(status: string): string {
             }
           </div>
         } @else if (!loading()) {
-          <lpg-empty-state title="No inventory activity yet" description="Cylinder movements will appear here once stock is recorded." />
+          <lpg-empty-state
+            title="No inventory activity yet"
+            description="Cylinder movements will appear here once stock is recorded."
+          />
         }
       </lpg-section-card>
 
       <!-- Price Cards -->
-      <lpg-section-card *lpgHasPermission="'tenant:configure'" heading="Cylinder Pricing (Domestic)">
+      <lpg-section-card
+        *lpgHasPermission="'tenant:configure'"
+        heading="Cylinder Pricing (Domestic)"
+      >
         @if (priceCards().length > 0) {
           <div class="mini-cards">
             @for (card of priceCards(); track card.cylinder_type_id) {
@@ -157,7 +184,10 @@ function statusLabel(status: string): string {
             }
           </div>
         } @else if (!loading()) {
-          <lpg-empty-state title="No cylinder types configured yet" description="Add cylinder types and a price list to see pricing here." />
+          <lpg-empty-state
+            title="No cylinder types configured yet"
+            description="Add cylinder types and a price list to see pricing here."
+          />
         }
       </lpg-section-card>
 
@@ -170,7 +200,10 @@ function statusLabel(status: string): string {
         } @else if (refillsDueLoading()) {
           <lpg-skeleton variant="text" [lines]="4" />
         } @else {
-          <lpg-empty-state title="No refills due this week" description="Predicted refill dates are refreshed nightly from delivery history." />
+          <lpg-empty-state
+            title="No refills due this week"
+            description="Predicted refill dates are refreshed nightly from delivery history."
+          />
         }
       </lpg-section-card>
 
@@ -181,7 +214,10 @@ function statusLabel(status: string): string {
         } @else if (loading()) {
           <lpg-skeleton variant="text" [lines]="4" />
         } @else {
-          <lpg-empty-state title="No recent activity" description="Actions across the platform will show up here." />
+          <lpg-empty-state
+            title="No recent activity"
+            description="Actions across the platform will show up here."
+          />
         }
       </lpg-section-card>
     </div>
@@ -307,8 +343,12 @@ export class Home implements OnDestroy {
         time: formatTimestamp(entry.performed_at),
         icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
         title: formatEntityName(entry.entity_name),
-        description: entry.entity_id ? String(entry.entity_id).slice(0, 8).toUpperCase() : undefined,
-        status: entry.action ? entry.action.charAt(0).toUpperCase() + entry.action.slice(1) : undefined,
+        description: entry.entity_id
+          ? String(entry.entity_id).slice(0, 8).toUpperCase()
+          : undefined,
+        status: entry.action
+          ? entry.action.charAt(0).toUpperCase() + entry.action.slice(1)
+          : undefined,
         statusTone: ACTION_TONE[entry.action] ?? 'neutral',
       })),
   );
@@ -336,7 +376,8 @@ export class Home implements OnDestroy {
     this.loadRefillsDueSoon();
 
     this.wsService.subscribeTo('dashboard');
-    this.wsService.on('dashboard.metrics_stale')
+    this.wsService
+      .on('dashboard.metrics_stale')
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
         this.loadDashboardData();
@@ -355,7 +396,10 @@ export class Home implements OnDestroy {
     this.themeObserver = new MutationObserver(() => {
       this.updateChartTheme();
     });
-    this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    this.themeObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    });
     this.themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'data-theme'],

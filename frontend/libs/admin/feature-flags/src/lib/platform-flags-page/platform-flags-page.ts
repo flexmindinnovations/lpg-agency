@@ -88,17 +88,19 @@ class FlagDefaultCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Platform Feature Flags</h1>
-          <p class="page-subtitle">Manage platform-wide feature flags and rollout percentages.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Platform Feature Flags</h1>
+            <p class="page-subtitle">Manage platform-wide feature flags and rollout percentages.</p>
+          </div>
+        </ng-template>
       </div>
 
       <div class="data-toolbar">
         <div class="data-toolbar__filters"></div>
         <div class="data-toolbar__actions">
-          <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Create Flag</span></button>
+          <button pButton (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Create Flag</span>
+          </button>
         </div>
       </div>
 
@@ -121,23 +123,68 @@ class FlagDefaultCell {
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="createFlagForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="createFlagForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <lpg-form-field label="Key" for="flag-key" [control]="form.controls.key" [messages]="{ required: 'Key is required.' }">
-            <input pInputText id="flag-key" type="text" formControlName="key" [fluid]="true" />
-          </lpg-form-field>
-          <lpg-form-field label="Description" for="flag-description" [control]="form.controls.description" [messages]="{ required: 'Description is required.' }">
-            <input pInputText id="flag-description" type="text" formControlName="description" [fluid]="true" />
-          </lpg-form-field>
-          <lpg-form-field label="Rollout %" for="flag-rollout" [control]="form.controls.rolloutPercentage" [optional]="true">
-            <input pInputText id="flag-rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Key"
+              for="flag-key"
+              [control]="form.controls.key"
+              [messages]="{ required: 'Key is required.' }"
+            >
+              <input pInputText id="flag-key" type="text" formControlName="key" [fluid]="true" />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Description"
+              for="flag-description"
+              [control]="form.controls.description"
+              [messages]="{ required: 'Description is required.' }"
+            >
+              <input
+                pInputText
+                id="flag-description"
+                type="text"
+                formControlName="description"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Rollout %"
+              for="flag-rollout"
+              [control]="form.controls.rolloutPercentage"
+              [optional]="true"
+            >
+              <input
+                pInputText
+                id="flag-rollout"
+                type="number"
+                min="0"
+                max="100"
+                formControlName="rolloutPercentage"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Create flag
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Create flag
             </button>
           </div>
         </form>
@@ -159,14 +206,24 @@ class FlagDefaultCell {
               <lpg-detail-list>
                 <lpg-detail-item label="Key">{{ flag.key }}</lpg-detail-item>
                 <lpg-detail-item label="Description">{{ flag.description }}</lpg-detail-item>
-                <lpg-detail-item label="Default">{{ flag.is_enabled_by_default ? 'Enabled' : 'Disabled' }}</lpg-detail-item>
-                <lpg-detail-item label="Rollout %">{{ flag.rollout_percentage ?? '—' }}</lpg-detail-item>
-                <lpg-detail-item label="Starts At">{{ flag.starts_at ? formatTimestamp(flag.starts_at) : 'Not scheduled' }}</lpg-detail-item>
-                <lpg-detail-item label="Ends At">{{ flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled' }}</lpg-detail-item>
+                <lpg-detail-item label="Default">{{
+                  flag.is_enabled_by_default ? 'Enabled' : 'Disabled'
+                }}</lpg-detail-item>
+                <lpg-detail-item label="Rollout %">{{
+                  flag.rollout_percentage ?? '—'
+                }}</lpg-detail-item>
+                <lpg-detail-item label="Starts At">{{
+                  flag.starts_at ? formatTimestamp(flag.starts_at) : 'Not scheduled'
+                }}</lpg-detail-item>
+                <lpg-detail-item label="Ends At">{{
+                  flag.ends_at ? formatTimestamp(flag.ends_at) : 'Not scheduled'
+                }}</lpg-detail-item>
               </lpg-detail-list>
 
               <div class="modal-actions">
-                <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+                <button pButton type="button" severity="secondary" (click)="closeDetails()">
+                  Close
+                </button>
                 <button pButton type="button" (click)="startEdit()">
                   <i class="pi pi-pencil"></i>
                   <span>Edit</span>
@@ -174,54 +231,90 @@ class FlagDefaultCell {
               </div>
             </div>
           } @else {
-            <form id="editFlagForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+            <form
+              id="editFlagForm"
+              [formGroup]="editForm"
+              (ngSubmit)="saveEdit()"
+              class="dialog-form"
+            >
               <div class="dialog-form__fields">
-              <lpg-form-field label="Default" for="edit_default" [control]="editForm.controls.isEnabledByDefault">
-                <p-select
-                  inputId="edit_default"
-                  formControlName="isEnabledByDefault"
-                  [options]="[
-                    { label: 'Enabled', value: true },
-                    { label: 'Disabled', value: false }
-                  ]"
-                  optionLabel="label"
-                  optionValue="value"
-                  [fluid]="true"
-                ></p-select>
-              </lpg-form-field>
+                <lpg-form-field
+                  label="Default"
+                  for="edit_default"
+                  [control]="editForm.controls.isEnabledByDefault"
+                >
+                  <p-select
+                    inputId="edit_default"
+                    formControlName="isEnabledByDefault"
+                    [options]="[
+                      { label: 'Enabled', value: true },
+                      { label: 'Disabled', value: false },
+                    ]"
+                    optionLabel="label"
+                    optionValue="value"
+                    [fluid]="true"
+                  ></p-select>
+                </lpg-form-field>
 
-              <lpg-form-field label="Rollout %" for="edit_rollout" [control]="editForm.controls.rolloutPercentage" [optional]="true">
-                <input pInputText id="edit_rollout" type="number" min="0" max="100" formControlName="rolloutPercentage" [fluid]="true" />
-              </lpg-form-field>
+                <lpg-form-field
+                  label="Rollout %"
+                  for="edit_rollout"
+                  [control]="editForm.controls.rolloutPercentage"
+                  [optional]="true"
+                >
+                  <input
+                    pInputText
+                    id="edit_rollout"
+                    type="number"
+                    min="0"
+                    max="100"
+                    formControlName="rolloutPercentage"
+                    [fluid]="true"
+                  />
+                </lpg-form-field>
 
-              <lpg-form-field label="Starts at" for="edit_starts_at" [control]="editForm.controls.startsAt" [optional]="true">
-                <p-datepicker
-                  inputId="edit_starts_at"
-                  formControlName="startsAt"
-                  [showIcon]="true"
-                  iconDisplay="input"
-                  dateFormat="dd-mm-yy"
-                  appendTo="body"
-                  [fluid]="true"
-                ></p-datepicker>
-              </lpg-form-field>
+                <lpg-form-field
+                  label="Starts at"
+                  for="edit_starts_at"
+                  [control]="editForm.controls.startsAt"
+                  [optional]="true"
+                >
+                  <p-datepicker
+                    inputId="edit_starts_at"
+                    formControlName="startsAt"
+                    [showIcon]="true"
+                    iconDisplay="input"
+                    dateFormat="dd-mm-yy"
+                    appendTo="body"
+                    [fluid]="true"
+                  ></p-datepicker>
+                </lpg-form-field>
 
-              <lpg-form-field label="Ends at" for="edit_ends_at" [control]="editForm.controls.endsAt" [optional]="true">
-                <p-datepicker
-                  inputId="edit_ends_at"
-                  formControlName="endsAt"
-                  [showIcon]="true"
-                  iconDisplay="input"
-                  dateFormat="dd-mm-yy"
-                  appendTo="body"
-                  [fluid]="true"
-                ></p-datepicker>
-              </lpg-form-field>
+                <lpg-form-field
+                  label="Ends at"
+                  for="edit_ends_at"
+                  [control]="editForm.controls.endsAt"
+                  [optional]="true"
+                >
+                  <p-datepicker
+                    inputId="edit_ends_at"
+                    formControlName="endsAt"
+                    [showIcon]="true"
+                    iconDisplay="input"
+                    dateFormat="dd-mm-yy"
+                    appendTo="body"
+                    [fluid]="true"
+                  ></p-datepicker>
+                </lpg-form-field>
               </div>
 
               <div class="modal-actions">
-                <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-                <button pButton type="submit" [disabled]="editForm.invalid || saving()">Save Changes</button>
+                <button pButton type="button" severity="secondary" (click)="cancelEdit()">
+                  Cancel
+                </button>
+                <button pButton type="submit" [disabled]="editForm.invalid || saving()">
+                  Save Changes
+                </button>
               </div>
             </form>
           }
@@ -238,7 +331,6 @@ class FlagDefaultCell {
       .grid-section {
         margin-block-start: var(--spacing-lg);
       }
-
 
       .detail-view {
         display: flex;
@@ -271,7 +363,13 @@ export class PlatformFlagsPage implements OnInit {
   protected readonly saving = signal(false);
 
   protected readonly columns: DataGridColumn<FeatureFlagResponse>[] = [
-    { field: 'key', header: 'Key', sortable: true, filterable: true, onLinkClick: (row) => this.openDetails(row) },
+    {
+      field: 'key',
+      header: 'Key',
+      sortable: true,
+      filterable: true,
+      onLinkClick: (row) => this.openDetails(row),
+    },
     { field: 'description', header: 'Description' },
     {
       field: 'is_enabled_by_default',

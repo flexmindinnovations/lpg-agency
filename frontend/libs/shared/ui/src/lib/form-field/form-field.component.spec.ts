@@ -61,7 +61,8 @@ describe('FormFieldComponent', () => {
     fixture.componentInstance.ctrl.setValue('ab');
     fixture.componentInstance.ctrl.markAsDirty();
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).querySelector('.lpg-field__error')?.textContent)
-      .toContain('too short');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.lpg-field__error')?.textContent,
+    ).toContain('too short');
   });
 });

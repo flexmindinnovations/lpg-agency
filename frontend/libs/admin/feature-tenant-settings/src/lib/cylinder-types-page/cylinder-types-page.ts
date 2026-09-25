@@ -41,17 +41,28 @@ class CylinderTypeStatusCell {
 @Component({
   selector: 'lpg-cylinder-types-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    DataGridComponent,
+    FormFieldComponent,
+    Drawer,
+    DrawerA11yDirective,
+    IconField,
+    InputIcon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Cylinder Types</h1>
-          <p class="page-subtitle">Define LPG cylinder sizes and weights.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Cylinder Types</h1>
+            <p class="page-subtitle">Define LPG cylinder sizes and weights.</p>
+          </div>
+        </ng-template>
       </div>
 
       @if (cylinderTypes().length > 0) {
@@ -70,8 +81,12 @@ class CylinderTypeStatusCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
-            <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Add Cylinder Type</span></button>
+            <button pButton severity="secondary">
+              <i class="pi pi-file-excel"></i><span>Export</span>
+            </button>
+            <button pButton (click)="openCreateDrawer()">
+              <i class="pi pi-plus"></i><span>Add Cylinder Type</span>
+            </button>
           </div>
         </div>
       }
@@ -81,7 +96,9 @@ class CylinderTypeStatusCell {
           <i class="pi pi-box empty-state__icon"></i>
           <p class="empty-state__title">No cylinder types found</p>
           <p class="empty-state__description">Get started by defining your first cylinder size.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Add Cylinder Type</span></button>
+          <button pButton class="mt-4" (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Add Cylinder Type</span>
+          </button>
         </div>
       } @else {
         <section class="grid-section">
@@ -105,36 +122,67 @@ class CylinderTypeStatusCell {
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="addCylinderTypeForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="addCylinderTypeForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <p class="page-lede">Define a new LPG cylinder type by name and weight.</p>
+            <p class="page-lede">Define a new LPG cylinder type by name and weight.</p>
 
-          <lpg-form-field label="Name" for="cylinder-name" [control]="form.controls.name" [messages]="{ required: 'Cylinder type name is required.' }">
-            <input pInputText id="cylinder-name" type="text" formControlName="name" placeholder="e.g. 14.2 kg Domestic" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Name"
+              for="cylinder-name"
+              [control]="form.controls.name"
+              [messages]="{ required: 'Cylinder type name is required.' }"
+            >
+              <input
+                pInputText
+                id="cylinder-name"
+                type="text"
+                formControlName="name"
+                placeholder="e.g. 14.2 kg Domestic"
+                [fluid]="true"
+              />
+            </lpg-form-field>
 
-          <lpg-form-field
-            label="Weight (kg)"
-            for="cylinder-weight"
-            [control]="form.controls.weightKg"
-            [messages]="{ required: 'Weight is required.', min: 'Weight must be greater than 0.' }"
-          >
-            <input
-              pInputText
-              id="cylinder-weight"
-              type="number"
-              step="0.01"
-              formControlName="weightKg"
-              placeholder="e.g. 14.2"
-              [fluid]="true"
-            />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Weight (kg)"
+              for="cylinder-weight"
+              [control]="form.controls.weightKg"
+              [messages]="{
+                required: 'Weight is required.',
+                min: 'Weight must be greater than 0.',
+              }"
+            >
+              <input
+                pInputText
+                id="cylinder-weight"
+                type="number"
+                step="0.01"
+                formControlName="weightKg"
+                placeholder="e.g. 14.2"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save cylinder type
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Save cylinder type
             </button>
           </div>
         </form>
@@ -153,7 +201,6 @@ class CylinderTypeStatusCell {
         flex-direction: column;
         block-size: 100%;
       }
-
     `,
   ],
 })

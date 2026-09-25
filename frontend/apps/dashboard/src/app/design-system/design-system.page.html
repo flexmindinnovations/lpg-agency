@@ -11,33 +11,36 @@
     <p class="ds-note">Semantic tokens — components consume these, never raw hex.</p>
     <div class="ds-swatches">
       @for (s of semantic; track s.token) {
-        <div class="ds-swatch">
-          <span class="ds-swatch__chip" [style.background]="'var(' + s.token + ')'"></span>
-          <span class="ds-swatch__name">{{ s.name }}</span>
-          <code class="ds-swatch__val">{{ resolve()(s.token) || s.token }}</code>
-        </div>
+      <div class="ds-swatch">
+        <span class="ds-swatch__chip" [style.background]="'var(' + s.token + ')'"></span>
+        <span class="ds-swatch__name">{{ s.name }}</span>
+        <code class="ds-swatch__val">{{ resolve()(s.token) || s.token }}</code>
+      </div>
       }
     </div>
 
     <p class="ds-note">Surfaces &amp; text.</p>
     <div class="ds-swatches">
       @for (s of surfaces; track s.token) {
-        <div class="ds-swatch">
-          <span class="ds-swatch__chip ds-swatch__chip--bordered" [style.background]="'var(' + s.token + ')'"></span>
-          <span class="ds-swatch__name">{{ s.name }}</span>
-          <code class="ds-swatch__val">{{ resolve()(s.token) }}</code>
-        </div>
+      <div class="ds-swatch">
+        <span
+          class="ds-swatch__chip ds-swatch__chip--bordered"
+          [style.background]="'var(' + s.token + ')'"
+        ></span>
+        <span class="ds-swatch__name">{{ s.name }}</span>
+        <code class="ds-swatch__val">{{ resolve()(s.token) }}</code>
+      </div>
       }
     </div>
 
     <p class="ds-note">Neutral scale (0 → 950).</p>
     <div class="ds-neutrals">
       @for (n of neutrals; track n.token) {
-        <span
-          class="ds-neutral"
-          [style.background]="'var(' + n.token + ')'"
-          [title]="n.name + ' · ' + resolve()(n.token)"
-        ></span>
+      <span
+        class="ds-neutral"
+        [style.background]="'var(' + n.token + ')'"
+        [title]="n.name + ' · ' + resolve()(n.token)"
+      ></span>
       }
     </div>
   </lpg-section-card>
@@ -46,16 +49,16 @@
   <lpg-section-card heading="Typography">
     <div class="ds-type">
       @for (t of typeScale; track t.name) {
-        <div class="ds-type__row">
-          <span
-            class="ds-type__sample"
-            [style.font-size]="'var(' + t.size + ')'"
-            [style.font-weight]="'var(' + t.weight + ')'"
-          >
-            {{ t.name }}
-          </span>
-          <code class="ds-type__spec">{{ resolve()(t.size) }} / {{ resolve()(t.weight) }}</code>
-        </div>
+      <div class="ds-type__row">
+        <span
+          class="ds-type__sample"
+          [style.font-size]="'var(' + t.size + ')'"
+          [style.font-weight]="'var(' + t.weight + ')'"
+        >
+          {{ t.name }}
+        </span>
+        <code class="ds-type__spec">{{ resolve()(t.size) }} / {{ resolve()(t.weight) }}</code>
+      </div>
       }
     </div>
   </lpg-section-card>
@@ -65,7 +68,7 @@
     <lpg-section-card heading="Elevation">
       <div class="ds-elevations">
         @for (e of elevations; track e) {
-          <div class="ds-elevation" [style.box-shadow]="'var(--elevation-' + e + ')'">{{ e }}</div>
+        <div class="ds-elevation" [style.box-shadow]="'var(--elevation-' + e + ')'">{{ e }}</div>
         }
       </div>
     </lpg-section-card>
@@ -73,9 +76,9 @@
     <lpg-section-card heading="Radius">
       <div class="ds-radii">
         @for (r of radii; track r) {
-          <div class="ds-radius" [style.border-radius]="'var(' + r + ')'">
-            <code>{{ r.replace('--radius-', '') }}</code>
-          </div>
+        <div class="ds-radius" [style.border-radius]="'var(' + r + ')'">
+          <code>{{ r.replace('--radius-', '') }}</code>
+        </div>
         }
       </div>
     </lpg-section-card>
@@ -84,15 +87,25 @@
   <!-- ============ SURFACES ============ -->
   <lpg-section-card heading="Surfaces">
     <div class="ds-materials">
-      <div class="ds-material" style="background: var(--color-surface-base); border-color: var(--color-border-default);">
+      <div
+        class="ds-material"
+        style="background: var(--color-surface-base); border-color: var(--color-border-default)"
+      >
         <span>Base — the page ground</span>
       </div>
-      <div class="ds-material" style="background: var(--surface-mica); border-color: var(--surface-mica-border);">
+      <div
+        class="ds-material"
+        style="background: var(--surface-mica); border-color: var(--surface-mica-border)"
+      >
         <span>Chrome — sidebar, header</span>
       </div>
       <div
         class="ds-material"
-        style="background: var(--surface-acrylic); border-color: var(--surface-acrylic-border); box-shadow: var(--surface-acrylic-shadow);"
+        style="
+          background: var(--surface-acrylic);
+          border-color: var(--surface-acrylic-border);
+          box-shadow: var(--surface-acrylic-shadow);
+        "
       >
         <span>Overlay — dialogs, drawers, popovers</span>
       </div>
@@ -108,16 +121,25 @@
       <button pButton type="button" outlined>Outline</button>
       <button pButton type="button" severity="danger">Danger</button>
       <button pButton type="button" text plain>Ghost</button>
-      <button pButton type="button" [disabled]="true"><i class="pi pi-spin pi-spinner"></i><span>Loading</span></button>
+      <button pButton type="button" [disabled]="true">
+        <i class="pi pi-spin pi-spinner"></i><span>Loading</span>
+      </button>
       <button pButton type="button" [disabled]="true">Disabled</button>
-      <button pButton type="button" rounded iconOnly aria-label="Add"><i class="pi pi-plus"></i></button>
+      <button pButton type="button" rounded iconOnly aria-label="Add">
+        <i class="pi pi-plus"></i>
+      </button>
     </div>
   </lpg-section-card>
 
   <!-- ============ FORM ============ -->
   <lpg-section-card heading="Form components">
     <div class="ds-form">
-      <lpg-form-field label="Text input" for="ds-name" [control]="nameCtrl" [messages]="{ required: 'This field is required.' }">
+      <lpg-form-field
+        label="Text input"
+        for="ds-name"
+        [control]="nameCtrl"
+        [messages]="{ required: 'This field is required.' }"
+      >
         <input id="ds-name" pInputText [formControl]="nameCtrl" [fluid]="true" />
       </lpg-form-field>
 
@@ -126,11 +148,24 @@
       </lpg-form-field>
 
       <lpg-form-field label="Select" for="ds-role" [control]="roleCtrl">
-        <p-select inputId="ds-role" [formControl]="roleCtrl" [options]="roleOptions" optionLabel="label" optionValue="value" [fluid]="true" />
+        <p-select
+          inputId="ds-role"
+          [formControl]="roleCtrl"
+          [options]="roleOptions"
+          optionLabel="label"
+          optionValue="value"
+          [fluid]="true"
+        />
       </lpg-form-field>
 
       <lpg-form-field label="Date picker" for="ds-date" [control]="dateCtrl">
-        <p-datepicker inputId="ds-date" [formControl]="dateCtrl" [fluid]="true" [showIcon]="true" iconDisplay="input" />
+        <p-datepicker
+          inputId="ds-date"
+          [formControl]="dateCtrl"
+          [fluid]="true"
+          [showIcon]="true"
+          iconDisplay="input"
+        />
       </lpg-form-field>
 
       <div class="ds-form__inline">
@@ -175,7 +210,7 @@
       <div>
         <p class="ds-note">Activity list</p>
         <lpg-activity-list [items]="activityItems" />
-        <div style="margin-block-start: 12px;">
+        <div style="margin-block-start: 12px">
           <lpg-live-indicator label="32 active deliveries" />
         </div>
       </div>
@@ -191,26 +226,30 @@
   <lpg-section-card heading="Transitions &amp; animations">
     <div class="ds-motion">
       @for (m of motion; track m.token) {
-        <div class="ds-motion__row">
-          <span>{{ m.name }}</span>
-          <code>{{ resolve()(m.token) }}</code>
-        </div>
+      <div class="ds-motion__row">
+        <span>{{ m.name }}</span>
+        <code>{{ resolve()(m.token) }}</code>
+      </div>
       }
     </div>
-    <p class="ds-note">Route changes cross-fade via the View Transitions API (opacity only, ~140ms); <code>.animate-fade-in</code> gives a card a single quiet fade on first paint. No transforms, no staggered cascades. All motion respects <code>prefers-reduced-motion</code>.</p>
+    <p class="ds-note">
+      Route changes cross-fade via the View Transitions API (opacity only, ~140ms);
+      <code>.animate-fade-in</code> gives a card a single quiet fade on first paint. No transforms,
+      no staggered cascades. All motion respects <code>prefers-reduced-motion</code>.
+    </p>
   </lpg-section-card>
 
   <!-- ============ PRINCIPLES ============ -->
   <lpg-section-card heading="Design principles">
     <div class="ds-principles">
       @for (p of principles; track p.title) {
-        <div class="ds-principle">
-          <i class="{{ p.icon }}" aria-hidden="true"></i>
-          <div>
-            <p class="ds-principle__title">{{ p.title }}</p>
-            <p class="ds-principle__body">{{ p.body }}</p>
-          </div>
+      <div class="ds-principle">
+        <i class="{{ p.icon }}" aria-hidden="true"></i>
+        <div>
+          <p class="ds-principle__title">{{ p.title }}</p>
+          <p class="ds-principle__body">{{ p.body }}</p>
         </div>
+      </div>
       }
     </div>
   </lpg-section-card>

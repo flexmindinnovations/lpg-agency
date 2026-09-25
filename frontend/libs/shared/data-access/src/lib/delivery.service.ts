@@ -100,10 +100,14 @@ export class DeliveryService {
     driverId: string,
     request: UpdateDriverAssignmentRequest,
   ): Observable<DriverResponse> {
-    return updateDriverAssignmentApiV1DriversDriverIdAssignmentPatch(this.http, this.config.rootUrl, {
-      driver_id: driverId,
-      body: request,
-    }).pipe(map((res) => res.body));
+    return updateDriverAssignmentApiV1DriversDriverIdAssignmentPatch(
+      this.http,
+      this.config.rootUrl,
+      {
+        driver_id: driverId,
+        body: request,
+      },
+    ).pipe(map((res) => res.body));
   }
 
   // ---------------------------------------------------------------------------
@@ -159,7 +163,9 @@ export class DeliveryService {
   // ---------------------------------------------------------------------------
 
   planRoute(request: PlanRouteRequest): Observable<RouteResponse> {
-    return planRouteApiV1RoutesPost(this.http, this.config.rootUrl, { body: request }).pipe(map((res) => res.body));
+    return planRouteApiV1RoutesPost(this.http, this.config.rootUrl, { body: request }).pipe(
+      map((res) => res.body),
+    );
   }
 
   listRoutes(
@@ -181,7 +187,9 @@ export class DeliveryService {
   }
 
   getRoute(routeId: string): Observable<RouteResponse> {
-    return getRouteApiV1RoutesRouteIdGet(this.http, this.config.rootUrl, { route_id: routeId }).pipe(map((res) => res.body));
+    return getRouteApiV1RoutesRouteIdGet(this.http, this.config.rootUrl, {
+      route_id: routeId,
+    }).pipe(map((res) => res.body));
   }
 
   updateRouteStatus(
@@ -209,9 +217,13 @@ export class DeliveryService {
   }
 
   completeRouteReconciliation(routeId: string): Observable<RouteResponse> {
-    return completeRouteReconciliationApiV1RoutesRouteIdReconcilePost(this.http, this.config.rootUrl, {
-      route_id: routeId,
-    }).pipe(map((res) => res.body));
+    return completeRouteReconciliationApiV1RoutesRouteIdReconcilePost(
+      this.http,
+      this.config.rootUrl,
+      {
+        route_id: routeId,
+      },
+    ).pipe(map((res) => res.body));
   }
 
   /** AI Operational Intelligence, Horizon 1 Stage 5 — nearest-neighbour +

@@ -14,7 +14,8 @@
            'complaints:assign'/'complaints:resolve' codes this used to check —
            'complaints:assign' doesn't even exist as a permission row, so that
            button could never render for anyone. Matching backend reality. -->
-      <button *lpgHasPermission="'complaints.manage'"
+      <button
+        *lpgHasPermission="'complaints.manage'"
         #registerTriggerEl
         pButton
         type="button"
@@ -43,140 +44,151 @@
   position="right"
   styleClass="!w-full md:!w-[35rem]"
   [modal]="true"
-
 >
   <ng-template #header>
     <div class="drawer-header">
       <h2 class="drawer-title">Complaint Details</h2>
       @if (selectedComplaint(); as complaint) {
-        <p-tag [value]="complaint.status" [severity]="getSeverity(complaint.status)" />
+      <p-tag [value]="complaint.status" [severity]="getSeverity(complaint.status)" />
       }
     </div>
   </ng-template>
-  
+
   @if (selectedComplaint(); as complaint) {
-    <div class="drawer-content">
-      <div class="info-section">
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Complaint #</span>
-            <span class="info-value font-mono">{{ complaint.complaint_number ?? complaint.id }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Customer</span>
-            <button
-              type="button"
-              class="info-value info-link"
-              (click)="openCustomerPreview(complaint.customer_id)"
-            >
-              {{ customerById().get(complaint.customer_id)?.full_name ?? shortId(complaint.customer_id) }}
-            </button>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Category</span>
-            <span class="info-value">{{ complaint.category }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Priority</span>
-            <span class="info-value">{{ complaint.priority }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Raised On</span>
-            <span class="info-value">{{ complaint.created_at | date:'medium' }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">SLA Due By</span>
-            <span class="info-value">{{ complaint.sla_due_at ? (complaint.sla_due_at | date:'medium') : 'N/A' }}</span>
-          </div>
-          @if (complaint.order_id) {
-            <div class="info-item col-span-2">
-              <span class="info-label">Order</span>
-              <span class="info-value font-mono">{{ shortId(complaint.order_id) }}</span>
-            </div>
-          }
-          <div class="info-item col-span-2">
-            <span class="info-label">Description</span>
-            <span class="info-value whitespace-pre-wrap">{{ complaint.description }}</span>
-          </div>
+  <div class="drawer-content">
+    <div class="info-section">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Complaint #</span>
+          <span class="info-value font-mono">{{ complaint.complaint_number ?? complaint.id }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Customer</span>
+          <button
+            type="button"
+            class="info-value info-link"
+            (click)="openCustomerPreview(complaint.customer_id)"
+          >
+            {{ customerById().get(complaint.customer_id)?.full_name ??
+            shortId(complaint.customer_id) }}
+          </button>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Category</span>
+          <span class="info-value">{{ complaint.category }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Priority</span>
+          <span class="info-value">{{ complaint.priority }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Raised On</span>
+          <span class="info-value">{{ complaint.created_at | date:'medium' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">SLA Due By</span>
+          <span class="info-value"
+            >{{ complaint.sla_due_at ? (complaint.sla_due_at | date:'medium') : 'N/A' }}</span
+          >
+        </div>
+        @if (complaint.order_id) {
+        <div class="info-item col-span-2">
+          <span class="info-label">Order</span>
+          <span class="info-value font-mono">{{ shortId(complaint.order_id) }}</span>
+        </div>
+        }
+        <div class="info-item col-span-2">
+          <span class="info-label">Description</span>
+          <span class="info-value whitespace-pre-wrap">{{ complaint.description }}</span>
         </div>
       </div>
-      
-      <!-- Assignment History -->
-      <div class="history-section">
-        <h3 class="section-title">Assignment History</h3>
-        @if (complaint.assignments && complaint.assignments.length > 0) {
-          <div class="history-list">
-            @for (assignment of complaint.assignments; track assignment.id) {
-              <div class="history-item">
-                <i class="pi pi-user text-primary"></i>
-                <div class="history-content">
-                  <span class="history-main">
-                    Assigned to
-                    @if (canViewStaffDirectory()) {
-                      <button type="button" class="info-link" (click)="openStaffPreview(assignment.assigned_to)">{{ staffNameById().get(assignment.assigned_to) ?? shortId(assignment.assigned_to) }}</button>
-                    } @else {
-                      {{ shortId(assignment.assigned_to) }}
-                    }
-                  </span>
-                  <span class="history-sub">{{ assignment.assigned_at | date:'short' }}</span>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="empty-hint">Not assigned yet.</p>
-        }
-      </div>
-
-      <!-- Resolution -->
-      <div class="history-section">
-        <h3 class="section-title">Resolution</h3>
-        @if (complaint.resolution) {
-          <div class="resolution-card">
-            <div class="resolution-header">
-              <span class="font-medium">{{ complaint.resolution.outcome }}</span>
-              <span class="text-sm text-surface-500">{{ complaint.resolution.resolved_at | date:'short' }}</span>
-            </div>
-            <p class="mt-2 text-sm">{{ complaint.resolution.resolution_notes }}</p>
-            <p class="mt-2 text-xs text-surface-500">
-              Resolved by:
-              @if (canViewStaffDirectory()) {
-                <button type="button" class="info-link" (click)="openStaffPreview(complaint.resolution.resolved_by)">{{ staffNameById().get(complaint.resolution.resolved_by) ?? shortId(complaint.resolution.resolved_by) }}</button>
-              } @else {
-                {{ shortId(complaint.resolution.resolved_by) }}
-              }
-            </p>
-          </div>
-        } @else {
-          <p class="empty-hint">Not resolved yet.</p>
-        }
-      </div>
     </div>
+
+    <!-- Assignment History -->
+    <div class="history-section">
+      <h3 class="section-title">Assignment History</h3>
+      @if (complaint.assignments && complaint.assignments.length > 0) {
+      <div class="history-list">
+        @for (assignment of complaint.assignments; track assignment.id) {
+        <div class="history-item">
+          <i class="pi pi-user text-primary"></i>
+          <div class="history-content">
+            <span class="history-main">
+              Assigned to @if (canViewStaffDirectory()) {
+              <button
+                type="button"
+                class="info-link"
+                (click)="openStaffPreview(assignment.assigned_to)"
+              >
+                {{ staffNameById().get(assignment.assigned_to) ?? shortId(assignment.assigned_to) }}
+              </button>
+              } @else { {{ shortId(assignment.assigned_to) }} }
+            </span>
+            <span class="history-sub">{{ assignment.assigned_at | date:'short' }}</span>
+          </div>
+        </div>
+        }
+      </div>
+      } @else {
+      <p class="empty-hint">Not assigned yet.</p>
+      }
+    </div>
+
+    <!-- Resolution -->
+    <div class="history-section">
+      <h3 class="section-title">Resolution</h3>
+      @if (complaint.resolution) {
+      <div class="resolution-card">
+        <div class="resolution-header">
+          <span class="font-medium">{{ complaint.resolution.outcome }}</span>
+          <span class="text-sm text-surface-500"
+            >{{ complaint.resolution.resolved_at | date:'short' }}</span
+          >
+        </div>
+        <p class="mt-2 text-sm">{{ complaint.resolution.resolution_notes }}</p>
+        <p class="mt-2 text-xs text-surface-500">
+          Resolved by: @if (canViewStaffDirectory()) {
+          <button
+            type="button"
+            class="info-link"
+            (click)="openStaffPreview(complaint.resolution.resolved_by)"
+          >
+            {{ staffNameById().get(complaint.resolution.resolved_by) ??
+            shortId(complaint.resolution.resolved_by) }}
+          </button>
+          } @else { {{ shortId(complaint.resolution.resolved_by) }} }
+        </p>
+      </div>
+      } @else {
+      <p class="empty-hint">Not resolved yet.</p>
+      }
+    </div>
+  </div>
   }
 
   <ng-template #footer>
     @if (selectedComplaint(); as complaint) {
-      <div class="drawer-actions">
-        <button
-          *lpgHasPermission="'complaints.manage'"
-          pButton
-          class="p-button-outlined"
-          [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
-          (click)="openAssignModal()"
-        >
-          <i class="pi pi-user-plus"></i>
-          <span>Assign</span>
-        </button>
-        <button
-          *lpgHasPermission="'complaints.manage'"
-          pButton
-          [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
-          (click)="openResolveModal()"
-        >
-          <i class="pi pi-check"></i>
-          <span>Resolve</span>
-        </button>
-      </div>
+    <div class="drawer-actions">
+      <button
+        *lpgHasPermission="'complaints.manage'"
+        pButton
+        class="p-button-outlined"
+        [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
+        (click)="openAssignModal()"
+      >
+        <i class="pi pi-user-plus"></i>
+        <span>Assign</span>
+      </button>
+      <button
+        *lpgHasPermission="'complaints.manage'"
+        pButton
+        [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
+        (click)="openResolveModal()"
+      >
+        <i class="pi pi-check"></i>
+        <span>Resolve</span>
+      </button>
+    </div>
     }
   </ng-template>
 </p-drawer>
@@ -187,7 +199,6 @@
   position="right"
   styleClass="!w-full md:!w-[30rem]"
   [modal]="true"
-
 >
   <ng-template #header>
     <div class="drawer-header">
@@ -197,48 +208,85 @@
 
   <form [formGroup]="raiseForm" (ngSubmit)="submitRaise()" class="dialog-form">
     <div class="dialog-form__fields">
-    <lpg-form-field label="Customer ID" for="customer_id" [control]="raiseForm.controls.customer_id" [messages]="fieldMessages.customer_id">
-      <input pInputText id="customer_id" formControlName="customer_id" placeholder="e.g. CUST-123" [fluid]="true" />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Customer ID"
+        for="customer_id"
+        [control]="raiseForm.controls.customer_id"
+        [messages]="fieldMessages.customer_id"
+      >
+        <input
+          pInputText
+          id="customer_id"
+          formControlName="customer_id"
+          placeholder="e.g. CUST-123"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Order ID" for="order_id" [control]="raiseForm.controls.order_id" [optional]="true">
-      <input pInputText id="order_id" formControlName="order_id" placeholder="e.g. ORD-456" [fluid]="true" />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Order ID"
+        for="order_id"
+        [control]="raiseForm.controls.order_id"
+        [optional]="true"
+      >
+        <input
+          pInputText
+          id="order_id"
+          formControlName="order_id"
+          placeholder="e.g. ORD-456"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Category" for="category" [control]="raiseForm.controls.category" [messages]="fieldMessages.category">
-      <p-select
-        inputId="category"
-        formControlName="category"
-        [options]="categoryOptions"
-        optionLabel="label"
-        optionValue="value"
-        appendTo="body"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Category"
+        for="category"
+        [control]="raiseForm.controls.category"
+        [messages]="fieldMessages.category"
+      >
+        <p-select
+          inputId="category"
+          formControlName="category"
+          [options]="categoryOptions"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Priority" for="priority" [control]="raiseForm.controls.priority" [messages]="fieldMessages.priority">
-      <p-select
-        inputId="priority"
-        formControlName="priority"
-        [options]="priorityOptions"
-        optionLabel="label"
-        optionValue="value"
-        appendTo="body"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Priority"
+        for="priority"
+        [control]="raiseForm.controls.priority"
+        [messages]="fieldMessages.priority"
+      >
+        <p-select
+          inputId="priority"
+          formControlName="priority"
+          [options]="priorityOptions"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Description" for="description" [control]="raiseForm.controls.description" [messages]="fieldMessages.description">
-      <textarea
-        pTextarea
-        id="description"
-        formControlName="description"
-        rows="4"
-        placeholder="Enter complaint details..."
-        [fluid]="true"
-      ></textarea>
-    </lpg-form-field>
+      <lpg-form-field
+        label="Description"
+        for="description"
+        [control]="raiseForm.controls.description"
+        [messages]="fieldMessages.description"
+      >
+        <textarea
+          pTextarea
+          id="description"
+          formControlName="description"
+          rows="4"
+          placeholder="Enter complaint details..."
+          [fluid]="true"
+        ></textarea>
+      </lpg-form-field>
     </div>
   </form>
 
@@ -271,7 +319,6 @@
   position="right"
   styleClass="!w-full md:!w-[30rem]"
   [modal]="true"
-
 >
   <ng-template #header>
     <div class="drawer-header">
@@ -281,16 +328,41 @@
 
   <form [formGroup]="assignForm" (ngSubmit)="submitAssign()" class="dialog-form">
     <div class="dialog-form__fields">
-    <lpg-form-field label="Assign to" for="assigned_to" [control]="assignForm.controls.assigned_to" [messages]="fieldMessages.assigned_to">
-      <input pInputText id="assigned_to" formControlName="assigned_to" placeholder="e.g. Manager ID or Name" [fluid]="true" />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Assign to"
+        for="assigned_to"
+        [control]="assignForm.controls.assigned_to"
+        [messages]="fieldMessages.assigned_to"
+      >
+        <input
+          pInputText
+          id="assigned_to"
+          formControlName="assigned_to"
+          placeholder="e.g. Manager ID or Name"
+          [fluid]="true"
+        />
+      </lpg-form-field>
     </div>
   </form>
 
   <ng-template #footer>
     <div class="modal-actions">
-      <button pButton type="button" class="p-button-text p-button-secondary" (click)="closeAssignModal()">Cancel</button>
-      <button pButton type="button" (click)="submitAssign()" [disabled]="assignLoading() || assignForm.invalid">@if (assignLoading()) {<i class="pi pi-spin pi-spinner"></i> }Assign</button>
+      <button
+        pButton
+        type="button"
+        class="p-button-text p-button-secondary"
+        (click)="closeAssignModal()"
+      >
+        Cancel
+      </button>
+      <button
+        pButton
+        type="button"
+        (click)="submitAssign()"
+        [disabled]="assignLoading() || assignForm.invalid"
+      >
+        @if (assignLoading()) {<i class="pi pi-spin pi-spinner"></i> }Assign
+      </button>
     </div>
   </ng-template>
 </p-drawer>
@@ -301,7 +373,6 @@
   position="right"
   styleClass="!w-full md:!w-[30rem]"
   [modal]="true"
-
 >
   <ng-template #header>
     <div class="drawer-header">
@@ -311,35 +382,59 @@
 
   <form [formGroup]="resolveForm" (ngSubmit)="submitResolve()" class="dialog-form">
     <div class="dialog-form__fields">
-    <lpg-form-field label="Outcome" for="outcome" [control]="resolveForm.controls.outcome" [messages]="fieldMessages.outcome">
-      <p-select
-        inputId="outcome"
-        formControlName="outcome"
-        [options]="outcomeOptions"
-        optionLabel="label"
-        optionValue="value"
-        appendTo="body"
-        [fluid]="true"
-      />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Outcome"
+        for="outcome"
+        [control]="resolveForm.controls.outcome"
+        [messages]="fieldMessages.outcome"
+      >
+        <p-select
+          inputId="outcome"
+          formControlName="outcome"
+          [options]="outcomeOptions"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [fluid]="true"
+        />
+      </lpg-form-field>
 
-    <lpg-form-field label="Resolution notes" for="resolution_notes" [control]="resolveForm.controls.resolution_notes" [messages]="fieldMessages.resolution_notes">
-      <textarea
-        pTextarea
-        id="resolution_notes"
-        formControlName="resolution_notes"
-        rows="4"
-        placeholder="Enter resolution details..."
-        [fluid]="true"
-      ></textarea>
-    </lpg-form-field>
+      <lpg-form-field
+        label="Resolution notes"
+        for="resolution_notes"
+        [control]="resolveForm.controls.resolution_notes"
+        [messages]="fieldMessages.resolution_notes"
+      >
+        <textarea
+          pTextarea
+          id="resolution_notes"
+          formControlName="resolution_notes"
+          rows="4"
+          placeholder="Enter resolution details..."
+          [fluid]="true"
+        ></textarea>
+      </lpg-form-field>
     </div>
   </form>
 
   <ng-template #footer>
     <div class="modal-actions">
-      <button pButton type="button" class="p-button-text p-button-secondary" (click)="closeResolveModal()">Cancel</button>
-      <button pButton type="button" (click)="submitResolve()" [disabled]="resolveLoading() || resolveForm.invalid">@if (resolveLoading()) {<i class="pi pi-spin pi-spinner"></i> }Resolve</button>
+      <button
+        pButton
+        type="button"
+        class="p-button-text p-button-secondary"
+        (click)="closeResolveModal()"
+      >
+        Cancel
+      </button>
+      <button
+        pButton
+        type="button"
+        (click)="submitResolve()"
+        [disabled]="resolveLoading() || resolveForm.invalid"
+      >
+        @if (resolveLoading()) {<i class="pi pi-spin pi-spinner"></i> }Resolve
+      </button>
     </div>
   </ng-template>
 </p-drawer>

@@ -30,8 +30,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
             <span class="auth-shell__brand-name">LPG Agency</span>
           </div>
           <p class="auth-shell__brand-tagline">
-            Bookings, deliveries, and billing for your LPG distribution business, all in one
-            place.
+            Bookings, deliveries, and billing for your LPG distribution business, all in one place.
           </p>
         </div>
       </aside>

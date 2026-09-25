@@ -1,17 +1,17 @@
 <h2 class="section-heading">GST Filing Summary</h2>
 
 @if (store.error()) {
-  <lpg-empty-state
-    tone="error"
-    title="Couldn't load GST filing"
-    [description]="store.error() ?? ''"
-  />
+<lpg-empty-state
+  tone="error"
+  title="Couldn't load GST filing"
+  [description]="store.error() ?? ''"
+/>
 } @else {
-  <lpg-data-grid
-    [rows]="store.gstFiling()"
-    [columns]="columns"
-    [loading]="store.loading()"
-    [autoHeight]="true"
-    ariaLabel="GST filing summary"
-  />
+<lpg-data-grid
+  [rows]="store.gstFiling()"
+  [columns]="columns"
+  [loading]="store.loading()"
+  [autoHeight]="true"
+  ariaLabel="GST filing summary"
+/>
 }

@@ -1,4 +1,3 @@
-
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import {
@@ -11,7 +10,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
@@ -64,17 +68,15 @@ const ROUTE_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
-const ROUTE_STATUS_SEVERITY: Record<
-  string,
-  'success' | 'info' | 'warn' | 'danger' | 'secondary'
-> = {
-  planned: 'secondary',
-  loaded: 'info',
-  in_progress: 'warn',
-  completed: 'success',
-  reconciled: 'success',
-  cancelled: 'danger',
-};
+const ROUTE_STATUS_SEVERITY: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> =
+  {
+    planned: 'secondary',
+    loaded: 'info',
+    in_progress: 'warn',
+    completed: 'success',
+    reconciled: 'success',
+    cancelled: 'danger',
+  };
 
 /** Routes can only be cancelled while still `planned` or `loaded` (see
  * `RouteStatus` transition table in `domain/delivery/route.py`) — once a
@@ -112,7 +114,8 @@ function toDateOnlyString(date: Date): string {
 @Component({
   selector: 'lpg-feature-dispatch',
   standalone: true,
-  imports: [HeaderTitlePortalDirective,
+  imports: [
+    HeaderTitlePortalDirective,
     DatePipe,
     TitleCasePipe,
     FormsModule,
@@ -305,7 +308,10 @@ export class FeatureDispatch implements OnInit {
     order_id: { required: 'Select an order.' },
     cylinder_type_id: { required: 'Select a cylinder type.' },
     scale_id: { required: 'Select a certified scale.' },
-    total_cylinders: { required: 'Enter how many cylinders were checked.', min: 'Must be at least 1.' },
+    total_cylinders: {
+      required: 'Enter how many cylinders were checked.',
+      min: 'Must be at least 1.',
+    },
     underweight_cylinder_count: {
       required: 'Enter the underweight count (0 if none).',
       min: 'Cannot be negative.',
@@ -492,7 +498,6 @@ export class FeatureDispatch implements OnInit {
   // ---------------------------------------------------------------------------
   // Init / loaders
   // ---------------------------------------------------------------------------
-
 
   ngOnInit(): void {
     this.branchService.listBranches().subscribe({

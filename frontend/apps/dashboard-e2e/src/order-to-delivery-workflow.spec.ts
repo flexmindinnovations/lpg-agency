@@ -68,7 +68,10 @@ async function logout(page: Page): Promise<void> {
   // ...) can still be mid-close-animation (mask fade-out) right as the next
   // action starts, intercepting the very next click. Wait for it to clear
   // before doing anything — every call site hits this, not just one.
-  await page.locator('.p-drawer-mask').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => undefined);
+  await page
+    .locator('.p-drawer-mask')
+    .waitFor({ state: 'hidden', timeout: 5000 })
+    .catch(() => undefined);
   await page.getByRole('button', { name: /Account menu/i }).click();
   await page.getByRole('menuitem', { name: 'Sign Out' }).click();
   await page.waitForURL((url) => url.pathname.includes('/login'));
@@ -91,7 +94,11 @@ function buttonWithLabel(page: Page, label: string) {
  * item either way, and Playwright's accessible-name computation falls back
  * to visible text when there's no explicit `aria-label` (true for `p-select`
  * options; `p-autocomplete` options do carry one). */
-async function choosePrimeOption(page: Page, trigger: string, name: string | RegExp): Promise<void> {
+async function choosePrimeOption(
+  page: Page,
+  trigger: string,
+  name: string | RegExp,
+): Promise<void> {
   await page.locator(trigger).click();
   await page.getByRole('option', { name }).click();
 }
@@ -269,9 +276,11 @@ test.describe('Order to delivery — full workflow', () => {
     await page.getByRole('button', { name: 'Save Signature' }).click();
     await expect(page.getByText('Saved')).toBeVisible();
 
-    await page
-      .locator('#deliver_photo')
-      .setInputFiles({ name: 'delivery.png', mimeType: 'image/png', buffer: Buffer.from(TINY_PNG_BASE64, 'base64') });
+    await page.locator('#deliver_photo').setInputFiles({
+      name: 'delivery.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(TINY_PNG_BASE64, 'base64'),
+    });
     await expect(page.getByText('Uploaded')).toBeVisible();
 
     await page.getByRole('button', { name: 'Use Current Location' }).click();

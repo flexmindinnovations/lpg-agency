@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import {
@@ -61,8 +68,17 @@ import {
           @if (canManageLicense()) {
             <button pButton type="button" (click)="goToActivation()">Manage license</button>
           }
-          <button pButton type="button" severity="secondary" [disabled]="checking()" (click)="recheck()">
-            @if (checking()) {<i class="pi pi-spin pi-spinner"></i> }Check again
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            [disabled]="checking()"
+            (click)="recheck()"
+          >
+            @if (checking()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            }
+            Check again
           </button>
           <button pButton type="button" severity="secondary" (click)="signOut()">Sign out</button>
         </div>
@@ -132,8 +148,8 @@ export class LicenseRequired implements OnInit {
 
   protected readonly checking = signal(false);
   protected readonly status = computed(() => this.licenseStatusStore.status()?.status ?? null);
-  protected readonly canManageLicense = computed(() =>
-    this.tokenStore.principal()?.permissions.has('license:manage_tenant') ?? false,
+  protected readonly canManageLicense = computed(
+    () => this.tokenStore.principal()?.permissions.has('license:manage_tenant') ?? false,
   );
 
   ngOnInit(): void {

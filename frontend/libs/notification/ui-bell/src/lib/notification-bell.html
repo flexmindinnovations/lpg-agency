@@ -1,8 +1,18 @@
 <p-overlaybadge
   [value]="unreadCount() > 0 ? unreadCount().toString() : ''"
   [badgeDisabled]="unreadCount() === 0"
-  severity="danger">
-  <button pButton type="button" text rounded severity="secondary" iconOnly aria-label="Notifications" (click)="toggled.emit()">
+  severity="danger"
+>
+  <button
+    pButton
+    type="button"
+    text
+    rounded
+    severity="secondary"
+    iconOnly
+    aria-label="Notifications"
+    (click)="toggled.emit()"
+  >
     <i class="pi pi-bell"></i>
   </button>
 </p-overlaybadge>

@@ -26,74 +26,66 @@
   <div class="thread" #threadEl>
     <div class="thread__inner">
       @if (history().length === 0 && !asking() && !pendingQuestion()) {
-        <div class="empty-state">
-          <i class="pi pi-sparkles empty-state__icon" aria-hidden="true"></i>
-          <p>Ask a question to get started, or try one of these:</p>
+      <div class="empty-state">
+        <i class="pi pi-sparkles empty-state__icon" aria-hidden="true"></i>
+        <p>Ask a question to get started, or try one of these:</p>
 
-          <div class="kpi-row">
-            @for (kpi of kpis(); track kpi.title) {
-              <lpg-stat-card
-                *lpgHasPermission="kpi.permission"
-                class="kpi-row__card"
-                [label]="kpi.title"
-                [value]="kpi.value"
-                [icon]="kpi.icon"
-                [tone]="kpi.tone"
-                [loading]="kpisLoading()"
-              />
-            }
-          </div>
-
-          <div class="suggestions">
-            @for (prompt of suggestedPrompts; track prompt.question) {
-              <button type="button" class="suggestion-chip" (click)="ask(prompt.question)">
-                <i [class]="prompt.icon" aria-hidden="true"></i>
-                <span>{{ prompt.label }}</span>
-              </button>
-            }
-          </div>
-        </div>
-      }
-
-      @for (entry of history(); track $index) {
-        <div class="message message--user">
-          <div class="message__bubble">{{ entry.question }}</div>
+        <div class="kpi-row">
+          @for (kpi of kpis(); track kpi.title) {
+          <lpg-stat-card
+            *lpgHasPermission="kpi.permission"
+            class="kpi-row__card"
+            [label]="kpi.title"
+            [value]="kpi.value"
+            [icon]="kpi.icon"
+            [tone]="kpi.tone"
+            [loading]="kpisLoading()"
+          />
+          }
         </div>
 
-        <div class="message message--assistant">
-          <div class="message__avatar" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
-          <div class="message__bubble">
-            @if (entry.error) {
-              <p-message severity="error">
-                Something went wrong asking the assistant. Please try again.
-              </p-message>
-            } @else if (entry.response; as response) {
-              @if (response.disabled_reason; as reason) {
-                <p-message severity="info">{{ disabledReasonMessages[reason] }}</p-message>
-              } @else {
-                <div class="qa-entry__answer" [innerHTML]="response.answer | lpgMarkdown"></div>
-                @if (response.tools_used.length) {
-                  <p class="qa-entry__tools">Data from: {{ response.tools_used.join(', ') }}</p>
-                }
-              }
-            }
-          </div>
+        <div class="suggestions">
+          @for (prompt of suggestedPrompts; track prompt.question) {
+          <button type="button" class="suggestion-chip" (click)="ask(prompt.question)">
+            <i [class]="prompt.icon" aria-hidden="true"></i>
+            <span>{{ prompt.label }}</span>
+          </button>
+          }
         </div>
-      }
+      </div>
+      } @for (entry of history(); track $index) {
+      <div class="message message--user">
+        <div class="message__bubble">{{ entry.question }}</div>
+      </div>
 
-      @if (pendingQuestion(); as pq) {
-        <div class="message message--user">
-          <div class="message__bubble">{{ pq }}</div>
+      <div class="message message--assistant">
+        <div class="message__avatar" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
+        <div class="message__bubble">
+          @if (entry.error) {
+          <p-message severity="error">
+            Something went wrong asking the assistant. Please try again.
+          </p-message>
+          } @else if (entry.response; as response) { @if (response.disabled_reason; as reason) {
+          <p-message severity="info">{{ disabledReasonMessages[reason] }}</p-message>
+          } @else {
+          <div class="qa-entry__answer" [innerHTML]="response.answer | lpgMarkdown"></div>
+          @if (response.tools_used.length) {
+          <p class="qa-entry__tools">Data from: {{ response.tools_used.join(', ') }}</p>
+          } } }
         </div>
-      }
-
-      @if (asking()) {
-        <div class="message message--assistant">
-          <div class="message__avatar" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
-          <div class="message__bubble message__bubble--thinking" aria-label="Thinking">
-            <span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span>
-          </div>
+      </div>
+      } @if (pendingQuestion(); as pq) {
+      <div class="message message--user">
+        <div class="message__bubble">{{ pq }}</div>
+      </div>
+      } @if (asking()) {
+      <div class="message message--assistant">
+        <div class="message__avatar" aria-hidden="true"><i class="pi pi-sparkles"></i></div>
+        <div class="message__bubble message__bubble--thinking" aria-label="Thinking">
+          <span class="thinking-dot"></span><span class="thinking-dot"></span
+          ><span class="thinking-dot"></span>
         </div>
+      </div>
       }
     </div>
   </div>
@@ -104,25 +96,25 @@
   <div class="composer">
     <div class="composer__inner">
       @if (showAutocomplete()) {
-        <ul class="autocomplete" role="listbox" aria-label="Suggested questions">
-          @for (prompt of autocompleteSuggestions(); track prompt.question; let i = $index) {
-            <li>
-              <button
-                type="button"
-                role="option"
-                class="autocomplete__item"
-                [class.autocomplete__item--active]="i === highlightedIndex()"
-                [attr.aria-selected]="i === highlightedIndex()"
-                (mousedown)="$event.preventDefault()"
-                (click)="selectAutocomplete(prompt)"
-                (mouseenter)="highlightedIndex.set(i)"
-              >
-                <i [class]="prompt.icon" aria-hidden="true"></i>
-                <span>{{ prompt.question }}</span>
-              </button>
-            </li>
-          }
-        </ul>
+      <ul class="autocomplete" role="listbox" aria-label="Suggested questions">
+        @for (prompt of autocompleteSuggestions(); track prompt.question; let i = $index) {
+        <li>
+          <button
+            type="button"
+            role="option"
+            class="autocomplete__item"
+            [class.autocomplete__item--active]="i === highlightedIndex()"
+            [attr.aria-selected]="i === highlightedIndex()"
+            (mousedown)="$event.preventDefault()"
+            (click)="selectAutocomplete(prompt)"
+            (mouseenter)="highlightedIndex.set(i)"
+          >
+            <i [class]="prompt.icon" aria-hidden="true"></i>
+            <span>{{ prompt.question }}</span>
+          </button>
+        </li>
+        }
+      </ul>
       }
 
       <div class="composer__box">
@@ -147,7 +139,12 @@
           (click)="ask()"
           aria-label="Send"
         >
-          <i class="pi" [class.pi-arrow-right]="!asking()" [class.pi-spin]="asking()" [class.pi-spinner]="asking()"></i>
+          <i
+            class="pi"
+            [class.pi-arrow-right]="!asking()"
+            [class.pi-spin]="asking()"
+            [class.pi-spinner]="asking()"
+          ></i>
         </button>
       </div>
     </div>

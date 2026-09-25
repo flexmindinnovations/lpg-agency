@@ -7,5 +7,5 @@ export interface PermissionState {
 }
 
 export const PERMISSION_CHECKER = new InjectionToken<Signal<PermissionState | undefined | null>>(
-  'PERMISSION_CHECKER'
+  'PERMISSION_CHECKER',
 );

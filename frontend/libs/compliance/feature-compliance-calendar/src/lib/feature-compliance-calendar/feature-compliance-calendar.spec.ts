@@ -42,18 +42,14 @@ describe('FeatureComplianceCalendar', () => {
 
   it('auto-selects the first warehouse and loads its documents on init', () => {
     fixture.detectChanges();
-    httpMock
-      .expectOne('http://test/api/v1/admin/warehouses')
-      .flush([
-        { id: 'w1', branch_id: 'b1', name: 'Warehouse 1', address_line: 'Line 1' },
-        { id: 'w2', branch_id: 'b1', name: 'Warehouse 2', address_line: 'Line 2' },
-      ]);
+    httpMock.expectOne('http://test/api/v1/admin/warehouses').flush([
+      { id: 'w1', branch_id: 'b1', name: 'Warehouse 1', address_line: 'Line 1' },
+      { id: 'w2', branch_id: 'b1', name: 'Warehouse 2', address_line: 'Line 2' },
+    ]);
     httpMock.expectOne('http://test/api/v1/tenant/documents').flush({ items: [], total: 0 });
 
     expect(component['selectedWarehouseId']()).toBe('w1');
-    httpMock
-      .expectOne('http://test/api/v1/warehouses/w1/documents')
-      .flush({ items: [], total: 0 });
+    httpMock.expectOne('http://test/api/v1/warehouses/w1/documents').flush({ items: [], total: 0 });
   });
 
   it('switches warehouse documents when the selection changes', () => {
@@ -62,9 +58,7 @@ describe('FeatureComplianceCalendar', () => {
     httpMock.expectOne('http://test/api/v1/tenant/documents').flush({ items: [], total: 0 });
 
     component['onWarehouseChange']('w2');
-    httpMock
-      .expectOne('http://test/api/v1/warehouses/w2/documents')
-      .flush({ items: [], total: 0 });
+    httpMock.expectOne('http://test/api/v1/warehouses/w2/documents').flush({ items: [], total: 0 });
     expect(component['selectedWarehouseId']()).toBe('w2');
   });
 

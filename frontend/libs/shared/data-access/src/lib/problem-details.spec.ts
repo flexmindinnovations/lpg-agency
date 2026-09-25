@@ -1,5 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { errorMessageFor, isAppError, toAppError, type AppError, type ProblemDetails } from './problem-details';
+import {
+  errorMessageFor,
+  isAppError,
+  toAppError,
+  type AppError,
+  type ProblemDetails,
+} from './problem-details';
 
 describe('toAppError', () => {
   it('maps an RFC 7807 body to a typed error', () => {
@@ -103,18 +109,12 @@ describe('errorMessageFor', () => {
     ['OTP_MISMATCH', 'The OTP entered is incorrect.'],
     ['OTP_EXPIRED', 'The OTP has expired — depart again to issue a new one.'],
     ['IDEMPOTENCY_KEY_CONFLICT', 'This request was already submitted with different details.'],
-    [
-      'LICENSE_ACTIVATION_FAILED',
-      'That key is invalid, already activated, or has been revoked.',
-    ],
+    ['LICENSE_ACTIVATION_FAILED', 'That key is invalid, already activated, or has been revoked.'],
     [
       'DUPLICATE_CYLINDER_SERIAL_NUMBER',
       'A cylinder unit with this serial number is already registered.',
     ],
-    [
-      'DUPLICATE_CYLINDER_QR_CODE',
-      'A cylinder unit with this QR / barcode is already registered.',
-    ],
+    ['DUPLICATE_CYLINDER_QR_CODE', 'A cylinder unit with this QR / barcode is already registered.'],
     ['DUPLICATE_REGISTRATION_NUMBER', 'A vehicle with this registration number already exists.'],
     ['DUPLICATE_EMPLOYEE_CODE', 'A driver with this employee code already exists.'],
     ['DUPLICATE_PHONE', 'A customer with this phone number already exists.'],

@@ -94,7 +94,10 @@ export class OrderService {
     }).pipe(map((res) => res.body));
   }
 
-  assignOrder(orderId: string, request: LpgApiV1SchemasOrderAssignOrderRequest): Observable<OrderResponse> {
+  assignOrder(
+    orderId: string,
+    request: LpgApiV1SchemasOrderAssignOrderRequest,
+  ): Observable<OrderResponse> {
     return assignOrderApiV1OrdersOrderIdAssignPost(this.http, this.config.rootUrl, {
       order_id: orderId,
       body: request,
@@ -143,10 +146,14 @@ export class OrderService {
     orderId: string,
     request: RecordFailedDeliveryRequest,
   ): Observable<OrderResponse> {
-    return recordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost(this.http, this.config.rootUrl, {
-      order_id: orderId,
-      body: request,
-    }).pipe(map((res) => res.body));
+    return recordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost(
+      this.http,
+      this.config.rootUrl,
+      {
+        order_id: orderId,
+        body: request,
+      },
+    ).pipe(map((res) => res.body));
   }
 
   // ---------------------------------------------------------------------------
@@ -161,9 +168,13 @@ export class OrderService {
   }
 
   approveOrderCancellation(orderId: string): Observable<OrderResponse> {
-    return approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost(this.http, this.config.rootUrl, {
-      order_id: orderId,
-    }).pipe(map((res) => res.body));
+    return approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost(
+      this.http,
+      this.config.rootUrl,
+      {
+        order_id: orderId,
+      },
+    ).pipe(map((res) => res.body));
   }
 
   bulkCancelOrders(request: BulkCancelOrdersRequest): Observable<BulkCancelOrdersResponse> {

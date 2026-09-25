@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal, type Type } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  type Type,
+} from '@angular/core';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
@@ -92,7 +101,10 @@ export interface DataGridColumn<TRow = unknown> {
       }
       .lpg-data-grid-link:hover,
       .lpg-data-grid-link:focus-visible {
-        color: var(--lpg-link-hover-color, var(--color-action-primary-hover, var(--color-action-primary)));
+        color: var(
+          --lpg-link-hover-color,
+          var(--color-action-primary-hover, var(--color-action-primary))
+        );
       }
       .lpg-data-grid-link:focus-visible {
         outline: 2px solid var(--lpg-link-color, var(--color-action-primary));
@@ -214,7 +226,7 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         --ag-wrapper-border-radius: var(--component-data-grid-border-radius, var(--radius-md, 8px));
         --ag-checkbox-border-radius: var(--radius-xs, 4px);
       }
-      
+
       /* Force selected rows to use the highlight text colour so they are readable
          against the dark highlight background. Penetrate encapsulation with ::ng-deep
          because AG Grid generates the row elements. */
@@ -333,9 +345,10 @@ export class DataGridComponent<TRow = unknown> {
       width: column.width,
       flex: column.flex ?? (column.width === undefined ? 1 : undefined),
       type: column.numeric ? 'numericColumn' : undefined,
-      cellClass: typeof column.cellClass === 'function' 
-        ? (params) => (column.cellClass as any)(params.value, params.data)
-        : column.cellClass,
+      cellClass:
+        typeof column.cellClass === 'function'
+          ? (params) => (column.cellClass as any)(params.value, params.data)
+          : column.cellClass,
       valueFormatter: column.valueFormatter
         ? (params) => column.valueFormatter?.(params.value, params.data as TRow) ?? ''
         : undefined,

@@ -99,7 +99,9 @@ export class TdtRatingConfig implements OnInit {
 
   protected readonly form = this.fb.group({
     mdgEdition: ['MDG-2022', [Validators.required]],
-    bands: this.fb.array<BandGroup>(DEFAULT_BANDS.map((b) => this.newBandGroup(b.stars, b.maxDays))),
+    bands: this.fb.array<BandGroup>(
+      DEFAULT_BANDS.map((b) => this.newBandGroup(b.stars, b.maxDays)),
+    ),
     fineRules: this.fb.array<FineRuleGroup>([]),
   });
 
@@ -155,7 +157,10 @@ export class TdtRatingConfig implements OnInit {
           if (value.mdg_edition) this.form.controls.mdgEdition.setValue(value.mdg_edition);
         }
         if (fineSchedule?.config_value && typeof fineSchedule.config_value === 'object') {
-          const value = fineSchedule.config_value as { mdg_edition?: string; rules?: RawFineRule[] };
+          const value = fineSchedule.config_value as {
+            mdg_edition?: string;
+            rules?: RawFineRule[];
+          };
           if (Array.isArray(value.rules)) {
             for (const r of value.rules) {
               this.fineRules.push(
@@ -173,7 +178,11 @@ export class TdtRatingConfig implements OnInit {
 
   private newBandGroup(stars: number, maxDays: number | null): BandGroup {
     return this.fb.group({
-      stars: this.fb.control<number>(stars, [Validators.required, Validators.min(1), Validators.max(5)]),
+      stars: this.fb.control<number>(stars, [
+        Validators.required,
+        Validators.min(1),
+        Validators.max(5),
+      ]),
       maxDays: this.fb.control<number | null>(maxDays),
     });
   }

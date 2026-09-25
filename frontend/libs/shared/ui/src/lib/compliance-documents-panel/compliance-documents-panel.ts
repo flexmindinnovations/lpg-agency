@@ -7,7 +7,10 @@ import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
-import { DocumentUploadComponent, type DocumentUploaded } from '../document-upload/document-upload.component';
+import {
+  DocumentUploadComponent,
+  type DocumentUploaded,
+} from '../document-upload/document-upload.component';
 import { FormFieldComponent } from '../form-field/form-field.component';
 import { HasPermissionDirective } from '../directives/has-permission.directive';
 import { formatReportDate } from '../format/format';
@@ -117,7 +120,9 @@ export class ComplianceDocumentsPanel {
   readonly uploader = input.required<(file: File) => Observable<{ blobRef: string }>>();
   readonly addDocument = input.required<(cmd: AddComplianceDocumentCmd) => Observable<unknown>>();
   readonly replaceDocument =
-    input.required<(documentId: string, cmd: ReplaceComplianceDocumentCmd) => Observable<unknown>>();
+    input.required<
+      (documentId: string, cmd: ReplaceComplianceDocumentCmd) => Observable<unknown>
+    >();
   readonly verifyDocument =
     input.required<(documentId: string, cmd: VerifyComplianceDocumentCmd) => Observable<unknown>>();
 
@@ -162,7 +167,9 @@ export class ComplianceDocumentsPanel {
   }
 
   /** `null` once expiry is more than 30 days out — the date alone is enough. */
-  protected expiryBadge(doc: ComplianceDocumentItem): { label: string; severity: ChipSeverity } | null {
+  protected expiryBadge(
+    doc: ComplianceDocumentItem,
+  ): { label: string; severity: ChipSeverity } | null {
     if (!doc.expiry_date) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -284,7 +291,10 @@ export class ComplianceDocumentsPanel {
       return;
     }
     this.verifyingId.set(doc.id);
-    this.verifyDocument()(doc.id, { status: 'rejected', rejection_reason: this.rejectReason() }).subscribe({
+    this.verifyDocument()(doc.id, {
+      status: 'rejected',
+      rejection_reason: this.rejectReason(),
+    }).subscribe({
       next: () => {
         this.verifyingId.set(null);
         this.rejectingDoc.set(null);

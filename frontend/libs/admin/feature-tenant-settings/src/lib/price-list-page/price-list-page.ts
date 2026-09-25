@@ -18,7 +18,15 @@ import {
   type PriceListEntryResponse,
   type PriceListProposalResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent, SectionCardComponent, StatusChipCell, toSentenceCase, formatTimestamp } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  FormFieldComponent,
+  SectionCardComponent,
+  StatusChipCell,
+  toSentenceCase,
+  formatTimestamp,
+} from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
 
@@ -31,17 +39,32 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
 @Component({
   selector: 'lpg-price-list-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, SectionCardComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    DataGridComponent,
+    FormFieldComponent,
+    SectionCardComponent,
+    Select,
+    Drawer,
+    DrawerA11yDirective,
+    IconField,
+    InputIcon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Pricing</h1>
-          <p class="page-subtitle">Set and track cylinder prices by type, customer category, and branch.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Pricing</h1>
+            <p class="page-subtitle">
+              Set and track cylinder prices by type, customer category, and branch.
+            </p>
+          </div>
+        </ng-template>
       </div>
 
       <!-- Pending Rate Proposals — AI Operational Intelligence, Horizon 1
@@ -56,11 +79,12 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
               <div class="proposal-row">
                 <div class="proposal-row__info">
                   <span class="proposal-row__title">
-                    {{ cylinderTypeName(p.cylinder_type_id) }} · {{ toSentenceCase(p.customer_type) }}
+                    {{ cylinderTypeName(p.cylinder_type_id) }} ·
+                    {{ toSentenceCase(p.customer_type) }}
                   </span>
                   <span class="proposal-row__meta">
-                    ₹{{ p.proposed_price }} effective {{ formatTimestamp(p.effective_from) }}
-                    · <a [href]="p.source_url" target="_blank" rel="noopener noreferrer">source</a>
+                    ₹{{ p.proposed_price }} effective {{ formatTimestamp(p.effective_from) }} ·
+                    <a [href]="p.source_url" target="_blank" rel="noopener noreferrer">source</a>
                   </span>
                 </div>
                 <div class="proposal-row__actions">
@@ -73,8 +97,16 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
                   >
                     Reject
                   </button>
-                  <button pButton type="button" [disabled]="reviewingId() === p.id" (click)="review(p.id, 'accept')">
-                    @if (reviewingId() === p.id) {<i class="pi pi-spin pi-spinner"></i> }Accept
+                  <button
+                    pButton
+                    type="button"
+                    [disabled]="reviewingId() === p.id"
+                    (click)="review(p.id, 'accept')"
+                  >
+                    @if (reviewingId() === p.id) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    }
+                    Accept
                   </button>
                 </div>
               </div>
@@ -99,8 +131,12 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
-            <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Price</span></button>
+            <button pButton severity="secondary">
+              <i class="pi pi-file-excel"></i><span>Export</span>
+            </button>
+            <button pButton (click)="openCreateDrawer()">
+              <i class="pi pi-plus"></i><span>Set Price</span>
+            </button>
           </div>
         </div>
       }
@@ -110,7 +146,9 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
           <i class="pi pi-tag empty-state__icon"></i>
           <p class="empty-state__title">No prices set</p>
           <p class="empty-state__description">Set the first price to get started.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Price</span></button>
+          <button pButton class="mt-4" (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Set Price</span>
+          </button>
         </div>
       } @else {
         <section class="grid-section">
@@ -134,57 +172,107 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="setPriceForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="setPriceForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <p class="page-lede">Set a price for a cylinder type and customer category. Leave branch empty for a tenant-wide default.</p>
+            <p class="page-lede">
+              Set a price for a cylinder type and customer category. Leave branch empty for a
+              tenant-wide default.
+            </p>
 
-          <lpg-form-field label="Cylinder type" for="price-cylinder-type" [control]="form.controls.cylinderTypeId" [messages]="{ required: 'Cylinder type is required.' }">
-            <p-select
-              inputId="price-cylinder-type"
-              formControlName="cylinderTypeId"
-              [options]="cylinderTypes()"
-              optionLabel="name"
-              optionValue="id"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Cylinder type"
+              for="price-cylinder-type"
+              [control]="form.controls.cylinderTypeId"
+              [messages]="{ required: 'Cylinder type is required.' }"
+            >
+              <p-select
+                inputId="price-cylinder-type"
+                formControlName="cylinderTypeId"
+                [options]="cylinderTypes()"
+                optionLabel="name"
+                optionValue="id"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          <lpg-form-field label="Customer type" for="price-customer-type" [control]="form.controls.customerType" [messages]="{ required: 'Customer type is required.' }">
-            <p-select
-              inputId="price-customer-type"
-              formControlName="customerType"
-              [options]="customerTypes"
-              optionLabel="label"
-              optionValue="value"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Customer type"
+              for="price-customer-type"
+              [control]="form.controls.customerType"
+              [messages]="{ required: 'Customer type is required.' }"
+            >
+              <p-select
+                inputId="price-customer-type"
+                formControlName="customerType"
+                [options]="customerTypes"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          <lpg-form-field label="Branch" for="price-branch" [control]="form.controls.branchId" hint="Leave empty for a tenant-wide default.">
-            <p-select
-              inputId="price-branch"
-              formControlName="branchId"
-              [options]="branches()"
-              optionLabel="name"
-              optionValue="id"
-              placeholder="Tenant-wide default"
-              [showClear]="true"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Branch"
+              for="price-branch"
+              [control]="form.controls.branchId"
+              hint="Leave empty for a tenant-wide default."
+            >
+              <p-select
+                inputId="price-branch"
+                formControlName="branchId"
+                [options]="branches()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Tenant-wide default"
+                [showClear]="true"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          <lpg-form-field label="Price" for="price-value" [control]="form.controls.price" [messages]="{ required: 'Price is required.', min: 'Price must be greater than 0.' }">
-            <input pInputText id="price-value" type="number" step="0.01" formControlName="price" placeholder="0.00" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Price"
+              for="price-value"
+              [control]="form.controls.price"
+              [messages]="{ required: 'Price is required.', min: 'Price must be greater than 0.' }"
+            >
+              <input
+                pInputText
+                id="price-value"
+                type="number"
+                step="0.01"
+                formControlName="price"
+                placeholder="0.00"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save price
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Save price
             </button>
           </div>
         </form>
@@ -247,7 +335,6 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
         gap: var(--spacing-sm);
         flex-shrink: 0;
       }
-
     `,
   ],
 })
@@ -265,7 +352,10 @@ export class PriceListPage implements OnInit {
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
-  protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({ label: toSentenceCase(t), value: t }));
+  protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({
+    label: toSentenceCase(t),
+    value: t,
+  }));
   protected readonly toSentenceCase = toSentenceCase;
   protected readonly formatTimestamp = formatTimestamp;
 
@@ -328,7 +418,9 @@ export class PriceListPage implements OnInit {
     this.priceListService.reviewProposal(proposalId, action).subscribe({
       next: () => {
         this.reviewingId.set(null);
-        this.notify.success(action === 'accept' ? 'Proposal accepted — price saved.' : 'Proposal rejected.');
+        this.notify.success(
+          action === 'accept' ? 'Proposal accepted — price saved.' : 'Proposal rejected.',
+        );
         this.loadProposals();
         if (action === 'accept') {
           this.reload();

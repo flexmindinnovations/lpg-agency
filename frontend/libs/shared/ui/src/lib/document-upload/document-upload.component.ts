@@ -434,9 +434,7 @@ export class DocumentUploadComponent {
     this.fileName.set(file.name);
     this.fileSize.set(file.size);
     this.revokePreview();
-    this.previewUrl.set(
-      file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
-    );
+    this.previewUrl.set(file.type.startsWith('image/') ? URL.createObjectURL(file) : null);
     this.stage.set('uploading');
 
     this.uploader()(file)

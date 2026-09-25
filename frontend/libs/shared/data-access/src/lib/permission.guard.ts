@@ -28,7 +28,10 @@ import { AuthTokenStore } from './auth-token.store';
  * staff-facing "browse everything" list page for that resource. Pass the
  * roles that should be denied this *page* despite holding the permission.
  */
-export function permissionGuard(permissionCode: string, excludeRoles?: readonly string[]): CanActivateFn {
+export function permissionGuard(
+  permissionCode: string,
+  excludeRoles?: readonly string[],
+): CanActivateFn {
   return () => {
     const authService = inject(AuthService);
     const tokenStore = inject(AuthTokenStore);

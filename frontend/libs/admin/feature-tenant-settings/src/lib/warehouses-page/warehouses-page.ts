@@ -43,47 +43,67 @@ class WarehouseStatusCell {
 @Component({
   selector: 'lpg-warehouses-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    DataGridComponent,
+    FormFieldComponent,
+    Select,
+    Drawer,
+    DrawerA11yDirective,
+    IconField,
+    InputIcon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Warehouses</h1>
-          <p class="page-subtitle">Manage warehouse locations and branch assignments.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Warehouses</h1>
+            <p class="page-subtitle">Manage warehouse locations and branch assignments.</p>
+          </div>
+        </ng-template>
       </div>
 
       @if (warehouses().length > 0) {
-      <div class="data-toolbar">
-        <div class="data-toolbar__filters">
-          <p-iconfield styleClass="w-full md:w-64">
-            <p-inputicon class="pi pi-search" />
-            <input
-              pInputText
-              type="text"
-              placeholder="Search warehouses..."
-              class="w-full"
-              [value]="searchQuery()"
-              (input)="searchQuery.set($any($event.target).value)"
-            />
-          </p-iconfield>
+        <div class="data-toolbar">
+          <div class="data-toolbar__filters">
+            <p-iconfield styleClass="w-full md:w-64">
+              <p-inputicon class="pi pi-search" />
+              <input
+                pInputText
+                type="text"
+                placeholder="Search warehouses..."
+                class="w-full"
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+              />
+            </p-iconfield>
+          </div>
+          <div class="data-toolbar__actions">
+            <button pButton severity="secondary">
+              <i class="pi pi-file-excel"></i><span>Export</span>
+            </button>
+            <button pButton (click)="openCreateDrawer()">
+              <i class="pi pi-plus"></i><span>Add Warehouse</span>
+            </button>
+          </div>
         </div>
-        <div class="data-toolbar__actions">
-          <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
-          <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Add Warehouse</span></button>
-        </div>
-      </div>
       }
 
       @if (!loading() && warehouses().length === 0) {
         <div class="empty-state">
           <i class="pi pi-building empty-state__icon"></i>
           <p class="empty-state__title">No warehouses found</p>
-          <p class="empty-state__description">Get started by adding your first warehouse location.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Add Warehouse</span></button>
+          <p class="empty-state__description">
+            Get started by adding your first warehouse location.
+          </p>
+          <button pButton class="mt-4" (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Add Warehouse</span>
+          </button>
         </div>
       } @else {
         <section class="grid-section">
@@ -107,34 +127,82 @@ class WarehouseStatusCell {
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="addWarehouseForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="addWarehouseForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <p class="page-lede">Create a new warehouse location and assign it to an operating branch.</p>
-          
-          <lpg-form-field label="Branch" for="warehouse-branch" [control]="form.controls.branchId" [messages]="{ required: 'Branch is required.' }">
-            <p-select
-              inputId="warehouse-branch"
-              formControlName="branchId"
-              [options]="branches()"
-              optionLabel="name"
-              optionValue="id"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <p class="page-lede">
+              Create a new warehouse location and assign it to an operating branch.
+            </p>
 
-          <lpg-form-field label="Name" for="warehouse-name" [control]="form.controls.name" [messages]="{ required: 'Warehouse name is required.' }">
-            <input pInputText id="warehouse-name" type="text" formControlName="name" placeholder="e.g. Northside Depot" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Branch"
+              for="warehouse-branch"
+              [control]="form.controls.branchId"
+              [messages]="{ required: 'Branch is required.' }"
+            >
+              <p-select
+                inputId="warehouse-branch"
+                formControlName="branchId"
+                [options]="branches()"
+                optionLabel="name"
+                optionValue="id"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          <lpg-form-field label="Address" for="warehouse-address" [control]="form.controls.addressLine" [messages]="{ required: 'Address is required.' }">
-            <input pInputText id="warehouse-address" type="text" formControlName="addressLine" placeholder="Full street address" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Name"
+              for="warehouse-name"
+              [control]="form.controls.name"
+              [messages]="{ required: 'Warehouse name is required.' }"
+            >
+              <input
+                pInputText
+                id="warehouse-name"
+                type="text"
+                formControlName="name"
+                placeholder="e.g. Northside Depot"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+
+            <lpg-form-field
+              label="Address"
+              for="warehouse-address"
+              [control]="form.controls.addressLine"
+              [messages]="{ required: 'Address is required.' }"
+            >
+              <input
+                pInputText
+                id="warehouse-address"
+                type="text"
+                formControlName="addressLine"
+                placeholder="Full street address"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save warehouse
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Save warehouse
             </button>
           </div>
         </form>
@@ -147,13 +215,12 @@ class WarehouseStatusCell {
         display: block;
         block-size: 100%;
       }
-      
+
       .admin-page {
         display: flex;
         flex-direction: column;
         block-size: 100%;
       }
-
     `,
   ],
 })
@@ -167,7 +234,7 @@ export class WarehousesPage implements OnInit {
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
-  
+
   protected readonly createDrawerVisible = signal(false);
   protected readonly submitting = signal(false);
 
@@ -209,7 +276,7 @@ export class WarehousesPage implements OnInit {
       error: () => this.loading.set(false),
     });
   }
-  
+
   protected openCreateDrawer(): void {
     this.form.reset();
     this.createDrawerVisible.set(true);

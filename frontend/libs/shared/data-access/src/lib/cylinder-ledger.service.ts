@@ -18,7 +18,10 @@ export class CylinderLedgerService {
     }).pipe(map((res) => res.body));
   }
 
-  adjustBalance(customerId: string, request: AdjustLedgerBalanceRequest): Observable<CylinderLedgerResponse> {
+  adjustBalance(
+    customerId: string,
+    request: AdjustLedgerBalanceRequest,
+  ): Observable<CylinderLedgerResponse> {
     return adjustBalanceApiV1CustomersCustomerIdLedgerAdjustPost(this.http, this.config.rootUrl, {
       customer_id: customerId,
       body: request,

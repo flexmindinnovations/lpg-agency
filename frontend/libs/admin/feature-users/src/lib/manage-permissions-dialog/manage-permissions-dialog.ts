@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal, effect, computed } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  effect,
+  computed,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
@@ -48,7 +57,15 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 @Component({
   selector: 'lpg-manage-permissions-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, CheckboxModule, FieldsetModule, TooltipModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    DialogModule,
+    ButtonModule,
+    CheckboxModule,
+    FieldsetModule,
+    TooltipModule,
+  ],
   template: `
     <p-dialog
       [visible]="visible()"
@@ -60,8 +77,11 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
       (onHide)="onHide()"
     >
       <div class="dialog-content">
-        <p class="page-lede mb-4">Select the specific permissions to assign to this user. Note that role-based permissions are applied implicitly and cannot be removed here.</p>
-        
+        <p class="page-lede mb-4">
+          Select the specific permissions to assign to this user. Note that role-based permissions
+          are applied implicitly and cannot be removed here.
+        </p>
+
         @if (loading()) {
           <div class="flex justify-center p-4">
             <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
@@ -70,7 +90,11 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
           <form [formGroup]="form" (ngSubmit)="submit()">
             <div class="permissions-container">
               @for (group of groupedPermissions(); track group.module) {
-                <p-fieldset [legend]="group.module.replace('_', ' ') | titlecase" [toggleable]="true" styleClass="mb-4">
+                <p-fieldset
+                  [legend]="group.module.replace('_', ' ') | titlecase"
+                  [toggleable]="true"
+                  styleClass="mb-4"
+                >
                   <div class="permissions-grid">
                     @for (perm of group.permissions; track perm) {
                       <div class="permission-item gap-2">
@@ -82,7 +106,11 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
                         <label [for]="perm" class="flex items-center gap-1 cursor-pointer">
                           {{ perm.substring(group.module.length + 1) | titlecase }}
                           @if (getPermissionDescription(perm); as desc) {
-                            <i class="pi pi-info-circle text-gray-400" [pTooltip]="desc" tooltipPosition="top"></i>
+                            <i
+                              class="pi pi-info-circle text-gray-400"
+                              [pTooltip]="desc"
+                              tooltipPosition="top"
+                            ></i>
                           }
                         </label>
                       </div>
@@ -93,8 +121,20 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
             </div>
 
             <div class="modal-actions mt-6">
-              <button pButton type="button" severity="secondary" (click)="visibleChange.emit(false)">Cancel</button>
-              <button pButton type="submit" [disabled]="submitting()">@if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save Permissions</button>
+              <button
+                pButton
+                type="button"
+                severity="secondary"
+                (click)="visibleChange.emit(false)"
+              >
+                Cancel
+              </button>
+              <button pButton type="submit" [disabled]="submitting()">
+                @if (submitting()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                Save Permissions
+              </button>
             </div>
           </form>
         }
@@ -136,7 +176,7 @@ export class ManagePermissionsDialogComponent {
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly availablePermissions = signal<string[]>([]);
-  
+
   protected readonly groupedPermissions = computed(() => {
     const perms = this.availablePermissions();
     const groups: { module: string; permissions: string[] }[] = [];
@@ -162,24 +202,27 @@ export class ManagePermissionsDialogComponent {
   }
 
   constructor() {
-    effect(() => {
-      if (this.visible() && this.userId()) {
-        this.loadData();
-      }
-    }, { allowSignalWrites: true });
+    effect(
+      () => {
+        if (this.visible() && this.userId()) {
+          this.loadData();
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   private loadData(): void {
     this.loading.set(true);
-    
+
     // Run both requests concurrently
     this.staffUserService.listPermissions().subscribe({
       next: (allPerms) => {
         this.availablePermissions.set(allPerms);
-        
+
         // Create form controls for each permission
         const group: Record<string, any> = {};
-        allPerms.forEach(perm => {
+        allPerms.forEach((perm) => {
           group[perm] = [false];
         });
         this.form = this.fb.group(group);
@@ -188,7 +231,7 @@ export class ManagePermissionsDialogComponent {
         this.staffUserService.getUserPermissions(this.userId()).subscribe({
           next: (userPerms) => {
             const patchValue: Record<string, boolean> = {};
-            userPerms.forEach(perm => {
+            userPerms.forEach((perm) => {
               if (this.form.contains(perm)) {
                 patchValue[perm] = true;
               }
@@ -202,22 +245,24 @@ export class ManagePermissionsDialogComponent {
           error: (err) => {
             this.notify.error(errorMessageFor(err));
             this.loading.set(false);
-          }
+          },
         });
       },
       error: (err) => {
         this.notify.error(errorMessageFor(err));
         this.loading.set(false);
-      }
+      },
     });
   }
 
   protected submit(): void {
     this.submitting.set(true);
-    
+
     // Extract selected permissions
     const formValue = this.form.getRawValue();
-    const selectedPermissions = Object.keys(formValue).filter(key => (formValue as Record<string, any>)[key] === true);
+    const selectedPermissions = Object.keys(formValue).filter(
+      (key) => (formValue as Record<string, any>)[key] === true,
+    );
 
     this.staffUserService.updateUserPermissions(this.userId(), selectedPermissions).subscribe({
       next: () => {

@@ -95,9 +95,7 @@ describe('authInterceptor', () => {
     expect(observedError).toBeTruthy();
     expect(completed).toBe(false);
     expect(tokenStore.accessToken()).toBeNull();
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ header: 'Session Expired' }),
-    );
+    expect(confirmSpy).toHaveBeenCalledWith(expect.objectContaining({ header: 'Session Expired' }));
   });
 });
 
@@ -149,8 +147,6 @@ describe('authInterceptor composed with problemDetailsInterceptor (production or
       .flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect(tokenStore.accessToken()).toBeNull();
-    expect(confirmSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ header: 'Session Expired' }),
-    );
+    expect(confirmSpy).toHaveBeenCalledWith(expect.objectContaining({ header: 'Session Expired' }));
   });
 });

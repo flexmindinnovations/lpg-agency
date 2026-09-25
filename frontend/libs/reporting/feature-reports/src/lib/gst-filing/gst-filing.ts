@@ -19,7 +19,13 @@ export class GstFiling implements OnInit {
 
   protected readonly columns: DataGridColumn<GstFilingRecord>[] = [
     { field: 'filing_period', header: 'Filing Period', flex: 1, sortable: true },
-    { field: 'total_gst', header: 'Total GST', numeric: true, width: 200, valueFormatter: formatCurrencyInr },
+    {
+      field: 'total_gst',
+      header: 'Total GST',
+      numeric: true,
+      width: 200,
+      valueFormatter: formatCurrencyInr,
+    },
   ];
 
   ngOnInit() {

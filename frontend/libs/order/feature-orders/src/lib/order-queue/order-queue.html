@@ -29,7 +29,13 @@
       </div>
     </div>
     <div class="data-toolbar__actions">
-      <button *lpgHasPermission="'orders:create'" #createTriggerEl pButton type="button" (click)="openCreateDrawer()">
+      <button
+        *lpgHasPermission="'orders:create'"
+        #createTriggerEl
+        pButton
+        type="button"
+        (click)="openCreateDrawer()"
+      >
         <i class="pi pi-plus"></i>
         <span>New Booking</span>
       </button>
@@ -61,120 +67,129 @@
 
     <form [formGroup]="createForm" (ngSubmit)="onSubmitCreate()" class="dialog-form">
       <div class="dialog-form__fields">
-      <lpg-form-field
-        label="Customer"
-        for="create_customer"
-        [control]="createForm.controls.customer"
-        [messages]="fieldMessages.customer"
-      >
-        <lpg-customer-autocomplete
-          inputId="create_customer"
-          formControlName="customer"
-          placeholder="Search by name or phone..."
-        ></lpg-customer-autocomplete>
-      </lpg-form-field>
+        <lpg-form-field
+          label="Customer"
+          for="create_customer"
+          [control]="createForm.controls.customer"
+          [messages]="fieldMessages.customer"
+        >
+          <lpg-customer-autocomplete
+            inputId="create_customer"
+            formControlName="customer"
+            placeholder="Search by name or phone..."
+          ></lpg-customer-autocomplete>
+        </lpg-form-field>
 
-      @if (selectedCustomer(); as customer) {
-      <lpg-form-field
-        label="Delivery address"
-        for="create_address"
-        [control]="createForm.controls.address_id"
-        [messages]="fieldMessages.address_id"
-      >
-        <p-select
-          inputId="create_address"
-          formControlName="address_id"
-          [options]="customer.addresses"
-          optionLabel="line_1"
-          optionValue="id"
-          placeholder="Select an address"
-          (onChange)="onAddressChange($event.value)"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
-
-      <lpg-form-field
-        label="Booking source"
-        for="create_booking_source"
-        [control]="createForm.controls.booking_source"
-        [messages]="fieldMessages.booking_source"
-      >
-        <p-select
-          inputId="create_booking_source"
-          formControlName="booking_source"
-          [options]="bookingSourceOptions"
-          optionLabel="label"
-          optionValue="value"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
-
-      <lpg-form-field
-        label="Requested delivery date"
-        for="create_requested_date"
-        [control]="createForm.controls.requested_date"
-        [messages]="fieldMessages.requested_date"
-      >
-        <p-datepicker
-          inputId="create_requested_date"
-          formControlName="requested_date"
-          [showIcon]="true"
-          [showTime]="true"
-          iconDisplay="input"
-          dateFormat="dd-mm-yy"
-          appendTo="body"
-          [fluid]="true"
-        ></p-datepicker>
-      </lpg-form-field>
-
-      <div class="lines-header">
-        <label>Cylinders</label>
-        <button pButton type="button" text size="small" severity="secondary" (click)="addLine()">
-          <i class="pi pi-plus"></i>
-          <span>Add line</span>
-        </button>
-      </div>
-      <div class="lines" formArrayName="lines">
-        @for (line of lines.controls; track $index) {
-        <div [formGroupName]="$index" class="line-row">
+        @if (selectedCustomer(); as customer) {
+        <lpg-form-field
+          label="Delivery address"
+          for="create_address"
+          [control]="createForm.controls.address_id"
+          [messages]="fieldMessages.address_id"
+        >
           <p-select
-            formControlName="cylinder_type_id"
-            [options]="cylinderTypes()"
-            optionLabel="name"
+            inputId="create_address"
+            formControlName="address_id"
+            [options]="customer.addresses"
+            optionLabel="line_1"
             optionValue="id"
-            placeholder="Cylinder type"
-            class="line-row__type"
+            placeholder="Select an address"
+            (onChange)="onAddressChange($event.value)"
             [fluid]="true"
           ></p-select>
-          <p-inputnumber formControlName="quantity" [min]="1" class="line-row__qty" [fluid]="true" />
-          <button
-            pButton
-            type="button"
-            text
-            severity="danger"
-            iconOnly
-            aria-label="Remove line"
-            [disabled]="lines.length <= 1"
-            (click)="removeLine($index)"
-          >
-            <i class="pi pi-trash"></i>
+        </lpg-form-field>
+
+        <lpg-form-field
+          label="Booking source"
+          for="create_booking_source"
+          [control]="createForm.controls.booking_source"
+          [messages]="fieldMessages.booking_source"
+        >
+          <p-select
+            inputId="create_booking_source"
+            formControlName="booking_source"
+            [options]="bookingSourceOptions"
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
+
+        <lpg-form-field
+          label="Requested delivery date"
+          for="create_requested_date"
+          [control]="createForm.controls.requested_date"
+          [messages]="fieldMessages.requested_date"
+        >
+          <p-datepicker
+            inputId="create_requested_date"
+            formControlName="requested_date"
+            [showIcon]="true"
+            [showTime]="true"
+            iconDisplay="input"
+            dateFormat="dd-mm-yy"
+            appendTo="body"
+            [fluid]="true"
+          ></p-datepicker>
+        </lpg-form-field>
+
+        <div class="lines-header">
+          <label>Cylinders</label>
+          <button pButton type="button" text size="small" severity="secondary" (click)="addLine()">
+            <i class="pi pi-plus"></i>
+            <span>Add line</span>
           </button>
         </div>
+        <div class="lines" formArrayName="lines">
+          @for (line of lines.controls; track $index) {
+          <div [formGroupName]="$index" class="line-row">
+            <p-select
+              formControlName="cylinder_type_id"
+              [options]="cylinderTypes()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Cylinder type"
+              class="line-row__type"
+              [fluid]="true"
+            ></p-select>
+            <p-inputnumber
+              formControlName="quantity"
+              [min]="1"
+              class="line-row__qty"
+              [fluid]="true"
+            />
+            <button
+              pButton
+              type="button"
+              text
+              severity="danger"
+              iconOnly
+              aria-label="Remove line"
+              [disabled]="lines.length <= 1"
+              (click)="removeLine($index)"
+            >
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+          }
+        </div>
         }
-      </div>
-      }
       </div>
     </form>
 
     <ng-template #footer>
       <div class="modal-actions">
-        <button pButton type="button" severity="secondary" text (click)="closeCreateDrawer()">Cancel</button>
+        <button pButton type="button" severity="secondary" text (click)="closeCreateDrawer()">
+          Cancel
+        </button>
         <button
           pButton
           type="button"
           [disabled]="createForm.invalid || !selectedAddress() || loading()"
           (click)="onSubmitCreate()"
-        >@if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Create Booking</button>
+        >
+          @if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Create Booking
+        </button>
       </div>
     </ng-template>
   </p-drawer>

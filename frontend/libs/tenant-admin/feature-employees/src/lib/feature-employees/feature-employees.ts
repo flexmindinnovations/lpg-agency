@@ -210,16 +210,18 @@ export class FeatureEmployees implements OnInit {
 
   protected loadEmployees(): void {
     this.loading.set(true);
-    this.employeeService.listEmployees({ skip: 0, limit: 100, search: this.searchQuery() || undefined }).subscribe({
-      next: (page) => {
-        this.employees.set(page.items);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
-        this.loading.set(false);
-      },
-    });
+    this.employeeService
+      .listEmployees({ skip: 0, limit: 100, search: this.searchQuery() || undefined })
+      .subscribe({
+        next: (page) => {
+          this.employees.set(page.items);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.errorMessage.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
   }
 
   protected onSearch(event: Event): void {

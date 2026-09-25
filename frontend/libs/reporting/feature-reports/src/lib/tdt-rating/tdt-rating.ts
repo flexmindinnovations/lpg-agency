@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Select } from 'primeng/select';
 import {
@@ -37,8 +44,7 @@ function toIsoDate(year: number, month1: number, day: number): string {
 function quarterBoundsFor(year: number, quarterIndex: number): { start: string; end: string } {
   const startMonth = quarterIndex * 3 + 1;
   const start = toIsoDate(year, startMonth, 1);
-  const end =
-    quarterIndex === 3 ? toIsoDate(year + 1, 1, 1) : toIsoDate(year, startMonth + 3, 1);
+  const end = quarterIndex === 3 ? toIsoDate(year + 1, 1, 1) : toIsoDate(year, startMonth + 3, 1);
   return { start, end };
 }
 

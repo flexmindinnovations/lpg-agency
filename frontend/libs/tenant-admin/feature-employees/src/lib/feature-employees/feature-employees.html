@@ -57,46 +57,81 @@
     [style]="{ width: '100%', maxWidth: '36rem' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
-    <form id="registerEmployeeForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+    <form
+      id="registerEmployeeForm"
+      [formGroup]="registerForm"
+      (ngSubmit)="onSubmitRegister()"
+      class="dialog-form"
+    >
       <div class="dialog-form__fields">
-      <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
-        <p-select
-          inputId="branch_id"
-          formControlName="branch_id"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
+        <lpg-form-field
+          label="Branch"
+          for="branch_id"
+          [control]="registerForm.controls.branch_id"
+          [messages]="fieldMessages.branch_id"
+        >
+          <p-select
+            inputId="branch_id"
+            formControlName="branch_id"
+            [options]="branches()"
+            optionLabel="name"
+            optionValue="id"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
 
-      <lpg-form-field label="First name" for="first_name" [control]="registerForm.controls.first_name" [messages]="fieldMessages.first_name">
-        <input pInputText id="first_name" formControlName="first_name" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="First name"
+          for="first_name"
+          [control]="registerForm.controls.first_name"
+          [messages]="fieldMessages.first_name"
+        >
+          <input pInputText id="first_name" formControlName="first_name" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Last name" for="last_name" [control]="registerForm.controls.last_name" [messages]="fieldMessages.last_name">
-        <input pInputText id="last_name" formControlName="last_name" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Last name"
+          for="last_name"
+          [control]="registerForm.controls.last_name"
+          [messages]="fieldMessages.last_name"
+        >
+          <input pInputText id="last_name" formControlName="last_name" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Phone number" for="phone_number" [control]="registerForm.controls.phone_number" [messages]="fieldMessages.phone_number">
-        <input pInputText id="phone_number" formControlName="phone_number" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Phone number"
+          for="phone_number"
+          [control]="registerForm.controls.phone_number"
+          [messages]="fieldMessages.phone_number"
+        >
+          <input pInputText id="phone_number" formControlName="phone_number" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Email" for="email" [control]="registerForm.controls.email" [messages]="fieldMessages.email" [optional]="true">
-        <input pInputText id="email" type="email" formControlName="email" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Email"
+          for="email"
+          [control]="registerForm.controls.email"
+          [messages]="fieldMessages.email"
+          [optional]="true"
+        >
+          <input pInputText id="email" type="email" formControlName="email" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Role" for="role" [control]="registerForm.controls.role" [messages]="fieldMessages.role">
-        <p-select
-          inputId="role"
-          formControlName="role"
-          [options]="roleOptions"
-          optionLabel="label"
-          optionValue="value"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
-
+        <lpg-form-field
+          label="Role"
+          for="role"
+          [control]="registerForm.controls.role"
+          [messages]="fieldMessages.role"
+        >
+          <p-select
+            inputId="role"
+            formControlName="role"
+            [options]="roleOptions"
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
       </div>
 
       <div class="modal-actions">
@@ -122,56 +157,65 @@
       <div class="drawer-header">
         <h2 class="drawer-title">Employee Details</h2>
         @if (selectedEmployee(); as e) {
-          <p-tag [severity]="statusSeverity(e.status)" [value]="toSentenceCase(e.status)" />
+        <p-tag [severity]="statusSeverity(e.status)" [value]="toSentenceCase(e.status)" />
         }
       </div>
     </ng-template>
 
     @if (selectedEmployee(); as e) {
-      <div class="detail-grid">
-        <div class="info-item">
-          <span class="info-label">Employee Code</span>
-          <span class="info-value">{{ e.employee_code }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Branch</span>
-          <span class="info-value">
-            <lpg-branch-link [branchId]="e.branch_id" [branch]="branchById().get(e.branch_id) ?? null" />
-          </span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Role</span>
-          <span class="info-value">{{ toSentenceCase(e.role) }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Phone Number</span>
-          <span class="info-value">{{ e.phone_number }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Email</span>
-          <span class="info-value">{{ e.email ?? '—' }}</span>
-        </div>
+    <div class="detail-grid">
+      <div class="info-item">
+        <span class="info-label">Employee Code</span>
+        <span class="info-value">{{ e.employee_code }}</span>
       </div>
+      <div class="info-item">
+        <span class="info-label">Branch</span>
+        <span class="info-value">
+          <lpg-branch-link
+            [branchId]="e.branch_id"
+            [branch]="branchById().get(e.branch_id) ?? null"
+          />
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Role</span>
+        <span class="info-value">{{ toSentenceCase(e.role) }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Phone Number</span>
+        <span class="info-value">{{ e.phone_number }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Email</span>
+        <span class="info-value">{{ e.email ?? '—' }}</span>
+      </div>
+    </div>
     }
 
     <ng-template #footer>
       <div class="modal-actions">
-        <button *lpgHasPermission="'users:manage'" pButton type="button" severity="secondary" (click)="openEditDrawer()">
+        <button
+          *lpgHasPermission="'users:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openEditDrawer()"
+        >
           <i class="pi pi-pencil"></i>
           <span>Edit</span>
         </button>
         @if (canDeactivate()) {
-          <button
-            *lpgHasPermission="'users:manage'"
-            pButton
-            type="button"
-            severity="danger"
-            [disabled]="loading()"
-            (click)="confirmDeactivate()"
-          >
-            <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-user-minus'"></i>
-            <span>Deactivate</span>
-          </button>
+        <button
+          *lpgHasPermission="'users:manage'"
+          pButton
+          type="button"
+          severity="danger"
+          [disabled]="loading()"
+          (click)="confirmDeactivate()"
+        >
+          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-user-minus'"></i>
+          <span>Deactivate</span>
+        </button>
         }
       </div>
     </ng-template>
@@ -188,53 +232,81 @@
   >
     <form [formGroup]="editForm" (ngSubmit)="onSubmitEdit()" class="dialog-form">
       <div class="dialog-form__fields">
-      <lpg-form-field label="Branch" for="edit_branch_id" [control]="editForm.controls.branch_id" [messages]="fieldMessages.branch_id">
-        <p-select
-          inputId="edit_branch_id"
-          formControlName="branch_id"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
+        <lpg-form-field
+          label="Branch"
+          for="edit_branch_id"
+          [control]="editForm.controls.branch_id"
+          [messages]="fieldMessages.branch_id"
+        >
+          <p-select
+            inputId="edit_branch_id"
+            formControlName="branch_id"
+            [options]="branches()"
+            optionLabel="name"
+            optionValue="id"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
 
-      <lpg-form-field label="First name" for="edit_first_name" [control]="editForm.controls.first_name" [messages]="fieldMessages.first_name">
-        <input pInputText id="edit_first_name" formControlName="first_name" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="First name"
+          for="edit_first_name"
+          [control]="editForm.controls.first_name"
+          [messages]="fieldMessages.first_name"
+        >
+          <input pInputText id="edit_first_name" formControlName="first_name" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Last name" for="edit_last_name" [control]="editForm.controls.last_name" [messages]="fieldMessages.last_name">
-        <input pInputText id="edit_last_name" formControlName="last_name" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Last name"
+          for="edit_last_name"
+          [control]="editForm.controls.last_name"
+          [messages]="fieldMessages.last_name"
+        >
+          <input pInputText id="edit_last_name" formControlName="last_name" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Phone number" for="edit_phone_number" [control]="editForm.controls.phone_number" [messages]="fieldMessages.phone_number">
-        <input pInputText id="edit_phone_number" formControlName="phone_number" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Phone number"
+          for="edit_phone_number"
+          [control]="editForm.controls.phone_number"
+          [messages]="fieldMessages.phone_number"
+        >
+          <input pInputText id="edit_phone_number" formControlName="phone_number" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Email" for="edit_email" [control]="editForm.controls.email" [messages]="fieldMessages.email" [optional]="true">
-        <input pInputText id="edit_email" type="email" formControlName="email" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Email"
+          for="edit_email"
+          [control]="editForm.controls.email"
+          [messages]="fieldMessages.email"
+          [optional]="true"
+        >
+          <input pInputText id="edit_email" type="email" formControlName="email" [fluid]="true" />
+        </lpg-form-field>
 
-      <lpg-form-field label="Role" for="edit_role" [control]="editForm.controls.role" [messages]="fieldMessages.role">
-        <p-select
-          inputId="edit_role"
-          formControlName="role"
-          [options]="roleOptions"
-          optionLabel="label"
-          optionValue="value"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
-
+        <lpg-form-field
+          label="Role"
+          for="edit_role"
+          [control]="editForm.controls.role"
+          [messages]="fieldMessages.role"
+        >
+          <p-select
+            inputId="edit_role"
+            formControlName="role"
+            [options]="roleOptions"
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
       </div>
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showEditDrawer.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="editForm.invalid || loading()">
-          Save
-        </button>
+        <button pButton type="submit" [disabled]="editForm.invalid || loading()">Save</button>
       </div>
     </form>
   </p-drawer>

@@ -67,7 +67,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
               rejectVisible: false,
               accept: () => {
                 void router.navigate(['/login']);
-              }
+              },
             });
             return throwError(() => retryError);
           }),

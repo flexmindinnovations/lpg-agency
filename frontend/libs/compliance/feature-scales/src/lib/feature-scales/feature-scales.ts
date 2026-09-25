@@ -9,7 +9,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { map, type Observable } from 'rxjs';
 import {
   DataGridComponent,
@@ -394,5 +399,4 @@ export class FeatureScales implements OnInit {
       },
     });
   }
-
 }

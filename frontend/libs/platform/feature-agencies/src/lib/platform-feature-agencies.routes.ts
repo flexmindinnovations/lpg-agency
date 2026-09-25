@@ -7,9 +7,7 @@ export const platformFeatureAgenciesRoutes: Route[] = [
   {
     path: '',
     loadComponent: () =>
-      import('./agency-management-page/agency-management-page').then(
-        (m) => m.AgencyManagementPage,
-      ),
+      import('./agency-management-page/agency-management-page').then((m) => m.AgencyManagementPage),
     title: 'Agencies',
   },
 ];

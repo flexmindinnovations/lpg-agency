@@ -108,7 +108,8 @@ export class FeatureComplaints implements OnInit {
   // Customer/Staff "quick view" — both render through the shared
   // `PreviewDialog` (also used by `feature-invoices`) so there's one dialog
   // implementation instead of every feature re-inventing it.
-  protected readonly customerPreviewDialog = viewChild.required<PreviewDialog>('customerPreviewDialog');
+  protected readonly customerPreviewDialog =
+    viewChild.required<PreviewDialog>('customerPreviewDialog');
   protected readonly staffPreviewDialog = viewChild.required<PreviewDialog>('staffPreviewDialog');
 
   /** `AdminStaffUserService.listStaffUsers` requires `users:manage`, which
@@ -183,7 +184,13 @@ export class FeatureComplaints implements OnInit {
       // entirely unreachable — nothing in the grid ever called it.
       onLinkClick: (row) => this.onRowAction(row),
     },
-    { field: 'category', header: 'Category', flex: 1, sortable: true, cellRenderer: StatusChipCell },
+    {
+      field: 'category',
+      header: 'Category',
+      flex: 1,
+      sortable: true,
+      cellRenderer: StatusChipCell,
+    },
     {
       field: 'priority',
       header: 'Priority',
@@ -218,8 +225,7 @@ export class FeatureComplaints implements OnInit {
       header: 'Customer',
       width: 190,
       tooltipValueGetter: (val) => String(val),
-      valueFormatter: (val) =>
-        this.customerById().get(String(val))?.full_name ?? shortId(val),
+      valueFormatter: (val) => this.customerById().get(String(val))?.full_name ?? shortId(val),
       onLinkClick: (row) => this.openCustomerPreview(row.customer_id),
     },
     {
@@ -379,7 +385,10 @@ export class FeatureComplaints implements OnInit {
           title: customer.full_name,
           subtitle: `Consumer No: ${customer.consumer_number ?? '—'}`,
           tags: [
-            { label: toSentenceCase(customer.status), severity: this.customerStatusSeverity(customer.status) },
+            {
+              label: toSentenceCase(customer.status),
+              severity: this.customerStatusSeverity(customer.status),
+            },
             {
               label: 'KYC: ' + toSentenceCase(customer.kyc_status),
               severity: this.kycStatusSeverity(customer.kyc_status),
@@ -406,7 +415,14 @@ export class FeatureComplaints implements OnInit {
   protected customerPreviewAddress(customer: CustomerResponse): string | null {
     const address = customer.addresses.find((a) => a.is_primary) ?? customer.addresses[0];
     if (!address) return null;
-    return [address.line_1, address.line_2, address.area, address.city, address.state, address.pincode]
+    return [
+      address.line_1,
+      address.line_2,
+      address.area,
+      address.city,
+      address.state,
+      address.pincode,
+    ]
       .filter(Boolean)
       .join(', ');
   }
@@ -441,7 +457,11 @@ export class FeatureComplaints implements OnInit {
     });
   }
 
-  private showStaffPreview(dialog: PreviewDialog, users: StaffUserResponse[], userId: string): void {
+  private showStaffPreview(
+    dialog: PreviewDialog,
+    users: StaffUserResponse[],
+    userId: string,
+  ): void {
     const user = users.find((u) => u.id === userId);
     if (!user) {
       dialog.close();

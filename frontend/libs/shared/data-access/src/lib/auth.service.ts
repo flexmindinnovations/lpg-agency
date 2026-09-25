@@ -1,15 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import {
-  Observable,
-  catchError,
-  finalize,
-  map,
-  of,
-  shareReplay,
-  switchMap,
-  tap,
-} from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { loginApiV1AuthLoginPost } from './generated/fn/authentication/login-api-v-1-auth-login-post';
 import { logoutApiV1AuthLogoutPost } from './generated/fn/authentication/logout-api-v-1-auth-logout-post';

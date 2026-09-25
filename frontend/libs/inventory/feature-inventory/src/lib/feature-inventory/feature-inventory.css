@@ -35,7 +35,6 @@
   margin: 0;
 }
 
-
 .empty-hint {
   font-size: var(--typography-caption-font-size);
   color: var(--color-text-secondary);

@@ -12,8 +12,10 @@ export class WebSocketService implements OnDestroy {
   private readonly config = inject(ApiConfiguration);
   private socket: WebSocket | null = null;
   private readonly messageSubject = new Subject<RealtimeMessage>();
-  private readonly connectionStateSubject = new Subject<'connected' | 'disconnected' | 'connecting'>();
-  
+  private readonly connectionStateSubject = new Subject<
+    'connected' | 'disconnected' | 'connecting'
+  >();
+
   private activeIntents = new Set<string>();
   private reconnectAttempts = 0;
   private reconnectTimeoutId: any = null;
@@ -23,20 +25,24 @@ export class WebSocketService implements OnDestroy {
   readonly connectionState$ = this.connectionStateSubject.asObservable();
 
   connect(token: string): void {
-    if (this.isDestroyed || this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) {
+    if (
+      this.isDestroyed ||
+      this.socket?.readyState === WebSocket.OPEN ||
+      this.socket?.readyState === WebSocket.CONNECTING
+    ) {
       return;
     }
 
     this.connectionStateSubject.next('connecting');
     const wsUrl = this.config.rootUrl.replace('http://', 'ws://').replace('https://', 'wss://');
     const url = `${wsUrl}/api/v1/ws?token=${encodeURIComponent(token)}`;
-    
+
     this.socket = new WebSocket(url);
 
     this.socket.onopen = () => {
       this.reconnectAttempts = 0;
       this.connectionStateSubject.next('connected');
-      
+
       // Resubscribe to active intents on reconnect
       if (this.activeIntents.size > 0) {
         this.send({ subscribe: Array.from(this.activeIntents) });
@@ -59,13 +65,13 @@ export class WebSocketService implements OnDestroy {
     this.socket.onclose = (event) => {
       this.socket = null;
       this.connectionStateSubject.next('disconnected');
-      
+
       // 1008 Policy Violation (invalid token) -> don't auto-reconnect
       // 1000 Normal Closure -> don't auto-reconnect
       if (event.code === 1008 || event.code === 1000) {
         return;
       }
-      
+
       this.scheduleReconnect(token);
     };
 
@@ -113,7 +119,7 @@ export class WebSocketService implements OnDestroy {
   on<T = any>(messageType: string): Observable<T> {
     return this.messages$.pipe(
       filter((msg) => msg.type === messageType),
-      map((msg) => msg as T)
+      map((msg) => msg as T),
     );
   }
 
@@ -131,7 +137,7 @@ export class WebSocketService implements OnDestroy {
     const delay = backoff + jitter;
 
     this.reconnectAttempts++;
-    
+
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null;
       this.connect(token);

@@ -101,7 +101,9 @@
   font: inherit;
   font-size: var(--typography-body-small-font-size);
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .suggestion-chip:hover {

@@ -36,17 +36,28 @@ class BranchStatusCell {
 @Component({
   selector: 'lpg-branches-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    DataGridComponent,
+    FormFieldComponent,
+    Drawer,
+    DrawerA11yDirective,
+    IconField,
+    InputIcon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Branches</h1>
-          <p class="page-subtitle">Manage branch locations and regional assignments.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Branches</h1>
+            <p class="page-subtitle">Manage branch locations and regional assignments.</p>
+          </div>
+        </ng-template>
       </div>
 
       @if (branches().length > 0) {
@@ -65,8 +76,12 @@ class BranchStatusCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
-            <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Add Branch</span></button>
+            <button pButton severity="secondary">
+              <i class="pi pi-file-excel"></i><span>Export</span>
+            </button>
+            <button pButton (click)="openCreateDrawer()">
+              <i class="pi pi-plus"></i><span>Add Branch</span>
+            </button>
           </div>
         </div>
       }
@@ -76,7 +91,9 @@ class BranchStatusCell {
           <i class="pi pi-map-marker empty-state__icon"></i>
           <p class="empty-state__title">No branches found</p>
           <p class="empty-state__description">Get started by adding your first branch location.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Add Branch</span></button>
+          <button pButton class="mt-4" (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Add Branch</span>
+          </button>
         </div>
       } @else {
         <section class="grid-section">
@@ -100,23 +117,63 @@ class BranchStatusCell {
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="addBranchForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="addBranchForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <p class="page-lede">Create a new branch and optionally assign it to a region.</p>
+            <p class="page-lede">Create a new branch and optionally assign it to a region.</p>
 
-          <lpg-form-field label="Name" for="branch-name" [control]="form.controls.name" [messages]="{ required: 'Branch name is required.' }">
-            <input pInputText id="branch-name" type="text" formControlName="name" placeholder="e.g. North City Branch" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Name"
+              for="branch-name"
+              [control]="form.controls.name"
+              [messages]="{ required: 'Branch name is required.' }"
+            >
+              <input
+                pInputText
+                id="branch-name"
+                type="text"
+                formControlName="name"
+                placeholder="e.g. North City Branch"
+                [fluid]="true"
+              />
+            </lpg-form-field>
 
-          <lpg-form-field label="Region" for="branch-region" [control]="form.controls.region" [optional]="true">
-            <input pInputText id="branch-region" type="text" formControlName="region" placeholder="e.g. Northern Region" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Region"
+              for="branch-region"
+              [control]="form.controls.region"
+              [optional]="true"
+            >
+              <input
+                pInputText
+                id="branch-region"
+                type="text"
+                formControlName="region"
+                placeholder="e.g. Northern Region"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save branch
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Save branch
             </button>
           </div>
         </form>
@@ -135,7 +192,6 @@ class BranchStatusCell {
         flex-direction: column;
         block-size: 100%;
       }
-
     `,
   ],
 })
@@ -229,4 +285,3 @@ export class BranchesPage implements OnInit {
     });
   }
 }
-

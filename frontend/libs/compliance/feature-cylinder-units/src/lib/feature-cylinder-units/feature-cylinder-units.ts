@@ -10,7 +10,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import {
   DataGridComponent,
   type DataGridColumn,
@@ -194,21 +199,21 @@ export class FeatureCylinderUnits implements OnInit {
   });
 
   protected readonly warehouseOptions = computed(() =>
-    this.warehouses().map((w) => ({ label: w.name, value: w.id }))
+    this.warehouses().map((w) => ({ label: w.name, value: w.id })),
   );
 
   protected readonly vehicleOptions = computed(() =>
     this.vehicles().map((v) => ({
       label: `${v.registration_number}${v.model ? ' (' + v.model + ')' : ''}`,
       value: v.id,
-    }))
+    })),
   );
 
   protected readonly customerOptions = computed(() =>
     this.customers().map((c) => ({
       label: `${c.consumer_number} — ${c.full_name}`,
       value: c.id,
-    }))
+    })),
   );
 
   protected formatCustodyDisplay(custodyType: string, refId?: string | null): string {
@@ -218,15 +223,21 @@ export class FeatureCylinderUnits implements OnInit {
     }
     if (custodyType === 'warehouse') {
       const name = this.warehouseNameById().get(refId);
-      return name ? `Warehouse — ${name}` : `Warehouse (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+      return name
+        ? `Warehouse — ${name}`
+        : `Warehouse (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
     }
     if (custodyType === 'vehicle') {
       const name = this.vehicleNameById().get(refId);
-      return name ? `Vehicle — ${name}` : `Vehicle (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+      return name
+        ? `Vehicle — ${name}`
+        : `Vehicle (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
     }
     if (custodyType === 'customer') {
       const name = this.customerNameById().get(refId);
-      return name ? `Customer — ${name}` : `Customer (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
+      return name
+        ? `Customer — ${name}`
+        : `Customer (${refId.length > 8 ? refId.substring(0, 8) + '...' : refId})`;
     }
     return `${typeLabel} — ${refId}`;
   }
@@ -252,7 +263,8 @@ export class FeatureCylinderUnits implements OnInit {
       field: 'cylinder_type_id',
       header: 'Type',
       sortable: true,
-      valueFormatter: (value) => this.cylinderTypeNameById().get(value as string) ?? (value as string),
+      valueFormatter: (value) =>
+        this.cylinderTypeNameById().get(value as string) ?? (value as string),
     },
     {
       field: 'condition_status',
@@ -265,7 +277,8 @@ export class FeatureCylinderUnits implements OnInit {
       field: 'custody_type',
       header: 'Custody',
       sortable: true,
-      valueFormatter: (value, row) => this.formatCustodyDisplay(value as string, row?.custody_ref_id),
+      valueFormatter: (value, row) =>
+        this.formatCustodyDisplay(value as string, row?.custody_ref_id),
     },
     {
       field: 'test_due_date',
@@ -343,7 +356,10 @@ export class FeatureCylinderUnits implements OnInit {
     });
   }
 
-  private syncCustodyRefId(form: typeof this.custodyForm | typeof this.registerForm, type: string): void {
+  private syncCustodyRefId(
+    form: typeof this.custodyForm | typeof this.registerForm,
+    type: string,
+  ): void {
     if (type === 'warehouse') {
       const wh = this.warehouses();
       form.controls.custody_ref_id.setValue(wh.length > 0 ? wh[0].id : '');
@@ -369,7 +385,11 @@ export class FeatureCylinderUnits implements OnInit {
     this.warehouseService.listWarehouses().subscribe({
       next: (warehouses) => {
         this.warehouses.set(warehouses);
-        if (this.registerForm.controls.custody_type.value === 'warehouse' && !this.registerForm.controls.custody_ref_id.value && warehouses.length > 0) {
+        if (
+          this.registerForm.controls.custody_type.value === 'warehouse' &&
+          !this.registerForm.controls.custody_ref_id.value &&
+          warehouses.length > 0
+        ) {
           this.registerForm.controls.custody_ref_id.setValue(warehouses[0].id);
         }
       },
@@ -574,17 +594,19 @@ export class FeatureCylinderUnits implements OnInit {
     if (!testedAt || !dueDate) return;
 
     this.saving.set(true);
-    this.cylinderUnitService.recordStatutoryTest(unit.id, { tested_at: testedAt, due_date: dueDate }).subscribe({
-      next: (updated) => {
-        this.selectedUnit.set(updated);
-        this.activeAction.set('none');
-        this.showTestModal.set(false);
-        this.saving.set(false);
-        this.notify.success('Test recorded.');
-        this.loadUnits();
-      },
-      error: () => this.saving.set(false),
-    });
+    this.cylinderUnitService
+      .recordStatutoryTest(unit.id, { tested_at: testedAt, due_date: dueDate })
+      .subscribe({
+        next: (updated) => {
+          this.selectedUnit.set(updated);
+          this.activeAction.set('none');
+          this.showTestModal.set(false);
+          this.saving.set(false);
+          this.notify.success('Test recorded.');
+          this.loadUnits();
+        },
+        error: () => this.saving.set(false),
+      });
   }
 
   protected saveCustody(): void {
@@ -721,7 +743,7 @@ export class FeatureCylinderUnits implements OnInit {
       this.showTestModal() ||
       this.showConditionModal() ||
       this.showLookupModal() ||
-      this.showRegisterModal()
+      this.showRegisterModal(),
   );
 
   @HostListener('document:keydown.escape')

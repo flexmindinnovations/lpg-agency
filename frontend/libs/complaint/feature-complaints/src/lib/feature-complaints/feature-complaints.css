@@ -10,7 +10,6 @@
   block-size: 100%;
 }
 
-
 .drawer-header {
   display: flex;
   justify-content: space-between;
@@ -33,7 +32,8 @@
   gap: var(--spacing-lg);
 }
 
-.info-section, .history-section {
+.info-section,
+.history-section {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);

@@ -83,7 +83,9 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-inventory',
   standalone: true,
-  imports: [PageHeaderComponent, HeaderTitlePortalDirective, 
+  imports: [
+    PageHeaderComponent,
+    HeaderTitlePortalDirective,
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
@@ -116,7 +118,10 @@ export class FeatureInventory implements OnInit {
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly scales = signal<ScaleResponse[]>([]);
 
-  protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({ label: toSentenceCase(s), value: s }));
+  protected readonly statusOptions = CYLINDER_STATUSES.map((s) => ({
+    label: toSentenceCase(s),
+    value: s,
+  }));
 
   /**
    * Validator-key → message, shared across the six inventory-operation forms
@@ -315,8 +320,7 @@ export class FeatureInventory implements OnInit {
       field: 'location_ref_id',
       header: 'Warehouse',
       sortable: true,
-      valueFormatter: (value) =>
-        this.warehouseNameById().get(value as string) ?? (value as string),
+      valueFormatter: (value) => this.warehouseNameById().get(value as string) ?? (value as string),
     },
     {
       field: 'cylinder_type_id',
@@ -328,7 +332,6 @@ export class FeatureInventory implements OnInit {
     { field: 'reorder_point', header: 'Reorder Point', numeric: true },
     { field: 'safety_stock', header: 'Safety Stock', numeric: true },
   ];
-
 
   ngOnInit(): void {
     this.warehouseService.listWarehouses().subscribe({ next: (w) => this.warehouses.set(w) });

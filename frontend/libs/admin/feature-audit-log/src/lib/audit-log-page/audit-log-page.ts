@@ -1,11 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { JsonPipe, UpperCasePipe } from '@angular/common';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -17,7 +11,14 @@ import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Tag } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { AdminAuditLogService, type AuditLogEntryResponse } from '@lpg/shared/data-access';
-import { ActionChipCell, CopyableIdCell, DataGridComponent, formatEntityName, formatTimestamp, type DataGridColumn } from '@lpg/shared/ui';
+import {
+  ActionChipCell,
+  CopyableIdCell,
+  DataGridComponent,
+  formatEntityName,
+  formatTimestamp,
+  type DataGridColumn,
+} from '@lpg/shared/ui';
 
 const ACTION_SEVERITY: Record<string, string> = {
   create: 'success',
@@ -28,7 +29,8 @@ const ACTION_SEVERITY: Record<string, string> = {
 @Component({
   selector: 'lpg-audit-log-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, 
+  imports: [
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
@@ -47,11 +49,11 @@ const ACTION_SEVERITY: Record<string, string> = {
     <div class="audit-log-container">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Audit Log</h1>
-          <p class="page-subtitle">View a chronological record of all system actions.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Audit Log</h1>
+            <p class="page-subtitle">View a chronological record of all system actions.</p>
+          </div>
+        </ng-template>
       </div>
 
       <div class="data-toolbar">
@@ -69,7 +71,18 @@ const ACTION_SEVERITY: Record<string, string> = {
           </p-iconfield>
         </div>
         <div class="data-toolbar__actions">
-          <button pButton type="button" severity="secondary" iconOnly aria-label="Refresh" (click)="applyFilters()" pTooltip="Refresh" tooltipPosition="left"><i class="pi pi-refresh"></i></button>
+          <button
+            pButton
+            type="button"
+            severity="secondary"
+            iconOnly
+            aria-label="Refresh"
+            (click)="applyFilters()"
+            pTooltip="Refresh"
+            tooltipPosition="left"
+          >
+            <i class="pi pi-refresh"></i>
+          </button>
         </div>
       </div>
 
@@ -92,7 +105,9 @@ const ACTION_SEVERITY: Record<string, string> = {
             severity="secondary"
             (click)="loadMore()"
             [disabled]="loading()"
-          ><i class="pi pi-chevron-down"></i><span>Load more</span></button>
+          >
+            <i class="pi pi-chevron-down"></i><span>Load more</span>
+          </button>
         </div>
       }
     </div>
@@ -111,61 +126,63 @@ const ACTION_SEVERITY: Record<string, string> = {
       @if (selectedEntry(); as entry) {
         <div class="dialog-form">
           <div class="dialog-form__fields">
-          <div class="audit-detail-header">
-            <div class="audit-detail-header__title">
-              <span class="entity-name">{{ formatEntity(entry.entity_name) }}</span>
-              <p-tag
-                [value]="entry.action | uppercase"
-                [severity]="actionSeverity(entry.action)"
-              />
+            <div class="audit-detail-header">
+              <div class="audit-detail-header__title">
+                <span class="entity-name">{{ formatEntity(entry.entity_name) }}</span>
+                <p-tag
+                  [value]="entry.action | uppercase"
+                  [severity]="actionSeverity(entry.action)"
+                />
+              </div>
+              <span class="audit-detail-header__time">{{ formatTime(entry.performed_at) }}</span>
             </div>
-            <span class="audit-detail-header__time">{{ formatTime(entry.performed_at) }}</span>
-          </div>
 
-          <section class="detail-section">
-            <p class="section-label">Identifiers</p>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-label">Entity</span>
-                <span class="info-value">{{ formatEntity(entry.entity_name) }}</span>
-                <span class="info-value mono dim">{{ entry.entity_name }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Entity ID</span>
-                <span class="info-value mono">{{ entry.entity_id || 'N/A' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Actor ID</span>
-                <span class="info-value mono">{{ entry.actor_id || 'System' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Correlation ID</span>
-                <span class="info-value mono">{{ entry.correlation_id || 'N/A' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Log ID</span>
-                <span class="info-value mono">{{ entry.id }}</span>
-              </div>
-            </div>
-          </section>
-
-          @if (entry.before_state) {
             <section class="detail-section">
-              <p class="section-label">Before State</p>
-              <pre class="state-code"><code>{{ entry.before_state | json }}</code></pre>
+              <p class="section-label">Identifiers</p>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Entity</span>
+                  <span class="info-value">{{ formatEntity(entry.entity_name) }}</span>
+                  <span class="info-value mono dim">{{ entry.entity_name }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Entity ID</span>
+                  <span class="info-value mono">{{ entry.entity_id || 'N/A' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Actor ID</span>
+                  <span class="info-value mono">{{ entry.actor_id || 'System' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Correlation ID</span>
+                  <span class="info-value mono">{{ entry.correlation_id || 'N/A' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Log ID</span>
+                  <span class="info-value mono">{{ entry.id }}</span>
+                </div>
+              </div>
             </section>
-          }
 
-          @if (entry.after_state) {
-            <section class="detail-section">
-              <p class="section-label">After State</p>
-              <pre class="state-code"><code>{{ entry.after_state | json }}</code></pre>
-            </section>
-          }
+            @if (entry.before_state) {
+              <section class="detail-section">
+                <p class="section-label">Before State</p>
+                <pre class="state-code"><code>{{ entry.before_state | json }}</code></pre>
+              </section>
+            }
+
+            @if (entry.after_state) {
+              <section class="detail-section">
+                <p class="section-label">After State</p>
+                <pre class="state-code"><code>{{ entry.after_state | json }}</code></pre>
+              </section>
+            }
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="drawerVisible = false">Close</button>
+            <button pButton type="button" severity="secondary" (click)="drawerVisible = false">
+              Close
+            </button>
           </div>
         </div>
       }
@@ -184,7 +201,6 @@ const ACTION_SEVERITY: Record<string, string> = {
         gap: var(--spacing-md);
         block-size: 100%;
       }
-
 
       .load-more {
         display: flex;

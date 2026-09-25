@@ -13,7 +13,12 @@ import {
   NotifyService,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent, StatusChipCell } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  FormFieldComponent,
+  StatusChipCell,
+} from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
@@ -56,7 +61,20 @@ const STAFF_ROLES = [
 @Component({
   selector: 'lpg-staff-users-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon, ManagePermissionsDialogComponent],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    DataGridComponent,
+    FormFieldComponent,
+    Select,
+    Drawer,
+    DrawerA11yDirective,
+    IconField,
+    InputIcon,
+    ManagePermissionsDialogComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -85,8 +103,12 @@ const STAFF_ROLES = [
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
-            <button pButton (click)="openInviteDrawer()"><i class="pi pi-user-plus"></i><span>Invite User</span></button>
+            <button pButton severity="secondary">
+              <i class="pi pi-file-excel"></i><span>Export</span>
+            </button>
+            <button pButton (click)="openInviteDrawer()">
+              <i class="pi pi-user-plus"></i><span>Invite User</span>
+            </button>
           </div>
         </div>
       }
@@ -96,7 +118,9 @@ const STAFF_ROLES = [
           <i class="pi pi-users empty-state__icon"></i>
           <p class="empty-state__title">No staff users found</p>
           <p class="empty-state__description">Invite the first staff member to get started.</p>
-          <button pButton class="mt-4" (click)="openInviteDrawer()"><i class="pi pi-user-plus"></i><span>Invite User</span></button>
+          <button pButton class="mt-4" (click)="openInviteDrawer()">
+            <i class="pi pi-user-plus"></i><span>Invite User</span>
+          </button>
         </div>
       } @else {
         <section class="grid-section">
@@ -120,31 +144,70 @@ const STAFF_ROLES = [
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="inviteUserForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="inviteUserForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <p class="page-lede">Send an invitation email to a new staff member and assign their role.</p>
+            <p class="page-lede">
+              Send an invitation email to a new staff member and assign their role.
+            </p>
 
-          <lpg-form-field label="Email" for="invite-email" [control]="form.controls.email" [messages]="{ required: 'A valid email address is required.', email: 'A valid email address is required.' }">
-            <input pInputText id="invite-email" type="email" formControlName="email" placeholder="staff@example.com" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Email"
+              for="invite-email"
+              [control]="form.controls.email"
+              [messages]="{
+                required: 'A valid email address is required.',
+                email: 'A valid email address is required.',
+              }"
+            >
+              <input
+                pInputText
+                id="invite-email"
+                type="email"
+                formControlName="email"
+                placeholder="staff@example.com"
+                [fluid]="true"
+              />
+            </lpg-form-field>
 
-          <lpg-form-field label="Role" for="invite-role" [control]="form.controls.role" [messages]="{ required: 'Role is required.' }">
-            <p-select
-              inputId="invite-role"
-              formControlName="role"
-              [options]="roles"
-              optionLabel="label"
-              optionValue="value"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Role"
+              for="invite-role"
+              [control]="form.controls.role"
+              [messages]="{ required: 'Role is required.' }"
+            >
+              <p-select
+                inputId="invite-role"
+                formControlName="role"
+                [options]="roles"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="inviteDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="inviteDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Send invite
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Send invite
             </button>
           </div>
         </form>
@@ -162,50 +225,80 @@ const STAFF_ROLES = [
       >
         <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
           <div class="dialog-form__fields">
-          <p class="page-lede">Reassign the role, manage specific permissions, or deactivate the account.</p>
+            <p class="page-lede">
+              Reassign the role, manage specific permissions, or deactivate the account.
+            </p>
 
-          <lpg-form-field label="New role (for reassignment)" for="manage-role" [control]="manageForm.controls.newRole">
-            <p-select
-              inputId="manage-role"
-              formControlName="newRole"
-              [options]="roles"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="- select to reassign -"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="New role (for reassignment)"
+              for="manage-role"
+              [control]="manageForm.controls.newRole"
+            >
+              <p-select
+                inputId="manage-role"
+                formControlName="newRole"
+                [options]="roles"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="- select to reassign -"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          <div class="flex flex-col gap-4 mt-6">
-            <div class="flex items-center justify-between border border-gray-200 rounded p-4">
-               <div>
-                 <h4 class="font-medium text-gray-900 m-0">Permissions</h4>
-                 <p class="text-sm text-gray-500 m-0">Assign fine-grained permissions.</p>
-               </div>
-               <button pButton type="button" severity="secondary" (click)="openPermissionsDialog()">Manage</button>
+            <div class="flex flex-col gap-4 mt-6">
+              <div class="flex items-center justify-between border border-gray-200 rounded p-4">
+                <div>
+                  <h4 class="font-medium text-gray-900 m-0">Permissions</h4>
+                  <p class="text-sm text-gray-500 m-0">Assign fine-grained permissions.</p>
+                </div>
+                <button
+                  pButton
+                  type="button"
+                  severity="secondary"
+                  (click)="openPermissionsDialog()"
+                >
+                  Manage
+                </button>
+              </div>
+
+              <div
+                class="flex items-center justify-between border border-red-200 rounded p-4 bg-red-50"
+              >
+                <div>
+                  <h4 class="font-medium text-red-900 m-0">Danger Zone</h4>
+                  <p class="text-sm text-red-700 m-0">Deactivate this account.</p>
+                </div>
+                <button pButton type="button" severity="danger" (click)="deactivate()">
+                  Deactivate
+                </button>
+              </div>
             </div>
-            
-            <div class="flex items-center justify-between border border-red-200 rounded p-4 bg-red-50">
-               <div>
-                 <h4 class="font-medium text-red-900 m-0">Danger Zone</h4>
-                 <p class="text-sm text-red-700 m-0">Deactivate this account.</p>
-               </div>
-               <button pButton type="button" severity="danger" (click)="deactivate()">Deactivate</button>
-            </div>
-          </div>
           </div>
 
           <div class="modal-actions mt-6">
-            <button pButton type="button" severity="secondary" (click)="manageDrawerVisible.set(false)">Cancel</button>
-            <button pButton type="button" (click)="reassignRole()" [disabled]="!manageForm.controls.newRole.value">
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="manageDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
+            <button
+              pButton
+              type="button"
+              (click)="reassignRole()"
+              [disabled]="!manageForm.controls.newRole.value"
+            >
               Reassign role
             </button>
           </div>
         </form>
       </p-drawer>
 
-      <lpg-manage-permissions-dialog 
+      <lpg-manage-permissions-dialog
         [(visible)]="managePermissionsVisible"
         [userId]="selectedUserId()"
         [userEmail]="selectedUserEmail()"
@@ -224,7 +317,6 @@ const STAFF_ROLES = [
         flex-direction: column;
         block-size: 100%;
       }
-
     `,
   ],
 })
@@ -240,21 +332,27 @@ export class StaffUsersPage implements OnInit {
   protected readonly inviteDrawerVisible = signal(false);
   protected readonly manageDrawerVisible = signal(false);
   protected readonly managePermissionsVisible = signal(false);
-  
+
   protected readonly selectedUserId = signal('');
   protected readonly selectedUserEmail = signal('');
 
   protected readonly roles = [...STAFF_ROLES];
 
   protected readonly columns: DataGridColumn<StaffUserResponse>[] = [
-    { 
-      field: 'email', 
-      header: 'Email', 
-      sortable: true, 
-      filterable: true, 
-      onLinkClick: (row) => this.openManageDrawer(row) 
+    {
+      field: 'email',
+      header: 'Email',
+      sortable: true,
+      filterable: true,
+      onLinkClick: (row) => this.openManageDrawer(row),
     },
-    { field: 'role', header: 'Role', sortable: true, filterable: true, cellRenderer: StatusChipCell },
+    {
+      field: 'role',
+      header: 'Role',
+      sortable: true,
+      filterable: true,
+      cellRenderer: StatusChipCell,
+    },
     {
       field: 'is_active',
       header: 'Status',

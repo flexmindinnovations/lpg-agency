@@ -10,9 +10,16 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
 
 @Component({
   selector: 'lib-notification-drawer',
-  imports: [DatePipe, RouterLink, DrawerModule, DrawerA11yDirective, ButtonDirective, TooltipModule],
+  imports: [
+    DatePipe,
+    RouterLink,
+    DrawerModule,
+    DrawerA11yDirective,
+    ButtonDirective,
+    TooltipModule,
+  ],
   templateUrl: './notification-drawer.html',
-  styleUrl: './notification-drawer.css'
+  styleUrl: './notification-drawer.css',
 })
 export class NotificationDrawer {
   private readonly notificationService = inject(NotificationService);
@@ -75,7 +82,7 @@ export class NotificationDrawer {
     this.notificationService.markRead(id).subscribe({
       next: () => {
         this.loadNotifications();
-      }
+      },
     });
   }
 

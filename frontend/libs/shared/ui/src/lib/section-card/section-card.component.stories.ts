@@ -12,11 +12,13 @@ import { SectionCardComponent } from './section-card.component';
     <div style="max-inline-size: 560px;">
       <lpg-section-card [heading]="heading" [hasHeaderActions]="withHeaderActions">
         @if (withHeaderActions) {
-          <button pButton headerActions type="button" size="small" text><i class="pi pi-download"></i><span>Export</span></button>
+          <button pButton headerActions type="button" size="small" text>
+            <i class="pi pi-download"></i><span>Export</span>
+          </button>
         }
         <p style="margin: 0; color: var(--color-text-secondary);">
-          Any section content — a chart, a list, a form group — sits here on the
-          standard card surface.
+          Any section content — a chart, a list, a form group — sits here on the standard card
+          surface.
         </p>
       </lpg-section-card>
     </div>

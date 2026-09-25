@@ -11,7 +11,11 @@ import {
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import { MessageService } from 'primeng/api';
-import { AdminWarehouseService, DocumentService, type WarehouseResponse } from '@lpg/shared/data-access';
+import {
+  AdminWarehouseService,
+  DocumentService,
+  type WarehouseResponse,
+} from '@lpg/shared/data-access';
 import { type Observable, map } from 'rxjs';
 
 /**

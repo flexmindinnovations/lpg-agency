@@ -66,11 +66,12 @@ export const ReportingStore = signalStore(
             .pipe(
               tapResponse({
                 next: (dailySales) => patchState(store, { dailySales, loading: false }),
-                error: (error: Error) => patchState(store, { error: error.message, loading: false }),
-              })
-            )
-        )
-      )
+                error: (error: Error) =>
+                  patchState(store, { error: error.message, loading: false }),
+              }),
+            ),
+        ),
+      ),
     ),
     loadDriverPerformance: rxMethod<{ startDate: string; endDate: string }>(
       pipe(
@@ -82,12 +83,14 @@ export const ReportingStore = signalStore(
             )
             .pipe(
               tapResponse({
-                next: (driverPerformance) => patchState(store, { driverPerformance, loading: false }),
-                error: (error: Error) => patchState(store, { error: error.message, loading: false }),
-              })
-            )
-        )
-      )
+                next: (driverPerformance) =>
+                  patchState(store, { driverPerformance, loading: false }),
+                error: (error: Error) =>
+                  patchState(store, { error: error.message, loading: false }),
+              }),
+            ),
+        ),
+      ),
     ),
     loadCustomerConsumption: rxMethod<void>(
       pipe(
@@ -95,12 +98,13 @@ export const ReportingStore = signalStore(
         switchMap(() =>
           http.get<CustomerConsumptionRecord[]>(`${apiBaseUrl}/api/v1/reporting/consumption`).pipe(
             tapResponse({
-              next: (customerConsumption) => patchState(store, { customerConsumption, loading: false }),
+              next: (customerConsumption) =>
+                patchState(store, { customerConsumption, loading: false }),
               error: (error: Error) => patchState(store, { error: error.message, loading: false }),
-            })
-          )
-        )
-      )
+            }),
+          ),
+        ),
+      ),
     ),
     loadGstFiling: rxMethod<void>(
       pipe(
@@ -110,10 +114,10 @@ export const ReportingStore = signalStore(
             tapResponse({
               next: (gstFiling) => patchState(store, { gstFiling, loading: false }),
               error: (error: Error) => patchState(store, { error: error.message, loading: false }),
-            })
-          )
-        )
-      )
+            }),
+          ),
+        ),
+      ),
     ),
-  }))
+  })),
 );

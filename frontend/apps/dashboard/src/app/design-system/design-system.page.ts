@@ -46,18 +46,47 @@ const SURFACES: Swatch[] = [
   { name: 'Text secondary', token: '--color-text-secondary' },
 ];
 
-const NEUTRALS: Swatch[] = [
-  0, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950,
-].map((n) => ({ name: `neutral ${n}`, token: `--primitive-color-neutral-${n}` }));
+const NEUTRALS: Swatch[] = [0, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((n) => ({
+  name: `neutral ${n}`,
+  token: `--primitive-color-neutral-${n}`,
+}));
 
 const TYPE_SCALE = [
-  { name: 'Display', size: '--typography-display-font-size', weight: '--typography-display-font-weight' },
-  { name: 'Page title (H1)', size: '--typography-heading1-font-size', weight: '--typography-heading1-font-weight' },
-  { name: 'Section (H2)', size: '--typography-heading2-font-size', weight: '--typography-heading2-font-weight' },
-  { name: 'Card title', size: '--typography-card-title-font-size', weight: '--typography-card-title-font-weight' },
-  { name: 'Body', size: '--typography-body-small-font-size', weight: '--typography-body-small-font-weight' },
-  { name: 'Secondary', size: '--typography-secondary-font-size', weight: '--typography-secondary-font-weight' },
-  { name: 'Caption', size: '--typography-caption-font-size', weight: '--typography-caption-font-weight' },
+  {
+    name: 'Display',
+    size: '--typography-display-font-size',
+    weight: '--typography-display-font-weight',
+  },
+  {
+    name: 'Page title (H1)',
+    size: '--typography-heading1-font-size',
+    weight: '--typography-heading1-font-weight',
+  },
+  {
+    name: 'Section (H2)',
+    size: '--typography-heading2-font-size',
+    weight: '--typography-heading2-font-weight',
+  },
+  {
+    name: 'Card title',
+    size: '--typography-card-title-font-size',
+    weight: '--typography-card-title-font-weight',
+  },
+  {
+    name: 'Body',
+    size: '--typography-body-small-font-size',
+    weight: '--typography-body-small-font-weight',
+  },
+  {
+    name: 'Secondary',
+    size: '--typography-secondary-font-size',
+    weight: '--typography-secondary-font-weight',
+  },
+  {
+    name: 'Caption',
+    size: '--typography-caption-font-size',
+    weight: '--typography-caption-font-weight',
+  },
   { name: 'Data', size: '--typography-data-font-size', weight: '--typography-data-font-weight' },
   { name: 'Large KPI', size: '--typography-kpi-font-size', weight: '--typography-kpi-font-weight' },
 ];
@@ -84,12 +113,36 @@ const MOTION = [
 ];
 
 const PRINCIPLES = [
-  { icon: 'pi pi-eye', title: 'Clarity first', body: 'Obvious hierarchy, prioritised information, calm for long sessions.' },
-  { icon: 'pi pi-th-large', title: 'Consistency', body: 'One token system, one component vocabulary across every module.' },
-  { icon: 'pi pi-bolt', title: 'Feedback', body: 'Every interaction has a state; motion communicates, never decorates.' },
-  { icon: 'pi pi-check-circle', title: 'Accessibility', body: 'WCAG 2.2 AA, keyboard-operable, status never by colour alone.' },
-  { icon: 'pi pi-gauge', title: 'Performance', body: 'Solid surfaces, tight shadows, short opacity-only transitions — nothing that flickers.' },
-  { icon: 'pi pi-sparkles', title: 'Restraint', body: 'Flat, high-contrast, quiet. The data is the interface, not the chrome.' },
+  {
+    icon: 'pi pi-eye',
+    title: 'Clarity first',
+    body: 'Obvious hierarchy, prioritised information, calm for long sessions.',
+  },
+  {
+    icon: 'pi pi-th-large',
+    title: 'Consistency',
+    body: 'One token system, one component vocabulary across every module.',
+  },
+  {
+    icon: 'pi pi-bolt',
+    title: 'Feedback',
+    body: 'Every interaction has a state; motion communicates, never decorates.',
+  },
+  {
+    icon: 'pi pi-check-circle',
+    title: 'Accessibility',
+    body: 'WCAG 2.2 AA, keyboard-operable, status never by colour alone.',
+  },
+  {
+    icon: 'pi pi-gauge',
+    title: 'Performance',
+    body: 'Solid surfaces, tight shadows, short opacity-only transitions — nothing that flickers.',
+  },
+  {
+    icon: 'pi pi-sparkles',
+    title: 'Restraint',
+    body: 'Flat, high-contrast, quiet. The data is the interface, not the chrome.',
+  },
 ];
 
 @Component({
@@ -169,9 +222,23 @@ export class DesignSystemPage {
   ];
 
   protected readonly activityItems = [
-    { time: '2m ago', icon: 'pi pi-check-circle', title: 'Order #ORD-1248', description: 'Delivered', status: 'Delivered', statusTone: 'success' as const },
+    {
+      time: '2m ago',
+      icon: 'pi pi-check-circle',
+      title: 'Order #ORD-1248',
+      description: 'Delivered',
+      status: 'Delivered',
+      statusTone: 'success' as const,
+    },
     { time: '15m ago', icon: 'pi pi-wallet', title: 'Payment received', description: '₹45,000' },
-    { time: '1h ago', icon: 'pi pi-exclamation-triangle', title: 'Low stock', description: 'Indane 14.2 kg', status: 'Warning', statusTone: 'warning' as const },
+    {
+      time: '1h ago',
+      icon: 'pi pi-exclamation-triangle',
+      title: 'Low stock',
+      description: 'Indane 14.2 kg',
+      status: 'Warning',
+      statusTone: 'warning' as const,
+    },
   ];
 
   protected readonly trend = [8, 10, 9, 12, 11, 15, 14, 18];
@@ -179,7 +246,10 @@ export class DesignSystemPage {
   constructor() {
     // The token reads are one-shot on init; nudge them if the theme changes.
     const mo = new MutationObserver(() => this.themeTick.update((n) => n + 1));
-    mo.observe(this.document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+    mo.observe(this.document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'style'],
+    });
     setTimeout(() => this.loadingDemo.set(false), 2400);
   }
 }

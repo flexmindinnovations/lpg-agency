@@ -10,7 +10,12 @@ import {
   viewChild,
   DestroyRef,
 } from '@angular/core';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
 import { type Observable, map } from 'rxjs';
@@ -53,7 +58,9 @@ import { TitleCasePipe } from '@angular/common';
 @Component({
   selector: 'lpg-feature-customers',
   standalone: true,
-  imports: [PageHeaderComponent, HeaderTitlePortalDirective,
+  imports: [
+    PageHeaderComponent,
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -263,7 +270,6 @@ export class FeatureCustomers implements OnInit {
     this.loadBranches();
     this.openCustomerFromQueryParam();
 
-
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus customer search',
@@ -272,7 +278,7 @@ export class FeatureCustomers implements OnInit {
         if (searchInput) {
           searchInput.focus();
         }
-      }
+      },
     });
 
     this.destroyRef.onDestroy(() => {
@@ -299,7 +305,7 @@ export class FeatureCustomers implements OnInit {
       error: () => {
         this.loading.set(false);
         this.notify.error('Failed to load customers.');
-      }
+      },
     });
   }
 
@@ -331,7 +337,7 @@ export class FeatureCustomers implements OnInit {
       // GET — not covered by the global error-toast interceptor.
       error: () => {
         this.notify.error('Failed to load branches.');
-      }
+      },
     });
   }
 
@@ -361,8 +367,6 @@ export class FeatureCustomers implements OnInit {
     this.loadKycDocuments(customer.id);
     this.showDetailDrawer.set(true);
   }
-
-
 
   // Address Actions
   protected openAddAddressModal(): void {

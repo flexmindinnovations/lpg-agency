@@ -24,7 +24,9 @@ describe('StatCardComponent', () => {
     const up = render({ label: 'x', value: 1, delta: '+12.5%' });
     expect((up.nativeElement as HTMLElement).querySelector('.stat-card__delta--up')).not.toBeNull();
     const down = render({ label: 'x', value: 1, delta: '-3.1%' });
-    expect((down.nativeElement as HTMLElement).querySelector('.stat-card__delta--down')).not.toBeNull();
+    expect(
+      (down.nativeElement as HTMLElement).querySelector('.stat-card__delta--down'),
+    ).not.toBeNull();
   });
 
   it('shows a skeleton instead of the value while loading', () => {
@@ -34,7 +36,8 @@ describe('StatCardComponent', () => {
   });
 
   it('builds a sparkline polyline from >=2 trend points', () => {
-    const el = render({ label: 'x', value: 1, trend: [3, 1, 4, 1, 5] }).nativeElement as HTMLElement;
+    const el = render({ label: 'x', value: 1, trend: [3, 1, 4, 1, 5] })
+      .nativeElement as HTMLElement;
     const points = el.querySelector('.stat-card__spark polyline')?.getAttribute('points') ?? '';
     expect(points.split(' ')).toHaveLength(5);
   });

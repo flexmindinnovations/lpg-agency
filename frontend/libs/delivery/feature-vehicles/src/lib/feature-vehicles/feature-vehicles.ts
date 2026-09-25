@@ -10,7 +10,12 @@ import {
   viewChild,
   DestroyRef,
 } from '@angular/core';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { forkJoin, map, type Observable } from 'rxjs';
 import {
   ComplianceDocumentsPanel,
@@ -61,7 +66,8 @@ function formatDateForApi(value: unknown): string | undefined {
 @Component({
   selector: 'lpg-feature-vehicles',
   standalone: true,
-  imports: [HeaderTitlePortalDirective,
+  imports: [
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -263,7 +269,6 @@ export class FeatureVehicles implements OnInit {
     this.loadVehicles();
     this.loadVehicleComplianceFlags();
 
-
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus vehicle search',
@@ -272,7 +277,7 @@ export class FeatureVehicles implements OnInit {
         if (searchInput) {
           searchInput.focus();
         }
-      }
+      },
     });
 
     this.destroyRef.onDestroy(() => {
@@ -309,9 +314,16 @@ export class FeatureVehicles implements OnInit {
       next: (res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const map = new Map<string, { expiring: boolean; expired: boolean; hasRequired: boolean }>();
+        const map = new Map<
+          string,
+          { expiring: boolean; expired: boolean; hasRequired: boolean }
+        >();
         for (const doc of res.items) {
-          const entry = map.get(doc.owner_id) ?? { expiring: false, expired: false, hasRequired: false };
+          const entry = map.get(doc.owner_id) ?? {
+            expiring: false,
+            expired: false,
+            hasRequired: false,
+          };
           if (doc.doc_type === 'vehicle_rc') entry.hasRequired = true;
           if (doc.expiry_date) {
             const diffDays = Math.round(
@@ -430,7 +442,8 @@ export class FeatureVehicles implements OnInit {
   /** Bound per-vehicle in the template — `<lpg-compliance-documents-panel>`
    * calls this with the new document's fields once its inline form submits. */
   protected addVehicleDocument(vehicle: VehicleResponse) {
-    return (cmd: AddComplianceDocumentCmd) => this.documentService.addVehicleDocument(vehicle.id, cmd);
+    return (cmd: AddComplianceDocumentCmd) =>
+      this.documentService.addVehicleDocument(vehicle.id, cmd);
   }
 
   /** Replace/verify are owner-agnostic on the backend — no vehicle id needed. */

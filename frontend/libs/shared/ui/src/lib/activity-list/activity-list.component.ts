@@ -37,7 +37,11 @@ export interface ActivityItem {
           </div>
           <div class="activity-list__meta">
             @if (item.status) {
-              <span class="activity-list__status activity-list__status--{{ item.statusTone ?? 'neutral' }}">
+              <span
+                class="activity-list__status activity-list__status--{{
+                  item.statusTone ?? 'neutral'
+                }}"
+              >
                 {{ item.status }}
               </span>
             }

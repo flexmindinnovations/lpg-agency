@@ -27,7 +27,14 @@ type Story = StoryObj<StatCardComponent>;
 export const Positive: Story = {};
 
 export const Negative: Story = {
-  args: { label: 'Pending', value: '214', icon: 'pi pi-clock', tone: 'warning', delta: '-3.1%', trend: [30, 26, 24, 25, 20, 18, 16, 14] },
+  args: {
+    label: 'Pending',
+    value: '214',
+    icon: 'pi pi-clock',
+    tone: 'warning',
+    delta: '-3.1%',
+    trend: [30, 26, 24, 25, 20, 18, 16, 14],
+  },
 };
 
 export const NoTrend: Story = { args: { trend: [], delta: '', caption: 'All time' } };

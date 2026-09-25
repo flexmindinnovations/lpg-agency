@@ -9,7 +9,7 @@ import { ButtonDirective } from 'primeng/button';
   selector: 'lib-notification-bell',
   imports: [OverlayBadge, ButtonDirective],
   templateUrl: './notification-bell.html',
-  styleUrl: './notification-bell.css'
+  styleUrl: './notification-bell.css',
 })
 export class NotificationBell {
   private readonly notificationService = inject(NotificationService);
@@ -25,7 +25,8 @@ export class NotificationBell {
     this.wsService.subscribeTo('notifications');
 
     // A new notification arrived — bump immediately, then reconcile.
-    this.wsService.on('notification.new')
+    this.wsService
+      .on('notification.new')
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
         this.notificationService.adjustUnreadCount(1);

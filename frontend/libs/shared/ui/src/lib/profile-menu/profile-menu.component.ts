@@ -80,11 +80,7 @@ function initialsFor(displayName: string): string {
           </div>
         </div>
 
-        <div
-          class="profile-menu__theme"
-          role="group"
-          aria-label="Theme"
-        >
+        <div class="profile-menu__theme" role="group" aria-label="Theme">
           @for (option of themeOptions; track option.value) {
             <button
               role="menuitemradio"
@@ -158,8 +154,7 @@ function initialsFor(displayName: string): string {
         color: var(--color-text-primary);
         cursor: pointer;
         text-align: start;
-        transition: background-color var(--motion-duration-small)
-          var(--motion-easing-standard);
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard);
       }
 
       .profile-menu__trigger--collapsed {
@@ -252,8 +247,7 @@ function initialsFor(displayName: string): string {
         text-decoration: none;
         font-size: var(--typography-body-small-font-size);
         cursor: pointer;
-        transition: background-color var(--motion-duration-small)
-          var(--motion-easing-standard);
+        transition: background-color var(--motion-duration-small) var(--motion-easing-standard);
       }
 
       /* Not --color-surface-overlay: this menu lives inside a p-popover
@@ -333,7 +327,6 @@ function initialsFor(displayName: string): string {
         outline: 2px solid var(--color-border-focus);
         outline-offset: -2px;
       }
-
 
       .profile-menu__divider {
         block-size: var(--border-width);

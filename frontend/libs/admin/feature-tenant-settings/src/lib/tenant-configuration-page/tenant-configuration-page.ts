@@ -15,7 +15,12 @@ import {
   NotifyService,
   type TenantConfigurationResponse,
 } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, FormFieldComponent, formatTimestamp } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  FormFieldComponent,
+  formatTimestamp,
+} from '@lpg/shared/ui';
 
 /** The recognized config-key catalog, each with a human-readable label and
  * a description of what it controls — mirrors the backend's
@@ -116,7 +121,13 @@ const RECOGNIZED_CONFIG_KEYS = [
  * behind. Falls back to a naive Title Case of the raw key rather than
  * showing nothing. */
 function humanizeConfigKey(key: string): string {
-  return CONFIG_KEY_INFO[key]?.label ?? key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return (
+    CONFIG_KEY_INFO[key]?.label ??
+    key
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+  );
 }
 
 /** AG Grid cell renderer for the config-key column: an info icon (hover for
@@ -167,19 +178,36 @@ class ConfigKeyCell {
 @Component({
   selector: 'lpg-tenant-configuration-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, RouterLink, ReactiveFormsModule, ButtonDirective, InputText, DataGridComponent, FormFieldComponent, Select, Drawer, DrawerA11yDirective, IconField, InputIcon],
+  imports: [
+    HeaderTitlePortalDirective,
+    RouterLink,
+    ReactiveFormsModule,
+    ButtonDirective,
+    InputText,
+    DataGridComponent,
+    FormFieldComponent,
+    Select,
+    Drawer,
+    DrawerA11yDirective,
+    IconField,
+    InputIcon,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Tenant Configuration</h1>
-          <p class="page-subtitle">Manage tenant-wide settings like GST rates and credit limits.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Tenant Configuration</h1>
+            <p class="page-subtitle">
+              Manage tenant-wide settings like GST rates and credit limits.
+            </p>
+          </div>
+        </ng-template>
       </div>
-      <p class="page-note">Values are historized — setting a new value never overwrites the previous one.</p>
+      <p class="page-note">
+        Values are historized — setting a new value never overwrites the previous one.
+      </p>
 
       <div class="structured-editors">
         <span class="structured-editors__label">Structured editors:</span>
@@ -205,8 +233,12 @@ class ConfigKeyCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary"><i class="pi pi-file-excel"></i><span>Export</span></button>
-            <button pButton (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Value</span></button>
+            <button pButton severity="secondary">
+              <i class="pi pi-file-excel"></i><span>Export</span>
+            </button>
+            <button pButton (click)="openCreateDrawer()">
+              <i class="pi pi-plus"></i><span>Set Value</span>
+            </button>
           </div>
         </div>
       }
@@ -216,7 +248,9 @@ class ConfigKeyCell {
           <i class="pi pi-sliders-h empty-state__icon"></i>
           <p class="empty-state__title">No configuration values</p>
           <p class="empty-state__description">Set the first configuration value to get started.</p>
-          <button pButton class="mt-4" (click)="openCreateDrawer()"><i class="pi pi-plus"></i><span>Set Value</span></button>
+          <button pButton class="mt-4" (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Set Value</span>
+          </button>
         </div>
       } @else {
         <section class="grid-section">
@@ -240,31 +274,67 @@ class ConfigKeyCell {
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="setConfigForm" [formGroup]="form" (ngSubmit)="submit()" novalidate class="dialog-form">
+        <form
+          id="setConfigForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <p class="page-lede">This creates a new historized entry — the previous value is preserved.</p>
+            <p class="page-lede">
+              This creates a new historized entry — the previous value is preserved.
+            </p>
 
-          <lpg-form-field label="Key" for="config-key" [control]="form.controls.configKey" [messages]="{ required: 'Configuration key is required.' }">
-            <p-select
-              inputId="config-key"
-              formControlName="configKey"
-              [options]="recognizedKeys"
-              optionLabel="label"
-              optionValue="value"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Key"
+              for="config-key"
+              [control]="form.controls.configKey"
+              [messages]="{ required: 'Configuration key is required.' }"
+            >
+              <p-select
+                inputId="config-key"
+                formControlName="configKey"
+                [options]="recognizedKeys"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          <lpg-form-field label="Value" for="config-value" [control]="form.controls.configValue" [messages]="{ required: 'Value is required.' }">
-            <input pInputText id="config-value" type="text" formControlName="configValue" placeholder="e.g. 18" [fluid]="true" />
-          </lpg-form-field>
+            <lpg-form-field
+              label="Value"
+              for="config-value"
+              [control]="form.controls.configValue"
+              [messages]="{ required: 'Value is required.' }"
+            >
+              <input
+                pInputText
+                id="config-value"
+                type="text"
+                formControlName="configValue"
+                placeholder="e.g. 18"
+                [fluid]="true"
+              />
+            </lpg-form-field>
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Save value
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Save value
             </button>
           </div>
         </form>
@@ -327,7 +397,6 @@ class ConfigKeyCell {
       .structured-editors__link i {
         color: var(--color-status-warning);
       }
-
     `,
   ],
 })
@@ -347,7 +416,13 @@ export class TenantConfigurationPage implements OnInit {
   }));
 
   protected readonly columns: DataGridColumn<TenantConfigurationResponse>[] = [
-    { field: 'config_key', header: 'Key', sortable: true, filterable: true, cellRenderer: ConfigKeyCell },
+    {
+      field: 'config_key',
+      header: 'Key',
+      sortable: true,
+      filterable: true,
+      cellRenderer: ConfigKeyCell,
+    },
     {
       field: 'config_value',
       header: 'Value',

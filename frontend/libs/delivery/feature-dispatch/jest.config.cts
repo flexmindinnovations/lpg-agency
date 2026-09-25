@@ -19,4 +19,3 @@ module.exports = {
     'jest-preset-angular/build/serializers/html-comment',
   ],
 };
-

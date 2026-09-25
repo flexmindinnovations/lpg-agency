@@ -12,13 +12,19 @@ export class InvoiceService {
   private readonly http = inject(HttpClient);
   private readonly config = inject(ApiConfiguration);
 
-  list(page = 1, page_size = 100, customerId?: string, orderId?: string, status?: 'draft' | 'finalized' | 'cancelled'): Observable<InvoicePageResponse> {
+  list(
+    page = 1,
+    page_size = 100,
+    customerId?: string,
+    orderId?: string,
+    status?: 'draft' | 'finalized' | 'cancelled',
+  ): Observable<InvoicePageResponse> {
     return listInvoicesApiV1InvoicesGet(this.http, this.config.rootUrl, {
       page,
       page_size,
       customer_id: customerId,
       order_id: orderId,
-      status: status
+      status: status,
     }).pipe(map((res) => res.body));
   }
 

@@ -8,7 +8,10 @@ import { MenuItem } from 'primeng/api';
 @Injectable({ providedIn: 'root' })
 export class BreadcrumbService {
   private readonly itemsSignal = signal<MenuItem[]>([]);
-  private readonly homeSignal = signal<MenuItem | undefined>({ icon: 'pi pi-home', routerLink: '/' });
+  private readonly homeSignal = signal<MenuItem | undefined>({
+    icon: 'pi pi-home',
+    routerLink: '/',
+  });
 
   readonly items = this.itemsSignal.asReadonly();
   readonly home = this.homeSignal.asReadonly();

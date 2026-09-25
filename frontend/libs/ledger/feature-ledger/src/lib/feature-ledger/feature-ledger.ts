@@ -39,7 +39,8 @@ interface EnrichedBalance {
 @Component({
   selector: 'lpg-feature-ledger',
   standalone: true,
-  imports: [HeaderTitlePortalDirective,
+  imports: [
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
     Select,
@@ -84,33 +85,31 @@ export class FeatureLedger implements OnInit {
     const l = this.ledger();
     const types = this.cylinderTypes();
     if (!l) return [];
-    
-    // Create a map for quick lookup
-    const typeMap = new Map(types.map(t => [t.id, t.name]));
 
-    const result: EnrichedBalance[] = l.balances.map(b => ({
+    // Create a map for quick lookup
+    const typeMap = new Map(types.map((t) => [t.id, t.name]));
+
+    const result: EnrichedBalance[] = l.balances.map((b) => ({
       cylinder_type_id: b.cylinder_type_id,
       name: typeMap.get(b.cylinder_type_id) ?? 'Unknown Cylinder',
-      quantity: b.quantity
+      quantity: b.quantity,
     }));
 
-    // Add 0 balances for any cylinder type not present in the ledger, 
+    // Add 0 balances for any cylinder type not present in the ledger,
     // so the UI always shows all configured cylinder types.
-    const existingTypeIds = new Set(result.map(b => b.cylinder_type_id));
+    const existingTypeIds = new Set(result.map((b) => b.cylinder_type_id));
     for (const t of types) {
       if (!existingTypeIds.has(t.id)) {
         result.push({
           cylinder_type_id: t.id,
           name: t.name,
-          quantity: 0
+          quantity: 0,
         });
       }
     }
 
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
-
-
 
   ngOnInit(): void {
     this.loadData();
@@ -121,7 +120,7 @@ export class FeatureLedger implements OnInit {
     // Load cylinder types
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (types) => this.cylinderTypes.set(types),
-      error: () => this.showError('Failed to load cylinder types')
+      error: () => this.showError('Failed to load cylinder types'),
     });
 
     // Load ledger
@@ -138,7 +137,7 @@ export class FeatureLedger implements OnInit {
       error: () => {
         this.showError('Failed to load cylinder ledger');
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -164,30 +163,32 @@ export class FeatureLedger implements OnInit {
     this.isSubmitting.set(true);
     const formValue = this.adjustForm.getRawValue();
 
-    this.ledgerService.adjustBalance(this.customerId(), {
-      cylinder_type_id: formValue.cylinder_type_id,
-      delta: formValue.delta,
-      reason: formValue.reason,
-    }).subscribe({
-      next: (res) => {
-        this.ledger.set(res);
-        this.isSubmitting.set(false);
-        this.closeAdjustModal();
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Ledger balance adjusted.',
-        });
-      },
-      error: (err) => {
-        this.isSubmitting.set(false);
-        if (isAppError(err.error)) {
-          this.showError(err.error.detail || 'Failed to adjust balance');
-        } else {
-          this.showError('Failed to adjust balance');
-        }
-      },
-    });
+    this.ledgerService
+      .adjustBalance(this.customerId(), {
+        cylinder_type_id: formValue.cylinder_type_id,
+        delta: formValue.delta,
+        reason: formValue.reason,
+      })
+      .subscribe({
+        next: (res) => {
+          this.ledger.set(res);
+          this.isSubmitting.set(false);
+          this.closeAdjustModal();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Ledger balance adjusted.',
+          });
+        },
+        error: (err) => {
+          this.isSubmitting.set(false);
+          if (isAppError(err.error)) {
+            this.showError(err.error.detail || 'Failed to adjust balance');
+          } else {
+            this.showError('Failed to adjust balance');
+          }
+        },
+      });
   }
 
   private showError(msg: string) {

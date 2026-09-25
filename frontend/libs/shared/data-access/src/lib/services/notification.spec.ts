@@ -38,9 +38,7 @@ describe('NotificationService', () => {
     it('starts at 0 and follows refreshUnreadCount', () => {
       expect(service.unreadCount()).toBe(0);
       service.refreshUnreadCount();
-      http
-        .expectOne((r) => r.url.includes('/notifications/unread-count'))
-        .flush({ count: 4 });
+      http.expectOne((r) => r.url.includes('/notifications/unread-count')).flush({ count: 4 });
       expect(service.unreadCount()).toBe(4);
     });
 

@@ -1,7 +1,20 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -57,7 +70,9 @@ const BOOKING_SOURCE_OPTIONS = [
 @Component({
   selector: 'lpg-order-queue',
   standalone: true,
-  imports: [PageHeaderComponent, HeaderTitlePortalDirective,
+  imports: [
+    PageHeaderComponent,
+    HeaderTitlePortalDirective,
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
@@ -165,7 +180,10 @@ export class OrderQueue implements OnInit {
   protected readonly createForm = this.fb.group({
     customer: this.fb.control<CustomerResponse | null>(null, [Validators.required]),
     address_id: ['', [Validators.required]],
-    booking_source: ['staff' as (typeof BOOKING_SOURCE_OPTIONS)[number]['value'], [Validators.required]],
+    booking_source: [
+      'staff' as (typeof BOOKING_SOURCE_OPTIONS)[number]['value'],
+      [Validators.required],
+    ],
     requested_date: [new Date(), [Validators.required]],
     lines: this.fb.array([this.buildLineGroup()]),
   });
@@ -181,9 +199,7 @@ export class OrderQueue implements OnInit {
     return this.createForm.controls.lines;
   }
 
-
   ngOnInit(): void {
-
     this.loadOrders();
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (ct) => this.cylinderTypes.set(ct),
@@ -199,19 +215,21 @@ export class OrderQueue implements OnInit {
     if (!opts.silent) {
       this.loading.set(true);
     }
-    this.orderService.listOrders({ status: this.statusFilter() ?? undefined, limit: 100 }).subscribe({
-      next: (page) => {
-        this.orders.set(page.items);
-        this.total.set(page.total);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        if (!opts.silent) {
-          this.errorMessage.set(errorMessageFor(err));
-        }
-        this.loading.set(false);
-      },
-    });
+    this.orderService
+      .listOrders({ status: this.statusFilter() ?? undefined, limit: 100 })
+      .subscribe({
+        next: (page) => {
+          this.orders.set(page.items);
+          this.total.set(page.total);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          if (!opts.silent) {
+            this.errorMessage.set(errorMessageFor(err));
+          }
+          this.loading.set(false);
+        },
+      });
   }
 
   protected onStatusFilterChange(value: string | null): void {

@@ -31,7 +31,12 @@ import { of, startWith, switchMap } from 'rxjs';
   template: `
     <div class="lpg-field" [class.lpg-field--invalid]="showError()">
       <label class="lpg-field__label" [attr.for]="for()">
-        {{ label() }}@if (isRequired()) {<span class="lpg-field__req" aria-hidden="true">*</span>} @else if (optional()) {<span class="lpg-field__optional">(Optional)</span>}
+        {{ label() }}
+        @if (isRequired()) {
+          <span class="lpg-field__req" aria-hidden="true">*</span>
+        } @else if (optional()) {
+          <span class="lpg-field__optional">(Optional)</span>
+        }
       </label>
 
       <ng-content />

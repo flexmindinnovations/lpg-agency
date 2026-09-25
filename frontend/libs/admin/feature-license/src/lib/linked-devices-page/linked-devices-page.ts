@@ -39,18 +39,22 @@ class DeviceStatusCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Linked Devices</h1>
-          <p class="page-subtitle">Customer, Driver, and Warehouse app instances registered to this tenant.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Linked Devices</h1>
+            <p class="page-subtitle">
+              Customer, Driver, and Warehouse app instances registered to this tenant.
+            </p>
+          </div>
+        </ng-template>
       </div>
 
       @if (!loading() && devices().length === 0) {
         <div class="empty-state">
           <i class="pi pi-mobile empty-state__icon"></i>
           <p class="empty-state__title">No devices linked yet</p>
-          <p class="empty-state__description">Devices appear here once an app instance registers.</p>
+          <p class="empty-state__description">
+            Devices appear here once an app instance registers.
+          </p>
         </div>
       } @else {
         <section class="grid-section">
@@ -80,7 +84,6 @@ class DeviceStatusCell {
       .grid-section {
         margin-block-start: var(--spacing-lg);
       }
-
     `,
   ],
 })

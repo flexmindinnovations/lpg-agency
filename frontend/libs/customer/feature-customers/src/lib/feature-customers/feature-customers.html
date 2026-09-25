@@ -32,7 +32,7 @@
           <i class="pi pi-filter"></i>
           <span>Filter</span>
           @if (activeFilterCount() > 0) {
-            <p-badge [value]="activeFilterCount().toString()" severity="info" />
+          <p-badge [value]="activeFilterCount().toString()" severity="info" />
           }
         </button>
         <p-popover #filterPopover>
@@ -124,7 +124,9 @@
     <div class="detail-card-header">
       <div class="detail-card-title flex flex-col gap-1">
         <h2 class="mb-1">{{ customer.full_name }}</h2>
-        <p class="consumer-num mb-2">Consumer No: <strong>{{ customer.consumer_number }}</strong></p>
+        <p class="consumer-num mb-2">
+          Consumer No: <strong>{{ customer.consumer_number }}</strong>
+        </p>
         <div class="flex gap-2 mt-1">
           <p-tag
             [severity]="customer.status === 'active' ? 'success' : 'warn'"
@@ -137,12 +139,13 @@
         </div>
       </div>
       <div>
-        <a 
-          pButton 
-          type="button" 
-          severity="info" 
-          size="small" 
-          [routerLink]="['/ledger', customer.id]">
+        <a
+          pButton
+          type="button"
+          severity="info"
+          size="small"
+          [routerLink]="['/ledger', customer.id]"
+        >
           <i class="pi pi-book"></i>
           <span>View Ledger</span>
         </a>
@@ -247,9 +250,13 @@
                     />
                   </div>
                   @if (doc.file_url) {
-                    <button type="button" class="text-sm link-button" (click)="viewDocument(doc.file_url)">
-                      View Document
-                    </button>
+                  <button
+                    type="button"
+                    class="text-sm link-button"
+                    (click)="viewDocument(doc.file_url)"
+                  >
+                    View Document
+                  </button>
                   }
                 </div>
                 @if (doc.verification_status === 'pending') {
@@ -289,8 +296,6 @@
   </div>
 </p-drawer>
 
-
-
 <!-- Modal 2: Add Address -->
 <p-drawer
   header="Add Address"
@@ -303,11 +308,28 @@
   closeAriaLabel="Close dialog"
   (onHide)="addAddressTrigger()?.nativeElement?.focus()"
 >
-  <form id="addAddressForm" [formGroup]="addressForm" (ngSubmit)="submitAddAddress()" class="dialog-form" novalidate>
+  <form
+    id="addAddressForm"
+    [formGroup]="addressForm"
+    (ngSubmit)="submitAddAddress()"
+    class="dialog-form"
+    novalidate
+  >
     <div class="dialog-form__fields">
-    <lpg-form-field label="Address line" for="addr-line" [control]="addressForm.controls.address_line" [messages]="fieldMessages.address_line">
-      <input pInputText id="addr-line" formControlName="address_line" placeholder="Street, Building, Area" [fluid]="true" />
-    </lpg-form-field>
+      <lpg-form-field
+        label="Address line"
+        for="addr-line"
+        [control]="addressForm.controls.address_line"
+        [messages]="fieldMessages.address_line"
+      >
+        <input
+          pInputText
+          id="addr-line"
+          formControlName="address_line"
+          placeholder="Street, Building, Area"
+          [fluid]="true"
+        />
+      </lpg-form-field>
     </div>
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeAddAddressModal()">
@@ -330,41 +352,63 @@
   closeAriaLabel="Close dialog"
   (onHide)="submitKycTrigger()?.nativeElement?.focus()"
 >
-  <form id="submitKycForm" [formGroup]="kycForm" (ngSubmit)="submitKyc()" class="dialog-form" novalidate>
+  <form
+    id="submitKycForm"
+    [formGroup]="kycForm"
+    (ngSubmit)="submitKyc()"
+    class="dialog-form"
+    novalidate
+  >
     <div class="dialog-form__fields">
-    <lpg-form-field label="Document type" for="kyc-type" [control]="kycForm.controls.doc_type" [messages]="fieldMessages.doc_type">
-      <p-select
-        inputId="kyc-type"
-        formControlName="doc_type"
-        [options]="kycDocTypeOptions"
-        optionLabel="label"
-        optionValue="value"
-        [fluid]="true"
-      />
-    </lpg-form-field>
-    <lpg-form-field label="Document reference no." for="kyc-ref" [control]="kycForm.controls.doc_reference" [messages]="fieldMessages.doc_reference">
-      <input pInputText id="kyc-ref" formControlName="doc_reference" placeholder="Enter reference ID" [fluid]="true" />
-    </lpg-form-field>
-    @if (isReplacingExistingKycDoc()) {
+      <lpg-form-field
+        label="Document type"
+        for="kyc-type"
+        [control]="kycForm.controls.doc_type"
+        [messages]="fieldMessages.doc_type"
+      >
+        <p-select
+          inputId="kyc-type"
+          formControlName="doc_type"
+          [options]="kycDocTypeOptions"
+          optionLabel="label"
+          optionValue="value"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Document reference no."
+        for="kyc-ref"
+        [control]="kycForm.controls.doc_reference"
+        [messages]="fieldMessages.doc_reference"
+      >
+        <input
+          pInputText
+          id="kyc-ref"
+          formControlName="doc_reference"
+          placeholder="Enter reference ID"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      @if (isReplacingExistingKycDoc()) {
       <p class="text-sm text-muted">
-        A {{ selectedKycDocTypeLabel() }} is already on file — submitting will replace it, not
-        add a duplicate.
+        A {{ selectedKycDocTypeLabel() }} is already on file — submitting will replace it, not add a
+        duplicate.
       </p>
-    }
-    <div class="form-group">
-      <span class="form-group-label">Document Photo/Scan <span class="required">*</span></span>
-      <lpg-document-upload
-        accept="image/*,application/pdf"
-        inputId="kyc-file"
-        hint="JPG, PNG, or PDF · up to 10 MB"
-        [uploader]="kycUploader"
-        (uploaded)="onKycDocUploaded($event)"
-        (cleared)="onKycDocCleared()"
-      />
-      @if (submitKycFileError()) {
-        <span class="field-error">{{ submitKycFileError() }}</span>
       }
-    </div>
+      <div class="form-group">
+        <span class="form-group-label">Document Photo/Scan <span class="required">*</span></span>
+        <lpg-document-upload
+          accept="image/*,application/pdf"
+          inputId="kyc-file"
+          hint="JPG, PNG, or PDF · up to 10 MB"
+          [uploader]="kycUploader"
+          (uploaded)="onKycDocUploaded($event)"
+          (cleared)="onKycDocCleared()"
+        />
+        @if (submitKycFileError()) {
+        <span class="field-error">{{ submitKycFileError() }}</span>
+        }
+      </div>
     </div>
     <div class="modal-actions">
       <button pButton type="button" severity="secondary" (click)="closeSubmitKycModal()">
@@ -391,13 +435,11 @@
   [style]="{ width: '90vw', maxWidth: '48rem' }"
   closeAriaLabel="Close document preview"
 >
-  @if (viewingDocumentSafeUrl(); as safeUrl) {
-    @if (viewingDocumentIsPdf()) {
-      <iframe class="document-preview-frame" [src]="safeUrl" title="KYC document preview"></iframe>
-    } @else {
-      <img class="document-preview-image" [src]="viewingDocumentUrl()" alt="KYC document preview" />
-    }
-  }
+  @if (viewingDocumentSafeUrl(); as safeUrl) { @if (viewingDocumentIsPdf()) {
+  <iframe class="document-preview-frame" [src]="safeUrl" title="KYC document preview"></iframe>
+  } @else {
+  <img class="document-preview-image" [src]="viewingDocumentUrl()" alt="KYC document preview" />
+  } }
   <div class="modal-actions">
     <button pButton type="button" severity="secondary" (click)="closeDocumentPreview()">
       Close

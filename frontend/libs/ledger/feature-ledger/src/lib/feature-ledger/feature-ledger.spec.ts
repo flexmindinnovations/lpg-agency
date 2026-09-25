@@ -11,11 +11,7 @@ describe('FeatureLedger', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeatureLedger],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        MessageService,
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), MessageService],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FeatureLedger);

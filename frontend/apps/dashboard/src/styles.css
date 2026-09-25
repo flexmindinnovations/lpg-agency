@@ -63,7 +63,10 @@
 }
 
 .p-select-option.p-select-option-selected:hover {
-  background: var(--p-select-option-selected-focus-background, color-mix(in srgb, var(--color-action-primary), transparent 76%));
+  background: var(
+    --p-select-option-selected-focus-background,
+    color-mix(in srgb, var(--color-action-primary), transparent 76%)
+  );
   color: var(--p-select-option-selected-focus-color, var(--color-text-primary));
 }
 
@@ -86,7 +89,13 @@ body {
 body {
   background-color: var(--color-surface-base);
   color: var(--color-text-primary);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   font-size: var(--typography-body-small-font-size); /* 14px — data-dense admin convention */
   line-height: var(--typography-body-line-height);
   -webkit-font-smoothing: antialiased;
@@ -159,10 +168,18 @@ body {
 
 /* Icon sizing (doc §12) — for `pi` icon-font glyphs, which render in a
    fixed box. Nav = md (18), button = sm (16), feature = lg/xl (20/24). */
-.icon-sm { font-size: var(--icon-size-sm); }
-.icon-md { font-size: var(--icon-size-md); }
-.icon-lg { font-size: var(--icon-size-lg); }
-.icon-xl { font-size: var(--icon-size-xl); }
+.icon-sm {
+  font-size: var(--icon-size-sm);
+}
+.icon-md {
+  font-size: var(--icon-size-md);
+}
+.icon-lg {
+  font-size: var(--icon-size-lg);
+}
+.icon-xl {
+  font-size: var(--icon-size-xl);
+}
 
 /* ========================================================================
    MOTION (Fluent Glass, Phase 29 Stage 1)
@@ -912,4 +929,3 @@ textarea {
   color: var(--color-text-secondary);
   letter-spacing: -0.01em;
 }
-

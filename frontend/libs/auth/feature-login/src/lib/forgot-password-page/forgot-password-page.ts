@@ -17,7 +17,14 @@ import { AuthShell } from '../auth-shell/auth-shell';
 @Component({
   selector: 'lpg-forgot-password-page',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, ButtonDirective, InputText, FormFieldComponent, AuthShell],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    ButtonDirective,
+    InputText,
+    FormFieldComponent,
+    AuthShell,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lpg-auth-shell>
@@ -42,7 +49,10 @@ import { AuthShell } from '../auth-shell/auth-shell';
               label="Email"
               for="forgot-email"
               [control]="form.controls.email"
-              [messages]="{ required: 'Enter a valid email address.', email: 'Enter a valid email address.' }"
+              [messages]="{
+                required: 'Enter a valid email address.',
+                email: 'Enter a valid email address.',
+              }"
             >
               <input
                 pInputText

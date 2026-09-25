@@ -50,7 +50,9 @@ describe('DocumentUploadComponent', () => {
 
     expect(uploader).not.toHaveBeenCalled();
     expect(errored).toHaveBeenCalledWith(expect.stringContaining('too large'));
-    expect((fixture.nativeElement as HTMLElement).querySelector('.lpg-doc-upload__error')).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.lpg-doc-upload__error'),
+    ).not.toBeNull();
   });
 
   it('rejects a disallowed file type', () => {
@@ -123,6 +125,8 @@ describe('DocumentUploadComponent', () => {
     fixture.detectChanges();
 
     expect(cleared).toHaveBeenCalled();
-    expect((fixture.nativeElement as HTMLElement).querySelector('.lpg-doc-upload__dropzone')).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.lpg-doc-upload__dropzone'),
+    ).not.toBeNull();
   });
 });

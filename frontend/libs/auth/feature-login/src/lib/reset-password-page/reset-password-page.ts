@@ -89,7 +89,10 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
               label="New password"
               for="reset-new-password"
               [control]="form.controls.newPassword"
-              [messages]="{ required: 'A new password is required.', minlength: 'Use at least 12 characters.' }"
+              [messages]="{
+                required: 'A new password is required.',
+                minlength: 'Use at least 12 characters.',
+              }"
             >
               <div class="password-field">
                 <input
@@ -306,7 +309,9 @@ export class ResetPasswordPage {
   // `read: InputPassword` is what actually gets the directive instance
   // (and its `mask`/`toggleMask()` state) off that same element.
   private readonly newPasswordInput = viewChild('newPasswordInput', { read: InputPassword });
-  private readonly confirmPasswordInput = viewChild('confirmPasswordInput', { read: InputPassword });
+  private readonly confirmPasswordInput = viewChild('confirmPasswordInput', {
+    read: InputPassword,
+  });
 
   protected readonly form = this.formBuilder.group(
     {

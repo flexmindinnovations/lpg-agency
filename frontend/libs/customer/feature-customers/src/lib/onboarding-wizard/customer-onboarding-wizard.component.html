@@ -17,8 +17,12 @@
         Would you like to resume it?
       </p>
       <div class="resume-banner-actions">
-        <button pButton type="button" severity="secondary" (click)="discardBannerDraft()"><i class="pi pi-trash"></i><span>Discard</span></button>
-        <button pButton type="button" (click)="resumeDraft()"><i class="pi pi-play"></i><span>Resume Draft</span></button>
+        <button pButton type="button" severity="secondary" (click)="discardBannerDraft()">
+          <i class="pi pi-trash"></i><span>Discard</span>
+        </button>
+        <button pButton type="button" (click)="resumeDraft()">
+          <i class="pi pi-play"></i><span>Resume Draft</span>
+        </button>
       </div>
     </div>
   }
@@ -49,13 +53,17 @@
                   type="button"
                   [outlined]="entryMode() !== 'auto'"
                   (click)="setEntryMode('auto')"
-                ><i class="pi pi-camera"></i><span>Auto-fill from Document</span></button>
+                >
+                  <i class="pi pi-camera"></i><span>Auto-fill from Document</span>
+                </button>
                 <button
                   pButton
                   type="button"
                   [outlined]="entryMode() !== 'manual'"
                   (click)="setEntryMode('manual')"
-                ><i class="pi pi-pencil"></i><span>Manual Entry</span></button>
+                >
+                  <i class="pi pi-pencil"></i><span>Manual Entry</span>
+                </button>
               </div>
 
               @if (entryMode() === 'auto') {
@@ -75,11 +83,21 @@
                     <div class="review-grid">
                       <div class="review-item">
                         <span>Full Name</span>
-                        {{ registrationForm.value.first_name ? (registrationForm.value.first_name + ' ' + registrationForm.value.last_name) : 'Not extracted — please fill in manually' }}
+                        {{
+                          registrationForm.value.first_name
+                            ? registrationForm.value.first_name +
+                              ' ' +
+                              registrationForm.value.last_name
+                            : 'Not extracted — please fill in manually'
+                        }}
                       </div>
                       <div class="review-item">
                         <span>Date of Birth</span>
-                        {{ registrationForm.value.date_of_birth ? (registrationForm.value.date_of_birth | date: 'mediumDate') : 'Not extracted — please fill in manually' }}
+                        {{
+                          registrationForm.value.date_of_birth
+                            ? (registrationForm.value.date_of_birth | date: 'mediumDate')
+                            : 'Not extracted — please fill in manually'
+                        }}
                       </div>
                       <div class="review-item">
                         <span>Document Type</span>
@@ -96,10 +114,15 @@
                   </div>
                 }
                 @if (ocrError()) {
-                  <div class="ocr-error"><i class="pi pi-exclamation-triangle"></i> {{ ocrError() }}</div>
+                  <div class="ocr-error">
+                    <i class="pi pi-exclamation-triangle"></i> {{ ocrError() }}
+                  </div>
                 }
               } @else {
-                <p class="manual-entry-note"><i class="pi pi-info-circle"></i> You'll fill in every field yourself across the next few steps.</p>
+                <p class="manual-entry-note">
+                  <i class="pi pi-info-circle"></i> You'll fill in every field yourself across the
+                  next few steps.
+                </p>
               }
             </div>
 
@@ -113,8 +136,13 @@
                   text
                   [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
-                <button pButton type="button" (click)="currentStep.set(2)"><span>Next</span><i class="pi pi-arrow-right"></i></button>
+                >
+                  <i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i
+                  ><span>Save & Exit</span>
+                </button>
+                <button pButton type="button" (click)="currentStep.set(2)">
+                  <span>Next</span><i class="pi pi-arrow-right"></i>
+                </button>
               </div>
             </div>
           </ng-template>
@@ -131,16 +159,31 @@
 
               <form [formGroup]="registrationForm" class="wizard-form">
                 <div class="form-row">
-                  <lpg-form-field label="First name" for="first_name" [control]="registrationForm.controls.first_name" [messages]="fieldMessages.first_name">
+                  <lpg-form-field
+                    label="First name"
+                    for="first_name"
+                    [control]="registrationForm.controls.first_name"
+                    [messages]="fieldMessages.first_name"
+                  >
                     <input pInputText id="first_name" formControlName="first_name" [fluid]="true" />
                   </lpg-form-field>
-                  <lpg-form-field label="Last name" for="last_name" [control]="registrationForm.controls.last_name" [messages]="fieldMessages.last_name">
+                  <lpg-form-field
+                    label="Last name"
+                    for="last_name"
+                    [control]="registrationForm.controls.last_name"
+                    [messages]="fieldMessages.last_name"
+                  >
                     <input pInputText id="last_name" formControlName="last_name" [fluid]="true" />
                   </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="Primary phone number" for="phone_number" [control]="registrationForm.controls.phone_number" [messages]="fieldMessages.phone_number">
+                  <lpg-form-field
+                    label="Primary phone number"
+                    for="phone_number"
+                    [control]="registrationForm.controls.phone_number"
+                    [messages]="fieldMessages.phone_number"
+                  >
                     <input
                       pInputText
                       id="phone_number"
@@ -150,7 +193,13 @@
                       (blur)="normalizePhoneField('phone_number')"
                     />
                   </lpg-form-field>
-                  <lpg-form-field label="Alternate mobile" for="alternate_mobile" [control]="registrationForm.controls.alternate_mobile" [messages]="fieldMessages.alternate_mobile" [optional]="true">
+                  <lpg-form-field
+                    label="Alternate mobile"
+                    for="alternate_mobile"
+                    [control]="registrationForm.controls.alternate_mobile"
+                    [messages]="fieldMessages.alternate_mobile"
+                    [optional]="true"
+                  >
                     <input
                       pInputText
                       id="alternate_mobile"
@@ -162,38 +211,90 @@
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="Date of birth" for="date_of_birth" [control]="registrationForm.controls.date_of_birth" [messages]="fieldMessages.date_of_birth">
-                    <p-datepicker inputId="date_of_birth" formControlName="date_of_birth" [showIcon]="true" iconDisplay="input" [fluid]="true"></p-datepicker>
+                  <lpg-form-field
+                    label="Date of birth"
+                    for="date_of_birth"
+                    [control]="registrationForm.controls.date_of_birth"
+                    [messages]="fieldMessages.date_of_birth"
+                  >
+                    <p-datepicker
+                      inputId="date_of_birth"
+                      formControlName="date_of_birth"
+                      [showIcon]="true"
+                      iconDisplay="input"
+                      [fluid]="true"
+                    ></p-datepicker>
                   </lpg-form-field>
-                  <lpg-form-field label="Operating branch" for="branch_id" [control]="registrationForm.controls.branch_id" [messages]="fieldMessages.branch_id">
-                    <p-select inputId="branch_id" formControlName="branch_id" [options]="branches()" optionLabel="name" optionValue="id" [fluid]="true"></p-select>
+                  <lpg-form-field
+                    label="Operating branch"
+                    for="branch_id"
+                    [control]="registrationForm.controls.branch_id"
+                    [messages]="fieldMessages.branch_id"
+                  >
+                    <p-select
+                      inputId="branch_id"
+                      formControlName="branch_id"
+                      [options]="branches()"
+                      optionLabel="name"
+                      optionValue="id"
+                      [fluid]="true"
+                    ></p-select>
                   </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="Consumer category" for="consumer_category" [control]="registrationForm.controls.consumer_category" [messages]="fieldMessages.consumer_category">
-                    <p-select inputId="consumer_category" formControlName="consumer_category" [options]="customerCategoryOptions" optionLabel="label" optionValue="value" [fluid]="true"></p-select>
+                  <lpg-form-field
+                    label="Consumer category"
+                    for="consumer_category"
+                    [control]="registrationForm.controls.consumer_category"
+                    [messages]="fieldMessages.consumer_category"
+                  >
+                    <p-select
+                      inputId="consumer_category"
+                      formControlName="consumer_category"
+                      [options]="customerCategoryOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      [fluid]="true"
+                    ></p-select>
                   </lpg-form-field>
                 </div>
 
                 <div class="form-group checkbox-group">
-                  <p-checkbox formControlName="is_commercial" [binary]="true" inputId="is_commercial"></p-checkbox>
+                  <p-checkbox
+                    formControlName="is_commercial"
+                    [binary]="true"
+                    inputId="is_commercial"
+                  ></p-checkbox>
                   <label for="is_commercial">Is this a commercial entity?</label>
                 </div>
 
                 @if (registrationForm.get('is_commercial')?.value) {
                   <div class="form-row">
-                    <lpg-form-field label="Contact person" for="contact_person" [control]="registrationForm.controls.contact_person" [messages]="fieldMessages.contact_person">
-                      <input pInputText id="contact_person" formControlName="contact_person" placeholder="Name of contact person" [fluid]="true" />
+                    <lpg-form-field
+                      label="Contact person"
+                      for="contact_person"
+                      [control]="registrationForm.controls.contact_person"
+                      [messages]="fieldMessages.contact_person"
+                    >
+                      <input
+                        pInputText
+                        id="contact_person"
+                        formControlName="contact_person"
+                        placeholder="Name of contact person"
+                        [fluid]="true"
+                      />
                     </lpg-form-field>
                   </div>
                 }
               </form>
             </div>
-            
+
             <div class="step-actions">
               <div class="step-actions-left">
-                <button pButton type="button" severity="secondary" (click)="prevStep(1)"><i class="pi pi-arrow-left"></i><span>Back</span></button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(1)">
+                  <i class="pi pi-arrow-left"></i><span>Back</span>
+                </button>
               </div>
               <div class="step-actions-right">
                 <button
@@ -203,8 +304,13 @@
                   text
                   [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
-                <button pButton type="button" (click)="nextStep(registrationForm, 3)"><span>Next</span><i class="pi pi-arrow-right"></i></button>
+                >
+                  <i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i
+                  ><span>Save & Exit</span>
+                </button>
+                <button pButton type="button" (click)="nextStep(registrationForm, 3)">
+                  <span>Next</span><i class="pi pi-arrow-right"></i>
+                </button>
               </div>
             </div>
           </ng-template>
@@ -221,52 +327,134 @@
 
               <form [formGroup]="addressForm" class="wizard-form">
                 <div class="form-row">
-                  <lpg-form-field label="Address type" for="address_type" [control]="addressForm.controls.address_type" [messages]="fieldMessages.address_type">
-                    <p-select inputId="address_type" formControlName="address_type" [options]="addressTypeOptions" optionLabel="label" optionValue="value" [fluid]="true"></p-select>
+                  <lpg-form-field
+                    label="Address type"
+                    for="address_type"
+                    [control]="addressForm.controls.address_type"
+                    [messages]="fieldMessages.address_type"
+                  >
+                    <p-select
+                      inputId="address_type"
+                      formControlName="address_type"
+                      [options]="addressTypeOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      [fluid]="true"
+                    ></p-select>
                   </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="Address line 1" for="line_1" [control]="addressForm.controls.line_1" [messages]="fieldMessages.line_1">
-                    <input pInputText id="line_1" formControlName="line_1" placeholder="Flat, House no., Building" [fluid]="true" />
+                  <lpg-form-field
+                    label="Address line 1"
+                    for="line_1"
+                    [control]="addressForm.controls.line_1"
+                    [messages]="fieldMessages.line_1"
+                  >
+                    <input
+                      pInputText
+                      id="line_1"
+                      formControlName="line_1"
+                      placeholder="Flat, House no., Building"
+                      [fluid]="true"
+                    />
                   </lpg-form-field>
-                  <lpg-form-field label="Address line 2" for="line_2" [control]="addressForm.controls.line_2">
-                    <input pInputText id="line_2" formControlName="line_2" placeholder="Street, Sector, Village" [fluid]="true" />
+                  <lpg-form-field
+                    label="Address line 2"
+                    for="line_2"
+                    [control]="addressForm.controls.line_2"
+                  >
+                    <input
+                      pInputText
+                      id="line_2"
+                      formControlName="line_2"
+                      placeholder="Street, Sector, Village"
+                      [fluid]="true"
+                    />
                   </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="Landmark" for="landmark" [control]="addressForm.controls.landmark">
-                    <input pInputText id="landmark" formControlName="landmark" placeholder="Near Apollo Hospital" [fluid]="true" />
+                  <lpg-form-field
+                    label="Landmark"
+                    for="landmark"
+                    [control]="addressForm.controls.landmark"
+                  >
+                    <input
+                      pInputText
+                      id="landmark"
+                      formControlName="landmark"
+                      placeholder="Near Apollo Hospital"
+                      [fluid]="true"
+                    />
                   </lpg-form-field>
-                  <lpg-form-field label="Area / locality" for="area" [control]="addressForm.controls.area" [messages]="fieldMessages.area">
-                    <input pInputText id="area" formControlName="area" placeholder="Locality name" [fluid]="true" />
+                  <lpg-form-field
+                    label="Area / locality"
+                    for="area"
+                    [control]="addressForm.controls.area"
+                    [messages]="fieldMessages.area"
+                  >
+                    <input
+                      pInputText
+                      id="area"
+                      formControlName="area"
+                      placeholder="Locality name"
+                      [fluid]="true"
+                    />
                   </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="City" for="city" [control]="addressForm.controls.city" [messages]="fieldMessages.city">
+                  <lpg-form-field
+                    label="City"
+                    for="city"
+                    [control]="addressForm.controls.city"
+                    [messages]="fieldMessages.city"
+                  >
                     <input pInputText id="city" formControlName="city" [fluid]="true" />
                   </lpg-form-field>
-                  <lpg-form-field label="District" for="district" [control]="addressForm.controls.district" [messages]="fieldMessages.district">
+                  <lpg-form-field
+                    label="District"
+                    for="district"
+                    [control]="addressForm.controls.district"
+                    [messages]="fieldMessages.district"
+                  >
                     <input pInputText id="district" formControlName="district" [fluid]="true" />
                   </lpg-form-field>
                 </div>
 
                 <div class="form-row">
-                  <lpg-form-field label="State" for="state" [control]="addressForm.controls.state" [messages]="fieldMessages.state">
+                  <lpg-form-field
+                    label="State"
+                    for="state"
+                    [control]="addressForm.controls.state"
+                    [messages]="fieldMessages.state"
+                  >
                     <input pInputText id="state" formControlName="state" [fluid]="true" />
                   </lpg-form-field>
-                  <lpg-form-field label="Pincode" for="pincode" [control]="addressForm.controls.pincode" [messages]="fieldMessages.pincode">
-                    <input pInputText id="pincode" formControlName="pincode" placeholder="6-digit pincode" [fluid]="true" />
+                  <lpg-form-field
+                    label="Pincode"
+                    for="pincode"
+                    [control]="addressForm.controls.pincode"
+                    [messages]="fieldMessages.pincode"
+                  >
+                    <input
+                      pInputText
+                      id="pincode"
+                      formControlName="pincode"
+                      placeholder="6-digit pincode"
+                      [fluid]="true"
+                    />
                   </lpg-form-field>
                 </div>
               </form>
             </div>
-            
+
             <div class="step-actions">
               <div class="step-actions-left">
-                <button pButton type="button" severity="secondary" (click)="prevStep(2)"><i class="pi pi-arrow-left"></i><span>Back</span></button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(2)">
+                  <i class="pi pi-arrow-left"></i><span>Back</span>
+                </button>
               </div>
               <div class="step-actions-right">
                 <button
@@ -276,8 +464,13 @@
                   text
                   [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
-                <button pButton type="button" (click)="nextStep(addressForm, 4)"><span>Next</span><i class="pi pi-arrow-right"></i></button>
+                >
+                  <i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i
+                  ><span>Save & Exit</span>
+                </button>
+                <button pButton type="button" (click)="nextStep(addressForm, 4)">
+                  <span>Next</span><i class="pi pi-arrow-right"></i>
+                </button>
               </div>
             </div>
           </ng-template>
@@ -289,47 +482,104 @@
             <div class="step-content">
               <div class="step-header">
                 <h2>KYC Documentation</h2>
-                <p>KYC (Know Your Customer) data is mandatory for regulatory compliance and safety auditing.</p>
+                <p>
+                  KYC (Know Your Customer) data is mandatory for regulatory compliance and safety
+                  auditing.
+                </p>
               </div>
 
               @if (entryMode() === 'auto' && extractedSummary()) {
                 <div class="info-callout">
                   <i class="pi pi-check-circle"></i>
-                  <span>Document type and number were pre-filled from the ID you uploaded in Step 1. Review and edit if needed.</span>
+                  <span
+                    >Document type and number were pre-filled from the ID you uploaded in Step 1.
+                    Review and edit if needed.</span
+                  >
                 </div>
               }
 
               <form [formGroup]="kycForm" class="wizard-form">
                 <div class="form-row">
-                  <lpg-form-field label="Document type" for="doc_type" [control]="kycForm.controls.doc_type" [messages]="fieldMessages.doc_type">
-                    <p-select inputId="doc_type" formControlName="doc_type" [options]="kycDocTypeOptions" optionLabel="label" optionValue="value" [fluid]="true"></p-select>
+                  <lpg-form-field
+                    label="Document type"
+                    for="doc_type"
+                    [control]="kycForm.controls.doc_type"
+                    [messages]="fieldMessages.doc_type"
+                  >
+                    <p-select
+                      inputId="doc_type"
+                      formControlName="doc_type"
+                      [options]="kycDocTypeOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      [fluid]="true"
+                    ></p-select>
                   </lpg-form-field>
-                  <lpg-form-field label="Document number" for="document_number" [control]="kycForm.controls.document_number" [messages]="fieldMessages.document_number">
-                    <input pInputText id="document_number" formControlName="document_number" placeholder="Enter doc ID" [fluid]="true" />
+                  <lpg-form-field
+                    label="Document number"
+                    for="document_number"
+                    [control]="kycForm.controls.document_number"
+                    [messages]="fieldMessages.document_number"
+                  >
+                    <input
+                      pInputText
+                      id="document_number"
+                      formControlName="document_number"
+                      placeholder="Enter doc ID"
+                      [fluid]="true"
+                    />
                   </lpg-form-field>
                 </div>
 
                 @if (kycForm.value.doc_type === 'passport') {
                   <div class="form-row">
-                    <lpg-form-field label="Issue date" for="issue_date" [control]="kycForm.controls.issue_date" [messages]="fieldMessages.issue_date">
-                      <p-datepicker inputId="issue_date" formControlName="issue_date" [showIcon]="true" iconDisplay="input" [fluid]="true"></p-datepicker>
+                    <lpg-form-field
+                      label="Issue date"
+                      for="issue_date"
+                      [control]="kycForm.controls.issue_date"
+                      [messages]="fieldMessages.issue_date"
+                    >
+                      <p-datepicker
+                        inputId="issue_date"
+                        formControlName="issue_date"
+                        [showIcon]="true"
+                        iconDisplay="input"
+                        [fluid]="true"
+                      ></p-datepicker>
                     </lpg-form-field>
-                    <lpg-form-field label="Expiry date" for="expiry_date" [control]="kycForm.controls.expiry_date" [messages]="fieldMessages.expiry_date">
-                      <p-datepicker inputId="expiry_date" formControlName="expiry_date" [showIcon]="true" iconDisplay="input" [fluid]="true"></p-datepicker>
+                    <lpg-form-field
+                      label="Expiry date"
+                      for="expiry_date"
+                      [control]="kycForm.controls.expiry_date"
+                      [messages]="fieldMessages.expiry_date"
+                    >
+                      <p-datepicker
+                        inputId="expiry_date"
+                        formControlName="expiry_date"
+                        [showIcon]="true"
+                        iconDisplay="input"
+                        [fluid]="true"
+                      ></p-datepicker>
                     </lpg-form-field>
                   </div>
                 }
 
                 <div class="info-callout">
                   <i class="pi pi-info-circle"></i>
-                  <span>Ensure the document ID (and dates, where applicable) strictly match the physical document. The backend service will run a pre-verification check against these inputs.</span>
+                  <span
+                    >Ensure the document ID (and dates, where applicable) strictly match the
+                    physical document. The backend service will run a pre-verification check against
+                    these inputs.</span
+                  >
                 </div>
               </form>
             </div>
-            
+
             <div class="step-actions">
               <div class="step-actions-left">
-                <button pButton type="button" severity="secondary" (click)="prevStep(3)"><i class="pi pi-arrow-left"></i><span>Back</span></button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(3)">
+                  <i class="pi pi-arrow-left"></i><span>Back</span>
+                </button>
               </div>
               <div class="step-actions-right">
                 <button
@@ -339,8 +589,13 @@
                   text
                   [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
-                <button pButton type="button" (click)="nextStep(kycForm, 5)"><span>Review</span><i class="pi pi-arrow-right"></i></button>
+                >
+                  <i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i
+                  ><span>Save & Exit</span>
+                </button>
+                <button pButton type="button" (click)="nextStep(kycForm, 5)">
+                  <span>Review</span><i class="pi pi-arrow-right"></i>
+                </button>
               </div>
             </div>
           </ng-template>
@@ -352,33 +607,50 @@
             <div class="step-content">
               <div class="step-header">
                 <h2>Review & Approve</h2>
-                <p>Please confirm all the provided details before finalizing the onboarding process.</p>
+                <p>
+                  Please confirm all the provided details before finalizing the onboarding process.
+                </p>
               </div>
 
               <div class="review-section">
                 <h3>Personal Information</h3>
                 <div class="review-grid">
-                  <div class="review-item"><span>Name:</span> {{ registrationForm.value.first_name }} {{ registrationForm.value.last_name }}</div>
-                  <div class="review-item"><span>Phone:</span> {{ registrationForm.value.phone_number }}</div>
-                  <div class="review-item"><span>Category:</span> {{ registrationForm.value.consumer_category }}</div>
+                  <div class="review-item">
+                    <span>Name:</span> {{ registrationForm.value.first_name }}
+                    {{ registrationForm.value.last_name }}
+                  </div>
+                  <div class="review-item">
+                    <span>Phone:</span> {{ registrationForm.value.phone_number }}
+                  </div>
+                  <div class="review-item">
+                    <span>Category:</span> {{ registrationForm.value.consumer_category }}
+                  </div>
                 </div>
 
                 <h3>Delivery Address</h3>
                 <div class="review-grid">
-                  <div class="review-item full-width"><span>Address:</span> {{ addressForm.value.line_1 }}, {{ addressForm.value.area }}, {{ addressForm.value.city }}, {{ addressForm.value.state }} - {{ addressForm.value.pincode }}</div>
+                  <div class="review-item full-width">
+                    <span>Address:</span> {{ addressForm.value.line_1 }},
+                    {{ addressForm.value.area }}, {{ addressForm.value.city }},
+                    {{ addressForm.value.state }} - {{ addressForm.value.pincode }}
+                  </div>
                 </div>
 
                 <h3>KYC Details</h3>
                 <div class="review-grid">
                   <div class="review-item"><span>Document:</span> {{ kycForm.value.doc_type }}</div>
-                  <div class="review-item"><span>ID Number:</span> {{ kycForm.value.document_number }}</div>
+                  <div class="review-item">
+                    <span>ID Number:</span> {{ kycForm.value.document_number }}
+                  </div>
                 </div>
               </div>
             </div>
-            
+
             <div class="step-actions">
               <div class="step-actions-left">
-                <button pButton type="button" severity="secondary" (click)="prevStep(4)"><i class="pi pi-arrow-left"></i><span>Back</span></button>
+                <button pButton type="button" severity="secondary" (click)="prevStep(4)">
+                  <i class="pi pi-arrow-left"></i><span>Back</span>
+                </button>
               </div>
               <div class="step-actions-right">
                 <button
@@ -388,8 +660,20 @@
                   text
                   [disabled]="savingDraft()"
                   (click)="onSaveAndExit()"
-                ><i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i><span>Save & Exit</span></button>
-                <button pButton type="button" severity="success" (click)="submitWizard()" [disabled]="isSubmitting()"><i [class]="isSubmitting() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i><span>Submit & Approve</span></button>
+                >
+                  <i [class]="savingDraft() ? 'pi pi-spin pi-spinner' : 'pi pi-save'"></i
+                  ><span>Save & Exit</span>
+                </button>
+                <button
+                  pButton
+                  type="button"
+                  severity="success"
+                  (click)="submitWizard()"
+                  [disabled]="isSubmitting()"
+                >
+                  <i [class]="isSubmitting() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i
+                  ><span>Submit & Approve</span>
+                </button>
               </div>
             </div>
           </ng-template>
@@ -407,9 +691,18 @@
   >
     <p>You have unsaved changes on this registration. What would you like to do?</p>
     <div class="leave-dialog-actions">
-      <button pButton type="button" severity="secondary" text (click)="onCancelLeave()">Cancel</button>
-      <button pButton type="button" severity="danger" text (click)="onDiscardAndLeave()">Discard & Leave</button>
-      <button pButton type="button" [disabled]="savingDraft()" (click)="onSaveAndLeave()">@if (savingDraft()) {<i class="pi pi-spin pi-spinner"></i> }Save & Leave</button>
+      <button pButton type="button" severity="secondary" text (click)="onCancelLeave()">
+        Cancel
+      </button>
+      <button pButton type="button" severity="danger" text (click)="onDiscardAndLeave()">
+        Discard & Leave
+      </button>
+      <button pButton type="button" [disabled]="savingDraft()" (click)="onSaveAndLeave()">
+        @if (savingDraft()) {
+          <i class="pi pi-spin pi-spinner"></i>
+        }
+        Save & Leave
+      </button>
     </div>
   </p-dialog>
 </div>

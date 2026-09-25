@@ -1,11 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 export type LicenseLifecycleState =
-  | 'pending_activation'
-  | 'active'
-  | 'grace'
-  | 'blocked'
-  | 'revoked';
+  'pending_activation' | 'active' | 'grace' | 'blocked' | 'revoked';
 
 export interface LicenseStatus {
   readonly status: LicenseLifecycleState;

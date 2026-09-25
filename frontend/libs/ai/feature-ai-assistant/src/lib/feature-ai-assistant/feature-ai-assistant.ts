@@ -1,5 +1,14 @@
-import { BreadcrumbService, HeaderPortalDirective, HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { HasPermissionDirective, MarkdownPipe, StatCardComponent, type StatTone } from '@lpg/shared/ui';
+import {
+  BreadcrumbService,
+  HeaderPortalDirective,
+  HeaderTitlePortalDirective,
+} from '@lpg/shared/ui/app-shell';
+import {
+  HasPermissionDirective,
+  MarkdownPipe,
+  StatCardComponent,
+  type StatTone,
+} from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,7 +23,11 @@ import { FormsModule } from '@angular/forms';
 import { catchError, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { Message } from 'primeng/message';
-import { AiAssistantService, DashboardService, type AskAiAssistantResponse } from '@lpg/shared/data-access';
+import {
+  AiAssistantService,
+  DashboardService,
+  type AskAiAssistantResponse,
+} from '@lpg/shared/data-access';
 
 interface QaEntry {
   question: string;
@@ -192,7 +205,9 @@ export class FeatureAiAssistant {
         const inventory = summary?.inventory_by_status ?? {};
         const filled = inventory['filled'] ?? 0;
         const needingAttention =
-          (inventory['damaged'] ?? 0) + (inventory['leakage'] ?? 0) + (inventory['quarantine'] ?? 0);
+          (inventory['damaged'] ?? 0) +
+          (inventory['leakage'] ?? 0) +
+          (inventory['quarantine'] ?? 0);
 
         this.kpis.set([
           {
@@ -244,10 +259,7 @@ export class FeatureAiAssistant {
       error: () => {
         this.asking.set(false);
         this.pendingQuestion.set(null);
-        this.history.update((entries) => [
-          ...entries,
-          { question, response: null, error: true },
-        ]);
+        this.history.update((entries) => [...entries, { question, response: null, error: true }]);
       },
     });
   }

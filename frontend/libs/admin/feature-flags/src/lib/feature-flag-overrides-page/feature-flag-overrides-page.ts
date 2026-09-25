@@ -1,7 +1,14 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { FormFieldComponent } from '@lpg/shared/ui';
 
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
@@ -31,17 +38,24 @@ function errorMessageFor(error: unknown): string {
 @Component({
   selector: 'lpg-feature-flag-overrides-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ReactiveFormsModule, ButtonDirective, Select, Message, FormFieldComponent],
+  imports: [
+    HeaderTitlePortalDirective,
+    ReactiveFormsModule,
+    ButtonDirective,
+    Select,
+    Message,
+    FormFieldComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">Feature Flags</h1>
-          <p class="page-subtitle">Enable or disable feature flags for this tenant.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">Feature Flags</h1>
+            <p class="page-subtitle">Enable or disable feature flags for this tenant.</p>
+          </div>
+        </ng-template>
       </div>
       <p>Override a platform flag for this tenant only.</p>
 

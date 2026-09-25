@@ -10,7 +10,6 @@
   block-size: 100%;
 }
 
-
 .search-bar {
   display: flex;
   gap: var(--spacing-sm);

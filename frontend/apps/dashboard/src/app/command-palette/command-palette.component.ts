@@ -420,8 +420,6 @@ export class CommandPaletteComponent {
     const next = (current + delta + items.length) % items.length;
     this.activeId.set(items[next].id);
     const id = items[next].id;
-    queueMicrotask(() =>
-      this.document.getElementById(id)?.scrollIntoView?.({ block: 'nearest' }),
-    );
+    queueMicrotask(() => this.document.getElementById(id)?.scrollIntoView?.({ block: 'nearest' }));
   }
 }

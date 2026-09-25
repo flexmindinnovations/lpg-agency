@@ -14,17 +14,24 @@ import { AuthService } from '@lpg/shared/data-access';
 @Component({
   selector: 'lpg-profile',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, SectionCardComponent, DetailListComponent, DetailItemComponent],
+  imports: [
+    HeaderTitlePortalDirective,
+    SectionCardComponent,
+    DetailListComponent,
+    DetailItemComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="profile-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">My Profile</h1>
-          <p class="page-subtitle">Your account information. Contact an administrator to update your role or email.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">My Profile</h1>
+            <p class="page-subtitle">
+              Your account information. Contact an administrator to update your role or email.
+            </p>
+          </div>
+        </ng-template>
       </div>
 
       <lpg-section-card class="detail-view">

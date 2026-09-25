@@ -4,47 +4,47 @@
       <div class="page-header__text">
         <h1 class="page-title">Compliance Calendar</h1>
         <p class="page-subtitle">
-          PESO Form F (per warehouse) and the tenant's insurance policy — statutory licences
-          tracked for expiry, the same way driver and vehicle documents already are.
+          PESO Form F (per warehouse) and the tenant's insurance policy — statutory licences tracked
+          for expiry, the same way driver and vehicle documents already are.
         </p>
       </div>
     </ng-template>
   </div>
 
   @if (errorMessage(); as msg) {
-    <p-message severity="error">{{ msg }}</p-message>
+  <p-message severity="error">{{ msg }}</p-message>
   }
 
   <section class="calendar-section">
     <div class="calendar-section__header">
       <h2 class="calendar-section__title">Warehouses — PESO Form F</h2>
       @if (warehouses().length > 0) {
-        <p-select
-          [options]="warehouses()"
-          optionLabel="name"
-          optionValue="id"
-          [ngModel]="selectedWarehouseId()"
-          (ngModelChange)="onWarehouseChange($event)"
-          aria-label="Select warehouse"
-          styleClass="warehouse-select"
-        ></p-select>
+      <p-select
+        [options]="warehouses()"
+        optionLabel="name"
+        optionValue="id"
+        [ngModel]="selectedWarehouseId()"
+        (ngModelChange)="onWarehouseChange($event)"
+        aria-label="Select warehouse"
+        styleClass="warehouse-select"
+      ></p-select>
       }
     </div>
 
     @if (warehouses().length === 0) {
-      <p-message severity="info">No warehouses registered yet.</p-message>
+    <p-message severity="info">No warehouses registered yet.</p-message>
     } @else if (selectedWarehouseId(); as warehouseId) {
-      <lpg-compliance-documents-panel
-        [documents]="warehouseDocuments()"
-        [loading]="warehouseDocumentsLoading()"
-        [docTypeOptions]="warehouseDocTypeOptions"
-        managePermission="compliance:manage"
-        [uploader]="uploader"
-        [addDocument]="addWarehouseDocument(warehouseId)"
-        [replaceDocument]="replaceComplianceDocument"
-        [verifyDocument]="verifyComplianceDocument"
-        (changed)="onWarehouseDocumentsChanged()"
-      />
+    <lpg-compliance-documents-panel
+      [documents]="warehouseDocuments()"
+      [loading]="warehouseDocumentsLoading()"
+      [docTypeOptions]="warehouseDocTypeOptions"
+      managePermission="compliance:manage"
+      [uploader]="uploader"
+      [addDocument]="addWarehouseDocument(warehouseId)"
+      [replaceDocument]="replaceComplianceDocument"
+      [verifyDocument]="verifyComplianceDocument"
+      (changed)="onWarehouseDocumentsChanged()"
+    />
     }
   </section>
 

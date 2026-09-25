@@ -17,7 +17,9 @@ import { EmptyStateComponent, type EmptyStateTone } from './empty-state.componen
             actions
             type="button"
             [severity]="tone === 'error' ? 'secondary' : undefined"
-          ><span>{{ tone === 'error' ? 'Retry' : 'Schedule delivery' }}</span></button>
+          >
+            <span>{{ tone === 'error' ? 'Retry' : 'Schedule delivery' }}</span>
+          </button>
         }
       </lpg-empty-state>
     </div>

@@ -1,5 +1,10 @@
 import { Route } from '@angular/router';
-import { authGuard, licenseGuard, permissionGuard, platformAuthGuard } from '@lpg/shared/data-access';
+import {
+  authGuard,
+  licenseGuard,
+  permissionGuard,
+  platformAuthGuard,
+} from '@lpg/shared/data-access';
 
 /** `driver` holds `customers:read`/`drivers:read`/`vehicles:read`/`routes:read`
  * only for narrow, single-record API calls tied to their own delivery
@@ -101,9 +106,13 @@ export const appRoutes: Route[] = [
       {
         path: 'ledger/:customerId',
         canActivate: [permissionGuard('customers:read', STAFF_LIST_EXCLUDED_ROLES)],
-        data: { breadcrumbs: [{ label: 'Customers', routerLink: '/customers' }, { label: 'Customer Ledger' }] },
-        loadComponent: () =>
-          import('@lpg/ledger/feature-ledger').then((m) => m.FeatureLedger),
+        data: {
+          breadcrumbs: [
+            { label: 'Customers', routerLink: '/customers' },
+            { label: 'Customer Ledger' },
+          ],
+        },
+        loadComponent: () => import('@lpg/ledger/feature-ledger').then((m) => m.FeatureLedger),
       },
       {
         path: 'drivers',
@@ -170,19 +179,22 @@ export const appRoutes: Route[] = [
         path: 'invoices',
         canActivate: [permissionGuard('invoices:read')],
         data: { breadcrumbs: [{ label: 'Invoices', routerLink: '/invoices' }] },
-        loadChildren: () => import('@lpg/accounting/feature-invoices').then((m) => m.featureInvoicesRoutes),
+        loadChildren: () =>
+          import('@lpg/accounting/feature-invoices').then((m) => m.featureInvoicesRoutes),
       },
       {
         path: 'complaints',
         canActivate: [permissionGuard('complaints.manage')],
         data: { breadcrumbs: [{ label: 'Complaints', routerLink: '/complaints' }] },
-        loadChildren: () => import('@lpg/complaint/feature-complaints').then((m) => m.featureComplaintsRoutes),
+        loadChildren: () =>
+          import('@lpg/complaint/feature-complaints').then((m) => m.featureComplaintsRoutes),
       },
       {
         path: 'reports',
         canActivate: [permissionGuard('reports:read')],
         data: { breadcrumbs: [{ label: 'Reports', routerLink: '/reports' }] },
-        loadChildren: () => import('@lpg/reporting/feature-reports').then((m) => m.reportingFeatureReportsRoutes),
+        loadChildren: () =>
+          import('@lpg/reporting/feature-reports').then((m) => m.reportingFeatureReportsRoutes),
       },
       {
         path: 'ai-assistant',
@@ -194,7 +206,9 @@ export const appRoutes: Route[] = [
       {
         path: 'admin/branches',
         canActivate: [permissionGuard('tenant:configure')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Branches', routerLink: '/admin/branches' }] },
+        data: {
+          breadcrumbs: [{ label: 'Admin' }, { label: 'Branches', routerLink: '/admin/branches' }],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then(
             (m) => m.adminFeatureTenantSettingsRoutes,
@@ -203,14 +217,24 @@ export const appRoutes: Route[] = [
       {
         path: 'admin/warehouses',
         canActivate: [permissionGuard('tenant:configure')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Warehouses', routerLink: '/admin/warehouses' }] },
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Warehouses', routerLink: '/admin/warehouses' },
+          ],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeatureWarehousesRoutes),
       },
       {
         path: 'admin/cylinder-types',
         canActivate: [permissionGuard('tenant:configure')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Cylinder Types', routerLink: '/admin/cylinder-types' }] },
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Cylinder Types', routerLink: '/admin/cylinder-types' },
+          ],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then(
             (m) => m.adminFeatureCylinderTypesRoutes,
@@ -219,7 +243,12 @@ export const appRoutes: Route[] = [
       {
         path: 'admin/tenant-config',
         canActivate: [permissionGuard('tenant:configure')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Tenant Config', routerLink: '/admin/tenant-config' }] },
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Tenant Config', routerLink: '/admin/tenant-config' },
+          ],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then(
             (m) => m.adminFeatureTenantConfigurationRoutes,
@@ -241,51 +270,76 @@ export const appRoutes: Route[] = [
       {
         path: 'admin/price-lists',
         canActivate: [permissionGuard('tenant:configure')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Price Lists', routerLink: '/admin/price-lists' }] },
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Price Lists', routerLink: '/admin/price-lists' },
+          ],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeaturePriceListRoutes),
       },
       {
         path: 'admin/feature-flags',
         canActivate: [permissionGuard('feature_flags:manage_tenant')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Feature Flags', routerLink: '/admin/feature-flags' }] },
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Feature Flags', routerLink: '/admin/feature-flags' },
+          ],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
       },
       {
         path: 'admin/license/devices',
         canActivate: [permissionGuard('license:manage_tenant')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Linked Devices', routerLink: '/admin/license/devices' }] },
+        data: {
+          breadcrumbs: [
+            { label: 'Admin' },
+            { label: 'Linked Devices', routerLink: '/admin/license/devices' },
+          ],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseDevicesRoutes),
       },
       {
         path: 'admin/license',
         canActivate: [permissionGuard('license:manage_tenant')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'License', routerLink: '/admin/license' }] },
+        data: {
+          breadcrumbs: [{ label: 'Admin' }, { label: 'License', routerLink: '/admin/license' }],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseRoutes),
       },
       {
         path: 'admin/users',
         canActivate: [permissionGuard('users:manage')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Staff Users', routerLink: '/admin/users' }] },
+        data: {
+          breadcrumbs: [{ label: 'Admin' }, { label: 'Staff Users', routerLink: '/admin/users' }],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-users').then((m) => m.adminFeatureUsersRoutes),
       },
       {
         path: 'admin/audit-log',
         canActivate: [permissionGuard('audit:read')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Audit Log', routerLink: '/admin/audit-log' }] },
+        data: {
+          breadcrumbs: [{ label: 'Admin' }, { label: 'Audit Log', routerLink: '/admin/audit-log' }],
+        },
         loadChildren: () =>
           import('@lpg/admin/feature-audit-log').then((m) => m.adminFeatureAuditLogRoutes),
       },
       {
         path: 'admin/employees',
         canActivate: [permissionGuard('users:manage')],
-        data: { breadcrumbs: [{ label: 'Admin' }, { label: 'Employees', routerLink: '/admin/employees' }] },
+        data: {
+          breadcrumbs: [{ label: 'Admin' }, { label: 'Employees', routerLink: '/admin/employees' }],
+        },
         loadChildren: () =>
-          import('@lpg/tenant-admin/feature-employees').then((m) => m.tenantAdminFeatureEmployeesRoutes),
+          import('@lpg/tenant-admin/feature-employees').then(
+            (m) => m.tenantAdminFeatureEmployeesRoutes,
+          ),
       },
       {
         path: 'notifications',

@@ -59,9 +59,13 @@ export class AdminStaffUserService {
   }
 
   updateUserPermissions(userId: string, permissionCodes: string[]): Observable<void> {
-    return updateUserPermissionsApiV1AdminUsersUserIdPermissionsPut(this.http, this.config.rootUrl, {
-      user_id: userId,
-      body: { permission_codes: permissionCodes },
-    }).pipe(map(() => undefined));
+    return updateUserPermissionsApiV1AdminUsersUserIdPermissionsPut(
+      this.http,
+      this.config.rootUrl,
+      {
+        user_id: userId,
+        body: { permission_codes: permissionCodes },
+      },
+    ).pipe(map(() => undefined));
   }
 }

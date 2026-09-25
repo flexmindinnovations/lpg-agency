@@ -47,18 +47,18 @@ export class KeyboardShortcutsService {
     // inside a focused field is exactly what a user expects.
     if (isEditableTarget(event.target) && event.key.toLowerCase() !== 'escape') return;
 
-    const match = this.bindings().find(
-      (binding) => {
-        // Handle Alt+Key on Mac producing special characters (e.g. Alt+c -> 'ç') by checking event.code fallback
-        const isKeyMatch = binding.key === event.key.toLowerCase() || 
-                           event.code.toLowerCase() === `key${binding.key}`;
-                           
-        return isKeyMatch &&
-               !!binding.ctrl === (event.ctrlKey || event.metaKey) &&
-               !!binding.shift === event.shiftKey &&
-               !!binding.alt === event.altKey;
-      }
-    );
+    const match = this.bindings().find((binding) => {
+      // Handle Alt+Key on Mac producing special characters (e.g. Alt+c -> 'ç') by checking event.code fallback
+      const isKeyMatch =
+        binding.key === event.key.toLowerCase() || event.code.toLowerCase() === `key${binding.key}`;
+
+      return (
+        isKeyMatch &&
+        !!binding.ctrl === (event.ctrlKey || event.metaKey) &&
+        !!binding.shift === event.shiftKey &&
+        !!binding.alt === event.altKey
+      );
+    });
 
     if (match) {
       event.preventDefault();

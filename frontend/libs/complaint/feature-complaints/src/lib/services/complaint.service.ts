@@ -91,7 +91,7 @@ export class ComplaintService {
     skip = 0,
     limit = 50,
     status?: string,
-    customer_id?: string
+    customer_id?: string,
   ): Observable<ComplaintListResponse> {
     return listComplaintsApiV1ComplaintsGet(this.http, this.config.rootUrl, {
       skip,

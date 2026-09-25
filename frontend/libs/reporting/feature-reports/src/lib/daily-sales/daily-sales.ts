@@ -21,7 +21,12 @@ export class DailySales implements OnInit {
   protected readonly columns: DataGridColumn<DailySalesRecord>[] = [
     { field: 'sale_date', header: 'Date', width: 160, valueFormatter: formatReportDate },
     { field: 'total_invoices', header: 'Total Invoices', numeric: true, width: 160 },
-    { field: 'total_revenue', header: 'Total Revenue', numeric: true, valueFormatter: formatCurrencyInr },
+    {
+      field: 'total_revenue',
+      header: 'Total Revenue',
+      numeric: true,
+      valueFormatter: formatCurrencyInr,
+    },
     { field: 'total_tax', header: 'Total Tax', numeric: true, valueFormatter: formatCurrencyInr },
   ];
 

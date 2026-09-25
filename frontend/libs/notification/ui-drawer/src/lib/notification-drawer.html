@@ -10,29 +10,24 @@
   <div class="drawer-content">
     @if (visibleNotifications().length > 0) {
     <div class="drawer-toolbar">
-      <button type="button" class="drawer-clear" (click)="clearAll()">
-        Clear all
-      </button>
+      <button type="button" class="drawer-clear" (click)="clearAll()">Clear all</button>
     </div>
     }
 
     <div class="notification-list">
       @if (visibleNotifications().length === 0) {
-      <div class="empty-state">
-        No recent notifications.
-      </div>
-      }
-
-      @for (notification of visibleNotifications(); track notification.id) {
-      <div class="notification-item"
-           [class.notification-item--unread]="!notification.is_read"
-           [class.notification-item--linked]="hasLink(notification)"
-           [attr.role]="hasLink(notification) ? 'button' : null"
-           [attr.tabindex]="hasLink(notification) ? 0 : null"
-           (click)="open(notification)"
-           (keydown.enter)="open(notification)"
-           (keydown.space)="open(notification)">
-
+      <div class="empty-state">No recent notifications.</div>
+      } @for (notification of visibleNotifications(); track notification.id) {
+      <div
+        class="notification-item"
+        [class.notification-item--unread]="!notification.is_read"
+        [class.notification-item--linked]="hasLink(notification)"
+        [attr.role]="hasLink(notification) ? 'button' : null"
+        [attr.tabindex]="hasLink(notification) ? 0 : null"
+        (click)="open(notification)"
+        (keydown.enter)="open(notification)"
+        (keydown.space)="open(notification)"
+      >
         <div class="notification-header">
           <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
             {{ notification.title }}
@@ -49,20 +44,18 @@
               iconOnly
               aria-label="Mark as read"
               pTooltip="Mark as read"
-              (click)="markAsRead(notification.id); $event.stopPropagation()">
+              (click)="markAsRead(notification.id); $event.stopPropagation()"
+            >
               <i class="pi pi-check"></i>
             </button>
             }
           </div>
         </div>
 
-        <p class="notification-body">
-          {{ notification.body }}
-        </p>
+        <p class="notification-body">{{ notification.body }}</p>
 
         <span class="notification-time">
-          {{ notification.created_at | date:'short' }}
-          @if (hasLink(notification)) {
+          {{ notification.created_at | date:'short' }} @if (hasLink(notification)) {
           <span class="notification-open-hint">· Open</span>
           }
         </span>

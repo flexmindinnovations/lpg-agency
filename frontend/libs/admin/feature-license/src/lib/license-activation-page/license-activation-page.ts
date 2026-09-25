@@ -60,11 +60,11 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">License</h1>
-          <p class="page-subtitle">Manage this tenant's product license.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">License</h1>
+            <p class="page-subtitle">Manage this tenant's product license.</p>
+          </div>
+        </ng-template>
       </div>
 
       @if (loading()) {
@@ -73,12 +73,27 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
         <section class="admin-form-section">
           <p class="page-lede">Enter the activation key you received to unlock this tenant.</p>
           <form [formGroup]="form" (ngSubmit)="activate()" novalidate>
-            <lpg-form-field label="Activation key" for="license-key" [control]="form.controls.key" [messages]="{ required: 'An activation key is required.' }">
-              <input pInputText id="license-key" type="text" formControlName="key" placeholder="LPG-XXXX-XXXX-XXXX-XXXX" [fluid]="true" />
+            <lpg-form-field
+              label="Activation key"
+              for="license-key"
+              [control]="form.controls.key"
+              [messages]="{ required: 'An activation key is required.' }"
+            >
+              <input
+                pInputText
+                id="license-key"
+                type="text"
+                formControlName="key"
+                placeholder="LPG-XXXX-XXXX-XXXX-XXXX"
+                [fluid]="true"
+              />
             </lpg-form-field>
             <div class="admin-form-actions">
               <button pButton type="submit" [disabled]="submitting() || form.invalid">
-                @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Activate
+                @if (submitting()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                Activate
               </button>
             </div>
           </form>
@@ -91,10 +106,14 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
             </lpg-detail-item>
             <lpg-detail-item label="Plan">{{ s.planTier ?? '—' }}</lpg-detail-item>
             <lpg-detail-item label="Key">{{ s.keyPrefix ?? '—' }}-****</lpg-detail-item>
-            <lpg-detail-item label="Activated">{{ formatTimestamp(s.activatedAt) }}</lpg-detail-item>
+            <lpg-detail-item label="Activated">{{
+              formatTimestamp(s.activatedAt)
+            }}</lpg-detail-item>
             <lpg-detail-item label="Expires">{{ formatTimestamp(s.expiresAt) }}</lpg-detail-item>
             @if (s.status === 'grace') {
-              <lpg-detail-item label="Grace period ends">{{ formatTimestamp(s.graceEndsAt) }}</lpg-detail-item>
+              <lpg-detail-item label="Grace period ends">{{
+                formatTimestamp(s.graceEndsAt)
+              }}</lpg-detail-item>
             }
           </lpg-detail-list>
         </lpg-section-card>

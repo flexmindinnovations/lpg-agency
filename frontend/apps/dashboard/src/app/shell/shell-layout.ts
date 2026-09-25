@@ -219,7 +219,12 @@ export class ShellLayout {
           route: '/orders',
           condition: can('orders:read'),
         },
-        { label: 'Dispatch', icon: 'pi pi-map', route: '/dispatch', condition: canBrowse('routes:read') },
+        {
+          label: 'Dispatch',
+          icon: 'pi pi-map',
+          route: '/dispatch',
+          condition: canBrowse('routes:read'),
+        },
         {
           label: 'Complaints',
           icon: 'pi pi-exclamation-circle',

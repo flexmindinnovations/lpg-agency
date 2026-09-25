@@ -199,7 +199,6 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       issueDateCtrl.updateValueAndValidity();
       expiryDateCtrl.updateValueAndValidity();
     });
-
   }
 
   ngOnInit() {

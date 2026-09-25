@@ -65,11 +65,11 @@ const VALIDITY_OPTIONS = [
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-      <div class="page-header__text">
-          <h1 class="page-title">License Issuance</h1>
-          <p class="page-subtitle">Issue and manage every tenant's product license.</p>
-        </div>
-    </ng-template>
+          <div class="page-header__text">
+            <h1 class="page-title">License Issuance</h1>
+            <p class="page-subtitle">Issue and manage every tenant's product license.</p>
+          </div>
+        </ng-template>
       </div>
 
       @if (!loading() && licenses().length === 0) {
@@ -77,13 +77,17 @@ const VALIDITY_OPTIONS = [
           <i class="pi pi-key empty-state__icon"></i>
           <p class="empty-state__title">No licenses issued yet</p>
           <p class="empty-state__description">Issue the first license to get started.</p>
-          <button pButton class="mt-4" (click)="openIssueDrawer()"><i class="pi pi-plus"></i><span>Issue License</span></button>
+          <button pButton class="mt-4" (click)="openIssueDrawer()">
+            <i class="pi pi-plus"></i><span>Issue License</span>
+          </button>
         </div>
       } @else {
         <div class="data-toolbar">
           <div class="data-toolbar__filters"></div>
           <div class="data-toolbar__actions">
-            <button pButton (click)="openIssueDrawer()"><i class="pi pi-plus"></i><span>Issue License</span></button>
+            <button pButton (click)="openIssueDrawer()">
+              <i class="pi pi-plus"></i><span>Issue License</span>
+            </button>
           </div>
         </div>
         <section class="grid-section">
@@ -106,58 +110,92 @@ const VALIDITY_OPTIONS = [
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="issueLicenseForm" [formGroup]="issueForm" (ngSubmit)="issue()" novalidate class="dialog-form">
+        <form
+          id="issueLicenseForm"
+          [formGroup]="issueForm"
+          (ngSubmit)="issue()"
+          novalidate
+          class="dialog-form"
+        >
           <div class="dialog-form__fields">
-          <lpg-form-field label="Tenant" for="issue-tenant-id" [control]="issueForm.controls.tenantId" [messages]="{ required: 'Select a tenant to issue a license for.' }">
-            <p-select
-              inputId="issue-tenant-id"
-              formControlName="tenantId"
-              [options]="newOrTrialAgencyOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select a new or trial tenant"
-              appendTo="body"
-              [fluid]="true"
-              (onChange)="onIssueTenantChange($event.value)">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Tenant"
+              for="issue-tenant-id"
+              [control]="issueForm.controls.tenantId"
+              [messages]="{ required: 'Select a tenant to issue a license for.' }"
+            >
+              <p-select
+                inputId="issue-tenant-id"
+                formControlName="tenantId"
+                [options]="newOrTrialAgencyOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select a new or trial tenant"
+                appendTo="body"
+                [fluid]="true"
+                (onChange)="onIssueTenantChange($event.value)"
+              >
+              </p-select>
+            </lpg-form-field>
 
-          @if (selectedIssueTenant(); as tenant) {
-            <div class="tenant-preview">
-              <lpg-detail-item label="Slug">{{ tenant.slug }}</lpg-detail-item>
-              <lpg-detail-item label="Plan">{{ tenant.subscription_plan }}</lpg-detail-item>
-              <lpg-detail-item label="Primary contact">{{ tenant.primary_contact_email }}</lpg-detail-item>
-              <lpg-detail-item label="Country">{{ tenant.country }}</lpg-detail-item>
-            </div>
-          }
+            @if (selectedIssueTenant(); as tenant) {
+              <div class="tenant-preview">
+                <lpg-detail-item label="Slug">{{ tenant.slug }}</lpg-detail-item>
+                <lpg-detail-item label="Plan">{{ tenant.subscription_plan }}</lpg-detail-item>
+                <lpg-detail-item label="Primary contact">{{
+                  tenant.primary_contact_email
+                }}</lpg-detail-item>
+                <lpg-detail-item label="Country">{{ tenant.country }}</lpg-detail-item>
+              </div>
+            }
 
-          <lpg-form-field label="Plan tier" for="issue-plan-tier" [control]="issueForm.controls.planTier">
-            <p-select
-              inputId="issue-plan-tier"
-              formControlName="planTier"
-              [options]="planTierOptions"
-              optionLabel="label"
-              optionValue="value"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
-          <lpg-form-field label="Validity" for="issue-validity-days" [control]="issueForm.controls.validityDays">
-            <p-select
-              inputId="issue-validity-days"
-              formControlName="validityDays"
-              [options]="validityOptions"
-              optionLabel="label"
-              optionValue="value"
-              appendTo="body"
-              [fluid]="true">
-            </p-select>
-          </lpg-form-field>
+            <lpg-form-field
+              label="Plan tier"
+              for="issue-plan-tier"
+              [control]="issueForm.controls.planTier"
+            >
+              <p-select
+                inputId="issue-plan-tier"
+                formControlName="planTier"
+                [options]="planTierOptions"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
+            <lpg-form-field
+              label="Validity"
+              for="issue-validity-days"
+              [control]="issueForm.controls.validityDays"
+            >
+              <p-select
+                inputId="issue-validity-days"
+                formControlName="validityDays"
+                [options]="validityOptions"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [fluid]="true"
+              >
+              </p-select>
+            </lpg-form-field>
           </div>
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="issueDrawerVisible.set(false)">Cancel</button>
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="issueDrawerVisible.set(false)"
+            >
+              Cancel
+            </button>
             <button pButton type="submit" [disabled]="submitting() || issueForm.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Issue license
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Issue license
             </button>
           </div>
         </form>
@@ -186,13 +224,27 @@ const VALIDITY_OPTIONS = [
           }
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="copyIssuedKey(issued.plaintext_key)">
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="copyIssuedKey(issued.plaintext_key)"
+            >
               <i class="pi pi-copy"></i>
               <span>Copy</span>
             </button>
             @if (!activatedLicense()) {
-              <button pButton type="button" severity="success" [disabled]="activating()" (click)="activateIssuedLicense(issued)">
-                @if (activating()) {<i class="pi pi-spin pi-spinner"></i> }Activate license
+              <button
+                pButton
+                type="button"
+                severity="success"
+                [disabled]="activating()"
+                (click)="activateIssuedLicense(issued)"
+              >
+                @if (activating()) {
+                  <i class="pi pi-spin pi-spinner"></i>
+                }
+                Activate license
               </button>
             }
             <button pButton type="button" (click)="dismissIssuedKey()">Done</button>
@@ -213,40 +265,60 @@ const VALIDITY_OPTIONS = [
         @if (selectedLicense(); as license) {
           <div class="detail-view">
             <div class="detail-view__fields">
-            <lpg-detail-list>
-              <lpg-detail-item label="Tenant">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
-              <lpg-detail-item label="Tenant ID">{{ license.tenant_id }}</lpg-detail-item>
-              <lpg-detail-item label="Status">{{ statusLabel(license.status) }}</lpg-detail-item>
-              <lpg-detail-item label="Plan">{{ license.plan_tier }}</lpg-detail-item>
-              <lpg-detail-item label="Key">{{ license.key_prefix }}-****</lpg-detail-item>
-              <lpg-detail-item label="Issued">{{ formatDate(license.issued_at) }}</lpg-detail-item>
-              <lpg-detail-item label="Expires">{{ formatDate(license.expires_at) }}</lpg-detail-item>
-            </lpg-detail-list>
+              <lpg-detail-list>
+                <lpg-detail-item label="Tenant">{{ license.tenant_name ?? '—' }}</lpg-detail-item>
+                <lpg-detail-item label="Tenant ID">{{ license.tenant_id }}</lpg-detail-item>
+                <lpg-detail-item label="Status">{{ statusLabel(license.status) }}</lpg-detail-item>
+                <lpg-detail-item label="Plan">{{ license.plan_tier }}</lpg-detail-item>
+                <lpg-detail-item label="Key">{{ license.key_prefix }}-****</lpg-detail-item>
+                <lpg-detail-item label="Issued">{{
+                  formatDate(license.issued_at)
+                }}</lpg-detail-item>
+                <lpg-detail-item label="Expires">{{
+                  formatDate(license.expires_at)
+                }}</lpg-detail-item>
+              </lpg-detail-list>
 
-            <form [formGroup]="planTierForm" (ngSubmit)="savePlanTier(license.tenant_id)" class="dialog-form dialog-form--inline">
-              <div class="dialog-form__fields">
-              <lpg-form-field label="Change plan tier" for="detail-plan-tier" [control]="planTierForm.controls.planTier">
-                <p-select
-                  inputId="detail-plan-tier"
-                  formControlName="planTier"
-                  [options]="planTierOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  appendTo="body"
-                  [fluid]="true">
-                </p-select>
-              </lpg-form-field>
-              </div>
-              <div class="modal-actions">
-                <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()">
-                  @if (savingPlanTier()) {<i class="pi pi-spin pi-spinner"></i> }Save plan tier
-                </button>
-              </div>
-            </form>
+              <form
+                [formGroup]="planTierForm"
+                (ngSubmit)="savePlanTier(license.tenant_id)"
+                class="dialog-form dialog-form--inline"
+              >
+                <div class="dialog-form__fields">
+                  <lpg-form-field
+                    label="Change plan tier"
+                    for="detail-plan-tier"
+                    [control]="planTierForm.controls.planTier"
+                  >
+                    <p-select
+                      inputId="detail-plan-tier"
+                      formControlName="planTier"
+                      [options]="planTierOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [fluid]="true"
+                    >
+                    </p-select>
+                  </lpg-form-field>
+                </div>
+                <div class="modal-actions">
+                  <button pButton type="submit" severity="secondary" [disabled]="savingPlanTier()">
+                    @if (savingPlanTier()) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    }
+                    Save plan tier
+                  </button>
+                </div>
+              </form>
 
-            <form [formGroup]="deviceCapForm" (ngSubmit)="saveDeviceCap(license.tenant_id)" class="dialog-form dialog-form--inline">
-              <div class="dialog-form__fields">
-              <!-- p-multiselect is deprecated in favor of p-select [multiple]="true", but
+              <form
+                [formGroup]="deviceCapForm"
+                (ngSubmit)="saveDeviceCap(license.tenant_id)"
+                class="dialog-form dialog-form--inline"
+              >
+                <div class="dialog-form__fields">
+                  <!-- p-multiselect is deprecated in favor of p-select [multiple]="true", but
                    Select's #selectedItem template hook only ever exposes a single selected
                    option (findSelectedOptionIndex() returns the first match, even in
                    multiple mode) — there's no supported way to render one chip per selection
@@ -254,34 +326,62 @@ const VALIDITY_OPTIONS = [
                    closed-box display ourselves, fragile against future PrimeNG internals.
                    Left as-is, same as primeng/chart: deprecated with no equivalent-UX
                    replacement available today. -->
-              <lpg-form-field label="Apps" for="detail-app-type" [control]="deviceCapForm.controls.appTypes">
-                <p-multiselect
-                  inputId="detail-app-type"
-                  formControlName="appTypes"
-                  [options]="appTypeOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  display="chip"
-                  placeholder="Select apps"
-                  appendTo="body"
-                  [fluid]="true">
-                </p-multiselect>
-              </lpg-form-field>
-              <lpg-form-field label="Device cap" for="detail-max-devices" [control]="deviceCapForm.controls.maxDevices" hint="Blank = unlimited.">
-                <input pInputText id="detail-max-devices" type="number" min="0" formControlName="maxDevices" [fluid]="true" />
-              </lpg-form-field>
-              </div>
-              <div class="modal-actions">
-                <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()">
-                  @if (savingDeviceCap()) {<i class="pi pi-spin pi-spinner"></i> }Save device cap
-                </button>
-              </div>
-            </form>
+                  <lpg-form-field
+                    label="Apps"
+                    for="detail-app-type"
+                    [control]="deviceCapForm.controls.appTypes"
+                  >
+                    <p-multiselect
+                      inputId="detail-app-type"
+                      formControlName="appTypes"
+                      [options]="appTypeOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      display="chip"
+                      placeholder="Select apps"
+                      appendTo="body"
+                      [fluid]="true"
+                    >
+                    </p-multiselect>
+                  </lpg-form-field>
+                  <lpg-form-field
+                    label="Device cap"
+                    for="detail-max-devices"
+                    [control]="deviceCapForm.controls.maxDevices"
+                    hint="Blank = unlimited."
+                  >
+                    <input
+                      pInputText
+                      id="detail-max-devices"
+                      type="number"
+                      min="0"
+                      formControlName="maxDevices"
+                      [fluid]="true"
+                    />
+                  </lpg-form-field>
+                </div>
+                <div class="modal-actions">
+                  <button pButton type="submit" severity="secondary" [disabled]="savingDeviceCap()">
+                    @if (savingDeviceCap()) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    }
+                    Save device cap
+                  </button>
+                </div>
+              </form>
             </div>
 
             <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
-              <button pButton type="button" severity="danger" [disabled]="license.status === 'revoked'" (click)="revoke(license.tenant_id)">
+              <button pButton type="button" severity="secondary" (click)="closeDetails()">
+                Close
+              </button>
+              <button
+                pButton
+                type="button"
+                severity="danger"
+                [disabled]="license.status === 'revoked'"
+                (click)="revoke(license.tenant_id)"
+              >
                 Revoke license
               </button>
             </div>
@@ -306,7 +406,6 @@ const VALIDITY_OPTIONS = [
       .grid-section {
         margin-block-start: var(--spacing-lg);
       }
-
 
       .issued-key {
         font-family: monospace;

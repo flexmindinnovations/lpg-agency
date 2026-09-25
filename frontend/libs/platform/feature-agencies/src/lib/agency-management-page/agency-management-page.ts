@@ -126,10 +126,16 @@ export function suggestAgencyCode(name: string): string {
               [control]="form.controls.name"
               [messages]="{
                 required: 'Agency name is required.',
-                maxlength: 'Use at most 120 characters.'
+                maxlength: 'Use at most 120 characters.',
               }"
             >
-              <input pInputText id="agency-name" type="text" formControlName="name" [fluid]="true" />
+              <input
+                pInputText
+                id="agency-name"
+                type="text"
+                formControlName="name"
+                [fluid]="true"
+              />
             </lpg-form-field>
             <lpg-form-field
               label="Agency code"
@@ -140,7 +146,7 @@ export function suggestAgencyCode(name: string): string {
                 minlength: 'Use at least 3 characters.',
                 maxlength: 'Use at most 40 characters.',
                 pattern:
-                  'Lowercase letters, digits and single hyphens only, not starting or ending with a hyphen.'
+                  'Lowercase letters, digits and single hyphens only, not starting or ending with a hyphen.',
               }"
             >
               <input
@@ -160,7 +166,7 @@ export function suggestAgencyCode(name: string): string {
               [control]="form.controls.primaryContactEmail"
               [messages]="{
                 required: 'Contact email is required.',
-                email: 'Enter a valid email address.'
+                email: 'Enter a valid email address.',
               }"
             >
               <input
@@ -177,7 +183,7 @@ export function suggestAgencyCode(name: string): string {
               [control]="form.controls.adminEmail"
               [messages]="{
                 required: 'Admin email is required.',
-                email: 'Enter a valid email address.'
+                email: 'Enter a valid email address.',
               }"
             >
               <input
@@ -191,11 +197,19 @@ export function suggestAgencyCode(name: string): string {
           </div>
 
           <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">
+            <button
+              pButton
+              type="button"
+              severity="secondary"
+              (click)="createDrawerVisible.set(false)"
+            >
               Cancel
             </button>
             <button pButton type="submit" [disabled]="submitting() || form.invalid">
-              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Create agency
+              @if (submitting()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              }
+              Create agency
             </button>
           </div>
         </form>
@@ -217,7 +231,9 @@ export function suggestAgencyCode(name: string): string {
             <div class="detail-view__fields">
               <div class="detail-item">
                 <span class="detail-label">Agency</span>
-                <span class="detail-value">{{ result.tenant.name }} ({{ result.tenant.slug }})</span>
+                <span class="detail-value"
+                  >{{ result.tenant.name }} ({{ result.tenant.slug }})</span
+                >
               </div>
               <div class="detail-item">
                 <span class="detail-label">First admin</span>
@@ -246,7 +262,9 @@ export function suggestAgencyCode(name: string): string {
             </div>
 
             <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="dismissCreated()">Done</button>
+              <button pButton type="button" severity="secondary" (click)="dismissCreated()">
+                Done
+              </button>
               <button pButton type="button" (click)="copySetupLink()">
                 <i class="pi pi-copy"></i><span>Copy link</span>
               </button>
@@ -267,51 +285,80 @@ export function suggestAgencyCode(name: string): string {
         @if (selectedAgency(); as agency) {
           <div class="detail-view">
             <div class="detail-view__fields">
-            <div class="detail-item">
-              <span class="detail-label">Name</span>
-              <span class="detail-value">{{ agency.name }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Slug</span>
-              <span class="detail-value">{{ agency.slug }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Status</span>
-              <span class="detail-value">{{ statusLabel(agency.status) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Plan</span>
-              <span class="detail-value">{{ agency.subscription_plan }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Primary contact</span>
-              <span class="detail-value">{{ agency.primary_contact_email }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Country</span>
-              <span class="detail-value">{{ agency.country }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Tenant ID</span>
-              <span class="detail-value">{{ agency.id }}</span>
-            </div>
+              <div class="detail-item">
+                <span class="detail-label">Name</span>
+                <span class="detail-value">{{ agency.name }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Slug</span>
+                <span class="detail-value">{{ agency.slug }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Status</span>
+                <span class="detail-value">{{ statusLabel(agency.status) }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Plan</span>
+                <span class="detail-value">{{ agency.subscription_plan }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Primary contact</span>
+                <span class="detail-value">{{ agency.primary_contact_email }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Country</span>
+                <span class="detail-value">{{ agency.country }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Tenant ID</span>
+                <span class="detail-value">{{ agency.id }}</span>
+              </div>
             </div>
 
             <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="closeDetails()">Close panel</button>
+              <button pButton type="button" severity="secondary" (click)="closeDetails()">
+                Close panel
+              </button>
               @if (agency.status === 'active') {
-                <button pButton type="button" severity="warn" [disabled]="acting()" (click)="suspend(agency.id)">
-                  @if (acting()) {<i class="pi pi-spin pi-spinner"></i> }Suspend
+                <button
+                  pButton
+                  type="button"
+                  severity="warn"
+                  [disabled]="acting()"
+                  (click)="suspend(agency.id)"
+                >
+                  @if (acting()) {
+                    <i class="pi pi-spin pi-spinner"></i>
+                  }
+                  Suspend
                 </button>
               }
               @if (agency.status === 'suspended') {
-                <button pButton type="button" severity="success" [disabled]="acting()" (click)="reactivate(agency.id)">
-                  @if (acting()) {<i class="pi pi-spin pi-spinner"></i> }Reactivate
+                <button
+                  pButton
+                  type="button"
+                  severity="success"
+                  [disabled]="acting()"
+                  (click)="reactivate(agency.id)"
+                >
+                  @if (acting()) {
+                    <i class="pi pi-spin pi-spinner"></i>
+                  }
+                  Reactivate
                 </button>
               }
               @if (agency.status !== 'closed') {
-                <button pButton type="button" severity="danger" [disabled]="acting()" (click)="closeAgency(agency.id)">
-                  @if (acting()) {<i class="pi pi-spin pi-spinner"></i> }Close agency
+                <button
+                  pButton
+                  type="button"
+                  severity="danger"
+                  [disabled]="acting()"
+                  (click)="closeAgency(agency.id)"
+                >
+                  @if (acting()) {
+                    <i class="pi pi-spin pi-spinner"></i>
+                  }
+                  Close agency
                 </button>
               }
             </div>
@@ -336,7 +383,6 @@ export function suggestAgencyCode(name: string): string {
       .grid-section {
         margin-block-start: var(--spacing-lg);
       }
-
 
       .detail-view {
         display: flex;

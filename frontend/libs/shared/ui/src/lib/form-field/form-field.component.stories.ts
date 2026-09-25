@@ -22,7 +22,12 @@ import { FormFieldComponent } from './form-field.component';
         <input id="sb-fn" pInputText [formControl]="name" />
       </lpg-form-field>
 
-      <lpg-form-field label="Email" for="sb-email" [control]="email" hint="We only use this for receipts.">
+      <lpg-form-field
+        label="Email"
+        for="sb-email"
+        [control]="email"
+        hint="We only use this for receipts."
+      >
         <input id="sb-email" pInputText [formControl]="email" />
       </lpg-form-field>
 
@@ -36,7 +41,12 @@ import { FormFieldComponent } from './form-field.component';
         />
       </lpg-form-field>
 
-      <lpg-form-field label="Alternate mobile" for="sb-alt-mobile" [control]="altMobile" [optional]="true">
+      <lpg-form-field
+        label="Alternate mobile"
+        for="sb-alt-mobile"
+        [control]="altMobile"
+        [optional]="true"
+      >
         <input id="sb-alt-mobile" pInputText [formControl]="altMobile" />
       </lpg-form-field>
     </div>
@@ -63,7 +73,9 @@ const meta: Meta<FormFieldStoryHost> = {
   component: FormFieldStoryHost,
   decorators: [
     applicationConfig({ providers: [provideAnimationsAsync()] }),
-    moduleMetadata({ imports: [FormFieldComponent, ReactiveFormsModule, InputTextModule, SelectModule] }),
+    moduleMetadata({
+      imports: [FormFieldComponent, ReactiveFormsModule, InputTextModule, SelectModule],
+    }),
   ],
 };
 export default meta;

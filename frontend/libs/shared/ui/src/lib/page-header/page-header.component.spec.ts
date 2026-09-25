@@ -14,7 +14,9 @@ describe('PageHeaderComponent', () => {
   it('renders the title as an h1 and an optional subtitle', () => {
     const el = render({ title: 'Agency Overview', subtitle: "Today's operational data" });
     expect(el.querySelector('h1.page-header__title')?.textContent).toContain('Agency Overview');
-    expect(el.querySelector('.page-header__subtitle')?.textContent).toContain("Today's operational data");
+    expect(el.querySelector('.page-header__subtitle')?.textContent).toContain(
+      "Today's operational data",
+    );
   });
 
   it('omits the subtitle and the back link when not provided', () => {

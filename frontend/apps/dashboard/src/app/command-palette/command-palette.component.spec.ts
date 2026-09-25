@@ -7,7 +7,9 @@ import { CommandPaletteService } from './command-palette.service';
 
 describe('fuzzyScore', () => {
   it('scores a contiguous substring above a scattered subsequence', () => {
-    expect(fuzzyScore('Dispatch', 'disp')).toBeGreaterThan(fuzzyScore('Driver Performance', 'disp'));
+    expect(fuzzyScore('Dispatch', 'disp')).toBeGreaterThan(
+      fuzzyScore('Driver Performance', 'disp'),
+    );
   });
 
   it('is 0 when a query character is missing', () => {
@@ -106,7 +108,9 @@ describe('CommandPaletteComponent', () => {
 
   it('closes on Escape', () => {
     const { fixture, svc } = setup();
-    const panel = (fixture.nativeElement as HTMLElement).querySelector('.cmdk__panel') as HTMLElement;
+    const panel = (fixture.nativeElement as HTMLElement).querySelector(
+      '.cmdk__panel',
+    ) as HTMLElement;
     panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(svc.isOpen()).toBe(false);
   });

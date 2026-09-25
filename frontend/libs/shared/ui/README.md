@@ -16,33 +16,32 @@ and `/design-system` in the running app for a live showcase.
 
 ## Layout & page scaffolding
 
-| Component | Selector | Key inputs | Notes |
-|---|---|---|---|
-| `PageHeaderComponent` | `lpg-page-header` | `title` (req), `subtitle`, `backLink`, `backLabel` | Drop into the shell title portal. `[actions]` content slot for right-aligned buttons. |
-| `SectionCardComponent` | `lpg-section-card` | `heading`, `hasHeaderActions` | Solid card wrapper for a dashboard panel. `[headerActions]` + default slot. |
-| `StatCardComponent` | `lpg-stat-card` | `label` (req), `value` (req), `icon`, `tone`, `delta`, `deltaDirection`, `caption`, `trend: number[]`, `loading` | KPI tile with an inline SVG sparkline. `tone: 'primary' \| 'info' \| 'success' \| 'warning' \| 'danger' \| 'neutral'`. 1px hover lift only. |
+| Component              | Selector           | Key inputs                                                                                                       | Notes                                                                                                                                       |
+| ---------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeaderComponent`  | `lpg-page-header`  | `title` (req), `subtitle`, `backLink`, `backLabel`                                                               | Drop into the shell title portal. `[actions]` content slot for right-aligned buttons.                                                       |
+| `SectionCardComponent` | `lpg-section-card` | `heading`, `hasHeaderActions`                                                                                    | Solid card wrapper for a dashboard panel. `[headerActions]` + default slot.                                                                 |
+| `StatCardComponent`    | `lpg-stat-card`    | `label` (req), `value` (req), `icon`, `tone`, `delta`, `deltaDirection`, `caption`, `trend: number[]`, `loading` | KPI tile with an inline SVG sparkline. `tone: 'primary' \| 'info' \| 'success' \| 'warning' \| 'danger' \| 'neutral'`. 1px hover lift only. |
 
 ## State & feedback
 
-| Component | Selector | Key inputs | Notes |
-|---|---|---|---|
-| `SkeletonComponent` | `lpg-skeleton` | `variant: 'block'\|'text'\|'circle'\|'table'`, `width`, `height`, `lines`, `rows`, `columns` | Reduced-motion-safe shimmer. `variant="table"` is wired into `lpg-data-grid`'s own loading state. |
-| `EmptyStateComponent` | `lpg-empty-state` | `title` (req), `description`, `tone: 'neutral'\|'error'`, `icon` | `[actions]` slot. Use `tone="error"` for load failures. |
-| `LiveIndicatorComponent` | `lpg-live-indicator` | `active`, `label`, `ariaLabel` | Pulsing dot; falls back to a static dot under `prefers-reduced-motion`. |
-| `ActivityListComponent` | `lpg-activity-list` | `items: ActivityItem[]` (req) | Read-only "recent activity" list. `ActivityItem = { time, icon, title, description?, status?, statusTone? }`. |
+| Component                | Selector             | Key inputs                                                                                   | Notes                                                                                                         |
+| ------------------------ | -------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `SkeletonComponent`      | `lpg-skeleton`       | `variant: 'block'\|'text'\|'circle'\|'table'`, `width`, `height`, `lines`, `rows`, `columns` | Reduced-motion-safe shimmer. `variant="table"` is wired into `lpg-data-grid`'s own loading state.             |
+| `EmptyStateComponent`    | `lpg-empty-state`    | `title` (req), `description`, `tone: 'neutral'\|'error'`, `icon`                             | `[actions]` slot. Use `tone="error"` for load failures.                                                       |
+| `LiveIndicatorComponent` | `lpg-live-indicator` | `active`, `label`, `ariaLabel`                                                               | Pulsing dot; falls back to a static dot under `prefers-reduced-motion`.                                       |
+| `ActivityListComponent`  | `lpg-activity-list`  | `items: ActivityItem[]` (req)                                                                | Read-only "recent activity" list. `ActivityItem = { time, icon, title, description?, status?, statusTone? }`. |
 
 ## Forms
 
-| Component | Selector | Key inputs | Notes |
-|---|---|---|---|
-| `FormFieldComponent` | `lpg-form-field` | `label` (req), `for`, `hint`, `control: AbstractControl`, `messages: Record<string,string>`, `required` | The single wrapper for every labelled control — a 13px medium label above the projected control, then hint / validator-keyed error text below. Pass the `FormControl` so it reacts to `touched`/`dirty`/status via the control's `events` stream and infers the required asterisk. Omit `[control]` for a filter row (just label + control). |
-| `DocumentUploadComponent` | `lpg-document-upload` | `accept`, `maxBytes`, `hint`, `inputId`, `uploader` (req), `recognizer?` | Dropzone + drag/drop + type/size guard + image/PDF preview + upload → optional server-side recognition status line. Endpoint-agnostic: pass an `uploader: (file) => Observable<{ blobRef }>` and (optionally) a `recognizer: (blobRef) => Observable<T>`; react via `(uploaded)` / `(recognized)` / `(cleared)` / `(errored)`. Mapping a recognition result onto a form stays with the parent. |
+| Component                 | Selector              | Key inputs                                                                                              | Notes                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FormFieldComponent`      | `lpg-form-field`      | `label` (req), `for`, `hint`, `control: AbstractControl`, `messages: Record<string,string>`, `required` | The single wrapper for every labelled control — a 13px medium label above the projected control, then hint / validator-keyed error text below. Pass the `FormControl` so it reacts to `touched`/`dirty`/status via the control's `events` stream and infers the required asterisk. Omit `[control]` for a filter row (just label + control).                                                   |
+| `DocumentUploadComponent` | `lpg-document-upload` | `accept`, `maxBytes`, `hint`, `inputId`, `uploader` (req), `recognizer?`                                | Dropzone + drag/drop + type/size guard + image/PDF preview + upload → optional server-side recognition status line. Endpoint-agnostic: pass an `uploader: (file) => Observable<{ blobRef }>` and (optionally) a `recognizer: (blobRef) => Observable<T>`; react via `(uploaded)` / `(recognized)` / `(cleared)` / `(errored)`. Mapping a recognition result onto a form stays with the parent. |
 
 Reactive-forms field pattern:
 
 ```html
-<lpg-form-field label="Email" for="email" [control]="form.controls.email"
-  [messages]="{ email: 'Enter a valid email address.' }">
+<lpg-form-field label="Email" for="email" [control]="form.controls.email" [messages]="{ email: 'Enter a valid email address.' }">
   <input pInputText id="email" formControlName="email" [fluid]="true" />
 </lpg-form-field>
 ```
@@ -54,14 +53,7 @@ now the label sits above the control — use them for format hints (`e.g. 987654
 Document upload:
 
 ```html
-<lpg-document-upload
-  accept="image/*"
-  hint="Aadhaar or PAN card · JPG or PNG · up to 10 MB"
-  [uploader]="uploadFn"
-  [recognizer]="recognizeFn"
-  (uploaded)="onUploaded($event)"
-  (recognized)="applyExtracted($event)"
-/>
+<lpg-document-upload accept="image/*" hint="Aadhaar or PAN card · JPG or PNG · up to 10 MB" [uploader]="uploadFn" [recognizer]="recognizeFn" (uploaded)="onUploaded($event)" (recognized)="applyExtracted($event)" />
 ```
 
 ## Data grid

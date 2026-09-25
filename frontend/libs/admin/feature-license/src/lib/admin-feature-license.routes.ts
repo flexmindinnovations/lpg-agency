@@ -28,9 +28,7 @@ export const adminFeatureLicenseIssuanceRoutes: Route[] = [
   {
     path: '',
     loadComponent: () =>
-      import('./license-issuance-page/license-issuance-page').then(
-        (m) => m.LicenseIssuancePage,
-      ),
+      import('./license-issuance-page/license-issuance-page').then((m) => m.LicenseIssuancePage),
     title: 'License Issuance',
   },
 ];

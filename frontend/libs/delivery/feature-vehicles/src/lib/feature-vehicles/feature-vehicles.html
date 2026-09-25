@@ -2,9 +2,9 @@
   <div class="page-header">
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
-      <h1 class="page-title">Fleet Vehicles</h1>
-      <p class="page-subtitle">Manage the vehicle fleet, registration, and maintenance status.</p>
-    </div>
+        <h1 class="page-title">Fleet Vehicles</h1>
+        <p class="page-subtitle">Manage the vehicle fleet, registration, and maintenance status.</p>
+      </div>
     </ng-template>
   </div>
 
@@ -71,81 +71,145 @@
     [style]="{ width: '100%', maxWidth: '36rem' }"
     (onHide)="registerTrigger()?.nativeElement?.focus()"
   >
-    <form id="registerVehicleForm" [formGroup]="registerForm" (ngSubmit)="onSubmitRegister()" class="dialog-form">
+    <form
+      id="registerVehicleForm"
+      [formGroup]="registerForm"
+      (ngSubmit)="onSubmitRegister()"
+      class="dialog-form"
+    >
       <div class="dialog-form__fields">
-      <lpg-form-field label="Branch" for="branch_id" [control]="registerForm.controls.branch_id" [messages]="fieldMessages.branch_id">
-        <p-select
-          inputId="branch_id"
-          formControlName="branch_id"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
+        <lpg-form-field
+          label="Branch"
+          for="branch_id"
+          [control]="registerForm.controls.branch_id"
+          [messages]="fieldMessages.branch_id"
+        >
+          <p-select
+            inputId="branch_id"
+            formControlName="branch_id"
+            [options]="branches()"
+            optionLabel="name"
+            optionValue="id"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
 
-      <lpg-form-field
-        label="Registration certificate (RC) scan"
-        [control]="registerForm.controls.rc_document_ref"
-        [messages]="fieldMessages.rc_document_ref"
-        hint="Upload a photo or PDF — the registration number and validity are read from it and stay editable."
-      >
-        <lpg-document-upload
-          accept="image/*,application/pdf"
-          inputId="vehicle-rc-upload"
-          hint="RC · image or PDF · up to 10 MB"
-          [uploader]="rcUploader"
-          [recognizer]="rcRecognizer"
-          (uploaded)="onRcUploaded($event)"
-          (recognized)="onRcRecognized($event)"
-          (cleared)="onRcCleared()"
-        />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Registration certificate (RC) scan"
+          [control]="registerForm.controls.rc_document_ref"
+          [messages]="fieldMessages.rc_document_ref"
+          hint="Upload a photo or PDF — the registration number and validity are read from it and stay editable."
+        >
+          <lpg-document-upload
+            accept="image/*,application/pdf"
+            inputId="vehicle-rc-upload"
+            hint="RC · image or PDF · up to 10 MB"
+            [uploader]="rcUploader"
+            [recognizer]="rcRecognizer"
+            (uploaded)="onRcUploaded($event)"
+            (recognized)="onRcRecognized($event)"
+            (cleared)="onRcCleared()"
+          />
+        </lpg-form-field>
 
-      <lpg-form-field label="Registration number" for="registration_number" [control]="registerForm.controls.registration_number" [messages]="fieldMessages.registration_number">
-        <input pInputText id="registration_number" formControlName="registration_number" placeholder="e.g. MH12AB1234" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Registration number"
+          for="registration_number"
+          [control]="registerForm.controls.registration_number"
+          [messages]="fieldMessages.registration_number"
+        >
+          <input
+            pInputText
+            id="registration_number"
+            formControlName="registration_number"
+            placeholder="e.g. MH12AB1234"
+            [fluid]="true"
+          />
+        </lpg-form-field>
 
-      <lpg-form-field label="RC valid until" for="rc_expiry_date" [control]="registerForm.controls.rc_expiry_date" [messages]="fieldMessages.rc_expiry_date">
-        <p-datepicker
-          inputId="rc_expiry_date"
-          formControlName="rc_expiry_date"
-          [showIcon]="true"
-          iconDisplay="input"
-          dateFormat="dd-mm-yy"
-          appendTo="body"
-          [fluid]="true"
-        ></p-datepicker>
-      </lpg-form-field>
+        <lpg-form-field
+          label="RC valid until"
+          for="rc_expiry_date"
+          [control]="registerForm.controls.rc_expiry_date"
+          [messages]="fieldMessages.rc_expiry_date"
+        >
+          <p-datepicker
+            inputId="rc_expiry_date"
+            formControlName="rc_expiry_date"
+            [showIcon]="true"
+            iconDisplay="input"
+            dateFormat="dd-mm-yy"
+            appendTo="body"
+            [fluid]="true"
+          ></p-datepicker>
+        </lpg-form-field>
 
-      <lpg-form-field label="Make" for="make" [control]="registerForm.controls.make" [messages]="fieldMessages.make">
-        <input pInputText id="make" formControlName="make" placeholder="e.g. Tata" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Make"
+          for="make"
+          [control]="registerForm.controls.make"
+          [messages]="fieldMessages.make"
+        >
+          <input
+            pInputText
+            id="make"
+            formControlName="make"
+            placeholder="e.g. Tata"
+            [fluid]="true"
+          />
+        </lpg-form-field>
 
-      <lpg-form-field label="Model" for="model" [control]="registerForm.controls.model" [messages]="fieldMessages.model">
-        <input pInputText id="model" formControlName="model" placeholder="e.g. Ace" [fluid]="true" />
-      </lpg-form-field>
+        <lpg-form-field
+          label="Model"
+          for="model"
+          [control]="registerForm.controls.model"
+          [messages]="fieldMessages.model"
+        >
+          <input
+            pInputText
+            id="model"
+            formControlName="model"
+            placeholder="e.g. Ace"
+            [fluid]="true"
+          />
+        </lpg-form-field>
 
-      <lpg-form-field label="Ownership type" for="ownership_type" [control]="registerForm.controls.ownership_type" [messages]="fieldMessages.ownership_type">
-        <p-select
-          inputId="ownership_type"
-          formControlName="ownership_type"
-          [options]="[
+        <lpg-form-field
+          label="Ownership type"
+          for="ownership_type"
+          [control]="registerForm.controls.ownership_type"
+          [messages]="fieldMessages.ownership_type"
+        >
+          <p-select
+            inputId="ownership_type"
+            formControlName="ownership_type"
+            [options]="[
             { label: 'Owned', value: 'owned' },
             { label: 'Third Party', value: 'third_party' },
             { label: 'Rental', value: 'rental' },
             { label: 'Gig', value: 'gig' }
           ]"
-          optionLabel="label"
-          optionValue="value"
-          [fluid]="true"
-        ></p-select>
-      </lpg-form-field>
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
 
-      <lpg-form-field label="Capacity (cylinder units)" for="capacity_units" [control]="registerForm.controls.capacity_units" [messages]="fieldMessages.capacity_units">
-        <input pInputText type="number" id="capacity_units" formControlName="capacity_units" min="1" [fluid]="true" />
-      </lpg-form-field>
-
+        <lpg-form-field
+          label="Capacity (cylinder units)"
+          for="capacity_units"
+          [control]="registerForm.controls.capacity_units"
+          [messages]="fieldMessages.capacity_units"
+        >
+          <input
+            pInputText
+            type="number"
+            id="capacity_units"
+            formControlName="capacity_units"
+            min="1"
+            [fluid]="true"
+          />
+        </lpg-form-field>
       </div>
 
       <div class="modal-actions">
@@ -169,101 +233,135 @@
     styleClass="w-full"
     [style]="{ width: '100%', maxWidth: '32rem' }"
   >
-    @if (selectedVehicle(); as vehicle) {
-      @if (!editMode()) {
-        <div class="detail-view">
-          <div class="detail-view__fields">
-          <div class="detail-item">
-            <span class="detail-label">Registration Number</span>
-            <span class="detail-value">{{ vehicle.registration_number }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Make</span>
-            <span class="detail-value">{{ vehicle.make }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Model</span>
-            <span class="detail-value">{{ vehicle.model }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Ownership</span>
-            <span class="detail-value">{{ toSentenceCase(vehicle.ownership_type) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Capacity (Cylinders)</span>
-            <span class="detail-value">{{ vehicle.capacity_units }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Status</span>
-            <p-tag [value]="toSentenceCase(vehicle.status)" [severity]="statusSeverity(vehicle.status)" />
-          </div>
-
-          <lpg-compliance-documents-panel
-            [documents]="vehicleDocuments()"
-            [loading]="vehicleDocumentsLoading()"
-            [docTypeOptions]="vehicleDocTypeOptions"
-            managePermission="vehicles:manage"
-            [uploader]="rcUploader"
-            [addDocument]="addVehicleDocument(vehicle)"
-            [replaceDocument]="replaceComplianceDocument"
-            [verifyDocument]="verifyComplianceDocument"
-            (changed)="onVehicleDocumentsChanged()"
-          />
-          </div>
-
-          <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
-            <button *lpgHasPermission="'vehicles:manage'" pButton type="button" (click)="startEdit()">
-              <i class="pi pi-pencil"></i>
-              <span>Edit</span>
-            </button>
-          </div>
+    @if (selectedVehicle(); as vehicle) { @if (!editMode()) {
+    <div class="detail-view">
+      <div class="detail-view__fields">
+        <div class="detail-item">
+          <span class="detail-label">Registration Number</span>
+          <span class="detail-value">{{ vehicle.registration_number }}</span>
         </div>
-      } @else {
-        <form id="editVehicleForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
-          <div class="dialog-form__fields">
-          <lpg-form-field label="Make" for="edit_vehicle_make" [control]="editForm.controls.make" [messages]="fieldMessages.make">
-            <input pInputText id="edit_vehicle_make" formControlName="make" [fluid]="true" />
-          </lpg-form-field>
+        <div class="detail-item">
+          <span class="detail-label">Make</span>
+          <span class="detail-value">{{ vehicle.make }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Model</span>
+          <span class="detail-value">{{ vehicle.model }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Ownership</span>
+          <span class="detail-value">{{ toSentenceCase(vehicle.ownership_type) }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Capacity (Cylinders)</span>
+          <span class="detail-value">{{ vehicle.capacity_units }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Status</span>
+          <p-tag
+            [value]="toSentenceCase(vehicle.status)"
+            [severity]="statusSeverity(vehicle.status)"
+          />
+        </div>
 
-          <lpg-form-field label="Model" for="edit_vehicle_model" [control]="editForm.controls.model" [messages]="fieldMessages.model">
-            <input pInputText id="edit_vehicle_model" formControlName="model" [fluid]="true" />
-          </lpg-form-field>
+        <lpg-compliance-documents-panel
+          [documents]="vehicleDocuments()"
+          [loading]="vehicleDocumentsLoading()"
+          [docTypeOptions]="vehicleDocTypeOptions"
+          managePermission="vehicles:manage"
+          [uploader]="rcUploader"
+          [addDocument]="addVehicleDocument(vehicle)"
+          [replaceDocument]="replaceComplianceDocument"
+          [verifyDocument]="verifyComplianceDocument"
+          (changed)="onVehicleDocumentsChanged()"
+        />
+      </div>
 
-          <lpg-form-field label="Ownership type" for="edit_vehicle_ownership_type" [control]="editForm.controls.ownership_type" [messages]="fieldMessages.ownership_type">
-            <p-select
-              inputId="edit_vehicle_ownership_type"
-              formControlName="ownership_type"
-              [options]="ownershipOptions"
-              optionLabel="label"
-              optionValue="value"
-              [fluid]="true"
-            ></p-select>
-          </lpg-form-field>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+        <button *lpgHasPermission="'vehicles:manage'" pButton type="button" (click)="startEdit()">
+          <i class="pi pi-pencil"></i>
+          <span>Edit</span>
+        </button>
+      </div>
+    </div>
+    } @else {
+    <form id="editVehicleForm" [formGroup]="editForm" (ngSubmit)="saveEdit()" class="dialog-form">
+      <div class="dialog-form__fields">
+        <lpg-form-field
+          label="Make"
+          for="edit_vehicle_make"
+          [control]="editForm.controls.make"
+          [messages]="fieldMessages.make"
+        >
+          <input pInputText id="edit_vehicle_make" formControlName="make" [fluid]="true" />
+        </lpg-form-field>
 
-          <lpg-form-field label="Capacity (cylinder units)" for="edit_vehicle_capacity_units" [control]="editForm.controls.capacity_units" [messages]="fieldMessages.capacity_units">
-            <input pInputText type="number" id="edit_vehicle_capacity_units" formControlName="capacity_units" min="1" [fluid]="true" />
-          </lpg-form-field>
+        <lpg-form-field
+          label="Model"
+          for="edit_vehicle_model"
+          [control]="editForm.controls.model"
+          [messages]="fieldMessages.model"
+        >
+          <input pInputText id="edit_vehicle_model" formControlName="model" [fluid]="true" />
+        </lpg-form-field>
 
-          <lpg-form-field label="Status" for="edit_vehicle_status" [control]="editForm.controls.status" [messages]="fieldMessages.status">
-            <p-select
-              inputId="edit_vehicle_status"
-              formControlName="status"
-              [options]="statusOptions"
-              optionLabel="label"
-              optionValue="value"
-              [fluid]="true"
-            ></p-select>
-          </lpg-form-field>
+        <lpg-form-field
+          label="Ownership type"
+          for="edit_vehicle_ownership_type"
+          [control]="editForm.controls.ownership_type"
+          [messages]="fieldMessages.ownership_type"
+        >
+          <p-select
+            inputId="edit_vehicle_ownership_type"
+            formControlName="ownership_type"
+            [options]="ownershipOptions"
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
 
-          </div>
+        <lpg-form-field
+          label="Capacity (cylinder units)"
+          for="edit_vehicle_capacity_units"
+          [control]="editForm.controls.capacity_units"
+          [messages]="fieldMessages.capacity_units"
+        >
+          <input
+            pInputText
+            type="number"
+            id="edit_vehicle_capacity_units"
+            formControlName="capacity_units"
+            min="1"
+            [fluid]="true"
+          />
+        </lpg-form-field>
 
-          <div class="modal-actions">
-            <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-            <button pButton type="submit" [disabled]="editForm.invalid || saving()">Save Changes</button>
-          </div>
-        </form>
-      }
-    }
+        <lpg-form-field
+          label="Status"
+          for="edit_vehicle_status"
+          [control]="editForm.controls.status"
+          [messages]="fieldMessages.status"
+        >
+          <p-select
+            inputId="edit_vehicle_status"
+            formControlName="status"
+            [options]="statusOptions"
+            optionLabel="label"
+            optionValue="value"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
+      </div>
+
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
+        <button pButton type="submit" [disabled]="editForm.invalid || saving()">
+          Save Changes
+        </button>
+      </div>
+    </form>
+    } }
   </p-drawer>
 </div>

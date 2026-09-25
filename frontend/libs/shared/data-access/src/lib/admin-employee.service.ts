@@ -52,7 +52,10 @@ export class AdminEmployeeService {
     }).pipe(map((response) => response.body));
   }
 
-  changeEmployeeStatus(employeeId: string, data: ChangeEmployeeStatusRequest): Observable<EmployeeResponse> {
+  changeEmployeeStatus(
+    employeeId: string,
+    data: ChangeEmployeeStatusRequest,
+  ): Observable<EmployeeResponse> {
     return changeEmployeeStatusApiV1EmployeesEmployeeIdStatusPatch(this.http, this.config.rootUrl, {
       employee_id: employeeId,
       body: data,

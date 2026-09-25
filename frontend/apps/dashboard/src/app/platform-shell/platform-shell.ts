@@ -61,13 +61,33 @@ export class PlatformShell {
     const can = (code: string) => permissions?.has(code) ?? false;
 
     const items = [
-      { label: 'Agencies', icon: 'pi pi-building', route: '/platform/agencies', condition: can('tenant:manage_platform') },
-      { label: 'Licenses', icon: 'pi pi-key', route: '/platform/licenses', condition: can('license:manage_platform') },
-      { label: 'Feature Flags', icon: 'pi pi-flag', route: '/platform/feature-flags', condition: can('feature_flags:manage_platform') },
+      {
+        label: 'Agencies',
+        icon: 'pi pi-building',
+        route: '/platform/agencies',
+        condition: can('tenant:manage_platform'),
+      },
+      {
+        label: 'Licenses',
+        icon: 'pi pi-key',
+        route: '/platform/licenses',
+        condition: can('license:manage_platform'),
+      },
+      {
+        label: 'Feature Flags',
+        icon: 'pi pi-flag',
+        route: '/platform/feature-flags',
+        condition: can('feature_flags:manage_platform'),
+      },
     ].filter((item) => item.condition);
 
     return items.length > 0
-      ? [{ label: 'Platform Console', items: items.map(({ condition: _condition, ...rest }) => rest) }]
+      ? [
+          {
+            label: 'Platform Console',
+            items: items.map(({ condition: _condition, ...rest }) => rest),
+          },
+        ]
       : [];
   });
 }

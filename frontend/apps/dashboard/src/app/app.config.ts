@@ -19,7 +19,6 @@ import { PERMISSION_CHECKER, API_BASE_URL } from '@lpg/shared/util';
 import { inject } from '@angular/core';
 import { AuthService } from '@lpg/shared/data-access';
 
-
 export const appConfig: ApplicationConfig = {
   providers: [
     {

@@ -1,22 +1,22 @@
 export { errorMessageFor } from '@lpg/shared/data-access';
 
-export const STATUS_SEVERITY: Record<
-  string,
-  'success' | 'info' | 'warn' | 'danger' | 'secondary'
-> = {
-  draft: 'secondary',
-  booked: 'info',
-  confirmed: 'info',
-  assigned: 'warn',
-  ready_for_dispatch: 'warn',
-  out_for_delivery: 'warn',
-  delivered: 'success',
-  failed_delivery: 'danger',
-  cancelled: 'danger',
-  closed: 'success',
-};
+export const STATUS_SEVERITY: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> =
+  {
+    draft: 'secondary',
+    booked: 'info',
+    confirmed: 'info',
+    assigned: 'warn',
+    ready_for_dispatch: 'warn',
+    out_for_delivery: 'warn',
+    delivered: 'success',
+    failed_delivery: 'danger',
+    cancelled: 'danger',
+    closed: 'success',
+  };
 
-export function statusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+export function statusSeverity(
+  status: string,
+): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
   return STATUS_SEVERITY[status] ?? 'secondary';
 }
 

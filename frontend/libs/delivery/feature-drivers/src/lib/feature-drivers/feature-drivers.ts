@@ -10,7 +10,12 @@ import {
   viewChild,
   DestroyRef,
 } from '@angular/core';
-import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormsModule,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { forkJoin, map, type Observable } from 'rxjs';
 import { KeyboardShortcutsService } from '@lpg/shared/util';
 import {
@@ -67,7 +72,8 @@ function formatDateForApi(value: unknown): string | undefined {
 @Component({
   selector: 'lpg-feature-drivers',
   standalone: true,
-  imports: [HeaderTitlePortalDirective,
+  imports: [
+    HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
     ButtonDirective,
@@ -302,7 +308,6 @@ export class FeatureDrivers implements OnInit {
       error: () => this.loadDrivers(),
     });
 
-
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
       description: 'Focus driver search',
@@ -311,7 +316,7 @@ export class FeatureDrivers implements OnInit {
         if (searchInput) {
           searchInput.focus();
         }
-      }
+      },
     });
 
     this.destroyRef.onDestroy(() => {
@@ -329,9 +334,9 @@ export class FeatureDrivers implements OnInit {
   protected loadEmployees(branchId?: string): void {
     this.employeeService.listEmployees({ branch_id: branchId }).subscribe({
       next: (page) => {
-        const mapped = page.items.map(e => ({
+        const mapped = page.items.map((e) => ({
           ...e,
-          _displayName: `${e.first_name} ${e.last_name} (${e.employee_code})`
+          _displayName: `${e.first_name} ${e.last_name} (${e.employee_code})`,
         }));
         this.employees.set(mapped);
       },
@@ -361,9 +366,16 @@ export class FeatureDrivers implements OnInit {
       next: (res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const map = new Map<string, { expiring: boolean; expired: boolean; hasRequired: boolean }>();
+        const map = new Map<
+          string,
+          { expiring: boolean; expired: boolean; hasRequired: boolean }
+        >();
         for (const doc of res.items) {
-          const entry = map.get(doc.owner_id) ?? { expiring: false, expired: false, hasRequired: false };
+          const entry = map.get(doc.owner_id) ?? {
+            expiring: false,
+            expired: false,
+            hasRequired: false,
+          };
           if (doc.doc_type === 'driving_licence') entry.hasRequired = true;
           if (doc.expiry_date) {
             const diffDays = Math.round(
@@ -402,7 +414,7 @@ export class FeatureDrivers implements OnInit {
     }
 
     // Refresh employees when branch changes
-    this.registerForm.controls.branch_id.valueChanges.subscribe(val => {
+    this.registerForm.controls.branch_id.valueChanges.subscribe((val) => {
       if (val) this.loadEmployees(val);
     });
 
@@ -489,7 +501,8 @@ export class FeatureDrivers implements OnInit {
   /** Bound per-driver in the template — `<lpg-compliance-documents-panel>`
    * calls this with the new document's fields once its inline form submits. */
   protected addDriverDocument(driver: DriverResponse) {
-    return (cmd: AddComplianceDocumentCmd) => this.documentService.addDriverDocument(driver.id, cmd);
+    return (cmd: AddComplianceDocumentCmd) =>
+      this.documentService.addDriverDocument(driver.id, cmd);
   }
 
   /** Replace/verify are owner-agnostic on the backend — no driver id needed. */

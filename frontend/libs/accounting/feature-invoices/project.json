@@ -8,9 +8,7 @@
   "targets": {
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": [
-        "{workspaceRoot}/coverage/{projectRoot}"
-      ],
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
         "jestConfig": "libs/accounting/feature-invoices/jest.config.cts",
         "tsConfig": "libs/accounting/feature-invoices/tsconfig.spec.json"
