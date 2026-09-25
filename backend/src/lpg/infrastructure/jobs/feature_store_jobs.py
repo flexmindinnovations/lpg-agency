@@ -116,9 +116,7 @@ async def build_customer_refill_snapshots_for_tenant(
     for row in rows:
         last_delivered_at: datetime | None = row["last_delivered_at"]
         days_since_last = (
-            (as_of_date - last_delivered_at.date()).days
-            if last_delivered_at is not None
-            else None
+            (as_of_date - last_delivered_at.date()).days if last_delivered_at is not None else None
         )
         interval = row["avg_refill_interval_days"]
         snapshots.append(

@@ -62,9 +62,7 @@ def upgrade() -> None:
     op.create_table(
         _TABLE,
         sa.Column("id", sa.Uuid(), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column(
-            "tenant_id", sa.Uuid(), sa.ForeignKey(f"{_SCHEMA}.tenant.id"), nullable=False
-        ),
+        sa.Column("tenant_id", sa.Uuid(), sa.ForeignKey(f"{_SCHEMA}.tenant.id"), nullable=False),
         sa.Column(
             "cylinder_type_id",
             sa.Uuid(),

@@ -744,9 +744,7 @@ def _proposal_response(proposal: PriceListProposal) -> PriceListProposalResponse
 )
 async def list_price_list_proposals(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
-    repository: Annotated[
-        PriceListProposalRepository, Depends(get_price_list_proposal_repository)
-    ],
+    repository: Annotated[PriceListProposalRepository, Depends(get_price_list_proposal_repository)],
 ) -> PriceListProposalListResponse:
     use_case = ListPendingPriceListProposalsUseCase(repository)
     proposals = await use_case.execute(
@@ -778,16 +776,12 @@ async def review_price_list_proposal(
             proposal_repository, price_list_repository, unit_of_work
         )
         await use_case.execute(
-            AcceptPriceListProposalCommand(
-                proposal_id=proposal_id, reviewed_by=principal.user_id
-            )
+            AcceptPriceListProposalCommand(proposal_id=proposal_id, reviewed_by=principal.user_id)
         )
     else:
         reject_use_case = RejectPriceListProposalUseCase(proposal_repository, unit_of_work)
         await reject_use_case.execute(
-            RejectPriceListProposalCommand(
-                proposal_id=proposal_id, reviewed_by=principal.user_id
-            )
+            RejectPriceListProposalCommand(proposal_id=proposal_id, reviewed_by=principal.user_id)
         )
 
     proposal = await proposal_repository.get(proposal_id)

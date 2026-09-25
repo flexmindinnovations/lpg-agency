@@ -95,9 +95,7 @@ async def test_fetch_omc_rates_for_tenant_is_a_real_no_op(
         async with engine.begin() as conn:
             count = (
                 await conn.execute(
-                    text(
-                        "SELECT count(*) FROM tenant.price_list_proposal WHERE tenant_id = :t"
-                    ),
+                    text("SELECT count(*) FROM tenant.price_list_proposal WHERE tenant_id = :t"),
                     {"t": str(tenant_id)},
                 )
             ).scalar_one()

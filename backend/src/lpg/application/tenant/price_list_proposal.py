@@ -106,7 +106,5 @@ class ListPendingPriceListProposalsUseCase:
     def __init__(self, proposal_repository: PriceListProposalRepository) -> None:
         self._proposal_repository = proposal_repository
 
-    async def execute(
-        self, query: ListPendingPriceListProposalsQuery
-    ) -> list[PriceListProposal]:
+    async def execute(self, query: ListPendingPriceListProposalsQuery) -> list[PriceListProposal]:
         return list(await self._proposal_repository.list_pending_for_tenant(query.tenant_id))

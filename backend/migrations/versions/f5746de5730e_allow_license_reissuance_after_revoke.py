@@ -61,9 +61,7 @@ _PLATFORM_SCHEMA = "platform"
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "uq_license_tenant_id", "license", schema=_PLATFORM_SCHEMA, type_="unique"
-    )
+    op.drop_constraint("uq_license_tenant_id", "license", schema=_PLATFORM_SCHEMA, type_="unique")
     op.execute(f"""
         CREATE UNIQUE INDEX uq_license_tenant_id_active
         ON {_PLATFORM_SCHEMA}.license (tenant_id)

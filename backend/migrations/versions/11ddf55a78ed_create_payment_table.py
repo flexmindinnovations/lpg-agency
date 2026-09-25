@@ -93,9 +93,7 @@ def upgrade() -> None:
             created_at timestamptz NOT NULL DEFAULT now()
         )
     """)
-    op.execute(
-        f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_invoice ON {_SCHEMA}.{_TABLE} (invoice_id)"
-    )
+    op.execute(f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_invoice ON {_SCHEMA}.{_TABLE} (invoice_id)")
 
     op.execute(_grant(privileges="SELECT, INSERT"))
     op.execute(_revoke_mutation())
@@ -156,9 +154,7 @@ def downgrade() -> None:
     """)
     op.execute("DELETE FROM identity.permission WHERE code = 'invoices:record_payment'")
 
-    op.execute(
-        f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}"
-    )
+    op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} NO FORCE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} DISABLE ROW LEVEL SECURITY")
     op.execute(f"DROP TABLE IF EXISTS {_SCHEMA}.{_TABLE}")

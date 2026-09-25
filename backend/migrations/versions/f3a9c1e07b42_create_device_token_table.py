@@ -44,9 +44,7 @@ def upgrade() -> None:
                 CHECK (platform IN ('android', 'ios', 'web'))
         );
     """)
-    op.execute(
-        "CREATE INDEX ON notification.device_token (tenant_id, recipient_user_id);"
-    )
+    op.execute("CREATE INDEX ON notification.device_token (tenant_id, recipient_user_id);")
 
     op.execute("ALTER TABLE notification.device_token ENABLE ROW LEVEL SECURITY;")
     op.execute("""
@@ -54,10 +52,7 @@ def upgrade() -> None:
             USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
     """)
 
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE "
-        "ON notification.device_token TO lpg_app;"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON notification.device_token TO lpg_app;")
 
 
 def downgrade() -> None:

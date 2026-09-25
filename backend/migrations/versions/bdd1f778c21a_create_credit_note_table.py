@@ -126,9 +126,7 @@ def upgrade() -> None:
             CHECK ((approved_by IS NOT NULL) = (approved_at IS NOT NULL))
         )
     """)
-    op.execute(
-        f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_invoice ON {_SCHEMA}.{_TABLE} (invoice_id)"
-    )
+    op.execute(f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_invoice ON {_SCHEMA}.{_TABLE} (invoice_id)")
 
     op.execute(_grant(privileges="SELECT, INSERT, UPDATE"))
     op.execute(_revoke_delete())
@@ -168,9 +166,7 @@ def downgrade() -> None:
         """)
         op.execute(f"DELETE FROM identity.permission WHERE code = '{code}'")
 
-    op.execute(
-        f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}"
-    )
+    op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} NO FORCE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} DISABLE ROW LEVEL SECURITY")
     op.execute(f"DROP TABLE IF EXISTS {_SCHEMA}.{_TABLE}")

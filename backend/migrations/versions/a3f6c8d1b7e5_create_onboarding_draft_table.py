@@ -155,9 +155,7 @@ def downgrade() -> None:
     """)
     op.execute(f"DELETE FROM identity.permission WHERE code = '{_PERMISSION_CODE}'")
 
-    op.execute(
-        f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}"
-    )
+    op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} NO FORCE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} DISABLE ROW LEVEL SECURITY")
     op.execute(f"DROP TABLE IF EXISTS {_SCHEMA}.{_TABLE}")

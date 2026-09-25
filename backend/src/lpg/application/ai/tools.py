@@ -127,10 +127,7 @@ TOOL_REGISTRY: tuple[ToolDefinition, ...] = (
     ToolDefinition(
         declaration=ToolDeclaration(
             name="get_open_complaints_summary",
-            description=(
-                "Count of currently open, assigned, and in-progress customer "
-                "complaints."
-            ),
+            description=("Count of currently open, assigned, and in-progress customer complaints."),
             parameters_schema={"type": "object", "properties": {}},
         ),
         required_permission="complaints.manage",

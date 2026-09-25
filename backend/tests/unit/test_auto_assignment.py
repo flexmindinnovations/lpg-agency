@@ -128,9 +128,7 @@ class TestSuggestDriverAndVehicleForOrderUseCase:
         mock_order_repo.get_by_id = AsyncMock(return_value=None)
         use_case = _use_case(mock_order_repo, mock_driver_repo, mock_vehicle_repo, mock_route_repo)
 
-        result = await use_case.execute(
-            SuggestDriverAndVehicleForOrderQuery(order_id=uuid.uuid4())
-        )
+        result = await use_case.execute(SuggestDriverAndVehicleForOrderQuery(order_id=uuid.uuid4()))
 
         assert result is None
 

@@ -15,8 +15,8 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-revision: str = '4e7fc25f58b3'
-down_revision: str | None = 'b9248bf4b34f'
+revision: str = "4e7fc25f58b3"
+down_revision: str | None = "b9248bf4b34f"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

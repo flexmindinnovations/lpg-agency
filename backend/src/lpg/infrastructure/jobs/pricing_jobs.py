@@ -70,9 +70,7 @@ def _first_of_next_month(today: date) -> date:
     return today.replace(month=today.month + 1, day=1)
 
 
-def _match_cylinder_type(
-    rate: OmcRate, cylinder_types: list[CylinderType]
-) -> CylinderType | None:
+def _match_cylinder_type(rate: OmcRate, cylinder_types: list[CylinderType]) -> CylinderType | None:
     """The tenant's own cylinder type nearest `rate.weight_kg`, within
     `_WEIGHT_MATCH_TOLERANCE_KG`. `None` when the tenant doesn't stock
     anything near this weight — never guesses, skips the rate instead."""

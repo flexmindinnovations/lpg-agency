@@ -44,6 +44,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "ALTER TABLE accounting.cash_handover DROP CONSTRAINT uq_cash_handover_route"
-    )
+    op.execute("ALTER TABLE accounting.cash_handover DROP CONSTRAINT uq_cash_handover_route")

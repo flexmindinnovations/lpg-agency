@@ -489,8 +489,7 @@ class SqlAlchemyReorderPolicyRepository:
         )
         result = await self._uow.session.execute(stmt)
         return [
-            self._to_policy(policy_row, location_ref_id)
-            for policy_row, location_ref_id in result
+            self._to_policy(policy_row, location_ref_id) for policy_row, location_ref_id in result
         ]
 
     async def list_breached_for_tenant(self, tenant_id: uuid.UUID) -> list[ReorderSignal]:

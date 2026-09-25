@@ -95,11 +95,9 @@ def _role_block(body: str) -> str:
 
 def upgrade() -> None:
     grants = "".join(
-        f"EXECUTE format('GRANT USAGE ON SCHEMA {schema} TO %I', app_role);"
-        for schema in _SCHEMAS
+        f"EXECUTE format('GRANT USAGE ON SCHEMA {schema} TO %I', app_role);" for schema in _SCHEMAS
     ) + "".join(
-        f"EXECUTE format("
-        f"'GRANT SELECT, INSERT, UPDATE ON {schema}.{table} TO %I', app_role);"
+        f"EXECUTE format('GRANT SELECT, INSERT, UPDATE ON {schema}.{table} TO %I', app_role);"
         for schema, table in _TABLES
     )
     op.execute(_role_block(grants))

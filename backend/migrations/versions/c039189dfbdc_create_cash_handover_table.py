@@ -96,9 +96,7 @@ def upgrade() -> None:
         f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_tenant_driver "
         f"ON {_SCHEMA}.{_TABLE} (tenant_id, driver_id)"
     )
-    op.execute(
-        f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_route ON {_SCHEMA}.{_TABLE} (route_id)"
-    )
+    op.execute(f"CREATE INDEX idx_{_SCHEMA}_{_TABLE}_route ON {_SCHEMA}.{_TABLE} (route_id)")
 
     op.execute(_grant(privileges="SELECT, INSERT"))
     op.execute(_revoke_mutation())
@@ -159,9 +157,7 @@ def downgrade() -> None:
     """)
     op.execute("DELETE FROM identity.permission WHERE code = 'cash_handovers:declare'")
 
-    op.execute(
-        f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}"
-    )
+    op.execute(f"DROP POLICY IF EXISTS rls_{_SCHEMA}_{_TABLE}_isolation ON {_SCHEMA}.{_TABLE}")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} NO FORCE ROW LEVEL SECURITY")
     op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} DISABLE ROW LEVEL SECURITY")
     op.execute(f"DROP TABLE IF EXISTS {_SCHEMA}.{_TABLE}")

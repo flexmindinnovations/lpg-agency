@@ -41,9 +41,7 @@ def upgrade() -> None:
     # 2. Backfill existing rows
     op.execute(
         sa.text(
-            f"UPDATE {_SCHEMA}.{_TABLE} "
-            "SET qr_code = 'CYL-' || serial_number "
-            "WHERE qr_code IS NULL"
+            f"UPDATE {_SCHEMA}.{_TABLE} SET qr_code = 'CYL-' || serial_number WHERE qr_code IS NULL"
         )
     )
 

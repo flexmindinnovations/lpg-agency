@@ -97,10 +97,9 @@ async def check_reorder_levels_for_tenant(
             )
         )
 
-        if (
-            signal.last_reorder_notified_at is not None
-            and (now - signal.last_reorder_notified_at) < timedelta(hours=NOTIFY_DEDUPE_HOURS)
-        ):
+        if signal.last_reorder_notified_at is not None and (
+            now - signal.last_reorder_notified_at
+        ) < timedelta(hours=NOTIFY_DEDUPE_HOURS):
             continue
 
         await job_queue.enqueue(

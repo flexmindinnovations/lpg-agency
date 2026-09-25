@@ -11,8 +11,9 @@ USERS_TO_SEED = [
     {"email": "manager@example.com", "role": "manager"},
     {"email": "dispatcher@example.com", "role": "dispatcher"},
     {"email": "accountant@example.com", "role": "accountant"},
-    {"email": "warehouse@example.com", "role": "warehouse_staff"}
+    {"email": "warehouse@example.com", "role": "warehouse_staff"},
 ]
+
 
 async def main():
     settings = get_settings()
@@ -43,8 +44,7 @@ async def main():
 
             # 1. Get role ID
             role_row = await conn.execute(
-                text("SELECT id FROM identity.role WHERE code = :code"),
-                {"code": role_code}
+                text("SELECT id FROM identity.role WHERE code = :code"), {"code": role_code}
             )
             role_id = role_row.scalar()
             if not role_id:

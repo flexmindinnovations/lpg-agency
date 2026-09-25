@@ -64,9 +64,7 @@ def _haversine_km(a: Coordinate, b: Coordinate) -> float:
 
 
 def _tour_length(order: list[int], coords: list[Coordinate]) -> float:
-    return sum(
-        _haversine_km(coords[order[i]], coords[order[i + 1]]) for i in range(len(order) - 1)
-    )
+    return sum(_haversine_km(coords[order[i]], coords[order[i + 1]]) for i in range(len(order) - 1))
 
 
 def nearest_neighbour(coords: list[Coordinate]) -> list[int]:

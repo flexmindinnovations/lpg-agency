@@ -55,9 +55,7 @@ class FeatureSnapshotRepository(Protocol):
         current tenant), or `None`. Used by the reading heuristics."""
         ...
 
-    async def latest(
-        self, *, entity_type: str, entity_id: uuid.UUID
-    ) -> FeatureSnapshot | None:
+    async def latest(self, *, entity_type: str, entity_id: uuid.UUID) -> FeatureSnapshot | None:
         """The most recent snapshot for one entity, whatever date — what a
         heuristic run 'today' actually wants when today's job may not have
         run yet."""

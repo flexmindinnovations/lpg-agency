@@ -5,14 +5,15 @@ Revises: a907e81bc74c
 Create Date: 2026-08-15 22:19:00.000000
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'a631835ec588'
-down_revision: str | None = 'a907e81bc74c'
+revision: str = "a631835ec588"
+down_revision: str | None = "a907e81bc74c"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -26,12 +27,13 @@ PERMISSIONS_TO_GRANT = [
     "vehicles:manage",
     "users:manage",
     "kyc:manage",
-    "kyc:read"
+    "kyc:read",
 ]
+
 
 def upgrade() -> None:
     # Get role IDs
-    for role_name in ['agency_admin', 'super_admin']:
+    for role_name in ["agency_admin", "super_admin"]:
         for perm in PERMISSIONS_TO_GRANT:
             op.execute(
                 sa.text("""
@@ -44,8 +46,9 @@ def upgrade() -> None:
                 """).bindparams(role_name=role_name, perm=perm)
             )
 
+
 def downgrade() -> None:
-    for role_name in ['agency_admin', 'super_admin']:
+    for role_name in ["agency_admin", "super_admin"]:
         for perm in PERMISSIONS_TO_GRANT:
             op.execute(
                 sa.text("""

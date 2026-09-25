@@ -167,14 +167,18 @@ async def test_accepting_a_proposal_writes_a_price_list_entry(
 
         async with engine.begin() as conn:
             proposal_row = (
-                await conn.execute(
-                    text(
-                        "SELECT status, reviewed_by FROM tenant.price_list_proposal "
-                        "WHERE id = :p"
-                    ),
-                    {"p": str(proposal_id)},
+                (
+                    await conn.execute(
+                        text(
+                            "SELECT status, reviewed_by FROM tenant.price_list_proposal "
+                            "WHERE id = :p"
+                        ),
+                        {"p": str(proposal_id)},
+                    )
                 )
-            ).mappings().one()
+                .mappings()
+                .one()
+            )
             price_list_count = (
                 await conn.execute(
                     text(
@@ -208,11 +212,15 @@ async def test_rejecting_a_proposal_writes_no_price_list_entry(
 
         async with engine.begin() as conn:
             proposal_row = (
-                await conn.execute(
-                    text("SELECT status FROM tenant.price_list_proposal WHERE id = :p"),
-                    {"p": str(proposal_id)},
+                (
+                    await conn.execute(
+                        text("SELECT status FROM tenant.price_list_proposal WHERE id = :p"),
+                        {"p": str(proposal_id)},
+                    )
                 )
-            ).mappings().one()
+                .mappings()
+                .one()
+            )
             price_list_count = (
                 await conn.execute(
                     text("SELECT count(*) FROM tenant.price_list WHERE tenant_id = :t"),

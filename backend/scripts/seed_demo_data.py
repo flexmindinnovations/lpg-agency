@@ -130,30 +130,126 @@ COMMERCIAL_CONTACT_PERSONS = {
 }
 
 CUSTOMERS = [
-    ("Anand Krishnan", "+919848012001", "domestic", "Hyderabad Central",
-     "Himayatnagar", "500029", "active", "verified"),
-    ("Meena Iyer", "+919848012002", "domestic", "Hyderabad Central",
-     "Basheerbagh", "500029", "active", "verified"),
-    ("Sri Sai Tiffin Centre", "+919848012003", "commercial", "Hyderabad Central",
-     "Koti", "500095", "active", "verified"),
-    ("Deepa Varma", "+919848012004", "domestic", "Hyderabad Central",
-     "Narayanguda", "500029", "active", "pending"),
-    ("Hotel Golconda Grand", "+919848012005", "commercial", "Secunderabad North",
-     "Paradise Circle", "500003", "active", "verified"),
-    ("Rajesh Gupta", "+919848012006", "domestic", "Secunderabad North",
-     "Trimulgherry", "500015", "active", "verified"),
-    ("Bharat Ceramics Pvt Ltd", "+919848012007", "industrial", "Secunderabad North",
-     "Balanagar", "500042", "active", "verified"),
-    ("Kavitha Sharma", "+919848012008", "domestic", "Secunderabad North",
-     "Marredpally", "500026", "onboarding", "pending"),
-    ("Cyber Towers Canteen", "+919848012009", "commercial", "Gachibowli West",
-     "HITEC City", "500081", "active", "verified"),
-    ("Govt Primary School Gachibowli", "+919848012010", "government", "Gachibowli West",
-     "Gachibowli", "500032", "active", "verified"),
-    ("Suresh Babu", "+919848012011", "domestic", "Gachibowli West",
-     "Kondapur", "500084", "active", "verified"),
-    ("Nithya Menon", "+919848012012", "domestic", "Gachibowli West",
-     "Madhapur", "500081", "inactive", "expired"),
+    (
+        "Anand Krishnan",
+        "+919848012001",
+        "domestic",
+        "Hyderabad Central",
+        "Himayatnagar",
+        "500029",
+        "active",
+        "verified",
+    ),
+    (
+        "Meena Iyer",
+        "+919848012002",
+        "domestic",
+        "Hyderabad Central",
+        "Basheerbagh",
+        "500029",
+        "active",
+        "verified",
+    ),
+    (
+        "Sri Sai Tiffin Centre",
+        "+919848012003",
+        "commercial",
+        "Hyderabad Central",
+        "Koti",
+        "500095",
+        "active",
+        "verified",
+    ),
+    (
+        "Deepa Varma",
+        "+919848012004",
+        "domestic",
+        "Hyderabad Central",
+        "Narayanguda",
+        "500029",
+        "active",
+        "pending",
+    ),
+    (
+        "Hotel Golconda Grand",
+        "+919848012005",
+        "commercial",
+        "Secunderabad North",
+        "Paradise Circle",
+        "500003",
+        "active",
+        "verified",
+    ),
+    (
+        "Rajesh Gupta",
+        "+919848012006",
+        "domestic",
+        "Secunderabad North",
+        "Trimulgherry",
+        "500015",
+        "active",
+        "verified",
+    ),
+    (
+        "Bharat Ceramics Pvt Ltd",
+        "+919848012007",
+        "industrial",
+        "Secunderabad North",
+        "Balanagar",
+        "500042",
+        "active",
+        "verified",
+    ),
+    (
+        "Kavitha Sharma",
+        "+919848012008",
+        "domestic",
+        "Secunderabad North",
+        "Marredpally",
+        "500026",
+        "onboarding",
+        "pending",
+    ),
+    (
+        "Cyber Towers Canteen",
+        "+919848012009",
+        "commercial",
+        "Gachibowli West",
+        "HITEC City",
+        "500081",
+        "active",
+        "verified",
+    ),
+    (
+        "Govt Primary School Gachibowli",
+        "+919848012010",
+        "government",
+        "Gachibowli West",
+        "Gachibowli",
+        "500032",
+        "active",
+        "verified",
+    ),
+    (
+        "Suresh Babu",
+        "+919848012011",
+        "domestic",
+        "Gachibowli West",
+        "Kondapur",
+        "500084",
+        "active",
+        "verified",
+    ),
+    (
+        "Nithya Menon",
+        "+919848012012",
+        "domestic",
+        "Gachibowli West",
+        "Madhapur",
+        "500081",
+        "inactive",
+        "expired",
+    ),
 ]
 
 # Login accounts, one per role worth exercising in the UI. `admin` is listed
@@ -261,8 +357,7 @@ async def main() -> None:
         tenant_id = (
             await conn.execute(
                 text(
-                    "SELECT tenant_id FROM identity.identity_user "
-                    "WHERE email = 'admin@example.com'"
+                    "SELECT tenant_id FROM identity.identity_user WHERE email = 'admin@example.com'"
                 )
             )
         ).scalar()
@@ -367,7 +462,7 @@ async def main() -> None:
             match="tenant_id = :t AND config_key = 'cancellation_fee_amount'",
             columns="tenant_id, config_key, config_value, effective_from",
             values=":t, 'cancellation_fee_amount', "
-            "'{\"policy_type\": \"flat\", \"amount\": \"50.00\"}'::jsonb, :eff",
+            '\'{"policy_type": "flat", "amount": "50.00"}\'::jsonb, :eff',
             new_id=sid("config", "cancellation_fee_amount"),
             params={**p, "eff": effective_from},
         )
@@ -460,8 +555,7 @@ async def main() -> None:
                 "delivery.driver",
                 match="tenant_id = :t AND employee_id = :e",
                 columns=(
-                    "tenant_id, branch_id, employee_id, license_number, "
-                    "license_expiry_date, status"
+                    "tenant_id, branch_id, employee_id, license_number, license_expiry_date, status"
                 ),
                 values=":t, :b, :e, :lic, :exp, 'active'",
                 new_id=sid("driver", emp_code),
@@ -507,12 +601,8 @@ async def main() -> None:
         async def _balance(loc_id: uuid.UUID, cyl: str, status: str, qty: int) -> None:
             await ensure(
                 "inventory.inventory_balance",
-                match=(
-                    "inventory_location_id = :loc AND cylinder_type_id = :cyl AND status = :st"
-                ),
-                columns=(
-                    "tenant_id, inventory_location_id, cylinder_type_id, status, quantity"
-                ),
+                match=("inventory_location_id = :loc AND cylinder_type_id = :cyl AND status = :st"),
+                columns=("tenant_id, inventory_location_id, cylinder_type_id, status, quantity"),
                 values=":t, :loc, :cyl, :st, :q",
                 new_id=sid("balance", f"{loc_id}:{cyl}:{status}"),
                 params={**p, "loc": loc_id, "cyl": cylinder_ids[cyl], "st": status, "q": qty},
@@ -775,21 +865,33 @@ async def main() -> None:
         # rather than showing every driver at a fake 100%.
         DRIVER_ROUTES: list[tuple[str, str, int, str, list[tuple[str, str]]]] = [
             (
-                "EMP-1003", "TS07UB4412", -6, "completed",
-                [("+919848012001:0", "delivered"),
-                 ("+919848012002:1", "delivered"),
-                 ("+919848012003:2", "delivered")],
+                "EMP-1003",
+                "TS07UB4412",
+                -6,
+                "completed",
+                [
+                    ("+919848012001:0", "delivered"),
+                    ("+919848012002:1", "delivered"),
+                    ("+919848012003:2", "delivered"),
+                ],
             ),
             (
-                "EMP-1005", "TS08UC7781", -4, "completed",
-                [("+919848012005:3", "delivered"),
-                 ("+919848012007:4", "delivered")],
+                "EMP-1005",
+                "TS08UC7781",
+                -4,
+                "completed",
+                [("+919848012005:3", "delivered"), ("+919848012007:4", "delivered")],
             ),
             (
-                "EMP-1007", "TS09UA3320", -1, "in_progress",
-                [("+919848012009:5", "delivered"),
-                 ("+919848012010:6", "pending"),
-                 ("+919848012011:7", "pending")],
+                "EMP-1007",
+                "TS09UA3320",
+                -1,
+                "in_progress",
+                [
+                    ("+919848012009:5", "delivered"),
+                    ("+919848012010:6", "pending"),
+                    ("+919848012011:7", "pending"),
+                ],
             ),
         ]
         for emp_code, reg, offset, route_status, stops in DRIVER_ROUTES:

@@ -30,7 +30,7 @@ timeout = int(os.getenv("TIMEOUT", "120"))
 # Logging
 loglevel = os.getenv("LOG_LEVEL", "info")
 accesslog = "-"  # stdout
-errorlog = "-"   # stderr
+errorlog = "-"  # stderr
 
 print(f"Starting Gunicorn with {workers} workers.")
 print(f"Worker connections: {worker_connections}")

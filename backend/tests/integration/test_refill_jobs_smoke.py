@@ -167,19 +167,21 @@ async def test_predicts_and_nudges_a_customer_due_soon(
 
         async with engine.begin() as conn:
             prediction_rows = (
-                await conn.execute(
-                    text(
-                        "SELECT prediction_type, model_version, value "
-                        "FROM ai.prediction WHERE tenant_id = :t AND subject_id = :c"
-                    ),
-                    {"t": str(tenant_id), "c": str(customer_id)},
+                (
+                    await conn.execute(
+                        text(
+                            "SELECT prediction_type, model_version, value "
+                            "FROM ai.prediction WHERE tenant_id = :t AND subject_id = :c"
+                        ),
+                        {"t": str(tenant_id), "c": str(customer_id)},
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
             nudge_sent_at = (
                 await conn.execute(
-                    text(
-                        "SELECT last_refill_nudge_sent_at FROM customer.customer WHERE id = :c"
-                    ),
+                    text("SELECT last_refill_nudge_sent_at FROM customer.customer WHERE id = :c"),
                     {"c": str(customer_id)},
                 )
             ).scalar_one()

@@ -150,9 +150,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Uuid(), nullable=True),
         sa.Column("role", sa.String(length=50), nullable=True),
         sa.Column("question", sa.Text(), nullable=False),
-        sa.Column(
-            "tools_used", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")
-        ),
+        sa.Column("tools_used", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")),
         sa.Column("provider", sa.String(length=50), nullable=False),
         sa.Column("model", sa.String(length=100), nullable=False),
         sa.Column("prompt_tokens", sa.Integer(), nullable=False, server_default=sa.text("0")),

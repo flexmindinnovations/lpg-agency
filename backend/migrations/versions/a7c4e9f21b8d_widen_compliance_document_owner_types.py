@@ -48,9 +48,7 @@ _GRANT_ROLES_SQL = "('super_admin', 'agency_admin', 'manager')"
 
 
 def upgrade() -> None:
-    op.execute(
-        f"ALTER TABLE {_SCHEMA}.{_TABLE} DROP CONSTRAINT {_CHECK_NAME}"
-    )
+    op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} DROP CONSTRAINT {_CHECK_NAME}")
     op.execute(
         f"ALTER TABLE {_SCHEMA}.{_TABLE} ADD CONSTRAINT {_CHECK_NAME} "
         f"CHECK (owner_type IN {_NEW_OWNER_TYPES})"
@@ -100,9 +98,7 @@ def downgrade() -> None:
         """)
         op.execute(f"DELETE FROM identity.permission WHERE code = '{code}'")
 
-    op.execute(
-        f"ALTER TABLE {_SCHEMA}.{_TABLE} DROP CONSTRAINT {_CHECK_NAME}"
-    )
+    op.execute(f"ALTER TABLE {_SCHEMA}.{_TABLE} DROP CONSTRAINT {_CHECK_NAME}")
     op.execute(
         f"ALTER TABLE {_SCHEMA}.{_TABLE} ADD CONSTRAINT {_CHECK_NAME} "
         f"CHECK (owner_type IN {_OLD_OWNER_TYPES})"

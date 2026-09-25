@@ -190,9 +190,7 @@ class SqlAlchemyFeatureSnapshotRepository:
         row = (await self._uow.session.execute(stmt)).scalar_one_or_none()
         return _to_feature_snapshot(row) if row is not None else None
 
-    async def latest(
-        self, *, entity_type: str, entity_id: uuid.UUID
-    ) -> FeatureSnapshot | None:
+    async def latest(self, *, entity_type: str, entity_id: uuid.UUID) -> FeatureSnapshot | None:
         stmt = (
             select(FeatureSnapshotModel)
             .where(

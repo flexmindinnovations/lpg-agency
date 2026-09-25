@@ -45,9 +45,7 @@ def _tenant_config_repository(*, gateway_enabled: object, budget: int | None = N
             ]
         if config_key == "ai_daily_token_budget" and budget is not None:
             return [
-                TenantConfiguration(
-                    uuid.uuid4(), tenant_id, config_key, budget, datetime.now(UTC)
-                )
+                TenantConfiguration(uuid.uuid4(), tenant_id, config_key, budget, datetime.now(UTC))
             ]
         return []
 
@@ -241,9 +239,7 @@ async def test_a_tool_a_principal_lacks_permission_for_is_never_offered_to_the_g
         unit_of_work=_unit_of_work(),
     )
 
-    await use_case.execute(
-        AskAiAssistantQuery(question="Anything?"), principal=_principal()
-    )
+    await use_case.execute(AskAiAssistantQuery(question="Anything?"), principal=_principal())
 
     call = gateway.run_with_tools.await_args
     assert call.kwargs["tools"] == ()

@@ -64,9 +64,7 @@ class _FakePriceListProposalRepository:
     async def get(self, proposal_id: uuid.UUID) -> PriceListProposal | None:
         return self._proposals.get(proposal_id)
 
-    async def list_pending_for_tenant(
-        self, tenant_id: uuid.UUID
-    ) -> list[PriceListProposal]:
+    async def list_pending_for_tenant(self, tenant_id: uuid.UUID) -> list[PriceListProposal]:
         return [p for p in self._proposals.values() if p.tenant_id == tenant_id]
 
     async def save(self, proposal: PriceListProposal) -> None:

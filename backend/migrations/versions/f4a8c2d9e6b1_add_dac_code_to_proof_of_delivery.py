@@ -45,7 +45,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "ck_proof_of_delivery_dac_code_format", "proof_of_delivery", schema="orders"
-    )
+    op.drop_constraint("ck_proof_of_delivery_dac_code_format", "proof_of_delivery", schema="orders")
     op.drop_column("proof_of_delivery", "dac_code", schema="orders")

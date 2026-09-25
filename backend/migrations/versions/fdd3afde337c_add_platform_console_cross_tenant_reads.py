@@ -85,9 +85,7 @@ def upgrade() -> None:
         $$;
     """)
     op.execute(f"REVOKE EXECUTE ON FUNCTION {_PLATFORM_SCHEMA}.license_list_all() FROM PUBLIC")
-    op.execute(
-        _grant_execute(schema=_PLATFORM_SCHEMA, function_signature="license_list_all()")
-    )
+    op.execute(_grant_execute(schema=_PLATFORM_SCHEMA, function_signature="license_list_all()"))
 
     op.execute(f"""
         CREATE FUNCTION {_TENANT_SCHEMA}.tenant_list_all()

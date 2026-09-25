@@ -176,15 +176,19 @@ async def test_build_writes_a_customer_refill_snapshot(
 
         async with engine.begin() as conn:
             rows = (
-                await conn.execute(
-                    text(
-                        "SELECT entity_type, entity_id, as_of_date, features "
-                        "FROM ai.feature_snapshot "
-                        "WHERE tenant_id = :t AND entity_id = :c"
-                    ),
-                    {"t": str(tenant_id), "c": str(customer_id)},
+                (
+                    await conn.execute(
+                        text(
+                            "SELECT entity_type, entity_id, as_of_date, features "
+                            "FROM ai.feature_snapshot "
+                            "WHERE tenant_id = :t AND entity_id = :c"
+                        ),
+                        {"t": str(tenant_id), "c": str(customer_id)},
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
 
         assert len(rows) == 1
         snap = rows[0]
