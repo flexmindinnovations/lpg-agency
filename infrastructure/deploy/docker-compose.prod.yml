@@ -4,7 +4,7 @@
 #   ./generate-env.sh          # once: writes .env with fresh secrets
 #   ./deploy.sh                # build, migrate, (re)start
 #
-# Only Caddy publishes ports (80/443). Postgres, Redis and MinIO are reachable
+# Only Caddy publishes ports (80/443). Postgres and Redis are reachable
 # on the internal compose network only. Secrets come from ./.env (git-ignored).
 
 name: lpg-agency
@@ -22,11 +22,13 @@ x-backend-env: &backend-env
   LPG_DB_USER: lpg_app
   LPG_DB_PASSWORD: ${LPG_APP_DB_PASSWORD}
   LPG_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-  LPG_STORAGE_ENDPOINT_URL: http://minio:9000
-  LPG_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
-  LPG_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-  LPG_STORAGE_BUCKET: lpg-prod
-  LPG_STORAGE_REGION: us-east-1
+  # S3-compatible object storage (e.g. DigitalOcean Spaces) - set in .env.
+  # Left empty, the backend still boots but /health/ready reports storage down.
+  LPG_STORAGE_ENDPOINT_URL: ${LPG_STORAGE_ENDPOINT_URL:-}
+  LPG_STORAGE_ACCESS_KEY: ${LPG_STORAGE_ACCESS_KEY:-}
+  LPG_STORAGE_SECRET_KEY: ${LPG_STORAGE_SECRET_KEY:-}
+  LPG_STORAGE_BUCKET: ${LPG_STORAGE_BUCKET:-}
+  LPG_STORAGE_REGION: ${LPG_STORAGE_REGION:-}
   LPG_JWT_PRIVATE_KEY: ${LPG_JWT_PRIVATE_KEY}
   LPG_JWT_PUBLIC_KEY: ${LPG_JWT_PUBLIC_KEY}
   LPG_KYC_ENCRYPTION_KEY: ${LPG_KYC_ENCRYPTION_KEY}
@@ -67,22 +69,6 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
 
-  minio:
-    image: minio/minio:latest
-    restart: unless-stopped
-    command: ["server", "/data"]
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
   # One-shot: applies Alembic migrations as the elevated role, then exits.
   migrate:
     image: lpg-backend:latest
@@ -109,8 +95,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      minio:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -155,6 +139,5 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  minio-data:
   caddy-data:
   caddy-config:

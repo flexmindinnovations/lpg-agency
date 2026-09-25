@@ -37,12 +37,18 @@ SITE_ADDRESS=${site_address}
 POSTGRES_ADMIN_PASSWORD=$(hex)
 LPG_APP_DB_PASSWORD=$(hex)
 REDIS_PASSWORD=$(hex)
-MINIO_ROOT_USER=lpg_storage
-MINIO_ROOT_PASSWORD=$(hex)
 
 LPG_JWT_PRIVATE_KEY='${private_pem}'
 LPG_JWT_PUBLIC_KEY='${public_pem}'
 LPG_KYC_ENCRYPTION_KEY=${fernet_key}
+
+# S3-compatible object storage (e.g. DigitalOcean Spaces). Fill these in, then
+# `docker compose -f docker-compose.prod.yml up -d backend worker`.
+LPG_STORAGE_ENDPOINT_URL=
+LPG_STORAGE_ACCESS_KEY=
+LPG_STORAGE_SECRET_KEY=
+LPG_STORAGE_BUCKET=
+LPG_STORAGE_REGION=
 EOF
 
 echo "Wrote $(pwd)/.env (mode 600). Back this file up somewhere safe: losing the"

@@ -1,7 +1,6 @@
 # Deploying LPG Agency to a DigitalOcean Droplet
 
-Single-host Docker Compose deployment: Postgres 17, Redis, MinIO (S3-compatible
-storage), the FastAPI backend, the arq background worker, a one-shot Alembic
+Single-host Docker Compose deployment: Postgres 17, Redis, the FastAPI backend, the arq background worker, a one-shot Alembic
 migration job, and Caddy serving the Angular dashboard and reverse-proxying
 `/api` + `/health` to the backend (same origin, so no CORS in practice).
 
@@ -80,7 +79,7 @@ echo 'vm.swappiness=10' > /etc/sysctl.d/99-swap.conf && sysctl -p /etc/sysctl.d/
 
 ```bash
 # Firewall: allow SSH first (so enabling it cannot lock you out), then web.
-# Postgres/Redis/MinIO are not published on the host, so nothing else is open.
+# Postgres/Redis are not published on the host, so nothing else is open.
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp
 ufw --force enable
 ```
@@ -169,7 +168,7 @@ git clone git@github.com:flexmindinnovations/lpg-agency.git /opt/lpg-agency
 
 ```bash
 # Writes infrastructure/deploy/.env (mode 600, git-ignored) with generated
-# database/Redis/MinIO passwords, an RS256 JWT keypair and the KYC Fernet key.
+# database/Redis passwords, an RS256 JWT keypair and the KYC Fernet key.
 # It refuses to overwrite an existing .env.
 cd /opt/lpg-agency/infrastructure/deploy
 chmod +x generate-env.sh deploy.sh postgres-init/01-init.sh
@@ -183,6 +182,37 @@ database passwords are baked into the Postgres volume on first start, and losing
 Optional extras you can append to `.env`: `WEB_CONCURRENCY=2` (gunicorn workers;
 default 2), and `LPG_GEMINI_API_KEY=` if you want the AI assistant (also add it
 to the `x-backend-env` block in `docker-compose.prod.yml`).
+
+
+### Object storage: DigitalOcean Spaces
+
+The backend stores uploads (proof-of-delivery photos, generated PDFs) in any
+S3-compatible bucket. MinIO no longer publishes Docker images, so use Spaces:
+
+1. DigitalOcean console -> Spaces Object Storage -> **Create a Space** (pick a
+   region, e.g. `blr1`; note the name).
+2. API -> **Spaces Keys** -> Generate New Key; copy the access key and secret.
+3. Put them in `.env` on the server (endpoint is `https://<region>.digitaloceanspaces.com`):
+
+```bash
+nano /opt/lpg-agency/infrastructure/deploy/.env
+```
+
+```
+LPG_STORAGE_ENDPOINT_URL=https://blr1.digitaloceanspaces.com
+LPG_STORAGE_ACCESS_KEY=<spaces access key>
+LPG_STORAGE_SECRET_KEY=<spaces secret>
+LPG_STORAGE_BUCKET=<space name>
+LPG_STORAGE_REGION=blr1
+```
+
+```bash
+# Recreate the containers that read storage settings.
+docker compose -f docker-compose.prod.yml up -d backend worker
+```
+
+Until these are set the app still starts, but `/health/ready` reports storage
+as down and uploads/PDF generation fail.
 
 ---
 
@@ -248,7 +278,7 @@ cd /opt/lpg-agency/infrastructure/deploy && ./deploy.sh
 ```
 
 ```bash
-# Follow logs (service names: backend, worker, web, postgres, redis, minio, migrate).
+# Follow logs (service names: backend, worker, web, postgres, redis, migrate).
 docker compose -f docker-compose.prod.yml logs -f --tail=100 backend
 ```
 
@@ -270,6 +300,8 @@ docker compose -f docker-compose.prod.yml up -d
 | Symptom | Check |
 |---|---|
 | Frontend build killed / exits 137 | Out of memory. Confirm swap is on (`swapon --show`), retry. |
+| `npm ci` fails with ERESOLVE | Known: `@ngrx/signals@21` vs Angular 22. The frontend Dockerfile already passes `--legacy-peer-deps`. |
+| Build: `Cannot find module './prime-license'` | The real key file is git-ignored; the frontend Dockerfile falls back to `prime-license.example.ts` (PrimeNG runs unlicensed). |
 | `migrate` exits non-zero | `docker compose -f docker-compose.prod.yml logs migrate` - the first line names the DB target. |
 | Backend restarts in a loop | `logs backend` - a missing/invalid secret in `.env` fails loudly at startup. |
 | `/health/ready` not OK | Body says which dependency (Postgres/Redis/storage) failed. |
