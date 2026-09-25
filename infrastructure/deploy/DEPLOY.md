@@ -12,9 +12,11 @@ migration job, and Caddy serving the Angular dashboard and reverse-proxying
 | App directory | `/opt/lpg-agency` |
 | Compose project | `lpg-agency` (files in `infrastructure/deploy/`) |
 
-> **Status.** Sections 1-4 were executed on the droplet and verified.
-> Sections 5-9 are written but **not yet run end to end** - the first real
-> deploy will validate them. Fix this doc if a command needs adjusting.
+> **Status (2026-09-25).** Sections 1-6 were executed and verified: the stack
+> deploys, all 86 migrations apply, the dashboard loads at `http://139.59.88.0/`
+> and `/health/live` returns 200. `/health/ready` returns 503 only because
+> object storage is not configured yet (see "Object storage" in section 5).
+> Sections 7-8 (first admin user, HTTPS) are still open.
 
 Commands prefixed `#` describe what follows. Lines in `bash` blocks are meant to
 be copy-pasted one block at a time.
