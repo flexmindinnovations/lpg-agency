@@ -17,10 +17,24 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps
 
 COPY . .
-# app.config.ts imports the git-ignored ./prime-license (a local-only licence
-# key). A fresh clone lacks it, so fall back to the committed template, which
-# builds PrimeNG unlicensed. Replace with a real key to remove PrimeNG's banner.
-RUN cp -n apps/dashboard/src/app/prime-license.example.ts apps/dashboard/src/app/prime-license.ts
+
+# app.config.ts imports the git-ignored ./prime-license (a licence key that is
+# never committed). Resolution order:
+#   1. a BuildKit secret `prime_ng_license` (CI: `--secret id=prime_ng_license`)
+#   2. a prime-license.ts already present in the build context (a server-side
+#      manual build where the real file sits next to the source)
+#   3. the committed template, which builds PrimeNG unlicensed (banner shown)
+# The key ends up in the browser bundle either way - PrimeNG licence keys are
+# client-side by design - but a secret mount keeps it out of image history.
+RUN --mount=type=secret,id=prime_ng_license \
+    if [ -s /run/secrets/prime_ng_license ]; then \
+      key="$(tr -d '\r\n' < /run/secrets/prime_ng_license)"; \
+      printf "export const PRIME_NG_LICENSE_KEY: string | undefined = '%s';\n" "$key" \
+        > apps/dashboard/src/app/prime-license.ts; \
+    fi
+RUN [ -f apps/dashboard/src/app/prime-license.ts ] \
+    || cp apps/dashboard/src/app/prime-license.example.ts apps/dashboard/src/app/prime-license.ts
+
 RUN npx nx build dashboard
 
 FROM caddy:2-alpine

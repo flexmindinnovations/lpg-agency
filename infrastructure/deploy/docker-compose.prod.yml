@@ -2,7 +2,11 @@
 #
 #   cd /opt/lpg-agency/infrastructure/deploy
 #   ./generate-env.sh          # once: writes .env with fresh secrets
-#   ./deploy.sh                # build, migrate, (re)start
+#   ./deploy.sh                # manual: build on this server, migrate, (re)start
+#
+# Images are named ghcr.io/<owner>/lpg-{backend,web}:${IMAGE_TAG}. CI builds and
+# pushes them, then runs ./deploy-image.sh <git-sha>, which sets IMAGE_TAG in
+# .env and pulls. With no IMAGE_TAG the tag is "local", i.e. built on this host.
 #
 # Only Caddy publishes ports (80/443). Postgres and Redis are reachable
 # on the internal compose network only. Secrets come from ./.env (git-ignored).
@@ -71,7 +75,7 @@ services:
 
   # One-shot: applies Alembic migrations as the elevated role, then exits.
   migrate:
-    image: lpg-backend:latest
+    image: ${BACKEND_IMAGE:-ghcr.io/flexmindinnovations/lpg-backend}:${IMAGE_TAG:-local}
     pull_policy: never
     restart: "no"
     command: ["alembic", "upgrade", "head"]
@@ -85,7 +89,7 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile
-    image: lpg-backend:latest
+    image: ${BACKEND_IMAGE:-ghcr.io/flexmindinnovations/lpg-backend}:${IMAGE_TAG:-local}
     restart: unless-stopped
     environment:
       <<: *backend-env
@@ -107,7 +111,7 @@ services:
 
   # arq background jobs + cron (compliance expiry, stale-order alerts, ...).
   worker:
-    image: lpg-backend:latest
+    image: ${BACKEND_IMAGE:-ghcr.io/flexmindinnovations/lpg-backend}:${IMAGE_TAG:-local}
     pull_policy: never
     restart: unless-stopped
     command: ["arq", "lpg.infrastructure.jobs.worker.WorkerSettings"]
@@ -120,7 +124,7 @@ services:
     build:
       context: ../../frontend
       dockerfile: Dockerfile
-    image: lpg-web:latest
+    image: ${WEB_IMAGE:-ghcr.io/flexmindinnovations/lpg-web}:${IMAGE_TAG:-local}
     restart: unless-stopped
     ports:
       - "80:80"

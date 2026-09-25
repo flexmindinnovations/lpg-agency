@@ -1,0 +1,43 @@
+name: Rollback
+
+# Manually redeploy an EARLIER release. Its images are already in GHCR (one per
+# commit SHA), so nothing is rebuilt. Database migrations only move forward: if
+# the release you are leaving changed the schema, restore the pre-deploy backup
+# too (/opt/backups on the server; see infrastructure/deploy/DEPLOY.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full 40-character commit SHA of the release to redeploy
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Validate the SHA
+        env:
+          SHA: ${{ inputs.sha }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "sha must be a full 40-char lowercase hex commit hash" >&2; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy-to-server
+        with:
+          sha: ${{ inputs.sha }}
+          host: ${{ vars.DEPLOY_HOST }}
+          ssh-key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host-key: ${{ secrets.DEPLOY_HOST_KEY }}
+          ghcr-user: ${{ github.actor }}
+          ghcr-token: ${{ secrets.GITHUB_TOKEN }}

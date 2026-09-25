@@ -1,0 +1,51 @@
+name: Deploy to server
+description: >-
+  Runs infrastructure/deploy/deploy-image.sh on the droplet over SSH, using a
+  restricted key (forced command) and a short-lived GHCR token passed on stdin.
+
+inputs:
+  sha:
+    description: Full 40-character commit SHA whose images should be deployed
+    required: true
+  host:
+    description: Droplet hostname or IP
+    required: true
+  ssh-key:
+    description: Private key for the restricted deploy key
+    required: true
+  host-key:
+    description: Server's public host key line for known_hosts (from ssh-keyscan)
+    required: true
+  ghcr-user:
+    description: GitHub username for the registry login
+    required: true
+  ghcr-token:
+    description: Token with read access to the packages (GITHUB_TOKEN)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run deploy-image.sh on the server
+      shell: bash
+      env:
+        SHA: ${{ inputs.sha }}
+        HOST: ${{ inputs.host }}
+        SSH_KEY: ${{ inputs.ssh-key }}
+        HOST_KEY: ${{ inputs.host-key }}
+        GHCR_USER: ${{ inputs.ghcr-user }}
+        GHCR_TOKEN: ${{ inputs.ghcr-token }}
+      run: |
+        set -euo pipefail
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        # Pinned host key: refuse to talk to anything that is not our server.
+        printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+        printf '%s\n' "$GHCR_TOKEN" | ssh \
+          -i ~/.ssh/deploy_key \
+          -o BatchMode=yes \
+          -o StrictHostKeyChecking=yes \
+          -o ConnectTimeout=20 \
+          -o ServerAliveInterval=30 \
+          "root@${HOST}" "deploy ${SHA} ${GHCR_USER}"
