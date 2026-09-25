@@ -16,7 +16,7 @@ migration job, and Caddy serving the Angular dashboard and reverse-proxying
 > deploys, all 86 migrations apply, the dashboard loads at `http://139.59.88.0/`
 > and `/health/live` returns 200. `/health/ready` returns 503 only because
 > object storage is not configured yet (see "Object storage" in section 5).
-> Sections 7-8 (first admin user, HTTPS) are still open.
+> Section 7 (first super_admin) is done; section 8 (HTTPS) is still open.
 
 Commands prefixed `#` describe what follows. Lines in `bash` blocks are meant to
 be copy-pasted one block at a time.
@@ -244,13 +244,33 @@ Then open `http://139.59.88.0/` in a browser.
 
 ---
 
-## 7. First admin user (OPEN ITEM)
+## 7. First admin user (platform super_admin)
 
-A fresh database has no tenant or users. The existing seed scripts
-(`backend/scripts/seed_dev_user.py`) create **well-known dev credentials**
-(`admin@example.com` / `correct-horse-battery`) and must not be used as-is on a
-real server. A production bootstrap for the first tenant/`super_admin` still
-needs to be decided and written.
+A fresh database has no users. `backend/scripts/bootstrap_super_admin.py`
+creates the platform-level `super_admin` (no tenant; signs in to the Platform
+Console) with a random password, printed once and stored nowhere. It is
+idempotent - an existing email is left untouched, never reset. Do **not** use
+`seed_dev_user.py` here: it creates a well-known dev password.
+
+```bash
+# Run the script inside the backend image, using the migration (admin) DSN.
+cd /opt/lpg-agency/infrastructure/deploy
+docker compose -f docker-compose.prod.yml run --rm --no-deps -T migrate     python scripts/bootstrap_super_admin.py --email super_agency@lpg.com
+```
+
+Copy the printed password into a password manager. The app currently has **no
+change-password feature** (only forgot/reset by email, and no email provider is
+configured), so this password stays until one is built.
+
+Verify (from the droplet, so the password never crosses plain HTTP):
+
+```bash
+# Expect HTTP 200 with tokens, then 200 from /platform/agencies.
+curl -s -H 'Content-Type: application/json'   -d '{"email":"super_agency@lpg.com","password":"<PASSWORD>"}' http://localhost/api/v1/auth/login
+```
+
+Agencies (tenants) cannot yet be created through the app - a Super Admin
+"create agency" route is the next planned feature.
 
 ---
 

@@ -70,6 +70,18 @@ async def main(email: str) -> int:
                 {"e": email, "h": hasher.hash(password), "r": ROLE_CODE},
             )
         ).scalar_one()
+        # Permissions are resolved per user (identity_user_permission), copied
+        # from the role at creation - the same step SqlAlchemyIdentityUserRepository.add
+        # performs. Without it the user logs in but every permission check is a 403.
+        await conn.execute(
+            text(
+                "INSERT INTO identity.identity_user_permission "
+                "(id, user_id, permission_id, created_at) "
+                "SELECT gen_random_uuid(), :u, rp.permission_id, now() "
+                "FROM identity.role_permission rp WHERE rp.role_id = :r"
+            ),
+            {"u": user_id, "r": role_id},
+        )
         await conn.execute(
             text(
                 "INSERT INTO identity.user_role (id, tenant_id, user_id, role_id) "
