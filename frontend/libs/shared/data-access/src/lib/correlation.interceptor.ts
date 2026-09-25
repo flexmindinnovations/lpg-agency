@@ -1,4 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { randomUuid } from './random-uuid';
 
 export const CORRELATION_ID_HEADER = 'X-Correlation-ID';
 
@@ -14,6 +15,6 @@ export const CORRELATION_ID_HEADER = 'X-Correlation-ID';
 export const correlationIdInterceptor: HttpInterceptorFn = (request, next) =>
   next(
     request.clone({
-      setHeaders: { [CORRELATION_ID_HEADER]: crypto.randomUUID() },
+      setHeaders: { [CORRELATION_ID_HEADER]: randomUuid() },
     }),
   );

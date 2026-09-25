@@ -33,6 +33,7 @@ import type { OrderResponse } from './generated/models/order-response';
 import type { OrderStatusHistoryEntryResponse } from './generated/models/order-status-history-entry-response';
 import type { PodAttachmentResponse } from './generated/models/pod-attachment-response';
 import type { RecordFailedDeliveryRequest } from './generated/models/record-failed-delivery-request';
+import { randomUuid } from './random-uuid';
 
 export interface ListOrdersParams {
   skip?: number;
@@ -57,7 +58,7 @@ export class OrderService {
   // ---------------------------------------------------------------------------
 
   createOrder(request: CreateOrderRequest): Observable<OrderResponse> {
-    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    const headers = new HttpHeaders({ 'Idempotency-Key': randomUuid() });
     return this.http.post<OrderResponse>(
       `${this.config.rootUrl}${createOrderApiV1OrdersPost.PATH}`,
       request,
@@ -130,7 +131,7 @@ export class OrderService {
   }
 
   deliverOrder(orderId: string, request: DeliverOrderRequest): Observable<DeliverOrderResponse> {
-    const headers = new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() });
+    const headers = new HttpHeaders({ 'Idempotency-Key': randomUuid() });
     return this.http.post<DeliverOrderResponse>(
       `${this.config.rootUrl}${deliverOrderApiV1OrdersOrderIdDeliverPost.PATH.replace('{order_id}', orderId)}`,
       request,
