@@ -269,8 +269,12 @@ Verify (from the droplet, so the password never crosses plain HTTP):
 curl -s -H 'Content-Type: application/json'   -d '{"email":"super_agency@lpg.com","password":"<PASSWORD>"}' http://localhost/api/v1/auth/login
 ```
 
-Agencies (tenants) cannot yet be created through the app - a Super Admin
-"create agency" route is the next planned feature.
+Agencies are created from the Platform Console (sign in as this super_admin ->
+Agencies -> **Create agency**), or `POST /api/v1/platform/agencies`. It creates
+the agency plus its first `agency_admin` and shows a one-time password-setup
+link (no email provider is configured, so relay it yourself). The new admin
+cannot sign in until you issue **and activate** a license under Licenses.
+This needs migration `d5b9e3a7f1c4`; `./deploy.sh` applies it automatically.
 
 ---
 

@@ -1181,6 +1181,37 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-048: Agency Provisioning Through a `SECURITY DEFINER` Insert Function, a Two-Step Create With Compensation, and a One-Time Setup Link Returned in the Response
+
+**Status:** Accepted
+
+**Context:** The Platform Console (`super_admin`) could list, suspend, reactivate, close and license agencies but had no way to *create* one. `0242df1a3871` documented why: `tenant.tenant`'s RLS policy predicates on `id = app.current_tenant_id`, which makes an INSERT impossible through any tenant-scoped connection (before a tenant exists there is no session context that could satisfy the check), so provisioning was left as a seed operation. The only creation path in the codebase was `scripts/seed_dev_user.py`, which embeds a well-known password and is dev-only — a production database had no way to get its first agency. Discovered while deploying the first production instance (DigitalOcean Droplet, 2026-09-25).
+
+**Decision (a narrow `SECURITY DEFINER` function, the same trust boundary the Platform Console already uses for reads):** migration `d5b9e3a7f1c4` adds `tenant.tenant_provision(...)` — an INSERT of exactly one row, `EXECUTE` revoked from PUBLIC and granted only to the application role, reachable only through the `/platform/*` dependency chain (a verified, live-checked `super_admin`). This mirrors `tenant.tenant_list_all()` (`fdd3afde337c`) rather than adding an RLS `INSERT` policy for platform sessions, which would have widened what every future platform-scoped query could do to that table. `TenantRepository` gains `add()`, backed by that function; a unique-constraint hit on `uq_tenant_slug` becomes a `ConflictError` (409).
+
+**Decision (two steps, because they cannot share a transaction, with an explicit compensation):** the tenant row goes in through the platform Unit of Work, but the first admin is created by the existing `InviteStaffUserUseCase`, whose repositories open their *own* tenant-scoped sessions (`SqlAlchemyStaffUserRepository(database, tenant_id)`). The tenant must therefore be committed first. `ProvisionTenantUseCase` orders it: validate → pre-check the admin email (globally unique) → commit the tenant → invite the admin. If the invite fails after the tenant is durable, an injected `abort_provisioning` callable closes the half-created tenant and the error is re-raised, so no admin-less shell is left active; only the (closed) slug remains. `InviteStaffUserUseCase` was reused, not copied — its body moved into `invite()`, which also returns the raw setup token; `execute()` keeps its signature.
+
+**Decision (audit is written by hand, because the audit hook cannot see a function call):** `AuditRecorder` captures ORM changes at `before_flush`; a `SELECT tenant.tenant_provision(...)` never touches the ORM, so it would have produced no audit row. `SqlAlchemyTenantRepository.add()` therefore adds an `AuditLogModel` itself, attributed to the acting Super Admin under the existing platform sentinel tenant id (`PLATFORM_AUDIT_TENANT_ID`, migration `63c55035ebbb`). `SqlAlchemyUnitOfWork` gained a public `tenant_context` accessor for this rather than repositories reaching into a private attribute.
+
+**Decision (the setup link is returned once in the API response):** the agency's first admin is created without a password and activated through the existing password-reset flow, but the only `EmailSender` in production is `LoggingEmailSender` (logs, sends nothing), so an emailed invite reaches no one. `POST /platform/agencies` returns `setup_path` (`/reset-password?token=…`) and its expiry; the raw token is never stored (only its hash) and is shown to the Super Admin once, who relays it. **Known consequence:** `LoggingEmailSender` also writes the invite body — including the raw token — to the server log, exactly as the existing staff-invite endpoint already does; it should be replaced by a real provider, not patched here.
+
+**Decision (slug = future subdomain, validated as a DNS label now):** `Tenant.provision()` (domain layer, single source of truth) requires a lowercase 3–40 character DNS label (`a-z0-9`, single hyphens, no leading/trailing hyphen) and rejects reserved hostnames (`www`, `api`, `admin`, `platform`, …). The request schema mirrors the pattern for field-level 422s. The stricter format is deliberate so a later per-agency-subdomain rollout needs no data migration; subdomain routing itself (wildcard DNS, Host-header tenant resolution, on-demand TLS) is **not** part of this ADR and needs its own, since `ADR` for Phase 6 explicitly deferred it.
+
+**Consequences:**
+- A new agency's admin **cannot sign in until a license is issued and activated** (`LoginUseCase` blocks `PENDING_ACTIVATION`). That is existing, correct behaviour and is left unchanged; the Create-agency success panel links to Licenses. Issuing a license inside the same call was considered and deferred.
+- No default branches, warehouses or cylinder types are seeded; the agency admin creates them through the existing admin screens.
+- `pyproject.toml`'s import-linter allow-list gained one entry (`routers.platform -> repositories.identity`), justified inline: the staff-user repository is bound to a tenant id that does not exist until the request is being handled, the same reason every other platform entry is there.
+- Permissions are per-user (`identity_user_permission`), materialised from the role at creation; the invite path already does this, which is why the first admin works immediately. (`scripts/bootstrap_super_admin.py` had to do it by hand and initially did not — see `infrastructure/deploy/DEPLOY.md` §7.)
+
+**Alternatives Considered:**
+- **An RLS `INSERT` policy on `tenant.tenant` for platform sessions** — rejected: widens what any platform-scoped query can do to the table, versus a function that can do exactly one thing.
+- **Doing tenant + user + token in one SQL function** — rejected: moves business rules (role, token hashing, permission materialisation) into SQL, against this codebase's "logic lives in domain/application" rule, and duplicates `InviteStaffUserUseCase`.
+- **Copying the invite logic into the new use case** — rejected: duplicates token/permission behaviour that must stay identical to the staff-invite path.
+- **Creating the admin first, then the tenant** — rejected: `identity_user.tenant_id` needs the tenant to exist, and RLS scopes the user insert to it.
+- **Returning a generated password instead of a setup link** — rejected: a chosen-once password shown in a response is a worse credential than a single-use, expiring token the admin exchanges for their own password.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
