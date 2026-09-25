@@ -16,6 +16,7 @@ committed/staged earlier in this project's history (a Supabase password in
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -52,6 +53,13 @@ def _settings_from_example(filename: str, monkeypatch: pytest.MonkeyPatch) -> Se
     a dotenv source directly — this keeps the test exercising the same
     precedence rules ``Settings`` uses in production.
     """
+    # Start from a clean slate: an ambient LPG_* variable (CI sets LPG_DATABASE_URL
+    # job-wide) outranks the file's values, and an explicit LPG_DATABASE_URL beats
+    # the discrete LPG_DB_* parts entirely - the test would then be measuring the
+    # runner's environment instead of the template it claims to verify.
+    for key in [k for k in os.environ if k.startswith("LPG_")]:
+        monkeypatch.delenv(key, raising=False)
+
     values = _parse_env_file(_BACKEND_ROOT / filename)
     for key, value in values.items():
         if value:
