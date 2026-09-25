@@ -57,6 +57,17 @@ class InviteStaffUserCommand(Command):
     branch_id: uuid.UUID | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class StaffInvitation:
+    """An invited user plus the one-time setup token, for callers that must
+    hand the link over themselves because email delivery is not wired up.
+    The raw token exists only here — the database keeps just its hash."""
+
+    user: IdentityUser
+    setup_token: str
+    setup_token_expires_at: datetime
+
+
 class InviteStaffUserUseCase:
     def __init__(
         self,
@@ -74,6 +85,9 @@ class InviteStaffUserUseCase:
         self._reset_token_ttl = reset_token_ttl
 
     async def execute(self, command: InviteStaffUserCommand) -> IdentityUser:
+        return (await self.invite(command)).user
+
+    async def invite(self, command: InviteStaffUserCommand) -> StaffInvitation:
         user = IdentityUser(
             uuid.uuid4(),
             tenant_id=command.tenant_id,
@@ -86,18 +100,19 @@ class InviteStaffUserUseCase:
         await self._staff_user_repository.add(user)
 
         raw_token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(UTC) + self._reset_token_ttl
         reset_token = PasswordResetToken(
             uuid.uuid4(),
             user_id=user.id,
             token_hash=self._token_hasher.hash(raw_token),
-            expires_at=datetime.now(UTC) + self._reset_token_ttl,
+            expires_at=expires_at,
         )
         await self._reset_token_repository.save(reset_token)
 
         body = f"Set your password to activate your account: /reset-password?token={raw_token}"
         await self._email_sender.send(command.email, "You've been invited", body)
 
-        return user
+        return StaffInvitation(user=user, setup_token=raw_token, setup_token_expires_at=expires_at)
 
 
 @dataclass(frozen=True, slots=True)

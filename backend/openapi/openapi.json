@@ -1301,6 +1301,87 @@
         "title": "ComplianceDocumentResponse",
         "type": "object"
       },
+      "CreateAgencyRequest": {
+        "properties": {
+          "admin_email": {
+            "format": "email",
+            "title": "Admin Email",
+            "type": "string"
+          },
+          "country": {
+            "default": "IN",
+            "pattern": "^[A-Za-z]{2}$",
+            "title": "Country",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_contact_email": {
+            "format": "email",
+            "title": "Primary Contact Email",
+            "type": "string"
+          },
+          "slug": {
+            "maxLength": 40,
+            "minLength": 3,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Slug",
+            "type": "string"
+          },
+          "subscription_plan": {
+            "default": "standard",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Subscription Plan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "primary_contact_email",
+          "admin_email"
+        ],
+        "title": "CreateAgencyRequest",
+        "type": "object"
+      },
+      "CreateAgencyResponse": {
+        "properties": {
+          "admin_email": {
+            "title": "Admin Email",
+            "type": "string"
+          },
+          "admin_user_id": {
+            "title": "Admin User Id",
+            "type": "string"
+          },
+          "setup_path": {
+            "title": "Setup Path",
+            "type": "string"
+          },
+          "setup_token_expires_at": {
+            "format": "date-time",
+            "title": "Setup Token Expires At",
+            "type": "string"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/TenantResponse"
+          }
+        },
+        "required": [
+          "tenant",
+          "admin_user_id",
+          "admin_email",
+          "setup_path",
+          "setup_token_expires_at"
+        ],
+        "title": "CreateAgencyResponse",
+        "type": "object"
+      },
       "CreateBranchRequest": {
         "properties": {
           "name": {
@@ -16109,6 +16190,45 @@
           }
         },
         "summary": "List every agency (tenant)",
+        "tags": [
+          "Platform Console"
+        ]
+      },
+      "post": {
+        "operationId": "create_agency_api_v1_platform_agencies_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgencyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateAgencyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create an agency (tenant) and its first admin",
         "tags": [
           "Platform Console"
         ]

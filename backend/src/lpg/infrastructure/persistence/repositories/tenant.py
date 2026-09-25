@@ -11,11 +11,14 @@ doesn't know about" — otherwise `collect_events()` would miss it).
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
+from lpg.application.common.errors import ConflictError
 from lpg.domain.platform.feature_flag import FeatureFlagOverride
 from lpg.domain.tenant.branch import Branch
 from lpg.domain.tenant.cylinder_type import CylinderType
@@ -24,6 +27,7 @@ from lpg.domain.tenant.price_list_proposal import PriceListProposal
 from lpg.domain.tenant.tenant import Tenant
 from lpg.domain.tenant.tenant_configuration import TenantConfiguration
 from lpg.domain.tenant.warehouse import Warehouse
+from lpg.infrastructure.persistence.models.audit_log import AuditLogModel
 from lpg.infrastructure.persistence.models.tenant import (
     BranchModel,
     CylinderTypeModel,
@@ -86,6 +90,60 @@ class SqlAlchemyTenantRepository:
         )
         self._uow.register_aggregate(tenant)
         return tenant
+
+    async def add(self, tenant: Tenant) -> None:
+        """Insert via `tenant.tenant_provision()` (a `SECURITY DEFINER`
+        function — see migration `d5b9e3a7f1c4`), then write the audit row by
+        hand: the audit hook only sees ORM changes, and a function call is
+        invisible to it. The row is attributed to the acting Super Admin under
+        the platform sentinel tenant, exactly like every other unscoped
+        platform write.
+        """
+        context = self._uow.tenant_context
+        try:
+            await self._uow.session.execute(
+                text(
+                    "SELECT tenant.tenant_provision(:id, :name, :slug, :status, :plan, "
+                    ":email, :country, :created_by)"
+                ),
+                {
+                    "id": tenant.id,
+                    "name": tenant.name,
+                    "slug": tenant.slug,
+                    "status": tenant.status,
+                    "plan": tenant.subscription_plan,
+                    "email": tenant.primary_contact_email,
+                    "country": tenant.country,
+                    "created_by": context.user_id,
+                },
+            )
+        except IntegrityError as exc:
+            if "uq_tenant_slug" in str(exc.orig):
+                msg = f"Agency code '{tenant.slug}' is already in use."
+                raise ConflictError(msg) from exc
+            raise
+
+        self._uow.session.add(
+            AuditLogModel(
+                tenant_id=context.tenant_id,
+                actor_id=context.user_id,
+                entity_name="tenant",
+                entity_id=str(tenant.id),
+                entity_display_name=tenant.name,
+                action="create",
+                performed_at=datetime.now(UTC),
+                before_state=None,
+                after_state={
+                    "name": tenant.name,
+                    "slug": tenant.slug,
+                    "status": tenant.status,
+                    "subscription_plan": tenant.subscription_plan,
+                    "primary_contact_email": tenant.primary_contact_email,
+                    "country": tenant.country,
+                },
+            )
+        )
+        self._uow.register_aggregate(tenant)
 
     async def save(self, tenant: Tenant) -> None:
         row = await self._uow.session.get(TenantModel, tenant.id)
@@ -460,9 +518,7 @@ class SqlAlchemyPriceListProposalRepository:
                 for p in proposals
             ]
         )
-        stmt = stmt.on_conflict_do_nothing(
-            constraint="uq_price_list_proposal_dimension_effective"
-        )
+        stmt = stmt.on_conflict_do_nothing(constraint="uq_price_list_proposal_dimension_effective")
         result = cast("CursorResult[Any]", await self._uow.session.execute(stmt))
         return result.rowcount or 0
 
@@ -474,9 +530,7 @@ class SqlAlchemyPriceListProposalRepository:
         self._uow.register_aggregate(proposal)
         return proposal
 
-    async def list_pending_for_tenant(
-        self, tenant_id: uuid.UUID
-    ) -> Sequence[PriceListProposal]:
+    async def list_pending_for_tenant(self, tenant_id: uuid.UUID) -> Sequence[PriceListProposal]:
         result = await self._uow.session.execute(
             select(PriceListProposalModel)
             .where(

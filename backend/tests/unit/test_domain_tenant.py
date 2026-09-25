@@ -7,7 +7,12 @@ import uuid
 import pytest
 
 from lpg.domain.common.base import InvariantViolation
-from lpg.domain.tenant.tenant import Tenant, TenantRenamed, TenantStatusChanged
+from lpg.domain.tenant.tenant import (
+    Tenant,
+    TenantProvisioned,
+    TenantRenamed,
+    TenantStatusChanged,
+)
 
 
 def _make_tenant(**overrides: object) -> Tenant:
@@ -115,3 +120,51 @@ class TestLifecycle:
         assert isinstance(event, TenantStatusChanged)
         assert event.old_status == "active"
         assert event.new_status == "suspended"
+
+
+class TestProvision:
+    def _provision(self, **overrides: str) -> Tenant:
+        kwargs = {
+            "name": "  Orient LPG Agency ",
+            "slug": "Orient-LPG",
+            "primary_contact_email": " Ops@Orient.Example ",
+        }
+        kwargs.update(overrides)
+        return Tenant.provision(**kwargs)
+
+    def test_creates_a_trial_tenant_with_normalised_fields_and_an_event(self) -> None:
+        tenant = self._provision()
+
+        assert tenant.status == "trial"
+        assert tenant.name == "Orient LPG Agency"
+        assert tenant.slug == "orient-lpg"
+        assert tenant.primary_contact_email == "ops@orient.example"
+        assert tenant.country == "IN"
+        assert [type(e) for e in tenant.events] == [TenantProvisioned]
+
+    @pytest.mark.parametrize(
+        "slug",
+        ["ab", "a" * 41, "-abc", "abc-", "ab--cd", "ab_cd", "ab cd", "ab.cd", "abc!"],
+    )
+    def test_rejects_slugs_that_are_not_a_valid_dns_label(self, slug: str) -> None:
+        with pytest.raises(InvariantViolation):
+            self._provision(slug=slug)
+
+    @pytest.mark.parametrize("slug", ["www", "api", "admin", "platform"])
+    def test_rejects_reserved_slugs(self, slug: str) -> None:
+        with pytest.raises(InvariantViolation, match="reserved"):
+            self._provision(slug=slug)
+
+    @pytest.mark.parametrize("name", ["", "   ", "x" * 121])
+    def test_rejects_an_empty_or_overlong_name(self, name: str) -> None:
+        with pytest.raises(InvariantViolation):
+            self._provision(name=name)
+
+    @pytest.mark.parametrize("email", ["", "no-at-sign", "@nolocal", "nodomain@"])
+    def test_rejects_an_invalid_contact_email(self, email: str) -> None:
+        with pytest.raises(InvariantViolation):
+            self._provision(primary_contact_email=email)
+
+    def test_rejects_a_bad_country_code(self) -> None:
+        with pytest.raises(InvariantViolation):
+            self._provision(country="India")

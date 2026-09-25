@@ -72,6 +72,12 @@ class SqlAlchemyUnitOfWork:
         """
         return self._session
 
+    @property
+    def tenant_context(self) -> TenantContext:
+        """Who is acting and for which tenant — for repositories that must
+        stamp an actor onto rows written outside the ORM audit hook."""
+        return self._tenant_context
+
     def register_aggregate(self, aggregate: AggregateRoot) -> None:
         """Track an aggregate touched in this transaction.
 

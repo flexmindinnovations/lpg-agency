@@ -15,6 +15,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
+from lpg.domain.tenant.tenant import (
+    NAME_MAX_LENGTH,
+    SLUG_MAX_LENGTH,
+    SLUG_MIN_LENGTH,
+    SLUG_PATTERN,
+)
+
 # -- Tenant -----------------------------------------------------------------
 
 
@@ -26,6 +33,29 @@ class TenantResponse(BaseModel):
     subscription_plan: str
     primary_contact_email: str
     country: str
+
+
+class CreateAgencyRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=NAME_MAX_LENGTH)
+    # Also the agency's future subdomain — a lowercase DNS label
+    # (`domain/tenant/tenant.py` owns the rules; this only mirrors them so a
+    # bad value is a field-level 422 instead of a generic 409).
+    slug: str = Field(min_length=SLUG_MIN_LENGTH, max_length=SLUG_MAX_LENGTH, pattern=SLUG_PATTERN)
+    primary_contact_email: EmailStr
+    admin_email: EmailStr
+    country: str = Field(default="IN", pattern=r"^[A-Za-z]{2}$")
+    subscription_plan: str = Field(default="standard", min_length=1, max_length=50)
+
+
+class CreateAgencyResponse(BaseModel):
+    tenant: TenantResponse
+    admin_user_id: str
+    admin_email: str
+    #: One-time link for the first admin to set their password. Returned once
+    #: and never stored (only its hash is) — email delivery is not wired up
+    #: yet, so the Super Admin passes it on.
+    setup_path: str
+    setup_token_expires_at: datetime
 
 
 class RenameTenantRequest(BaseModel):

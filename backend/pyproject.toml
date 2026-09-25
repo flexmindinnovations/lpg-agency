@@ -337,6 +337,12 @@ ignore_imports = [
     # wires the factory itself and needs SqlAlchemyUnitOfWork for the same
     # reason `dependencies/unit_of_work.py` does above.
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.database",
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.identity",
+    # ^ `POST /platform/agencies` (Agency Provisioning, Phase 30): the new
+    # agency's first admin is created through a staff-user repository bound to
+    # a tenant id that does not exist until the request is being handled, so —
+    # same reasoning as every other platform entry here — it cannot be a static
+    # Depends() provider.
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.license",
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.tenant",

@@ -6,10 +6,10 @@ returning the domain aggregate — never a partial DTO, never the SQLAlchemy
 model. The implementation lives in
 `lpg.infrastructure.persistence.repositories.tenant`.
 
-No `add()` here. `tenant.tenant`'s RLS policy makes tenant creation
-impossible through a tenant-scoped connection by design (see the migration
-`0242df1a3871`'s docstring) — provisioning is a platform/admin operation,
-out of Phase 2's scope, not a gap in this port.
+`add()` exists for the Platform Console only (Agency Provisioning, Phase 30).
+`tenant.tenant`'s RLS policy makes tenant creation impossible through a
+tenant-scoped connection by design (migration `0242df1a3871`'s docstring), so
+it is backed by a `SECURITY DEFINER` function, never a plain INSERT.
 
 `list_all()` is the one method here that is *never* callable through an
 ordinary tenant-scoped session — `tenant.tenant`'s own RLS policy
@@ -42,6 +42,13 @@ class TenantRepository(Protocol):
     async def get(self, tenant_id: uuid.UUID) -> Tenant | None: ...
 
     async def get_by_slug(self, slug: str) -> Tenant | None: ...
+
+    async def add(self, tenant: Tenant) -> None:
+        """Insert a brand-new tenant. Platform-only: goes through the
+        `tenant.tenant_provision()` `SECURITY DEFINER` function (migration
+        `d5b9e3a7f1c4`), the one way past `tenant.tenant`'s RLS INSERT block.
+        Raises `ConflictError` if the slug is already taken."""
+        ...
 
     async def save(self, tenant: Tenant) -> None: ...
 

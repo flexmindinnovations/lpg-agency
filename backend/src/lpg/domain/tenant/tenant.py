@@ -14,13 +14,38 @@ methods.
 
 from __future__ import annotations
 
+import re
+import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
 
-if TYPE_CHECKING:
-    import uuid
+#: An agency's `slug` is also its future subdomain (`<slug>.example.com`), so
+#: it must be a valid, lowercase DNS label: letters/digits/single hyphens,
+#: never starting or ending with a hyphen. Deliberately stricter than the
+#: legacy dev slug (`DEV123456`) so a later subdomain rollout needs no
+#: data migration.
+SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+SLUG_MIN_LENGTH = 3
+SLUG_MAX_LENGTH = 40
+NAME_MAX_LENGTH = 120
+
+#: Hostnames that would collide with platform infrastructure once slugs
+#: become subdomains.
+RESERVED_SLUGS = frozenset(
+    {"www", "api", "app", "admin", "platform", "mail", "static", "assets", "support", "status"}
+)
+
+_SLUG_RE = re.compile(SLUG_PATTERN)
+_COUNTRY_RE = re.compile(r"^[A-Z]{2}$")
+
+
+@dataclass(frozen=True, slots=True)
+class TenantProvisioned(DomainEvent):
+    """Recorded when a Super Admin creates a new agency (`Tenant.provision`)."""
+
+    tenant_id: uuid.UUID | None = None
+    slug: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +111,63 @@ class Tenant(AggregateRoot):
         self._subscription_plan = subscription_plan
         self._primary_contact_email = primary_contact_email
         self._country = country
+
+    @classmethod
+    def provision(
+        cls,
+        *,
+        name: str,
+        slug: str,
+        primary_contact_email: str,
+        subscription_plan: str = "standard",
+        country: str = "IN",
+    ) -> Tenant:
+        """Create a brand-new agency in the `trial` state.
+
+        The one place a tenant's identity fields are validated, so every entry
+        point (API, scripts, tests) gets the same rules. Input is normalised
+        first (whitespace trimmed, slug and email lower-cased) because callers
+        should not have to pre-clean what they are about to be rejected for.
+        """
+        clean_name = name.strip()
+        if not clean_name or len(clean_name) > NAME_MAX_LENGTH:
+            msg = f"Agency name must be 1-{NAME_MAX_LENGTH} characters."
+            raise InvariantViolation(msg)
+
+        clean_slug = slug.strip().lower()
+        if not SLUG_MIN_LENGTH <= len(clean_slug) <= SLUG_MAX_LENGTH or not _SLUG_RE.match(
+            clean_slug
+        ):
+            msg = (
+                f"Agency code must be {SLUG_MIN_LENGTH}-{SLUG_MAX_LENGTH} characters: lowercase "
+                "letters, digits and single hyphens, not starting or ending with a hyphen."
+            )
+            raise InvariantViolation(msg, slug=clean_slug)
+        if clean_slug in RESERVED_SLUGS:
+            msg = f"Agency code '{clean_slug}' is reserved."
+            raise InvariantViolation(msg, slug=clean_slug)
+
+        clean_email = primary_contact_email.strip().lower()
+        if "@" not in clean_email or clean_email.startswith("@") or clean_email.endswith("@"):
+            msg = "A valid primary contact email is required."
+            raise InvariantViolation(msg)
+
+        clean_country = country.strip().upper()
+        if not _COUNTRY_RE.match(clean_country):
+            msg = "Country must be a two-letter ISO 3166-1 code."
+            raise InvariantViolation(msg, country=clean_country)
+
+        tenant = cls(
+            uuid.uuid4(),
+            clean_name,
+            clean_slug,
+            status="trial",
+            subscription_plan=subscription_plan.strip() or "standard",
+            primary_contact_email=clean_email,
+            country=clean_country,
+        )
+        tenant.record_event(TenantProvisioned(tenant_id=tenant.id, slug=clean_slug))
+        return tenant
 
     @property
     def name(self) -> str:

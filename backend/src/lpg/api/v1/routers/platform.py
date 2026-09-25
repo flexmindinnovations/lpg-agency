@@ -29,7 +29,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from lpg.api.v1.dependencies.identity import get_token_hasher
+from lpg.api.v1.dependencies.identity import (
+    get_email_sender,
+    get_identity_user_repository,
+    get_password_reset_token_repository,
+    get_token_hasher,
+)
 from lpg.api.v1.dependencies.license import get_license_status_checker
 from lpg.api.v1.dependencies.platform import (
     get_platform_principal,
@@ -37,6 +42,8 @@ from lpg.api.v1.dependencies.platform import (
     require_live_platform_permission,
 )
 from lpg.api.v1.schemas.admin import (
+    CreateAgencyRequest,
+    CreateAgencyResponse,
     CreateFeatureFlagRequest,
     FeatureFlagResponse,
     ScheduleFeatureFlagRequest,
@@ -55,7 +62,13 @@ from lpg.api.v1.schemas.license import (
     SetLicensePlanTierRequest,
 )
 from lpg.application.common.ports import UnitOfWork
-from lpg.application.identity.ports import TokenHasher
+from lpg.application.identity.ports import (
+    EmailSender,
+    IdentityUserRepository,
+    PasswordResetTokenRepository,
+    TokenHasher,
+)
+from lpg.application.identity.staff_user import InviteStaffUserUseCase
 from lpg.application.license.activate_license import (
     ActivateLicenseCommand,
     ActivateLicenseUseCase,
@@ -100,9 +113,15 @@ from lpg.application.tenant.manage_lifecycle import (
     SuspendTenantCommand,
     SuspendTenantUseCase,
 )
+from lpg.application.tenant.provision_tenant import (
+    ProvisionTenantCommand,
+    ProvisionTenantUseCase,
+)
+from lpg.config.settings import Settings, get_settings
 from lpg.domain.license.license import License
 from lpg.domain.tenant.tenant import Tenant
 from lpg.infrastructure.persistence.database import Database
+from lpg.infrastructure.persistence.repositories.identity import SqlAlchemyStaffUserRepository
 from lpg.infrastructure.persistence.repositories.license import (
     SqlAlchemyLicenseFeatureOverrideRepository,
     SqlAlchemyLicenseRepository,
@@ -193,6 +212,73 @@ async def list_agencies(
         use_case = ListTenantsUseCase(repository)
         tenants = await use_case.execute(ListTenantsQuery())
         return [_tenant_response(tenant) for tenant in tenants]
+
+
+@router.post(
+    "/agencies",
+    response_model=CreateAgencyResponse,
+    status_code=201,
+    summary="Create an agency (tenant) and its first admin",
+)
+async def create_agency(
+    body: CreateAgencyRequest,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("tenant:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
+    reset_token_repository: Annotated[
+        PasswordResetTokenRepository, Depends(get_password_reset_token_repository)
+    ],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    email_sender: Annotated[EmailSender, Depends(get_email_sender)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> CreateAgencyResponse:
+    database = _get_database()
+
+    def _invite_for(tenant_id: uuid.UUID) -> InviteStaffUserUseCase:
+        return InviteStaffUserUseCase(
+            SqlAlchemyStaffUserRepository(database, tenant_id),
+            reset_token_repository,
+            token_hasher,
+            email_sender,
+            reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+        )
+
+    async def _close_half_created(tenant_id: uuid.UUID) -> None:
+        async with uow_factory(tenant_id) as close_uow:
+            await CloseTenantUseCase(
+                SqlAlchemyTenantRepository(close_uow),  # type: ignore[arg-type]
+                RedisTenantStatusChecker(_get_redis_cache(), database),
+                close_uow,
+            ).execute(CloseTenantCommand(tenant_id=tenant_id))
+
+    async with uow_factory(None) as uow:
+        use_case = ProvisionTenantUseCase(
+            SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+            uow,
+            user_repository,
+            _invite_for,
+            _close_half_created,
+        )
+        result = await use_case.execute(
+            ProvisionTenantCommand(
+                name=body.name,
+                slug=body.slug,
+                primary_contact_email=body.primary_contact_email,
+                admin_email=body.admin_email,
+                subscription_plan=body.subscription_plan,
+                country=body.country,
+            )
+        )
+
+    return CreateAgencyResponse(
+        tenant=_tenant_response(result.tenant),
+        admin_user_id=str(result.admin.id),
+        admin_email=body.admin_email.strip().lower(),
+        setup_path=f"/reset-password?token={result.setup_token}",
+        setup_token_expires_at=result.setup_token_expires_at,
+    )
 
 
 @router.patch("/agencies/{tenant_id}/suspend", status_code=204, summary="Suspend an agency")
