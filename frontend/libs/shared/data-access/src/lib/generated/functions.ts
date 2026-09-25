@@ -345,6 +345,8 @@ export type { GetOrderTrackingApiV1OrdersOrderIdTrackingGet$Params as GetOrderTr
 export { getOrderTrackingApiV1OrdersOrderIdTrackingGet as getOrderTrackingApiV1OrdersOrderIdTrackingGet } from './fn/orders/get-order-tracking-api-v-1-orders-order-id-tracking-get';
 export type { ListAgenciesApiV1PlatformAgenciesGet$Params as ListAgenciesApiV1PlatformAgenciesGet$Params } from './fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
 export { listAgenciesApiV1PlatformAgenciesGet as listAgenciesApiV1PlatformAgenciesGet } from './fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
+export type { CreateAgencyApiV1PlatformAgenciesPost$Params as CreateAgencyApiV1PlatformAgenciesPost$Params } from './fn/platform-console/create-agency-api-v-1-platform-agencies-post';
+export { createAgencyApiV1PlatformAgenciesPost as createAgencyApiV1PlatformAgenciesPost } from './fn/platform-console/create-agency-api-v-1-platform-agencies-post';
 export type { CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params as CloseAgencyApiV1PlatformAgenciesTenantIdClosePatch$Params } from './fn/platform-console/close-agency-api-v-1-platform-agencies-tenant-id-close-patch';
 export { closeAgencyApiV1PlatformAgenciesTenantIdClosePatch as closeAgencyApiV1PlatformAgenciesTenantIdClosePatch } from './fn/platform-console/close-agency-api-v-1-platform-agencies-tenant-id-close-patch';
 export type { ReactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch$Params as ReactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch$Params } from './fn/platform-console/reactivate-agency-api-v-1-platform-agencies-tenant-id-reactivate-patch';

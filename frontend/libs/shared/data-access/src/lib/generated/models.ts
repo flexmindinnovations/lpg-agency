@@ -37,6 +37,8 @@ export type { ComplaintResponse } from './models/complaint-response';
 export type { ComplaintStatus } from './models/complaint-status';
 export type { ComplianceDocumentListResponse } from './models/compliance-document-list-response';
 export type { ComplianceDocumentResponse } from './models/compliance-document-response';
+export type { CreateAgencyRequest } from './models/create-agency-request';
+export type { CreateAgencyResponse } from './models/create-agency-response';
 export type { CreateBranchRequest } from './models/create-branch-request';
 export type { CreateCylinderTypeRequest } from './models/create-cylinder-type-request';
 export type { CreateFeatureFlagRequest } from './models/create-feature-flag-request';

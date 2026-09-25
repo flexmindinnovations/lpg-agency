@@ -2,10 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
+import { createAgencyApiV1PlatformAgenciesPost } from './generated/fn/platform-console/create-agency-api-v-1-platform-agencies-post';
 import { closeAgencyApiV1PlatformAgenciesTenantIdClosePatch } from './generated/fn/platform-console/close-agency-api-v-1-platform-agencies-tenant-id-close-patch';
 import { listAgenciesApiV1PlatformAgenciesGet } from './generated/fn/platform-console/list-agencies-api-v-1-platform-agencies-get';
 import { reactivateAgencyApiV1PlatformAgenciesTenantIdReactivatePatch } from './generated/fn/platform-console/reactivate-agency-api-v-1-platform-agencies-tenant-id-reactivate-patch';
 import { suspendAgencyApiV1PlatformAgenciesTenantIdSuspendPatch } from './generated/fn/platform-console/suspend-agency-api-v-1-platform-agencies-tenant-id-suspend-patch';
+import type { CreateAgencyRequest } from './generated/models/create-agency-request';
+import type { CreateAgencyResponse } from './generated/models/create-agency-response';
 import type { TenantResponse } from './generated/models/tenant-response';
 
 /**
@@ -23,6 +26,14 @@ export class AgencyService {
     return listAgenciesApiV1PlatformAgenciesGet(this.http, this.config.rootUrl).pipe(
       map((response) => response.body),
     );
+  }
+
+  /** Creates an agency and its first admin. The response carries the
+   * one-time password-setup link — it is never retrievable again. */
+  create(request: CreateAgencyRequest): Observable<CreateAgencyResponse> {
+    return createAgencyApiV1PlatformAgenciesPost(this.http, this.config.rootUrl, {
+      body: request,
+    }).pipe(map((response) => response.body));
   }
 
   suspend(tenantId: string): Observable<void> {

@@ -1,10 +1,22 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
+import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
-import { AgencyService, NotifyService } from '@lpg/shared/data-access';
+import { AgencyService, NotifyService, type CreateAgencyResponse } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
+  FormFieldComponent,
   StatusChipCell,
   type ChipSeverity,
   type DataGridColumn,
@@ -13,9 +25,27 @@ import {
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import type { TenantResponse } from '@lpg/shared/data-access';
 
+/** Mirrors `domain/tenant/tenant.py`'s `SLUG_PATTERN` and length bounds. The
+ * agency code is also the future subdomain, so it is a lowercase DNS label. */
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SLUG_MIN_LENGTH = 3;
+const SLUG_MAX_LENGTH = 40;
+
+/** "Orient LPG Agency" → "orient-lpg-agency": a starting suggestion for the
+ * agency code, which the user can still edit. */
+export function suggestAgencyCode(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, SLUG_MAX_LENGTH)
+    .replace(/-+$/g, '');
+}
+
 /**
  * Platform Console landing page — lists every agency (tenant) with its
- * lifecycle status, plus a detail drawer for Suspend/Reactivate/Close.
+ * lifecycle status, plus a detail drawer for Suspend/Reactivate/Close and a
+ * Create-agency drawer (agency + its first admin, one-time setup link).
  * `super_admin`, `tenant:manage_platform`, live-checked. Metadata only —
  * never tenant business data (`domain/tenant/tenant.py`'s status
  * transitions: `trial` → `active` → `suspended` ⇄ `active`, `close()`
@@ -24,7 +54,17 @@ import type { TenantResponse } from '@lpg/shared/data-access';
 @Component({
   selector: 'lpg-agency-management-page',
   standalone: true,
-  imports: [HeaderTitlePortalDirective, ButtonDirective, Drawer, DrawerA11yDirective, DataGridComponent],
+  imports: [
+    HeaderTitlePortalDirective,
+    ButtonDirective,
+    Drawer,
+    DrawerA11yDirective,
+    DataGridComponent,
+    ReactiveFormsModule,
+    InputText,
+    FormFieldComponent,
+    RouterLink,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="admin-page">
@@ -35,6 +75,15 @@ import type { TenantResponse } from '@lpg/shared/data-access';
             <p class="page-subtitle">Every agency (tenant) on this platform.</p>
           </div>
         </ng-template>
+      </div>
+
+      <div class="data-toolbar">
+        <div class="data-toolbar__filters"></div>
+        <div class="data-toolbar__actions">
+          <button pButton type="button" (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Create agency</span>
+          </button>
+        </div>
       </div>
 
       @if (!loading() && agencies().length === 0) {
@@ -52,6 +101,159 @@ import type { TenantResponse } from '@lpg/shared/data-access';
           />
         </section>
       }
+
+      <!-- Create agency -->
+      <p-drawer
+        header="Create an agency"
+        [(visible)]="createDrawerVisible"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        <form
+          id="createAgencyForm"
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          novalidate
+          class="dialog-form"
+        >
+          <div class="dialog-form__fields">
+            <lpg-form-field
+              label="Agency name"
+              for="agency-name"
+              [control]="form.controls.name"
+              [messages]="{
+                required: 'Agency name is required.',
+                maxlength: 'Use at most 120 characters.'
+              }"
+            >
+              <input pInputText id="agency-name" type="text" formControlName="name" [fluid]="true" />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Agency code"
+              for="agency-slug"
+              [control]="form.controls.slug"
+              [messages]="{
+                required: 'Agency code is required.',
+                minlength: 'Use at least 3 characters.',
+                maxlength: 'Use at most 40 characters.',
+                pattern:
+                  'Lowercase letters, digits and single hyphens only, not starting or ending with a hyphen.'
+              }"
+            >
+              <input
+                pInputText
+                id="agency-slug"
+                type="text"
+                formControlName="slug"
+                autocapitalize="off"
+                autocomplete="off"
+                spellcheck="false"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+            <lpg-form-field
+              label="Primary contact email"
+              for="agency-contact-email"
+              [control]="form.controls.primaryContactEmail"
+              [messages]="{
+                required: 'Contact email is required.',
+                email: 'Enter a valid email address.'
+              }"
+            >
+              <input
+                pInputText
+                id="agency-contact-email"
+                type="email"
+                formControlName="primaryContactEmail"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+            <lpg-form-field
+              label="First admin email"
+              for="agency-admin-email"
+              [control]="form.controls.adminEmail"
+              [messages]="{
+                required: 'Admin email is required.',
+                email: 'Enter a valid email address.'
+              }"
+            >
+              <input
+                pInputText
+                id="agency-admin-email"
+                type="email"
+                formControlName="adminEmail"
+                [fluid]="true"
+              />
+            </lpg-form-field>
+          </div>
+
+          <div class="modal-actions">
+            <button pButton type="button" severity="secondary" (click)="createDrawerVisible.set(false)">
+              Cancel
+            </button>
+            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+              @if (submitting()) {<i class="pi pi-spin pi-spinner"></i> }Create agency
+            </button>
+          </div>
+        </form>
+      </p-drawer>
+
+      <!-- Agency created: one-time setup link -->
+      <p-drawer
+        header="Agency created"
+        [(visible)]="createdDrawerVisible"
+        (onHide)="dismissCreated()"
+        position="right"
+        [modal]="true"
+        [closeOnEscape]="true"
+        styleClass="w-full"
+        [style]="{ width: '100%', maxWidth: '32rem' }"
+      >
+        @if (created(); as result) {
+          <div class="detail-view">
+            <div class="detail-view__fields">
+              <div class="detail-item">
+                <span class="detail-label">Agency</span>
+                <span class="detail-value">{{ result.tenant.name }} ({{ result.tenant.slug }})</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">First admin</span>
+                <span class="detail-value">{{ result.admin_email }}</span>
+              </div>
+              <lpg-form-field label="One-time password setup link" for="agency-setup-link">
+                <input
+                  pInputText
+                  #setupLink
+                  id="agency-setup-link"
+                  type="text"
+                  readonly
+                  [value]="setupUrl()"
+                  (focus)="setupLink.select()"
+                  [fluid]="true"
+                />
+              </lpg-form-field>
+              <p class="detail-value">
+                Send this link to the admin. It is shown only once and expires
+                {{ expiryLabel() }}. Email delivery is not configured, so nothing was sent.
+              </p>
+              <p class="detail-value">
+                The admin cannot sign in until the agency has an active license —
+                <a routerLink="/platform/licenses">issue one next</a>.
+              </p>
+            </div>
+
+            <div class="modal-actions">
+              <button pButton type="button" severity="secondary" (click)="dismissCreated()">Done</button>
+              <button pButton type="button" (click)="copySetupLink()">
+                <i class="pi pi-copy"></i><span>Copy link</span>
+              </button>
+            </div>
+          </div>
+        }
+      </p-drawer>
 
       <p-drawer
         header="Agency Details"
@@ -174,6 +376,29 @@ import type { TenantResponse } from '@lpg/shared/data-access';
 export class AgencyManagementPage implements OnInit {
   private readonly agencyService = inject(AgencyService);
   private readonly notify = inject(NotifyService);
+  private readonly formBuilder = inject(NonNullableFormBuilder);
+
+  protected readonly setupLinkInput = viewChild<ElementRef<HTMLInputElement>>('setupLink');
+
+  protected readonly form = this.formBuilder.group({
+    name: ['', [Validators.required, Validators.maxLength(120)]],
+    slug: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(SLUG_MIN_LENGTH),
+        Validators.maxLength(SLUG_MAX_LENGTH),
+        Validators.pattern(SLUG_PATTERN),
+      ],
+    ],
+    primaryContactEmail: ['', [Validators.required, Validators.email]],
+    adminEmail: ['', [Validators.required, Validators.email]],
+  });
+
+  protected readonly createDrawerVisible = signal(false);
+  protected readonly createdDrawerVisible = signal(false);
+  protected readonly submitting = signal(false);
+  protected readonly created = signal<CreateAgencyResponse | null>(null);
 
   protected readonly loading = signal(false);
   protected readonly acting = signal(false);
@@ -227,6 +452,13 @@ export class AgencyManagementPage implements OnInit {
 
   ngOnInit(): void {
     this.reload();
+
+    // Suggest an agency code from the name until the user edits the code themselves.
+    this.form.controls.name.valueChanges.subscribe((name) => {
+      if (this.form.controls.slug.pristine) {
+        this.form.controls.slug.setValue(suggestAgencyCode(name), { emitEvent: false });
+      }
+    });
   }
 
   private reload(): void {
@@ -238,6 +470,69 @@ export class AgencyManagementPage implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  protected setupUrl(): string {
+    const result = this.created();
+    return result ? `${globalThis.location.origin}${result.setup_path}` : '';
+  }
+
+  protected expiryLabel(): string {
+    const result = this.created();
+    return result ? `on ${new Date(result.setup_token_expires_at).toLocaleString()}` : '';
+  }
+
+  protected openCreateDrawer(): void {
+    this.form.reset();
+    this.createDrawerVisible.set(true);
+  }
+
+  protected submit(): void {
+    if (this.submitting()) {
+      return;
+    }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.submitting.set(true);
+    const { name, slug, primaryContactEmail, adminEmail } = this.form.getRawValue();
+
+    this.agencyService
+      .create({
+        name: name.trim(),
+        slug,
+        primary_contact_email: primaryContactEmail.trim(),
+        admin_email: adminEmail.trim(),
+      })
+      .subscribe({
+        next: (response) => {
+          this.submitting.set(false);
+          this.createDrawerVisible.set(false);
+          this.created.set(response);
+          this.createdDrawerVisible.set(true);
+          this.notify.success(`Agency "${response.tenant.name}" created.`);
+          this.reload();
+        },
+        error: () => this.submitting.set(false),
+      });
+  }
+
+  protected async copySetupLink(): Promise<void> {
+    try {
+      // The Clipboard API only exists on secure origins (HTTPS/localhost).
+      await navigator.clipboard.writeText(this.setupUrl());
+      this.notify.success('Setup link copied.');
+    } catch {
+      this.setupLinkInput()?.nativeElement.select();
+      this.notify.info('Press Ctrl+C to copy the selected link.');
+    }
+  }
+
+  protected dismissCreated(): void {
+    this.createdDrawerVisible.set(false);
+    this.created.set(null);
   }
 
   protected openDetails(agency: TenantResponse): void {
