@@ -136,6 +136,15 @@ class Settings(BaseSettings):
     # development where both are the same host.
     migration_database_url: PostgresDsn | None = None
 
+    # asyncpg's `ssl` connect parameter (libpq-style: "require", "verify-full",
+    # etc. — passed straight through as the DSN's `ssl` query param). Unset
+    # locally, where the docker compose Postgres speaks plain TCP. Managed
+    # providers that mandate TLS on the wire (e.g. DigitalOcean Managed
+    # PostgreSQL) need this set; "require" encrypts the connection without
+    # validating the server certificate against a CA bundle, which is enough
+    # to satisfy that enforcement without also provisioning the CA cert.
+    db_ssl_mode: str | None = None
+
     database_echo: bool = False
     database_pool_size: int = Field(default=10, ge=1, le=100)
     database_max_overflow: int = Field(default=5, ge=0, le=100)
@@ -303,7 +312,15 @@ class Settings(BaseSettings):
         return value
 
     @staticmethod
-    def _compose_dsn(*, host: str, port: int, name: str, user: str, password: str | None) -> str:
+    def _compose_dsn(
+        *,
+        host: str,
+        port: int,
+        name: str,
+        user: str,
+        password: str | None,
+        ssl_mode: str | None,
+    ) -> str:
         """Build an asyncpg DSN from discrete parts, encoding the credentials."""
         from urllib.parse import quote
 
@@ -312,7 +329,10 @@ class Settings(BaseSettings):
         credentials = quote(user, safe="")
         if password:
             credentials += f":{quote(password, safe='')}"
-        return f"postgresql+asyncpg://{credentials}@{host}:{port}/{name}"
+        dsn = f"postgresql+asyncpg://{credentials}@{host}:{port}/{name}"
+        if ssl_mode:
+            dsn += f"?ssl={quote(ssl_mode, safe='')}"
+        return dsn
 
     @property
     def effective_database_url(self) -> str:
@@ -328,6 +348,7 @@ class Settings(BaseSettings):
                 name=self.db_name,
                 user=self.db_user,
                 password=self.db_password.get_secret_value() if self.db_password else None,
+                ssl_mode=self.db_ssl_mode,
             )
         return str(self.database_url)
 

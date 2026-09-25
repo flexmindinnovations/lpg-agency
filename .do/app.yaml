@@ -1,0 +1,181 @@
+# DigitalOcean App Platform spec for this repo (Nx Angular dashboard +
+# uv-managed FastAPI backend, one monorepo, one DO App).
+#
+# The App Platform *Git repository* wizard in the console only autodetects
+# buildpacks at the repo root, and this is a monorepo with nothing at the
+# root — that's why it reported "No components detected". Use this file
+# instead of the wizard:
+#
+#   doctl apps create --spec .do/app.yaml
+#
+# ...or, in the console: skip the Git-repository wizard's autodetect step
+# entirely and use "Create App > paste App Spec" (or edit the spec via the
+# pencil icon after a blank app exists) and paste this file's contents.
+#
+# Both components + the migration job build from backend/Dockerfile /
+# frontend's own buildpack — see the comments below for the manual setup
+# steps (DB roles, Spaces bucket, JWT keys) this file can't do for you.
+
+name: lpg-agency
+region: nyc
+
+# One shared domain for both components: "/api" (and "/health") route to
+# the backend, everything else to the static frontend. This is why
+# frontend/apps/dashboard/src/environments/environment.prod.ts sets apiUrl
+# to '' (same-origin) — no CORS is even needed for real browser traffic.
+ingress:
+  rules:
+    - match:
+        path:
+          prefix: /api
+      component:
+        name: backend
+        preserve_path_prefix: true
+    - match:
+        path:
+          prefix: /health
+      component:
+        name: backend
+        preserve_path_prefix: true
+    - match:
+        path:
+          prefix: /
+      component:
+        name: dashboard
+
+# --------------------------------------------------------------------------
+# Managed data services — provisioned by DO as part of this app
+# (production: true = a real billed Managed Database cluster, not the
+# shared "dev database"; it is not deleted if you delete the app).
+# --------------------------------------------------------------------------
+databases:
+  - name: db
+    engine: PG
+    version: "17"
+    production: true
+  - name: redis
+    engine: REDIS
+    version: "7"
+    production: true
+
+services:
+  - name: backend
+    dockerfile_path: backend/Dockerfile
+    source_dir: backend
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: basic-xs
+    health_check:
+      http_path: /health/live
+      initial_delay_seconds: 20
+    envs:
+      - key: LPG_ENVIRONMENT
+        value: production
+      - key: LPG_DEBUG
+        value: "false"
+      - key: LPG_LOG_LEVEL
+        value: INFO
+      - key: LPG_LOG_JSON
+        value: "true"
+
+      # Same-origin ingress above makes this mostly a safety net (Settings
+      # rejects a wildcard outside `local`) rather than something browsers
+      # actually need — but it must be a real, non-wildcard value.
+      - key: LPG_CORS_ORIGINS
+        value: ${APP_URL}
+
+      # -- Database: the `db` component above, bound by discrete parts so
+      # `db_ssl_mode` (new field, see backend/src/lpg/config/settings.py)
+      # can append `?ssl=require` — DO's own `${db.DATABASE_URL}` bindable
+      # carries `sslmode=require` instead, which asyncpg's driver does not
+      # understand as a connect kwarg and would crash on the first query.
+      - key: LPG_DB_HOST
+        value: ${db.HOSTNAME}
+      - key: LPG_DB_PORT
+        value: ${db.PORT}
+      - key: LPG_DB_NAME
+        value: ${db.DATABASE}
+      - key: LPG_DB_USER
+        value: ${db.USERNAME}
+      - key: LPG_DB_PASSWORD
+        value: ${db.PASSWORD}
+        type: SECRET
+      - key: LPG_DB_SSL_MODE
+        value: require
+
+      # -- Redis: `rediss://` already signals TLS in the scheme itself, so
+      # the full bindable DATABASE_URL is safe to use directly here (unlike
+      # Postgres above).
+      - key: LPG_REDIS_URL
+        value: ${redis.DATABASE_URL}
+        type: SECRET
+
+      # -- Object storage (DigitalOcean Spaces, S3-compatible) — Spaces
+      # isn't an attachable App Platform resource, so these are not
+      # bindable: create the bucket + an API key/secret pair yourself
+      # (Spaces > Create Bucket, then API > Spaces Keys) and paste them in
+      # the console after first deploy, or fill them in below before
+      # running `doctl apps create`.
+      - key: LPG_STORAGE_ENDPOINT_URL
+        value: https://nyc3.digitaloceanspaces.com # match your bucket's region
+      - key: LPG_STORAGE_ACCESS_KEY
+        value: REPLACE_ME
+        type: SECRET
+      - key: LPG_STORAGE_SECRET_KEY
+        value: REPLACE_ME
+        type: SECRET
+      - key: LPG_STORAGE_BUCKET
+        value: REPLACE_ME
+      - key: LPG_STORAGE_REGION
+        value: nyc3
+
+      # -- JWT (RS256) — generate a real keypair, do not deploy with this
+      # blank. See the setup notes for the exact commands.
+      - key: LPG_JWT_PRIVATE_KEY
+        value: REPLACE_ME
+        type: SECRET
+      - key: LPG_JWT_PUBLIC_KEY
+        value: REPLACE_ME
+        type: SECRET
+
+      # -- Field-level encryption at rest (customer KYC documents)
+      - key: LPG_KYC_ENCRYPTION_KEY
+        value: REPLACE_ME
+        type: SECRET
+
+  - name: dashboard
+    # Static Site component: Nx build output, served from DO's CDN.
+    source_dir: frontend
+    build_command: npx nx build dashboard
+    output_dir: dist/apps/dashboard/browser
+    # Client-side (Angular Router) routes must fall back to index.html.
+    catchall_document: index.html
+
+# --------------------------------------------------------------------------
+# Runs `alembic upgrade head` before traffic is cut over to a new
+# deployment. Reuses the doadmin credentials above for the first deploy;
+# see the setup notes about creating a restricted `lpg_app` role afterward
+# and pointing the *service* (not this job) at it.
+# --------------------------------------------------------------------------
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    dockerfile_path: backend/Dockerfile
+    source_dir: backend
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    run_command: alembic upgrade head
+    envs:
+      - key: LPG_DB_HOST
+        value: ${db.HOSTNAME}
+      - key: LPG_DB_PORT
+        value: ${db.PORT}
+      - key: LPG_DB_NAME
+        value: ${db.DATABASE}
+      - key: LPG_DB_USER
+        value: ${db.USERNAME}
+      - key: LPG_DB_PASSWORD
+        value: ${db.PASSWORD}
+        type: SECRET
+      - key: LPG_DB_SSL_MODE
+        value: require
