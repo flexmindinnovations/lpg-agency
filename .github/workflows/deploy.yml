@@ -71,6 +71,10 @@ jobs:
     name: Build image - ${{ matrix.name }}
     needs: [gate-backend, gate-frontend]
     runs-on: ubuntu-latest
+    # Environment secrets (PRIME_NG_LICENSE_KEY) are only visible to jobs that
+    # declare the environment - without this the web image silently built
+    # without the licence key.
+    environment: production
     permissions:
       contents: read
       packages: write
@@ -84,6 +88,17 @@ jobs:
             context: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: PrimeNG licence key (web image only)
+        id: licence
+        if: matrix.name == 'web'
+        env:
+          KEY: ${{ secrets.PRIME_NG_LICENSE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::PRIME_NG_LICENSE_KEY is empty - the dashboard will show PrimeNG's unlicensed banner"
+          fi
+          # A hash, used only to bust Docker's layer cache when the key changes.
+          echo "fingerprint=$(printf '%s' "$KEY" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -99,6 +114,7 @@ jobs:
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
+          build-args: ${{ matrix.name == 'web' && format('PRIME_LICENSE_FINGERPRINT={0}', steps.licence.outputs.fingerprint) || '' }}
           # Only the web image uses the PrimeNG key; empty -> unlicensed template.
           secrets: ${{ matrix.name == 'web' && format('prime_ng_license={0}', secrets.PRIME_NG_LICENSE_KEY) || '' }}
 
