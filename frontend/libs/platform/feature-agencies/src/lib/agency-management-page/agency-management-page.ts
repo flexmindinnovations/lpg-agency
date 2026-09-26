@@ -13,7 +13,13 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
-import { AgencyService, NotifyService, type CreateAgencyResponse } from '@lpg/shared/data-access';
+import {
+  AgencyService,
+  NotifyService,
+  type AgencyUserSetupResponse,
+  type CreateAgencyResponse,
+  type StaffUserResponse,
+} from '@lpg/shared/data-access';
 import {
   DataGridComponent,
   FormFieldComponent,
@@ -40,6 +46,15 @@ export function suggestAgencyCode(name: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, SLUG_MAX_LENGTH)
     .replace(/-+$/g, '');
+}
+
+/** What the one-time setup-link drawer shows, whichever action produced it. */
+interface SetupLinkView {
+  heading: string;
+  agency: string;
+  email: string;
+  path: string;
+  expiresAt: string;
 }
 
 /**
@@ -215,44 +230,42 @@ export function suggestAgencyCode(name: string): string {
         </form>
       </p-drawer>
 
-      <!-- Agency created: one-time setup link -->
+      <!-- One-time setup link (Create agency, Add admin, New setup link) -->
       <p-drawer
-        header="Agency created"
-        [(visible)]="createdDrawerVisible"
-        (onHide)="dismissCreated()"
+        [header]="setupLink()?.heading ?? 'Setup link'"
+        [(visible)]="setupLinkDrawerVisible"
+        (onHide)="dismissSetupLink()"
         position="right"
         [modal]="true"
         [closeOnEscape]="true"
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        @if (created(); as result) {
+        @if (setupLink(); as result) {
           <div class="detail-view">
             <div class="detail-view__fields">
               <div class="detail-item">
                 <span class="detail-label">Agency</span>
-                <span class="detail-value"
-                  >{{ result.tenant.name }} ({{ result.tenant.slug }})</span
-                >
+                <span class="detail-value">{{ result.agency }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">First admin</span>
-                <span class="detail-value">{{ result.admin_email }}</span>
+                <span class="detail-label">Admin</span>
+                <span class="detail-value">{{ result.email }}</span>
               </div>
               <lpg-form-field label="One-time password setup link" for="agency-setup-link">
                 <input
                   pInputText
-                  #setupLink
+                  #setupLinkField
                   id="agency-setup-link"
                   type="text"
                   readonly
                   [value]="setupUrl()"
-                  (focus)="setupLink.select()"
+                  (focus)="setupLinkField.select()"
                   [fluid]="true"
                 />
               </lpg-form-field>
               <p class="detail-value">
-                Send this link to the admin. It is shown only once and expires
+                Send this link to the admin. It is shown only once, works once, and expires
                 {{ expiryLabel() }}. Email delivery is not configured, so nothing was sent.
               </p>
               <p class="detail-value">
@@ -262,7 +275,7 @@ export function suggestAgencyCode(name: string): string {
             </div>
 
             <div class="modal-actions">
-              <button pButton type="button" severity="secondary" (click)="dismissCreated()">
+              <button pButton type="button" severity="secondary" (click)="dismissSetupLink()">
                 Done
               </button>
               <button pButton type="button" (click)="copySetupLink()">
@@ -314,6 +327,99 @@ export function suggestAgencyCode(name: string): string {
                 <span class="detail-value">{{ agency.id }}</span>
               </div>
             </div>
+
+            <section class="users" aria-labelledby="agency-users-heading">
+              <div class="users__header">
+                <h3 id="agency-users-heading" class="detail-label">Users</h3>
+                @if (agency.status !== 'closed') {
+                  <button
+                    pButton
+                    type="button"
+                    size="small"
+                    severity="secondary"
+                    (click)="toggleAddAdmin()"
+                  >
+                    <i class="pi pi-user-plus"></i><span>Add admin</span>
+                  </button>
+                }
+              </div>
+
+              @if (addAdminOpen()) {
+                <form
+                  [formGroup]="adminForm"
+                  (ngSubmit)="addAdmin(agency)"
+                  novalidate
+                  class="users__add"
+                >
+                  <lpg-form-field
+                    label="New admin email"
+                    for="agency-new-admin-email"
+                    [control]="adminForm.controls.email"
+                    [messages]="{
+                      required: 'Email is required.',
+                      email: 'Enter a valid email address.',
+                    }"
+                  >
+                    <input
+                      pInputText
+                      id="agency-new-admin-email"
+                      type="email"
+                      formControlName="email"
+                      [fluid]="true"
+                    />
+                  </lpg-form-field>
+                  <div class="modal-actions">
+                    <button
+                      pButton
+                      type="button"
+                      severity="secondary"
+                      (click)="addAdminOpen.set(false)"
+                    >
+                      Cancel
+                    </button>
+                    <button pButton type="submit" [disabled]="acting() || adminForm.invalid">
+                      @if (acting()) {
+                        <i class="pi pi-spin pi-spinner"></i>
+                      }
+                      Add admin
+                    </button>
+                  </div>
+                </form>
+              }
+
+              @if (usersLoading()) {
+                <p class="detail-value">Loading users…</p>
+              } @else if (users().length === 0) {
+                <p class="detail-value">No users yet.</p>
+              } @else {
+                <ul class="users__list">
+                  @for (user of users(); track user.id) {
+                    <li class="users__item">
+                      <div class="users__who">
+                        <span class="detail-value">{{ user.email }}</span>
+                        <span class="detail-label"
+                          >{{ roleLabel(user.role) }}{{ user.is_active ? '' : ' · inactive' }}</span
+                        >
+                      </div>
+                      @if (
+                        user.role === 'agency_admin' && user.is_active && agency.status !== 'closed'
+                      ) {
+                        <button
+                          pButton
+                          type="button"
+                          size="small"
+                          severity="secondary"
+                          [disabled]="acting()"
+                          (click)="issueSetupLink(agency, user)"
+                        >
+                          New setup link
+                        </button>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+            </section>
 
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="closeDetails()">
@@ -398,6 +504,44 @@ export function suggestAgencyCode(name: string): string {
         gap: 2px;
       }
 
+      .users {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        margin-block: var(--spacing-lg);
+      }
+
+      .users__header,
+      .users__item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+      }
+
+      .users__list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .users__who {
+        display: flex;
+        flex-direction: column;
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .users__add {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+
       .detail-label {
         font-size: var(--typography-caption-font-size);
         font-weight: var(--typography-label-font-weight);
@@ -424,7 +568,7 @@ export class AgencyManagementPage implements OnInit {
   private readonly notify = inject(NotifyService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
-  protected readonly setupLinkInput = viewChild<ElementRef<HTMLInputElement>>('setupLink');
+  protected readonly setupLinkInput = viewChild<ElementRef<HTMLInputElement>>('setupLinkField');
 
   protected readonly form = this.formBuilder.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -441,10 +585,18 @@ export class AgencyManagementPage implements OnInit {
     adminEmail: ['', [Validators.required, Validators.email]],
   });
 
+  protected readonly adminForm = this.formBuilder.group({
+    email: ['', [Validators.required, Validators.email]],
+  });
+
   protected readonly createDrawerVisible = signal(false);
-  protected readonly createdDrawerVisible = signal(false);
+  protected readonly setupLinkDrawerVisible = signal(false);
   protected readonly submitting = signal(false);
-  protected readonly created = signal<CreateAgencyResponse | null>(null);
+  protected readonly setupLink = signal<SetupLinkView | null>(null);
+
+  protected readonly users = signal<StaffUserResponse[]>([]);
+  protected readonly usersLoading = signal(false);
+  protected readonly addAdminOpen = signal(false);
 
   protected readonly loading = signal(false);
   protected readonly acting = signal(false);
@@ -453,6 +605,7 @@ export class AgencyManagementPage implements OnInit {
   protected readonly selectedAgency = signal<TenantResponse | null>(null);
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
+  protected readonly roleLabel = (role: string) => toSentenceCase(role);
 
   /** `domain/tenant/tenant.py`'s lifecycle: `trial` → `active` →
    * `suspended` ⇄ `active`, `close()` terminal from any of the three. */
@@ -519,13 +672,18 @@ export class AgencyManagementPage implements OnInit {
   }
 
   protected setupUrl(): string {
-    const result = this.created();
-    return result ? `${globalThis.location.origin}${result.setup_path}` : '';
+    const result = this.setupLink();
+    return result ? `${globalThis.location.origin}${result.path}` : '';
   }
 
   protected expiryLabel(): string {
-    const result = this.created();
-    return result ? `on ${new Date(result.setup_token_expires_at).toLocaleString()}` : '';
+    const result = this.setupLink();
+    return result ? `on ${new Date(result.expiresAt).toLocaleString()}` : '';
+  }
+
+  private showSetupLink(view: SetupLinkView): void {
+    this.setupLink.set(view);
+    this.setupLinkDrawerVisible.set(true);
   }
 
   protected openCreateDrawer(): void {
@@ -556,8 +714,7 @@ export class AgencyManagementPage implements OnInit {
         next: (response) => {
           this.submitting.set(false);
           this.createDrawerVisible.set(false);
-          this.created.set(response);
-          this.createdDrawerVisible.set(true);
+          this.showCreatedLink(response);
           this.notify.success(`Agency "${response.tenant.name}" created.`);
           this.reload();
         },
@@ -576,14 +733,92 @@ export class AgencyManagementPage implements OnInit {
     }
   }
 
-  protected dismissCreated(): void {
-    this.createdDrawerVisible.set(false);
-    this.created.set(null);
+  protected dismissSetupLink(): void {
+    this.setupLinkDrawerVisible.set(false);
+    this.setupLink.set(null);
+  }
+
+  private showCreatedLink(response: CreateAgencyResponse): void {
+    this.showSetupLink({
+      heading: 'Agency created',
+      agency: `${response.tenant.name} (${response.tenant.slug})`,
+      email: response.admin_email,
+      path: response.setup_path,
+      expiresAt: response.setup_token_expires_at,
+    });
+  }
+
+  private showIssuedLink(heading: string, agency: TenantResponse, issued: AgencyUserSetupResponse) {
+    this.showSetupLink({
+      heading,
+      agency: `${agency.name} (${agency.slug})`,
+      email: issued.email ?? '',
+      path: issued.setup_path,
+      expiresAt: issued.setup_token_expires_at,
+    });
   }
 
   protected openDetails(agency: TenantResponse): void {
     this.selectedAgency.set(agency);
+    this.addAdminOpen.set(false);
+    this.adminForm.reset();
     this.showDetailDrawer.set(true);
+    this.loadUsers(agency.id);
+  }
+
+  private loadUsers(tenantId: string): void {
+    this.users.set([]);
+    this.usersLoading.set(true);
+    this.agencyService.listUsers(tenantId).subscribe({
+      next: (users) => {
+        this.users.set(users);
+        this.usersLoading.set(false);
+      },
+      error: () => this.usersLoading.set(false),
+    });
+  }
+
+  protected toggleAddAdmin(): void {
+    this.adminForm.reset();
+    this.addAdminOpen.update((open) => !open);
+  }
+
+  protected addAdmin(agency: TenantResponse): void {
+    if (this.acting()) {
+      return;
+    }
+    if (this.adminForm.invalid) {
+      this.adminForm.markAllAsTouched();
+      return;
+    }
+
+    this.acting.set(true);
+    this.agencyService.addAdmin(agency.id, this.adminForm.getRawValue().email.trim()).subscribe({
+      next: (issued) => {
+        this.acting.set(false);
+        this.addAdminOpen.set(false);
+        this.adminForm.reset();
+        this.notify.success('Admin added.');
+        this.loadUsers(agency.id);
+        this.showIssuedLink('Admin added', agency, issued);
+      },
+      error: () => this.acting.set(false),
+    });
+  }
+
+  protected issueSetupLink(agency: TenantResponse, user: StaffUserResponse): void {
+    if (this.acting()) {
+      return;
+    }
+    this.acting.set(true);
+    this.agencyService.issueSetupLink(agency.id, user.id).subscribe({
+      next: (issued) => {
+        this.acting.set(false);
+        this.notify.success('New setup link created. Any older link no longer works.');
+        this.showIssuedLink('New setup link', agency, issued);
+      },
+      error: () => this.acting.set(false),
+    });
   }
 
   protected closeDetails(): void {
