@@ -73,9 +73,27 @@ main() {
     if grep -q '^IMAGE_TAG=' .env; then sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$1/" .env; else echo "IMAGE_TAG=$1" >> .env; fi
   }
 
+  # Healthy = the backend container's own health check passes AND a request
+  # through Caddy for the configured site returns exactly 200.
+  #
+  # Do NOT probe `http://localhost/...` with `curl -f`: once SITE_ADDRESS is a
+  # real domain, Caddy answers any other Host with a 308 redirect, `-f` treats a
+  # 3xx as success, and the check would pass no matter what the backend did -
+  # silently disabling the automatic rollback.
   healthy() {
+    local site backend_id url resolve=()
+    site="$(sed -n 's/^SITE_ADDRESS=//p' .env | tail -1)"
+    if [[ -z "$site" || "$site" == :* ]]; then
+      url="http://localhost/health/live"
+    else
+      url="https://${site}/health/live"
+      resolve=(--resolve "${site}:443:127.0.0.1")
+    fi
     for _ in $(seq 1 30); do
-      if curl -fsS -m 5 http://localhost/health/live >/dev/null 2>&1; then return 0; fi
+      backend_id="$("${compose[@]}" ps -q backend 2>/dev/null || true)"
+      if [[ -n "$backend_id" ]]         && [[ "$(docker inspect -f '{{.State.Health.Status}}' "$backend_id" 2>/dev/null)" == "healthy" ]]         && [[ "$(curl -s -k -m 5 "${resolve[@]}" -o /dev/null -w '%{http_code}' "$url" 2>/dev/null)" == "200" ]]; then
+        return 0
+      fi
       sleep 2
     done
     return 1

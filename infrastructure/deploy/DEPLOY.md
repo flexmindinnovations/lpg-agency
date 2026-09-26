@@ -6,7 +6,8 @@ migration job, and Caddy serving the Angular dashboard and reverse-proxying
 
 | Item | Value |
 |---|---|
-| Droplet public IP | `139.59.88.0` |
+| Public URL | `https://lpg.vitessetec.com` (HTTPS, Let's Encrypt) |
+| Droplet public IP | `139.59.88.0` (the IP itself no longer serves the app - it redirects) |
 | OS | Ubuntu 24.04 LTS, 1 vCPU, 2 GB RAM, 48 GB disk |
 | SSH user | `root` (key auth only) |
 | App directory | `/opt/lpg-agency` |
@@ -278,21 +279,62 @@ This needs migration `d5b9e3a7f1c4`; `./deploy.sh` applies it automatically.
 
 ---
 
-## 8. HTTPS once you have a domain
+## 8. Domain and HTTPS - DONE (2026-09-26)
 
-1. Point an `A` record for the domain at `139.59.88.0`.
-2. Edit `infrastructure/deploy/.env`:
+The app is served at **https://lpg.vitessetec.com**. `vitessetec.com` is an
+existing domain whose DNS is hosted by MilesWeb (cPanel account `zugjjztt`); a
+subdomain of it is used until a dedicated domain is bought.
+
+What was done, and how to repeat it for a new domain:
+
+1. **DNS record** - one `A` record pointing the name at the droplet, TTL 300.
+   Here: cPanel -> DNS Zone Editor -> `vitessetec.com` -> Add Record ->
+   Type `A`, Name `lpg`, Address `139.59.88.0`. (DigitalOcean does not sell
+   domains; it only hosts DNS. To use DigitalOcean DNS for a bought domain, add
+   the domain under Networking -> Domains and set the registrar's nameservers to
+   `ns1/ns2/ns3.digitalocean.com`.)
+2. **Tell the app its address** - in `infrastructure/deploy/.env` on the server:
+
    ```
-   PUBLIC_ORIGIN=https://app.example.com
-   SITE_ADDRESS=app.example.com
+   PUBLIC_ORIGIN=https://lpg.vitessetec.com
+   SITE_ADDRESS=lpg.vitessetec.com
    ```
-3. Restart the web container so Caddy obtains a Let's Encrypt certificate:
+
    ```bash
+   # Recreates only what changed: web (Caddy) and backend/worker (CORS origin).
    cd /opt/lpg-agency/infrastructure/deploy
-   docker compose -f docker-compose.prod.yml up -d web backend worker
+   cp -p .env ".env.bak-$(date +%F-%H%M)"
+   docker compose -f docker-compose.prod.yml up -d
    ```
 
-Ports 80 and 443 are already open in the firewall.
+3. **That is all for the certificate.** With a real hostname in `SITE_ADDRESS`,
+   Caddy obtains a Let's Encrypt certificate by itself on start-up (ports 80/443
+   are open in the firewall), redirects HTTP to HTTPS (308) and renews it
+   automatically about 30 days before expiry. Certificates live in the
+   `caddy-data` volume - do not delete that volume. `.env` is not touched by CI
+   deploys, so this survives every release.
+
+Verify from any machine:
+
+```bash
+curl -sI https://lpg.vitessetec.com/health/live | head -1
+echo | openssl s_client -connect lpg.vitessetec.com:443 -servername lpg.vitessetec.com 2>/dev/null | openssl x509 -noout -issuer -dates
+```
+
+**Gotchas**
+- A DNS lookup made *before* the record existed is cached by resolvers as "no
+  such domain" (negative caching) for up to the zone's SOA minimum - possibly
+  hours. Create the record first, then look it up. Public resolvers (8.8.8.8,
+  1.1.1.1) and Let's Encrypt saw the record immediately.
+- Do not probe the site with `http://localhost/...` and `curl -f`: Caddy answers
+  any other Host with a 308, which `-f` counts as success. `deploy-image.sh`
+  checks the backend container's own health and requires an exact 200 through
+  Caddy for the configured site.
+- Per-agency subdomains (`<slug>.lpg.vitessetec.com`) need a wildcard DNS record
+  and a wildcard certificate, which requires a DNS-provider API for Caddy's
+  DNS-01 challenge. cPanel has none usable here; delegating `lpg.vitessetec.com`
+  (or a bought domain) to DigitalOcean DNS enables it. Not built yet - see
+  ADR-048's note on subdomains.
 
 ---
 
@@ -399,7 +441,7 @@ the frontend Dockerfile uses it as a fallback.
 
 ## 11. Environments
 
-There is **one** environment: the droplet at `139.59.88.0`, treated as
+There is **one** environment: the droplet at `139.59.88.0` (`https://lpg.vitessetec.com`), treated as
 **production** (`LPG_ENVIRONMENT=production`). It has no real data yet (no
 agencies, no licences). A UAT environment was deliberately deferred; when it is
 wanted, provision a second droplet with sections 1-9 and `.env.uat.example`, and
@@ -433,8 +475,11 @@ No agency admins exist yet; they are created with **Platform Console -> Agencies
 | PrimeNG licence key | `frontend/apps/dashboard/src/app/prime-license.ts` on the droplet | that file (git-ignored) |
 | DigitalOcean account, GitHub account | — | your own logins |
 
+| DNS for `vitessetec.com` (holds the `lpg` A record) | MilesWeb cPanel -> DNS Zone Editor, account `zugjjztt` | your MilesWeb login |
+| TLS certificate for `lpg.vitessetec.com` | issued and renewed automatically by Caddy (Let's Encrypt) | `caddy-data` Docker volume |
+
 Not yet configured: object storage credentials (`LPG_STORAGE_*`, a DigitalOcean
-Space), any email/SMS provider, a domain and TLS certificate.
+Space), any email/SMS provider, a dedicated domain and wildcard certificates.
 
 
 ---
