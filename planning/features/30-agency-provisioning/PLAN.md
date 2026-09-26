@@ -90,3 +90,9 @@ suspend/close). Errors: 409 duplicate slug / admin email, 422 invalid input.
   in production (currently HTTP-only until a domain exists — recorded in
   `infrastructure/deploy/DEPLOY.md`); token TTL reuses
   `password_reset_token_ttl_seconds`, single-use via the existing reset flow.
+
+
+> **Update 2026-09-26 (Phase 31):** the 1-hour setup-link lifetime described above proved
+> unworkable and left agencies with no recovery path. Links a Super Admin issues now last 24 hours
+> (`setup_link_ttl_seconds`), and the Platform Console can list an agency's users, add an admin
+> and issue a fresh link - see ADR-049 and `planning/features/31-agency-user-management/`.

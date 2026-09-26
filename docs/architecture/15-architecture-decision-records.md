@@ -1212,6 +1212,37 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-049: Super Admin Agency-User Recovery — Setup Links Limited to `agency_admin`, 24-Hour Single-Use Lifetime, Explicit Audit Attributed to the Target Agency
+
+**Status:** Accepted
+
+**Context:** ADR-048 let a Super Admin create an agency and its first admin, returning a one-time setup link. Production use on 2026-09-26 exposed the gap that design left: the link is single-use and expired after **1 hour** (`password_reset_token_ttl_seconds`), the only email sender in production is `LoggingEmailSender` (logs, delivers nothing), and there is no authenticated change-password endpoint — so an agency whose first admin missed the link, lost it, or forgot the password was **locked out with no recovery path**. A Super Admin also had no way to add a second admin.
+
+**Decision (three Platform Console routes, one privilege):** `GET /platform/agencies/{id}/users` (metadata only), `POST /platform/agencies/{id}/admins` (add an `agency_admin`, returns a setup link) and `POST /platform/agencies/{id}/users/{user_id}/setup-link` (fresh link for an existing admin). All three use the existing live-checked `tenant:manage_platform` permission — no new permission, because they belong to the same tier as suspend/close.
+
+**Decision (recovery is limited to `agency_admin` accounts):** other staff are recovered by their agency's admins. This keeps a Super Admin's reach to the smallest set that still un-sticks an agency, and a deactivated admin is refused rather than silently reactivated. Another agency's user is invisible through row-level security, so it is a 404 — never a hint that the id exists.
+
+**Decision (setup links last 24 hours, still single-use):** a new `setup_link_ttl_seconds` (default 86 400) applies to every link a Super Admin issues, including Create agency (which was 1 h). A 1-hour link is unworkable when it is relayed by hand and read hours later. Ordinary forgot-password links stay at 1 hour, and the tenant-side `/admin/users` invite is unchanged. Issuing a new link **invalidates every older unused link** for that user through a new narrow `SECURITY DEFINER` function (`identity.auth_invalidate_password_reset_tokens`, migration `e7d1a3c5f9b2` — the token table is RLS-protected and is only ever reached through `auth_*` functions), so a link sent to the wrong place stops working the moment a new one exists.
+
+**Decision (audit is written explicitly, and attributed to the target agency):** the audit hook only sees ORM changes made through a Unit of Work's own session, and the staff-user and reset-token repositories open their own sessions — these actions would leave no trace. A `PlatformAuditTrail` port (implemented by `SqlAlchemyPlatformAuditTrail`) writes `platform.agency_admin_added` / `platform.setup_link_issued` rows in the platform Unit of Work already scoped to the target agency. They are attributed to **that agency** (its own admins can see "platform staff issued a setup link for X") with the Super Admin as the actor, rather than to the platform sentinel tenant used for cross-tenant reads — transparency to the agency is part of the control. The audit details never contain a token or password (asserted by a test).
+
+**Trust tradeoff (recorded, accepted):** the Platform Console was designed to keep the Super Admin out of agency business data (D-01). Minting an admin, or a reset link for one, is an indirect way in. It is kept because it is the only recovery path while no email provider exists; it is bounded by the three decisions above and made visible by the audit entry.
+
+**Consequences:**
+- `ConfirmPasswordResetUseCase` does not revoke a user's existing refresh tokens, so a recovered account keeps its old sessions until they expire. This predates the feature and is recorded as a known gap, not fixed here.
+- The raw link is returned in an API response and `LoggingEmailSender` still writes it to the server log (as in ADR-048) until an email provider replaces it.
+- `pyproject.toml`'s import-linter allow-list gained one entry (`routers.platform -> persistence.audit_trail`), justified inline like its neighbours.
+- Deactivating or removing an agency user from the Platform Console is deliberately not included.
+
+**Alternatives Considered:**
+- **Recover any user, not just admins** — rejected: widens a Super Admin's reach for no recovery benefit.
+- **Attribute the audit rows to the platform sentinel tenant** — rejected: the affected agency would never see the action.
+- **Rely on the automatic audit hook** — impossible here (separate sessions), so a test proves the explicit entry exists.
+- **Keep the 1-hour lifetime and just re-issue** — rejected: it turns every hand-off into a race.
+- **Revoke a user's sessions when a link is issued** — sensible, but a behaviour change to the shared reset flow; deferred.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |

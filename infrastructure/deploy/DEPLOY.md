@@ -275,7 +275,20 @@ Agencies -> **Create agency**), or `POST /api/v1/platform/agencies`. It creates
 the agency plus its first `agency_admin` and shows a one-time password-setup
 link (no email provider is configured, so relay it yourself). The new admin
 cannot sign in until you issue **and activate** a license under Licenses.
-This needs migration `d5b9e3a7f1c4`; `./deploy.sh` applies it automatically.
+This needs migration `d5b9e3a7f1c4`; deploys apply migrations automatically.
+
+**Recovering an agency that is locked out** (admin missed the link, lost it, or
+forgot the password - there is no email and no change-password feature): sign in
+as the super_admin -> Agencies -> click the agency -> **Users** -> **New setup
+link** next to the admin (or **Add admin** for a second admin). The link is
+single-use and valid for **24 hours**, and issuing a new one kills every older
+unused link for that user. Send it to the admin; they open it and choose a
+password. Each use is recorded in that agency's audit log
+(`platform.setup_link_issued` / `platform.agency_admin_added`, actor = the super
+admin). Only `agency_admin` accounts can be recovered this way; the same routes
+exist as `GET /platform/agencies/{id}/users`, `POST /platform/agencies/{id}/admins`
+and `POST /platform/agencies/{id}/users/{user_id}/setup-link` (migration
+`e7d1a3c5f9b2`). Note the recovered account keeps any sessions it already had.
 
 ---
 
