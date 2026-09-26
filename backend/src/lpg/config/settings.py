@@ -243,6 +243,12 @@ class Settings(BaseSettings):
 
     password_reset_token_ttl_seconds: int = Field(default=3600, gt=0)
 
+    # One-time setup links a Super Admin issues (Create agency, Add admin, New
+    # setup link). Much longer than a forgot-password link because they are
+    # relayed by hand - there is no email provider yet - and the recipient may
+    # not open them for hours. Still single-use.
+    setup_link_ttl_seconds: int = Field(default=86_400, gt=0)
+
     # Dev-only: log the OTP code / reset link instead of sending it, since no
     # SMS/email provider exists in this codebase yet (Phase 14). Guarded
     # separately from `is_local` so it can never be flipped on by a

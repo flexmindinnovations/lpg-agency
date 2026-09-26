@@ -58,6 +58,22 @@ class CreateAgencyResponse(BaseModel):
     setup_token_expires_at: datetime
 
 
+class AddAgencyAdminRequest(BaseModel):
+    email: EmailStr
+
+
+class AgencyUserSetupResponse(BaseModel):
+    """A user plus the one-time link to set their password. The raw token is
+    returned once and never stored (only its hash is)."""
+
+    user_id: str
+    email: str | None
+    role: str
+    #: `/reset-password?token=...` - prefix it with the site's origin.
+    setup_path: str
+    setup_token_expires_at: datetime
+
+
 class RenameTenantRequest(BaseModel):
     name: str = Field(min_length=1)
 

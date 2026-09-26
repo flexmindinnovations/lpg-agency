@@ -42,6 +42,8 @@ from lpg.api.v1.dependencies.platform import (
     require_live_platform_permission,
 )
 from lpg.api.v1.schemas.admin import (
+    AddAgencyAdminRequest,
+    AgencyUserSetupResponse,
     CreateAgencyRequest,
     CreateAgencyResponse,
     CreateFeatureFlagRequest,
@@ -49,6 +51,7 @@ from lpg.api.v1.schemas.admin import (
     ScheduleFeatureFlagRequest,
     SetFeatureFlagEnabledByDefaultRequest,
     SetFeatureFlagRolloutPercentageRequest,
+    StaffUserResponse,
     TenantResponse,
 )
 from lpg.api.v1.schemas.identity import PrincipalResponse
@@ -90,6 +93,15 @@ from lpg.application.license.issue_license import (
     SetLicensePlanTierUseCase,
 )
 from lpg.application.license.ports import LicenseStatusChecker
+from lpg.application.platform.agency_users import (
+    AddAgencyAdminCommand,
+    AddAgencyAdminUseCase,
+    IssuedSetupLink,
+    IssueSetupLinkCommand,
+    IssueSetupLinkUseCase,
+    ListAgencyUsersQuery,
+    ListAgencyUsersUseCase,
+)
 from lpg.application.platform.feature_flag import (
     CreateFeatureFlagCommand,
     CreateFeatureFlagUseCase,
@@ -120,6 +132,7 @@ from lpg.application.tenant.provision_tenant import (
 from lpg.config.settings import Settings, get_settings
 from lpg.domain.license.license import License
 from lpg.domain.tenant.tenant import Tenant
+from lpg.infrastructure.persistence.audit_trail import SqlAlchemyPlatformAuditTrail
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.repositories.identity import SqlAlchemyStaffUserRepository
 from lpg.infrastructure.persistence.repositories.license import (
@@ -242,7 +255,7 @@ async def create_agency(
             reset_token_repository,
             token_hasher,
             email_sender,
-            reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+            reset_token_ttl=timedelta(seconds=settings.setup_link_ttl_seconds),
         )
 
     async def _close_half_created(tenant_id: uuid.UUID) -> None:
@@ -279,6 +292,116 @@ async def create_agency(
         setup_path=f"/reset-password?token={result.setup_token}",
         setup_token_expires_at=result.setup_token_expires_at,
     )
+
+
+def _setup_response(issued: IssuedSetupLink) -> AgencyUserSetupResponse:
+    return AgencyUserSetupResponse(
+        user_id=str(issued.user.id),
+        email=issued.user.email,
+        role=issued.user.role,
+        setup_path=f"/reset-password?token={issued.setup_token}",
+        setup_token_expires_at=issued.setup_token_expires_at,
+    )
+
+
+@router.get(
+    "/agencies/{tenant_id}/users",
+    response_model=list[StaffUserResponse],
+    summary="List an agency's staff users",
+)
+async def list_agency_users(
+    tenant_id: uuid.UUID,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("tenant:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+) -> list[StaffUserResponse]:
+    async with uow_factory(tenant_id) as uow:
+        users = await ListAgencyUsersUseCase(
+            SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+            SqlAlchemyStaffUserRepository(_get_database(), tenant_id),
+        ).execute(ListAgencyUsersQuery(tenant_id=tenant_id))
+    return [
+        StaffUserResponse(
+            id=str(user.id),
+            email=user.email,
+            role=user.role,
+            branch_id=str(user.branch_id) if user.branch_id else None,
+            is_active=user.is_active,
+        )
+        for user in users
+    ]
+
+
+@router.post(
+    "/agencies/{tenant_id}/admins",
+    response_model=AgencyUserSetupResponse,
+    status_code=201,
+    summary="Add another admin to an agency",
+)
+async def add_agency_admin(
+    tenant_id: uuid.UUID,
+    body: AddAgencyAdminRequest,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("tenant:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
+    reset_token_repository: Annotated[
+        PasswordResetTokenRepository, Depends(get_password_reset_token_repository)
+    ],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    email_sender: Annotated[EmailSender, Depends(get_email_sender)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AgencyUserSetupResponse:
+    async with uow_factory(tenant_id) as uow:
+        invite = InviteStaffUserUseCase(
+            SqlAlchemyStaffUserRepository(_get_database(), tenant_id),
+            reset_token_repository,
+            token_hasher,
+            email_sender,
+            reset_token_ttl=timedelta(seconds=settings.setup_link_ttl_seconds),
+        )
+        issued = await AddAgencyAdminUseCase(
+            SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+            user_repository,
+            invite,
+            SqlAlchemyPlatformAuditTrail(uow),  # type: ignore[arg-type]
+        ).execute(AddAgencyAdminCommand(tenant_id=tenant_id, email=body.email))
+        await uow.commit()
+    return _setup_response(issued)
+
+
+@router.post(
+    "/agencies/{tenant_id}/users/{user_id}/setup-link",
+    response_model=AgencyUserSetupResponse,
+    status_code=201,
+    summary="Issue a fresh one-time setup link for an agency admin",
+)
+async def issue_agency_admin_setup_link(
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("tenant:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+    reset_token_repository: Annotated[
+        PasswordResetTokenRepository, Depends(get_password_reset_token_repository)
+    ],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AgencyUserSetupResponse:
+    async with uow_factory(tenant_id) as uow:
+        issued = await IssueSetupLinkUseCase(
+            SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+            SqlAlchemyStaffUserRepository(_get_database(), tenant_id),
+            reset_token_repository,
+            token_hasher,
+            SqlAlchemyPlatformAuditTrail(uow),  # type: ignore[arg-type]
+            link_ttl=timedelta(seconds=settings.setup_link_ttl_seconds),
+        ).execute(IssueSetupLinkCommand(tenant_id=tenant_id, user_id=user_id))
+        await uow.commit()
+    return _setup_response(issued)
 
 
 @router.patch("/agencies/{tenant_id}/suspend", status_code=204, summary="Suspend an agency")

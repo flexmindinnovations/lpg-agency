@@ -338,6 +338,11 @@ ignore_imports = [
     # reason `dependencies/unit_of_work.py` does above.
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.repositories.identity",
+    # Phase 31: the agency-user routes write an explicit audit entry through the
+    # platform Unit of Work they just opened (the generic audit hook cannot see
+    # writes made by the staff/token repositories' own sessions) - same
+    # per-request composition role as every other platform entry here.
+    "lpg.api.v1.routers.platform -> lpg.infrastructure.persistence.audit_trail",
     # ^ `POST /platform/agencies` (Agency Provisioning, Phase 30): the new
     # agency's first admin is created through a staff-user repository bound to
     # a tenant id that does not exist until the request is being handled, so —

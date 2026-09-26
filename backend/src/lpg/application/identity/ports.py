@@ -224,6 +224,11 @@ class PasswordResetTokenRepository(Protocol):
 
     async def save(self, token: PasswordResetToken) -> None: ...
 
+    async def invalidate_unused_for_user(self, user_id: uuid.UUID) -> None:
+        """Mark every still-unused token for `user_id` as used, so older links
+        stop working when a new one is issued."""
+        ...
+
 
 @runtime_checkable
 class PermissionRepository(Protocol):

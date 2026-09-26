@@ -36,3 +36,26 @@ class FeatureFlagOverrideRepository(Protocol):
     async def add(self, override: FeatureFlagOverride) -> None: ...
 
     async def save(self, override: FeatureFlagOverride) -> None: ...
+
+
+@runtime_checkable
+class PlatformAuditTrail(Protocol):
+    """Records a Super Admin action against an agency.
+
+    The audit hook only sees ORM changes made through a Unit of Work's own
+    session, and the staff-user / reset-token repositories open their own
+    sessions - so these actions would otherwise leave no trace. Entries are
+    attributed to the *target agency* (visible in that agency's own audit log)
+    with the Super Admin as the actor. Never include a token or password in
+    `details`.
+    """
+
+    async def record(
+        self,
+        *,
+        action: str,
+        entity_name: str,
+        entity_id: str,
+        entity_display_name: str | None,
+        details: dict[str, object],
+    ) -> None: ...

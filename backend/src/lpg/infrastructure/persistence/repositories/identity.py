@@ -219,6 +219,13 @@ class SqlAlchemyPasswordResetTokenRepository:
                 },
             )
 
+    async def invalidate_unused_for_user(self, user_id: uuid.UUID) -> None:
+        async for session in self._database.session():
+            await session.execute(
+                text("SELECT identity.auth_invalidate_password_reset_tokens(:user_id)"),
+                {"user_id": str(user_id)},
+            )
+
 
 class SqlAlchemyPermissionRepository:
     """Unlike the three repositories above, `identity.role`/`permission`/

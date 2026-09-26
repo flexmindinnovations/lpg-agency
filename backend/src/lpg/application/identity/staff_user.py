@@ -58,6 +58,41 @@ class InviteStaffUserCommand(Command):
 
 
 @dataclass(frozen=True, slots=True)
+class SetupToken:
+    """A freshly minted one-time token. `raw` exists only here - the database
+    keeps just its hash."""
+
+    raw: str
+    expires_at: datetime
+
+
+async def issue_setup_token(
+    *,
+    user_id: uuid.UUID,
+    reset_token_repository: PasswordResetTokenRepository,
+    token_hasher: TokenHasher,
+    ttl: timedelta,
+) -> SetupToken:
+    """Create and persist a single-use password-setup token for `user_id`.
+
+    The one place a setup/reset token is minted for a staff user - shared by
+    `InviteStaffUserUseCase` and the Platform Console's re-issue path so both
+    behave identically.
+    """
+    raw_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(UTC) + ttl
+    await reset_token_repository.save(
+        PasswordResetToken(
+            uuid.uuid4(),
+            user_id=user_id,
+            token_hash=token_hasher.hash(raw_token),
+            expires_at=expires_at,
+        )
+    )
+    return SetupToken(raw=raw_token, expires_at=expires_at)
+
+
+@dataclass(frozen=True, slots=True)
 class StaffInvitation:
     """An invited user plus the one-time setup token, for callers that must
     hand the link over themselves because email delivery is not wired up.
@@ -99,20 +134,19 @@ class InviteStaffUserUseCase:
         )
         await self._staff_user_repository.add(user)
 
-        raw_token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(UTC) + self._reset_token_ttl
-        reset_token = PasswordResetToken(
-            uuid.uuid4(),
+        token = await issue_setup_token(
             user_id=user.id,
-            token_hash=self._token_hasher.hash(raw_token),
-            expires_at=expires_at,
+            reset_token_repository=self._reset_token_repository,
+            token_hasher=self._token_hasher,
+            ttl=self._reset_token_ttl,
         )
-        await self._reset_token_repository.save(reset_token)
 
-        body = f"Set your password to activate your account: /reset-password?token={raw_token}"
+        body = f"Set your password to activate your account: /reset-password?token={token.raw}"
         await self._email_sender.send(command.email, "You've been invited", body)
 
-        return StaffInvitation(user=user, setup_token=raw_token, setup_token_expires_at=expires_at)
+        return StaffInvitation(
+            user=user, setup_token=token.raw, setup_token_expires_at=token.expires_at
+        )
 
 
 @dataclass(frozen=True, slots=True)

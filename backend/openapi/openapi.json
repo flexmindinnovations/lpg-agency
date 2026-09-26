@@ -15,6 +15,20 @@
         "title": "ActivateLicenseRequest",
         "type": "object"
       },
+      "AddAgencyAdminRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "AddAgencyAdminRequest",
+        "type": "object"
+      },
       "AddComplianceDocumentRequest": {
         "properties": {
           "doc_type": {
@@ -274,6 +288,48 @@
           "reason"
         ],
         "title": "AdjustLedgerBalanceRequest",
+        "type": "object"
+      },
+      "AgencyUserSetupResponse": {
+        "description": "A user plus the one-time link to set their password. The raw token is\nreturned once and never stored (only its hash is).",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "setup_path": {
+            "title": "Setup Path",
+            "type": "string"
+          },
+          "setup_token_expires_at": {
+            "format": "date-time",
+            "title": "Setup Token Expires At",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "role",
+          "setup_path",
+          "setup_token_expires_at"
+        ],
+        "title": "AgencyUserSetupResponse",
         "type": "object"
       },
       "ApproveCustomerRequest": {
@@ -16234,6 +16290,59 @@
         ]
       }
     },
+    "/api/v1/platform/agencies/{tenant_id}/admins": {
+      "post": {
+        "operationId": "add_agency_admin_api_v1_platform_agencies__tenant_id__admins_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAgencyAdminRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgencyUserSetupResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add another admin to an agency",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
     "/api/v1/platform/agencies/{tenant_id}/close": {
       "patch": {
         "operationId": "close_agency_api_v1_platform_agencies__tenant_id__close_patch",
@@ -16334,6 +16443,106 @@
           }
         },
         "summary": "Suspend an agency",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/users": {
+      "get": {
+        "operationId": "list_agency_users_api_v1_platform_agencies__tenant_id__users_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StaffUserResponse"
+                  },
+                  "title": "Response List Agency Users Api V1 Platform Agencies  Tenant Id  Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List an agency's staff users",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/agencies/{tenant_id}/users/{user_id}/setup-link": {
+      "post": {
+        "operationId": "issue_agency_admin_setup_link_api_v1_platform_agencies__tenant_id__users__user_id__setup_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgencyUserSetupResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue a fresh one-time setup link for an agency admin",
         "tags": [
           "Platform Console"
         ]
