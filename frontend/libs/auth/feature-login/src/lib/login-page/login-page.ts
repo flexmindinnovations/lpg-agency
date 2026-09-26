@@ -5,15 +5,16 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { InputPassword } from 'primeng/inputpassword';
 import { Message } from 'primeng/message';
-import { AuthService, type AppError } from '@lpg/shared/data-access';
+import { AuthService, isAppError } from '@lpg/shared/data-access';
 import { FormFieldComponent } from '@lpg/shared/ui';
 import { AuthShell } from '../auth-shell/auth-shell';
 
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
-
-function errorMessageFor(error: unknown): string {
+/**
+ * Codes worth wording specifically for a sign-in screen. Every other
+ * failure shows the backend's own `detail` (e.g. "This tenant's license has
+ * not been activated.") rather than a generic line that hides the cause.
+ */
+function loginErrorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
     case 'INVALID_CREDENTIALS':
       return 'Incorrect email or password.';
@@ -22,7 +23,9 @@ function errorMessageFor(error: unknown): string {
     case 'TENANT_SUSPENDED':
       return 'This agency has been suspended. Contact support for assistance.';
     default:
-      return 'Something went wrong signing in. Please try again.';
+      return isAppError(error) && !error.isNetworkError && error.detail
+        ? error.detail
+        : 'Something went wrong signing in. Please try again.';
   }
 }
 
@@ -287,7 +290,7 @@ export class LoginPage {
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        this.errorMessage.set(errorMessageFor(error));
+        this.errorMessage.set(loginErrorMessageFor(error));
       },
     });
   }

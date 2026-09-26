@@ -151,4 +151,38 @@ describe('LoginPage', () => {
 
     expect(component['errorMessage']()).toContain('temporarily locked');
   });
+
+  it("shows the backend's own detail for an error code it has no wording for", () => {
+    authServiceMock.login.mockReturnValue(
+      throwError(() => ({
+        errorCode: 'LICENSE_NOT_ACTIVATED',
+        detail: "This tenant's license has not been activated.",
+        isNetworkError: false,
+      })),
+    );
+
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 'staff@example.com', password: 'correct-horse-battery' });
+
+    component['submit']();
+
+    expect(component['errorMessage']()).toBe("This tenant's license has not been activated.");
+  });
+
+  it('falls back to a generic message when the server could not be reached', () => {
+    authServiceMock.login.mockReturnValue(
+      throwError(() => ({ errorCode: 'NETWORK_ERROR', detail: '', isNetworkError: true })),
+    );
+
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 'staff@example.com', password: 'correct-horse-battery' });
+
+    component['submit']();
+
+    expect(component['errorMessage']()).toContain('Something went wrong signing in');
+  });
 });
