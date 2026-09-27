@@ -110,16 +110,6 @@ function initialsFor(displayName: string): string {
           <span>My Profile</span>
         </a>
 
-        <a
-          role="menuitem"
-          class="profile-menu__item"
-          routerLink="/design-system"
-          (click)="popover.hide()"
-        >
-          <i class="pi pi-palette" aria-hidden="true"></i>
-          <span>Design system</span>
-        </a>
-
         <div class="profile-menu__divider" role="separator"></div>
 
         <button
