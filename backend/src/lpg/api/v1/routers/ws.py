@@ -96,6 +96,15 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)) -> N
     try:
         claims = await _verify_token(token, signer)
     except TokenInvalidError:
+        # A close code is part of the WebSocket protocol's own framing, which
+        # only exists once the opening handshake has completed — closing
+        # before `accept()` just aborts the handshake, and the browser's
+        # `WebSocket.onclose` then reports the generic 1006 (abnormal
+        # closure), not 1008. The client specifically treats 1008 as "the
+        # token is bad, don't reconnect"; losing that signal left it retrying
+        # forever with the same dead token. Accept first so the intended code
+        # actually reaches the client.
+        await websocket.accept()
         await websocket.close(code=1008)  # Policy Violation
         return
 
