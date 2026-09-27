@@ -36,6 +36,9 @@ x-backend-env: &backend-env
   LPG_JWT_PRIVATE_KEY: ${LPG_JWT_PRIVATE_KEY}
   LPG_JWT_PUBLIC_KEY: ${LPG_JWT_PUBLIC_KEY}
   LPG_KYC_ENCRYPTION_KEY: ${LPG_KYC_ENCRYPTION_KEY}
+  # AI Command Center (Gemini) - set in .env. Left empty, the gateway
+  # returns provider_error and the rest of the app is unaffected.
+  LPG_GEMINI_API_KEY: ${LPG_GEMINI_API_KEY:-}
 
 services:
   postgres:

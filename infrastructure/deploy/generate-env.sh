@@ -49,6 +49,10 @@ LPG_STORAGE_ACCESS_KEY=
 LPG_STORAGE_SECRET_KEY=
 LPG_STORAGE_BUCKET=
 LPG_STORAGE_REGION=
+
+# AI Command Center (Gemini). Fill this in, then
+# `docker compose -f docker-compose.prod.yml up -d backend worker`.
+LPG_GEMINI_API_KEY=
 EOF
 
 echo "Wrote $(pwd)/.env (mode 600). Back this file up somewhere safe: losing the"

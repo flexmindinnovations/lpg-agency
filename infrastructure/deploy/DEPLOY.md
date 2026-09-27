@@ -182,9 +182,25 @@ chmod +x generate-env.sh deploy.sh postgres-init/01-init.sh
 database passwords are baked into the Postgres volume on first start, and losing
 `LPG_KYC_ENCRYPTION_KEY` makes stored KYC references unreadable.
 
-Optional extras you can append to `.env`: `WEB_CONCURRENCY=2` (gunicorn workers;
-default 2), and `LPG_GEMINI_API_KEY=` if you want the AI assistant (also add it
-to the `x-backend-env` block in `docker-compose.prod.yml`).
+Optional extra you can append to `.env`: `WEB_CONCURRENCY=2` (gunicorn workers;
+default 2).
+
+### AI Command Center: Gemini
+
+`generate-env.sh` already writes an empty `LPG_GEMINI_API_KEY=` line and
+`docker-compose.prod.yml` already passes it through. Get a key from
+[Google AI Studio](https://aistudio.google.com/apikey), set it in `.env`, and
+recreate the containers that read it:
+
+```bash
+nano /opt/lpg-agency/infrastructure/deploy/.env
+# LPG_GEMINI_API_KEY=<your key>
+
+docker compose -f docker-compose.prod.yml up -d backend worker
+```
+
+Until it is set, AI Command Center requests fail with `provider_error`; the
+rest of the app is unaffected.
 
 
 ### Object storage: DigitalOcean Spaces
