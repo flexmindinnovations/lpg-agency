@@ -128,6 +128,17 @@ class SqlAlchemyEmployeeRepository:
             # reload — needed to return the generated `employee_code` — saw
             # nothing and crashed the endpoint on every real call.
             await self._uow.session.flush()
+            # `register_aggregate` is what makes the UnitOfWork's
+            # `collect_events()` see this employee at all. `_to_domain` (the
+            # read paths) does it, but this insert branch builds the ORM row
+            # straight from the passed-in `employee` without ever routing
+            # through `_to_domain` — so the freshly constructed aggregate's
+            # pending `EmployeeRegistered` was silently never dispatched, and
+            # `register_tenant_admin_handlers`'s `IdentityUser`/`Driver`
+            # provisioning never ran for a single employee ever registered
+            # through this endpoint. No exception, no log line — `commit()`
+            # just found nothing tracked to collect events from.
+            self._uow.register_aggregate(employee)
         else:
             self._sync_row(row, employee)
 

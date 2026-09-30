@@ -89,6 +89,13 @@ class SqlAlchemyScaleRepository:
                     status=scale.status,
                 )
             )
+            # Without this, a freshly constructed `Scale`'s pending
+            # `ScaleRegistered` is never collected — `_to_domain` registers
+            # aggregates reconstructed from a row, but this insert branch
+            # never routes through it (same bug found and fixed in
+            # `employee.py`, 2026-09-30; no current subscriber, so this was
+            # latent rather than live).
+            self._uow.register_aggregate(scale)
         else:
             self._sync_row(row, scale)
 
@@ -312,6 +319,13 @@ class SqlAlchemyCylinderUnitRepository:
                     is_retired=unit.is_retired,
                 )
             )
+            # Without this, a freshly constructed `CylinderUnit`'s pending
+            # `CylinderUnitRegistered` is never collected — `_to_domain`
+            # registers aggregates reconstructed from a row, but this insert
+            # branch never routes through it (same bug found and fixed in
+            # `employee.py`, 2026-09-30; no current subscriber, so this was
+            # latent rather than live).
+            self._uow.register_aggregate(unit)
         else:
             self._sync_row(row, unit)
 

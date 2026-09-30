@@ -12,7 +12,8 @@ import pytest
 from sqlalchemy import text
 
 from lpg.application.common.tenant import RequestTenantContext
-from lpg.domain.compliance.cylinder_unit import CylinderUnit
+from lpg.domain.compliance.cylinder_unit import CylinderUnit, CylinderUnitRegistered
+from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.models.tenant import TenantModel  # noqa: F401
 from lpg.infrastructure.persistence.repositories.compliance import (
@@ -154,6 +155,39 @@ class TestCylinderUnitRepository:
 
                 by_lookup_serial = await repo.lookup_by_code("CYL-A1")
                 assert by_lookup_serial is not None and by_lookup_serial.id == unit.id
+
+    async def test_saving_a_new_unit_dispatches_cylinder_unit_registered(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        """Regression: `save()`'s insert branch built the ORM row straight
+        from the passed-in `CylinderUnit` without ever calling
+        `register_aggregate` — the one call that makes the UnitOfWork's
+        `collect_events()` see an aggregate at all. A freshly constructed
+        `CylinderUnit` always records `CylinderUnitRegistered` in
+        `__init__`; it was silently never dispatched (same bug found and
+        fixed in `employee.py`'s `save()`, 2026-09-30, where it broke a real
+        feature — nothing subscribes to `CylinderUnitRegistered` yet, so
+        this one was latent rather than live)."""
+        tenant_id = await _seed_tenant(admin_engine)
+        cylinder_type_id, warehouse_id = await _seed_cylinder_type_and_warehouse(
+            admin_engine, tenant_id
+        )
+        context = RequestTenantContext(tenant_id=tenant_id)
+        unit = _unit(tenant_id, cylinder_type_id, warehouse_id, serial_number="CYL-EVT")
+
+        received: list[CylinderUnitRegistered] = []
+
+        async def _capture(event: CylinderUnitRegistered) -> None:
+            received.append(event)
+
+        dispatcher = DomainEventDispatcher()
+        dispatcher.register(CylinderUnitRegistered, _capture)  # type: ignore[arg-type]
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context, event_dispatcher=dispatcher) as uow:
+                await SqlAlchemyCylinderUnitRepository(uow).save(unit)
+
+        assert [e.cylinder_unit_id for e in received] == [unit.id]
 
     async def test_commands_persist_through_save(
         self, database: Database, admin_engine: AsyncEngine

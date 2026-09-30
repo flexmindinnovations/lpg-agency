@@ -12,7 +12,8 @@ import pytest
 from sqlalchemy import text
 
 from lpg.application.common.tenant import RequestTenantContext
-from lpg.domain.compliance.scale import Scale
+from lpg.domain.compliance.scale import Scale, ScaleRegistered
+from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.models.tenant import TenantModel  # noqa: F401
 from lpg.infrastructure.persistence.repositories.compliance import (
@@ -121,6 +122,37 @@ class TestScaleRepository:
 
                 for_warehouse = await repo.list_for_warehouse(warehouse_id)
                 assert [s.id for s in for_warehouse] == [scale.id]
+
+    async def test_saving_a_new_scale_dispatches_scale_registered(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        """Regression: `save()`'s insert branch built the ORM row straight
+        from the passed-in `Scale` without ever calling
+        `register_aggregate` — the one call that makes the UnitOfWork's
+        `collect_events()` see an aggregate at all. A freshly constructed
+        `Scale` always records `ScaleRegistered` in `__init__`; it was
+        silently never dispatched (same bug found and fixed in
+        `employee.py`'s `save()`, 2026-09-30, where it broke a real
+        feature — nothing subscribes to `ScaleRegistered` yet, so this one
+        was latent rather than live)."""
+        tenant_id = await _seed_tenant(admin_engine)
+        warehouse_id = await _seed_warehouse(admin_engine, tenant_id)
+        context = RequestTenantContext(tenant_id=tenant_id)
+        scale = _scale(tenant_id, warehouse_id, asset_tag="SCALE-EVT")
+
+        received: list[ScaleRegistered] = []
+
+        async def _capture(event: ScaleRegistered) -> None:
+            received.append(event)
+
+        dispatcher = DomainEventDispatcher()
+        dispatcher.register(ScaleRegistered, _capture)  # type: ignore[arg-type]
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context, event_dispatcher=dispatcher) as uow:
+                await SqlAlchemyScaleRepository(uow).save(scale)
+
+        assert [e.scale_id for e in received] == [scale.id]
 
     async def test_replace_certificate_then_set_status_persist(
         self, database: Database, admin_engine: AsyncEngine

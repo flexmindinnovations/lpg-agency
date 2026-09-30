@@ -110,6 +110,14 @@ class SqlAlchemyDriverRepository:
                 status=driver.status,
             )
             self._uow.session.add(row)
+            # Without this, a freshly constructed `Driver`'s pending
+            # `DriverRegistered` is never collected — `_to_domain` registers
+            # aggregates reconstructed from a row, but this insert branch
+            # never routes through it. `DriverRegistered` has a live
+            # subscriber (`realtime_handlers.on_driver_updated`), so this
+            # silently dropped a real dashboard update, not just a latent gap
+            # (found auditing the identical bug in `employee.py`, 2026-09-30).
+            self._uow.register_aggregate(driver)
         else:
             self._sync_row(row, driver)
 

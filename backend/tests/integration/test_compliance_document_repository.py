@@ -11,7 +11,8 @@ import pytest
 from sqlalchemy import text
 
 from lpg.application.common.tenant import RequestTenantContext
-from lpg.domain.delivery.compliance_document import ComplianceDocument
+from lpg.domain.delivery.compliance_document import ComplianceDocument, ComplianceDocumentAdded
+from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.persistence.models.tenant import TenantModel  # noqa: F401
 from lpg.infrastructure.persistence.repositories.compliance_document import (
@@ -115,6 +116,36 @@ class TestComplianceDocumentRepository:
 
                 same_type = await repo.get_for_owner_and_type("driver", owner_id, "driving_licence")
                 assert same_type is not None and same_type.id == doc.id
+
+    async def test_saving_a_new_document_dispatches_compliance_document_added(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        """Regression: `save()`'s insert branch built the ORM row straight
+        from the passed-in `ComplianceDocument` without ever calling
+        `register_aggregate` — the one call that makes the UnitOfWork's
+        `collect_events()` see an aggregate at all. A freshly constructed
+        `ComplianceDocument` always records `ComplianceDocumentAdded` in
+        `__init__`; it was silently never dispatched (same bug found and
+        fixed in `employee.py`'s `save()`, 2026-09-30, where it broke a real
+        feature — nothing subscribes to `ComplianceDocumentAdded` yet, so
+        this one was latent rather than live)."""
+        tenant_id = await _seed_tenant(admin_engine)
+        context = RequestTenantContext(tenant_id=tenant_id)
+        doc = _doc(tenant_id, uuid.uuid4())
+
+        received: list[ComplianceDocumentAdded] = []
+
+        async def _capture(event: ComplianceDocumentAdded) -> None:
+            received.append(event)
+
+        dispatcher = DomainEventDispatcher()
+        dispatcher.register(ComplianceDocumentAdded, _capture)  # type: ignore[arg-type]
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context, event_dispatcher=dispatcher) as uow:
+                await SqlAlchemyComplianceDocumentRepository(uow).save(doc)
+
+        assert [e.document_id for e in received] == [doc.id]
 
     async def test_replace_then_verify_persist_through_the_update_path(
         self, database: Database, admin_engine: AsyncEngine

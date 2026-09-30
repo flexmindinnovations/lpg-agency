@@ -118,6 +118,16 @@ class SqlAlchemyInventoryLocationRepository:
             # from bare column-level ForeignKey()s without an explicit
             # relationship(), so this is not just a performance nicety.
             await self._uow.session.flush()
+            # `GetOrCreateInventoryLocationUseCase` builds a brand-new
+            # `InventoryLocation` directly (bypassing `_to_domain`, the only
+            # other place that registers one) whenever this is the first
+            # goods receipt at a location — its already-recorded
+            # `GoodsReceived`/`InventoryAdjusted` event would otherwise never
+            # reach `collect_events()`. Both have a live subscriber
+            # (`realtime_handlers.publish_dashboard_update`), so a brand-new
+            # location's first movement silently never pushed a dashboard
+            # update (same bug found and fixed in `employee.py`, 2026-09-30).
+            self._uow.register_aggregate(location)
         else:
             row.updated_at = datetime.now(UTC)
 

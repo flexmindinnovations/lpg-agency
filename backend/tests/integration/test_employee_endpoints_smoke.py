@@ -227,6 +227,89 @@ class TestEmployeeEndpointsThroughTheRealStack:
         assert body["total"] == 1
         assert body["items"][0]["first_name"] == "Own"
 
+    async def test_registering_a_driver_provisions_login_and_a_driver_record(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """Regression: `SqlAlchemyEmployeeRepository.save()`'s insert branch
+        built the ORM row straight from the passed-in `Employee` without ever
+        calling `register_aggregate` on it — the one call that makes the
+        UnitOfWork's `collect_events()` see an aggregate at all. The newly
+        constructed employee's pending `EmployeeRegistered` was silently
+        never collected, so `register_tenant_admin_handlers`'s
+        `IdentityUser`/`Driver` provisioning never ran for *any* employee
+        ever registered through this endpoint — no exception, no log line,
+        `commit()` just found nothing to dispatch. A driver "registered"
+        this way could never actually sign in: `POST /auth/otp/verify`
+        answers "No account is associated with this number." forever,
+        discovered live against production (2026-09-30) trying to get a
+        fresh test driver logged into the driver app.
+        """
+        hasher = Argon2PasswordHasher(integration_settings)
+        email = f"{uuid.uuid4().hex}@employee-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id = await _seed_staff_user(
+            admin_engine_lpg_test,
+            email=email,
+            password_hash=hasher.hash(password),
+            role="agency_admin",
+            tenant_name="Employee Smoke Tenant (driver provisioning)",
+        )
+        token = await _login(real_lifespan_client, email=email, password=password)
+        headers = {"Authorization": f"Bearer {token}"}
+        phone_number = "+919876511111"
+
+        register_response = await real_lifespan_client.post(
+            "/api/v1/employees",
+            headers=headers,
+            json={
+                "branch_id": str(uuid.uuid4()),
+                "first_name": "New",
+                "last_name": "Driver",
+                "phone_number": phone_number,
+                "role": "driver",
+            },
+        )
+        assert register_response.status_code == 201, register_response.text
+
+        async with admin_engine_lpg_test.connect() as conn:
+            identity_row = (
+                await conn.execute(
+                    text(
+                        "SELECT role, is_active FROM identity.identity_user "
+                        "WHERE tenant_id = :tenant_id AND phone_number = :phone"
+                    ),
+                    {"tenant_id": str(tenant_id), "phone": phone_number},
+                )
+            ).first()
+            driver_row = (
+                await conn.execute(
+                    text("SELECT license_number FROM delivery.driver WHERE tenant_id = :tenant_id"),
+                    {"tenant_id": str(tenant_id)},
+                )
+            ).first()
+
+        assert identity_row is not None, (
+            "no identity_user for this phone — the employee can never log in"
+        )
+        assert identity_row.role == "driver"
+        assert identity_row.is_active is True
+        assert driver_row is not None
+        assert driver_row.license_number == "PENDING"
+
+        # `POST /auth/otp/request` (which existed before this fix) claims
+        # success either way (it never reveals whether a phone is known) —
+        # a real client can only tell the difference by trying to verify.
+        # This is what actually broke: 404-shaped "No account is associated
+        # with this number" for a driver the admin just registered.
+        otp_request_response = await real_lifespan_client.post(
+            "/api/v1/auth/otp/request",
+            json={"tenant_id": str(tenant_id), "phone_number": phone_number},
+        )
+        assert otp_request_response.status_code == 204, otp_request_response.text
+
     async def test_register_employee_denied_without_users_manage(
         self,
         real_lifespan_client: AsyncClient,

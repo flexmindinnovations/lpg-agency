@@ -89,6 +89,13 @@ class SqlAlchemyComplianceDocumentRepository:
                     verified_at=doc.verified_at,
                 )
             )
+            # Without this, a freshly constructed `ComplianceDocument`'s
+            # pending `ComplianceDocumentAdded` is never collected —
+            # `_to_domain` registers aggregates reconstructed from a row, but
+            # this insert branch never routes through it (same bug found and
+            # fixed in `employee.py`, 2026-09-30; no current subscriber, so
+            # this was latent rather than live).
+            self._uow.register_aggregate(doc)
         else:
             self._sync_row(row, doc)
 

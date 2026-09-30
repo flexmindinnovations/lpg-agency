@@ -97,6 +97,13 @@ class SqlAlchemyVehicleRepository:
                 status=vehicle.status,
             )
             self._uow.session.add(row)
+            # Without this, a freshly constructed `Vehicle`'s pending
+            # `VehicleRegistered` is never collected — `_to_domain` registers
+            # aggregates reconstructed from a row, but this insert branch
+            # never routes through it (same bug found and fixed in
+            # `employee.py`, 2026-09-30; `VehicleRegistered` has no
+            # subscriber yet, so this was latent rather than live).
+            self._uow.register_aggregate(vehicle)
         else:
             self._sync_row(row, vehicle)
 
