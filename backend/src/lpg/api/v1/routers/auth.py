@@ -45,6 +45,9 @@ from lpg.api.v1.dependencies.identity import (
 from lpg.api.v1.dependencies.license import get_license_status_checker
 from lpg.api.v1.dependencies.tenant import get_tenant_status_checker
 from lpg.api.v1.schemas.identity import (
+    DriverLoginChallengeResponse,
+    DriverLoginStartRequest,
+    DriverLoginVerifyRequest,
     LoginRequest,
     LogoutRequest,
     OtpRequestRequest,
@@ -56,6 +59,12 @@ from lpg.api.v1.schemas.identity import (
     TokenResponse,
 )
 from lpg.application.common.errors import RefreshTokenInvalidError
+from lpg.application.identity.driver_login import (
+    StartDriverLoginCommand,
+    StartDriverLoginUseCase,
+    VerifyDriverLoginCommand,
+    VerifyDriverLoginUseCase,
+)
 from lpg.application.identity.login import LoginCommand, LoginUseCase
 from lpg.application.identity.logout import LogoutCommand, LogoutUseCase
 from lpg.application.identity.otp_request import RequestOtpCommand, RequestOtpUseCase
@@ -215,6 +224,88 @@ async def otp_verify(
     token_pair = await use_case.execute(
         VerifyOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number, code=body.code)
     )
+    _set_refresh_cookie(response, token_pair, settings)
+    return TokenResponse(
+        access_token=token_pair.access_token, refresh_token=token_pair.refresh_token
+    )
+
+
+@router.post(
+    "/driver-login",
+    response_model=DriverLoginChallengeResponse,
+    summary="Driver sign-in step 1: email + password, then an OTP is issued",
+)
+async def driver_login_start(
+    body: DriverLoginStartRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
+    password_hasher: Annotated[PasswordHasher, Depends(get_password_hasher)],
+    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
+    otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
+    license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
+    tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
+    _rate_limit: Annotated[
+        None,
+        Depends(require_rate_limit(key_prefix="auth:driver_login", limit=10, window_seconds=60)),
+    ],
+) -> DriverLoginChallengeResponse:
+    use_case = StartDriverLoginUseCase(
+        user_repository,
+        password_hasher,
+        otp_store,
+        otp_delivery,
+        license_status_checker,
+        tenant_status_checker,
+        lockout_threshold=settings.login_lockout_threshold,
+        lockout_duration=timedelta(minutes=settings.login_lockout_duration_minutes),
+    )
+    challenge = await use_case.execute(
+        StartDriverLoginCommand(email=body.email, password=body.password)
+    )
+    return DriverLoginChallengeResponse(
+        phone_hint=challenge.phone_hint,
+        dev_otp=challenge.code if settings.otp_delivery_dev_mode else None,
+    )
+
+
+@router.post(
+    "/driver-login/verify",
+    response_model=TokenResponse,
+    summary="Driver sign-in step 2: verify the OTP and receive tokens",
+)
+async def driver_login_verify(
+    body: DriverLoginVerifyRequest,
+    response: Response,
+    settings: Annotated[Settings, Depends(get_settings)],
+    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
+    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
+    refresh_token_repository: Annotated[
+        RefreshTokenRepository, Depends(get_refresh_token_repository)
+    ],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+    jwt_signer: Annotated[JwtSigner, Depends(get_jwt_signer)],
+    license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
+    tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
+    _rate_limit: Annotated[
+        None,
+        Depends(
+            require_rate_limit(key_prefix="auth:driver_login_verify", limit=10, window_seconds=60)
+        ),
+    ],
+) -> TokenResponse:
+    use_case = VerifyDriverLoginUseCase(
+        user_repository,
+        otp_store,
+        refresh_token_repository,
+        permission_repository,
+        token_hasher,
+        jwt_signer,
+        license_status_checker,
+        tenant_status_checker,
+        refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
+    )
+    token_pair = await use_case.execute(VerifyDriverLoginCommand(email=body.email, code=body.code))
     _set_refresh_cookie(response, token_pair, settings)
     return TokenResponse(
         access_token=token_pair.access_token, refresh_token=token_pair.refresh_token

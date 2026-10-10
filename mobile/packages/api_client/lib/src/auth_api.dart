@@ -39,6 +39,31 @@ final class AuthApi {
     'code': code,
   });
 
+  Future<Result<DriverLoginChallenge>> startDriverLogin({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/auth/driver-login',
+        data: {'email': email, 'password': password},
+      );
+      return Success(DriverLoginChallenge.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  Future<Result<TokenPair>> verifyDriverLogin({
+    required String email,
+    required String code,
+  }) => _postForTokens('/api/v1/auth/driver-login/verify', {
+    'email': email,
+    'code': code,
+  });
+
   /// `refreshToken` mirrors `RefreshRequest`'s own docstring: mobile clients
   /// have no cookie, so they always supply it explicitly.
   Future<Result<TokenPair>> refresh({required String refreshToken}) =>

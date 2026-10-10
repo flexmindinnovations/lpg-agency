@@ -1243,6 +1243,33 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+
+## ADR-050: Driver App Sign-In — Password Then OTP, With the OTP Returned in the Response Only When `otp_delivery_dev_mode` Is On
+
+**Status:** Accepted
+
+**Context:** The Driver App signed in with a phone OTP alone (Agency Code + phone), one factor that was only as strong as the OTP. The product owner wants email + password first, then an OTP. No SMS provider exists yet (Phase 14), so the code has to be visible to the developer on the same screen for now.
+
+**Decision (two endpoints, no tokens until the OTP):** `POST /auth/driver-login` checks the email and password with the same rules as `LoginUseCase` (generic error, lockout, active account), requires the `driver` role, a phone number on file and a usable agency licence, then issues an OTP and returns `{phone_hint, dev_otp}`. `POST /auth/driver-login/verify` redeems the OTP for tokens.
+
+**Decision (the OTP key is the proof of step 1):** the OTP is stored under `tenant:{tenant_id}:driver-login-otp:{user_id}`, a key only step 1 writes and separate from the customer/driver phone-OTP key. A valid code therefore proves the password step passed, with no second password and no challenge record. The existing `/auth/otp/*` endpoints are unchanged.
+
+**Decision (the dev OTP is opt-in and cannot reach a real deployment):** `dev_otp` is filled only when `Settings.otp_delivery_dev_mode` is true, a flag `Settings.model_post_init` already rejects outside `environment=local`. In every other environment the field is `null` and the app hides its banner. When SMS delivery lands, the server stops setting the flag and the app needs no change.
+
+**Consequences:**
+- A driver account needs a password and a phone number. The seed script sets both; the real driver-onboarding flow does not set a password yet, so a newly added driver cannot use this path until that is decided.
+- Local development must set `LPG_OTP_DELIVERY_DEV_MODE=true` (`.claude/backend-dev.bat` now does).
+- Wrong OTP attempts are limited by a 10/minute rate limit, not by invalidating the code after N tries.
+- The Angular client generated from OpenAPI was not regenerated.
+
+**Alternatives Considered:**
+- **Reuse `/auth/login` and add an OTP step after it** — rejected: it already returns tokens, so the second factor could be skipped.
+- **A signed challenge token between the steps** — rejected: more moving parts for the same guarantee the private OTP key gives.
+- **Gate the dev OTP on `is_local` instead of the flag** — rejected: the flag exists for exactly this and makes it an explicit opt-in.
+- **Keep the phone-OTP login alongside** — not done: two Driver App sign-in paths would double the surface to maintain.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |

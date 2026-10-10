@@ -2778,6 +2778,71 @@
         "title": "DriverLocationSnapshot",
         "type": "object"
       },
+      "DriverLoginChallengeResponse": {
+        "description": "Step 1 of the Driver App sign-in: the password was correct and an OTP\nwas issued. No tokens yet — `POST /auth/driver-login/verify` returns those.",
+        "properties": {
+          "dev_otp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dev Otp"
+          },
+          "phone_hint": {
+            "title": "Phone Hint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone_hint"
+        ],
+        "title": "DriverLoginChallengeResponse",
+        "type": "object"
+      },
+      "DriverLoginStartRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "DriverLoginStartRequest",
+        "type": "object"
+      },
+      "DriverLoginVerifyRequest": {
+        "properties": {
+          "code": {
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "DriverLoginVerifyRequest",
+        "type": "object"
+      },
       "DriverMeResponse": {
         "description": "`GET /drivers/me` — the calling driver's own profile for the Driver\nApp's Profile tab. `name`/`phone_number` come from the linked employee;\n`vehicle` is `null` when the driver has no active route.",
         "properties": {
@@ -10953,6 +11018,88 @@
         "summary": "Ask the AI Command Center an operational question",
         "tags": [
           "AI"
+        ]
+      }
+    },
+    "/api/v1/auth/driver-login": {
+      "post": {
+        "operationId": "driver_login_start_api_v1_auth_driver_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverLoginStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverLoginChallengeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Driver sign-in step 1: email + password, then an OTP is issued",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/driver-login/verify": {
+      "post": {
+        "operationId": "driver_login_verify_api_v1_auth_driver_login_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverLoginVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Driver sign-in step 2: verify the OTP and receive tokens",
+        "tags": [
+          "Authentication"
         ]
       }
     },

@@ -54,6 +54,75 @@ SecureTokenStorage _inMemoryTokenStorage([Map<String, String>? seed]) {
 }
 
 void main() {
+  group('ApiAuthRepository driver login', () {
+    test(
+      'startDriverLogin returns the challenge and starts no session',
+      () async {
+        final authApi = _authApiReturning({
+          '/auth/driver-login': (_) => _jsonResponse({
+            'phone_hint': '*********0099',
+            'dev_otp': '482913',
+          }, 200),
+        });
+        final tokenStorage = _inMemoryTokenStorage();
+        final repository = ApiAuthRepository(
+          authApi: authApi,
+          tokenStorage: tokenStorage,
+        );
+
+        final result = await repository.startDriverLogin(
+          email: 'driver@example.com',
+          password: 'correct-horse',
+        );
+
+        final challenge = result.when(
+          onSuccess: (c) => c,
+          onFailure: (_) => null,
+        );
+        expect(challenge?.phoneHint, '*********0099');
+        expect(challenge?.devOtp, '482913');
+        expect(repository.accessToken, isNull);
+        expect(await tokenStorage.readRefreshToken(), isNull);
+      },
+    );
+
+    test(
+      'verifyDriverLogin persists tokens and returns the principal',
+      () async {
+        final authApi = _authApiReturning({
+          '/auth/driver-login/verify': (_) => _jsonResponse({
+            'access_token': 'access-1',
+            'refresh_token': 'refresh-1',
+          }, 200),
+          '/auth/me': (_) => _jsonResponse({
+            'user_id': 'user-1',
+            'tenant_id': 'tenant-1',
+            'role': 'driver',
+            'permissions': ['orders:deliver'],
+          }, 200),
+        });
+        final tokenStorage = _inMemoryTokenStorage();
+        final repository = ApiAuthRepository(
+          authApi: authApi,
+          tokenStorage: tokenStorage,
+        );
+
+        final result = await repository.verifyDriverLogin(
+          email: 'driver@example.com',
+          code: '482913',
+        );
+
+        final principal = result.when(
+          onSuccess: (p) => p,
+          onFailure: (_) => null,
+        );
+        expect(principal?.role, 'driver');
+        expect(repository.accessToken, 'access-1');
+        expect(await tokenStorage.readRefreshToken(), 'refresh-1');
+      },
+    );
+  });
+
   group('ApiAuthRepository', () {
     test(
       'login persists both tokens and returns the hydrated principal',
