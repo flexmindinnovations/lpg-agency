@@ -12,9 +12,10 @@ non-default ports) and run the API (`.claude/backend-dev.bat` or
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-`10.0.2.2` is the Android emulator's alias for the host machine; the app
-defaults to `http://localhost:8000` for desktop/web runs where that
-resolves directly. A real device needs the host's LAN IP instead.
+`10.0.2.2` is the Android emulator's alias for the host machine. The app now
+**defaults to the production server, `https://lpg.vitessetec.com`**, so local
+runs must pass `API_BASE_URL` (`http://localhost:8000` for desktop/web, the
+host's LAN IP for a real device).
 
 ### Presigned storage URLs on the emulator
 
