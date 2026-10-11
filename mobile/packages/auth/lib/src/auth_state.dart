@@ -56,6 +56,20 @@ class AuthController extends ChangeNotifier {
     return result;
   }
 
+  Future<Result<OtpChallenge>> requestDriverOtp({
+    required String tenantId,
+    required String phoneNumber,
+  }) => _repository.requestDriverOtp(
+    tenantId: tenantId,
+    phoneNumber: phoneNumber,
+  );
+  Future<Result<OtpChallenge>> requestCustomerOtp({
+    required String tenantId,
+    required String phoneNumber,
+  }) => _repository.requestCustomerOtp(
+    tenantId: tenantId,
+    phoneNumber: phoneNumber,
+  );
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,

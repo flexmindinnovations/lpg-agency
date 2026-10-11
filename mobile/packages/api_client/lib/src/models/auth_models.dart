@@ -16,6 +16,23 @@ class TokenPair {
   final String? refreshToken;
 }
 
+/// `POST /auth/driver/otp/request` and `/auth/customer/otp/request`
+/// response — step 1 of the Driver/Customer App sign-in. [tenantId] is the resolved agency UUID that `verifyOtp` needs
+/// next. [devOtp] is non-null only outside production (no SMS provider yet),
+/// so the app can show the code on screen.
+class OtpChallenge {
+  const OtpChallenge({required this.tenantId, this.devOtp});
+
+  factory OtpChallenge.fromJson(Map<String, dynamic> json) =>
+      OtpChallenge(
+        tenantId: json['tenant_id'] as String,
+        devOtp: json['dev_otp'] as String?,
+      );
+
+  final String tenantId;
+  final String? devOtp;
+}
+
 /// `GET /auth/me` — mirrors the backend's `PrincipalResponse`.
 class Principal {
   const Principal({

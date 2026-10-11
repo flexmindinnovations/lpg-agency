@@ -81,6 +81,11 @@ Two new packages: `api_client` (hand-written `dio` wrapper, ADR-037 — deferrin
 - **MFA, Entra ID SSO** — both explicitly deferred (schema seam only for SSO); see `PLAN.md`'s Scope Boundaries.
 - **CI-runner confirmation carried over from Phase 5** — `mobile/packages/local_storage`'s SQLCipher build hook (ADR-034) was still only verified locally as of Phase 5 close-out; unaffected by this phase, tracked separately.
 
+## Addendum — Driver/Customer App OTP shown on screen (2026-10-10)
+
+The Driver and Customer Apps sign in with Agency Code + phone number, then an OTP. New `POST /auth/driver/otp/request` and `POST /auth/customer/otp/request` (one `RequestRoleOtpUseCase`, parameterised by role) require the phone to belong to an active user of that role in the presented agency, then issues and "delivers" an OTP and returns the resolved `tenant_id`. Outside production it also returns `dev_otp` so the app can show the code on screen until SMS exists (Phase 14); in production that field is `null`. Tokens still come only from the existing `POST /auth/otp/verify`. Trade-off: unlike the generic `/otp/request`, this endpoint reveals whether a number is a registered driver; it is rate limited (10/hour). Backend unit tests: `tests/unit/test_application_role_otp_request.py`. OpenAPI regenerated. Mobile: `AuthApi.requestDriverOtp`/`requestCustomerOtp`, matching `AuthRepository`/`AuthController` methods, shared `LpgDevOtpBanner` in `design_system`; both apps' `LoginScreen` show the code.
+
+Flutter widget tests were updated but could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `customer_app` and `driver_app` (one pre-existing warning in `cached_resource.dart`).
 ## Last Updated
 
 2026-08-10 — phase complete, all 12 areas verified across all three stacks.

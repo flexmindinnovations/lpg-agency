@@ -32,6 +32,17 @@ class _FakeAuthRepository implements AuthRepository {
   }) async => loginResult;
 
   @override
+  Future<Result<OtpChallenge>> requestCustomerOtp({
+    required String tenantId,
+    required String phoneNumber,
+  }) async => const FailureResult(Failure(message: 'unused'));
+  @override
+  Future<Result<OtpChallenge>> requestDriverOtp({
+    required String tenantId,
+    required String phoneNumber,
+  }) async => const FailureResult(Failure(message: 'unused'));
+
+  @override
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,

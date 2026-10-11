@@ -21,6 +21,37 @@ final class AuthApi {
     'password': password,
   });
 
+  Future<Result<OtpChallenge>> requestDriverOtp({
+    required String tenantId,
+    required String phoneNumber,
+  }) => _requestRoleOtp('/api/v1/auth/driver/otp/request', tenantId, phoneNumber);
+
+  Future<Result<OtpChallenge>> requestCustomerOtp({
+    required String tenantId,
+    required String phoneNumber,
+  }) => _requestRoleOtp(
+    '/api/v1/auth/customer/otp/request',
+    tenantId,
+    phoneNumber,
+  );
+
+  Future<Result<OtpChallenge>> _requestRoleOtp(
+    String path,
+    String tenantId,
+    String phoneNumber,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        path,
+        data: {'tenant_id': tenantId, 'phone_number': phoneNumber},
+      );
+      return Success(OtpChallenge.fromJson(response.data!));
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,

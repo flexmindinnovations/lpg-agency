@@ -26,6 +26,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _codeController = TextEditingController();
 
   bool _codeRequested = false;
+
+  /// Set only outside production, when the backend echoes the code (no SMS
+  /// provider yet) so it can be shown on screen.
+  String? _devOtp;
   bool _submitting = false;
   String? _errorMessage;
 
@@ -69,15 +73,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final result = await ref
         .read(authControllerProvider)
-        .requestOtp(tenantId: tenantId, phoneNumber: phone);
+        .requestCustomerOtp(tenantId: tenantId, phoneNumber: phone);
 
     if (!mounted) return;
     setState(() {
       _submitting = false;
       result.when(
-        onSuccess: (_) {
+        onSuccess: (challenge) {
           debugPrint('LoginScreen: OTP requested successfully');
           _codeRequested = true;
+          _devOtp = challenge.devOtp;
         },
         onFailure: (failure) {
           debugPrint('LoginScreen: OTP request failed: ${failure.message}');
@@ -94,6 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _editDetails() {
     setState(() {
       _codeRequested = false;
+      _devOtp = null;
       _codeController.clear();
       _errorMessage = null;
     });
@@ -233,6 +239,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (_codeRequested) ...[
                       const SizedBox(height: 24),
+                      if (_devOtp case final devOtp?) ...[
+                        LpgDevOtpBanner(code: devOtp),
+                        const SizedBox(height: 16),
+                      ],
                       LpgTextField(
                         label: 'Verification code',
                         controller: _codeController,

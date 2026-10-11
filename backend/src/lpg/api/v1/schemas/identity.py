@@ -19,6 +19,21 @@ class OtpRequestRequest(BaseModel):
     phone_number: str
 
 
+class AppOtpRequestRequest(BaseModel):
+    tenant_id: str
+    phone_number: str
+
+
+class OtpChallengeResponse(BaseModel):
+    """Step 1 of Driver/Customer App sign-in. `tenant_id` is the resolved agency UUID
+    the client passes to `POST /auth/otp/verify` next; `dev_otp` is only set
+    outside production, until an SMS provider delivers the code.
+    """
+
+    tenant_id: str
+    dev_otp: str | None = None
+
+
 class OtpVerifyRequest(BaseModel):
     tenant_id: str
     phone_number: str

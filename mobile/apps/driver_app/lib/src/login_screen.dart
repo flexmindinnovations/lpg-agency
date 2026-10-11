@@ -1,11 +1,19 @@
+import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
 
-/// OTP sign-in — the Driver App's authentication path (Dashboard staff sign
-/// in with a password instead, `frontend/libs/auth/feature-login`).
+/// Two-step OTP sign-in: Agency Code + phone number first, then the code the
+/// backend sends to that phone (Dashboard staff sign in with a password
+/// instead, `frontend/libs/auth/feature-login`).
+///
+/// There is no SMS provider yet (Phase 14), so outside production the
+/// backend echoes the code in the step-1 response and this screen shows it
+/// for the driver to type — [OtpChallenge.devOtp] is null in production
+/// and the banner simply doesn't render. Swap in real delivery by changing
+/// only the backend.
 ///
 /// `tenantId` (shown as "Agency Code") is a plain text field for now: real
 /// tenant resolution (subdomain, build flavor, or a bootstrap screen) is a
@@ -25,7 +33,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
 
-  bool _codeRequested = false;
+  /// Non-null once step 1 succeeded: carries the tenant and phone that step 2
+  /// (`verifyOtp`) must use, and the dev-only code to display.
+  OtpChallenge? _challenge;
   bool _submitting = false;
   String? _errorMessage;
 
@@ -61,23 +71,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final result = await ref
         .read(authControllerProvider)
-        .requestOtp(tenantId: tenantId, phoneNumber: phone);
+        .requestDriverOtp(tenantId: tenantId, phoneNumber: phone);
 
     if (!mounted) return;
     setState(() {
       _submitting = false;
       result.when(
-        onSuccess: (_) => _codeRequested = true,
+        onSuccess: (challenge) => _challenge = challenge,
         onFailure: (failure) => _errorMessage = failure.message,
       );
     });
   }
-
   /// Backs out of the "code requested" state so a driver isn't stuck
   /// re-submitting a code that can never work (typo'd number, expired code).
   void _editDetails() {
     setState(() {
-      _codeRequested = false;
+      _challenge = null;
       _codeController.clear();
       _errorMessage = null;
     });
@@ -93,10 +102,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
+    final challenge = _challenge!;
     final result = await ref
         .read(authControllerProvider)
         .verifyOtp(
-          tenantId: _tenantIdController.text.trim(),
+          tenantId: challenge.tenantId,
           phoneNumber: _phoneController.text.trim(),
           code: _codeController.text.trim(),
         );
@@ -197,17 +207,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     LpgTextField(
                       label: 'Agency Code',
                       controller: _tenantIdController,
-                      enabled: !_codeRequested,
+                      enabled: _challenge == null,
                     ),
                     const SizedBox(height: 24),
                     LpgTextField(
                       label: 'Phone number',
                       controller: _phoneController,
-                      enabled: !_codeRequested,
+                      enabled: _challenge == null,
                       keyboardType: TextInputType.phone,
-                    ),
-                    if (_codeRequested) ...[
+                    ),                    if (_challenge case final challenge?) ...[
                       const SizedBox(height: 24),
+                      if (challenge.devOtp case final devOtp?) ...[
+                        LpgDevOtpBanner(code: devOtp),
+                        const SizedBox(height: 16),
+                      ],
                       LpgTextField(
                         label: 'Verification code',
                         controller: _codeController,
@@ -226,15 +239,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                     const SizedBox(height: 28),
                     LpgButton(
-                      label: _codeRequested ? 'Verify Code' : 'Send Code',
+                      label: _challenge != null ? 'Verify Code' : 'Send Code',
                       isLoading: _submitting,
                       expand: true,
-                      onPressed: _codeRequested ? _verifyCode : _requestCode,
+                      onPressed: _challenge != null ? _verifyCode : _requestCode,
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 48),
               Text(
                 'v1.0.0 (Build 1)',
