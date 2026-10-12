@@ -81,11 +81,13 @@ Two new packages: `api_client` (hand-written `dio` wrapper, ADR-037 — deferrin
 - **MFA, Entra ID SSO** — both explicitly deferred (schema seam only for SSO); see `PLAN.md`'s Scope Boundaries.
 - **CI-runner confirmation carried over from Phase 5** — `mobile/packages/local_storage`'s SQLCipher build hook (ADR-034) was still only verified locally as of Phase 5 close-out; unaffected by this phase, tracked separately.
 
-## Addendum — Driver/Customer App OTP shown on screen (2026-10-10)
+## Addendum — Testing-only OTP banner in the Driver/Customer Apps (2026-10-12)
 
-The Driver and Customer Apps sign in with Agency Code + phone number, then an OTP. New `POST /auth/driver/otp/request` and `POST /auth/customer/otp/request` (one `RequestRoleOtpUseCase`, parameterised by role) require the phone to belong to an active user of that role in the presented agency, then issues and "delivers" an OTP and returns the resolved `tenant_id`. Outside production it also returns `dev_otp` so the app can show the code on screen until SMS exists (Phase 14); in production that field is `null`. Tokens still come only from the existing `POST /auth/otp/verify`. Trade-off: unlike the generic `/otp/request`, this endpoint reveals whether a number is a registered driver; it is rate limited (10/hour). Backend unit tests: `tests/unit/test_application_role_otp_request.py`. OpenAPI regenerated. Mobile: `AuthApi.requestDriverOtp`/`requestCustomerOtp`, matching `AuthRepository`/`AuthController` methods, shared `LpgDevOtpBanner` in `design_system`; both apps' `LoginScreen` show the code.
+No backend change: the OTP flow is exactly as designed (`POST /auth/otp/request` → `204`, no user enumeration; `POST /auth/otp/verify` issues tokens). Until an SMS/WhatsApp gateway exists (Phase 14), both mobile login screens show the current code **for testing only**: after a successful request they read it back from the existing non-production `GET /dev/otp-inbox/{phone}` route (`AuthApi.fetchTestingOtp`) and render it in `LpgDevOtpBanner`. The route is not registered in production, so there the call returns nothing and no banner shows.
 
-Flutter widget tests were updated but could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `customer_app` and `driver_app` (one pre-existing warning in `cached_resource.dart`).
+**To remove when the gateway ships:** `AuthApi.fetchTestingOtp`, the `fetchTestingOtp` members on `AuthRepository`/`AuthController` (and the test fakes), `LpgDevOtpBanner`, and the `_testingOtp` field/banner in both `LoginScreen`s.
+
+Flutter widget tests were updated but could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `design_system`, `customer_app` and `driver_app` (one pre-existing warning in `cached_resource.dart`).
 ## Last Updated
 
 2026-08-10 — phase complete, all 12 areas verified across all three stacks.

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// Shows a sign-in verification code on screen until an SMS provider exists.
-/// Callers render it only when the backend returned a `dev_otp` (never in
-/// production), so it disappears without any code change once real delivery
-/// ships.
+/// **Testing only.** Shows a sign-in verification code on screen until an
+/// SMS/WhatsApp gateway delivers it. Callers render it only when the backend's
+/// dev inbox returned a code (the route does not exist in production). Remove
+/// this widget and its two call sites once real delivery ships.
 class LpgDevOtpBanner extends StatelessWidget {
   const LpgDevOtpBanner({required this.code, super.key});
 
@@ -18,7 +18,7 @@ class LpgDevOtpBanner extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: 'Your verification code is $code',
+      label: 'Testing only. Your verification code is $code',
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -31,7 +31,7 @@ class LpgDevOtpBanner extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              'Your verification code',
+              'Testing only: your code is',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: colors.textSecondary,
               ),

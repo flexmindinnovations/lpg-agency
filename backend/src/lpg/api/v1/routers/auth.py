@@ -45,10 +45,8 @@ from lpg.api.v1.dependencies.identity import (
 from lpg.api.v1.dependencies.license import get_license_status_checker
 from lpg.api.v1.dependencies.tenant import get_tenant_status_checker
 from lpg.api.v1.schemas.identity import (
-    AppOtpRequestRequest,
     LoginRequest,
     LogoutRequest,
-    OtpChallengeResponse,
     OtpRequestRequest,
     OtpVerifyRequest,
     PasswordForgotRequest,
@@ -83,10 +81,6 @@ from lpg.application.identity.ports import (
     TokenHasher,
 )
 from lpg.application.identity.refresh_token import RefreshTokenCommand, RefreshTokenUseCase
-from lpg.application.identity.role_otp_request import (
-    RequestRoleOtpCommand,
-    RequestRoleOtpUseCase,
-)
 from lpg.application.identity.tokens import TokenPair
 from lpg.application.license.ports import LicenseStatusChecker
 from lpg.application.tenant.status import TenantStatusChecker
@@ -170,72 +164,6 @@ async def login(
     _set_refresh_cookie(response, token_pair, settings)
     return TokenResponse(
         access_token=token_pair.access_token, refresh_token=token_pair.refresh_token
-    )
-
-
-async def _request_role_otp(
-    body: AppOtpRequestRequest,
-    role: str,
-    settings: Settings,
-    user_repository: IdentityUserRepository,
-    otp_store: OtpStore,
-    otp_delivery: OtpDeliveryPort,
-    tenant_slug_resolver: TenantSlugResolver,
-) -> OtpChallengeResponse:
-    tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
-    use_case = RequestRoleOtpUseCase(user_repository, otp_store, otp_delivery)
-    code = await use_case.execute(
-        RequestRoleOtpCommand(tenant_id=tenant_uuid, phone_number=body.phone_number, role=role)
-    )
-    return OtpChallengeResponse(
-        tenant_id=str(tenant_uuid),
-        # No SMS provider yet (Phase 14): outside production the code is
-        # echoed so the app can show it. Never returned in production.
-        dev_otp=None if settings.is_production else code,
-    )
-
-
-@router.post(
-    "/driver/otp/request",
-    response_model=OtpChallengeResponse,
-    summary="Driver App sign-in step 1: send an OTP to a registered driver",
-)
-async def driver_otp_request(
-    body: AppOtpRequestRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
-    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
-    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
-    otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
-    tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
-    _rate_limit: Annotated[
-        None,
-        Depends(require_rate_limit(key_prefix="auth:driver_otp", limit=10, window_seconds=3600)),
-    ],
-) -> OtpChallengeResponse:
-    return await _request_role_otp(
-        body, "driver", settings, user_repository, otp_store, otp_delivery, tenant_slug_resolver
-    )
-
-
-@router.post(
-    "/customer/otp/request",
-    response_model=OtpChallengeResponse,
-    summary="Customer App sign-in step 1: send an OTP to a registered customer",
-)
-async def customer_otp_request(
-    body: AppOtpRequestRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
-    user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
-    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
-    otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
-    tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
-    _rate_limit: Annotated[
-        None,
-        Depends(require_rate_limit(key_prefix="auth:customer_otp", limit=10, window_seconds=3600)),
-    ],
-) -> OtpChallengeResponse:
-    return await _request_role_otp(
-        body, "customer", settings, user_repository, otp_store, otp_delivery, tenant_slug_resolver
     )
 
 

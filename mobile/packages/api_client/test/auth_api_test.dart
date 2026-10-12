@@ -59,69 +59,33 @@ void main() {
       },
     );
 
-    test('requestDriverOtp maps a 200 into a OtpChallenge', () async {
-      Map<String, dynamic>? sent;
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
-        sent = options.data as Map<String, dynamic>;
-        return jsonResponse({
-          'tenant_id': 'tenant-uuid',
-          'dev_otp': '123456',
-        }, 200);
-      });
-      final authApi = AuthApi(client.dio);
-
-      final result = await authApi.requestDriverOtp(
-        tenantId: 'DEV123456',
-        phoneNumber: '+919999900099',
-      );
-
-      expect(sent, {'tenant_id': 'DEV123456', 'phone_number': '+919999900099'});
-      expect(
-        result.when(
-          onSuccess: (c) => (c.tenantId, c.devOtp),
-          onFailure: (_) => null,
-        ),
-        ('tenant-uuid', '123456'),
-      );
-    });
-
-    test('requestDriverOtp tolerates a missing dev_otp (production)', () async {
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter(
-        (options) =>
-            jsonResponse({'tenant_id': 'tenant-uuid', 'dev_otp': null}, 200),
-      );
-
-      final result = await AuthApi(
-        client.dio,
-      ).requestDriverOtp(tenantId: 't', phoneNumber: '+919999900099');
-
-      expect(
-        result.when(onSuccess: (c) => c.devOtp, onFailure: (_) => 'failed'),
-        isNull,
-      );
-    });
-    test('requestCustomerOtp posts to the customer route', () async {
+    test('fetchTestingOtp reads the code from the dev inbox', () async {
       String? path;
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
         path = options.path;
-        return jsonResponse({
-          'tenant_id': 'tenant-uuid',
-          'dev_otp': '654321',
-        }, 200);
+        return jsonResponse({'code': '123456'}, 200);
       });
 
-      final result = await AuthApi(
+      final code = await AuthApi(
         client.dio,
-      ).requestCustomerOtp(tenantId: 'DEV123456', phoneNumber: '+919999900098');
+      ).fetchTestingOtp(phoneNumber: '+919999900099');
 
-      expect(path, '/api/v1/auth/customer/otp/request');
-      expect(
-        result.when(onSuccess: (c) => c.devOtp, onFailure: (_) => null),
-        '654321',
+      expect(code, '123456');
+      expect(path, '/api/v1/dev/otp-inbox/%2B919999900099');
+    });
+
+    test('fetchTestingOtp returns null when the route is absent', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({'detail': 'Not Found'}, 404),
       );
+
+      final code = await AuthApi(
+        client.dio,
+      ).fetchTestingOtp(phoneNumber: '+919999900099');
+
+      expect(code, isNull);
     });
     test('me maps a 200 into a Success(Principal)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');

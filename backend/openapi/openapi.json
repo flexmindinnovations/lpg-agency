@@ -332,24 +332,6 @@
         "title": "AgencyUserSetupResponse",
         "type": "object"
       },
-      "AppOtpRequestRequest": {
-        "properties": {
-          "phone_number": {
-            "title": "Phone Number",
-            "type": "string"
-          },
-          "tenant_id": {
-            "title": "Tenant Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "tenant_id",
-          "phone_number"
-        ],
-        "title": "AppOtpRequestRequest",
-        "type": "object"
-      },
       "ApproveCustomerRequest": {
         "properties": {
           "consumer_number": {
@@ -5045,31 +5027,6 @@
           "driver_location"
         ],
         "title": "OrderTrackingResponse",
-        "type": "object"
-      },
-      "OtpChallengeResponse": {
-        "description": "Step 1 of Driver/Customer App sign-in. `tenant_id` is the resolved agency UUID\nthe client passes to `POST /auth/otp/verify` next; `dev_otp` is only set\noutside production, until an SMS provider delivers the code.",
-        "properties": {
-          "dev_otp": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dev Otp"
-          },
-          "tenant_id": {
-            "title": "Tenant Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "tenant_id"
-        ],
-        "title": "OtpChallengeResponse",
         "type": "object"
       },
       "OtpRequestRequest": {
@@ -10996,88 +10953,6 @@
         "summary": "Ask the AI Command Center an operational question",
         "tags": [
           "AI"
-        ]
-      }
-    },
-    "/api/v1/auth/customer/otp/request": {
-      "post": {
-        "operationId": "customer_otp_request_api_v1_auth_customer_otp_request_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AppOtpRequestRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OtpChallengeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Customer App sign-in step 1: send an OTP to a registered customer",
-        "tags": [
-          "Authentication"
-        ]
-      }
-    },
-    "/api/v1/auth/driver/otp/request": {
-      "post": {
-        "operationId": "driver_otp_request_api_v1_auth_driver_otp_request_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AppOtpRequestRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OtpChallengeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Driver App sign-in step 1: send an OTP to a registered driver",
-        "tags": [
-          "Authentication"
         ]
       }
     },

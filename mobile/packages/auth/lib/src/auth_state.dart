@@ -56,24 +56,14 @@ class AuthController extends ChangeNotifier {
     return result;
   }
 
-  Future<Result<OtpChallenge>> requestDriverOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) => _repository.requestDriverOtp(
-    tenantId: tenantId,
-    phoneNumber: phoneNumber,
-  );
-  Future<Result<OtpChallenge>> requestCustomerOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) => _repository.requestCustomerOtp(
-    tenantId: tenantId,
-    phoneNumber: phoneNumber,
-  );
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,
   }) => _repository.requestOtp(tenantId: tenantId, phoneNumber: phoneNumber);
+
+  /// Testing only — remove with the SMS gateway.
+  Future<String?> fetchTestingOtp({required String phoneNumber}) =>
+      _repository.fetchTestingOtp(phoneNumber: phoneNumber);
 
   Future<Result<Principal>> verifyOtp({
     required String tenantId,

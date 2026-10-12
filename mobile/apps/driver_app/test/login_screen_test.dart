@@ -15,38 +15,31 @@ const _principal = Principal(
   permissions: {},
 );
 
-/// Records the sign-in calls the screen makes and returns canned results.
+/// Records the OTP calls the screen makes and returns canned results.
 class _RecordingAuthRepository implements AuthRepository {
-  ({String tenantId, String phoneNumber})? challengeArgs;
+  ({String tenantId, String phoneNumber})? requestOtpArgs;
   ({String tenantId, String phoneNumber, String code})? verifyOtpArgs;
 
-  Result<OtpChallenge> challengeResult = const Success(
-    OtpChallenge(tenantId: 'tenant-uuid', devOtp: '123456'),
-  );
+  Result<void> requestOtpResult = const Success(null);
+  String? testingOtp;
   Result<Principal> verifyOtpResult = const Success(_principal);
 
   @override
   String? accessToken;
 
   @override
-  Future<Result<OtpChallenge>> requestCustomerOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) async => const FailureResult(Failure(message: 'unused'));
-  @override
-  Future<Result<OtpChallenge>> requestDriverOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) async {
-    challengeArgs = (tenantId: tenantId, phoneNumber: phoneNumber);
-    return challengeResult;
-  }
-
-  @override
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,
-  }) async => const Success(null);
+  }) async {
+    requestOtpArgs = (tenantId: tenantId, phoneNumber: phoneNumber);
+    return requestOtpResult;
+  }
+
+  @override
+  Future<String?> fetchTestingOtp({required String phoneNumber}) async =>
+      testingOtp;
+
   @override
   Future<Result<Principal>> verifyOtp({
     required String tenantId,
@@ -94,12 +87,6 @@ Future<void> _pump(WidgetTester tester, AuthController controller) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _fillDetails(WidgetTester tester) async {
-  final fields = find.byType(LpgTextField);
-  await tester.enterText(fields.at(0), ' demo-agency ');
-  await tester.enterText(fields.at(1), ' +919999900099 ');
-}
-
 void main() {
   group('Driver LoginScreen', () {
     testWidgets('renders the themed, branded sign-in form', (tester) async {
@@ -112,21 +99,22 @@ void main() {
       expect(find.text('Send Code'), findsOneWidget);
     });
 
-    testWidgets('an empty submit shows a validation message and calls nothing', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository();
-      await _pump(tester, AuthController(repo));
+    testWidgets(
+      'an empty submit shows a validation message and calls nothing',
+      (tester) async {
+        final repo = _RecordingAuthRepository();
+        await _pump(tester, AuthController(repo));
 
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Send Code'));
+        await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('Agency Code and Phone number'),
-        findsOneWidget,
-      );
-      expect(repo.challengeArgs, isNull);
-    });
+        expect(
+          find.textContaining('Agency Code and Phone number'),
+          findsOneWidget,
+        );
+        expect(repo.requestOtpArgs, isNull);
+      },
+    );
 
     testWidgets('rejects a malformed phone number', (tester) async {
       final repo = _RecordingAuthRepository();
@@ -138,71 +126,31 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('valid phone number'), findsOneWidget);
-      expect(repo.challengeArgs, isNull);
+      expect(repo.requestOtpArgs, isNull);
     });
 
-    testWidgets('a registered number shows the OTP on screen and asks for it', (
-      tester,
-    ) async {
+    testWidgets('a successful request reveals the code field', (tester) async {
       final repo = _RecordingAuthRepository();
       await _pump(tester, AuthController(repo));
 
-      await _fillDetails(tester);
+      await tester.enterText(find.byType(LpgTextField).first, ' demo-agency ');
+      await tester.enterText(find.byType(LpgTextField).last, ' +919999900099 ');
       await tester.tap(find.text('Send Code'));
       await tester.pumpAndSettle();
 
-      expect(repo.challengeArgs!.tenantId, 'demo-agency');
-      expect(repo.challengeArgs!.phoneNumber, '+919999900099');
-      expect(find.text('123456'), findsOneWidget); // the displayed OTP
+      expect(repo.requestOtpArgs, isNotNull);
+      expect(repo.requestOtpArgs!.tenantId, 'demo-agency');
+      expect(repo.requestOtpArgs!.phoneNumber, '+919999900099');
       expect(find.text('Verify Code'), findsOneWidget);
-      expect(find.byType(LpgTextField), findsNWidgets(3)); // + code field
+      expect(find.byType(LpgTextField), findsNWidgets(3));
     });
 
-    testWidgets('no OTP banner when the backend returns no dev code', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository()
-        ..challengeResult = const Success(
-          OtpChallenge(tenantId: 'tenant-uuid'),
-        );
-      await _pump(tester, AuthController(repo));
-
-      await _fillDetails(tester);
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Your verification code'), findsNothing);
-      expect(find.text('Verify Code'), findsOneWidget);
-    });
-
-    testWidgets('an unregistered number shows the error and stays on step 1', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository()
-        ..challengeResult = const FailureResult(
-          Failure(message: 'This number is not registered as a driver.'),
-        );
-      await _pump(tester, AuthController(repo));
-
-      await _fillDetails(tester);
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('This number is not registered as a driver.'),
-        findsOneWidget,
-      );
-      expect(find.text('Send Code'), findsOneWidget);
-      expect(find.text('Verify Code'), findsNothing);
-    });
-
-    testWidgets('verify uses the challenge tenant and the typed code', (
-      tester,
-    ) async {
+    testWidgets('verify sends the trimmed code', (tester) async {
       final repo = _RecordingAuthRepository();
       await _pump(tester, AuthController(repo));
 
-      await _fillDetails(tester);
+      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
+      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
       await tester.tap(find.text('Send Code'));
       await tester.pumpAndSettle();
 
@@ -211,9 +159,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repo.verifyOtpArgs, isNotNull);
-      expect(repo.verifyOtpArgs!.tenantId, 'tenant-uuid');
-      expect(repo.verifyOtpArgs!.phoneNumber, '+919999900099');
       expect(repo.verifyOtpArgs!.code, '123456');
+      expect(repo.verifyOtpArgs!.phoneNumber, '+919999900099');
     });
-  });
+
+    testWidgets('shows the testing code banner when the dev inbox has one', (
+      tester,
+    ) async {
+      final repo = _RecordingAuthRepository()..testingOtp = '654321';
+      await _pump(tester, AuthController(repo));
+
+      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
+      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
+      await tester.tap(find.text('Send Code'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('654321'), findsOneWidget);
+      expect(find.text('Testing only: your code is'), findsOneWidget);
+    });
+
+    testWidgets('shows no banner when there is no testing code (production)', (
+      tester,
+    ) async {
+      final repo = _RecordingAuthRepository();
+      await _pump(tester, AuthController(repo));
+
+      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
+      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
+      await tester.tap(find.text('Send Code'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Testing only: your code is'), findsNothing);
+      expect(find.text('Verify Code'), findsOneWidget);
+    });  });
 }

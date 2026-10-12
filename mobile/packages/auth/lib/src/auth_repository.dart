@@ -25,22 +25,13 @@ abstract interface class AuthRepository {
     required String password,
   });
 
-  /// Driver App sign-in step 1: sends an OTP to a registered driver's phone.
-  /// Grants no session by itself — the returned challenge feeds [verifyOtp].
-  Future<Result<OtpChallenge>> requestDriverOtp({
-    required String tenantId,
-    required String phoneNumber,
-  });
-
-  /// Customer App counterpart of [requestDriverOtp].
-  Future<Result<OtpChallenge>> requestCustomerOtp({
-    required String tenantId,
-    required String phoneNumber,
-  });
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,
   });
+
+  /// Testing only — see [AuthApi.fetchTestingOtp]. Remove with the SMS gateway.
+  Future<String?> fetchTestingOtp({required String phoneNumber});
 
   Future<Result<Principal>> verifyOtp({
     required String tenantId,
@@ -87,23 +78,14 @@ final class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Result<OtpChallenge>> requestDriverOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) => _authApi.requestDriverOtp(tenantId: tenantId, phoneNumber: phoneNumber);
-  @override
-  Future<Result<OtpChallenge>> requestCustomerOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) => _authApi.requestCustomerOtp(
-    tenantId: tenantId,
-    phoneNumber: phoneNumber,
-  );
-  @override
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,
   }) => _authApi.requestOtp(tenantId: tenantId, phoneNumber: phoneNumber);
+
+  @override
+  Future<String?> fetchTestingOtp({required String phoneNumber}) =>
+      _authApi.fetchTestingOtp(phoneNumber: phoneNumber);
 
   @override
   Future<Result<Principal>> verifyOtp({

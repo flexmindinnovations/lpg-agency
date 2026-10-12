@@ -21,35 +21,20 @@ final class AuthApi {
     'password': password,
   });
 
-  Future<Result<OtpChallenge>> requestDriverOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) => _requestRoleOtp('/api/v1/auth/driver/otp/request', tenantId, phoneNumber);
-
-  Future<Result<OtpChallenge>> requestCustomerOtp({
-    required String tenantId,
-    required String phoneNumber,
-  }) => _requestRoleOtp(
-    '/api/v1/auth/customer/otp/request',
-    tenantId,
-    phoneNumber,
-  );
-
-  Future<Result<OtpChallenge>> _requestRoleOtp(
-    String path,
-    String tenantId,
-    String phoneNumber,
-  ) async {
+  /// **Testing only — remove once an SMS/WhatsApp gateway delivers the OTP.**
+  /// Reads the code the backend just generated from its dev inbox
+  /// (`GET /dev/otp-inbox/{phone}`, registered only outside production) so a
+  /// tester can sign in without scraping server logs. Returns `null` when the
+  /// route doesn't exist (production) or no code is pending — the caller then
+  /// simply shows no code.
+  Future<String?> fetchTestingOtp({required String phoneNumber}) async {
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        path,
-        data: {'tenant_id': tenantId, 'phone_number': phoneNumber},
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/dev/otp-inbox/${Uri.encodeComponent(phoneNumber)}',
       );
-      return Success(OtpChallenge.fromJson(response.data!));
-    } on DioException catch (error) {
-      return FailureResult(mapDioError(error));
-    } catch (e) {
-      return FailureResult(Failure(message: e.toString()));
+      return response.data?['code'] as String?;
+    } on DioException {
+      return null;
     }
   }
   Future<Result<void>> requestOtp({

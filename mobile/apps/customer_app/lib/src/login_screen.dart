@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,9 +28,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _codeRequested = false;
 
-  /// Set only outside production, when the backend echoes the code (no SMS
-  /// provider yet) so it can be shown on screen.
-  String? _devOtp;
+  /// Testing only: the code read back from the backend's dev inbox so a tester
+  /// can sign in without an SMS. Null in production (route absent). Remove with
+  /// the SMS/WhatsApp gateway integration.
+  String? _testingOtp;
   bool _submitting = false;
   String? _errorMessage;
 
@@ -73,16 +75,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final result = await ref
         .read(authControllerProvider)
-        .requestCustomerOtp(tenantId: tenantId, phoneNumber: phone);
+        .requestOtp(tenantId: tenantId, phoneNumber: phone);
+
+    // Testing only: show the code the backend just generated (no SMS yet).
+    final testingOtp = result is Success
+        ? await ref
+              .read(authControllerProvider)
+              .fetchTestingOtp(phoneNumber: phone)
+        : null;
 
     if (!mounted) return;
     setState(() {
       _submitting = false;
       result.when(
-        onSuccess: (challenge) {
+        onSuccess: (_) {
           debugPrint('LoginScreen: OTP requested successfully');
           _codeRequested = true;
-          _devOtp = challenge.devOtp;
+          _testingOtp = testingOtp;
         },
         onFailure: (failure) {
           debugPrint('LoginScreen: OTP request failed: ${failure.message}');
@@ -99,7 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _editDetails() {
     setState(() {
       _codeRequested = false;
-      _devOtp = null;
+      _testingOtp = null;
       _codeController.clear();
       _errorMessage = null;
     });
@@ -239,8 +248,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (_codeRequested) ...[
                       const SizedBox(height: 24),
-                      if (_devOtp case final devOtp?) ...[
-                        LpgDevOtpBanner(code: devOtp),
+                      if (_testingOtp case final testingOtp?) ...[
+                        LpgDevOtpBanner(code: testingOtp),
                         const SizedBox(height: 16),
                       ],
                       LpgTextField(
