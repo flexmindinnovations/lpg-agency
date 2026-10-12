@@ -14,7 +14,10 @@
 name: lpg-agency
 
 x-backend-env: &backend-env
-  LPG_ENVIRONMENT: production
+  # Defaults to production. Set LPG_ENVIRONMENT=uat in .env for a UAT/test host:
+  # the testing-only /dev/otp-inbox route (shown in the mobile login screens) is
+  # registered only when this is not 'production'.
+  LPG_ENVIRONMENT: ${LPG_ENVIRONMENT:-production}
   LPG_DEBUG: "false"
   LPG_DOCS_ENABLED: "false"
   LPG_LOG_LEVEL: INFO
