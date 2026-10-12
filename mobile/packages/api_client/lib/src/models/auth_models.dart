@@ -16,27 +16,6 @@ class TokenPair {
   final String? refreshToken;
 }
 
-/// `POST /auth/driver-login` response — step 1 of the Driver App sign-in
-/// (password accepted, OTP issued). Mirrors the backend's
-/// `DriverLoginChallengeResponse`.
-class DriverLoginChallenge {
-  const DriverLoginChallenge({required this.phoneHint, this.devOtp});
-
-  factory DriverLoginChallenge.fromJson(Map<String, dynamic> json) =>
-      DriverLoginChallenge(
-        phoneHint: json['phone_hint'] as String,
-        devOtp: json['dev_otp'] as String?,
-      );
-
-  /// The driver's phone number with all but the last four digits masked.
-  final String phoneHint;
-
-  /// The plaintext OTP. Non-null only when the backend runs with
-  /// `otp_delivery_dev_mode` (local development, no SMS provider yet); always
-  /// null in any real deployment.
-  final String? devOtp;
-}
-
 /// `GET /auth/me` — mirrors the backend's `PrincipalResponse`.
 class Principal {
   const Principal({

@@ -1,7 +1,6 @@
 @echo off
 cd /d "%~dp0..\backend"
 set LPG_ENVIRONMENT=local
-set LPG_OTP_DELIVERY_DEV_MODE=true
 set LPG_DATABASE_URL=postgresql+asyncpg://lpg_app:dev123@localhost:5433/lpg_dev
 set LPG_REDIS_URL=redis://localhost:56379/0
 set LPG_CORS_ORIGINS=http://localhost:4200

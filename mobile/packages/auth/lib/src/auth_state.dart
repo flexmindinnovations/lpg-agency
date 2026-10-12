@@ -75,23 +75,6 @@ class AuthController extends ChangeNotifier {
     return result;
   }
 
-  Future<Result<DriverLoginChallenge>> startDriverLogin({
-    required String email,
-    required String password,
-  }) => _repository.startDriverLogin(email: email, password: password);
-
-  Future<Result<Principal>> verifyDriverLogin({
-    required String email,
-    required String code,
-  }) async {
-    final result = await _repository.verifyDriverLogin(
-      email: email,
-      code: code,
-    );
-    _apply(result);
-    return result;
-  }
-
   Future<Result<void>> requestPasswordReset({required String email}) =>
       _repository.requestPasswordReset(email: email);
 

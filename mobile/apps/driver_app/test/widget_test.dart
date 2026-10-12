@@ -61,18 +61,6 @@ class _FakeAuthRepository implements AuthRepository {
   }) async => const Success(_principal);
 
   @override
-  Future<Result<DriverLoginChallenge>> startDriverLogin({
-    required String email,
-    required String password,
-  }) async => const Success(DriverLoginChallenge(phoneHint: '****0099'));
-
-  @override
-  Future<Result<Principal>> verifyDriverLogin({
-    required String email,
-    required String code,
-  }) async => const Success(_principal);
-
-  @override
   Future<Result<Principal>> restoreSession() {
     if (hangRestore) return Completer<Result<Principal>>().future;
     return Future.value(restoreSessionResult);

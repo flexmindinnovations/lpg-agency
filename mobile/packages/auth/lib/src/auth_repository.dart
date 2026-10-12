@@ -36,20 +36,6 @@ abstract interface class AuthRepository {
     required String code,
   });
 
-  /// Driver App sign-in, step 1: checks email + password and has the backend
-  /// issue an OTP. Starts no session.
-  Future<Result<DriverLoginChallenge>> startDriverLogin({
-    required String email,
-    required String password,
-  });
-
-  /// Driver App sign-in, step 2: redeems the OTP issued by
-  /// [startDriverLogin] for a session.
-  Future<Result<Principal>> verifyDriverLogin({
-    required String email,
-    required String code,
-  });
-
   /// Redeems whatever refresh token [TokenStorage] holds for a fresh access
   /// token + principal. Called both once at app startup (silent session
   /// restore) and by `ApiClient`'s 401 handler.
@@ -103,24 +89,6 @@ final class ApiAuthRepository implements AuthRepository {
     final tokenResult = await _authApi.verifyOtp(
       tenantId: tenantId,
       phoneNumber: phoneNumber,
-      code: code,
-    );
-    return _hydrateFrom(tokenResult);
-  }
-
-  @override
-  Future<Result<DriverLoginChallenge>> startDriverLogin({
-    required String email,
-    required String password,
-  }) => _authApi.startDriverLogin(email: email, password: password);
-
-  @override
-  Future<Result<Principal>> verifyDriverLogin({
-    required String email,
-    required String code,
-  }) async {
-    final tokenResult = await _authApi.verifyDriverLogin(
-      email: email,
       code: code,
     );
     return _hydrateFrom(tokenResult);

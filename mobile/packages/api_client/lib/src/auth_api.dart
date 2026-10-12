@@ -39,30 +39,22 @@ final class AuthApi {
     'code': code,
   });
 
-  Future<Result<DriverLoginChallenge>> startDriverLogin({
-    required String email,
-    required String password,
-  }) async {
+  /// Reads back the OTP the backend just "sent" from its dev inbox
+  /// (`GET /dev/otp-inbox/{phone}`). That route exists only when the backend
+  /// is not running in production, so this fails (404) everywhere real SMS
+  /// delivery is in use — callers must treat a failure as "no code to show".
+  Future<Result<String>> fetchDevOtp({required String phoneNumber}) async {
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/auth/driver-login',
-        data: {'email': email, 'password': password},
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/dev/otp-inbox/${Uri.encodeComponent(phoneNumber)}',
       );
-      return Success(DriverLoginChallenge.fromJson(response.data!));
+      return Success(response.data!['code'] as String);
     } on DioException catch (error) {
       return FailureResult(mapDioError(error));
     } catch (e) {
       return FailureResult(Failure(message: e.toString()));
     }
   }
-
-  Future<Result<TokenPair>> verifyDriverLogin({
-    required String email,
-    required String code,
-  }) => _postForTokens('/api/v1/auth/driver-login/verify', {
-    'email': email,
-    'code': code,
-  });
 
   /// `refreshToken` mirrors `RefreshRequest`'s own docstring: mobile clients
   /// have no cookie, so they always supply it explicitly.

@@ -25,28 +25,6 @@ class OtpVerifyRequest(BaseModel):
     code: str
 
 
-class DriverLoginStartRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1)
-
-
-class DriverLoginChallengeResponse(BaseModel):
-    """Step 1 of the Driver App sign-in: the password was correct and an OTP
-    was issued. No tokens yet — `POST /auth/driver-login/verify` returns those.
-    """
-
-    phone_hint: str
-    # The plaintext OTP, populated ONLY when `Settings.otp_delivery_dev_mode`
-    # is on (rejected outside `local` by `Settings`), so the Driver App can
-    # show it while no SMS provider exists (Phase 14). Always `None` otherwise.
-    dev_otp: str | None = None
-
-
-class DriverLoginVerifyRequest(BaseModel):
-    email: EmailStr
-    code: str = Field(min_length=1)
-
-
 class RefreshRequest(BaseModel):
     """`refresh_token` is optional in the body — the Dashboard's browser
     client relies on the `HttpOnly` cookie instead
