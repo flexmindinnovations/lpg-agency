@@ -1257,6 +1257,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 **Consequences:**
 - The OTP endpoints, their contract and the login flow are untouched; there is no new server code to keep or remove.
 - In any non-production environment (not only local) the code is already readable by anyone from the dev inbox route. This change does not widen that, but a shared staging backend should not run a debug build of the app in front of real users.
+- The shared droplet may be run as UAT (`LPG_ENVIRONMENT=uat` in its `.env`; `docker-compose.prod.yml` now reads it, default `production`) so testers on real phones get the code. The backend needs no change: `uat` is an existing environment and production is the only mode that disables the route. While it is `uat`, every number's code is readable by anyone who can reach the server, so it must hold test data only and go back to `production` before real users (`infrastructure/deploy/DEPLOY.md` section 11).
 - Removal is deleting `dev_otp_provider.dart`, the banner and lookup in `login_screen.dart`, and `AuthApi.fetchDevOtp`.
 
 **Alternatives Considered:**
