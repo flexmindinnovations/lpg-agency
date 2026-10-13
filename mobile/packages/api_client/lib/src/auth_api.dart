@@ -21,22 +21,6 @@ final class AuthApi {
     'password': password,
   });
 
-  /// **Testing only — remove once an SMS/WhatsApp gateway delivers the OTP.**
-  /// Reads the code the backend just generated from its dev inbox
-  /// (`GET /dev/otp-inbox/{phone}`, registered only outside production) so a
-  /// tester can sign in without scraping server logs. Returns `null` when the
-  /// route doesn't exist (production) or no code is pending — the caller then
-  /// simply shows no code.
-  Future<String?> fetchTestingOtp({required String phoneNumber}) async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/dev/otp-inbox/${Uri.encodeComponent(phoneNumber)}',
-      );
-      return response.data?['code'] as String?;
-    } on DioException {
-      return null;
-    }
-  }
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,
@@ -54,6 +38,23 @@ final class AuthApi {
     'phone_number': phoneNumber,
     'code': code,
   });
+
+  /// Reads back the OTP the backend just "sent" from its dev inbox
+  /// (`GET /dev/otp-inbox/{phone}`). That route exists only when the backend
+  /// is not running in production, so this fails (404) everywhere real SMS
+  /// delivery is in use — callers must treat a failure as "no code to show".
+  Future<Result<String>> fetchDevOtp({required String phoneNumber}) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/dev/otp-inbox/${Uri.encodeComponent(phoneNumber)}',
+      );
+      return Success(response.data!['code'] as String);
+    } on DioException catch (error) {
+      return FailureResult(mapDioError(error));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 
   /// `refreshToken` mirrors `RefreshRequest`'s own docstring: mobile clients
   /// have no cookie, so they always supply it explicitly.

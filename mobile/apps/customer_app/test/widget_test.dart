@@ -35,8 +35,6 @@ class _FakeAuthRepository implements AuthRepository {
   }) async => const Success(_principal);
 
   @override
-  Future<String?> fetchTestingOtp({required String phoneNumber}) async => null;
-  @override
   Future<Result<void>> requestOtp({
     required String tenantId,
     required String phoneNumber,

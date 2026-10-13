@@ -7,6 +7,41 @@ import 'support/fake_http_client_adapter.dart';
 
 void main() {
   group('AuthApi', () {
+    test('fetchDevOtp reads the code from the dev inbox route', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      String? requestedPath;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        requestedPath = options.path;
+        return jsonResponse({'code': '482913'}, 200);
+      });
+
+      final result = await AuthApi(
+        client.dio,
+      ).fetchDevOtp(phoneNumber: '+919999900099');
+
+      expect(
+        result.when(onSuccess: (code) => code, onFailure: (_) => null),
+        '482913',
+      );
+      expect(requestedPath, contains('/api/v1/dev/otp-inbox/'));
+    });
+
+    test('fetchDevOtp fails when the route is absent (production)', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options) => jsonResponse({'detail': 'Not Found'}, 404),
+      );
+
+      final result = await AuthApi(
+        client.dio,
+      ).fetchDevOtp(phoneNumber: '+919999900099');
+
+      expect(
+        result.when(onSuccess: (_) => 'ok', onFailure: (_) => 'failed'),
+        'failed',
+      );
+    });
+
     test('login maps a 200 into a Success(TokenPair)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter(
@@ -59,34 +94,6 @@ void main() {
       },
     );
 
-    test('fetchTestingOtp reads the code from the dev inbox', () async {
-      String? path;
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
-        path = options.path;
-        return jsonResponse({'code': '123456'}, 200);
-      });
-
-      final code = await AuthApi(
-        client.dio,
-      ).fetchTestingOtp(phoneNumber: '+919999900099');
-
-      expect(code, '123456');
-      expect(path, '/api/v1/dev/otp-inbox/%2B919999900099');
-    });
-
-    test('fetchTestingOtp returns null when the route is absent', () async {
-      final client = ApiClient(baseUrl: 'https://api.test');
-      client.dio.httpClientAdapter = FakeHttpClientAdapter(
-        (options) => jsonResponse({'detail': 'Not Found'}, 404),
-      );
-
-      final code = await AuthApi(
-        client.dio,
-      ).fetchTestingOtp(phoneNumber: '+919999900099');
-
-      expect(code, isNull);
-    });
     test('me maps a 200 into a Success(Principal)', () async {
       final client = ApiClient(baseUrl: 'https://api.test');
       client.dio.httpClientAdapter = FakeHttpClientAdapter(

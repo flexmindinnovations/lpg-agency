@@ -30,9 +30,6 @@ abstract interface class AuthRepository {
     required String phoneNumber,
   });
 
-  /// Testing only — see [AuthApi.fetchTestingOtp]. Remove with the SMS gateway.
-  Future<String?> fetchTestingOtp({required String phoneNumber});
-
   Future<Result<Principal>> verifyOtp({
     required String tenantId,
     required String phoneNumber,
@@ -82,10 +79,6 @@ final class ApiAuthRepository implements AuthRepository {
     required String tenantId,
     required String phoneNumber,
   }) => _authApi.requestOtp(tenantId: tenantId, phoneNumber: phoneNumber);
-
-  @override
-  Future<String?> fetchTestingOtp({required String phoneNumber}) =>
-      _authApi.fetchTestingOtp(phoneNumber: phoneNumber);
 
   @override
   Future<Result<Principal>> verifyOtp({

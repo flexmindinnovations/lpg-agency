@@ -83,11 +83,11 @@ Two new packages: `api_client` (hand-written `dio` wrapper, ADR-037 — deferrin
 
 ## Addendum — Testing-only OTP banner in the Driver/Customer Apps (2026-10-12)
 
-No backend change: the OTP flow is exactly as designed (`POST /auth/otp/request` → `204`, no user enumeration; `POST /auth/otp/verify` issues tokens). Until an SMS/WhatsApp gateway exists (Phase 14), both mobile login screens show the current code **for testing only**: after a successful request they read it back from the existing non-production `GET /dev/otp-inbox/{phone}` route (`AuthApi.fetchTestingOtp`) and render it in `LpgDevOtpBanner`. The route is not registered in production, so there the call returns nothing and no banner shows.
+No backend change: the OTP flow is exactly as designed (`POST /auth/otp/request` → `204`, no user enumeration; `POST /auth/otp/verify` issues tokens). Until an SMS/WhatsApp gateway exists (Phase 14), both mobile login screens show the current code **for testing only**: after a successful request they read it back via `AuthApi.fetchDevOtp` from the existing non-production `GET /dev/otp-inbox/{phone}` route. The Driver App did this first (feature 32, `dev_otp_provider.dart`, ADR-050); the Customer App mirrors it (`customer_app/lib/src/dev_otp_provider.dart`, shared `LpgDevOtpBanner` in `design_system`). The route is not registered in production, and the lookup is on by default only in debug builds (`--dart-define=SHOW_DEV_OTP=true|false`).
 
-**To remove when the gateway ships:** `AuthApi.fetchTestingOtp`, the `fetchTestingOtp` members on `AuthRepository`/`AuthController` (and the test fakes), `LpgDevOtpBanner`, and the `_testingOtp` field/banner in both `LoginScreen`s.
+**To remove when the gateway ships:** `AuthApi.fetchDevOtp`, both apps' `dev_otp_provider.dart`, the banner in both `LoginScreen`s and `LpgDevOtpBanner`.
 
-Flutter widget tests were updated but could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `design_system`, `customer_app` and `driver_app` (one pre-existing warning in `cached_resource.dart`).
+Flutter widget tests could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `design_system`, `customer_app` and `driver_app` (one pre-existing warning in `driver_app`'s `cached_resource.dart`).
 ## Last Updated
 
 2026-08-10 — phase complete, all 12 areas verified across all three stacks.

@@ -61,10 +61,6 @@ class AuthController extends ChangeNotifier {
     required String phoneNumber,
   }) => _repository.requestOtp(tenantId: tenantId, phoneNumber: phoneNumber);
 
-  /// Testing only — remove with the SMS gateway.
-  Future<String?> fetchTestingOtp({required String phoneNumber}) =>
-      _repository.fetchTestingOtp(phoneNumber: phoneNumber);
-
   Future<Result<Principal>> verifyOtp({
     required String tenantId,
     required String phoneNumber,

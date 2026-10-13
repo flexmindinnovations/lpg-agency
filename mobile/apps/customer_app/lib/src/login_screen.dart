@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
+import 'dev_otp_provider.dart';
 
 /// OTP sign-in — the Customer App's authentication path (Dashboard staff
 /// sign in with a password instead, `frontend/libs/auth/feature-login`).
@@ -77,13 +78,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         .read(authControllerProvider)
         .requestOtp(tenantId: tenantId, phoneNumber: phone);
 
-    // Testing only: show the code the backend just generated (no SMS yet).
+    // Testing aid until an SMS/WhatsApp gateway exists — see
+    // `dev_otp_provider.dart`. Null (and so no banner) outside dev.
     final testingOtp = result is Success
-        ? await ref
-              .read(authControllerProvider)
-              .fetchTestingOtp(phoneNumber: phone)
+        ? await ref.read(devOtpLookupProvider)(phone)
         : null;
-
     if (!mounted) return;
     setState(() {
       _submitting = false;

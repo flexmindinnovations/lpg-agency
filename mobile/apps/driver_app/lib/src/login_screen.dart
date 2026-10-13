@@ -1,9 +1,9 @@
-import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
+import 'dev_otp_provider.dart';
 
 /// OTP sign-in — the Driver App's authentication path (Dashboard staff sign
 /// in with a password instead, `frontend/libs/auth/feature-login`).
@@ -27,11 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _codeController = TextEditingController();
 
   bool _codeRequested = false;
-
-  /// Testing only: the code read back from the backend's dev inbox so a tester
-  /// can sign in without an SMS. Null in production (route absent). Remove with
-  /// the SMS/WhatsApp gateway integration.
-  String? _testingOtp;
+  String? _devOtp;
   bool _submitting = false;
   String? _errorMessage;
 
@@ -69,21 +65,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         .read(authControllerProvider)
         .requestOtp(tenantId: tenantId, phoneNumber: phone);
 
-    // Testing only: show the code the backend just generated (no SMS yet).
-    final testingOtp = result is Success
-        ? await ref
-              .read(authControllerProvider)
-              .fetchTestingOtp(phoneNumber: phone)
+    if (!mounted) return;
+    // Testing aid until an SMS/WhatsApp gateway exists — see
+    // `dev_otp_provider.dart`. Null (and so no banner) outside dev.
+    final requested = result.when(
+      onSuccess: (_) => true,
+      onFailure: (_) => false,
+    );
+    final devOtp = requested
+        ? await ref.read(devOtpLookupProvider)(phone)
         : null;
 
     if (!mounted) return;
     setState(() {
       _submitting = false;
+      _devOtp = devOtp;
       result.when(
-        onSuccess: (_) {
-          _codeRequested = true;
-          _testingOtp = testingOtp;
-        },
+        onSuccess: (_) => _codeRequested = true,
         onFailure: (failure) => _errorMessage = failure.message,
       );
     });
@@ -94,7 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _editDetails() {
     setState(() {
       _codeRequested = false;
-      _testingOtp = null;
+      _devOtp = null;
       _codeController.clear();
       _errorMessage = null;
     });
@@ -225,8 +223,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (_codeRequested) ...[
                       const SizedBox(height: 24),
-                      if (_testingOtp case final testingOtp?) ...[
-                        LpgDevOtpBanner(code: testingOtp),
+                      if (_devOtp != null) ...[
+                        _DevOtpBanner(code: _devOtp!),
                         const SizedBox(height: 16),
                       ],
                       LpgTextField(
@@ -267,6 +265,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shows the one-time code on screen while no SMS provider exists. Rendered
+/// only when the dev OTP lookup returned a code, so it disappears on its own
+/// once real delivery replaces it.
+class _DevOtpBanner extends StatelessWidget {
+  const _DevOtpBanner({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<LpgColors>()!;
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.actionPrimary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.actionPrimary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Testing only: your code is',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            code,
+            key: const Key('dev-otp-code'),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 4,
+            ),
+          ),
+        ],
       ),
     );
   }
