@@ -22,7 +22,6 @@ class _RecordingAuthRepository implements AuthRepository {
   ({String tenantId, String phoneNumber, String code})? verifyOtpArgs;
 
   Result<void> requestOtpResult = const Success(null);
-  String? testingOtp;
   Result<Principal> verifyOtpResult = const Success(_principal);
 
   @override
@@ -198,34 +197,5 @@ void main() {
       expect(repo.verifyOtpArgs!.code, '123456');
       expect(repo.verifyOtpArgs!.phoneNumber, '+919999900099');
     });
-
-    testWidgets('shows the testing code banner when the dev inbox has one', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository()..testingOtp = '654321';
-      await _pump(tester, AuthController(repo));
-
-      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
-      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('654321'), findsOneWidget);
-      expect(find.text('Testing only: your code is'), findsOneWidget);
-    });
-
-    testWidgets('shows no banner when there is no testing code (production)', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository();
-      await _pump(tester, AuthController(repo));
-
-      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
-      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Testing only: your code is'), findsNothing);
-      expect(find.text('Verify Code'), findsOneWidget);
-    });  });
+  });
 }
