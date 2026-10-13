@@ -3,6 +3,7 @@ import 'package:auth/auth.dart';
 import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:driver_app/src/auth_provider.dart';
+import 'package:driver_app/src/dev_otp_provider.dart';
 import 'package:driver_app/src/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,16 +70,23 @@ class _RecordingAuthRepository implements AuthRepository {
   Future<void> logout() async {}
 }
 
-Widget _host(AuthController controller) => ProviderScope(
-  overrides: [authControllerProvider.overrideWithValue(controller)],
+Widget _host(AuthController controller, {String? devOtp}) => ProviderScope(
+  overrides: [
+    authControllerProvider.overrideWithValue(controller),
+    devOtpLookupProvider.overrideWithValue((_) async => devOtp),
+  ],
   child: MaterialApp(theme: LpgTheme.light, home: const LoginScreen()),
 );
 
-Future<void> _pump(WidgetTester tester, AuthController controller) async {
+Future<void> _pump(
+  WidgetTester tester,
+  AuthController controller, {
+  String? devOtp,
+}) async {
   tester.view.physicalSize = const Size(1000, 2400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(_host(controller));
+  await tester.pumpWidget(_host(controller, devOtp: devOtp));
   await tester.pumpAndSettle();
 }
 
@@ -138,6 +146,38 @@ void main() {
       expect(repo.requestOtpArgs!.phoneNumber, '+919999900099');
       expect(find.text('Verify Code'), findsOneWidget);
       expect(find.byType(LpgTextField), findsNWidgets(3));
+    });
+
+    testWidgets('shows the dev OTP on screen when the lookup returns one', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        AuthController(_RecordingAuthRepository()),
+        devOtp: '482913',
+      );
+
+      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
+      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
+      await tester.tap(find.text('Send Code'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dev-otp-code')), findsOneWidget);
+      expect(find.text('482913'), findsOneWidget);
+    });
+
+    testWidgets('shows no OTP banner when there is no dev code', (
+      tester,
+    ) async {
+      await _pump(tester, AuthController(_RecordingAuthRepository()));
+
+      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
+      await tester.enterText(find.byType(LpgTextField).last, '+919999900099');
+      await tester.tap(find.text('Send Code'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Verify Code'), findsOneWidget);
+      expect(find.byKey(const Key('dev-otp-code')), findsNothing);
     });
 
     testWidgets('verify sends the trimmed code', (tester) async {

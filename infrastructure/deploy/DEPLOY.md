@@ -476,6 +476,16 @@ agencies, no licences). A UAT environment was deliberately deferred; when it is
 wanted, provision a second droplet with sections 1-9 and `.env.uat.example`, and
 add a second GitHub Environment (section 13).
 
+**Treating this droplet as UAT (testing before real users).** Add
+`LPG_ENVIRONMENT=uat` to `/opt/lpg-agency/infrastructure/deploy/.env` and
+redeploy. In `uat` the backend registers the testing-only
+`GET /api/v1/dev/otp-inbox/{phone}` route (ADR-050), so the Driver App's
+"Testing only" OTP banner works against this server when the app is built with
+`--dart-define=SHOW_DEV_OTP=true`. Anyone who knows an agency code and a phone
+number can then read that number's code, so use test data only. **Before real
+users, delete that line** (back to `production`, route off) and remove the dev
+OTP code once an SMS/WhatsApp gateway is integrated.
+
 ---
 
 ## 12. Accounts and access inventory (no secrets)

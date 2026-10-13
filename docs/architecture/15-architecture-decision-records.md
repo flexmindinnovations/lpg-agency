@@ -1243,6 +1243,30 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+
+## ADR-050: Show the Login OTP in the Driver App for Testing, via the Existing Non-Production Dev Inbox and a Client-Side Opt-In
+
+**Status:** Accepted (temporary — to be removed when an SMS/WhatsApp gateway is integrated)
+
+**Context:** The Driver App signs in with Agency Code + phone OTP (ADR-035). No SMS provider exists yet (Phase 14), so testers could only learn the code from the API log. The product owner asked to show the current OTP on the login screen for testing, and to remove it once a gateway is integrated. The original login design and contract are unchanged.
+
+**Decision (reuse the existing dev inbox, change nothing in the backend):** `LoggingOtpDelivery` already stores each issued code under `dev:otp-inbox:{phone}`, and `GET /api/v1/dev/otp-inbox/{phone}` reads it back. `api/app.py` registers that route only when `not settings.is_production`. After a successful `POST /auth/otp/request` the Driver App reads the code from it and shows it in a banner above the code field.
+
+**Decision (client-side opt-in):** the app does the lookup only when `SHOW_DEV_OTP` is true, which defaults to true in debug builds and false in release builds. A release build never asks for the code, and in production the route does not exist, so a lookup there fails and no banner appears.
+
+**Consequences:**
+- The OTP endpoints, their contract and the login flow are untouched; there is no new server code to keep or remove.
+- In any non-production environment (not only local) the code is already readable by anyone from the dev inbox route. This change does not widen that, but a shared staging backend should not run a debug build of the app in front of real users.
+- The shared droplet may be run as UAT (`LPG_ENVIRONMENT=uat` in its `.env`; `docker-compose.prod.yml` now reads it, default `production`) so testers on real phones get the code. The backend needs no change: `uat` is an existing environment and production is the only mode that disables the route. While it is `uat`, every number's code is readable by anyone who can reach the server, so it must hold test data only and go back to `production` before real users (`infrastructure/deploy/DEPLOY.md` section 11).
+- Removal is deleting `dev_otp_provider.dart`, the banner and lookup in `login_screen.dart`, and `AuthApi.fetchDevOtp`.
+
+**Alternatives Considered:**
+- **Return the code in the `/auth/otp/request` response** — rejected: it changes the documented contract and the response every environment returns.
+- **Password first, then OTP** (built, then reverted on 2026-10-12) — rejected by the product owner: it departs from the original design and acceptance criteria.
+- **A new backend flag and response field** — rejected: more code to remove later for no gain over the existing dev route.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
