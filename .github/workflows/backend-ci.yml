@@ -53,7 +53,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --python 3.13
 
       - name: Lint (ruff)
         run: uv run ruff check .
