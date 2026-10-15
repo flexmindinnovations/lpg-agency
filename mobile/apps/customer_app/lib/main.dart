@@ -17,12 +17,13 @@ import 'src/push/push_notification_service.dart';
 import 'src/router.dart';
 
 /// Backend origin - no `/api/v1` suffix, `AuthApi`'s own paths already carry
-/// the full `/api/v1/auth/...` prefix. Override for a real device or an
-/// Android emulator (which cannot resolve `localhost` as the host machine)
-/// with `--dart-define=API_BASE_URL=http://10.0.2.2:8000`.
+/// the full `/api/v1/auth/...` prefix. Defaults to the production server; for
+/// local development override it, e.g. for the Android emulator (which cannot
+/// resolve `localhost` as the host machine)
+/// `--dart-define=API_BASE_URL=http://10.0.2.2:8000`.
 const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:8000',
+  defaultValue: 'https://lpg.vitessetec.com',
 );
 
 /// `RealtimeClient` wants a `ws(s)://` origin, not `http(s)://` --

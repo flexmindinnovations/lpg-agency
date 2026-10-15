@@ -81,6 +81,13 @@ Two new packages: `api_client` (hand-written `dio` wrapper, ADR-037 — deferrin
 - **MFA, Entra ID SSO** — both explicitly deferred (schema seam only for SSO); see `PLAN.md`'s Scope Boundaries.
 - **CI-runner confirmation carried over from Phase 5** — `mobile/packages/local_storage`'s SQLCipher build hook (ADR-034) was still only verified locally as of Phase 5 close-out; unaffected by this phase, tracked separately.
 
+## Addendum — Testing-only OTP banner in the Driver/Customer Apps (2026-10-12)
+
+No backend change: the OTP flow is exactly as designed (`POST /auth/otp/request` → `204`, no user enumeration; `POST /auth/otp/verify` issues tokens). Until an SMS/WhatsApp gateway exists (Phase 14), both mobile login screens show the current code **for testing only**: after a successful request they read it back via `AuthApi.fetchDevOtp` from the existing non-production `GET /dev/otp-inbox/{phone}` route. The Driver App did this first (feature 32, `dev_otp_provider.dart`, ADR-050); the Customer App mirrors it (`customer_app/lib/src/dev_otp_provider.dart`, shared `LpgDevOtpBanner` in `design_system`). The route is not registered in production, and the lookup is on by default only in debug builds (`--dart-define=SHOW_DEV_OTP=true|false`).
+
+**To remove when the gateway ships:** `AuthApi.fetchDevOtp`, both apps' `dev_otp_provider.dart`, the banner in both `LoginScreen`s and `LpgDevOtpBanner`.
+
+Flutter widget tests could not be executed on the authoring machine (Windows Application Control blocked `flutter_tester.exe`); `flutter analyze` is clean for `api_client`, `auth`, `design_system`, `customer_app` and `driver_app` (one pre-existing warning in `driver_app`'s `cached_resource.dart`).
 ## Last Updated
 
 2026-08-10 — phase complete, all 12 areas verified across all three stacks.

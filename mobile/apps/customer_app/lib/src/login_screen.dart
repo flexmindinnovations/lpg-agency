@@ -1,8 +1,10 @@
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
+import 'dev_otp_provider.dart';
 
 /// OTP sign-in — the Customer App's authentication path (Dashboard staff
 /// sign in with a password instead, `frontend/libs/auth/feature-login`).
@@ -26,6 +28,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _codeController = TextEditingController();
 
   bool _codeRequested = false;
+
+  /// Testing only: the code read back from the backend's dev inbox so a tester
+  /// can sign in without an SMS. Null in production (route absent). Remove with
+  /// the SMS/WhatsApp gateway integration.
+  String? _testingOtp;
   bool _submitting = false;
   String? _errorMessage;
 
@@ -71,6 +78,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         .read(authControllerProvider)
         .requestOtp(tenantId: tenantId, phoneNumber: phone);
 
+    // Testing aid until an SMS/WhatsApp gateway exists — see
+    // `dev_otp_provider.dart`. Null (and so no banner) outside dev.
+    final testingOtp = result is Success
+        ? await ref.read(devOtpLookupProvider)(phone)
+        : null;
     if (!mounted) return;
     setState(() {
       _submitting = false;
@@ -78,6 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         onSuccess: (_) {
           debugPrint('LoginScreen: OTP requested successfully');
           _codeRequested = true;
+          _testingOtp = testingOtp;
         },
         onFailure: (failure) {
           debugPrint('LoginScreen: OTP request failed: ${failure.message}');
@@ -94,6 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _editDetails() {
     setState(() {
       _codeRequested = false;
+      _testingOtp = null;
       _codeController.clear();
       _errorMessage = null;
     });
@@ -233,6 +247,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (_codeRequested) ...[
                       const SizedBox(height: 24),
+                      if (_testingOtp case final testingOtp?) ...[
+                        LpgDevOtpBanner(code: testingOtp),
+                        const SizedBox(height: 16),
+                      ],
                       LpgTextField(
                         label: 'Verification code',
                         controller: _codeController,

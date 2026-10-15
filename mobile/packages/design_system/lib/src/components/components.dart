@@ -1,5 +1,6 @@
 export 'lpg_button.dart';
 export 'lpg_card.dart';
+export 'lpg_dev_otp_banner.dart';
 export 'lpg_empty_state.dart';
 export 'lpg_list_tile.dart';
 export 'lpg_loading_indicator.dart';
