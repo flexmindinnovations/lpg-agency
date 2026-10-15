@@ -1267,6 +1267,27 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-051: Create a Customer App Login on an Agency-Registered Customer's First OTP Sign-in
+
+**Status:** Accepted
+
+**Context:** Customers added on the dashboard (`RegisterCustomerUseCase`) get a `customer.customer` row but no `identity.identity_user`, and no endpoint creates or links one. Customer App sign-in (Agency Code + phone OTP, ADR-035) therefore failed with "No account is associated with this number" for every real customer; the only workaround was `backend/scripts/seed_e2e_customer.py` run against the database. The product owner chose, on 2026-10-15, that an agency-registered customer gets their login automatically on first sign-in, over a dashboard "Enable app login" action.
+
+**Decision:** When `/auth/otp/verify` matches the code and no login exists for the phone number in the tenant, `VerifyOtpUseCase` asks a new `CustomerLoginProvisioner` port to create one. The adapter, in one transaction scoped to that tenant, loads the customer with that phone number; if `Customer.can_get_app_login` (no login yet, status `onboarding`, `pending_approval` or `active`) it creates a `customer`-role login with the customer's branch and phone, no email or password, materialises the role's permissions, and links it to the customer. Otherwise nothing is created and the existing generic `InvalidCredentialsError` is returned.
+
+**Consequences:**
+- Only a number the agency itself registered can gain a login, and only after proving possession of it with the OTP; there is still no open self-registration (`FR-CM-01`).
+- The response for an unknown number is unchanged, so a probing client still cannot tell "no account" from other failures.
+- User creation now has one code path, `insert_identity_user`, shared with `SqlAlchemyStaffUserRepository.add`, so permissions are always materialised.
+- `/auth/otp/verify` now needs `LPG_KYC_ENCRYPTION_KEY` (to load the customer), which every non-local deployment already sets.
+- No migration and no API contract change.
+
+**Alternatives Considered:**
+- **Dashboard "Enable app login" button** — rejected by the product owner: an extra staff step for every customer.
+- **Keep seeding logins by script** — rejected: needs database access on the server for every tester.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |

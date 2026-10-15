@@ -377,6 +377,21 @@ class Customer(AggregateRoot):
     def date_of_birth(self) -> date | None:
         return self._date_of_birth
 
+    @property
+    def can_get_app_login(self) -> bool:
+        """Whether a Customer App login may be created for this customer on
+        their first phone + OTP sign-in.
+
+        Only a customer with no login yet whose connection is still live:
+        onboarding and pending-approval customers need to sign in to finish
+        KYC, while inactive, blocked and closed ones must not get a new way in.
+        """
+        return self._identity_user_id is None and self._status in (
+            "onboarding",
+            "pending_approval",
+            "active",
+        )
+
     def link_identity_user(self, identity_user_id: uuid.UUID) -> None:
         """Associate this customer profile with an identity user account."""
         self._identity_user_id = identity_user_id

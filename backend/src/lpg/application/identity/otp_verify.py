@@ -1,11 +1,14 @@
 """`VerifyOtpUseCase` — Customer/Driver OTP login, step 2.
 
-**Does not create accounts.** Phase 6 authenticates users that already
-exist (seeded via `backend/scripts/seed_identity_users.py` for
-verification); real customer/driver self-registration is Phase 8/11+
-scope (`FR-CM-01`). Verifying a correct OTP for a phone number with no
-matching account raises `InvalidCredentialsError` — the same generic
-message `LoginUseCase` uses, so a probing client can't distinguish
+**Creates a login only for an agency-registered customer.** When the OTP
+matches and no login exists for the phone number, `CustomerLoginProvisioner`
+creates one if the tenant has a customer with that number who may sign in
+(`Customer.can_get_app_login`), so a customer added on the dashboard can sign
+in to the Customer App straight away (ADR-051). Drivers and staff are never
+created here, and open self-registration of unknown numbers is still
+`FR-CM-01` scope. Verifying a correct OTP for a phone number with neither a
+login nor an eligible customer raises `InvalidCredentialsError` — the same
+generic message `LoginUseCase` uses, so a probing client can't distinguish
 "wrong code" from "no such account" from the response alone.
 
 **No `UnitOfWork`** — same reasoning as `login.py`'s module docstring.
@@ -37,6 +40,7 @@ if TYPE_CHECKING:
     from datetime import timedelta
 
     from lpg.application.identity.ports import (
+        CustomerLoginProvisioner,
         IdentityUserRepository,
         JwtSigner,
         OtpStore,
@@ -67,6 +71,7 @@ class VerifyOtpUseCase:
         license_status_checker: LicenseStatusChecker,
         tenant_status_checker: TenantStatusChecker,
         *,
+        customer_login_provisioner: CustomerLoginProvisioner,
         refresh_token_ttl: timedelta,
     ) -> None:
         self._otp_store = otp_store
@@ -77,6 +82,7 @@ class VerifyOtpUseCase:
         self._jwt_signer = jwt_signer
         self._license_status_checker = license_status_checker
         self._tenant_status_checker = tenant_status_checker
+        self._customer_login_provisioner = customer_login_provisioner
         self._refresh_token_ttl = refresh_token_ttl
 
     async def execute(self, command: VerifyOtpCommand) -> TokenPair:
@@ -89,6 +95,10 @@ class VerifyOtpUseCase:
         user = await self._user_repository.get_by_phone_number(
             command.tenant_id, command.phone_number
         )
+        if user is None:
+            user = await self._customer_login_provisioner.provision(
+                command.tenant_id, command.phone_number
+            )
         if user is None or not user.is_active:
             msg = "No account is associated with this number."
             raise InvalidCredentialsError(msg)

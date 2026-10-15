@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
+    get_customer_login_provisioner,
     get_email_sender,
     get_identity_user_repository,
     get_jwt_signer,
@@ -68,6 +69,7 @@ from lpg.application.identity.password_reset import (
 )
 from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
+    CustomerLoginProvisioner,
     EmailSender,
     IdentityUserRepository,
     JwtSigner,
@@ -199,6 +201,9 @@ async def otp_verify(
     tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
     license_status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     tenant_status_checker: Annotated[TenantStatusChecker, Depends(get_tenant_status_checker)],
+    customer_login_provisioner: Annotated[
+        CustomerLoginProvisioner, Depends(get_customer_login_provisioner)
+    ],
 ) -> TokenResponse:
     use_case = VerifyOtpUseCase(
         otp_store,
@@ -209,6 +214,7 @@ async def otp_verify(
         jwt_signer,
         license_status_checker,
         tenant_status_checker,
+        customer_login_provisioner=customer_login_provisioner,
         refresh_token_ttl=timedelta(days=settings.refresh_token_ttl_days),
     )
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)

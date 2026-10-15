@@ -46,6 +46,9 @@ from lpg.application.identity.password_reset import (
 from lpg.application.identity.principal import JwtAuthenticatedPrincipal
 from lpg.application.identity.refresh_token import RefreshTokenCommand, RefreshTokenUseCase
 from lpg.domain.license.license import LicenseLifecycleState
+from lpg.infrastructure.identity.customer_login_provisioner import (
+    SqlAlchemyCustomerLoginProvisioner,
+)
 from lpg.infrastructure.identity.otp_service import OtpService
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.identity.token_hasher import Sha256TokenHasher
@@ -57,6 +60,7 @@ from lpg.infrastructure.persistence.repositories.identity import (
     SqlAlchemyRefreshTokenRepository,
 )
 from lpg.infrastructure.redis.client import RedisClient
+from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -188,6 +192,12 @@ async def _seed_otp_user(
             {"user_id": user_id, "role": role},
         )
     return uuid.UUID(str(tenant_id)), uuid.UUID(str(user_id))
+
+
+def _customer_login_provisioner(
+    database: Database, settings: Settings
+) -> SqlAlchemyCustomerLoginProvisioner:
+    return SqlAlchemyCustomerLoginProvisioner(database, FernetFieldEncryptor(settings))
 
 
 class _StubOtpDelivery:
@@ -605,6 +615,7 @@ class TestOtpFlow:
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
             _AlwaysActiveTenantStatusChecker(),
+            customer_login_provisioner=_customer_login_provisioner(database, integration_settings),
             refresh_token_ttl=timedelta(days=30),
         )
         pair = await verify_use_case.execute(
@@ -638,6 +649,7 @@ class TestOtpFlow:
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
             _AlwaysActiveTenantStatusChecker(),
+            customer_login_provisioner=_customer_login_provisioner(database, integration_settings),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -659,6 +671,7 @@ class TestOtpFlow:
             _StubJwtSigner(),
             _AlwaysActiveLicenseStatusChecker(),
             _AlwaysActiveTenantStatusChecker(),
+            customer_login_provisioner=_customer_login_provisioner(database, integration_settings),
             refresh_token_ttl=timedelta(days=30),
         )
 
@@ -670,6 +683,209 @@ class TestOtpFlow:
                     code="123456",
                 )
             )
+
+
+async def _seed_tenant_customer(
+    engine: AsyncEngine, *, phone_number: str, status: str = "onboarding"
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """A tenant with one agency-registered customer and no login, the way the
+    dashboard's Register Customer leaves it."""
+    async with engine.begin() as conn:
+        tenant_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.tenant (id, name, slug) "
+                    "VALUES (gen_random_uuid(), 'Auth Flow Test', :slug) RETURNING id"
+                ),
+                {"slug": f"auth-flow-{uuid.uuid4().hex[:10]}"},
+            )
+        ).scalar_one()
+        branch_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.branch (id, tenant_id, name) "
+                    "VALUES (gen_random_uuid(), :tenant_id, 'Main') RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id)},
+            )
+        ).scalar_one()
+        customer_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer "
+                    "(id, tenant_id, branch_id, full_name, phone_number, customer_type, "
+                    "status, consumer_number) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :branch_id, 'Walk-in Customer', "
+                    ":phone, 'domestic', :status, :consumer_number) RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "phone": phone_number,
+                    "status": status,
+                    "consumer_number": f"CN{uuid.uuid4().hex[:10]}",
+                },
+            )
+        ).scalar_one()
+    return uuid.UUID(str(tenant_id)), uuid.UUID(str(customer_id))
+
+
+class TestCustomerLoginOnFirstOtp:
+    """ADR-051: a customer the agency registered gets a Customer App login on
+    their first OTP sign-in."""
+
+    async def _sign_in(
+        self,
+        database: Database,
+        redis_client: RedisClient,
+        settings: Settings,
+        *,
+        tenant_id: uuid.UUID,
+        phone_number: str,
+    ) -> None:
+        otp_store = OtpService(redis_client, settings)
+        delivery = _StubOtpDelivery()
+        await RequestOtpUseCase(otp_store, delivery).execute(
+            RequestOtpCommand(tenant_id=tenant_id, phone_number=phone_number)
+        )
+        _phone, code = delivery.sent[0]
+        await VerifyOtpUseCase(
+            otp_store,
+            SqlAlchemyIdentityUserRepository(database),
+            SqlAlchemyRefreshTokenRepository(database),
+            SqlAlchemyPermissionRepository(database),
+            Sha256TokenHasher(),
+            _StubJwtSigner(),
+            _AlwaysActiveLicenseStatusChecker(),
+            _AlwaysActiveTenantStatusChecker(),
+            customer_login_provisioner=_customer_login_provisioner(database, settings),
+            refresh_token_ttl=timedelta(days=30),
+        ).execute(VerifyOtpCommand(tenant_id=tenant_id, phone_number=phone_number, code=code))
+
+    @staticmethod
+    async def _logins_for(engine: AsyncEngine, phone_number: str) -> list[tuple[str, str]]:
+        async with engine.connect() as conn:
+            rows = await conn.execute(
+                text(
+                    "SELECT u.role, c.identity_user_id::text = u.id::text "
+                    "FROM identity.identity_user u "
+                    "LEFT JOIN customer.customer c ON c.identity_user_id = u.id "
+                    "WHERE u.phone_number = :phone"
+                ),
+                {"phone": phone_number},
+            )
+            return [(row[0], str(row[1])) for row in rows]
+
+    async def test_first_sign_in_creates_and_links_a_customer_login(
+        self,
+        database: Database,
+        admin_engine_lpg_test: AsyncEngine,
+        redis_client: RedisClient,
+        integration_settings: Settings,
+    ) -> None:
+        phone_number = f"+91{uuid.uuid4().int % 10**10:010d}"
+        tenant_id, customer_id = await _seed_tenant_customer(
+            admin_engine_lpg_test, phone_number=phone_number
+        )
+
+        await self._sign_in(
+            database,
+            redis_client,
+            integration_settings,
+            tenant_id=tenant_id,
+            phone_number=phone_number,
+        )
+
+        async with admin_engine_lpg_test.connect() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        "SELECT u.role, u.tenant_id, c.id, "
+                        "(SELECT count(*) FROM identity.identity_user_permission p "
+                        " WHERE p.user_id = u.id) "
+                        "FROM identity.identity_user u "
+                        "JOIN customer.customer c ON c.identity_user_id = u.id "
+                        "WHERE u.phone_number = :phone"
+                    ),
+                    {"phone": phone_number},
+                )
+            ).one()
+        assert row[0] == "customer"
+        assert row[1] == tenant_id
+        assert row[2] == customer_id
+        assert row[3] > 0, "the customer role's permissions must be materialised"
+
+    async def test_signing_in_again_reuses_the_same_login(
+        self,
+        database: Database,
+        admin_engine_lpg_test: AsyncEngine,
+        redis_client: RedisClient,
+        integration_settings: Settings,
+    ) -> None:
+        phone_number = f"+91{uuid.uuid4().int % 10**10:010d}"
+        tenant_id, _customer_id = await _seed_tenant_customer(
+            admin_engine_lpg_test, phone_number=phone_number, status="active"
+        )
+
+        for _ in range(2):
+            await self._sign_in(
+                database,
+                redis_client,
+                integration_settings,
+                tenant_id=tenant_id,
+                phone_number=phone_number,
+            )
+
+        assert await self._logins_for(admin_engine_lpg_test, phone_number) == [("customer", "True")]
+
+    @pytest.mark.parametrize("status", ["inactive", "blocked", "closed"])
+    async def test_an_inactive_blocked_or_closed_customer_gets_no_login(
+        self,
+        status: str,
+        database: Database,
+        admin_engine_lpg_test: AsyncEngine,
+        redis_client: RedisClient,
+        integration_settings: Settings,
+    ) -> None:
+        phone_number = f"+91{uuid.uuid4().int % 10**10:010d}"
+        tenant_id, _customer_id = await _seed_tenant_customer(
+            admin_engine_lpg_test, phone_number=phone_number, status=status
+        )
+
+        with pytest.raises(InvalidCredentialsError):
+            await self._sign_in(
+                database,
+                redis_client,
+                integration_settings,
+                tenant_id=tenant_id,
+                phone_number=phone_number,
+            )
+
+        assert await self._logins_for(admin_engine_lpg_test, phone_number) == []
+
+    async def test_a_customer_of_another_tenant_gets_no_login(
+        self,
+        database: Database,
+        admin_engine_lpg_test: AsyncEngine,
+        redis_client: RedisClient,
+        integration_settings: Settings,
+    ) -> None:
+        phone_number = f"+91{uuid.uuid4().int % 10**10:010d}"
+        await _seed_tenant_customer(admin_engine_lpg_test, phone_number=phone_number)
+        other_tenant_id, _other_customer = await _seed_tenant_customer(
+            admin_engine_lpg_test, phone_number=f"+91{uuid.uuid4().int % 10**10:010d}"
+        )
+
+        with pytest.raises(InvalidCredentialsError):
+            await self._sign_in(
+                database,
+                redis_client,
+                integration_settings,
+                tenant_id=other_tenant_id,
+                phone_number=phone_number,
+            )
+
+        assert await self._logins_for(admin_engine_lpg_test, phone_number) == []
 
 
 class TestPasswordResetFlow:
