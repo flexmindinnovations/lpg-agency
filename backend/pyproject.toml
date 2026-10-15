@@ -286,6 +286,12 @@ ignore_imports = [
     # code from unauthenticated callers, instead of the router running raw
     # SQL against the database directly.
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.identity.tenant_slug_resolver",
+    # ADR-051: dependencies/identity.py also wires the provisioner that
+    # `routers/auth.py`'s otp_verify uses to create a Customer App login for
+    # an agency-registered customer, and the field encryptor it needs to load
+    # that customer.
+    "lpg.api.v1.dependencies.identity -> lpg.infrastructure.identity.customer_login_provisioner",
+    "lpg.api.v1.dependencies.identity -> lpg.infrastructure.security.field_encryption",
     # Area I (Phase 7): dependencies/admin.py wires every Phase 7 repository —
     # same composition-root role as dependencies/identity.py above, scoped to
     # the admin surface's own seams.

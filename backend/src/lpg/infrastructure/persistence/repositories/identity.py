@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     from sqlalchemy.engine import Row
+    from sqlalchemy.ext.asyncio import AsyncSession
 
     from lpg.infrastructure.persistence.database import Database
 
@@ -83,6 +84,43 @@ def _row_to_reset_token(row: Row[Any]) -> PasswordResetToken | None:
         token_hash=row.token_hash,
         expires_at=row.expires_at,
         used_at=row.used_at,
+    )
+
+
+async def insert_identity_user(session: AsyncSession, user: IdentityUser) -> None:
+    """Insert `user` and materialise their role's permissions, in `session`'s
+    transaction. `session` must be scoped to `user.tenant_id` (RLS).
+
+    The one place users are created; see `SqlAlchemyStaffUserRepository.add`
+    for why permissions are materialised here.
+    """
+    session.add(
+        IdentityUserModel(
+            id=user.id,
+            tenant_id=user.tenant_id,
+            branch_id=user.branch_id,
+            email=user.email,
+            phone_number=user.phone_number,
+            password_hash=user.password_hash,
+            role=user.role,
+            is_active=user.is_active,
+            failed_login_count=user.failed_login_count,
+            locked_until=user.locked_until,
+        )
+    )
+    # Flush so the FK from identity_user_permission has a row to
+    # reference — autoflush is off for this session factory.
+    await session.flush()
+    await session.execute(
+        text("""
+            INSERT INTO identity.identity_user_permission
+                (id, user_id, permission_id, created_at)
+            SELECT gen_random_uuid(), :user_id, rp.permission_id, now()
+            FROM identity.role_permission rp
+            JOIN identity.role r ON r.id = rp.role_id
+            WHERE r.code = :role
+        """),
+        {"user_id": str(user.id), "role": user.role},
     )
 
 
@@ -346,12 +384,13 @@ class SqlAlchemyStaffUserRepository:
         per-user (`identity.identity_user_permission`), and backfilled every
         user that existed at the time — but nothing was added to *create*
         that backfill for a user made afterward. Every path that creates a
-        user funnels through this one method (`InviteStaffUserUseCase`, and
-        the `EmployeeRegistered` handler in
-        `infrastructure/events/tenant_admin_handlers.py`), which is why the
-        fix lives here rather than in either caller: a user materialised
-        anywhere else in the future gets this automatically, and neither
-        caller can forget it.
+        user funnels through `insert_identity_user` (this method, used by
+        `InviteStaffUserUseCase` and the `EmployeeRegistered` handler in
+        `infrastructure/events/tenant_admin_handlers.py`, and
+        `SqlAlchemyCustomerLoginProvisioner`, which needs it inside its own
+        transaction), which is why the fix lives there rather than in any
+        caller: a user materialised anywhere else in the future gets this
+        automatically, and no caller can forget it.
 
         Deliberately not a read-time fallback to `role_permission` in
         `SqlAlchemyPermissionRepository`. `PUT /admin/users/{id}/permissions`
@@ -364,34 +403,7 @@ class SqlAlchemyStaffUserRepository:
         full stop, including a deliberately-emptied one.
         """
         async for session in self._database.session(tenant_id=self._tenant_id):
-            session.add(
-                IdentityUserModel(
-                    id=user.id,
-                    tenant_id=user.tenant_id,
-                    branch_id=user.branch_id,
-                    email=user.email,
-                    phone_number=user.phone_number,
-                    password_hash=user.password_hash,
-                    role=user.role,
-                    is_active=user.is_active,
-                    failed_login_count=user.failed_login_count,
-                    locked_until=user.locked_until,
-                )
-            )
-            # Flush so the FK from identity_user_permission has a row to
-            # reference — autoflush is off for this session factory.
-            await session.flush()
-            await session.execute(
-                text("""
-                    INSERT INTO identity.identity_user_permission
-                        (id, user_id, permission_id, created_at)
-                    SELECT gen_random_uuid(), :user_id, rp.permission_id, now()
-                    FROM identity.role_permission rp
-                    JOIN identity.role r ON r.id = rp.role_id
-                    WHERE r.code = :role
-                """),
-                {"user_id": str(user.id), "role": user.role},
-            )
+            await insert_identity_user(session, user)
 
     async def save(self, user: IdentityUser) -> None:
         async for session in self._database.session(tenant_id=self._tenant_id):

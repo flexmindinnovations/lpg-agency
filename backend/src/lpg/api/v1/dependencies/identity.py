@@ -36,6 +36,7 @@ from lpg.application.common.ports import TenantContext
 from lpg.application.identity.authorize import PermissionChecker
 from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
+    CustomerLoginProvisioner,
     EmailSender,
     IdentityUserRepository,
     JwtSigner,
@@ -320,6 +321,16 @@ def get_tenant_slug_resolver() -> TenantSlugResolver:
     from lpg.infrastructure.identity.tenant_slug_resolver import SqlAlchemyTenantSlugResolver
 
     return SqlAlchemyTenantSlugResolver(_get_database())
+
+
+def get_customer_login_provisioner() -> CustomerLoginProvisioner:
+    from lpg.infrastructure.identity.customer_login_provisioner import (
+        SqlAlchemyCustomerLoginProvisioner,
+    )
+    from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
+
+    _state, settings = _get_app_state_and_settings()
+    return SqlAlchemyCustomerLoginProvisioner(_get_database(), FernetFieldEncryptor(settings))
 
 
 def get_permission_checker(

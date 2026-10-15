@@ -259,6 +259,26 @@ class PermissionRepository(Protocol):
 
 
 @runtime_checkable
+class CustomerLoginProvisioner(Protocol):
+    """Creates the Customer App login for a customer the agency registered.
+
+    Customers added on the dashboard have a `customer.customer` row but no
+    `identity.identity_user`, so OTP sign-in had nothing to log them in as.
+    `VerifyOtpUseCase` calls this once the OTP has matched and no login exists
+    for the phone number.
+    """
+
+    async def provision(self, tenant_id: uuid.UUID, phone_number: str) -> IdentityUser | None:
+        """Create a `customer` login for the tenant's customer with this phone
+        number and link it to the customer, in one transaction.
+
+        Returns `None`, creating nothing, when the tenant has no such customer
+        or `Customer.can_get_app_login` is false.
+        """
+        ...
+
+
+@runtime_checkable
 class TenantSlugResolver(Protocol):
     """Resolves a human-readable agency code (`tenant.slug`) to its UUID.
 

@@ -2,6 +2,24 @@
 
 The LPG Agency customer-facing Flutter app.
 
+## Testing on a phone against the UAT server
+
+The app defaults to `https://lpg.vitessetec.com`. Build a tester APK that shows
+the sign-in code on screen (there is no SMS gateway yet):
+
+```bash
+flutter build apk --release --dart-define=SHOW_DEV_OTP=true
+```
+
+1. On the dashboard, add a customer with the tester's phone number (E.164,
+   e.g. `+919876543210`). Leave them onboarding, pending approval or active.
+2. In the app, enter the agency code (the tenant slug) and that exact number.
+3. Request the code, type the code shown in the "Testing only" banner, and
+   sign in. The first sign-in creates the customer's app login (ADR-051).
+
+The banner needs the server to run as UAT (`LPG_ENVIRONMENT=uat`), since the
+dev OTP route does not exist in production.
+
 ## Running against the local backend
 
 Bring up the backend stack (`scripts/dev-up.sh` — Postgres, Redis, MinIO on

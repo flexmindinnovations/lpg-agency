@@ -336,3 +336,32 @@ def test_close_connection_is_terminal():
 
     with pytest.raises(InvariantViolation, match="already closed"):
         customer.close_connection(Decimal("0"))
+
+
+def _customer_with_status(status: str, identity_user_id: uuid.UUID | None = None) -> Customer:
+    return Customer(
+        customer_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        branch_id=uuid.uuid4(),
+        consumer_number="CN-12345",
+        full_name="John Doe",
+        phone_number="+1234567890",
+        status=status,
+        identity_user_id=identity_user_id,
+    )
+
+
+@pytest.mark.parametrize("status", ["onboarding", "pending_approval", "active"])
+def test_a_live_customer_without_a_login_can_get_an_app_login(status: str) -> None:
+    assert _customer_with_status(status).can_get_app_login
+
+
+@pytest.mark.parametrize("status", ["inactive", "blocked", "closed"])
+def test_an_inactive_blocked_or_closed_customer_cannot_get_an_app_login(status: str) -> None:
+    assert not _customer_with_status(status).can_get_app_login
+
+
+def test_a_customer_who_already_has_a_login_cannot_get_another() -> None:
+    customer = _customer_with_status("active", identity_user_id=uuid.uuid4())
+
+    assert not customer.can_get_app_login
