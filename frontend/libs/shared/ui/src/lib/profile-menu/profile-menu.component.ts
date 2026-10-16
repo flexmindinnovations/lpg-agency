@@ -9,7 +9,6 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Avatar } from 'primeng/avatar';
 import { Popover } from 'primeng/popover';
 import { Tooltip } from 'primeng/tooltip';
@@ -37,7 +36,7 @@ function initialsFor(displayName: string): string {
 @Component({
   selector: 'lpg-profile-menu',
   standalone: true,
-  imports: [RouterLink, Avatar, Popover, Tooltip],
+  imports: [Avatar, Popover, Tooltip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button
@@ -97,18 +96,6 @@ function initialsFor(displayName: string): string {
             </button>
           }
         </div>
-
-        <div class="profile-menu__divider" role="separator"></div>
-
-        <a
-          role="menuitem"
-          class="profile-menu__item"
-          [routerLink]="profileRoute()"
-          (click)="popover.hide()"
-        >
-          <i class="pi pi-user" aria-hidden="true"></i>
-          <span>My Profile</span>
-        </a>
 
         <div class="profile-menu__divider" role="separator"></div>
 
@@ -332,7 +319,6 @@ export class ProfileMenuComponent {
   readonly email = input<string | null>(null);
   readonly role = input('');
   readonly collapsed = input(false);
-  readonly profileRoute = input('/profile');
 
   readonly signOut = output<void>();
 

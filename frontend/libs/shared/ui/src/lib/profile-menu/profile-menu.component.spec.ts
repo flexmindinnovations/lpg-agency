@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { ProfileMenuComponent, displayNameFromEmail } from './profile-menu.component';
 
 describe('displayNameFromEmail', () => {
@@ -23,7 +22,7 @@ describe('displayNameFromEmail', () => {
 
 describe('ProfileMenuComponent', () => {
   function create() {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({});
     const fixture = TestBed.createComponent(ProfileMenuComponent);
     fixture.componentRef.setInput('email', 'david.taylor@novastack.dev');
     fixture.componentRef.setInput('role', 'Branch Manager');
@@ -38,6 +37,21 @@ describe('ProfileMenuComponent', () => {
 
     expect(trigger?.getAttribute('aria-label')).toBe('Account menu for David Taylor');
     expect(trigger?.getAttribute('aria-haspopup')).toBe('menu');
+  });
+
+  it('offers the theme options and Sign Out only — personal settings live under Settings', async () => {
+    const fixture = create();
+    (fixture.nativeElement.querySelector('.profile-menu__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const menu = document.body.querySelector('[role="menu"]');
+    expect(menu).not.toBeNull();
+    const items = Array.from(
+      menu!.querySelectorAll('[role="menuitem"], [role="menuitemradio"]'),
+    ).map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim());
+    expect(items).toEqual(['System', 'Light', 'Dark', 'High contrast', 'Sign Out']);
+    expect(menu!.textContent).not.toContain('My Profile');
   });
 
   it('emits signOut when the Sign Out item is activated', () => {

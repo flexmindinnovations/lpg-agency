@@ -64,7 +64,7 @@
   gap: var(--spacing-sm);
   padding: var(--spacing-lg);
   background: var(--component-card-background);
-  border: var(--border-width) solid var(--component-card-border);
+  border: var(--card-border, var(--border-width) solid var(--component-card-border));
   border-radius: var(--radius-card);
 }
 

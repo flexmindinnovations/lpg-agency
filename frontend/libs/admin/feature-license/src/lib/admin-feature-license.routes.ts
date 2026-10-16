@@ -1,6 +1,6 @@
 import type { Route } from '@angular/router';
 
-/** Mounted at `/admin/license`, gated by `license:manage_tenant`. */
+/** Mounted at `/settings/license`, gated by `license:manage_tenant`. */
 export const adminFeatureLicenseRoutes: Route[] = [
   {
     path: '',
@@ -12,7 +12,7 @@ export const adminFeatureLicenseRoutes: Route[] = [
   },
 ];
 
-/** Mounted at `/admin/license/devices`, gated by `license:manage_tenant`. */
+/** Mounted at `/settings/license/devices`, gated by `license:manage_tenant`. */
 export const adminFeatureLicenseDevicesRoutes: Route[] = [
   {
     path: '',

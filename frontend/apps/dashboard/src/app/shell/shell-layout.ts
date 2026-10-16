@@ -11,6 +11,7 @@ import { NotificationBell } from '@lpg/notification/ui-bell';
 import { NotificationDrawer } from '@lpg/notification/ui-drawer';
 import { CommandPaletteComponent } from '../command-palette/command-palette.component';
 import { CommandPaletteService } from '../command-palette/command-palette.service';
+import { visibleSettingsGroups } from '../settings/settings-sections';
 
 /** How often to nag a tenant in its license grace period — matches
  * `NotificationBell`'s own 5-minute polling interval convention. */
@@ -316,41 +317,28 @@ export class ShellLayout {
           condition: can('users:manage'),
         },
         {
-          label: 'Tenant Config',
-          icon: 'pi pi-cog',
-          route: '/admin/tenant-config',
-          condition: can('tenant:configure'),
-        },
-        {
-          label: 'Feature Flags',
-          icon: 'pi pi-flag',
-          route: '/admin/feature-flags',
-          exact: true,
-          condition: can('feature_flags:manage_tenant'),
-        },
-        {
-          label: 'License',
-          icon: 'pi pi-key',
-          route: '/admin/license',
-          exact: true,
-          condition: can('license:manage_tenant'),
-        },
-        {
-          label: 'Linked Devices',
-          icon: 'pi pi-mobile',
-          route: '/admin/license/devices',
-          condition: can('license:manage_tenant'),
-        },
-        {
           label: 'Audit Log',
           icon: 'pi pi-history',
           route: '/admin/audit-log',
           condition: can('audit:read'),
         },
       ]),
+      // Always shown: Settings opens on the personal Account section, which
+      // every role has; agency-wide sections appear inside it by permission.
+      {
+        items: [{ label: 'Settings', icon: 'pi pi-cog', route: '/settings' }],
+      },
     ];
   });
 
-  /** Flat, permission-filtered nav destinations — feeds the command palette. */
-  protected readonly flatNavItems = computed(() => this.navGroups().flatMap((g) => g.items));
+  /** Flat, permission-filtered nav destinations — feeds the command palette.
+   * Settings sections are listed individually so "License" or "Feature Flags"
+   * stay one search away even though they no longer have a sidebar entry. */
+  protected readonly flatNavItems = computed(() => {
+    const permissions = this.tokenStore.principal()?.permissions;
+    const sections = visibleSettingsGroups((code) => permissions?.has(code) ?? false).flatMap(
+      (group) => group.sections,
+    );
+    return [...this.navGroups().flatMap((g) => g.items), ...sections];
+  });
 }

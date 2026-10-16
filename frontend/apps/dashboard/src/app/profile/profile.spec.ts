@@ -1,37 +1,29 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Observable, of, throwError } from 'rxjs';
-import { AdminTenantService, AuthService } from '@lpg/shared/data-access';
+import { AuthService } from '@lpg/shared/data-access';
 import { Profile } from './profile';
 
 describe('Profile', () => {
-  function render(getTenant: () => Observable<{ slug: string }>) {
+  function render(principal: { email: string; role: string } | null) {
     TestBed.configureTestingModule({
-      providers: [
-        {
-          provide: AuthService,
-          useValue: { principal: signal({ email: 'admin@example.com', role: 'agency_admin' }) },
-        },
-        { provide: AdminTenantService, useValue: { getTenant } },
-      ],
+      providers: [{ provide: AuthService, useValue: { principal: signal(principal) } }],
     });
     const fixture = TestBed.createComponent(Profile);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('shows the agency code with a sign-in hint', () => {
-    const html = render(() => of({ slug: 'DEV123456' }));
+  it('shows the signed-in user’s email and role', () => {
+    const html = render({ email: 'admin@example.com', role: 'agency_admin' });
 
-    expect(html.textContent).toContain('Agency code');
-    expect(html.querySelector('.agency-code')?.textContent?.trim()).toBe('DEV123456');
-    expect(html.textContent).toContain('enter this code when signing in');
+    expect(html.textContent).toContain('admin@example.com');
+    expect(html.textContent).toContain('agency_admin');
   });
 
-  it('hides the agency code row when the tenant cannot be read', () => {
-    const html = render(() => throwError(() => new Error('403')));
+  it('falls back to placeholders when there is no principal', () => {
+    const html = render(null);
 
-    expect(html.textContent).not.toContain('Agency code');
-    expect(html.textContent).toContain('admin@example.com');
+    expect(html.textContent).toContain('Not set');
+    expect(html.textContent).toContain('Not assigned');
   });
 });

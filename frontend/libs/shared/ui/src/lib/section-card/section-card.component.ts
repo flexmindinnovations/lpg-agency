@@ -5,6 +5,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
  * form group) — formalises the ad-hoc `.panel` / `.card` markup pages used
  * to hand-roll. Cards share radius / border / surface / spacing (doc §33);
  * only the projected content differs.
+ *
+ * A host area can flatten every card inside it by setting `--card-border`
+ * and/or `--card-shadow` (e.g. `none`) — custom properties inherit through
+ * view encapsulation, so no `::ng-deep` is needed. Unset, cards look as above.
  */
 @Component({
   selector: 'lpg-section-card',
@@ -32,10 +36,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         flex-direction: column;
         gap: var(--spacing-md);
         background: var(--component-card-background);
-        border: var(--border-width) solid var(--component-card-border);
+        border: var(--card-border, var(--border-width) solid var(--component-card-border));
         border-radius: var(--radius-card);
         padding: var(--component-card-padding);
-        box-shadow: var(--elevation-1);
+        box-shadow: var(--card-shadow, var(--elevation-1));
       }
 
       .section-card__header {

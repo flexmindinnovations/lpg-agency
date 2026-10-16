@@ -12,12 +12,12 @@ const _BLOCKING_STATES: readonly LicenseLifecycleState[] = [
   'revoked',
 ];
 
-/** `/admin/license*` must stay reachable even while blocked — it's the one
+/** `/settings/license*` must stay reachable even while blocked — it's the one
  * place a tenant can actually fix a blocked state (activate/renew). Without
  * this exemption, clicking through from `/license-required` to
- * `/admin/license` would immediately bounce right back here. */
+ * `/settings/license` would immediately bounce right back here. */
 function isLicenseManagementRoute(url: string): boolean {
-  return url.startsWith('/admin/license');
+  return url.startsWith('/settings/license');
 }
 
 /**
