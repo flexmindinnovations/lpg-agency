@@ -3094,6 +3094,34 @@
         "title": "EmployeeResponse",
         "type": "object"
       },
+      "EnableDriverLoginResponse": {
+        "properties": {
+          "driver_created": {
+            "title": "Driver Created",
+            "type": "boolean"
+          },
+          "driver_id": {
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "employee_id": {
+            "title": "Employee Id",
+            "type": "string"
+          },
+          "login_created": {
+            "title": "Login Created",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "employee_id",
+          "driver_id",
+          "login_created",
+          "driver_created"
+        ],
+        "title": "EnableDriverLoginResponse",
+        "type": "object"
+      },
       "FeatureFlagEnabledResponse": {
         "properties": {
           "enabled": {
@@ -14257,6 +14285,50 @@
           }
         },
         "summary": "Update Employee",
+        "tags": [
+          "Employees"
+        ]
+      }
+    },
+    "/api/v1/employees/{employee_id}/enable-login": {
+      "post": {
+        "description": "Creates (or adopts) the phone login a driver signs in to the Driver App\nwith and links it to the driver profile, creating the profile if missing.\nSafe to repeat: a driver that already has a login is left untouched.",
+        "operationId": "enable_driver_login_api_v1_employees__employee_id__enable_login_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "employee_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Employee Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnableDriverLoginResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enable the Driver App login for a driver employee",
         "tags": [
           "Employees"
         ]

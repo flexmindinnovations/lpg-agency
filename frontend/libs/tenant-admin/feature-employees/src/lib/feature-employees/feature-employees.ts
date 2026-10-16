@@ -25,8 +25,11 @@ import { Tag } from 'primeng/tag';
 import {
   AdminEmployeeService,
   AdminBranchService,
+  DeliveryService,
+  NotifyService,
   type AppError,
   type BranchResponse,
+  type DriverResponse,
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
 import {
@@ -58,6 +61,9 @@ function errorMessageFor(error: unknown): string {
       return 'Something went wrong. Please try again.';
   }
 }
+
+/** An employee as the grid shows it: the API row plus whether the Driver App login exists. */
+type EmployeeRow = EmployeeResponse & { readonly app_login: string };
 
 const STATUS_SEVERITY: Record<string, ChipSeverity> = {
   active: 'success',
@@ -97,8 +103,14 @@ export class FeatureEmployees implements OnInit {
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly deliveryService = inject(DeliveryService);
+  private readonly notify = inject(NotifyService);
 
   protected readonly employees = signal<EmployeeResponse[]>([]);
+  // `null` until loaded, or when this user cannot read drivers: the login state is then
+  // unknown, so nothing is claimed about it and the enable action stays on offer.
+  private readonly drivers = signal<DriverResponse[] | null>(null);
+  protected readonly enablingLogin = signal(false);
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
@@ -131,6 +143,30 @@ export class FeatureEmployees implements OnInit {
     return map;
   });
 
+  /** employee id → whether their driver profile has a login linked; only known employees. */
+  private readonly driverLoginByEmployee = computed(() => {
+    const map = new Map<string, boolean>();
+    for (const d of this.drivers() ?? []) map.set(d.employee_id, d.identity_user_id != null);
+    return map;
+  });
+
+  protected appLoginLabel(employee: EmployeeResponse): string {
+    if (employee.role !== 'driver') return '—';
+    if (this.drivers() === null) return '—';
+    return this.driverLoginByEmployee().get(employee.id) ? 'Enabled' : 'Not enabled';
+  }
+
+  protected readonly employeeRows = computed<EmployeeRow[]>(() =>
+    this.employees().map((e) => ({ ...e, app_login: this.appLoginLabel(e) })),
+  );
+
+  /** Driver employees whose login is missing, or whose state we cannot tell. */
+  protected readonly canEnableLogin = computed(() => {
+    const e = this.selectedEmployee();
+    if (!e || e.role !== 'driver' || e.status !== 'active') return false;
+    return this.driverLoginByEmployee().get(e.id) !== true;
+  });
+
   protected readonly canDeactivate = computed(() => {
     const status = this.selectedEmployee()?.status;
     return status === 'active' || status === 'on_leave';
@@ -141,7 +177,7 @@ export class FeatureEmployees implements OnInit {
   }
 
   // Column definitions for employees data grid
-  protected readonly columns: DataGridColumn<EmployeeResponse>[] = [
+  protected readonly columns: DataGridColumn<EmployeeRow>[] = [
     {
       field: 'employee_code',
       header: 'Employee Code',
@@ -152,6 +188,7 @@ export class FeatureEmployees implements OnInit {
     { field: 'first_name', header: 'First Name', sortable: true },
     { field: 'last_name', header: 'Last Name', sortable: true },
     { field: 'role', header: 'Role', sortable: true, cellRenderer: StatusChipCell },
+    { field: 'app_login', header: 'App login', sortable: true },
     { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
   ];
 
@@ -184,6 +221,7 @@ export class FeatureEmployees implements OnInit {
   ngOnInit(): void {
     this.loadBranches();
     this.loadEmployees();
+    this.loadDrivers();
 
     const unregisterSearch = this.keyboardShortcuts.register({
       key: '/',
@@ -205,6 +243,15 @@ export class FeatureEmployees implements OnInit {
     this.branchService.listBranches().subscribe({
       next: (branches) => this.branches.set(branches),
       error: () => this.errorMessage.set('Failed to load branches.'),
+    });
+  }
+
+  /** Which driver profiles have a login. Best effort: a user without `drivers:read` just sees
+   * no login column values (the enable action still works), not an error. */
+  protected loadDrivers(): void {
+    this.deliveryService.listDrivers(0, 200).subscribe({
+      next: (page) => this.drivers.set(page.items),
+      error: () => this.drivers.set(null),
     });
   }
 
@@ -320,6 +367,28 @@ export class FeatureEmployees implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  protected enableLogin(): void {
+    const employee = this.selectedEmployee();
+    if (!employee || this.enablingLogin()) return;
+    this.enablingLogin.set(true);
+    this.employeeService.enableDriverLogin(employee.id).subscribe({
+      next: (result) => {
+        const name = `${employee.first_name} ${employee.last_name}`;
+        const profileNote = result.driver_created
+          ? ' A driver profile was created with licence "PENDING" — complete it on the Drivers page.'
+          : '';
+        this.notify.success(
+          `${name} can now sign in to the Driver App with ${employee.phone_number}.${profileNote}`,
+          'Driver app login enabled',
+        );
+        this.enablingLogin.set(false);
+        this.loadDrivers();
+      },
+      // The global error interceptor toasts the server's explanation (e.g. a duplicate phone).
+      error: () => this.enablingLogin.set(false),
+    });
   }
 
   protected confirmDeactivate(): void {

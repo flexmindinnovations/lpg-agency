@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
+import { enableDriverLoginApiV1EmployeesEmployeeIdEnableLoginPost } from './generated/fn/employees/enable-driver-login-api-v-1-employees-employee-id-enable-login-post';
 import { changeEmployeeStatusApiV1EmployeesEmployeeIdStatusPatch } from './generated/fn/employees/change-employee-status-api-v-1-employees-employee-id-status-patch';
 import { getEmployeeApiV1EmployeesEmployeeIdGet } from './generated/fn/employees/get-employee-api-v-1-employees-employee-id-get';
 import { listEmployeesApiV1EmployeesGet } from './generated/fn/employees/list-employees-api-v-1-employees-get';
@@ -11,6 +12,7 @@ import {
   ChangeEmployeeStatusRequest,
   EmployeePageResponse,
   EmployeeResponse,
+  EnableDriverLoginResponse,
   RegisterEmployeeRequest,
   UpdateEmployeeRequest,
 } from './generated/models';
@@ -50,6 +52,15 @@ export class AdminEmployeeService {
       employee_id: employeeId,
       body: data,
     }).pipe(map((response) => response.body));
+  }
+
+  /** Gives a driver employee the phone login the Driver App signs in with (idempotent). */
+  enableDriverLogin(employeeId: string): Observable<EnableDriverLoginResponse> {
+    return enableDriverLoginApiV1EmployeesEmployeeIdEnableLoginPost(
+      this.http,
+      this.config.rootUrl,
+      { employee_id: employeeId },
+    ).pipe(map((response) => response.body));
   }
 
   changeEmployeeStatus(

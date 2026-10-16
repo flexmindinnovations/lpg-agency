@@ -51,3 +51,12 @@ class EmployeePageResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class EnableDriverLoginResponse(BaseModel):
+    employee_id: str
+    driver_id: str
+    #: False when the phone number already had a driver login that was adopted.
+    login_created: bool
+    #: False when the employee already had a driver profile that was linked.
+    driver_created: bool

@@ -77,6 +77,7 @@ export type { DriverPerformanceResponse } from './models/driver-performance-resp
 export type { DriverResponse } from './models/driver-response';
 export type { EmployeePageResponse } from './models/employee-page-response';
 export type { EmployeeResponse } from './models/employee-response';
+export type { EnableDriverLoginResponse } from './models/enable-driver-login-response';
 export type { FeatureFlagEnabledResponse } from './models/feature-flag-enabled-response';
 export type { FeatureFlagOverrideResponse } from './models/feature-flag-override-response';
 export type { FeatureFlagResponse } from './models/feature-flag-response';

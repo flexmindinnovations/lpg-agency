@@ -40,7 +40,7 @@
 
   <section class="grid-section">
     <lpg-data-grid
-      [rows]="employees()"
+      [rows]="employeeRows()"
       [columns]="columns"
       [loading]="loading()"
       ariaLabel="Employees list"
@@ -189,6 +189,12 @@
         <span class="info-label">Email</span>
         <span class="info-value">{{ e.email ?? '—' }}</span>
       </div>
+      @if (e.role === 'driver') {
+      <div class="info-item">
+        <span class="info-label">Driver app login</span>
+        <span class="info-value">{{ appLoginLabel(e) }}</span>
+      </div>
+      }
     </div>
     }
 
@@ -204,7 +210,18 @@
           <i class="pi pi-pencil"></i>
           <span>Edit</span>
         </button>
-        @if (canDeactivate()) {
+        @if (canEnableLogin()) {
+        <button
+          *lpgHasPermission="'users:manage'"
+          pButton
+          type="button"
+          [disabled]="enablingLogin()"
+          (click)="enableLogin()"
+        >
+          <i [class]="enablingLogin() ? 'pi pi-spin pi-spinner' : 'pi pi-key'"></i>
+          <span>Enable app login</span>
+        </button>
+        } @if (canDeactivate()) {
         <button
           *lpgHasPermission="'users:manage'"
           pButton

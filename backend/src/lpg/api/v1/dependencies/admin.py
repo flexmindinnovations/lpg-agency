@@ -31,7 +31,7 @@ from lpg.application.tenant.ports import (
     TenantRepository,
     WarehouseRepository,
 )
-from lpg.application.tenant_admin.ports import EmployeeRepository
+from lpg.application.tenant_admin.ports import DriverLoginProvisioner, EmployeeRepository
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.database import Database
@@ -155,3 +155,11 @@ def get_employee_repository(
     from lpg.infrastructure.persistence.repositories.employee import SqlAlchemyEmployeeRepository
 
     return SqlAlchemyEmployeeRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_driver_login_provisioner() -> DriverLoginProvisioner:
+    from lpg.infrastructure.identity.driver_login_provisioner import (
+        SqlAlchemyDriverLoginProvisioner,
+    )
+
+    return SqlAlchemyDriverLoginProvisioner(_get_database())
