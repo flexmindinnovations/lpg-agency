@@ -1557,16 +1557,23 @@
             "type": "string"
           },
           "booking_source": {
-            "enum": [
-              "mobile_app",
-              "staff",
-              "phone",
-              "walk_in",
-              "whatsapp",
-              "api"
+            "anyOf": [
+              {
+                "enum": [
+                  "mobile_app",
+                  "staff",
+                  "phone",
+                  "walk_in",
+                  "whatsapp",
+                  "api"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Booking Source",
-            "type": "string"
+            "title": "Booking Source"
           },
           "branch_id": {
             "format": "uuid",
@@ -1618,7 +1625,6 @@
           "customer_id",
           "address_id",
           "delivery_address",
-          "booking_source",
           "requested_date",
           "lines"
         ],

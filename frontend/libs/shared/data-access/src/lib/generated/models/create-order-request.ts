@@ -5,7 +5,7 @@ import { CreateOrderLineRequest } from '../models/create-order-line-request';
 import { DeliveryAddressPayload } from '../models/delivery-address-payload';
 export interface CreateOrderRequest {
   address_id: string;
-  booking_source: 'mobile_app' | 'staff' | 'phone' | 'walk_in' | 'whatsapp' | 'api';
+  booking_source?: ('mobile_app' | 'staff' | 'phone' | 'walk_in' | 'whatsapp' | 'api' | null);
   branch_id: string;
   customer_id: string;
   delivery_address: DeliveryAddressPayload;

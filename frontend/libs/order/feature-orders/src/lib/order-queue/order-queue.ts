@@ -39,6 +39,7 @@ import {
   FormFieldComponent,
   HasPermissionDirective,
   PageHeaderComponent,
+  BOOKING_SOURCE_LABELS,
   StatusChipCell,
   shortId,
 } from '@lpg/shared/ui';
@@ -58,14 +59,15 @@ const STATUS_OPTIONS = [
   { label: 'Closed', value: 'closed' },
 ] as const;
 
-const BOOKING_SOURCE_OPTIONS = [
-  { label: 'Staff', value: 'staff' },
-  { label: 'Phone', value: 'phone' },
-  { label: 'Walk-in', value: 'walk_in' },
-  { label: 'Mobile App', value: 'mobile_app' },
-  { label: 'WhatsApp', value: 'whatsapp' },
-  { label: 'API', value: 'api' },
-] as const;
+// What staff can record on a dashboard booking. The server fills in `staff` ("Dashboard") when
+// nothing is chosen and sets `mobile_app` itself for the Customer App, so neither a staff user
+// nor the form can claim it; `api` is for integrations, not people.
+const BOOKING_SOURCE_OPTIONS = (['staff', 'phone', 'walk_in', 'whatsapp'] as const).map(
+  (value) => ({
+    value,
+    label: BOOKING_SOURCE_LABELS[value],
+  }),
+);
 
 @Component({
   selector: 'lpg-order-queue',
@@ -143,7 +145,6 @@ export class OrderQueue implements OnInit {
   protected readonly fieldMessages = {
     customer: { required: 'Select a customer.' },
     address_id: { required: 'Select a delivery address.' },
-    booking_source: { required: 'Select a booking source.' },
     requested_date: { required: 'Pick a requested delivery date.' },
   };
 
@@ -162,7 +163,15 @@ export class OrderQueue implements OnInit {
       cellRenderer: StatusChipCell,
       cellRendererParams: { severityMap: STATUS_SEVERITY },
     },
-    { field: 'booking_source', header: 'Source', cellRenderer: StatusChipCell },
+    {
+      field: 'booking_source',
+      header: 'Source',
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        labelMap: BOOKING_SOURCE_LABELS,
+        severityMap: { mobile_app: 'info' },
+      },
+    },
     {
       field: 'requested_date',
       header: 'Requested',
@@ -180,10 +189,7 @@ export class OrderQueue implements OnInit {
   protected readonly createForm = this.fb.group({
     customer: this.fb.control<CustomerResponse | null>(null, [Validators.required]),
     address_id: ['', [Validators.required]],
-    booking_source: [
-      'staff' as (typeof BOOKING_SOURCE_OPTIONS)[number]['value'],
-      [Validators.required],
-    ],
+    booking_source: ['staff' as (typeof BOOKING_SOURCE_OPTIONS)[number]['value']],
     requested_date: [new Date(), [Validators.required]],
     lines: this.fb.array([this.buildLineGroup()]),
   });

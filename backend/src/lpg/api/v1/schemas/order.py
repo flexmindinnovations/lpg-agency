@@ -149,7 +149,10 @@ class CreateOrderRequest(BaseModel):
     customer_id: uuid.UUID
     address_id: uuid.UUID
     delivery_address: DeliveryAddressPayload
-    booking_source: BookingSource
+    #: Optional: the server decides from who is booking (a customer login is always
+    #: `mobile_app`; staff default to `staff`). Staff may record the channel the customer
+    #: used (`phone`, `walk_in`, `whatsapp`) or `api`, but never `mobile_app`.
+    booking_source: BookingSource | None = None
     requested_date: datetime
     lines: list[CreateOrderLineRequest] = Field(min_length=1)
     payment_method_preference: PaymentMethod | None = None

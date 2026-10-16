@@ -43,3 +43,23 @@ export function formatDecimal(value: unknown, digits = 1): string {
   if (!Number.isFinite(n)) return String(value);
   return new Intl.NumberFormat('en-IN', { maximumFractionDigits: digits }).format(n);
 }
+
+/**
+ * How the dashboard names each order booking source. `staff` reads "Dashboard"
+ * because that is where staff book; the server decides the source from who is
+ * booking (a customer login is the Customer App).
+ */
+export const BOOKING_SOURCE_LABELS: Readonly<Record<string, string>> = {
+  mobile_app: 'Mobile app',
+  staff: 'Dashboard',
+  phone: 'Phone',
+  walk_in: 'Walk-in',
+  whatsapp: 'WhatsApp',
+  api: 'API',
+};
+
+export function bookingSourceLabel(value: unknown): string {
+  if (value == null || value === '') return '—';
+  const key = String(value);
+  return BOOKING_SOURCE_LABELS[key] ?? key;
+}

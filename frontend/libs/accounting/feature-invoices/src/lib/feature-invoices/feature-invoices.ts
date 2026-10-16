@@ -27,6 +27,7 @@ import {
   type PreviewData,
   StatusChipCell,
   type ChipSeverity,
+  bookingSourceLabel,
   toSentenceCase,
   shortId,
 } from '@lpg/shared/ui';
@@ -156,6 +157,7 @@ export class FeatureInvoices implements OnInit {
   };
 
   protected readonly toSentenceCase = toSentenceCase;
+  protected readonly bookingSourceLabel = bookingSourceLabel;
 
   protected statusSeverity(status: string): ChipSeverity {
     return FeatureInvoices.STATUS_SEVERITY[status] ?? 'secondary';

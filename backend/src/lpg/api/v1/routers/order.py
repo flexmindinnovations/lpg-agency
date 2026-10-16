@@ -125,6 +125,7 @@ from lpg.application.identity.ports import (
     OtpStore,
 )
 from lpg.application.inventory.ports import InventoryLocationRepository
+from lpg.application.order.booking_source import resolve_booking_source
 from lpg.application.order.ports import (
     CancellationRecordRepository,
     CreditLimitEvaluator,
@@ -336,6 +337,7 @@ async def create_order(
             )
         customer_id = scoped_id
 
+    booking_source = resolve_booking_source(principal.role, body.booking_source)
     use_case = CreateOrderUseCase(order_repository, unit_of_work, order_number_sequence)
 
     async def _operation() -> dict[str, Any]:
@@ -350,7 +352,7 @@ async def create_order(
                     latitude=body.delivery_address.latitude,
                     longitude=body.delivery_address.longitude,
                 ),
-                booking_source=body.booking_source,
+                booking_source=booking_source,
                 requested_date=body.requested_date,
                 lines=[
                     CreateOrderLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)

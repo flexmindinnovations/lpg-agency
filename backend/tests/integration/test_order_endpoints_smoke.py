@@ -1228,6 +1228,82 @@ class TestBulkCancelSynchronous:
 # ==========================================================================
 
 
+class TestBookingSourceIsDerivedFromTheCaller:
+    """The server decides the booking source; the client's claim cannot override it."""
+
+    async def _book(
+        self,
+        client: AsyncClient,
+        fixtures: _Fixtures,
+        token: str,
+        *,
+        booking_source: str | None,
+    ) -> Any:
+        payload = _create_order_payload(fixtures)
+        if booking_source is None:
+            del payload["booking_source"]
+        else:
+            payload["booking_source"] = booking_source
+        return await client.post(
+            "/api/v1/orders",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}", "Idempotency-Key": str(uuid.uuid4())},
+        )
+
+    async def test_staff_booking_with_no_source_is_recorded_as_the_dashboard(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures = await _seed_full_fixture_set(stack.client, admin_engine_lpg_test)
+
+        response = await self._book(
+            stack.client, fixtures, fixtures.admin_token, booking_source=None
+        )
+
+        assert response.status_code == 201, response.text
+        assert response.json()["booking_source"] == "staff"
+
+    async def test_staff_can_record_the_channel_the_customer_used(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures = await _seed_full_fixture_set(stack.client, admin_engine_lpg_test)
+
+        response = await self._book(
+            stack.client, fixtures, fixtures.admin_token, booking_source="phone"
+        )
+
+        assert response.status_code == 201, response.text
+        assert response.json()["booking_source"] == "phone"
+
+    async def test_staff_cannot_claim_the_customer_app(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures = await _seed_full_fixture_set(stack.client, admin_engine_lpg_test)
+
+        response = await self._book(
+            stack.client, fixtures, fixtures.admin_token, booking_source="mobile_app"
+        )
+
+        assert response.status_code == 422, response.text
+        assert "Customer App" in response.text
+
+    async def test_a_customer_is_recorded_as_the_customer_app_whatever_they_claim(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures = await _seed_full_fixture_set(stack.client, admin_engine_lpg_test)
+
+        claimed_staff = await self._book(
+            stack.client, fixtures, fixtures.customer_token, booking_source="staff"
+        )
+        claimed_nothing = await self._book(
+            stack.client, fixtures, fixtures.customer_token, booking_source=None
+        )
+
+        assert claimed_staff.status_code == 201, claimed_staff.text
+        assert claimed_staff.json()["booking_source"] == "mobile_app"
+        assert claimed_nothing.status_code == 201, claimed_nothing.text
+        assert claimed_nothing.json()["booking_source"] == "mobile_app"
+
+
 class TestRoleScopedReads:
     async def test_customer_sees_only_their_own_order(
         self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
