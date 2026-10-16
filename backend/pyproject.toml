@@ -301,6 +301,8 @@ ignore_imports = [
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.tenant",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.employee",
+    # Gives an existing driver employee the phone login the Driver App signs in with.
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.identity.driver_login_provisioner",
     # Area J (Phase 8): dependencies/customer.py wires customer repository
     "lpg.api.v1.dependencies.customer -> lpg.infrastructure.persistence.repositories.customer",
     "lpg.api.v1.dependencies.customer -> lpg.infrastructure.security.field_encryption",

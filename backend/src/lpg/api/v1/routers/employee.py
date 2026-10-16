@@ -10,23 +10,28 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from lpg.api.v1.dependencies.admin import get_employee_repository
+from lpg.api.v1.dependencies.admin import get_driver_login_provisioner, get_employee_repository
 from lpg.api.v1.dependencies.identity import require_permission
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.employee import (
     ChangeEmployeeStatusRequest,
     EmployeePageResponse,
     EmployeeResponse,
+    EnableDriverLoginResponse,
     RegisterEmployeeRequest,
     UpdateEmployeeRequest,
 )
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.identity.ports import AuthenticatedPrincipal
-from lpg.application.tenant_admin.ports import EmployeeRepository
+from lpg.application.tenant_admin.ports import DriverLoginProvisioner, EmployeeRepository
 from lpg.application.tenant_admin.use_cases.change_employee_status import (
     ChangeEmployeeStatusCommand,
     ChangeEmployeeStatusUseCase,
+)
+from lpg.application.tenant_admin.use_cases.enable_driver_login import (
+    EnableDriverLoginCommand,
+    EnableDriverLoginUseCase,
 )
 from lpg.application.tenant_admin.use_cases.register_employee import (
     RegisterEmployeeCommand,
@@ -213,3 +218,29 @@ async def change_employee_status(
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
     return _to_response(employee)
+
+
+@router.post(
+    "/{employee_id}/enable-login",
+    response_model=EnableDriverLoginResponse,
+    summary="Enable the Driver App login for a driver employee",
+)
+async def enable_driver_login(
+    employee_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    repository: Annotated[EmployeeRepository, Depends(get_employee_repository)],
+    provisioner: Annotated[DriverLoginProvisioner, Depends(get_driver_login_provisioner)],
+) -> EnableDriverLoginResponse:
+    """Creates (or adopts) the phone login a driver signs in to the Driver App
+    with and links it to the driver profile, creating the profile if missing.
+    Safe to repeat: a driver that already has a login is left untouched."""
+    use_case = EnableDriverLoginUseCase(principal, repository, provisioner)
+    result = await use_case.execute(
+        EnableDriverLoginCommand(tenant_id=principal.tenant_id, employee_id=employee_id)
+    )
+    return EnableDriverLoginResponse(
+        employee_id=str(employee_id),
+        driver_id=str(result.driver_id),
+        login_created=result.login_created,
+        driver_created=result.driver_created,
+    )

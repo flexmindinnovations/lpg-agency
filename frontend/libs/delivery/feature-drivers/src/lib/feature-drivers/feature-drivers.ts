@@ -69,6 +69,9 @@ function formatDateForApi(value: unknown): string | undefined {
   return `${year}-${month}-${day}`;
 }
 
+/** A driver as the grid shows it: the API row plus the employee's name. */
+type DriverRow = DriverResponse & { readonly employee_name: string };
+
 @Component({
   selector: 'lpg-feature-drivers',
   standalone: true,
@@ -175,6 +178,14 @@ export class FeatureDrivers implements OnInit {
     return map;
   });
 
+  // `DriverResponse` carries only the employee FK; the person's name lives on
+  // the Employee record, so it is resolved here for the grid's Name column.
+  protected readonly employeeNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const e of this.allEmployees()) map.set(e.id, `${e.first_name} ${e.last_name}`);
+    return map;
+  });
+
   // Unscoped + display-name-mapped — feeds the Edit form's Employee
   // dropdown, distinct from `employees` (branch-scoped, for Register) since
   // reassignment should be able to pick any employee, not just ones in
@@ -225,8 +236,19 @@ export class FeatureDrivers implements OnInit {
   protected readonly registerTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
+  // Grid rows: the filtered drivers plus a derived `employee_name`, so the Name
+  // column sorts and filters on the real text instead of the employee UUID.
+  // A computed (not a one-off map at load) keeps names correct whichever of
+  // the employee and driver requests lands last.
+  protected readonly driverRows = computed<DriverRow[]>(() =>
+    this.filteredDrivers().map((d) => ({
+      ...d,
+      employee_name: this.employeeNameById().get(d.employee_id) ?? '—',
+    })),
+  );
+
   // Column definitions for drivers data grid
-  protected readonly columns: DataGridColumn<DriverResponse>[] = [
+  protected readonly columns: DataGridColumn<DriverRow>[] = [
     {
       field: 'employee_id',
       header: 'Employee Code',
@@ -235,6 +257,7 @@ export class FeatureDrivers implements OnInit {
       valueFormatter: (value) => this.employeeCodeById().get(value as string) ?? (value as string),
       onLinkClick: (row) => this.openDetails(row),
     },
+    { field: 'employee_name', header: 'Name', sortable: true, filterable: true },
     { field: 'license_number', header: 'License Number', sortable: true },
     { field: 'license_expiry_date', header: 'License Expiry', sortable: true },
     {
