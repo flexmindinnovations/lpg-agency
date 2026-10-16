@@ -220,6 +220,7 @@ export class FeatureDrivers implements OnInit {
   protected readonly selectedDriver = signal<DriverResponse | null>(null);
   protected readonly editMode = signal(false);
   protected readonly saving = signal(false);
+  protected readonly enablingLogin = signal(false);
 
   // Compliance-documents panel (drawer) — driver-specific doc types + the
   // owner-scoped list, reloaded whenever the drawer opens or a document is
@@ -372,12 +373,37 @@ export class FeatureDrivers implements OnInit {
     this.deliveryService.listDrivers(0, 100, this.searchQuery() || undefined).subscribe({
       next: (page) => {
         this.drivers.set(page.items);
+        // Keep an open details drawer showing the refreshed row (e.g. a login just enabled).
+        const open = this.selectedDriver();
+        const fresh = open ? page.items.find((d) => d.id === open.id) : undefined;
+        if (fresh) this.selectedDriver.set(fresh);
         this.loading.set(false);
       },
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
         this.loading.set(false);
       },
+    });
+  }
+
+  /** Gives this driver the phone login the Driver App signs in with (the same action as on
+   * the Employees page). The global error interceptor explains a refusal, e.g. a duplicate phone. */
+  protected enableLogin(driver: DriverResponse): void {
+    if (this.enablingLogin()) return;
+    this.enablingLogin.set(true);
+    this.employeeService.enableDriverLogin(driver.employee_id).subscribe({
+      next: () => {
+        const employee = this.allEmployees().find((e) => e.id === driver.employee_id);
+        const who = employee ? `${employee.first_name} ${employee.last_name}` : 'The driver';
+        const phone = employee ? ` with ${employee.phone_number}` : '';
+        this.notify.success(
+          `${who} can now sign in to the Driver App${phone}.`,
+          'Driver app login enabled',
+        );
+        this.enablingLogin.set(false);
+        this.loadDrivers();
+      },
+      error: () => this.enablingLogin.set(false),
     });
   }
 

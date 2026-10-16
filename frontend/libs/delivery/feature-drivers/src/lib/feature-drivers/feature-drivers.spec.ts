@@ -1,11 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, type WritableSignal } from '@angular/core';
+import { of, throwError } from 'rxjs';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
 import { FeatureDrivers } from './feature-drivers';
 import {
+  AdminEmployeeService,
   ApiConfiguration,
+  DeliveryService,
+  NotifyService,
   type DriverResponse,
   type EmployeeResponse,
 } from '@lpg/shared/data-access';
@@ -85,5 +89,95 @@ describe('FeatureDrivers', () => {
 
       expect(internals().driverRows()[0].employee_name).toBe('Ravi Kumar');
     });
+  });
+});
+
+describe('FeatureDrivers — enable app login', () => {
+  const vijay = {
+    id: 'e1',
+    first_name: 'Vijay',
+    last_name: 'Naidu',
+    employee_code: 'EMP-1005',
+    phone_number: '+919848011005',
+  } as EmployeeResponse;
+  const withoutLogin = {
+    id: 'd1',
+    employee_id: 'e1',
+    identity_user_id: null,
+    status: 'active',
+  } as DriverResponse;
+  const withLogin = { ...withoutLogin, identity_user_id: 'u1' } as DriverResponse;
+
+  type Internals = {
+    selectedDriver: { set: (d: DriverResponse | null) => void; (): DriverResponse | null };
+    enablingLogin: () => boolean;
+    enableLogin: (d: DriverResponse) => void;
+  };
+
+  let component: FeatureDrivers;
+  let enableDriverLogin: jest.Mock;
+  let listDrivers: jest.Mock;
+  let success: jest.Mock;
+
+  function create(): void {
+    enableDriverLogin = jest.fn();
+    success = jest.fn();
+    listDrivers = jest.fn().mockReturnValue(of({ items: [withoutLogin], total: 1, page: 1 }));
+    TestBed.configureTestingModule({
+      imports: [FeatureDrivers],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
+        MessageService,
+        { provide: PERMISSION_CHECKER, useValue: signal(null) },
+        {
+          provide: AdminEmployeeService,
+          useValue: {
+            listEmployees: () => of({ items: [vijay], total: 1, page: 1 }),
+            enableDriverLogin,
+          },
+        },
+        { provide: DeliveryService, useValue: { listDrivers } },
+        { provide: NotifyService, useValue: { success } },
+      ],
+    });
+    const fixture = TestBed.createComponent(FeatureDrivers);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  }
+
+  const internals = () => component as unknown as Internals;
+
+  it('enables the login for the driver’s employee, says who can sign in, and refreshes the drawer', () => {
+    create();
+    enableDriverLogin.mockReturnValue(
+      of({ employee_id: 'e1', driver_id: 'd1', login_created: true, driver_created: false }),
+    );
+    listDrivers.mockReturnValue(of({ items: [withLogin], total: 1, page: 1 }));
+    internals().selectedDriver.set(withoutLogin);
+
+    internals().enableLogin(withoutLogin);
+
+    expect(enableDriverLogin).toHaveBeenCalledWith('e1');
+    expect(success).toHaveBeenCalledWith(
+      'Vijay Naidu can now sign in to the Driver App with +919848011005.',
+      'Driver app login enabled',
+    );
+    // The open drawer now shows the refreshed row, so it flips to "Enabled".
+    expect(internals().selectedDriver()?.identity_user_id).toBe('u1');
+    expect(internals().enablingLogin()).toBe(false);
+  });
+
+  it('stops the spinner and stays quiet when the server refuses (the global handler explains)', () => {
+    create();
+    enableDriverLogin.mockReturnValue(throwError(() => new Error('409')));
+    internals().selectedDriver.set(withoutLogin);
+
+    internals().enableLogin(withoutLogin);
+
+    expect(success).not.toHaveBeenCalled();
+    expect(internals().enablingLogin()).toBe(false);
+    expect(internals().selectedDriver()?.identity_user_id).toBeNull();
   });
 });

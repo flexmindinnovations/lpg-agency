@@ -217,6 +217,12 @@
             [severity]="statusSeverity(driver.status)"
           />
         </div>
+        <div class="detail-item">
+          <span class="detail-label">Mobile App Login</span>
+          <span class="detail-value"
+            >{{ driver.identity_user_id ? 'Enabled' : 'Not enabled' }}</span
+          >
+        </div>
 
         <lpg-compliance-documents-panel
           [documents]="driverDocuments()"
@@ -233,6 +239,19 @@
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="closeDetails()">Close</button>
+        @if (!driver.identity_user_id) {
+        <button
+          *lpgHasPermission="'users:manage'"
+          pButton
+          type="button"
+          severity="secondary"
+          [disabled]="enablingLogin()"
+          (click)="enableLogin(driver)"
+        >
+          <i [class]="enablingLogin() ? 'pi pi-spin pi-spinner' : 'pi pi-key'"></i>
+          <span>Enable app login</span>
+        </button>
+        }
         <button *lpgHasPermission="'drivers:manage'" pButton type="button" (click)="startEdit()">
           <i class="pi pi-pencil"></i>
           <span>Edit</span>
