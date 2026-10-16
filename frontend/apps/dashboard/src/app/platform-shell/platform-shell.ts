@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
-import { AuthService, AuthTokenStore } from '@lpg/shared/data-access';
+import { AuthService, AuthTokenStore, HARD_NAVIGATE } from '@lpg/shared/data-access';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 
@@ -43,15 +43,13 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 export class PlatformShell {
   private readonly authService = inject(AuthService);
   private readonly tokenStore = inject(AuthTokenStore);
-  private readonly router = inject(Router);
+  private readonly hardNavigate = inject(HARD_NAVIGATE);
 
   protected readonly email = computed(() => this.authService.principal()?.email ?? null);
   protected readonly role = computed(() => this.authService.principal()?.role ?? '');
 
   protected onSignOut(): void {
-    this.authService.logout().subscribe(() => {
-      void this.router.navigateByUrl('/login');
-    });
+    this.authService.logout().subscribe(() => this.hardNavigate('/login'));
   }
 
   /** Nav tree filtered to the platform permissions the current session

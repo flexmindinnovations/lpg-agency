@@ -1,10 +1,10 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { InjectionToken, inject } from '@angular/core';
 import { ConfirmationService } from 'primeng/api';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { AuthTokenStore } from './auth-token.store';
+import { HARD_NAVIGATE } from './hard-navigate';
 
 /** Never bearer-attach or retry-on-401 the endpoints that issue/rotate tokens themselves. */
 const AUTH_ENDPOINT_SEGMENTS = ['/auth/login', '/auth/refresh', '/auth/otp/verify'];
@@ -34,10 +34,18 @@ function isAuthEndpoint(url: string): boolean {
  * every request, not just genuine expiry. Order in `app.config.ts`:
  * `[correlationIdInterceptor, authInterceptor, problemDetailsInterceptor]`.
  */
+// Several requests fail together when a session ends; one dialog is enough. Held in an
+// injectable (not a module variable) so each app instance and each test starts clean.
+const SESSION_EXPIRED_DIALOG = new InjectionToken<{ open: boolean }>('SESSION_EXPIRED_DIALOG', {
+  providedIn: 'root',
+  factory: () => ({ open: false }),
+});
+
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authService = inject(AuthService);
   const tokenStore = inject(AuthTokenStore);
-  const router = inject(Router);
+  const hardNavigate = inject(HARD_NAVIGATE);
+  const dialogState = inject(SESSION_EXPIRED_DIALOG);
   const confirmationService = inject(ConfirmationService);
 
   const token = tokenStore.accessToken();
@@ -59,16 +67,23 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           ),
           catchError((retryError: unknown) => {
             tokenStore.clear();
-            confirmationService.confirm({
-              header: 'Session Expired',
-              message: 'Your session has expired. Please log in again to continue.',
-              icon: 'pi pi-exclamation-circle',
-              acceptLabel: 'Log In',
-              rejectVisible: false,
-              accept: () => {
-                void router.navigate(['/login']);
-              },
-            });
+            if (!dialogState.open) {
+              dialogState.open = true;
+              // A full page load, not `router.navigate`: see `HARD_NAVIGATE`. The dialog
+              // cannot be dismissed any other way, so the user always ends up at sign-in.
+              const toLogin = () => hardNavigate('/login');
+              confirmationService.confirm({
+                header: 'Session Expired',
+                message: 'Your session has expired. Please log in again to continue.',
+                icon: 'pi pi-exclamation-circle',
+                acceptLabel: 'Log In',
+                rejectVisible: false,
+                closable: false,
+                closeOnEscape: false,
+                accept: toLogin,
+                reject: toLogin,
+              });
+            }
             return throwError(() => retryError);
           }),
         );

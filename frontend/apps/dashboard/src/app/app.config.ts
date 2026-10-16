@@ -1,6 +1,11 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
+import {
+  provideRouter,
+  withComponentInputBinding,
+  withNavigationErrorHandler,
+  withViewTransitions,
+} from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import {
@@ -17,7 +22,12 @@ import { environment } from '../environments/environment';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { PERMISSION_CHECKER, API_BASE_URL } from '@lpg/shared/util';
 import { inject } from '@angular/core';
-import { AuthService } from '@lpg/shared/data-access';
+import {
+  AuthService,
+  HARD_NAVIGATE,
+  isStaleAssetError,
+  reloadOnceForStaleAsset,
+} from '@lpg/shared/data-access';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -31,6 +41,14 @@ export const appConfig: ApplicationConfig = {
     provideRouter(
       appRoutes,
       withComponentInputBinding(),
+      // A tab left open across a deploy runs the old build; the server then answers its lazy
+      // chunk requests with index.html and the navigation dies silently (menu clicks, sign-out,
+      // the login page). Reload the target once so the tab picks up the current build.
+      withNavigationErrorHandler((navigationError) => {
+        if (isStaleAssetError(navigationError.error)) {
+          reloadOnceForStaleAsset(navigationError.url, inject(HARD_NAVIGATE));
+        }
+      }),
       // Native View Transitions API cross-fade between routes (Phase 29
       // Stage 1). Progressive enhancement — a no-op in browsers without
       // `document.startViewTransition`. The actual animation is styled on

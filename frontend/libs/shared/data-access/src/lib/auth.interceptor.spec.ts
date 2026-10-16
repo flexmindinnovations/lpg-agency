@@ -6,19 +6,23 @@ import { ConfirmationService } from 'primeng/api';
 import { authInterceptor } from './auth.interceptor';
 import { problemDetailsInterceptor } from './problem-details';
 import { AuthTokenStore } from './auth-token.store';
+import { HARD_NAVIGATE } from './hard-navigate';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
   let httpTesting: HttpTestingController;
   let tokenStore: AuthTokenStore;
+  let hardNavigate: jest.Mock;
 
   beforeEach(() => {
+    hardNavigate = jest.fn();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
         ConfirmationService,
+        { provide: HARD_NAVIGATE, useValue: hardNavigate },
       ],
     });
 
@@ -96,6 +100,43 @@ describe('authInterceptor', () => {
     expect(completed).toBe(false);
     expect(tokenStore.accessToken()).toBeNull();
     expect(confirmSpy).toHaveBeenCalledWith(expect.objectContaining({ header: 'Session Expired' }));
+  });
+
+  it('shows the session-expired dialog once when several requests fail together', () => {
+    tokenStore.setAccessToken('stale-token');
+    const confirmSpy = jest.spyOn(TestBed.inject(ConfirmationService), 'confirm');
+    const urls = ['/api/v1/orders', '/api/v1/customers', '/api/v1/notifications/unread-count'];
+
+    for (const url of urls) http.get(url).subscribe({ error: () => undefined });
+    for (const url of urls) {
+      httpTesting.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+    }
+    httpTesting
+      .expectOne('/api/v1/auth/refresh')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the user to the login page with a full page load, however the dialog is closed', () => {
+    tokenStore.setAccessToken('stale-token');
+    const confirmSpy = jest.spyOn(TestBed.inject(ConfirmationService), 'confirm');
+    http.get('/api/v1/orders').subscribe({ error: () => undefined });
+    httpTesting
+      .expectOne('/api/v1/orders')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    httpTesting
+      .expectOne('/api/v1/auth/refresh')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    const options = confirmSpy.mock.calls[0][0];
+
+    expect(options.closable).toBe(false);
+    expect(options.closeOnEscape).toBe(false);
+    options.accept?.();
+    options.reject?.();
+
+    expect(hardNavigate).toHaveBeenCalledTimes(2);
+    expect(hardNavigate).toHaveBeenCalledWith('/login');
   });
 });
 
