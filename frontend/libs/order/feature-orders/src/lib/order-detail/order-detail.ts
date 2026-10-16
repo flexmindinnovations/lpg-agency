@@ -1,5 +1,10 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
+import {
+  FormFieldComponent,
+  HasPermissionDirective,
+  bookingSourceLabel,
+  shortId,
+} from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -239,6 +244,7 @@ export class OrderDetail implements OnInit {
   );
 
   protected readonly statusLabel = statusLabel;
+  protected readonly bookingSourceLabel = bookingSourceLabel;
   protected readonly statusSeverity = statusSeverity;
   protected readonly failedDeliveryReasons = [...FAILED_DELIVERY_REASONS];
   protected readonly resolutionActions = [...RESOLUTION_ACTIONS];

@@ -100,10 +100,11 @@
         </lpg-form-field>
 
         <lpg-form-field
-          label="Booking source"
+          label="Booked via"
           for="create_booking_source"
+          [optional]="true"
+          hint="Recorded automatically as Dashboard. Change it only for an order the customer placed by phone, in person or on WhatsApp."
           [control]="createForm.controls.booking_source"
-          [messages]="fieldMessages.booking_source"
         >
           <p-select
             inputId="create_booking_source"

@@ -90,9 +90,10 @@ export class StatusChipCell {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
   agInit(params: any): void {
     const raw = params.value;
-    this.label.set(toSentenceCase(raw));
-    const map: Record<string, ChipSeverity> | undefined = params.severityMap;
     const key = typeof raw === 'string' ? raw.toLowerCase() : '';
+    const labelMap: Record<string, string> | undefined = params.labelMap;
+    this.label.set(labelMap?.[key] ?? toSentenceCase(raw));
+    const map: Record<string, ChipSeverity> | undefined = params.severityMap;
     this.severity.set(map?.[key] ?? DEFAULT_SEVERITY_BY_VALUE[key] ?? 'secondary');
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
