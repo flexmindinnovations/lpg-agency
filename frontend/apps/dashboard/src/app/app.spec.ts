@@ -41,12 +41,42 @@ describe('Routing foundation', () => {
     // the server re-enforces every one of these regardless.
     // 'design-system' is an internal component/token reference — it shows
     // no tenant data, so it carries no permission guard by design.
-    const exempt = new Set(['', 'profile', 'notifications', 'design-system', '**']);
+    // 'settings' is the frame only — its children carry their own guards (checked below).
+    const exempt = new Set(['', 'settings', 'notifications', 'design-system', '**']);
     const shellRoute = appRoutes.find((route) => route.path === '');
     const children = shellRoute?.children ?? [];
     for (const child of children) {
-      if (exempt.has(child.path ?? '')) continue;
+      // Legacy-URL redirects never render anything, so they need no guard.
+      if (exempt.has(child.path ?? '') || child.redirectTo) continue;
       expect(child.canActivate).toBeTruthy();
     }
+  });
+
+  it('guards every agency-wide Settings section; only Account is open to all roles', () => {
+    const shellRoute = appRoutes.find((route) => route.path === '');
+    const settings = shellRoute?.children?.find((child) => child.path === 'settings');
+    const sections = (settings?.children ?? []).filter((child) => !child.redirectTo);
+    expect(sections.length).toBeGreaterThan(0);
+    for (const section of sections) {
+      if (section.path === 'account') continue;
+      expect(section.canActivate).toBeTruthy();
+    }
+  });
+
+  it('redirects every pre-Settings URL to its new home', () => {
+    const shellRoute = appRoutes.find((route) => route.path === '');
+    const redirects = Object.fromEntries(
+      (shellRoute?.children ?? [])
+        .filter((child) => child.redirectTo)
+        .map((child) => [child.path, child.redirectTo]),
+    );
+    expect(redirects).toEqual({
+      profile: 'settings/account',
+      'admin/tenant-config': 'settings/configuration',
+      'admin/tenant-config/tdt-rating': 'settings/configuration/tdt-rating',
+      'admin/feature-flags': 'settings/feature-flags',
+      'admin/license': 'settings/license',
+      'admin/license/devices': 'settings/license/devices',
+    });
   });
 });

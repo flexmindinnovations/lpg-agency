@@ -77,10 +77,118 @@ export const appRoutes: Route[] = [
         title: 'LPG Agency Management Platform',
       },
       {
-        path: 'profile',
-        loadComponent: () => import('./profile/profile').then((m) => m.Profile),
-        title: 'My Profile',
+        // One home for personal and agency-wide settings. The shell
+        // only supplies the frame and section nav; every section is still its
+        // own lazy route with its own permission guard, so a section the user
+        // cannot open is hidden from the nav and refused by the router.
+        path: 'settings',
+        loadComponent: () => import('./settings/settings-shell').then((m) => m.SettingsShell),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'account' },
+          {
+            path: 'account',
+            loadComponent: () => import('./profile/profile').then((m) => m.Profile),
+            title: 'My Profile',
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'My Profile', routerLink: '/settings/account' },
+              ],
+            },
+          },
+          {
+            path: 'agency',
+            canActivate: [permissionGuard('tenant:read')],
+            loadComponent: () =>
+              import('./settings/agency/agency-settings').then((m) => m.AgencySettings),
+            title: 'Agency',
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Agency', routerLink: '/settings/agency' },
+              ],
+            },
+          },
+          {
+            path: 'configuration',
+            canActivate: [permissionGuard('tenant:configure')],
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Configuration', routerLink: '/settings/configuration' },
+              ],
+            },
+            loadChildren: () =>
+              import('@lpg/admin/feature-tenant-settings').then(
+                (m) => m.adminFeatureTenantConfigurationRoutes,
+              ),
+          },
+          {
+            path: 'configuration/tdt-rating',
+            canActivate: [permissionGuard('tenant:configure')],
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Configuration', routerLink: '/settings/configuration' },
+                { label: 'TDT Rating', routerLink: '/settings/configuration/tdt-rating' },
+              ],
+            },
+            loadChildren: () =>
+              import('@lpg/compliance/feature-tdt-rating').then((m) => m.complianceTdtRatingRoutes),
+          },
+          {
+            path: 'feature-flags',
+            canActivate: [permissionGuard('feature_flags:manage_tenant')],
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Feature Flags', routerLink: '/settings/feature-flags' },
+              ],
+            },
+            loadChildren: () =>
+              import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
+          },
+          {
+            path: 'license/devices',
+            canActivate: [permissionGuard('license:manage_tenant')],
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'Linked Devices', routerLink: '/settings/license/devices' },
+              ],
+            },
+            loadChildren: () =>
+              import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseDevicesRoutes),
+          },
+          {
+            path: 'license',
+            canActivate: [permissionGuard('license:manage_tenant')],
+            data: {
+              breadcrumbs: [
+                { label: 'Settings' },
+                { label: 'License', routerLink: '/settings/license' },
+              ],
+            },
+            loadChildren: () =>
+              import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseRoutes),
+          },
+        ],
       },
+      // Pre-Settings URLs — kept so bookmarks and links already shared keep working.
+      { path: 'profile', pathMatch: 'full', redirectTo: 'settings/account' },
+      {
+        path: 'admin/tenant-config/tdt-rating',
+        pathMatch: 'full',
+        redirectTo: 'settings/configuration/tdt-rating',
+      },
+      { path: 'admin/tenant-config', pathMatch: 'full', redirectTo: 'settings/configuration' },
+      { path: 'admin/feature-flags', pathMatch: 'full', redirectTo: 'settings/feature-flags' },
+      {
+        path: 'admin/license/devices',
+        pathMatch: 'full',
+        redirectTo: 'settings/license/devices',
+      },
+      { path: 'admin/license', pathMatch: 'full', redirectTo: 'settings/license' },
       {
         // Internal design-system reference (Phase 29). No permission gate —
         // it shows components and tokens, no tenant data. Reached from the
@@ -241,33 +349,6 @@ export const appRoutes: Route[] = [
           ),
       },
       {
-        path: 'admin/tenant-config',
-        canActivate: [permissionGuard('tenant:configure')],
-        data: {
-          breadcrumbs: [
-            { label: 'Admin' },
-            { label: 'Tenant Config', routerLink: '/admin/tenant-config' },
-          ],
-        },
-        loadChildren: () =>
-          import('@lpg/admin/feature-tenant-settings').then(
-            (m) => m.adminFeatureTenantConfigurationRoutes,
-          ),
-      },
-      {
-        path: 'admin/tenant-config/tdt-rating',
-        canActivate: [permissionGuard('tenant:configure')],
-        data: {
-          breadcrumbs: [
-            { label: 'Admin' },
-            { label: 'Tenant Config', routerLink: '/admin/tenant-config' },
-            { label: 'TDT Rating', routerLink: '/admin/tenant-config/tdt-rating' },
-          ],
-        },
-        loadChildren: () =>
-          import('@lpg/compliance/feature-tdt-rating').then((m) => m.complianceTdtRatingRoutes),
-      },
-      {
         path: 'admin/price-lists',
         canActivate: [permissionGuard('tenant:configure')],
         data: {
@@ -278,39 +359,6 @@ export const appRoutes: Route[] = [
         },
         loadChildren: () =>
           import('@lpg/admin/feature-tenant-settings').then((m) => m.adminFeaturePriceListRoutes),
-      },
-      {
-        path: 'admin/feature-flags',
-        canActivate: [permissionGuard('feature_flags:manage_tenant')],
-        data: {
-          breadcrumbs: [
-            { label: 'Admin' },
-            { label: 'Feature Flags', routerLink: '/admin/feature-flags' },
-          ],
-        },
-        loadChildren: () =>
-          import('@lpg/admin/feature-flags').then((m) => m.adminFeatureFlagsRoutes),
-      },
-      {
-        path: 'admin/license/devices',
-        canActivate: [permissionGuard('license:manage_tenant')],
-        data: {
-          breadcrumbs: [
-            { label: 'Admin' },
-            { label: 'Linked Devices', routerLink: '/admin/license/devices' },
-          ],
-        },
-        loadChildren: () =>
-          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseDevicesRoutes),
-      },
-      {
-        path: 'admin/license',
-        canActivate: [permissionGuard('license:manage_tenant')],
-        data: {
-          breadcrumbs: [{ label: 'Admin' }, { label: 'License', routerLink: '/admin/license' }],
-        },
-        loadChildren: () =>
-          import('@lpg/admin/feature-license').then((m) => m.adminFeatureLicenseRoutes),
       },
       {
         path: 'admin/users',

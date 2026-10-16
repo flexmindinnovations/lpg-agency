@@ -157,7 +157,7 @@ export class LicenseRequired implements OnInit {
   }
 
   protected goToActivation(): void {
-    void this.router.navigateByUrl('/admin/license');
+    void this.router.navigateByUrl('/settings/license');
   }
 
   protected recheck(): void {

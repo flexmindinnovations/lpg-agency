@@ -1,6 +1,6 @@
 import type { Route } from '@angular/router';
 
-/** Mounted at `/admin/feature-flags`, gated by `feature_flags:manage_tenant`. */
+/** Mounted at `/settings/feature-flags`, gated by `feature_flags:manage_tenant`. */
 export const adminFeatureFlagsRoutes: Route[] = [
   {
     path: '',

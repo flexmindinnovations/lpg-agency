@@ -27,9 +27,10 @@ test.describe('Profile menu', () => {
     const menu = page.getByRole('menu');
     await expect(menu).toBeVisible();
 
-    await expect(menu.getByRole('menuitem', { name: 'My Profile' })).toBeVisible();
-    await expect(menu.getByRole('menuitem', { name: 'Design system' })).toBeVisible();
+    await expect(menu.getByRole('menuitemradio')).toHaveCount(4);
     await expect(menu.getByRole('menuitem', { name: 'Sign Out' })).toBeVisible();
+    // Personal settings live under Settings in the sidebar, not in this menu.
+    await expect(menu.getByRole('menuitem', { name: 'My Profile' })).toHaveCount(0);
   });
 
   test('Arrow keys move focus between menu items', async ({ page }) => {
@@ -38,13 +39,13 @@ test.describe('Profile menu', () => {
     const menu = page.getByRole('menu');
     await expect(menu).toBeVisible();
 
-    const myProfile = menu.getByRole('menuitem', { name: 'My Profile' });
-    await myProfile.focus();
-    await page.keyboard.press('ArrowDown');
-    await expect(menu.getByRole('menuitem', { name: 'Design system' })).toBeFocused();
-
+    const signOut = menu.getByRole('menuitem', { name: 'Sign Out' });
+    await signOut.focus();
     await page.keyboard.press('ArrowUp');
-    await expect(myProfile).toBeFocused();
+    await expect(menu.getByRole('menuitemradio', { name: 'High contrast' })).toBeFocused();
+
+    await page.keyboard.press('ArrowDown');
+    await expect(signOut).toBeFocused();
   });
 
   test('selecting a theme switches it without closing the menu', async ({ page }) => {

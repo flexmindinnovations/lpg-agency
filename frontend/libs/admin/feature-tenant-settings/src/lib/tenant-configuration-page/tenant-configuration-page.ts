@@ -211,7 +211,7 @@ class ConfigKeyCell {
 
       <div class="structured-editors">
         <span class="structured-editors__label">Structured editors:</span>
-        <a routerLink="/admin/tenant-config/tdt-rating" class="structured-editors__link">
+        <a routerLink="/settings/configuration/tdt-rating" class="structured-editors__link">
           <i class="pi pi-star-fill" aria-hidden="true"></i>
           TDT Rating (bands &amp; fine schedule)
         </a>
