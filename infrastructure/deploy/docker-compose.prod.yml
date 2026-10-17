@@ -2,6 +2,7 @@
 #
 #   cd /opt/lpg-agency/infrastructure/deploy
 #   ./generate-env.sh          # once: writes .env with fresh secrets
+#   cp integrations.env.example integrations.env   # optional: SMS, payments, WhatsApp, AI, push
 #   ./deploy.sh                # manual: build on this server, migrate, (re)start
 #
 # Images are named ghcr.io/<owner>/lpg-{backend,web}:${IMAGE_TAG}. CI builds and
@@ -10,6 +11,9 @@
 #
 # Only Caddy publishes ports (80/443). Postgres and Redis are reachable
 # on the internal compose network only. Secrets come from ./.env (git-ignored).
+# Third-party credentials (MSG91, Razorpay, WhatsApp, Anthropic, FCM) come from
+# ./integrations.env (git-ignored, optional), loaded by backend and worker only,
+# so the Postgres admin password in .env never reaches the app containers.
 
 name: lpg-agency
 
@@ -96,6 +100,9 @@ services:
       dockerfile: Dockerfile
     image: ${BACKEND_IMAGE:-ghcr.io/flexmindinnovations/lpg-backend}:${IMAGE_TAG:-local}
     restart: unless-stopped
+    env_file: &integrations-env
+      - path: integrations.env
+        required: false
     environment:
       <<: *backend-env
       # 1 vCPU / 2 GB host: gunicorn's default (2*cores+1) would be too many.
@@ -120,6 +127,7 @@ services:
     pull_policy: never
     restart: unless-stopped
     command: ["arq", "lpg.infrastructure.jobs.worker.WorkerSettings"]
+    env_file: *integrations-env
     environment: *backend-env
     depends_on:
       backend:
