@@ -17,7 +17,7 @@ Plan: [PLAN.md](./PLAN.md).
 
 ## Follow-ups (not started)
 
-- [ ] Razorpay `PaymentLinkPort` adapter, once the Razorpay payment API exists.
+- [ ] Razorpay `PaymentLinkPort` adapter wrapping `CreateOrderPaymentLinkUseCase` from the Razorpay PR (#12), once it merges. Only the adapter and the job wiring change; the tool and prompt already handle links.
 - [ ] Proactive order-status notifications through approved message templates (outside the 24-hour window).
 - [ ] A separate token budget for WhatsApp, if sharing `ai_daily_token_budget` with the AI Command Center proves too coarse.
 - [ ] Retention policy for `messaging.whatsapp_message`.
