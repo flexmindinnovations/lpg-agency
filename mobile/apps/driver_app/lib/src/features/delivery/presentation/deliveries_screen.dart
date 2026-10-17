@@ -15,8 +15,6 @@ class DeliveriesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
     final routeAsync = ref.watch(activeRouteProvider);
     final historyAsync = ref.watch(routeHistoryProvider);
 
@@ -29,51 +27,63 @@ class DeliveriesScreen extends ConsumerWidget {
           await ref.read(activeRouteProvider.future);
         },
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: LpgSpacing.page,
           children: [
-            _sectionLabel(theme, colors, 'Current route'),
-            const SizedBox(height: 8),
+            LpgSectionHeader(
+              title: 'Current route',
+              subtitle: routeAsync.value == null
+                  ? null
+                  : _progressLabel(routeAsync.value!),
+            ),
             routeAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: LpgLoadingIndicator()),
-              ),
-              error: (err, _) => LpgEmptyState(
+              loading: () => const _SectionSkeleton(),
+              error: (err, _) => LpgErrorState(
                 message: 'Could not load your route.\n$err',
-                icon: Icons.error_outline,
-                actionLabel: 'Retry',
-                onAction: () => ref.invalidate(activeRouteProvider),
+                onRetry: () => ref.invalidate(activeRouteProvider),
               ),
               data: (route) {
                 if (route == null) {
-                  return const _MutedNote('No active route right now.');
+                  return const _MutedNote(
+                    'No active route right now.',
+                    icon: LpgIcons.truck,
+                  );
                 }
                 return Column(
                   children: [
-                    for (final stop in route.stops)
-                      StopTile(
-                        stop: stop,
-                        onTap: () => context.goNamed(
-                          'stop',
-                          pathParameters: {'orderId': stop.orderId},
+                    for (final (i, stop) in route.stops.indexed)
+                      LpgFadeSlideIn(
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: LpgSpacing.smd,
+                          ),
+                          child: StopTile(
+                            stop: stop,
+                            onTap: () => context.goNamed(
+                              'stop',
+                              pathParameters: {'orderId': stop.orderId},
+                            ),
+                          ),
                         ),
                       ),
                   ],
                 );
               },
             ),
-            const SizedBox(height: 24),
-            _sectionLabel(theme, colors, 'Past routes'),
-            const SizedBox(height: 8),
+            const SizedBox(height: LpgSpacing.md),
+            const LpgSectionHeader(title: 'Past routes'),
             historyAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: LpgLoadingIndicator()),
+              loading: () => const _SectionSkeleton(),
+              error: (err, _) => const _MutedNote(
+                'Could not load history.',
+                icon: LpgIcons.error,
               ),
-              error: (err, _) => const _MutedNote('Could not load history.'),
               data: (routes) {
                 if (routes.isEmpty) {
-                  return const _MutedNote('No finished routes yet.');
+                  return const _MutedNote(
+                    'No finished routes yet.',
+                    icon: LpgIcons.history,
+                  );
                 }
                 final pendingCashRouteId = ref
                     .watch(pendingCashHandoverProvider)
@@ -81,16 +91,24 @@ class DeliveriesScreen extends ConsumerWidget {
                     ?.routeId;
                 return Column(
                   children: [
-                    for (final r in routes)
-                      _HistoryRow(
-                        route: r,
-                        cashPending: r.id == pendingCashRouteId,
-                        onTap: r.status == 'completed'
-                            ? () => context.goNamed(
-                                'cashHandover',
-                                pathParameters: {'routeId': r.id},
-                              )
-                            : null,
+                    for (final (i, r) in routes.indexed)
+                      LpgFadeSlideIn(
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: LpgSpacing.smd,
+                          ),
+                          child: _HistoryRow(
+                            route: r,
+                            cashPending: r.id == pendingCashRouteId,
+                            onTap: r.status == 'completed'
+                                ? () => context.goNamed(
+                                    'cashHandover',
+                                    pathParameters: {'routeId': r.id},
+                                  )
+                                : null,
+                          ),
+                        ),
                       ),
                   ],
                 );
@@ -102,13 +120,22 @@ class DeliveriesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _sectionLabel(ThemeData theme, LpgColors colors, String text) => Text(
-    text,
-    style: theme.textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-      color: colors.textPrimary,
-    ),
-  );
+  static String _progressLabel(RouteSummary route) {
+    final done = route.stops
+        .where((s) => s.status == 'delivered' || s.status == 'failed')
+        .length;
+    return '$done of ${route.stops.length} completed';
+  }
+}
+
+/// A short shimmer placeholder for one section while it loads — the screen
+/// keeps its two-section shape instead of collapsing to a spinner.
+class _SectionSkeleton extends StatelessWidget {
+  const _SectionSkeleton();
+
+  @override
+  Widget build(BuildContext context) =>
+      const LpgSkeletonList(itemCount: 2, padding: EdgeInsets.zero);
 }
 
 class _HistoryRow extends StatelessWidget {
@@ -124,57 +151,61 @@ class _HistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final date = route.date;
-    final dateLabel = date == null
-        ? 'Route'
-        : '${date.year}-${_two(date.month)}-${_two(date.day)}';
+    final dateLabel = date == null ? 'Route' : LpgFormat.date(date);
     final n = route.stops.length;
+    final cancelled = route.status == 'cancelled';
     return LpgCard(
       padding: EdgeInsets.zero,
       onTap: onTap,
       child: LpgListTile(
-        leadingIcon: Icons.history,
+        leadingIcon: LpgIcons.history,
+        leadingTone: LpgTone.neutral,
         title: dateLabel,
         subtitle:
             '$n stop${n == 1 ? '' : 's'} · '
-            '${route.status.replaceAll('_', ' ')}',
+            '${LpgFormat.sentence(route.status)}',
         trailing: cashPending
             ? const LpgStatusBadge(
                 label: 'CASH PENDING',
                 severity: LpgStatusSeverity.warning,
               )
             : Icon(
-                route.status == 'cancelled'
-                    ? Icons.cancel_outlined
-                    : Icons.check_circle_outline,
-                color: route.status == 'cancelled'
-                    ? colors.statusDanger
-                    : colors.statusSuccess,
+                cancelled ? LpgIcons.cancel : LpgIcons.success,
+                size: LpgSizes.iconMd,
+                color: cancelled ? colors.statusDanger : colors.statusSuccess,
               ),
+        showChevron: onTap != null,
       ),
     );
   }
-
-  String _two(int v) => v.toString().padLeft(2, '0');
 }
 
 class _MutedNote extends StatelessWidget {
-  const _MutedNote(this.text);
+  const _MutedNote(this.text, {required this.icon});
 
   final String text;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        text,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: colors.textSecondary,
-        ),
+      padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
+      child: Row(
+        children: [
+          Icon(icon, size: LpgSizes.iconMd, color: colors.textSecondary),
+          const SizedBox(width: LpgSpacing.smd),
+          Expanded(
+            child: Text(
+              text,
+              style: context.lpgText.bodyMedium?.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

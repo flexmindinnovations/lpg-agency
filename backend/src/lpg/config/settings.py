@@ -204,7 +204,7 @@ class Settings(BaseSettings):
     # DLT allows only registered templates, so every message needs an ID;
     # a message whose ID is unset fails (and is logged as failed) rather
     # than going out as free text. Template wording and variable names:
-    # `planning/features/34-sms-gateway/PLAN.md`.
+    # `planning/features/36-sms-gateway/PLAN.md`.
     sms_provider: Literal["stub", "msg91"] = "stub"
     sms_request_timeout_seconds: float = Field(default=10.0, gt=0)
     msg91_auth_key: SecretStr = SecretStr("")

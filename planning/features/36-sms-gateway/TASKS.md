@@ -6,7 +6,7 @@
 - [x] 4. Notification job sends order SMS by template; API lifespan + worker own one channel each
 - [x] 5. Delivery OTP is best-effort in `DepartOrderUseCase`
 - [x] 6. Unit tests; integration test doubles updated
-- [x] 7. ADR-052, `.env.example`, production compose env, MODULE_STATUS row
+- [x] 7. ADR-054, `.env.example`, production compose env, MODULE_STATUS row
 - [ ] 8. Register DLT entity, sender header and the five templates; create MSG91 templates (product owner)
 - [ ] 9. Set the env vars on UAT/production and send one real SMS per template
 

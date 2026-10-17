@@ -37,15 +37,16 @@ Widget _screen({ComplaintResponse? complaint, Object? error}) => ProviderScope(
 
 void main() {
   group('ComplaintDetailScreen', () {
-    testWidgets('renders the humanized category, description and pending copy', (
-      tester,
-    ) async {
-      await pumpScreen(tester, _screen(complaint: _complaint()));
+    testWidgets(
+      'renders the humanized category, description and pending copy',
+      (tester) async {
+        await pumpScreen(tester, _screen(complaint: _complaint()));
 
-      expect(find.text('Late Delivery'), findsOneWidget);
-      expect(find.text('Cylinder arrived a day late.'), findsOneWidget);
-      expect(find.textContaining("We're on it"), findsOneWidget);
-    });
+        expect(find.text('Late Delivery'), findsOneWidget);
+        expect(find.text('Cylinder arrived a day late.'), findsOneWidget);
+        expect(find.textContaining("We're on it"), findsOneWidget);
+      },
+    );
 
     testWidgets('shows the resolution when the complaint is resolved', (
       tester,

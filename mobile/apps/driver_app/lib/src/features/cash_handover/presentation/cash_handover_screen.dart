@@ -44,25 +44,12 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm cash handover'),
-        content: Text(
-          'Hand over ₹${amount.toStringAsFixed(2)} for the '
-          '${_formatDate(view.routeDate)} route? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
+    final confirmed = await LpgFeedback.confirm(
+      context,
+      title: 'Confirm cash handover',
+      message:
+          'Hand over ${_money(amount)} for the '
+          '${LpgFormat.date(view.routeDate)} route? This cannot be undone.',
     );
     if (confirmed != true || !mounted) return;
 
@@ -94,9 +81,11 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
     // re-fetches and shows the real receipt.
     ref.invalidate(pendingCashHandoverProvider);
     ref.invalidate(routeHistoryProvider);
-    ScaffoldMessenger.of(
+    LpgFeedback.showToast(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Cash handover submitted.')));
+      'Cash handover submitted.',
+      tone: LpgTone.success,
+    );
     setState(() => _submitting = false);
   }
 
@@ -107,12 +96,10 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Cash handover')),
       body: viewAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 3),
+        error: (err, _) => LpgErrorState(
           message: 'Could not load this route.\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () =>
+          onRetry: () =>
               ref.invalidate(routeCashHandoverProvider(widget.routeId)),
         ),
         data: (view) {
@@ -130,10 +117,12 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
           }
           if (view.routeStatus != 'completed') {
             return const LpgEmptyState(
+              title: 'Route in progress',
               message:
                   'This route is still in progress. Reconcile the cash once '
                   'every stop is done.',
-              icon: Icons.pending_outlined,
+              icon: LpgIcons.pending,
+              tone: LpgTone.warning,
             );
           }
           return _DeclareForm(
@@ -151,7 +140,7 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
   }
 }
 
-String _money(double v) => '₹${v.toStringAsFixed(2)}';
+String _money(double v) => LpgFormat.currency(v);
 
 /// Shown after a declaration is queued but hasn't synced yet.
 class _QueuedNotice extends StatelessWidget {
@@ -159,14 +148,12 @@ class _QueuedNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const LpgEmptyState(
+    title: 'Queued',
     message: 'Cash handover submitted.\nIt will sync once you are back online.',
-    icon: Icons.cloud_upload_outlined,
+    icon: LpgIcons.upload,
+    tone: LpgTone.info,
   );
 }
-
-String _formatDate(DateTime d) =>
-    '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-    '${d.day.toString().padLeft(2, '0')}';
 
 class _DeclareForm extends StatelessWidget {
   const _DeclareForm({
@@ -189,71 +176,61 @@ class _DeclareForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
+    final text = context.lpgText;
     final stops = view.cashStopCount;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: LpgSpacing.page,
       children: [
         if (error != null) ...[
-          _ErrorBanner(message: error!),
-          const SizedBox(height: 16),
+          LpgBanner(tone: LpgTone.danger, message: error!),
+          const SizedBox(height: LpgSpacing.md),
         ],
-        LpgCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${_formatDate(view.routeDate)} route',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary,
+        LpgFadeSlideIn(
+          child: LpgHeroCard(
+            watermark: LpgIcons.wallet,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Expected cash · ${LpgFormat.date(view.routeDate)} route',
+                  style: text.titleSmall?.copyWith(color: colors.onHero),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Expected cash',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.textSecondary,
+                const SizedBox(height: LpgSpacing.sm),
+                Text(
+                  _money(view.expectedAmount),
+                  style: text.displaySmall?.copyWith(color: colors.onHero),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _money(view.expectedAmount),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
+                const SizedBox(height: LpgSpacing.xs),
+                Text(
+                  'from $stops cash ${stops == 1 ? 'delivery' : 'deliveries'} '
+                  'on this route',
+                  style: text.bodyMedium?.copyWith(color: colors.onHero),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'from $stops cash ${stops == 1 ? 'delivery' : 'deliveries'} '
-                'on this route',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: LpgSpacing.lg),
         LpgTextField(
-          label: 'Amount handed over (₹)',
+          label: 'Amount handed over',
+          isRequired: true,
+          prefixIcon: LpgIcons.rupee,
           controller: amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: (_) => onAmountChanged(),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: LpgSpacing.sm),
         _DeltaLine(expected: view.expectedAmount, entered: entered),
-        const SizedBox(height: 32),
+        const SizedBox(height: LpgSpacing.xl),
         LpgButton(
           label: 'Declare handover',
-          icon: Icons.account_balance_wallet_outlined,
+          icon: LpgIcons.handover,
           expand: true,
           isLoading: submitting,
           onPressed: submitting ? null : onDeclare,
         ),
-        const SizedBox(height: 24),
       ],
     );
   }
@@ -267,36 +244,42 @@ class _DeltaLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
+    final value = entered;
 
-    if (entered == null) {
+    if (value == null) {
       return Text(
         'Count the cash and enter the total.',
-        style: theme.textTheme.bodySmall?.copyWith(color: colors.textSecondary),
+        style: text.bodySmall?.copyWith(color: colors.textSecondary),
       );
     }
 
-    final diff = entered! - expected;
-    final (String label, Color color) = switch (diff) {
+    final diff = value - expected;
+    final (String label, LpgTone tone, IconData icon) = switch (diff) {
       _ when diff.abs() < 0.005 => (
         'Matches the expected ${_money(expected)}',
-        colors.statusSuccess,
+        LpgTone.success,
+        LpgIcons.successFilled,
       ),
-      _ when diff < 0 => ('Short by ${_money(-diff)}', colors.statusDanger),
-      _ => ('Over by ${_money(diff)}', colors.statusWarning),
+      _ when diff < 0 => (
+        'Short by ${_money(-diff)}',
+        LpgTone.danger,
+        LpgIcons.warning,
+      ),
+      _ => ('Over by ${_money(diff)}', LpgTone.warning, LpgIcons.info),
     };
+    final color = tone.foreground(colors);
 
-    return Row(
-      children: [
-        Icon(
-          diff.abs() < 0.005 ? Icons.check_circle_outline : Icons.info_outline,
-          size: 16,
-          color: color,
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: color)),
-      ],
+    return Semantics(
+      liveRegion: true,
+      child: Row(
+        children: [
+          Icon(icon, size: LpgSizes.iconSm, color: color),
+          const SizedBox(width: LpgSpacing.sm),
+          Text(label, style: text.labelLarge?.copyWith(color: color)),
+        ],
+      ),
     );
   }
 }
@@ -309,133 +292,86 @@ class _Receipt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final short = handover.shortfall > 0;
     final over = handover.surplus > 0;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: LpgSpacing.page,
       children: [
-        LpgCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    handover.handoverNumber ?? 'Cash handover',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
+        LpgFadeSlideIn(
+          child: LpgCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const LpgIconBox(icon: LpgIcons.receipt),
+                    const SizedBox(width: LpgSpacing.smd),
+                    Expanded(
+                      child: Text(
+                        handover.handoverNumber ?? 'Cash handover',
+                        style: context.lpgText.titleMedium,
+                      ),
                     ),
-                  ),
-                  LpgStatusBadge(
-                    label: short
-                        ? 'SHORT'
-                        : over
-                        ? 'OVER'
-                        : 'RECONCILED',
-                    severity: short
-                        ? LpgStatusSeverity.danger
-                        : over
-                        ? LpgStatusSeverity.warning
-                        : LpgStatusSeverity.success,
+                    LpgStatusBadge(
+                      label: short
+                          ? 'SHORT'
+                          : over
+                          ? 'OVER'
+                          : 'RECONCILED',
+                      severity: short
+                          ? LpgStatusSeverity.danger
+                          : over
+                          ? LpgStatusSeverity.warning
+                          : LpgStatusSeverity.success,
+                    ),
+                  ],
+                ),
+                const Divider(height: LpgSpacing.xl),
+                LpgKeyValueRow(
+                  label: 'Expected',
+                  value: _money(handover.expectedAmount),
+                ),
+                const SizedBox(height: LpgSpacing.sm),
+                LpgKeyValueRow(
+                  label: 'Handed over',
+                  value: _money(handover.actualAmount),
+                ),
+                if (short) ...[
+                  const SizedBox(height: LpgSpacing.sm),
+                  LpgKeyValueRow(
+                    label: 'Shortfall',
+                    value: _money(handover.shortfall),
+                    emphasize: true,
+                    valueColor: colors.statusDanger,
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              _AmountRow(label: 'Expected', value: handover.expectedAmount),
-              const SizedBox(height: 8),
-              _AmountRow(label: 'Handed over', value: handover.actualAmount),
-              if (short) ...[
-                const SizedBox(height: 8),
-                _AmountRow(
-                  label: 'Shortfall',
-                  value: handover.shortfall,
-                  emphasise: colors.statusDanger,
+                if (over) ...[
+                  const SizedBox(height: LpgSpacing.sm),
+                  LpgKeyValueRow(
+                    label: 'Over',
+                    value: _money(handover.surplus),
+                    emphasize: true,
+                    valueColor: colors.statusWarning,
+                  ),
+                ],
+                const SizedBox(height: LpgSpacing.md),
+                Text(
+                  'Declared ${LpgFormat.date(handover.declaredAt)}',
+                  style: context.lpgText.bodySmall,
                 ),
               ],
-              if (over) ...[
-                const SizedBox(height: 8),
-                _AmountRow(
-                  label: 'Over',
-                  value: handover.surplus,
-                  emphasise: colors.statusWarning,
-                ),
-              ],
-              const SizedBox(height: 16),
-              Text(
-                'Declared ${_formatDate(handover.declaredAt)}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        Text(
-          "This route's cash has been reconciled.",
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colors.textSecondary,
-          ),
+        const SizedBox(height: LpgSpacing.md),
+        const LpgBanner(
+          tone: LpgTone.success,
+          icon: LpgIcons.successFilled,
+          message: "This route's cash has been reconciled.",
         ),
       ],
-    );
-  }
-}
-
-class _AmountRow extends StatelessWidget {
-  const _AmountRow({required this.label, required this.value, this.emphasise});
-
-  final String label;
-  final double value;
-  final Color? emphasise;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
-    final style = theme.textTheme.bodyLarge?.copyWith(
-      color: emphasise ?? colors.textPrimary,
-      fontWeight: emphasise != null ? FontWeight.bold : FontWeight.normal,
-    );
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: style),
-        Text(_money(value), style: style),
-      ],
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.statusDanger.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.statusDanger),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: colors.statusDanger),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(message, style: TextStyle(color: colors.statusDanger)),
-          ),
-        ],
-      ),
     );
   }
 }

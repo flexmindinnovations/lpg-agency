@@ -19,4 +19,4 @@ The 18 errors are the app lifespan timing out while trying to reach MinIO, which
 
 - A real SMS through MSG91 (needs DLT approval + keys).
 
-Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-052.
+Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-054.

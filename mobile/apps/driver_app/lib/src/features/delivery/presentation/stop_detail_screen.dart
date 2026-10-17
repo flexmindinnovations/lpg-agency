@@ -20,107 +20,42 @@ class StopDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
     final orderAsync = ref.watch(stopOrderProvider(orderId));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Delivery')),
       // The shell (this screen now lives under the Deliveries branch) owns
       // the offline banner and the bottom bar.
-      body: _body(context, ref, theme, colors, orderAsync),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    WidgetRef ref,
-    ThemeData theme,
-    LpgColors colors,
-    AsyncValue<OrderResponse> orderAsync,
-  ) {
-    return orderAsync.when(
-      loading: () => const Center(child: LpgLoadingIndicator()),
-      error: (err, _) => LpgEmptyState(
-        message: 'Could not load this stop.\n$err',
-        icon: Icons.error_outline,
-        actionLabel: 'Retry',
-        onAction: () => ref.invalidate(stopOrderProvider(orderId)),
-      ),
-      data: (order) {
-        final cylinders = order.lines.fold<int>(
-          0,
-          (sum, l) => sum + l.quantityOrdered,
-        );
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            LpgCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        order.orderNumber ??
-                            '#${order.id.substring(0, 8).toUpperCase()}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (ref
-                                  .watch(pendingSyncAggregatesProvider)
-                                  .value
-                                  ?.contains(orderId) ??
-                              false) ...[
-                            const LpgStatusBadge(
-                              label: 'PENDING SYNC',
-                              severity: LpgStatusSeverity.info,
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          LpgStatusBadge(
-                            label: order.status
-                                .replaceAll('_', ' ')
-                                .toUpperCase(),
-                            severity: _severity(order.status),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _DetailRow(
-                    icon: Icons.location_on_outlined,
-                    text: order.deliveryAddress.addressLine,
-                  ),
-                  const SizedBox(height: 8),
-                  _DetailRow(
-                    icon: Icons.propane_tank_outlined,
-                    text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
-                  ),
-                  if (order.totalAmount != null) ...[
-                    const SizedBox(height: 8),
-                    _DetailRow(
-                      icon: Icons.payments_outlined,
-                      text: 'Collect ₹${order.totalAmount!.toStringAsFixed(2)}',
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+      body: orderAsync.when(
+        loading: () => const LpgSkeletonList(itemCount: 3),
+        error: (err, _) => LpgErrorState(
+          message: 'Could not load this stop.\n$err',
+          onRetry: () => ref.invalidate(stopOrderProvider(orderId)),
+        ),
+        data: (order) {
+          final pendingSync =
+              ref
+                  .watch(pendingSyncAggregatesProvider)
+                  .value
+                  ?.contains(orderId) ??
+              false;
+          final children = [
+            _SummaryCard(order: order, pendingSync: pendingSync),
             StopMapCard(orderId: order.id),
-            const SizedBox(height: 24),
-            ..._actions(context, ref, order),
-          ],
-        );
-      },
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _actions(context, ref, order),
+            ),
+          ];
+          return ListView.separated(
+            padding: LpgSpacing.page,
+            itemCount: children.length,
+            separatorBuilder: (_, _) => const SizedBox(height: LpgSpacing.md),
+            itemBuilder: (context, i) =>
+                LpgFadeSlideIn(index: i, child: children[i]),
+          );
+        },
+      ),
     );
   }
 
@@ -134,6 +69,7 @@ class StopDetailScreen extends ConsumerWidget {
         return [
           LpgButton(
             label: 'Start this delivery',
+            icon: LpgIcons.navigate,
             expand: true,
             onPressed: () => _run(
               context,
@@ -148,15 +84,16 @@ class StopDetailScreen extends ConsumerWidget {
           LpgButton(
             label: 'Record delivery',
             expand: true,
-            icon: Icons.check_circle_outline,
+            icon: LpgIcons.check,
             onPressed: () => context.goNamed(
               'deliver',
               pathParameters: {'orderId': order.id},
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: LpgSpacing.smd),
           LpgButton(
             label: 'Delivery failed',
+            icon: LpgIcons.cancel,
             variant: LpgButtonVariant.secondary,
             expand: true,
             onPressed: () => _openFailedSheet(context, ref, order.id),
@@ -164,11 +101,12 @@ class StopDetailScreen extends ConsumerWidget {
         ];
       default:
         return [
-          LpgEmptyState(
+          LpgBanner(
+            tone: _severity(order.status).tone,
+            icon: LpgIcons.allDone,
             message:
                 'Nothing to do here — this stop is '
-                '${order.status.replaceAll('_', ' ')}.',
-            icon: Icons.done_all,
+                '${LpgFormat.sentence(order.status).toLowerCase()}.',
           ),
         ];
     }
@@ -211,23 +149,24 @@ class StopDetailScreen extends ConsumerWidget {
     Future<void> Function() action, {
     required String doneMessage,
   }) async {
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await action();
     } catch (e) {
       if (!context.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text("Couldn't queue that: $e")),
+      LpgFeedback.showToast(
+        context,
+        "Couldn't queue that: $e",
+        tone: LpgTone.danger,
       );
       return;
     }
     if (!context.mounted) return;
     ref.invalidate(stopOrderProvider(orderId));
     ref.invalidate(activeRouteProvider);
-    messenger.showSnackBar(SnackBar(content: Text(doneMessage)));
+    LpgFeedback.showToast(context, doneMessage, tone: LpgTone.success);
   }
 
-  LpgStatusSeverity _severity(String status) => switch (status) {
+  static LpgStatusSeverity _severity(String status) => switch (status) {
     'delivered' => LpgStatusSeverity.success,
     'failed_delivery' || 'cancelled' => LpgStatusSeverity.danger,
     'out_for_delivery' => LpgStatusSeverity.warning,
@@ -235,29 +174,88 @@ class StopDetailScreen extends ConsumerWidget {
   };
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.icon, required this.text});
+/// Order number, status, address, cylinders and the amount to collect.
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.order, required this.pendingSync});
 
-  final IconData icon;
-  final String text;
+  final OrderResponse order;
+  final bool pendingSync;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: colors.textSecondary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colors.textPrimary,
-            ),
+    final cylinders = order.lines.fold<int>(
+      0,
+      (sum, l) => sum + l.quantityOrdered,
+    );
+    return LpgCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  order.orderNumber ??
+                      '#${order.id.substring(0, 8).toUpperCase()}',
+                  style: context.lpgText.titleLarge,
+                ),
+              ),
+              if (pendingSync) ...[
+                const LpgStatusBadge(
+                  label: 'PENDING SYNC',
+                  severity: LpgStatusSeverity.info,
+                  icon: LpgIcons.sync,
+                ),
+                const SizedBox(width: LpgSpacing.sm),
+              ],
+              LpgStatusBadge(
+                label: LpgFormat.statusLabel(order.status),
+                severity: StopDetailScreen._severity(order.status),
+              ),
+            ],
           ),
-        ),
+          const Divider(height: LpgSpacing.xl),
+          _DetailRow(
+            icon: LpgIcons.location,
+            text: order.deliveryAddress.addressLine,
+          ),
+          const SizedBox(height: LpgSpacing.smd),
+          _DetailRow(
+            icon: LpgIcons.cylinder,
+            text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
+          ),
+          if (order.totalAmount != null) ...[
+            const SizedBox(height: LpgSpacing.smd),
+            _DetailRow(
+              icon: LpgIcons.cash,
+              tone: LpgTone.accent,
+              text: 'Collect ${LpgFormat.currency(order.totalAmount!)}',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.icon,
+    required this.text,
+    this.tone = LpgTone.neutral,
+  });
+
+  final IconData icon;
+  final String text;
+  final LpgTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        LpgIconBox(icon: icon, tone: tone, size: LpgSizes.avatarSm),
+        const SizedBox(width: LpgSpacing.smd),
+        Expanded(child: Text(text, style: context.lpgText.bodyLarge)),
       ],
     );
   }

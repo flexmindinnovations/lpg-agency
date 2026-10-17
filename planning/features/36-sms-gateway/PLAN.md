@@ -2,7 +2,7 @@
 
 ## Goal
 
-Login OTPs, delivery OTPs and order status SMS were never sent: OTPs went to `LoggingOtpDelivery` (log line + non-production dev inbox) and order SMS to `StubSmsChannel` (log line). Send them for real through an Indian, DLT-compliant provider, behind the existing ports so another provider can be swapped in. Requested 2026-10-17; provider default **MSG91** (ADR-052).
+Login OTPs, delivery OTPs and order status SMS were never sent: OTPs went to `LoggingOtpDelivery` (log line + non-production dev inbox) and order SMS to `StubSmsChannel` (log line). Send them for real through an Indian, DLT-compliant provider, behind the existing ports so another provider can be swapped in. Requested 2026-10-17; provider default **MSG91** (ADR-054).
 
 ## Design
 

@@ -47,8 +47,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final async = ref.watch(driverNotificationsProvider);
 
     return Scaffold(
@@ -56,66 +55,78 @@ class NotificationsScreen extends ConsumerWidget {
         title: const Text('Alerts'),
         actions: [
           if (async.value?.any((n) => !n.isRead) ?? false)
-            TextButton(
+            TextButton.icon(
               onPressed: () => _markAllRead(ref),
-              child: const Text('Mark all read'),
+              icon: const Icon(LpgIcons.allDone, size: LpgSizes.iconSm),
+              label: const Text('Mark all read'),
             ),
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(),
+        error: (err, _) => LpgErrorState(
           message: 'Could not load your alerts.\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.invalidate(driverNotificationsProvider),
+          onRetry: () => ref.invalidate(driverNotificationsProvider),
         ),
         data: (items) {
           if (items.isEmpty) {
             return const LpgEmptyState(
+              title: 'All caught up',
               message: 'No alerts yet.',
-              icon: Icons.notifications_none_outlined,
+              icon: LpgIcons.notificationsOff,
             );
           }
           return RefreshIndicator(
             onRefresh: () => ref.refresh(driverNotificationsProvider.future),
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: LpgSpacing.page,
               itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: LpgSpacing.sm),
               itemBuilder: (context, i) {
                 final item = items[i];
-                final d = item.createdAt;
-                return LpgCard(
-                  padding: EdgeInsets.zero,
-                  onTap: () => _handleTap(context, ref, item),
-                  child: LpgListTile(
-                    leadingIcon: _iconFor(item.notificationType),
-                    title: item.title,
-                    subtitle: item.body,
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${d.year}-${_two(d.month)}-${_two(d.day)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.textSecondary,
+                final (icon, tone) = _iconFor(item.notificationType);
+                return LpgFadeSlideIn(
+                  index: i,
+                  child: LpgCard(
+                    // Unread items sit on a tinted card so they stand out
+                    // without relying on the dot alone.
+                    variant: item.isRead
+                        ? LpgCardVariant.outlined
+                        : LpgCardVariant.tonal,
+                    padding: EdgeInsets.zero,
+                    child: LpgListTile(
+                      onTap: () => _handleTap(context, ref, item),
+                      leadingIcon: icon,
+                      leadingTone: tone,
+                      title: item.title,
+                      subtitle: item.body,
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            LpgFormat.relative(item.createdAt),
+                            style: context.lpgText.bodySmall,
                           ),
-                        ),
-                        if (!item.isRead)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: colors.actionPrimary,
-                                shape: BoxShape.circle,
+                          if (!item.isRead)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: LpgSpacing.xs,
+                              ),
+                              child: Semantics(
+                                label: 'Unread',
+                                child: Container(
+                                  width: LpgSpacing.sm,
+                                  height: LpgSpacing.sm,
+                                  decoration: BoxDecoration(
+                                    color: colors.accent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -127,13 +138,11 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  static IconData _iconFor(String type) => switch (type) {
-    'route_ready' => Icons.local_shipping_outlined,
-    'driver_assigned' => Icons.add_location_alt_outlined,
-    'stop_cancelled' => Icons.cancel_outlined,
-    'delivery_confirmed' => Icons.check_circle_outline,
-    _ => Icons.notifications_outlined,
+  static (IconData, LpgTone) _iconFor(String type) => switch (type) {
+    'route_ready' => (LpgIcons.truck, LpgTone.primary),
+    'driver_assigned' => (LpgIcons.addLocation, LpgTone.info),
+    'stop_cancelled' => (LpgIcons.cancel, LpgTone.danger),
+    'delivery_confirmed' => (LpgIcons.success, LpgTone.success),
+    _ => (LpgIcons.notifications, LpgTone.neutral),
   };
-
-  static String _two(int v) => v.toString().padLeft(2, '0');
 }

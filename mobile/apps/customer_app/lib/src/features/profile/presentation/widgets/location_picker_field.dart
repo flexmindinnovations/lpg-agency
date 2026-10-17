@@ -33,63 +33,72 @@ class LocationPickerField extends StatelessWidget {
     if (picked != null) onChanged(picked);
   }
 
+  static const _previewHeight = 140.0;
+  static const _pinnedZoom = 16.0;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final pinned = value;
 
-    if (value == null) {
-      return OutlinedButton.icon(
+    if (pinned == null) {
+      return LpgButton(
+        label: 'Pin location on map (optional)',
+        icon: LpgIcons.addLocation,
+        variant: LpgButtonVariant.secondary,
+        expand: true,
         onPressed: () => _openPicker(context),
-        icon: const Icon(Icons.add_location_alt_outlined),
-        label: const Text('Pin location on map (optional)'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
-          side: BorderSide(color: colors.borderDefault),
-          foregroundColor: colors.textPrimary,
-        ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 140,
-            child: LocationMap(
-              key: ValueKey(value),
-              center: value!,
-              zoom: 16,
-              tileProvider: tileProvider,
-              markers: [pinMarker(point: value!, color: colors.actionPrimary)],
+    return LpgCard(
+      variant: LpgCardVariant.outlined,
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(LpgRadius.xl),
             ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Icon(Icons.check_circle, size: 16, color: colors.statusSuccess),
-            const SizedBox(width: 6),
-            Text(
-              'Location pinned',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.textSecondary,
+            child: SizedBox(
+              height: _previewHeight,
+              child: LocationMap(
+                key: ValueKey(pinned),
+                center: pinned,
+                zoom: _pinnedZoom,
+                tileProvider: tileProvider,
+                markers: [
+                  pinMarker(point: pinned, color: colors.actionPrimary),
+                ],
               ),
             ),
-            const Spacer(),
-            TextButton(
-              onPressed: () => _openPicker(context),
-              child: const Text('Change'),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: LpgSpacing.smd),
+            child: Row(
+              children: [
+                Icon(
+                  LpgIcons.successFilled,
+                  size: LpgSizes.iconSm,
+                  color: colors.statusSuccess,
+                ),
+                const SizedBox(width: LpgSpacing.sm),
+                Text('Location pinned', style: context.lpgText.bodySmall),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => _openPicker(context),
+                  child: const Text('Change'),
+                ),
+                TextButton(
+                  onPressed: () => onChanged(null),
+                  child: const Text('Remove'),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () => onChanged(null),
-              child: const Text('Remove'),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -140,7 +149,7 @@ class _LocationPickerScreenState extends State<_LocationPickerScreen> {
       final pos = await Geolocator.getCurrentPosition();
       final here = LatLng(pos.latitude, pos.longitude);
       setState(() => _pin = here);
-      _mapController.move(here, 16);
+      _mapController.move(here, LocationPickerField._pinnedZoom);
     } catch (_) {
       _snack('Could not get your current location.');
     } finally {
@@ -150,78 +159,74 @@ class _LocationPickerScreenState extends State<_LocationPickerScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    LpgFeedback.showToast(context, message, tone: LpgTone.warning);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final pin = _pin;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Pin delivery location',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Pin delivery location')),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Text(
-              'Tap the map to drop a pin on your building entrance.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.textSecondary,
-              ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(
+              LpgSpacing.md,
+              LpgSpacing.sm,
+              LpgSpacing.md,
+              LpgSpacing.smd,
+            ),
+            child: LpgBanner(
+              icon: LpgIcons.location,
+              message: 'Tap the map to drop a pin on your building entrance.',
             ),
           ),
           Expanded(
             child: LocationMap(
               mapController: _mapController,
-              center: _pin ?? widget.initial ?? _defaultCenter,
-              zoom: _pin != null ? 16 : 4,
+              center: pin ?? widget.initial ?? _defaultCenter,
+              zoom: pin != null ? LocationPickerField._pinnedZoom : 4,
               interactive: true,
               tileProvider: widget.tileProvider,
               onTap: (point) => setState(() => _pin = point),
               markers: [
-                if (_pin != null)
-                  pinMarker(point: _pin!, color: colors.actionPrimary),
+                if (pin != null)
+                  pinMarker(point: pin, color: colors.actionPrimary),
               ],
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _locating ? null : _useCurrentLocation,
-                    icon: _locating
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.my_location),
-                    label: const Text('Use my current location'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.card,
+              border: Border(top: BorderSide(color: colors.borderDefault)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(LpgSpacing.md),
+                child: Column(
+                  children: [
+                    LpgButton(
+                      label: 'Use my current location',
+                      icon: LpgIcons.myLocation,
+                      variant: LpgButtonVariant.secondary,
+                      isLoading: _locating,
+                      expand: true,
+                      onPressed: _useCurrentLocation,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  LpgButton(
-                    label: 'Confirm location',
-                    expand: true,
-                    onPressed: _pin == null
-                        ? null
-                        : () => Navigator.of(context).pop(_pin),
-                  ),
-                ],
+                    const SizedBox(height: LpgSpacing.sm),
+                    LpgButton(
+                      label: 'Confirm location',
+                      icon: LpgIcons.check,
+                      expand: true,
+                      onPressed: pin == null
+                          ? null
+                          : () => Navigator.of(context).pop(pin),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

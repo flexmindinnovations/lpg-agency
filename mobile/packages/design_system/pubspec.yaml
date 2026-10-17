@@ -1,6 +1,6 @@
 name: design_system
-description: Design tokens and theming, generated from the shared token source.
-version: 0.1.0
+description: Design tokens, theming, icons, motion and shared widgets for the LPG mobile apps, generated from the shared token source.
+version: 0.2.0
 publish_to: none
 
 environment:
@@ -10,6 +10,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The one icon set both apps draw from, always through `LpgIcons` so a
+  # future swap is a one-file change. Regular weight for idle states, Fill
+  # for selected ones.
+  lucide_icons_flutter: ^4.0.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -17,3 +22,20 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
+  # Inter is bundled rather than fetched at runtime: no network request on
+  # first launch, and identical metrics on every device. Apps reference it
+  # through `LpgTheme`, which sets `fontFamily: 'packages/design_system/Inter'`.
+  # Licence: fonts/inter/OFL.txt (SIL Open Font License 1.1).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: fonts/inter/Inter-Regular.ttf
+          weight: 400
+        - asset: fonts/inter/Inter-Medium.ttf
+          weight: 500
+        - asset: fonts/inter/Inter-SemiBold.ttf
+          weight: 600
+        - asset: fonts/inter/Inter-Bold.ttf
+          weight: 700
+        - asset: fonts/inter/Inter-ExtraBold.ttf
+          weight: 800

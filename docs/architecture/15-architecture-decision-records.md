@@ -1288,13 +1288,38 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
-## ADR-052: MSG91 as the SMS Provider, Behind a Template-Based `SmsChannel` Port
+## ADR-052: Mobile Design System — Semantic Lucide Icons, Bundled Inter, and a Shared Component Kit
+
+**Status:** Accepted
+
+**Context:** The Customer and Driver apps styled screens individually: raw `Icons.*`, `Colors.white`, numeric spacing and per-screen text styles, so the two apps did not look like one product and rebranding meant editing every screen. The product owner asked for a production UI overhaul on 2026-10-17 without supplying brand assets yet, while three other workstreams (payments, SMS, WhatsApp ordering) are adding screens in parallel.
+
+**Decision:** `mobile/packages/design_system` becomes the only source of visual decisions for both apps:
+- Colours, spacing, radii and type still come from the generated tokens (`design-tokens/tokens.json`); the theme adds an `LpgColors` ThemeExtension with surface roles, a hero gradient and elevation shadows, for light, dark and high contrast.
+- Icons are addressed by meaning through `LpgIcons`, backed by Lucide (`lucide_icons_flutter`, ISC licence). `phosphor_flutter` was tried first and rejected: it does not compile on current Flutter (`IconData` is now `final`).
+- The Inter typeface (SIL OFL) is bundled in the package so text renders identically on every device.
+- Screens are assembled from the package's component kit; statuses, money and dates go through `LpgFormat` and one presentation file per app.
+- Every animation honours `MediaQuery.disableAnimations`, and nothing animates forever once loaded.
+
+**Consequences:**
+- Rebranding is one token edit plus a regenerate, one `LpgBrandMark` image, and one font swap (package README, "Rebranding").
+- New screens from other workstreams get the look by using the kit; raw Material styling in an app is now a review finding.
+- Two new runtime dependencies in `design_system`: `lucide_icons_flutter` and `intl`; app bundles grow by the Inter font files.
+- Widget tests that matched on Material icons or unformatted amounts were updated to the new output (Indian digit grouping, `d MMM yyyy` dates).
+
+**Alternatives Considered:**
+- **Material Symbols only** — rejected: dated look the product owner asked to move away from, and no semantic layer.
+- **A third-party Flutter UI kit** — rejected: would fight the token pipeline the web dashboard shares.
+
+---
+
+## ADR-054: MSG91 as the SMS Provider, Behind a Template-Based `SmsChannel` Port
 
 **Status:** Accepted
 
 **Context:** No SMS was ever sent. Login and delivery OTPs went to `LoggingOtpDelivery` (a log line plus the non-production dev inbox) and order status SMS to `StubSmsChannel`. The product owner asked on 2026-10-17 for a production SMS gateway. In India every A2P SMS must match a template registered on a DLT portal against a registered sender header, so a port that takes free text can't work with any compliant provider.
 
-**Decision:** MSG91 is the default provider (India-first, DLT support, OTP-friendly pricing). `SmsChannel.send` now takes an `SmsTemplate` key and its variables alongside the plain-text body; each key maps to a provider template ID through `LPG_SMS_TEMPLATE_*` settings. `Msg91SmsChannel` calls the Flow API; sender ID, DLT entity and DLT template IDs live on the MSG91 template. `OtpDeliveryPort.send` gains a `purpose` (`login`, `delivery`) so the two OTPs use different templates. `LPG_SMS_PROVIDER=stub` (the default) keeps today's behaviour, so nothing changes until credentials are set. Details and the template wording: `planning/features/34-sms-gateway/PLAN.md`.
+**Decision:** MSG91 is the default provider (India-first, DLT support, OTP-friendly pricing). `SmsChannel.send` now takes an `SmsTemplate` key and its variables alongside the plain-text body; each key maps to a provider template ID through `LPG_SMS_TEMPLATE_*` settings. `Msg91SmsChannel` calls the Flow API; sender ID, DLT entity and DLT template IDs live on the MSG91 template. `OtpDeliveryPort.send` gains a `purpose` (`login`, `delivery`) so the two OTPs use different templates. `LPG_SMS_PROVIDER=stub` (the default) keeps today's behaviour, so nothing changes until credentials are set. Details and the template wording: `planning/features/36-sms-gateway/PLAN.md`.
 
 **Consequences:**
 - Every SMS needs a registered template; a missing template ID fails that message and is recorded as failed in `notification_log`, never sent as free text.
@@ -1361,7 +1386,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 045 | AI Model Gateway as a provider-agnostic tool-calling port, Gemini as the first adapter, a fixed read-only tool registry as the first consumer | Accepted |
 | 046 | Zero-click driver auto-assignment — deterministic scoring, opt-in kill switch, no new system-principal bypass | Accepted |
 | 047 | Global error-toast interceptor replaces per-component toasting, not a per-request opt-in mechanism | Accepted |
-| 052 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
+| 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
 
 ## Deferred Decisions
 

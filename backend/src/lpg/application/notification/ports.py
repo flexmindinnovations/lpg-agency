@@ -71,7 +71,7 @@ class SmsTemplate(StrEnum):
     against the sender ID, so free text can't be sent. Each member maps to a
     provider-side template ID through configuration
     (`Settings.sms_template_*`); the variables each one takes are documented
-    in `planning/features/34-sms-gateway/PLAN.md`.
+    in `planning/features/36-sms-gateway/PLAN.md`.
     """
 
     LOGIN_OTP = "login_otp"

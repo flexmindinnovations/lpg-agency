@@ -24,14 +24,16 @@ class SyncStatusScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Sync status')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: LpgSpacing.page,
         children: [
           if (pending == 0 && issues.isEmpty)
             const Padding(
-              padding: EdgeInsets.only(top: 64),
+              padding: EdgeInsets.only(top: LpgSpacing.xxl),
               child: LpgEmptyState(
+                title: 'All up to date',
                 message: "Everything's synced.",
-                icon: Icons.cloud_done_outlined,
+                icon: LpgIcons.synced,
+                tone: LpgTone.success,
               ),
             ),
           if (pending > 0) ...[
@@ -41,7 +43,7 @@ class SyncStatusScreen extends ConsumerWidget {
                 ref.read(syncCoordinatorProvider).syncNow(ignoreBackoff: true);
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: LpgSpacing.md),
           ],
           for (final op in issues) ...[
             _IssueCard(
@@ -53,7 +55,7 @@ class SyncStatusScreen extends ConsumerWidget {
                 _reconcile(ref);
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: LpgSpacing.smd),
           ],
         ],
       ),
@@ -79,27 +81,28 @@ class _PendingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
     return LpgCard(
+      variant: LpgCardVariant.tonal,
+      tone: LpgTone.warning,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(Icons.sync, size: 18, color: colors.textSecondary),
-              const SizedBox(width: 8),
-              Text(
-                '$count change${count == 1 ? '' : 's'} waiting to sync',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.textPrimary,
+              const LpgIconBox(icon: LpgIcons.sync, tone: LpgTone.warning),
+              const SizedBox(width: LpgSpacing.smd),
+              Expanded(
+                child: Text(
+                  '$count change${count == 1 ? '' : 's'} waiting to sync',
+                  style: context.lpgText.titleSmall,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: LpgSpacing.smd),
           LpgButton(
             label: 'Sync now',
+            icon: LpgIcons.upload,
             variant: LpgButtonVariant.secondary,
             expand: true,
             onPressed: onSyncNow,
@@ -123,48 +126,47 @@ class _IssueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
     final isConflict = op.status == 'conflict';
+    final severity = isConflict
+        ? LpgStatusSeverity.warning
+        : LpgStatusSeverity.danger;
 
     return LpgCard(
+      variant: LpgCardVariant.outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              LpgIconBox(
+                icon: isConflict ? LpgIcons.warning : LpgIcons.syncProblem,
+                tone: severity.tone,
+              ),
+              const SizedBox(width: LpgSpacing.smd),
               Expanded(
-                child: Text(
-                  _label(op),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
+                child: Text(_label(op), style: context.lpgText.titleSmall),
               ),
               LpgStatusBadge(
                 label: isConflict ? 'REJECTED' : 'FAILED',
-                severity: isConflict
-                    ? LpgStatusSeverity.warning
-                    : LpgStatusSeverity.danger,
+                severity: severity,
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: LpgSpacing.smd),
           Text(
             isConflict
                 ? 'The office already updated this. Their version is the '
                       'correct one — discard your change.'
                 : (op.errorMessage ?? 'Something went wrong.'),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colors.textSecondary,
+            style: context.lpgText.bodyMedium?.copyWith(
+              color: context.lpgColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: LpgSpacing.md),
           if (isConflict)
             LpgButton(
               label: 'Acknowledge & discard',
+              icon: LpgIcons.check,
               variant: LpgButtonVariant.secondary,
               expand: true,
               onPressed: onDiscard,
@@ -175,14 +177,16 @@ class _IssueCard extends StatelessWidget {
                 Expanded(
                   child: LpgButton(
                     label: 'Retry',
+                    icon: LpgIcons.sync,
                     expand: true,
                     onPressed: onRetry,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: LpgSpacing.smd),
                 Expanded(
                   child: LpgButton(
                     label: 'Discard',
+                    icon: LpgIcons.delete,
                     variant: LpgButtonVariant.secondary,
                     expand: true,
                     onPressed: onDiscard,
