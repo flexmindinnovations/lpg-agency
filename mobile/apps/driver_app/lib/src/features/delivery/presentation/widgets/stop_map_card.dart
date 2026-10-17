@@ -36,7 +36,7 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
     _mapController.fitCamera(
       CameraFit.bounds(
         bounds: LatLngBounds(destination, driver),
-        padding: const EdgeInsets.all(48),
+        padding: const EdgeInsets.all(LpgSpacing.xxl),
       ),
     );
   }
@@ -53,28 +53,36 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
       if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
     }
     if (mounted) {
-      ScaffoldMessenger.of(
+      LpgFeedback.showToast(
         context,
-      ).showSnackBar(const SnackBar(content: Text('No maps app available.')));
+        'No maps app available.',
+        tone: LpgTone.warning,
+      );
     }
   }
 
+  /// Tall enough to read the streets around the pin at a glance in a cab
+  /// mount, short enough to keep the actions above the fold.
+  static const _mapHeight = LpgSizes.avatarLg * 3.5;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final destinationAsync = ref.watch(stopDestinationProvider(widget.orderId));
     final driver = ref.watch(driverPositionProvider).value;
 
     return destinationAsync.when(
       loading: () => const LpgCard(
+        padding: EdgeInsets.zero,
         child: SizedBox(
-          height: 200,
-          child: Center(child: LpgLoadingIndicator()),
+          height: _mapHeight,
+          child: LpgShimmer(child: LpgSkeleton(height: _mapHeight)),
         ),
       ),
       error: (_, _) => const LpgCard(
+        padding: EdgeInsets.zero,
         child: SizedBox(
-          height: 200,
+          height: _mapHeight,
           child: MapUnavailable(message: 'Could not load the map.'),
         ),
       ),
@@ -84,7 +92,7 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
           return const LpgCard(
             padding: EdgeInsets.zero,
             child: SizedBox(
-              height: 200,
+              height: _mapHeight,
               child: MapUnavailable(message: 'Delivery location not pinned.'),
             ),
           );
@@ -95,10 +103,10 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(LpgRadius.xl),
                 ),
                 child: SizedBox(
-                  height: 200,
+                  height: _mapHeight,
                   child: Stack(
                     children: [
                       Positioned.fill(
@@ -121,19 +129,19 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
                         ),
                       ),
                       if (destination.isApproximate)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          right: 8,
+                        const Positioned(
+                          top: LpgSpacing.sm,
+                          left: LpgSpacing.sm,
+                          right: LpgSpacing.sm,
                           child: _ApproximateBanner(),
                         ),
                       Positioned(
-                        right: 8,
-                        bottom: 8,
-                        child: FloatingActionButton.small(
-                          heroTag: 'stop-map-recenter',
+                        right: LpgSpacing.sm,
+                        bottom: LpgSpacing.sm,
+                        child: IconButton.filledTonal(
+                          tooltip: 'Recenter map',
                           onPressed: () => _recenter(point, driver),
-                          child: const Icon(Icons.center_focus_strong),
+                          icon: const Icon(LpgIcons.recenter),
                         ),
                       ),
                     ],
@@ -141,10 +149,10 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(LpgSpacing.smd),
                 child: LpgButton(
                   label: 'Navigate',
-                  icon: Icons.navigation_outlined,
+                  icon: LpgIcons.navigate,
                   expand: true,
                   onPressed: () => _navigate(point),
                 ),
@@ -158,26 +166,31 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
 }
 
 class _ApproximateBanner extends StatelessWidget {
+  const _ApproximateBanner();
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: LpgSpacing.smd,
+        vertical: LpgSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: colors.surfaceRaised.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(8),
+        color: colors.card.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(LpgRadius.lg),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.info_outline, size: 16, color: colors.textSecondary),
-          const SizedBox(width: 8),
+          Icon(LpgIcons.info, size: LpgSizes.iconSm, color: colors.statusInfo),
+          const SizedBox(width: LpgSpacing.sm),
           Flexible(
             child: Text(
               'Approximate location, from the delivery address.',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colors.textSecondary,
+              style: context.lpgText.bodySmall?.copyWith(
+                color: colors.textPrimary,
               ),
             ),
           ),

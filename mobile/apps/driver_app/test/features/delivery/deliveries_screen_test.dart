@@ -97,7 +97,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Past routes'), findsOneWidget);
-      expect(find.text('2026-08-30'), findsOneWidget);
+      expect(find.text('30 Aug 2026'), findsOneWidget);
       expect(find.textContaining('2 stops'), findsOneWidget);
     });
 

@@ -358,7 +358,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.widgetWithText(Row, 'Empties collected'),
-          matching: find.byIcon(Icons.remove_circle_outline),
+          matching: find.byIcon(LpgIcons.remove),
         ),
       );
       await tester.pump();

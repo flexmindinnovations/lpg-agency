@@ -1288,6 +1288,31 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-052: Mobile Design System — Semantic Lucide Icons, Bundled Inter, and a Shared Component Kit
+
+**Status:** Accepted
+
+**Context:** The Customer and Driver apps styled screens individually: raw `Icons.*`, `Colors.white`, numeric spacing and per-screen text styles, so the two apps did not look like one product and rebranding meant editing every screen. The product owner asked for a production UI overhaul on 2026-10-17 without supplying brand assets yet, while three other workstreams (payments, SMS, WhatsApp ordering) are adding screens in parallel.
+
+**Decision:** `mobile/packages/design_system` becomes the only source of visual decisions for both apps:
+- Colours, spacing, radii and type still come from the generated tokens (`design-tokens/tokens.json`); the theme adds an `LpgColors` ThemeExtension with surface roles, a hero gradient and elevation shadows, for light, dark and high contrast.
+- Icons are addressed by meaning through `LpgIcons`, backed by Lucide (`lucide_icons_flutter`, ISC licence). `phosphor_flutter` was tried first and rejected: it does not compile on current Flutter (`IconData` is now `final`).
+- The Inter typeface (SIL OFL) is bundled in the package so text renders identically on every device.
+- Screens are assembled from the package's component kit; statuses, money and dates go through `LpgFormat` and one presentation file per app.
+- Every animation honours `MediaQuery.disableAnimations`, and nothing animates forever once loaded.
+
+**Consequences:**
+- Rebranding is one token edit plus a regenerate, one `LpgBrandMark` image, and one font swap (package README, "Rebranding").
+- New screens from other workstreams get the look by using the kit; raw Material styling in an app is now a review finding.
+- Two new runtime dependencies in `design_system`: `lucide_icons_flutter` and `intl`; app bundles grow by the Inter font files.
+- Widget tests that matched on Material icons or unformatted amounts were updated to the new output (Indian digit grouping, `d MMM yyyy` dates).
+
+**Alternatives Considered:**
+- **Material Symbols only** — rejected: dated look the product owner asked to move away from, and no semantic layer.
+- **A third-party Flutter UI kit** — rejected: would fight the token pipeline the web dashboard shares.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
