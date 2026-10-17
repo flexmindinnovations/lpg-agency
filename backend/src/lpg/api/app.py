@@ -46,6 +46,7 @@ from lpg.api.v1.routers import (
     printing,
     reporting,
     route,
+    whatsapp,
     ws,
 )
 from lpg.config.logging import configure_logging, get_logger
@@ -337,6 +338,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(printing.router, prefix=settings.api_v1_prefix)
     app.include_router(reporting.router, prefix=settings.api_v1_prefix)
     app.include_router(ws.router, prefix=settings.api_v1_prefix)
+    app.include_router(whatsapp.router, prefix=settings.api_v1_prefix)
 
     # Never in production — see `LoggingOtpDelivery`'s docstring for why the
     # dev-OTP-inbox endpoint it feeds is scoped the same way.

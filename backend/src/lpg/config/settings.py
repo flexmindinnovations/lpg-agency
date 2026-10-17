@@ -297,6 +297,23 @@ class Settings(BaseSettings):
     ai_provider: str = "gemini"
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
+    # `ai_provider="anthropic"` (ADR-055). `anthropic_effort` is the main
+    # cost lever for chat traffic; a cheaper model is a one-variable change.
+    anthropic_api_key: SecretStr | None = None
+    anthropic_model: str = "claude-opus-5-5"
+    anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
+
+    # -- WhatsApp Cloud API (ADR-055) ---------------------------------------
+    # Meta's credentials for the agency's WhatsApp Business number(s). One
+    # Meta app can serve several agencies' numbers: each tenant maps its own
+    # number with the `whatsapp_phone_number_id` Tenant Configuration key,
+    # and the webhook routes inbound messages by that id. Unset by default:
+    # the webhook then refuses every request (no verify token, no app secret
+    # to check signatures with), and sending degrades to a logged no-op.
+    whatsapp_access_token: SecretStr | None = None
+    whatsapp_app_secret: SecretStr | None = None
+    whatsapp_verify_token: SecretStr | None = None
+    whatsapp_graph_api_version: str = "v23.0"
 
     # -- OMC Rate Ingestion (AI Operational Intelligence, Horizon 1 Stage 3) --
     # `omc_rate_provider` picks the adapter class in
@@ -342,6 +359,22 @@ class Settings(BaseSettings):
                 parsed = json.loads(stripped)
                 return [str(origin).strip() for origin in parsed]
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return value
+
+    @field_validator(
+        "anthropic_api_key",
+        "whatsapp_access_token",
+        "whatsapp_app_secret",
+        "whatsapp_verify_token",
+        mode="before",
+    )
+    @classmethod
+    def _blank_secret_is_unset(cls, value: object) -> object:
+        """`LPG_WHATSAPP_APP_SECRET=` (as in the env templates) means unset,
+        not an empty secret: an empty HMAC key or verify token would accept
+        anything anyone sends."""
+        if isinstance(value, str) and not value.strip():
+            return None
         return value
 
     @field_validator("jwt_private_key", "jwt_public_key", mode="before")

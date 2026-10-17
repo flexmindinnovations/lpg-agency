@@ -45,6 +45,7 @@ dependencies = [
     # Outbound HTTPS to the Razorpay API (ADR-053) — async, already in the
     # lockfile via google-genai; declared directly now that we import it.
     "httpx>=0.28.0",
+    "anthropic>=1.0",
 ]
 
 [dependency-groups]
@@ -437,4 +438,13 @@ source_modules = ["lpg.domain", "lpg.application", "lpg.api", "lpg.infrastructur
 forbidden_modules = ["google"]
 ignore_imports = [
     "lpg.infrastructure.ai.gemini_adapter -> google",
+]
+
+[[tool.importlinter.contracts]]
+name = "Anthropic SDK stays inside infrastructure.ai"
+type = "forbidden"
+source_modules = ["lpg.domain", "lpg.application", "lpg.api", "lpg.infrastructure"]
+forbidden_modules = ["anthropic"]
+ignore_imports = [
+    "lpg.infrastructure.ai.anthropic_adapter -> anthropic",
 ]

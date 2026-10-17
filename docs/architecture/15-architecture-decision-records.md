@@ -1361,6 +1361,34 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-055: WhatsApp Customer Assistant on Meta's Cloud API, Driven by the Model Gateway With Customer-Scoped Tools and a Two-Step Booking
+
+**Status:** Accepted
+
+**Context:** The product owner asked (2026-10-17) for a WhatsApp AI assistant covering the customer flow: booking refills, tracking, payment and the rest. Customers already message agencies on WhatsApp; the order model already records `booking_source="whatsapp"` but only for staff typing those orders in. ADR-045 built a provider-agnostic `ModelGatewayPort` with a Gemini adapter for the staff-facing AI Command Center. A separate thread is adding Razorpay payments.
+
+**Decision:**
+- **Channel:** Meta's WhatsApp Cloud API directly (no BSP). `GET/POST /api/v1/webhooks/whatsapp`: the POST is authenticated only by `X-Hub-Signature-256` (HMAC-SHA256 of the raw body with the Meta app secret), parses messages, and enqueues one `handle_whatsapp_message` ARQ job per message, keyed by Meta's message id; it never calls the model in the request. Left out of the OpenAPI document (Meta's contract, not a client contract).
+- **Tenant routing:** each agency sets its Meta phone number id in the `whatsapp_phone_number_id` Tenant Configuration key. `tenant.whatsapp_resolve_tenant_id` (SECURITY DEFINER, same bootstrap pattern as `auth_resolve_tenant_id_by_slug`) returns the tenant only when exactly one live tenant claims the number. One Meta app can serve every agency; its credentials are platform settings (`LPG_WHATSAPP_*`).
+- **Customer identity:** the sender's number, in E.164, matched against `customer.phone_number` in that tenant. Unknown numbers get a fixed reply, with no model call.
+- **Model:** a second `ModelGatewayPort` adapter, `AnthropicModelGateway` (`ai_provider="anthropic"`, default model `claude-opus-5-5`, effort `low`, server-side refusal fallback on). The port gains optional `history` (plain-text earlier turns). Gemini stays supported and gets `history` too.
+- **Tools:** nine customer tools (`application/whatsapp/tools.py`): account, cylinder options and prices, prepare order, place order, list orders, track, cancel, payment link, raise complaint. None takes a customer, phone or tenant argument; orders are found by number only among the sender's own orders; RLS scopes everything to the tenant. This backend boundary, not the prompt, is the safety line (as in ADR-045).
+- **Two-step booking:** `prepare_order` stores a pending quote (`messaging.whatsapp_conversation`); `place_order` books it only if the quote was made before the message being answered and is under 30 minutes old, and clears it in the order's own transaction. The model cannot propose and book in one turn, and a repeated "yes" cannot book twice.
+- **Controls:** `whatsapp_ai_enabled` kill switch (default off; messages are still logged). Model runs are recorded in `ai.assistant_run` (role `whatsapp_customer`) and count against the existing `ai_daily_token_budget`; a spent budget or a provider failure gets a fixed "unavailable" reply.
+- **Payments:** a `PaymentLinkPort`. `GatewayPaymentLinks` calls ADR-053's `CreateOrderPaymentLinkUseCase` (scoped to the customer), so amount, link reuse and the Razorpay webhook behave exactly as for the Customer App. With no gateway keys, `UnconfiguredPaymentLinks` returns nothing and the assistant offers cash or UPI on delivery.
+- **Secrets:** blank `LPG_WHATSAPP_*` / `LPG_ANTHROPIC_API_KEY` values are treated as unset, so an empty app secret or verify token can never accept a forged webhook.
+- **Storage:** new `messaging` schema: `whatsapp_message` (append-only log; unique `(tenant_id, direction, wa_message_id)` dedupes Meta's retries) and `whatsapp_conversation`. Both under RLS.
+
+**Consequences:**
+- Customer message text is stored (log and `assistant_run.question`). That is new personal data at rest; a retention policy is still owed (the same open DPDP question ADR-045 named).
+- Only replies inside Meta's 24-hour customer-service window are sent. Proactive order-status messages need approved templates and are not built.
+- The shared AI budget means heavy WhatsApp traffic can exhaust the Command Center's budget for the day.
+- Each tool call opens its own transaction, because a `UnitOfWork` commits once.
+
+**Alternatives Considered:**
+- **A BSP (Gupshup, Twilio, Interakt)** — rejected as the default: adds a vendor and per-message markup; the Cloud API is free to integrate and the sender is one adapter class to swap.
+- **Letting the model book directly, guarded by the prompt** — rejected: an order is a commitment the model alone should not make.
+- **A separate WhatsApp token budget** — deferred: one budget is simpler until real traffic says otherwise.
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1415,6 +1443,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 052 | Mobile design system: semantic Lucide icons, bundled Inter, shared component kit | Accepted |
 | 053 | Online payments through Razorpay payment links behind a provider-agnostic gateway port | Accepted |
 | 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
+| 055 | WhatsApp customer assistant on Meta's Cloud API, model gateway with customer-scoped tools, two-step booking | Accepted |
 
 ## Deferred Decisions
 

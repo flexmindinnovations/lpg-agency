@@ -27,9 +27,19 @@ def get_model_gateway(settings: Settings) -> ModelGatewayPort:
             api_key=settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else "",
             model=settings.gemini_model,
         )
+    if settings.ai_provider == "anthropic":
+        from lpg.infrastructure.ai.anthropic_adapter import AnthropicModelGateway
+
+        return AnthropicModelGateway(
+            api_key=(
+                settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else ""
+            ),
+            model=settings.anthropic_model,
+            effort=settings.anthropic_effort,
+        )
     msg = (
         f"Unknown ai_provider '{settings.ai_provider}'. "
-        "Only 'gemini' is implemented — add a new adapter class and a "
-        "branch here before configuring a different value."
+        "Only 'gemini' and 'anthropic' are implemented — add a new adapter "
+        "class and a branch here before configuring a different value."
     )
     raise ValueError(msg)
