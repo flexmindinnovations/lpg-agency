@@ -23,7 +23,11 @@ from lpg.application.ai.ports import AgentRunResult, ToolDeclaration, ToolExecut
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from google.genai import Client
+
+    from lpg.application.ai.ports import ConversationTurn
 
 _logger = get_logger(__name__)
 
@@ -59,6 +63,7 @@ class GeminiModelGateway:
         user_prompt: str,
         tools: tuple[ToolDeclaration, ...],
         tool_executor: ToolExecutor,
+        history: Sequence[ConversationTurn] = (),
     ) -> AgentRunResult | None:
         from google.genai import types
 
@@ -78,8 +83,13 @@ class GeminiModelGateway:
                 tools=[types.Tool(function_declarations=declarations)] if declarations else None,
             )
             contents: list[types.Content] = [
-                types.Content(role="user", parts=[types.Part(text=user_prompt)])
+                types.Content(
+                    role="model" if turn.role == "assistant" else "user",
+                    parts=[types.Part(text=turn.text)],
+                )
+                for turn in history
             ]
+            contents.append(types.Content(role="user", parts=[types.Part(text=user_prompt)]))
 
             tools_used: list[str] = []
             prompt_tokens = 0

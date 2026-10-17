@@ -18,13 +18,18 @@ needs to be undone.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
-from lpg.application.common.errors import NotFoundError, OtpMismatchError
+from lpg.application.common.errors import (
+    NotFoundError,
+    OtpMismatchError,
+    ServiceUnavailableError,
+)
 from lpg.application.delivery.use_cases import AssignOrderToRouteCommand, AssignOrderToRouteUseCase
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
@@ -376,7 +381,10 @@ class DepartOrderUseCase:
         if customer is not None:
             key = order_delivery_otp_key(order.tenant_id, order.id)
             code = await self._otp_store.issue(key)
-            await self._otp_delivery.send(customer.phone_number, code)
+            # The SMS adapter has already logged the failure; the order is
+            # out for delivery either way, so the driver must not see an error.
+            with contextlib.suppress(ServiceUnavailableError):
+                await self._otp_delivery.send(customer.phone_number, code, purpose="delivery")
         return order
 
 

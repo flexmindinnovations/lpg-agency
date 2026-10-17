@@ -33,3 +33,17 @@ def test_gemini_provider_returns_a_gemini_gateway() -> None:
 def test_unknown_provider_raises_rather_than_silently_falling_back() -> None:
     with pytest.raises(ValueError, match="Unknown ai_provider"):
         get_model_gateway(_settings(ai_provider="openai"))
+
+
+def test_anthropic_provider_returns_an_anthropic_gateway() -> None:
+    from lpg.infrastructure.ai.anthropic_adapter import AnthropicModelGateway
+
+    gateway = get_model_gateway(
+        _settings(
+            ai_provider="anthropic",
+            anthropic_api_key=None,
+            anthropic_model="claude-opus-5-5",
+            anthropic_effort="low",
+        )
+    )
+    assert isinstance(gateway, AnthropicModelGateway)

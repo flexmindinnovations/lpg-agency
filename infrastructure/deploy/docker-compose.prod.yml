@@ -45,6 +45,15 @@ x-backend-env: &backend-env
   # AI Command Center (Gemini) - set in .env. Left empty, the gateway
   # returns provider_error and the rest of the app is unaffected.
   LPG_GEMINI_API_KEY: ${LPG_GEMINI_API_KEY:-}
+  # SMS (MSG91, DLT templates) - set in .env. Left unset, the provider is
+  # "stub": OTPs and order SMS are logged, nothing is sent.
+  LPG_SMS_PROVIDER: ${LPG_SMS_PROVIDER:-stub}
+  LPG_MSG91_AUTH_KEY: ${LPG_MSG91_AUTH_KEY:-}
+  LPG_SMS_TEMPLATE_LOGIN_OTP: ${LPG_SMS_TEMPLATE_LOGIN_OTP:-}
+  LPG_SMS_TEMPLATE_DELIVERY_OTP: ${LPG_SMS_TEMPLATE_DELIVERY_OTP:-}
+  LPG_SMS_TEMPLATE_BOOKING_CONFIRMED: ${LPG_SMS_TEMPLATE_BOOKING_CONFIRMED:-}
+  LPG_SMS_TEMPLATE_OUT_FOR_DELIVERY: ${LPG_SMS_TEMPLATE_OUT_FOR_DELIVERY:-}
+  LPG_SMS_TEMPLATE_DELIVERY_CONFIRMED: ${LPG_SMS_TEMPLATE_DELIVERY_CONFIRMED:-}
 
 services:
   postgres:

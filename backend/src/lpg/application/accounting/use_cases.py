@@ -17,6 +17,7 @@ from lpg.domain.tenant.tenant_configuration import TenantConfigurationResolver
 
 if TYPE_CHECKING:
     import datetime
+    from collections.abc import Sequence
 
     from lpg.application.accounting.ports import (
         CashHandoverNumberSequence,
@@ -25,14 +26,80 @@ if TYPE_CHECKING:
         CreditNoteRepository,
         InvoiceNumberSequence,
         InvoiceRepository,
+        OnlinePaymentRepository,
     )
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.delivery.ports import RouteRepository
     from lpg.application.order.ports import OrderRepository
     from lpg.application.tenant.ports import TenantConfigurationRepository
+    from lpg.domain.accounting.online_payment import OnlinePayment
 
 _logger = get_logger(__name__)
+
+
+async def resolve_gst_rate_percent(
+    tenant_config_repository: TenantConfigurationRepository,
+    tenant_id: uuid.UUID,
+    at: datetime.datetime,
+) -> Decimal:
+    """The tenant's `gst_rate_percent` in force at `at`, or 0 if unset or
+    malformed. Shared by invoice generation and online-payment amounts so a
+    prepayment is computed exactly the way its invoice will be.
+    """
+    configs = await tenant_config_repository.list_for_tenant_and_key(tenant_id, "gst_rate_percent")
+    gst_config = TenantConfigurationResolver.resolve(configs, "gst_rate_percent", at)
+    gst_rate = gst_config.config_value if gst_config else None
+    try:
+        return Decimal(gst_rate) if gst_rate else Decimal("0.0")
+    except (ValueError, TypeError, ArithmeticError):
+        _logger.warning("invalid_gst_rate", gst_rate=gst_rate)
+        return Decimal("0.0")
+
+
+def apply_online_payments_to_invoice(
+    invoice: Invoice, online_payments: Sequence[OnlinePayment]
+) -> list[OnlinePayment]:
+    """Turn each paid, not-yet-applied gateway payment for this invoice's
+    order into an `online_gateway` invoice `Payment` (ADR-053). Returns the
+    online payments that changed, for the caller to save.
+
+    A prepayment can exceed the invoice when fewer cylinders were delivered
+    than ordered; only the outstanding amount is applied and the excess is
+    logged for a refund (no automated refund exists yet — see TASKS.md).
+    """
+    changed: list[OnlinePayment] = []
+    for online_payment in online_payments:
+        if online_payment.status != "paid" or online_payment.is_applied:
+            continue
+        outstanding = invoice.total_amount - invoice.amount_paid
+        if invoice.status not in ("issued", "partially_paid") or outstanding <= 0:
+            _logger.warning(
+                "online_payment_not_applied_invoice_settled",
+                online_payment_id=str(online_payment.id),
+                invoice_id=str(invoice.id),
+                amount=str(online_payment.amount),
+            )
+            continue
+        amount = min(online_payment.amount, outstanding)
+        if amount < online_payment.amount:
+            _logger.warning(
+                "online_payment_excess_needs_refund",
+                online_payment_id=str(online_payment.id),
+                invoice_id=str(invoice.id),
+                excess=str(online_payment.amount - amount),
+            )
+        payment_id = uuid.uuid4()
+        invoice.record_payment(
+            payment_id=payment_id,
+            method="online_gateway",
+            amount=amount,
+            collected_by=online_payment.created_by,
+            collected_at=online_payment.paid_at or online_payment.created_at,
+        )
+        online_payment.mark_applied(invoice_id=invoice.id, payment_id=payment_id)
+        changed.append(online_payment)
+    return changed
 
 
 class GenerateInvoiceForOrderUseCase:
@@ -45,12 +112,17 @@ class GenerateInvoiceForOrderUseCase:
         customer_repository: CustomerRepository,
         tenant_config_repository: TenantConfigurationRepository,
         invoice_number_sequence: InvoiceNumberSequence,
+        online_payment_repository: OnlinePaymentRepository | None = None,
     ) -> None:
         self._invoice_repository = invoice_repository
         self._order_repository = order_repository
         self._customer_repository = customer_repository
         self._tenant_config_repository = tenant_config_repository
         self._invoice_number_sequence = invoice_number_sequence
+        # Optional so callers that never take online payments (and the
+        # existing unit tests) need not wire it; the production event
+        # handler always does, so gateway prepayments land on the invoice.
+        self._online_payment_repository = online_payment_repository
 
     async def execute(
         self,
@@ -75,18 +147,9 @@ class GenerateInvoiceForOrderUseCase:
             _logger.error("order_not_found_for_invoice", order_id=str(order_id))
             return
 
-        configs = await self._tenant_config_repository.list_for_tenant_and_key(
-            tenant_id, "gst_rate_percent"
+        gst_rate_decimal = await resolve_gst_rate_percent(
+            self._tenant_config_repository, tenant_id, delivered_at
         )
-        gst_config = TenantConfigurationResolver.resolve(configs, "gst_rate_percent", delivered_at)
-
-        gst_rate = gst_config.config_value if gst_config else None
-
-        try:
-            gst_rate_decimal = Decimal(gst_rate) if gst_rate else Decimal("0.0")
-        except (ValueError, TypeError):
-            _logger.warning("invalid_gst_rate", gst_rate=gst_rate)
-            gst_rate_decimal = Decimal("0.0")
 
         # Generate invoice lines from order lines
         lines = []
@@ -129,6 +192,10 @@ class GenerateInvoiceForOrderUseCase:
             order_number=order.order_number,
             customer_consumer_number=customer.consumer_number if customer else None,
         )
+        if self._online_payment_repository is not None:
+            prepayments = await self._online_payment_repository.list_for_order(order.id)
+            for online_payment in apply_online_payments_to_invoice(invoice, prepayments):
+                await self._online_payment_repository.save(online_payment)
         await self._invoice_repository.add(invoice)
         _logger.info("invoice_generated", invoice_id=str(invoice.id), order_id=str(order_id))
 

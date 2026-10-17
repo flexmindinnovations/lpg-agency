@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 
 /// Payment methods management.
 ///
-/// A deliberate UI placeholder: the platform has no payment-gateway
-/// integration yet (Phase 19 plan — "Payment Gateways ... remain a UI
-/// placeholder"), so there is nothing to persist and the "Add" actions
-/// explain that rather than pretending to save a card. The screen still
-/// exists as its own route so the shape is in place for when a gateway
-/// (Razorpay/UPI) is wired in a later phase.
+/// Saving a card or UPI ID is still a placeholder. Online payment itself
+/// is live (ADR-053): customers pay on Razorpay's hosted page from an
+/// order's or invoice's details screen, which needs nothing stored here.
+/// The "Add" actions say so rather than pretending to save a card.
 class PaymentMethodsScreen extends StatelessWidget {
   const PaymentMethodsScreen({super.key});
 
@@ -22,8 +20,8 @@ class PaymentMethodsScreen extends StatelessWidget {
           const LpgFadeSlideIn(
             child: LpgEmptyState(
               message:
-                  'No payment methods saved yet. Add a card or UPI ID to pay '
-                  'for refills without cash on delivery.',
+                  'No payment methods saved yet. You do not need one to pay '
+                  'online.',
               icon: LpgIcons.payment,
             ),
           ),
@@ -56,8 +54,9 @@ class PaymentMethodsScreen extends StatelessWidget {
             index: 2,
             child: LpgBanner(
               message:
-                  'Until online payments go live, orders are paid by cash or '
-                  'UPI directly to the delivery agent.',
+                  'You can pay online (UPI, cards, net banking) from any '
+                  "confirmed order's details screen, or pay the delivery "
+                  'agent on delivery.',
             ),
           ),
         ],
@@ -83,8 +82,8 @@ class PaymentMethodsScreen extends StatelessWidget {
           ),
           const SizedBox(height: LpgSpacing.sm),
           Text(
-            "We'll let you know as soon as you can save a payment method "
-            'and pay online.',
+            "We'll let you know as soon as you can save a payment method. "
+            "Until then, pay online from an order's details screen.",
             textAlign: TextAlign.center,
             style: sheetContext.lpgText.bodyMedium?.copyWith(
               color: sheetContext.lpgColors.textSecondary,

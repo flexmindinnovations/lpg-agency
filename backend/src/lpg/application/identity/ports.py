@@ -9,7 +9,7 @@ directly.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from lpg.application.common.ports import TenantContext
 
@@ -135,16 +135,24 @@ class OtpStore(Protocol):
         ...
 
 
+# Which message an OTP rides in. India's DLT rules tie every SMS to a
+# pre-registered template, so a login code and a delivery-confirmation code
+# need different wording (and different template IDs).
+OtpPurpose = Literal["login", "delivery"]
+
+
 @runtime_checkable
 class OtpDeliveryPort(Protocol):
     """Delivers an OTP code to a phone number.
 
-    No SMS provider exists in this codebase yet (Phase 14, Notifications) —
-    the only implementation today is a logging-only dev adapter
-    (`infrastructure/identity/otp_delivery.py`).
+    Implementations live in `infrastructure/identity/otp_delivery.py`: an SMS
+    adapter over the configured `SmsChannel` provider, and a logging-only dev
+    adapter used when no provider is configured.
     """
 
-    async def send(self, phone_number: str, code: str) -> None: ...
+    async def send(
+        self, phone_number: str, code: str, *, purpose: OtpPurpose = "login"
+    ) -> None: ...
 
 
 @runtime_checkable

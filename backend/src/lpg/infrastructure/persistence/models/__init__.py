@@ -66,6 +66,10 @@ from lpg.infrastructure.persistence.models.tenant import (
     TenantModel,
     WarehouseModel,
 )
+from lpg.infrastructure.persistence.models.whatsapp import (
+    WhatsAppConversationModel,
+    WhatsAppMessageModel,
+)
 
 __all__ = [
     "AuditLogModel",
@@ -110,4 +114,6 @@ __all__ = [
     "TenantModel",
     "VehicleModel",
     "WarehouseModel",
+    "WhatsAppConversationModel",
+    "WhatsAppMessageModel",
 ]

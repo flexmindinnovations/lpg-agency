@@ -2,6 +2,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../payments/presentation/pay_online_section.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/invoices_provider.dart';
 import 'invoice_presentation.dart';
@@ -169,6 +170,15 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 ),
               ),
             ],
+            const SizedBox(height: LpgSpacing.lg),
+            PayOnlineSection(
+              orderId: invoice.orderId,
+              canPay:
+                  balanceDue > 0 &&
+                  (invoice.status == 'issued' ||
+                      invoice.status == 'partially_paid'),
+              onPaid: () => ref.invalidate(invoiceDetailProvider(invoiceId)),
+            ),
           ];
 
           return ListView(

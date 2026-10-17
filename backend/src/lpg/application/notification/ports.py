@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Mapping
 
     from lpg.domain.notification.device_token import DeviceToken
     from lpg.domain.notification.in_app_notification import InAppNotification
@@ -62,12 +64,46 @@ class EmailChannel(Protocol):
         ...
 
 
+class SmsTemplate(StrEnum):
+    """Every SMS the platform sends.
+
+    India's DLT rules reject any SMS that doesn't match a template registered
+    against the sender ID, so free text can't be sent. Each member maps to a
+    provider-side template ID through configuration
+    (`Settings.sms_template_*`); the variables each one takes are documented
+    in `planning/features/36-sms-gateway/PLAN.md`.
+    """
+
+    LOGIN_OTP = "login_otp"
+    DELIVERY_OTP = "delivery_otp"
+    BOOKING_CONFIRMED = "booking_confirmed"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    DELIVERY_CONFIRMED = "delivery_confirmed"
+
+
 class SmsChannel(Protocol):
     """Port for sending SMS notifications."""
 
-    async def send(self, *, to: str, body: str) -> None:
-        """Send an SMS."""
+    async def send(
+        self,
+        *,
+        to: str,
+        body: str,
+        template: SmsTemplate,
+        variables: Mapping[str, str],
+    ) -> None:
+        """Send one SMS to an E.164 number.
+
+        `template` + `variables` are what a DLT-bound provider sends; `body`
+        is the same message rendered as plain text, for providers that take
+        free text and for the notification log. Raises `SmsDeliveryError` when
+        the provider rejects or can't be reached.
+        """
         ...
+
+
+class SmsDeliveryError(Exception):
+    """The SMS provider rejected the message or couldn't be reached."""
 
 
 class DeviceTokenRepository(Protocol):

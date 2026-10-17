@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from lpg.application.notification.ports import SmsTemplate
 from lpg.domain.notification.in_app_notification import InAppNotification
 from lpg.domain.notification.notification_log import NotificationLog
 
@@ -79,7 +80,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
         ) as uow:
             from lpg.config.settings import get_settings
             from lpg.infrastructure.channels.email_channel import StubEmailChannel
-            from lpg.infrastructure.channels.sms_channel import StubSmsChannel
+            from lpg.infrastructure.channels.sms_channel import build_sms_channel
             from lpg.infrastructure.notification.staff_resolver import (
                 EmployeeBranchStaffResolver,
             )
@@ -300,13 +301,15 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             # Channels — per instance, not just per type: a `driver_assigned`
             # only pushes for a live mid-route addition.
             send_email = _should_send_email(notification_type)
-            send_sms = _should_send_sms(notification_type)
+            sms_template = _SMS_TEMPLATES.get(notification_type)
             send_push = _should_send_push(notification_type)
             if notification_type == "driver_assigned":
                 send_push = driver_assigned_live
 
             email_channel = StubEmailChannel()
-            sms_channel = StubSmsChannel()
+            # Built once at worker startup (MSG91 holds an httpx client);
+            # `StubSmsChannel` when no provider is configured.
+            sms_channel = ctx.get("sms_channel") or build_sms_channel(get_settings())
             # Built once at worker startup (holds an OAuth token + httpx
             # client); `StubPushChannel` when Firebase isn't configured.
             from lpg.infrastructure.channels.push_channel import build_push_channel
@@ -370,7 +373,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     await log_repo.save(email_log)
 
                 # 3. SMS Channel
-                if send_sms and user.phone_number:
+                if sms_template is not None and user.phone_number:
                     sms_log = NotificationLog.create(
                         tenant_id=tenant_id,
                         recipient_user_id=user_id,
@@ -385,7 +388,12 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     await log_repo.add(sms_log)
 
                     try:
-                        await sms_channel.send(to=user.phone_number, body=body)
+                        await sms_channel.send(
+                            to=user.phone_number,
+                            body=body,
+                            template=sms_template,
+                            variables=_sms_variables(payload),
+                        )
                         sms_log.mark_sent()
                     except Exception as e:
                         sms_log.mark_failed(str(e))
@@ -541,14 +549,24 @@ def _should_send_email(notification_type: str) -> bool:
     }
 
 
+# Each SMS-bearing type and the DLT-registered template it goes out as.
+# `driver_assigned` dropped SMS with Phase 25-B — the driver app has push
+# now, and an SMS per stop assigned is expensive noise.
+_SMS_TEMPLATES: dict[str, SmsTemplate] = {
+    "booking_confirmed": SmsTemplate.BOOKING_CONFIRMED,
+    "out_for_delivery": SmsTemplate.OUT_FOR_DELIVERY,
+    "delivery_confirmed": SmsTemplate.DELIVERY_CONFIRMED,
+}
+
+
 def _should_send_sms(notification_type: str) -> bool:
-    # `driver_assigned` dropped SMS with Phase 25-B — the driver app has push
-    # now, and an SMS per stop assigned is expensive noise.
-    return notification_type in {
-        "booking_confirmed",
-        "out_for_delivery",
-        "delivery_confirmed",
-    }
+    return notification_type in _SMS_TEMPLATES
+
+
+def _sms_variables(payload: dict[str, Any]) -> dict[str, str]:
+    """Values for the template's placeholders. Every order SMS template takes
+    the same one: the short order reference also shown in the body."""
+    return {"order_ref": str(payload.get("order_id", "Unknown"))[:8].upper()}
 
 
 def _should_send_push(notification_type: str) -> bool:
