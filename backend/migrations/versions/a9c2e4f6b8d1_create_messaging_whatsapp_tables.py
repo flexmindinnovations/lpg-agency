@@ -4,7 +4,7 @@ Revision ID: a9c2e4f6b8d1
 Revises: a9e4c7b2d1f6
 Create Date: 2026-10-17
 
-Delivers, for the WhatsApp customer assistant (ADR-054):
+Delivers, for the WhatsApp customer assistant (ADR-055):
   - `messaging` PostgreSQL schema — new bounded context for customer
     messaging channels.
   - `messaging.whatsapp_message` — every WhatsApp message in and out, per

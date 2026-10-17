@@ -26,4 +26,4 @@ existing `EmployeeRegistered` handler's foreign-key error).
 - A real WhatsApp conversation through Meta's Cloud API and a real Claude call.
 - Dashboard settings page lint/tests (frontend `node_modules` not installed here).
 
-Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-054.
+Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-055.

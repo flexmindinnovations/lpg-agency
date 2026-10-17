@@ -1,4 +1,4 @@
-"""The WhatsApp customer assistant (ADR-054) against a real Postgres + Redis.
+"""The WhatsApp customer assistant (ADR-055) against a real Postgres + Redis.
 
 Covers what the unit tests cannot: the webhook through the real ASGI stack
 (signature check, Meta's verify handshake, enqueue), tenant routing by the

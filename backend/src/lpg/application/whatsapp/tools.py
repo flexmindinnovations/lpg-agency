@@ -1,4 +1,4 @@
-"""The customer-facing tool menu for the WhatsApp assistant (ADR-054).
+"""The customer-facing tool menu for the WhatsApp assistant (ADR-055).
 
 Every tool acts for exactly one customer: the one whose phone number sent the
 message. No tool takes a customer id, phone number or tenant from the model,

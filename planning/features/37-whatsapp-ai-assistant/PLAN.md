@@ -1,6 +1,6 @@
 # Plan: WhatsApp AI Customer Assistant
 
-Decision: ADR-054. Tasks: [TASKS.md](./TASKS.md). Status: [STATUS.md](./STATUS.md).
+Decision: ADR-055. Tasks: [TASKS.md](./TASKS.md). Status: [STATUS.md](./STATUS.md).
 
 ## Requirement
 

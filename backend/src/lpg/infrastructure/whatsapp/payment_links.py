@@ -1,4 +1,4 @@
-"""`PaymentLinkPort` adapters for the WhatsApp assistant (ADR-054).
+"""`PaymentLinkPort` adapters for the WhatsApp assistant (ADR-055).
 
 `GatewayPaymentLinks` hands the request to `CreateOrderPaymentLinkUseCase`
 (ADR-053), the one entry point the Customer App and staff use too, so the

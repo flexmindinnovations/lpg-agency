@@ -51,6 +51,7 @@ from lpg.api.v1.routers import (
 )
 from lpg.config.logging import configure_logging, get_logger
 from lpg.config.settings import Settings, get_settings
+from lpg.infrastructure.channels.sms_channel import build_sms_channel
 from lpg.infrastructure.events.accounting_handlers import (
     register_accounting_handlers,
 )
@@ -89,6 +90,7 @@ if TYPE_CHECKING:
 
     from lpg.application.common.ports import HealthCheck
     from lpg.application.identity.ports import JwtSigner, PasswordHasher
+    from lpg.application.notification.ports import SmsChannel
 
 _logger = get_logger(__name__)
 
@@ -108,6 +110,7 @@ class AppState:
     storage: S3CompatibleFileStorage | None = None
     jwt_signer: JwtSigner | None = None
     password_hasher: PasswordHasher | None = None
+    sms_channel: SmsChannel | None = None
 
 
 _state = AppState()
@@ -203,6 +206,8 @@ async def lifespan(
     _state.storage = storage
     _state.jwt_signer = jwt_signer
     _state.password_hasher = password_hasher
+    # Holds an httpx client for MSG91, so one per process, not per request.
+    _state.sms_channel = build_sms_channel(settings)
     _state.health_checks = [
         DatabaseHealthCheck(database),
         RedisHealthCheck(redis_client),
@@ -226,6 +231,9 @@ async def lifespan(
         await storage.disconnect()
         if _state.realtime_subscriber:
             await _state.realtime_subscriber.stop()
+        aclose = getattr(_state.sms_channel, "aclose", None)
+        if aclose is not None:
+            await aclose()
         _state.database = None
         _state.redis = None
         _state.event_dispatcher = None
@@ -236,6 +244,7 @@ async def lifespan(
         _state.realtime_publisher = None
         _state.jwt_signer = None
         _state.password_hasher = None
+        _state.sms_channel = None
         _state.health_checks = []
         _logger.info("application_stopped")
 

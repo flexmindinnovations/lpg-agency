@@ -99,7 +99,7 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
   whatsapp_ai_enabled: {
     label: 'WhatsApp Assistant Enabled',
     description:
-      'Tenant opt-in for the WhatsApp customer assistant (ADR-054) — defaults to off. While off, customer WhatsApp messages are logged but not answered. Uses the same daily AI token budget as the AI Command Center. Set to true to enable; set to false to disable.',
+      'Tenant opt-in for the WhatsApp customer assistant (ADR-055) — defaults to off. While off, customer WhatsApp messages are logged but not answered. Uses the same daily AI token budget as the AI Command Center. Set to true to enable; set to false to disable.',
   },
   whatsapp_phone_number_id: {
     label: 'WhatsApp Phone Number ID',

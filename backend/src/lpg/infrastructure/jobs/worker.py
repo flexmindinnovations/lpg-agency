@@ -161,9 +161,13 @@ async def startup(ctx: dict[str, Any]) -> None:
     from lpg.infrastructure.channels.push_channel import build_push_channel
 
     ctx["push_channel"] = build_push_channel(settings)
+    # Same reason: the MSG91 channel holds an httpx client.
+    from lpg.infrastructure.channels.sms_channel import build_sms_channel
+
+    ctx["sms_channel"] = build_sms_channel(settings)
 
     # Same reasoning: one HTTP client for every WhatsApp reply this worker
-    # sends (ADR-054).
+    # sends (ADR-055).
     from lpg.infrastructure.whatsapp.cloud_api import build_whatsapp_sender
 
     ctx["whatsapp_sender"] = build_whatsapp_sender(settings)
@@ -203,12 +207,10 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     redis_client = ctx.get("redis")
     if redis_client is not None:
         await redis_client.disconnect()
-    push_channel = ctx.get("push_channel")
-    if push_channel is not None and hasattr(push_channel, "aclose"):
-        await push_channel.aclose()
-    whatsapp_sender = ctx.get("whatsapp_sender")
-    if whatsapp_sender is not None and hasattr(whatsapp_sender, "aclose"):
-        await whatsapp_sender.aclose()
+    for channel_key in ("push_channel", "sms_channel", "whatsapp_sender"):
+        channel = ctx.get(channel_key)
+        if channel is not None and hasattr(channel, "aclose"):
+            await channel.aclose()
     job_queue = ctx.get("job_queue")
     if job_queue is not None:
         await job_queue.disconnect()

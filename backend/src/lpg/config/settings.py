@@ -194,6 +194,27 @@ class Settings(BaseSettings):
     fcm_credentials_json: SecretStr = SecretStr("")
     fcm_project_id: str = ""
 
+    # -- SMS (OTP + order updates) ----------------------------------------
+    # `stub` (the default) logs and sends nothing, so every environment works
+    # without a provider; OTPs then go through `LoggingOtpDelivery` as before.
+    # `msg91` sends through MSG91's Flow API. Sender ID, DLT entity ID and
+    # the DLT template each MSG91 template is bound to are configured on the
+    # MSG91 side, so only the auth key and the MSG91 template IDs live here.
+    #
+    # DLT allows only registered templates, so every message needs an ID;
+    # a message whose ID is unset fails (and is logged as failed) rather
+    # than going out as free text. Template wording and variable names:
+    # `planning/features/36-sms-gateway/PLAN.md`.
+    sms_provider: Literal["stub", "msg91"] = "stub"
+    sms_request_timeout_seconds: float = Field(default=10.0, gt=0)
+    msg91_auth_key: SecretStr = SecretStr("")
+    msg91_base_url: str = "https://control.msg91.com"
+    sms_template_login_otp: str = ""
+    sms_template_delivery_otp: str = ""
+    sms_template_booking_confirmed: str = ""
+    sms_template_out_for_delivery: str = ""
+    sms_template_delivery_confirmed: str = ""
+
     # -- Observability ----------------------------------------------------
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_json: bool = True
@@ -276,13 +297,13 @@ class Settings(BaseSettings):
     ai_provider: str = "gemini"
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
-    # `ai_provider="anthropic"` (ADR-054). `anthropic_effort` is the main
+    # `ai_provider="anthropic"` (ADR-055). `anthropic_effort` is the main
     # cost lever for chat traffic; a cheaper model is a one-variable change.
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-opus-5-5"
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
-    # -- WhatsApp Cloud API (ADR-054) ---------------------------------------
+    # -- WhatsApp Cloud API (ADR-055) ---------------------------------------
     # Meta's credentials for the agency's WhatsApp Business number(s). One
     # Meta app can serve several agencies' numbers: each tenant maps its own
     # number with the `whatsapp_phone_number_id` Tenant Configuration key,

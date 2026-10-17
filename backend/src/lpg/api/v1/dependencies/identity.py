@@ -252,13 +252,17 @@ def get_otp_store() -> OtpStore:
 
 def get_otp_delivery() -> OtpDeliveryPort:
     state, settings = _get_app_state_and_settings()
-    from lpg.infrastructure.identity.otp_delivery import LoggingOtpDelivery
+    from lpg.infrastructure.identity.otp_delivery import LoggingOtpDelivery, SmsOtpDelivery
 
-    # Only implementation that exists — a real SMS provider is Phase 14 scope.
     if state.redis is None:
         msg = "RedisClient is not configured — the application lifespan has not run."
         raise RuntimeError(msg)
-    return LoggingOtpDelivery(state.redis, settings)
+    if settings.sms_provider == "stub":
+        return LoggingOtpDelivery(state.redis, settings)
+    if state.sms_channel is None:
+        msg = "SmsChannel is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+    return SmsOtpDelivery(state.sms_channel, state.redis, settings)
 
 
 def get_redis_client() -> RedisClient:

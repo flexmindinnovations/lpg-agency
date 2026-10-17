@@ -1,4 +1,4 @@
-"""`HandleInboundWhatsAppMessageUseCase` (ADR-054): one customer message in,
+"""`HandleInboundWhatsAppMessageUseCase` (ADR-055): one customer message in,
 one reply out.
 
 Order of work, each step only if the one before allows it:

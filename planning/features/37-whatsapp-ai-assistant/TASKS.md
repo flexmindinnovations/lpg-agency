@@ -13,7 +13,7 @@ Plan: [PLAN.md](./PLAN.md).
 - [x] Nine customer tools and `HandleInboundWhatsAppMessageUseCase`.
 - [x] Tenant config keys `whatsapp_ai_enabled`, `whatsapp_phone_number_id` (backend + dashboard settings page).
 - [x] Unit tests (adapter, webhook parsing, assistant flows) and integration tests (routing, dedupe, booking end to end, RLS, webhook).
-- [x] ADR-054, env templates, module status.
+- [x] ADR-055, env templates, module status.
 - [x] Razorpay payment links through `GatewayPaymentLinks` over `CreateOrderPaymentLinkUseCase` (ADR-053), with an integration test.
 - [x] Blank WhatsApp/Anthropic secrets treated as unset (an empty HMAC key or verify token would accept forged webhooks), with tests.
 

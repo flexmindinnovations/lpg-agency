@@ -1,4 +1,4 @@
-"""Unit tests for `AnthropicModelGateway` (ADR-054): the manual tool-calling
+"""Unit tests for `AnthropicModelGateway` (ADR-055): the manual tool-calling
 loop, history handling and graceful degradation, against a mocked
 `anthropic.AsyncAnthropic`. No real network call is made."""
 

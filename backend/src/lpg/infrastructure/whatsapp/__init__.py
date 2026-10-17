@@ -1,1 +1,1 @@
-"""Meta WhatsApp Cloud API adapters (ADR-054)."""
+"""Meta WhatsApp Cloud API adapters (ADR-055)."""

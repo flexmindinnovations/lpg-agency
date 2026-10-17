@@ -43,7 +43,13 @@ class _CapturingOtpDelivery:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
 
-    async def send(self, phone_number: str, code: str) -> None:
+    async def send(
+        self,
+        phone_number: str,
+        code: str,
+        *,
+        purpose: str = "login",  # noqa: ARG002
+    ) -> None:
         self.sent.append((phone_number, code))
 
 

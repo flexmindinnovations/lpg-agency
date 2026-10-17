@@ -1,5 +1,5 @@
 """SQLAlchemy implementation of
-`lpg.application.whatsapp.ports.WhatsAppConversationRepository` (ADR-054).
+`lpg.application.whatsapp.ports.WhatsAppConversationRepository` (ADR-055).
 
 Tenant-scoped by RLS on the `messaging.*` tables; `tenant_id` is still
 written explicitly on insert, from the Unit of Work's tenant context, because

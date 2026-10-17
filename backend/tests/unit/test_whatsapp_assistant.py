@@ -1,4 +1,4 @@
-"""Unit tests for the WhatsApp customer assistant (ADR-054):
+"""Unit tests for the WhatsApp customer assistant (ADR-055):
 `HandleInboundWhatsAppMessageUseCase` and its customer tools, against
 in-memory fakes. The model is a scripted fake that calls tools in a fixed
 order, so these tests pin the backend's own rules (dedupe, kill switch,
