@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' show SpringSimulation;
 
+import '../layout.dart';
 import '../motion.dart';
 import '../theme.dart';
-import '../tokens.dart';
 
-/// Visual weight of an [LpgButton] — primary for the one action a screen
-/// wants taken, secondary for anything else that still needs a button
-/// shape, text for the lowest-emphasis inline action.
-enum LpgButtonVariant { primary, secondary, text }
+/// Visual weight of an [LpgButton].
+///
+/// - [primary]: the one action a screen wants taken. Filled.
+/// - [secondary]: any other action that still needs a button shape. Outlined.
+/// - [text]: the lowest-emphasis inline action.
+/// - [tonal]: a soft-filled middle ground, for a second action next to a
+///   primary one (e.g. "Call customer" beside "Record delivery").
+/// - [destructive]: cancels, deletes or fails something. Filled in the
+///   danger colour so it never reads as the safe default.
+enum LpgButtonVariant { primary, secondary, text, tonal, destructive }
 
-/// A flat, tonal Material 3 Expressive button. Colour and shape carry the
-/// hierarchy — filled stadium for primary, outlined stadium for secondary —
-/// and press feedback is a real spring-physics scale-down
-/// ([LpgMotion.spatialSpring]) rather than a shadow or gradient change,
-/// matching M3 Expressive's "alive" motion model. `text` variant and high
-/// contrast both fall back to native Flutter `TextButton`/`ElevatedButton`/
-/// `OutlinedButton` — already correctly M3-themed via `LpgTheme`'s
-/// `elevatedButtonTheme`, nothing custom needed there.
+/// The app's button. Colour carries the hierarchy, and press feedback is a
+/// real spring-physics scale-down ([LpgMotion.spatialSpring]) rather than a
+/// shadow change. `text` and high contrast fall back to the native Material
+/// buttons, which `LpgTheme` already themes.
 class LpgButton extends StatefulWidget {
   const LpgButton({
     super.key,
@@ -25,6 +27,7 @@ class LpgButton extends StatefulWidget {
     this.onPressed,
     this.variant = LpgButtonVariant.primary,
     this.icon,
+    this.trailingIcon,
     this.isLoading = false,
     this.expand = false,
   });
@@ -33,6 +36,9 @@ class LpgButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final LpgButtonVariant variant;
   final IconData? icon;
+
+  /// An icon after the label, e.g. a chevron on a "Continue" button.
+  final IconData? trailingIcon;
   final bool isLoading;
 
   /// Stretches to the parent's full width.
@@ -46,7 +52,7 @@ class _LpgButtonState extends State<LpgButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  static const _pressedScale = 0.95;
+  static const _pressedScale = 0.96;
 
   @override
   void initState() {
@@ -68,64 +74,53 @@ class _LpgButtonState extends State<LpgButton>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
     // Loading isn't the same as disabled: a genuinely disabled button fades
     // to signal "not available", but a loading one is actively doing what
-    // it was asked to do — fading it to the same 50% as "unavailable" reads
-    // as the button breaking rather than working. Keep full color and just
-    // swap the label for a spinner; only actual unavailability (no
-    // onPressed) dims it. `unpressable` still blocks taps in both cases.
+    // it was asked to do. Keep full colour and swap the label for a
+    // spinner; only actual unavailability (no onPressed) dims it.
+    // `unpressable` still blocks taps in both cases.
     final unpressable = widget.onPressed == null || widget.isLoading;
     final visuallyDisabled = widget.onPressed == null && !widget.isLoading;
 
     if (widget.variant == LpgButtonVariant.text || colors.isHighContrast) {
-      return _buildFlatButton(context, colors, theme, unpressable);
+      return _buildFlatButton(context, colors, unpressable);
     }
 
-    final baseColor = widget.variant == LpgButtonVariant.primary
-        ? colors.actionPrimary
-        : colors.surfaceRaised;
+    final (Color baseColor, Color textColor) = switch (widget.variant) {
+      LpgButtonVariant.primary => (colors.actionPrimary, colors.textInverse),
+      LpgButtonVariant.destructive => (colors.statusDanger, colors.textInverse),
+      LpgButtonVariant.tonal => (
+        colors.actionPrimaryContainer,
+        colors.onActionPrimaryContainer,
+      ),
+      _ => (colors.card, colors.textPrimary),
+    };
 
-    final textColor = widget.variant == LpgButtonVariant.primary
-        ? colors.textInverse
-        : colors.textPrimary;
-
-    Widget content = widget.isLoading
-        ? SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(textColor),
-            ),
-          )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (widget.icon != null) ...[
-                Icon(widget.icon, size: 18, color: textColor),
-                const SizedBox(width: LpgTokens.spacingSm * 1.0),
-              ],
-              Text(
-                widget.label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: textColor,
-                  letterSpacing: 0.5,
-                ),
+    final content = AnimatedSwitcher(
+      duration: LpgMotion.small(context),
+      child: widget.isLoading
+          ? SizedBox(
+              key: const ValueKey('loading'),
+              width: LpgSizes.iconMd,
+              height: LpgSizes.iconMd,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(textColor),
               ),
-            ],
-          );
+            )
+          : _label(context, textColor),
+    );
 
-    final shape = StadiumBorder(
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(LpgRadius.lg),
       side: widget.variant == LpgButtonVariant.secondary
-          ? BorderSide(color: colors.borderDefault)
+          ? BorderSide(color: colors.borderStrong)
           : BorderSide.none,
     );
 
     final button = Material(
-      color: visuallyDisabled ? baseColor.withValues(alpha: 0.5) : baseColor,
+      color: visuallyDisabled ? colors.surfaceOverlay : baseColor,
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -134,12 +129,23 @@ class _LpgButtonState extends State<LpgButton>
         onTapUp: unpressable ? null : (_) => _animateTo(1.0),
         onTapCancel: unpressable ? null : () => _animateTo(1.0),
         customBorder: shape,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: LpgTokens.spacingLg * 1.0,
-            vertical: LpgTokens.spacingMd * 1.0,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: LpgSizes.buttonHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: LpgSpacing.lg),
+            child: Center(
+              widthFactor: 1,
+              child: visuallyDisabled
+                  ? DefaultTextStyle.merge(
+                      style: TextStyle(color: colors.textDisabled),
+                      child: IconTheme.merge(
+                        data: IconThemeData(color: colors.textDisabled),
+                        child: _label(context, colors.textDisabled),
+                      ),
+                    )
+                  : content,
+            ),
           ),
-          child: Center(child: content),
         ),
       ),
     );
@@ -148,24 +154,52 @@ class _LpgButtonState extends State<LpgButton>
         ? SizedBox(width: double.infinity, child: button)
         : button;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) =>
-          Transform.scale(scale: _controller.value, child: child),
-      child: sized,
+    return Semantics(
+      button: true,
+      enabled: !unpressable,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) =>
+            Transform.scale(scale: _controller.value, child: child),
+        child: sized,
+      ),
+    );
+  }
+
+  Widget _label(BuildContext context, Color textColor) {
+    return Row(
+      key: const ValueKey('label'),
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (widget.icon != null) ...[
+          Icon(widget.icon, size: LpgSizes.iconMd, color: textColor),
+          const SizedBox(width: LpgSpacing.sm),
+        ],
+        Flexible(
+          child: Text(
+            widget.label,
+            overflow: TextOverflow.ellipsis,
+            style: context.lpgText.labelLarge?.copyWith(color: textColor),
+          ),
+        ),
+        if (widget.trailingIcon != null) ...[
+          const SizedBox(width: LpgSpacing.sm),
+          Icon(widget.trailingIcon, size: LpgSizes.iconMd, color: textColor),
+        ],
+      ],
     );
   }
 
   Widget _buildFlatButton(
     BuildContext context,
     LpgColors colors,
-    ThemeData theme,
     bool disabled,
   ) {
     final child = widget.isLoading
         ? const SizedBox(
-            width: 18,
-            height: 18,
+            width: LpgSizes.iconMd,
+            height: LpgSizes.iconMd,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         : Row(
@@ -173,26 +207,36 @@ class _LpgButtonState extends State<LpgButton>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.icon != null) ...[
-                Icon(widget.icon, size: 18),
-                const SizedBox(width: LpgTokens.spacingSm * 1.0),
+                Icon(widget.icon, size: LpgSizes.iconMd),
+                const SizedBox(width: LpgSpacing.sm),
               ],
-              Text(widget.label),
+              Flexible(child: Text(widget.label)),
+              if (widget.trailingIcon != null) ...[
+                const SizedBox(width: LpgSpacing.sm),
+                Icon(widget.trailingIcon, size: LpgSizes.iconMd),
+              ],
             ],
           );
 
+    final onPressed = disabled ? null : widget.onPressed;
     final Widget button = switch (widget.variant) {
-      LpgButtonVariant.primary => ElevatedButton(
-        onPressed: disabled ? null : widget.onPressed,
+      LpgButtonVariant.primary || LpgButtonVariant.tonal => ElevatedButton(
+        onPressed: onPressed,
+        child: child,
+      ),
+      LpgButtonVariant.destructive => ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colors.statusDanger,
+          foregroundColor: colors.onHero,
+        ),
         child: child,
       ),
       LpgButtonVariant.secondary => OutlinedButton(
-        onPressed: disabled ? null : widget.onPressed,
+        onPressed: onPressed,
         child: child,
       ),
-      LpgButtonVariant.text => TextButton(
-        onPressed: disabled ? null : widget.onPressed,
-        child: child,
-      ),
+      LpgButtonVariant.text => TextButton(onPressed: onPressed, child: child),
     };
 
     return widget.expand

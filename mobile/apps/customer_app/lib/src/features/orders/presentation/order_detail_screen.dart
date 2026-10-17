@@ -1,12 +1,13 @@
+import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../providers.dart';
 import '../../payments/presentation/pay_online_section.dart';
 import '../data/orders_provider.dart';
+import 'order_presentation.dart';
 
 /// Statuses a customer can no longer cancel from — already dispatched or
 /// resolved one way or another. `OrderApi.cancelOrder` still accepts a
@@ -49,209 +50,101 @@ class OrderDetailScreen extends ConsumerWidget {
     });
 
     final orderAsync = ref.watch(orderDetailProvider(orderId));
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Order Details',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Order Details')),
       body: orderAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 4),
+        error: (err, _) => LpgErrorState(
           message: 'Failed to load this order\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(orderDetailProvider(orderId)),
+          onRetry: () => ref.refresh(orderDetailProvider(orderId)),
         ),
         data: (order) {
-          final severity = switch (order.status) {
-            'delivered' => LpgStatusSeverity.success,
-            'cancelled' || 'failed_delivery' => LpgStatusSeverity.danger,
-            'out_for_delivery' ||
-            'ready_for_dispatch' => LpgStatusSeverity.warning,
-            _ => LpgStatusSeverity.info,
-          };
           final cancellable = !_terminalStatuses.contains(order.status);
+          final sections = <Widget>[
+            _SummaryCard(order: order),
+            const LpgSectionHeader(title: 'Delivery address'),
+            LpgCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const LpgIconBox(icon: LpgIcons.location),
+                  const SizedBox(width: LpgSpacing.smd),
+                  Expanded(
+                    child: Text(
+                      order.deliveryAddress.addressLine,
+                      style: context.lpgText.bodyLarge,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const LpgSectionHeader(title: 'Cylinders'),
+            LpgCard(
+              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
+              child: Column(
+                children: [
+                  for (var i = 0; i < order.lines.length; i++) ...[
+                    if (i > 0) const Divider(indent: LpgSpacing.md),
+                    LpgListTile(
+                      leadingIcon: LpgIcons.cylinder,
+                      title:
+                          'Qty ${order.lines[i].quantityOrdered}'
+                          '${order.lines[i].isBackordered ? ' (backordered)' : ''}',
+                      subtitle: order.lines[i].quantityDelivered > 0
+                          ? '${order.lines[i].quantityDelivered} delivered'
+                          : null,
+                      trailing: order.lines[i].unitPrice != null
+                          ? Text(
+                              LpgFormat.currency(order.lines[i].unitPrice!),
+                              style: context.lpgText.titleSmall,
+                            )
+                          : null,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: LpgSpacing.md),
+            LpgCard(
+              variant: LpgCardVariant.tonal,
+              child: LpgKeyValueRow(
+                label: 'Total Amount',
+                value: order.totalAmount != null
+                    ? LpgFormat.currency(order.totalAmount!)
+                    : 'Pending',
+                emphasize: true,
+              ),
+            ),
+            const SizedBox(height: LpgSpacing.lg),
+            PayOnlineSection(
+              orderId: orderId,
+              canPay: _prepayableStatuses.contains(order.status),
+            ),
+            if (order.isTrackable)
+              LpgButton(
+                label: 'Track Delivery',
+                icon: LpgIcons.navigate,
+                expand: true,
+                onPressed: () => context.push('/orders/$orderId/track'),
+              ),
+            if (cancellable) ...[
+              if (order.isTrackable) const SizedBox(height: LpgSpacing.smd),
+              LpgButton(
+                label: 'Cancel Order',
+                icon: LpgIcons.cancel,
+                variant: LpgButtonVariant.secondary,
+                expand: true,
+                onPressed: () => _confirmCancel(context, ref, order.status),
+              ),
+            ],
+          ];
 
           return ListView(
-            padding: const EdgeInsets.all(24.0),
+            padding: LpgSpacing.page,
             children: [
-              LpgCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Order #${order.id.substring(0, 8).toUpperCase()}',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        LpgStatusBadge(
-                          label: order.status
-                              .replaceAll('_', ' ')
-                              .toUpperCase(),
-                          severity: severity,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: colors.textSecondary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          DateFormat(
-                            'MMM dd, yyyy • hh:mm a',
-                          ).format(order.requestedDate),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              Text(
-                'Delivery Address',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              LpgCard(
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      color: colors.actionPrimary,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        order.deliveryAddress.addressLine,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              Text(
-                'Cylinders',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              LpgCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (var i = 0; i < order.lines.length; i++) ...[
-                      if (i > 0)
-                        Divider(
-                          height: 1,
-                          indent: 16,
-                          color: colors.borderDefault,
-                        ),
-                      LpgListTile(
-                        leadingIcon: Icons.local_gas_station_outlined,
-                        title:
-                            'Qty ${order.lines[i].quantityOrdered}'
-                            '${order.lines[i].isBackordered ? ' (backordered)' : ''}',
-                        subtitle: order.lines[i].quantityDelivered > 0
-                            ? '${order.lines[i].quantityDelivered} delivered'
-                            : null,
-                        trailing: order.lines[i].unitPrice != null
-                            ? Text(
-                                '₹${order.lines[i].unitPrice!.toStringAsFixed(2)}',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.textPrimary,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              LpgCard(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total Amount',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      order.totalAmount != null
-                          ? '₹${order.totalAmount!.toStringAsFixed(2)}'
-                          : 'Pending',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              PayOnlineSection(
-                orderId: orderId,
-                canPay: _prepayableStatuses.contains(order.status),
-              ),
-              const SizedBox(height: 8),
-              if (order.status == 'out_for_delivery')
-                LpgButton(
-                  label: 'Track Delivery',
-                  icon: Icons.location_on_outlined,
-                  expand: true,
-                  onPressed: () => context.push('/orders/$orderId/track'),
-                ),
-              if (cancellable) ...[
-                if (order.status == 'out_for_delivery')
-                  const SizedBox(height: 12),
-                LpgButton(
-                  label: 'Cancel Order',
-                  variant: LpgButtonVariant.secondary,
-                  expand: true,
-                  onPressed: () => _confirmCancel(context, ref, order.status),
-                ),
-              ],
-              const SizedBox(height: 24),
+              for (var i = 0; i < sections.length; i++)
+                LpgFadeSlideIn(index: i, child: sections[i]),
             ],
           );
         },
@@ -343,6 +236,51 @@ class OrderDetailScreen extends ConsumerWidget {
       },
       onFailure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not cancel order: ${failure.message}')),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.order});
+
+  final OrderResponse order;
+
+  @override
+  Widget build(BuildContext context) {
+    return LpgCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              LpgIconBox(
+                icon: order.statusIcon,
+                tone: order.statusSeverity.tone,
+              ),
+              const SizedBox(width: LpgSpacing.smd),
+              Expanded(
+                child: Text(order.reference, style: context.lpgText.titleLarge),
+              ),
+            ],
+          ),
+          const SizedBox(height: LpgSpacing.md),
+          LpgStatusBadge(
+            label: order.statusLabel,
+            severity: order.statusSeverity,
+          ),
+          const SizedBox(height: LpgSpacing.smd),
+          LpgKeyValueRow(
+            icon: LpgIcons.calendar,
+            label: 'Requested for',
+            value: LpgFormat.dateTime(order.requestedDate),
+          ),
+          LpgKeyValueRow(
+            icon: LpgIcons.cylinder,
+            label: 'Cylinders',
+            value: '${order.cylinderCount}',
+          ),
+        ],
       ),
     );
   }

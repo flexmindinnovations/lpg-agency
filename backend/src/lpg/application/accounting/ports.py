@@ -131,7 +131,7 @@ class CreditNoteRepository(Protocol):
 
 
 class OnlinePaymentRepository(Protocol):
-    """Repository for the `OnlinePayment` aggregate (ADR-052)."""
+    """Repository for the `OnlinePayment` aggregate (ADR-053)."""
 
     def next_id(self) -> uuid.UUID: ...
 

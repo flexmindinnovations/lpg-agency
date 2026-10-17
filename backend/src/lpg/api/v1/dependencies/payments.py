@@ -1,4 +1,4 @@
-"""Dependencies for online payments (ADR-052).
+"""Dependencies for online payments (ADR-053).
 
 Wires the payment gateway adapter and the `OnlinePayment` repository, plus
 the webhook's own Unit of Work: a gateway webhook carries no JWT, so its

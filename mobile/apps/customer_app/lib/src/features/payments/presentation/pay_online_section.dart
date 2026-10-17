@@ -7,15 +7,15 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../providers.dart';
 import '../data/order_payments_provider.dart';
 
-/// "Pay online" for one order (ADR-052), shared by the order and invoice
+/// "Pay online" for one order (ADR-053), shared by the order and invoice
 /// detail screens.
 ///
 /// Payment happens on Razorpay's hosted page in the browser, so there is no
 /// card or UPI form in the app. When the customer returns to the app the
 /// pending payment is re-checked with the backend automatically; the
-/// "Check payment status" button does the same on demand. Deliberately
-/// built only from shared design-system components so the app-wide UI
-/// refresh can restyle it without touching this logic.
+/// "Check payment status" button does the same on demand. Built only from
+/// design-system components (`LpgCard`, `LpgListTile`, `LpgButton`,
+/// `LpgFeedback`) so it follows the app's theme.
 class PayOnlineSection extends ConsumerStatefulWidget {
   const PayOnlineSection({
     super.key,
@@ -75,11 +75,16 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
           mode: LaunchMode.externalApplication,
         );
         if (!opened && mounted) {
-          _showMessage('Could not open the payment page.');
+          _showMessage(
+            'Could not open the payment page.',
+            tone: LpgTone.danger,
+          );
         }
       },
-      onFailure: (failure) async =>
-          _showMessage('Could not start payment: ${failure.message}'),
+      onFailure: (failure) async => _showMessage(
+        'Could not start payment: ${failure.message}',
+        tone: LpgTone.danger,
+      ),
     );
     if (mounted) setState(() => _busy = false);
   }
@@ -98,31 +103,35 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
         if (payment.isPaid) {
           _pendingPaymentId = null;
           widget.onPaid?.call();
-          _showMessage('Payment received. Thank you!');
+          _showMessage('Payment received. Thank you!', tone: LpgTone.success);
         } else if (!quiet) {
           _showMessage(
             payment.isOpen
                 ? 'We have not received this payment yet.'
                 : 'This payment link has ${payment.status}. Please try again.',
+            tone: LpgTone.warning,
           );
         }
       },
       onFailure: (failure) {
-        if (!quiet) _showMessage('Could not check payment: ${failure.message}');
+        if (!quiet) {
+          _showMessage(
+            'Could not check payment: ${failure.message}',
+            tone: LpgTone.danger,
+          );
+        }
       },
     );
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  void _showMessage(String message, {LpgTone tone = LpgTone.neutral}) {
+    LpgFeedback.showToast(context, message, tone: tone);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
     final payments =
         ref.watch(orderPaymentsProvider(widget.orderId)).asData?.value ??
         const <OnlinePaymentResponse>[];
@@ -136,60 +145,63 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
       children: [
         for (final payment in paid)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: LpgSpacing.smd),
             child: LpgCard(
-              child: Row(
-                children: [
-                  Icon(Icons.verified_outlined, color: colors.statusSuccess),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Paid online'
-                      '${payment.paymentMethod != null ? ' via ${payment.paymentMethod!.toUpperCase()}' : ''}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '₹${payment.amount.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colors.statusSuccess,
-                    ),
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
+              child: LpgListTile(
+                leadingIcon: LpgIcons.verified,
+                leadingTone: LpgTone.success,
+                title: 'Paid online',
+                subtitle: payment.paymentMethod != null
+                    ? 'via ${payment.paymentMethod!.toUpperCase()}'
+                    : null,
+                trailing: Text(
+                  LpgFormat.currency(payment.amount),
+                  style: text.titleSmall?.copyWith(color: colors.statusSuccess),
+                ),
               ),
             ),
           ),
         if (showPayButton) ...[
           LpgButton(
             label: 'Pay Online',
-            icon: Icons.account_balance_wallet_outlined,
+            icon: LpgIcons.wallet,
             expand: true,
             isLoading: _busy && _pendingPaymentId == null,
             onPressed: _busy ? null : _pay,
           ),
           if (_pendingPaymentId != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: LpgSpacing.smd),
             LpgButton(
               label: 'Check Payment Status',
+              icon: LpgIcons.sync,
               variant: LpgButtonVariant.secondary,
               expand: true,
               isLoading: _busy,
               onPressed: _busy ? null : _checkStatus,
             ),
           ],
-          const SizedBox(height: 8),
-          Text(
-            'UPI, cards, net banking and wallets, secured by Razorpay.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colors.textSecondary,
-            ),
+          const SizedBox(height: LpgSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                LpgIcons.security,
+                size: LpgSizes.iconSm,
+                color: colors.textSecondary,
+              ),
+              const SizedBox(width: LpgSpacing.xs),
+              Flexible(
+                child: Text(
+                  'UPI, cards, net banking and wallets, secured by Razorpay.',
+                  textAlign: TextAlign.center,
+                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                ),
+              ),
+            ],
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: LpgSpacing.md),
       ],
     );
   }

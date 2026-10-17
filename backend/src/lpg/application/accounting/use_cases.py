@@ -61,7 +61,7 @@ def apply_online_payments_to_invoice(
     invoice: Invoice, online_payments: Sequence[OnlinePayment]
 ) -> list[OnlinePayment]:
     """Turn each paid, not-yet-applied gateway payment for this invoice's
-    order into an `online_gateway` invoice `Payment` (ADR-052). Returns the
+    order into an `online_gateway` invoice `Payment` (ADR-053). Returns the
     online payments that changed, for the caller to save.
 
     A prepayment can exceed the invoice when fewer cylinders were delivered

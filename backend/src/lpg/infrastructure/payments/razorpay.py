@@ -1,4 +1,4 @@
-"""Razorpay adapter for `PaymentGateway` (ADR-052).
+"""Razorpay adapter for `PaymentGateway` (ADR-053).
 
 Talks to Razorpay's Payment Links API over plain HTTPS (`httpx`) rather than
 the `razorpay` SDK: the SDK is synchronous, and three endpoints plus an HMAC

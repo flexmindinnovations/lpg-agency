@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'failure_mapper.dart';
 import 'models/models.dart';
 
-/// Hand-written wrapper for the backend's online-payment routes (ADR-052).
+/// Hand-written wrapper for the backend's online-payment routes (ADR-053).
 ///
 /// Payment happens on Razorpay's hosted page: [createPaymentLink] returns
 /// its URL, the app opens it, and [refreshPayment] asks the backend to

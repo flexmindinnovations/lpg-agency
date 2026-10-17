@@ -30,5 +30,55 @@ void main() {
       final dark = LpgTheme.colorsFor(LpgThemeVariant.dark);
       expect(dark.surfaceBase, isNot(equals(const Color(0xFF000000))));
     });
+
+    test('uses the bundled Inter typeface', () {
+      final theme = LpgTheme.light;
+      expect(theme.textTheme.bodyLarge?.fontFamily, LpgTheme.fontFamily);
+    });
+
+    test('high contrast drops shadows and gradients', () {
+      final hc = LpgTheme.colorsFor(LpgThemeVariant.highContrast);
+      expect(hc.cardShadow, isEmpty);
+      expect(hc.floatingShadow, isEmpty);
+      expect(hc.heroGradient.toSet(), hasLength(1));
+    });
+
+    test('LpgColors.lerp interpolates between variants', () {
+      final light = LpgTheme.colorsFor(LpgThemeVariant.light);
+      final dark = LpgTheme.colorsFor(LpgThemeVariant.dark);
+      expect(light.lerp(dark, 0).canvas, light.canvas);
+      expect(light.lerp(dark, 1).canvas, dark.canvas);
+      expect(light.lerp(dark, 1).heroGradient, dark.heroGradient);
+    });
+  });
+
+  group('LpgFormat', () {
+    test('formats rupees with Indian digit grouping', () {
+      expect(LpgFormat.currency(124000.5), '₹1,24,000.50');
+      expect(LpgFormat.currencyWhole(1240), '₹1,240');
+    });
+
+    test('turns status codes into labels and sentences', () {
+      expect(LpgFormat.statusLabel('out_for_delivery'), 'OUT FOR DELIVERY');
+      expect(LpgFormat.sentence('out_for_delivery'), 'Out for delivery');
+      expect(LpgFormat.sentence(''), '');
+    });
+
+    test('relative time reads naturally', () {
+      final now = DateTime(2026, 10, 17, 12);
+      expect(LpgFormat.relative(now, now: now), 'just now');
+      expect(
+        LpgFormat.relative(now.subtract(const Duration(minutes: 5)), now: now),
+        '5 min ago',
+      );
+      expect(
+        LpgFormat.relative(now.subtract(const Duration(hours: 3)), now: now),
+        '3 h ago',
+      );
+      expect(
+        LpgFormat.relative(now.subtract(const Duration(days: 1)), now: now),
+        'yesterday',
+      );
+    });
   });
 }

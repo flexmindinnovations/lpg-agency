@@ -1,6 +1,6 @@
 # Plan: Online Payments (Razorpay)
 
-Requested 2026-10-17 by the product owner. Decision record: ADR-052.
+Requested 2026-10-17 by the product owner. Decision record: ADR-053.
 
 ## Goal
 

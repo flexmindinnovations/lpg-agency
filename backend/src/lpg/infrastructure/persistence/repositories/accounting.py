@@ -107,7 +107,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                 for line in invoice.lines
             ],
             # Non-empty only when a gateway prepayment was applied at
-            # generation time (ADR-052) — see `apply_online_payments_to_invoice`.
+            # generation time (ADR-053) — see `apply_online_payments_to_invoice`.
             payments=[
                 PaymentModel(
                     id=payment.id,

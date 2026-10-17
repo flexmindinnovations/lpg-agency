@@ -1,4 +1,4 @@
-"""Online payment use cases (ADR-052).
+"""Online payment use cases (ADR-053).
 
 `CreateOrderPaymentLinkUseCase` is the one entry point every channel shares
 — the Customer App, staff on the dashboard, and the WhatsApp assistant —

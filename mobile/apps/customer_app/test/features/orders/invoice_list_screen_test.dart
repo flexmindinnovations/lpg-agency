@@ -55,7 +55,7 @@ void main() {
 
       expect(find.textContaining('000042'), findsOneWidget);
       expect(find.text('ISSUED'), findsOneWidget);
-      expect(find.textContaining('1180.00'), findsOneWidget);
+      expect(find.textContaining('1,180.00'), findsOneWidget);
     });
 
     testWidgets(

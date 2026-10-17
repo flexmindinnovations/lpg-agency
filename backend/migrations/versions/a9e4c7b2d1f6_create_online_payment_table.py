@@ -1,6 +1,6 @@
 """create online_payment table
 
-Razorpay online payments (ADR-052). One row per payment-gateway attempt for
+Razorpay online payments (ADR-053). One row per payment-gateway attempt for
 an order: a hosted payment link, its status (`created -> paid | expired |
 cancelled`) and, once paid, the `accounting.payment` row it was applied to
 on the order's invoice.

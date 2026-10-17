@@ -55,7 +55,7 @@ final orderApiProvider = Provider<OrderApi>((ref) {
   return OrderApi(apiClient.dio);
 });
 
-/// Provides the [PaymentApi] client (online payments, ADR-052).
+/// Provides the [PaymentApi] client (online payments, ADR-053).
 final paymentApiProvider = Provider<PaymentApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return PaymentApi(apiClient.dio);

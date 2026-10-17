@@ -23,45 +23,50 @@ class TodayScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(activeRouteProvider.future),
         child: routeAsync.when(
-          loading: () => const Center(child: LpgLoadingIndicator()),
+          loading: () => const LpgSkeletonList(itemCount: 4),
+          // Wrapped in a ListView so pull-to-refresh still works from the
+          // error state.
           error: (err, _) => ListView(
+            padding: LpgSpacing.page,
             children: [
-              LpgEmptyState(
+              LpgErrorState(
                 message: 'Could not load your route.\n$err',
-                icon: Icons.error_outline,
-                actionLabel: 'Retry',
-                onAction: () => ref.invalidate(activeRouteProvider),
+                onRetry: () => ref.invalidate(activeRouteProvider),
               ),
             ],
           ),
           data: (route) {
             final pendingCash = ref.watch(pendingCashHandoverProvider).value;
             final pendingLoad = ref.watch(pendingLoadProvider).value;
+            final sections = <Widget>[
+              if (pendingLoad != null) _PendingLoadCard(route: pendingLoad),
+              if (pendingCash != null) _PendingCashCard(view: pendingCash),
+              if (route == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: LpgSpacing.xxl),
+                  child: LpgEmptyState(
+                    title: 'Nothing on the road yet',
+                    message: 'No route assigned yet.',
+                    icon: LpgIcons.truck,
+                  ),
+                )
+              else ...[
+                _RouteHero(route: route),
+                _RouteStats(route: route),
+                const LpgSectionHeader(title: 'Up next'),
+                _NextStopCard(route: route),
+                const LpgSectionHeader(title: 'Live location'),
+                LocationSharingCard(route: route),
+              ],
+            ];
+            // A handful of sections, so build them all eagerly: the live
+            // location switch must exist even when it's below the fold.
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: LpgSpacing.page,
               children: [
-                if (pendingLoad != null) ...[
-                  _PendingLoadCard(route: pendingLoad),
-                  const SizedBox(height: 16),
-                ],
-                if (pendingCash != null) ...[
-                  _PendingCashCard(view: pendingCash),
-                  const SizedBox(height: 16),
-                ],
-                if (route == null)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 80),
-                    child: LpgEmptyState(
-                      message: 'No route assigned yet.',
-                      icon: Icons.local_shipping_outlined,
-                    ),
-                  )
-                else ...[
-                  _RouteStatusCard(route: route),
-                  const SizedBox(height: 16),
-                  _NextStopCard(route: route),
-                  const SizedBox(height: 16),
-                  LocationSharingCard(route: route),
+                for (var i = 0; i < sections.length; i++) ...[
+                  if (i > 0) const SizedBox(height: LpgSpacing.md),
+                  LpgFadeSlideIn(index: i, child: sections[i]),
                 ],
               ],
             );
@@ -72,58 +77,116 @@ class TodayScreen extends ConsumerWidget {
   }
 }
 
-class _RouteStatusCard extends StatelessWidget {
-  const _RouteStatusCard({required this.route});
+LpgStatusSeverity _routeSeverity(String status) => switch (status) {
+  'in_progress' => LpgStatusSeverity.warning,
+  'completed' || 'reconciled' => LpgStatusSeverity.success,
+  'cancelled' => LpgStatusSeverity.danger,
+  _ => LpgStatusSeverity.info,
+};
+
+/// The headline: how far through today's route the driver is.
+class _RouteHero extends StatelessWidget {
+  const _RouteHero({required this.route});
 
   final RouteSummary route;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
+    final text = context.lpgText;
     final total = route.stops.length;
     final delivered = route.stops.where((s) => s.status == 'delivered').length;
+    final progress = total == 0 ? 0.0 : delivered / total;
 
-    return LpgCard(
+    return LpgHeroCard(
+      watermark: LpgIcons.route,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Route',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary,
+              Expanded(
+                child: Text(
+                  "Today's route",
+                  style: text.titleSmall?.copyWith(
+                    color: colors.onHero.withValues(alpha: 0.85),
+                  ),
                 ),
               ),
               LpgStatusBadge(
-                label: route.status.replaceAll('_', ' ').toUpperCase(),
-                severity: switch (route.status) {
-                  'in_progress' => LpgStatusSeverity.warning,
-                  'completed' || 'reconciled' => LpgStatusSeverity.success,
-                  'cancelled' => LpgStatusSeverity.danger,
-                  _ => LpgStatusSeverity.info,
-                },
+                label: LpgFormat.statusLabel(route.status),
+                severity: _routeSeverity(route.status),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: LpgSpacing.md),
           Text(
             '$delivered of $total delivered',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+            style: text.headlineSmall?.copyWith(color: colors.onHero),
+          ),
+          const SizedBox(height: LpgSpacing.smd),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(LpgRadius.full),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: LpgMotion.large(context),
+              curve: LpgMotion.effectsCurve,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: LpgSpacing.sm,
+                backgroundColor: colors.onHero.withValues(alpha: 0.24),
+                valueColor: AlwaysStoppedAnimation<Color>(colors.onHero),
+                semanticsLabel: 'Route progress',
+                semanticsValue: '${(progress * 100).round()}%',
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: total == 0 ? 0 : delivered / total,
-              minHeight: 6,
-              backgroundColor: colors.borderDefault,
-              valueColor: AlwaysStoppedAnimation<Color>(colors.actionPrimary),
+        ],
+      ),
+    );
+  }
+}
+
+/// Delivered / remaining / failed at a glance, under the hero.
+class _RouteStats extends StatelessWidget {
+  const _RouteStats({required this.route});
+
+  final RouteSummary route;
+
+  @override
+  Widget build(BuildContext context) {
+    final delivered = route.stops.where((s) => s.status == 'delivered').length;
+    final failed = route.stops.where((s) => s.status == 'failed').length;
+    final remaining = route.stops.length - delivered - failed;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: LpgStatTile(
+              label: 'Delivered',
+              value: '$delivered',
+              icon: LpgIcons.success,
+              tone: LpgTone.success,
+            ),
+          ),
+          const SizedBox(width: LpgSpacing.smd),
+          Expanded(
+            child: LpgStatTile(
+              label: 'Remaining',
+              value: '$remaining',
+              icon: LpgIcons.location,
+              tone: LpgTone.primary,
+            ),
+          ),
+          const SizedBox(width: LpgSpacing.smd),
+          Expanded(
+            child: LpgStatTile(
+              label: 'Failed',
+              value: '$failed',
+              icon: LpgIcons.cancel,
+              tone: failed > 0 ? LpgTone.danger : LpgTone.neutral,
             ),
           ),
         ],
@@ -139,9 +202,6 @@ class _NextStopCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
-
     RouteStopSummary? pending;
     for (final s in route.stops) {
       if (s.status != 'delivered' && s.status != 'failed') {
@@ -152,18 +212,14 @@ class _NextStopCard extends StatelessWidget {
     final next = pending;
 
     if (next == null) {
-      return LpgCard(
-        child: Row(
-          children: [
-            Icon(Icons.done_all, color: colors.statusSuccess),
-            const SizedBox(width: 12),
-            Text(
-              'All stops done for this route.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.textPrimary,
-              ),
-            ),
-          ],
+      return const LpgCard(
+        variant: LpgCardVariant.tonal,
+        tone: LpgTone.success,
+        padding: EdgeInsets.zero,
+        child: LpgListTile(
+          leadingIcon: LpgIcons.allDone,
+          leadingTone: LpgTone.success,
+          title: 'All stops done for this route.',
         ),
       );
     }
@@ -173,10 +229,10 @@ class _NextStopCard extends StatelessWidget {
       onTap: () =>
           context.goNamed('stop', pathParameters: {'orderId': next.orderId}),
       child: LpgListTile(
-        leadingIcon: Icons.navigation_outlined,
+        leadingIcon: LpgIcons.navigate,
         title: 'Next stop · Stop ${next.sequenceNumber}',
         subtitle: 'Order ${next.orderId.substring(0, 8).toUpperCase()}',
-        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+        showChevron: true,
       ),
     );
   }
@@ -192,20 +248,22 @@ class _PendingLoadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
     final total = route.loadedLines.fold<int>(0, (s, l) => s + l.quantity);
 
     return LpgCard(
+      variant: LpgCardVariant.tonal,
+      tone: LpgTone.info,
       padding: EdgeInsets.zero,
       onTap: () =>
           context.goNamed('vanLoad', pathParameters: {'routeId': route.id}),
       child: LpgListTile(
-        leadingIcon: Icons.inventory_2_outlined,
+        leadingIcon: LpgIcons.inventory,
+        leadingTone: LpgTone.info,
         title: 'Check your van load',
         subtitle: total == 0
             ? "Review today's route manifest"
             : "$total cylinder${total == 1 ? '' : 's'} for today's route",
-        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+        showChevron: true,
       ),
     );
   }
@@ -221,25 +279,22 @@ class _PendingCashCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final d = view.routeDate;
-    final date =
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
-
     return LpgCard(
+      variant: LpgCardVariant.tonal,
+      tone: LpgTone.warning,
       padding: EdgeInsets.zero,
       onTap: () => context.goNamed(
         'cashHandover',
         pathParameters: {'routeId': view.routeId},
       ),
       child: LpgListTile(
-        leadingIcon: Icons.account_balance_wallet_outlined,
+        leadingIcon: LpgIcons.handover,
+        leadingTone: LpgTone.warning,
         title: 'Cash reconciliation pending',
         subtitle:
-            'Declare ₹${view.expectedAmount.toStringAsFixed(2)} from your '
-            '$date route',
-        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+            'Declare ${LpgFormat.currency(view.expectedAmount)} from your '
+            '${LpgFormat.date(view.routeDate)} route',
+        showChevron: true,
       ),
     );
   }

@@ -1,4 +1,4 @@
-"""Pydantic models for `api/v1/routers/online_payment.py` (ADR-052).
+"""Pydantic models for `api/v1/routers/online_payment.py` (ADR-053).
 
 Like all schemas, `uuid`/`datetime` are real imports.
 """

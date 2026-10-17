@@ -42,7 +42,7 @@ dependencies = [
     "rapidocr>=3.9.2",
     "onnxruntime>=1.29.0",
     "google-genai>=2.22.0",
-    # Outbound HTTPS to the Razorpay API (ADR-052) — async, already in the
+    # Outbound HTTPS to the Razorpay API (ADR-053) — async, already in the
     # lockfile via google-genai; declared directly now that we import it.
     "httpx>=0.28.0",
 ]
@@ -374,7 +374,7 @@ ignore_imports = [
     # its own UnitOfWork-scoped seam) the concrete SqlAlchemyUnitOfWork type.
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.accounting",
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.unit_of_work",
-    # ADR-052: dependencies/payments.py wires the payment gateway factory,
+    # ADR-053: dependencies/payments.py wires the payment gateway factory,
     # the online-payment repository, and the webhook's own tenant-scoped
     # Unit of Work (a webhook has no JWT to resolve a tenant from).
     "lpg.api.v1.dependencies.payments -> lpg.infrastructure.payments.factory",

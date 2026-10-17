@@ -8,7 +8,7 @@ Customer, Delivery Driver, Accountant/Cashier, Payment Gateway (external), Syste
 
 ## 3. Path A — Online Prepayment (at Booking Time)
 
-> **Implemented 2026-10-17 (ADR-052)** with Razorpay payment links. Prepayment is possible once the order is confirmed (prices fixed) and is held as an `OnlinePayment`, then applied to the invoice generated at delivery — the "advance against the invoice" option recommended in the gap below.
+> **Implemented 2026-10-17 (ADR-053)** with Razorpay payment links. Prepayment is possible once the order is confirmed (prices fixed) and is held as an `OnlinePayment`, then applied to the invoice generated at delivery — the "advance against the invoice" option recommended in the gap below.
 
 1. Customer selects "Pay Online" during booking (`workflows/customer-booking.md` step 6).
 2. System redirects to/invokes the integrated Payment Gateway.

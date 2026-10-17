@@ -16,99 +16,77 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final profileAsync = ref.watch(driverProfileProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: LpgSpacing.page,
         children: [
-          const SizedBox(height: 8),
-          Center(
-            child: CircleAvatar(
-              radius: 40,
-              backgroundColor: colors.actionPrimary.withValues(alpha: 0.1),
-              child: Icon(Icons.person, size: 40, color: colors.actionPrimary),
+          LpgFadeSlideIn(
+            child: _Header(
+              name: profileAsync.value?.name,
+              phone: profileAsync.value?.phoneNumber,
+              loading: profileAsync.isLoading,
             ),
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: profileAsync.when(
-              loading: () => const LpgLoadingIndicator(),
-              error: (_, _) => Text(
-                'Driver',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              data: (p) => Column(
-                children: [
-                  Text(
-                    p.name,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
+          const SizedBox(height: LpgSpacing.md),
+          profileAsync.when(
+            loading: () =>
+                const LpgSkeletonList(itemCount: 3, padding: EdgeInsets.zero),
+            error: (err, _) => LpgErrorState(
+              message: 'Could not load your profile.\n$err',
+              onRetry: () => ref.invalidate(driverProfileProvider),
+            ),
+            data: (p) => LpgFadeSlideIn(
+              index: 1,
+              child: LpgCard(
+                padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
+                child: Column(
+                  children: [
+                    LpgListTile(
+                      leadingIcon: LpgIcons.kyc,
+                      title: 'Licence',
+                      subtitle: p.licenseExpiryDate == null
+                          ? p.licenseNumber
+                          : '${p.licenseNumber} · expires '
+                                '${LpgFormat.date(p.licenseExpiryDate!)}',
                     ),
-                  ),
-                  if (p.phoneNumber.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      p.phoneNumber,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                    const Divider(indent: LpgSpacing.md),
+                    LpgListTile(
+                      leadingIcon: LpgIcons.truck,
+                      leadingTone: LpgTone.accent,
+                      title: 'Vehicle',
+                      subtitle: p.vehicle == null
+                          ? 'Not on a route'
+                          : '${p.vehicle!.registrationNumber} · '
+                                '${p.vehicle!.label}',
+                    ),
+                    const Divider(indent: LpgSpacing.md),
+                    LpgListTile(
+                      leadingIcon: LpgIcons.verified,
+                      leadingTone: LpgTone.success,
+                      title: 'Status',
+                      subtitle: LpgFormat.sentence(p.status),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 32),
-          profileAsync.when(
-            loading: () => const SizedBox.shrink(),
-            error: (err, _) => LpgEmptyState(
-              message: 'Could not load your profile.\n$err',
-              icon: Icons.error_outline,
-              actionLabel: 'Retry',
-              onAction: () => ref.invalidate(driverProfileProvider),
-            ),
-            data: (p) => Column(
-              children: [
-                _InfoCard(
-                  icon: Icons.badge_outlined,
-                  label: 'Licence',
-                  value: p.licenseExpiryDate == null
-                      ? p.licenseNumber
-                      : '${p.licenseNumber} · expires '
-                            '${_date(p.licenseExpiryDate!)}',
-                ),
-                _InfoCard(
-                  icon: Icons.local_shipping_outlined,
-                  label: 'Vehicle',
-                  value: p.vehicle == null
-                      ? 'Not on a route'
-                      : '${p.vehicle!.registrationNumber} · '
-                            '${p.vehicle!.label}',
-                ),
-                _InfoCard(
-                  icon: Icons.verified_user_outlined,
-                  label: 'Status',
-                  value: p.status.replaceAll('_', ' '),
-                ),
-              ],
+          const LpgSectionHeader(title: 'Offline sync'),
+          LpgFadeSlideIn(
+            index: 2,
+            child: _SyncStatusRow(
+              pending: ref.watch(pendingSyncCountProvider).value ?? 0,
+              issues: ref.watch(syncIssuesProvider).value?.length ?? 0,
             ),
           ),
-          const SizedBox(height: 16),
-          _SyncStatusRow(
-            pending: ref.watch(pendingSyncCountProvider).value ?? 0,
-            issues: ref.watch(syncIssuesProvider).value?.length ?? 0,
-          ),
-          const SizedBox(height: 32),
+          const SizedBox(height: LpgSpacing.xl),
           LpgButton(
             label: 'Log Out',
+            icon: LpgIcons.logout,
             variant: LpgButtonVariant.secondary,
             expand: true,
             onPressed: () async {
@@ -121,11 +99,11 @@ class ProfileScreen extends ConsumerWidget {
               await ref.read(authControllerProvider).logout();
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: LpgSpacing.lg),
           Text(
             'v1.0.0 (Build 1)',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.textSecondary.withValues(alpha: 0.5),
+            style: context.lpgText.labelSmall?.copyWith(
+              color: colors.textDisabled,
             ),
             textAlign: TextAlign.center,
           ),
@@ -133,10 +111,54 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  String _date(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')}';
+/// Avatar, name and phone. Falls back to "Driver" when the profile can't
+/// load, so the screen still reads sensibly offline.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.name,
+    required this.phone,
+    required this.loading,
+  });
+
+  final String? name;
+  final String? phone;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    final displayName = name ?? (loading ? '' : 'Driver');
+    return Row(
+      children: [
+        LpgAvatar(name: displayName, size: LpgSizes.avatarLg),
+        const SizedBox(width: LpgSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (loading)
+                const LpgShimmer(
+                  child: LpgSkeleton(width: LpgSizes.avatarLg * 2),
+                )
+              else
+                Text(displayName, style: text.titleLarge),
+              if (phone case final phone? when phone.isNotEmpty) ...[
+                const SizedBox(height: LpgSpacing.xs),
+                Text(
+                  phone,
+                  style: text.bodyMedium?.copyWith(
+                    color: context.lpgColors.textSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _SyncStatusRow extends StatelessWidget {
@@ -147,42 +169,31 @@ class _SyncStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
     final subtitle = issues > 0
         ? '$issues need${issues == 1 ? 's' : ''} your attention'
         : pending > 0
         ? '$pending change${pending == 1 ? '' : 's'} syncing'
         : 'All changes synced';
+    final tone = issues > 0
+        ? LpgTone.danger
+        : pending > 0
+        ? LpgTone.warning
+        : LpgTone.success;
 
     return LpgCard(
       padding: EdgeInsets.zero,
       onTap: () => context.goNamed('sync'),
       child: LpgListTile(
-        leadingIcon: issues > 0 ? Icons.sync_problem : Icons.sync,
+        leadingIcon: issues > 0
+            ? LpgIcons.syncProblem
+            : pending > 0
+            ? LpgIcons.sync
+            : LpgIcons.synced,
+        leadingTone: tone,
         title: 'Sync status',
         subtitle: subtitle,
-        trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+        showChevron: true,
       ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return LpgCard(
-      padding: EdgeInsets.zero,
-      child: LpgListTile(leadingIcon: icon, title: label, subtitle: value),
     );
   }
 }

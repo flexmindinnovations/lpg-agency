@@ -1,19 +1,11 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../payments/presentation/pay_online_section.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/invoices_provider.dart';
-
-LpgStatusSeverity _statusSeverity(String status) => switch (status) {
-  'paid' => LpgStatusSeverity.success,
-  'partially_paid' => LpgStatusSeverity.warning,
-  'issued' => LpgStatusSeverity.info,
-  'cancelled' || 'refunded' => LpgStatusSeverity.danger,
-  _ => LpgStatusSeverity.neutral,
-};
+import 'invoice_presentation.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
   const InvoiceDetailScreen({super.key, required this.invoiceId});
@@ -23,36 +15,22 @@ class InvoiceDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final invoiceAsync = ref.watch(invoiceDetailProvider(invoiceId));
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Invoice Details',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Invoice Details')),
       body: invoiceAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 4),
+        error: (err, _) => LpgErrorState(
           message: 'Failed to load this invoice\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(invoiceDetailProvider(invoiceId)),
+          onRetry: () => ref.refresh(invoiceDetailProvider(invoiceId)),
         ),
         data: (invoice) {
           if (invoice == null) {
             return const LpgEmptyState(
               message: 'This invoice could not be found.',
-              icon: Icons.receipt_outlined,
+              icon: LpgIcons.invoice,
             );
           }
 
@@ -61,106 +39,129 @@ class InvoiceDetailScreen extends ConsumerWidget {
             data: (types) => {for (final t in types) t.id: t.name},
             orElse: () => const <String, String>{},
           );
-          final balanceDue = invoice.totalAmount - invoice.amountPaid;
+          final balanceDue = invoice.balanceDue;
 
-          return ListView(
-            padding: const EdgeInsets.all(24.0),
-            children: [
-              LpgCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            // See `invoice_list_screen.dart`'s identical
-                            // comment — `invoiceNumber` already has its own
-                            // "INV-..." prefix.
-                            invoice.invoiceNumber ??
-                                'INV-${invoice.invoiceId.substring(0, 8).toUpperCase()}',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colors.textPrimary,
-                            ),
+          final sections = <Widget>[
+            LpgHeroCard(
+              watermark: LpgIcons.invoice,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          invoice.reference,
+                          style: text.titleMedium?.copyWith(
+                            color: colors.onHero,
                           ),
                         ),
-                        LpgStatusBadge(
-                          label: invoice.status
-                              .replaceAll('_', ' ')
-                              .toUpperCase(),
-                          severity: _statusSeverity(invoice.status),
-                        ),
-                      ],
+                      ),
+                      LpgStatusBadge(
+                        label: invoice.statusLabel,
+                        severity: invoice.statusSeverity,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: LpgSpacing.lg),
+                  Text(
+                    'Total',
+                    style: text.labelLarge?.copyWith(
+                      color: colors.onHero.withValues(alpha: 0.8),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: colors.textSecondary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          DateFormat('MMM dd, yyyy').format(invoice.issuedAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        if (invoice.orderNumber != null) ...[
-                          const SizedBox(width: 16),
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            size: 16,
-                            color: colors.textSecondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Order #${invoice.orderNumber}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ],
+                  ),
+                  Text(
+                    LpgFormat.currency(invoice.totalAmount),
+                    style: text.displayMedium?.copyWith(color: colors.onHero),
+                  ),
+                  const SizedBox(height: LpgSpacing.smd),
+                  Text(
+                    [
+                      'Issued ${LpgFormat.date(invoice.issuedAt)}',
+                      if (invoice.orderNumber != null)
+                        'Order #${invoice.orderNumber}',
+                    ].join('  ·  '),
+                    style: text.bodySmall?.copyWith(
+                      color: colors.onHero.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const LpgSectionHeader(title: 'Cylinders'),
+            LpgCard(
+              padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
+              child: Column(
+                children: [
+                  for (final (index, line) in invoice.lines.indexed) ...[
+                    if (index > 0) const Divider(indent: LpgSpacing.md),
+                    LpgListTile(
+                      leadingIcon: LpgIcons.cylinder,
+                      title: cylinderNames[line.cylinderTypeId] ?? 'Cylinder',
+                      subtitle:
+                          'Qty ${line.quantity} × '
+                          '${LpgFormat.currency(line.unitPrice)}',
+                      trailing: Text(
+                        LpgFormat.currency(line.totalAmount),
+                        style: text.titleSmall,
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
-
-              const SizedBox(height: 24),
-              Text(
-                'Cylinders',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
+            ),
+            const LpgSectionHeader(title: 'Summary'),
+            LpgCard(
+              child: Column(
+                children: [
+                  LpgKeyValueRow(
+                    label: 'Subtotal',
+                    value: LpgFormat.currency(invoice.subtotal),
+                  ),
+                  LpgKeyValueRow(
+                    label: 'Tax',
+                    value: LpgFormat.currency(invoice.taxAmount),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: LpgSpacing.sm),
+                    child: Divider(),
+                  ),
+                  LpgKeyValueRow(
+                    label: 'Total',
+                    value: LpgFormat.currency(invoice.totalAmount),
+                    emphasize: true,
+                  ),
+                  LpgKeyValueRow(
+                    label: 'Amount Paid',
+                    value: LpgFormat.currency(invoice.amountPaid),
+                    valueColor: colors.statusSuccess,
+                  ),
+                  LpgKeyValueRow(
+                    label: 'Balance Due',
+                    value: LpgFormat.currency(balanceDue),
+                    valueColor: balanceDue > 0 ? colors.statusDanger : null,
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+            ),
+            if (invoice.payments.isNotEmpty) ...[
+              const LpgSectionHeader(title: 'Payment History'),
               LpgCard(
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(vertical: LpgSpacing.xs),
                 child: Column(
                   children: [
-                    for (final (index, line) in invoice.lines.indexed) ...[
-                      if (index > 0)
-                        Divider(
-                          height: 1,
-                          indent: 16,
-                          endIndent: 16,
-                          color: colors.borderDefault,
-                        ),
+                    for (final (index, payment)
+                        in invoice.payments.indexed) ...[
+                      if (index > 0) const Divider(indent: LpgSpacing.md),
                       LpgListTile(
-                        leadingIcon: Icons.local_gas_station_outlined,
-                        title: cylinderNames[line.cylinderTypeId] ?? 'Cylinder',
-                        subtitle:
-                            'Qty ${line.quantity} × ₹${line.unitPrice.toStringAsFixed(2)}',
+                        leadingIcon: LpgIcons.cash,
+                        leadingTone: LpgTone.success,
+                        title: LpgFormat.statusLabel(payment.method),
+                        subtitle: LpgFormat.dateTime(payment.collectedAt),
                         trailing: Text(
-                          '₹${line.totalAmount.toStringAsFixed(2)}',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
+                          LpgFormat.currency(payment.amount),
+                          style: text.titleSmall?.copyWith(
+                            color: colors.statusSuccess,
                           ),
                         ),
                       ),
@@ -168,161 +169,27 @@ class InvoiceDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+            ],
+            const SizedBox(height: LpgSpacing.lg),
+            PayOnlineSection(
+              orderId: invoice.orderId,
+              canPay:
+                  balanceDue > 0 &&
+                  (invoice.status == 'issued' ||
+                      invoice.status == 'partially_paid'),
+              onPaid: () => ref.invalidate(invoiceDetailProvider(invoiceId)),
+            ),
+          ];
 
-              const SizedBox(height: 24),
-              Text(
-                'Summary',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              LpgCard(
-                child: Column(
-                  children: [
-                    _SummaryRow(
-                      label: 'Subtotal',
-                      value: invoice.subtotal,
-                      theme: theme,
-                      colors: colors,
-                    ),
-                    const SizedBox(height: 8),
-                    _SummaryRow(
-                      label: 'Tax',
-                      value: invoice.taxAmount,
-                      theme: theme,
-                      colors: colors,
-                    ),
-                    const SizedBox(height: 12),
-                    Divider(height: 1, color: colors.borderDefault),
-                    const SizedBox(height: 12),
-                    _SummaryRow(
-                      label: 'Total',
-                      value: invoice.totalAmount,
-                      theme: theme,
-                      colors: colors,
-                      emphasize: true,
-                    ),
-                    const SizedBox(height: 8),
-                    _SummaryRow(
-                      label: 'Amount Paid',
-                      value: invoice.amountPaid,
-                      theme: theme,
-                      colors: colors,
-                    ),
-                    const SizedBox(height: 8),
-                    _SummaryRow(
-                      label: 'Balance Due',
-                      value: balanceDue,
-                      theme: theme,
-                      colors: colors,
-                      valueColor: balanceDue > 0 ? colors.statusDanger : null,
-                    ),
-                  ],
-                ),
-              ),
-
-              if (invoice.payments.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                Text(
-                  'Payment History',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                LpgCard(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      for (final (index, payment)
-                          in invoice.payments.indexed) ...[
-                        if (index > 0)
-                          Divider(
-                            height: 1,
-                            indent: 16,
-                            endIndent: 16,
-                            color: colors.borderDefault,
-                          ),
-                        LpgListTile(
-                          leadingIcon: Icons.payments_outlined,
-                          title: payment.method
-                              .replaceAll('_', ' ')
-                              .toUpperCase(),
-                          subtitle: DateFormat(
-                            'MMM dd, yyyy • hh:mm a',
-                          ).format(payment.collectedAt),
-                          trailing: Text(
-                            '₹${payment.amount.toStringAsFixed(2)}',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colors.statusSuccess,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              PayOnlineSection(
-                orderId: invoice.orderId,
-                canPay:
-                    balanceDue > 0 &&
-                    (invoice.status == 'issued' ||
-                        invoice.status == 'partially_paid'),
-                onPaid: () => ref.invalidate(invoiceDetailProvider(invoiceId)),
-              ),
+          return ListView(
+            padding: LpgSpacing.page,
+            children: [
+              for (var i = 0; i < sections.length; i++)
+                LpgFadeSlideIn(index: i, child: sections[i]),
             ],
           );
         },
       ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-    required this.theme,
-    required this.colors,
-    this.emphasize = false,
-    this.valueColor,
-  });
-
-  final String label;
-  final double value;
-  final ThemeData theme;
-  final LpgColors colors;
-  final bool emphasize;
-  final Color? valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = emphasize
-        ? theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: valueColor ?? colors.textPrimary,
-          )
-        : theme.textTheme.bodyMedium?.copyWith(
-            color: valueColor ?? colors.textPrimary,
-          );
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colors.textSecondary,
-          ),
-        ),
-        Text('₹${value.toStringAsFixed(2)}', style: style),
-      ],
     );
   }
 }

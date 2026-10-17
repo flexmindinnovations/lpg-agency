@@ -1,6 +1,6 @@
 """`OnlinePayment` aggregate root.
 
-One attempt to collect money through a payment gateway (Razorpay, ADR-052)
+One attempt to collect money through a payment gateway (Razorpay, ADR-053)
 for an order — either before delivery (a prepayment, `payment-flow.md`
 Path A) or against the order's already-issued invoice. Tracked as its own
 aggregate rather than inside `Invoice` because a prepayment exists before

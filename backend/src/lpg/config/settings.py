@@ -286,7 +286,7 @@ class Settings(BaseSettings):
     # omc_scraper.py`'s module docstring for what was actually tried).
     omc_rate_provider: str = "none"
 
-    # -- Online payments (Razorpay, ADR-052) -------------------------------
+    # -- Online payments (Razorpay, ADR-053) -------------------------------
     # `payments_provider` picks the adapter in `infrastructure/payments/
     # factory.py`. Credentials are unset by default: payment endpoints then
     # answer 503 rather than calling Razorpay unauthenticated. Use the test

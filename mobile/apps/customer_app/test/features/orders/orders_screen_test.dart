@@ -56,7 +56,7 @@ void main() {
 
       expect(find.textContaining('ABCDEF01'), findsOneWidget);
       expect(find.text('CONFIRMED'), findsOneWidget);
-      expect(find.textContaining('1234.50'), findsOneWidget);
+      expect(find.textContaining('1,234.50'), findsOneWidget);
     });
 
     testWidgets('an out-for-delivery order offers a Track action', (

@@ -1,6 +1,6 @@
 import 'decimal_json.dart';
 
-/// Mirrors the backend's `OnlinePaymentResponse` (ADR-052) — one attempt to
+/// Mirrors the backend's `OnlinePaymentResponse` (ADR-053) — one attempt to
 /// pay for an order through a hosted Razorpay payment link.
 class OnlinePaymentResponse {
   const OnlinePaymentResponse({

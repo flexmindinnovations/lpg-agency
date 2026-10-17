@@ -154,7 +154,7 @@ class CreditNoteModel(Base):
 
 
 class OnlinePaymentModel(Base):
-    """A payment-gateway attempt (ADR-052) — see `a9e4c7b2d1f6`'s migration."""
+    """A payment-gateway attempt (ADR-053) — see `a9e4c7b2d1f6`'s migration."""
 
     __tablename__ = "online_payment"
     __table_args__ = {"schema": "accounting"}  # noqa: RUF012

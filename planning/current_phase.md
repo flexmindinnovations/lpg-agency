@@ -42,7 +42,7 @@ LPG Agency Management Platform
 
 **Phase 19 — Customer App V2** 🔄 **IN PROGRESS** — Planning professional-level features (Support, KYC, Addresses, Push Notifications, Invoicing, Live Tracking) with a Bottom Navigation Bar shell.
 
-**Online Payments (Razorpay)** 🔄 **BUILT, pending live keys** — 2026-10-17. Razorpay payment links for order prepayment and invoice settlement, webhook + refresh confirmation, Customer App "Pay Online". See [`planning/features/34-online-payments-razorpay/STATUS.md`](./features/34-online-payments-razorpay/STATUS.md), ADR-052.
+**Online Payments (Razorpay)** 🔄 **BUILT, pending live keys** — 2026-10-17. Razorpay payment links for order prepayment and invoice settlement, webhook + refresh confirmation, Customer App "Pay Online". See [`planning/features/35-online-payments-razorpay/STATUS.md`](./features/35-online-payments-razorpay/STATUS.md), ADR-053.
 
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 

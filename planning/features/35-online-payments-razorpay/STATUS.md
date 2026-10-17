@@ -24,4 +24,4 @@ The 4 backend failures fail identically on `main` in this environment (checked o
 - Real Razorpay test-mode calls and webhook delivery (needs keys and a public URL).
 - The Pay Online flow on a phone.
 
-Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-052.
+Design: [PLAN.md](./PLAN.md). Tasks: [TASKS.md](./TASKS.md). Decision: ADR-053.

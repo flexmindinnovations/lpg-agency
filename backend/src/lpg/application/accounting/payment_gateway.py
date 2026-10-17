@@ -1,4 +1,4 @@
-"""Payment gateway port (ADR-052).
+"""Payment gateway port (ADR-053).
 
 Everything above infrastructure talks to a gateway only through
 `PaymentGateway`; `infrastructure/payments/factory.py` picks the adapter

@@ -1,4 +1,4 @@
-"""Online payments (ADR-052) through the real ASGI stack and PostgreSQL.
+"""Online payments (ADR-053) through the real ASGI stack and PostgreSQL.
 
 Razorpay itself is never called: `get_payment_gateway` is overridden with a
 `RazorpayPaymentGateway` whose two outbound calls are stubbed, so webhook

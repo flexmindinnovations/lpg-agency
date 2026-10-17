@@ -1,4 +1,4 @@
-"""Online payments through Razorpay payment links (ADR-052).
+"""Online payments through Razorpay payment links (ADR-053).
 
 - `POST /orders/{order_id}/payment-links` — create (or reuse) a link for
   what is still owed on an order. Used by the Customer App, staff, and the

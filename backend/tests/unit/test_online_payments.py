@@ -1,4 +1,4 @@
-"""Unit tests for online payments (ADR-052): the `OnlinePayment` aggregate,
+"""Unit tests for online payments (ADR-053): the `OnlinePayment` aggregate,
 the payment-link use cases, prepayment application at invoice generation,
 and the Razorpay adapter (against `httpx.MockTransport`, never the network).
 """

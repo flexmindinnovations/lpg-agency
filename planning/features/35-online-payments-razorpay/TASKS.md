@@ -7,7 +7,7 @@
 - [x] T5 Settings, env examples, test-key guard in production
 - [x] T6 Unit + integration tests
 - [x] T7 Customer App "Pay Online" on order and invoice detail screens
-- [x] T8 ADR-052, PLAN/STATUS
+- [x] T8 ADR-053, PLAN/STATUS
 
 ## Follow-ups (not started, need a decision or another feature)
 

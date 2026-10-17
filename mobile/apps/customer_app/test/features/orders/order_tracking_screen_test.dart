@@ -184,7 +184,7 @@ void main() {
       expect(find.text('+91 90000 11111'), findsOneWidget);
       expect(find.textContaining('Tata Ace'), findsWidgets);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Call'));
+      await tester.tap(find.widgetWithText(LpgButton, 'Call'));
       await tester.pump();
       expect(launched, ['tel:+919000011111']); // stripped to digits + '+'
     });
