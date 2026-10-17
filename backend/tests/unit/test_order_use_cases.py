@@ -689,6 +689,84 @@ class TestDeliverOrderUseCase:
         pod_repo.create.assert_not_called()
         mock_uow.commit.assert_not_called()
 
+    async def test_delivery_without_a_signature_or_photo_still_succeeds(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """The OTP and GPS stamp are the required proof; the signature and photo
+        are optional, so a driver who cannot capture them can still deliver."""
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
+            location_ref_id=route.vehicle_id
+        )
+        use_case, pod_repo, _otp = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+
+        result = await use_case.execute(
+            DeliverOrderCommand(
+                order_id=order.id,
+                lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+                otp_code="123456",
+                gps_lat=Decimal("12.9"),
+                gps_lng=Decimal("77.6"),
+                payment_method="cash",
+                amount_collected=Decimal("3600"),
+                changed_by=uuid.uuid4(),
+            )
+        )
+
+        assert result.order.status == "delivered"
+        create_kwargs = pod_repo.create.call_args.kwargs
+        assert create_kwargs["signature_blob_ref"] is None
+        assert create_kwargs["photo_blob_ref"] is None
+        assert route.stops[0].proof_of_delivery is not None
+        assert route.stops[0].proof_of_delivery.signature_url is None
+        assert route.stops[0].proof_of_delivery.photo_url is None
+        mock_uow.commit.assert_called_once()
+
+    async def test_a_signature_alone_is_stored_when_there_is_no_photo(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
+            location_ref_id=route.vehicle_id
+        )
+        use_case, pod_repo, _otp = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+
+        await use_case.execute(
+            DeliverOrderCommand(
+                order_id=order.id,
+                lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+                otp_code="123456",
+                signature_blob_ref="sig-ref",
+                gps_lat=Decimal("12.9"),
+                gps_lng=Decimal("77.6"),
+                payment_method="cash",
+                amount_collected=Decimal("3600"),
+                changed_by=uuid.uuid4(),
+            )
+        )
+
+        create_kwargs = pod_repo.create.call_args.kwargs
+        assert create_kwargs["signature_blob_ref"] == "sig-ref"
+        assert create_kwargs["photo_blob_ref"] is None
+
     async def test_over_delivery_saves_nothing(
         self,
         mock_order_repo: MagicMock,

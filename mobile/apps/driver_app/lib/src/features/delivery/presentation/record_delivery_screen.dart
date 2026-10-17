@@ -87,10 +87,11 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       _error = null;
     });
     try {
-      final signatureBytes = await _signature.toPngBytes();
-      if (signatureBytes == null || _photoBytes == null) {
-        throw Exception('A signature and a photo are both required.');
-      }
+      // The signature and photo are optional — the delivery code and the GPS stamp are the
+      // required proof. An untouched signature pad counts as "no signature".
+      final signatureBytes = _signature.isNotEmpty
+          ? await _signature.toPngBytes()
+          : null;
       if (_otpController.text.trim().isEmpty) {
         throw Exception('Enter the delivery code the customer received.');
       }
@@ -121,7 +122,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
             paymentMethod: _paymentMethod,
             amountCollected: amount,
             signatureBytes: signatureBytes,
-            photoBytes: _photoBytes!,
+            photoBytes: _photoBytes,
             dacCode: _dacController.text.trim().isEmpty
                 ? null
                 : _dacController.text.trim(),
@@ -246,7 +247,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _section("Customer's signature"),
+              _section("Customer's signature (optional)"),
               DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border.all(color: colors.borderDefault),
@@ -270,7 +271,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _section('Delivery photo'),
+              _section('Delivery photo (optional)'),
               if (_photoBytes != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -282,10 +283,23 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   ),
                 ),
               const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _pickPhoto,
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: Text(_photoBytes == null ? 'Take a photo' : 'Retake'),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _pickPhoto,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: Text(
+                      _photoBytes == null ? 'Take a photo' : 'Retake',
+                    ),
+                  ),
+                  if (_photoBytes != null) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => setState(() => _photoBytes = null),
+                      child: const Text('Remove photo'),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 32),
               LpgButton(

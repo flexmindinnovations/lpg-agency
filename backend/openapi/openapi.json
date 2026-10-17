@@ -5545,8 +5545,15 @@
             "type": "string"
           },
           "photo_blob_ref": {
-            "title": "Photo Blob Ref",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Blob Ref"
           },
           "recorded_at": {
             "format": "date-time",
@@ -5559,8 +5566,15 @@
             "type": "string"
           },
           "signature_blob_ref": {
-            "title": "Signature Blob Ref",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Blob Ref"
           },
           "tenant_id": {
             "format": "uuid",
@@ -5573,8 +5587,6 @@
           "tenant_id",
           "order_id",
           "otp_verified_at",
-          "signature_blob_ref",
-          "photo_blob_ref",
           "gps_lat",
           "gps_lng",
           "payment_method",
@@ -5706,19 +5718,31 @@
             "type": "string"
           },
           "photo_blob_ref": {
-            "minLength": 1,
-            "title": "Photo Blob Ref",
-            "type": "string"
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Blob Ref"
           },
           "signature_blob_ref": {
-            "minLength": 1,
-            "title": "Signature Blob Ref",
-            "type": "string"
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Blob Ref"
           }
         },
         "required": [
-          "signature_blob_ref",
-          "photo_blob_ref",
           "gps_lat",
           "gps_lng",
           "payment_method",

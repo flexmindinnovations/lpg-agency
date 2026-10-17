@@ -225,32 +225,73 @@ void main() {
       expect(find.text('Cylinders'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
       expect(find.text('Delivery code'), findsOneWidget);
-      expect(find.text("Customer's signature"), findsOneWidget);
-      expect(find.text('Delivery photo'), findsOneWidget);
+      expect(find.text("Customer's signature (optional)"), findsOneWidget);
+      expect(find.text('Delivery photo (optional)'), findsOneWidget);
       expect(find.text('Take a photo'), findsOneWidget);
       expect(find.text('Confirm delivery'), findsOneWidget);
       // Amount prefilled from the order total.
       expect(find.text('905.50'), findsOneWidget);
     });
 
-    testWidgets('blocks submit until a signature and photo are captured', (
-      tester,
-    ) async {
+    testWidgets('still requires the delivery code', (tester) async {
       final adapter = _RecordingAdapter();
       final (:container, :harness) = _container(adapter);
       addTearDown(harness.dispose);
       addTearDown(container.dispose);
       await _pump(tester, container);
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Code from the customer'),
-        '123456',
-      );
       await tester.tap(find.text('Confirm delivery'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('signature and a photo'), findsOneWidget);
+      expect(find.textContaining('delivery code'), findsWidgets);
       expect(adapter.paths, isEmpty);
+    });
+
+    testWidgets(
+      'delivers with no signature and no photo — neither is required',
+      (tester) async {
+        final adapter = _RecordingAdapter();
+        final (:container, :harness) = _container(adapter);
+        addTearDown(harness.dispose);
+        addTearDown(container.dispose);
+        await _pump(tester, container);
+
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Code from the customer'),
+          '123456',
+        );
+        await tester.tap(find.text('Confirm delivery'));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(seconds: 1)),
+        );
+        await tester.pumpAndSettle();
+
+        // No uploads, straight to the delivery.
+        expect(adapter.paths, ['/api/v1/orders/order-1/deliver']);
+        final pod = adapter.deliverBody!['proof_of_delivery'] as Map;
+        expect(pod.containsKey('signature_blob_ref'), isFalse);
+        expect(pod.containsKey('photo_blob_ref'), isFalse);
+        expect(find.text('home'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a captured photo can be removed again', (tester) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.tap(find.text('Take a photo'));
+      await tester.pumpAndSettle();
+      expect(find.text('Retake'), findsOneWidget);
+      expect(find.text('Remove photo'), findsOneWidget);
+
+      await tester.tap(find.text('Remove photo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Take a photo'), findsOneWidget);
+      expect(find.text('Remove photo'), findsNothing);
     });
 
     testWidgets('captures everything and posts the delivery', (tester) async {
