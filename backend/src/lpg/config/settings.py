@@ -307,6 +307,24 @@ class Settings(BaseSettings):
     # omc_scraper.py`'s module docstring for what was actually tried).
     omc_rate_provider: str = "none"
 
+    # -- Online payments (Razorpay, ADR-053) -------------------------------
+    # `payments_provider` picks the adapter in `infrastructure/payments/
+    # factory.py`. Credentials are unset by default: payment endpoints then
+    # answer 503 rather than calling Razorpay unauthenticated. Use the test
+    # key pair (`rzp_test_…`) everywhere except production; production
+    # refuses a test key (see `model_post_init`). The webhook secret is the
+    # one entered when creating the webhook in the Razorpay dashboard.
+    payments_provider: str = "razorpay"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: SecretStr | None = None
+    razorpay_webhook_secret: SecretStr | None = None
+    razorpay_api_base_url: str = "https://api.razorpay.com/v1"
+    razorpay_timeout_seconds: float = Field(default=10.0, gt=0)
+    # Razorpay requires a link to live at least 15 minutes.
+    payment_link_ttl_minutes: int = Field(default=1440, ge=16)
+    # Optional page the customer's browser returns to after paying.
+    payment_link_callback_url: str = ""
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: object) -> object:
@@ -408,6 +426,9 @@ class Settings(BaseSettings):
             if self.otp_delivery_dev_mode:
                 msg = f"otp_delivery_dev_mode must be disabled in environment {self.environment!r}"
                 raise ValueError(msg)
+        if self.is_production and self.razorpay_key_id.startswith("rzp_test_"):
+            msg = "A Razorpay test key (rzp_test_…) is not permitted in production"
+            raise ValueError(msg)
 
         # Matches `db_password`'s existing precedent: an unset secret isn't
         # hard-validated at Settings-construction (that would make every

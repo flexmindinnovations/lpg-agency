@@ -1313,6 +1313,32 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-053: Online Payments Through Razorpay Payment Links, Behind a Provider-Agnostic Gateway Port
+
+**Status:** Accepted
+
+**Context:** `payment-flow.md` Path A (online prepayment) had no implementation; the Customer App's Payment Methods screen was a placeholder. The product owner asked for Razorpay on 2026-10-17. Three channels need to take money: the Customer App, staff on the dashboard, and the WhatsApp ordering assistant being built in parallel. Invoices are only generated at delivery (BR-17), so a prepayment exists before any invoice does.
+
+**Decision:**
+- A new `OnlinePayment` aggregate (`domain/accounting/online_payment.py`, table `accounting.online_payment`) records each gateway attempt for an order: `created -> paid | expired | cancelled`. Once paid it is *applied* to the order's invoice as an ordinary `accounting.payment` with method `online_gateway`: immediately if the invoice exists, otherwise by `GenerateInvoiceForOrderUseCase` when the invoice is generated at delivery.
+- The integration uses Razorpay **Payment Links** (a hosted checkout URL), not the native Checkout SDK. One URL works in every channel: the app opens it in the browser, staff can share it, WhatsApp can send it. No native SDK or app-store payment review is needed.
+- `PaymentGateway` (`application/accounting/payment_gateway.py`) is the port; `infrastructure/payments/razorpay.py` the only adapter, chosen by `LPG_PAYMENTS_PROVIDER`. It calls Razorpay's REST API with `httpx`; the synchronous `razorpay` SDK is not used.
+- Amount due is computed once, in `CreateOrderPaymentLinkUseCase`: the invoice's outstanding balance if invoiced; otherwise the confirmed order's total plus GST at the tenant's current rate (the same arithmetic as invoice generation), minus anything already paid online. An open link for the same amount is reused, so repeated taps never create two payable links.
+- Confirmation arrives by webhook (`POST /api/v1/payments/razorpay/webhook`, HMAC-SHA256 of the raw body with the webhook secret). The webhook has no JWT, so the tenant comes from the link's `notes.tenant_id`, which we wrote and the signature protects; the session is then opened for that tenant and RLS confines the lookup. `POST /online-payments/{id}/refresh` asks Razorpay directly, for local dev without a public URL and for missed webhooks.
+- Credentials are platform-wide env vars. A test key (`rzp_test_…`) is refused when `LPG_ENVIRONMENT=production`.
+
+**Consequences:**
+- Prepaid orders are visible through `GET /orders/{id}/online-payments`, not yet on the order or driver screens; the driver app cannot yet tell a prepaid order from a cash one (TASKS.md follow-up).
+- A prepayment larger than the delivered invoice (short delivery) applies only the outstanding amount and logs `online_payment_excess_needs_refund`; automated refunds are a follow-up.
+- All agencies collect into one Razorpay account. Per-agency accounts (separate keys or Razorpay Route) are a follow-up once the commercial model is decided.
+- New permission `payments:create` (customer + money-handling staff roles).
+
+**Alternatives Considered:**
+- **Razorpay Checkout SDK (`razorpay_flutter`) with order + signature verification** — rejected for now: native-only, does not serve WhatsApp or staff, and still needs the webhook for reliability.
+- **Recording prepayment on `Order`** — rejected: payments belong to accounting, and an order field cannot hold several attempts or their gateway ids.
+
+---
+
 ## ADR-054: MSG91 as the SMS Provider, Behind a Template-Based `SmsChannel` Port
 
 **Status:** Accepted
@@ -1386,6 +1412,8 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 045 | AI Model Gateway as a provider-agnostic tool-calling port, Gemini as the first adapter, a fixed read-only tool registry as the first consumer | Accepted |
 | 046 | Zero-click driver auto-assignment — deterministic scoring, opt-in kill switch, no new system-principal bypass | Accepted |
 | 047 | Global error-toast interceptor replaces per-component toasting, not a per-request opt-in mechanism | Accepted |
+| 052 | Mobile design system: semantic Lucide icons, bundled Inter, shared component kit | Accepted |
+| 053 | Online payments through Razorpay payment links behind a provider-agnostic gateway port | Accepted |
 | 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
 
 ## Deferred Decisions
