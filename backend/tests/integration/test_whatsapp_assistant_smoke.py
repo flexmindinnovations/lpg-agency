@@ -379,10 +379,12 @@ async def test_payment_link_goes_through_the_shared_razorpay_use_case(
                 timeout_seconds=1,
             )
             self.requests: list[Any] = []
+            self.link_id = ""
 
         async def create_payment_link(self, request: Any) -> PaymentLink:
             self.requests.append(request)
-            return PaymentLink(link_id="plink_wa", short_url="https://rzp.io/i/plink_wa")
+            self.link_id = f"plink_{uuid.uuid4().hex[:14]}"
+            return PaymentLink(link_id=self.link_id, short_url=f"https://rzp.io/i/{self.link_id}")
 
     seed = await _seed_tenant(admin)
     order_number = f"ORD-WA-{uuid.uuid4().hex[:6]}"
@@ -429,7 +431,11 @@ async def test_payment_link_goes_through_the_shared_razorpay_use_case(
 
     assert result == "answered"
     assert gateway.results == [
-        {"available": True, "payment_url": "https://rzp.io/i/plink_wa", "amount": "903.00"}
+        {
+            "available": True,
+            "payment_url": f"https://rzp.io/i/{razorpay.link_id}",
+            "amount": "903.00",
+        }
     ]
     assert razorpay.requests[0].customer_phone == seed.customer_phone
     async with admin.connect() as conn:
