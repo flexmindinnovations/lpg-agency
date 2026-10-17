@@ -1,4 +1,4 @@
-# 36 — Production release setup — Tasks
+# 38 — Production release setup — Tasks
 
 - [x] Pass integration credentials to backend/worker via optional `integrations.env`
 - [x] `integrations.env.example` and DEPLOY.md section incl. webhook URLs

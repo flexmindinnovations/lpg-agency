@@ -1,4 +1,4 @@
-# 36 — Production release setup — Status
+# 38 — Production release setup — Status
 
 **2026-10-17 — In review.** Deploy and release-build setup done; not yet verified
 end to end because no Flutter SDK or signing key was available in the authoring
