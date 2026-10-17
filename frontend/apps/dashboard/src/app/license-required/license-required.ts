@@ -11,6 +11,7 @@ import { ButtonDirective } from 'primeng/button';
 import {
   AuthService,
   AuthTokenStore,
+  HARD_NAVIGATE,
   LicenseService,
   LicenseStatusStore,
   type LicenseLifecycleState,
@@ -145,6 +146,7 @@ export class LicenseRequired implements OnInit {
   private readonly licenseStatusStore = inject(LicenseStatusStore);
   private readonly tokenStore = inject(AuthTokenStore);
   private readonly router = inject(Router);
+  private readonly hardNavigate = inject(HARD_NAVIGATE);
 
   protected readonly checking = signal(false);
   protected readonly status = computed(() => this.licenseStatusStore.status()?.status ?? null);
@@ -182,8 +184,6 @@ export class LicenseRequired implements OnInit {
   }
 
   protected signOut(): void {
-    this.authService.logout().subscribe(() => {
-      void this.router.navigateByUrl('/login');
-    });
+    this.authService.logout().subscribe(() => this.hardNavigate('/login'));
   }
 }

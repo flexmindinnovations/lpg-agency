@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { AuthService, HARD_NAVIGATE } from '@lpg/shared/data-access';
 import { ShellLayout } from './shell-layout';
 
 describe('ShellLayout', () => {
@@ -49,5 +51,18 @@ describe('ShellLayout', () => {
     const items: NodeListOf<HTMLElement> = document.querySelectorAll('[role="menuitemradio"]');
     const labels = Array.from(items).map((el) => el.getAttribute('aria-label'));
     expect(labels).toEqual(['System', 'Light', 'Dark', 'High contrast']);
+  });
+
+  it('signs out to the login page with a full page load, so a stale tab cannot get stuck', () => {
+    const hardNavigate = jest.fn();
+    const logout = jest.fn().mockReturnValue(of(undefined));
+    TestBed.overrideProvider(HARD_NAVIGATE, { useValue: hardNavigate });
+    TestBed.overrideProvider(AuthService, { useValue: { principal: () => null, logout } });
+    const fixture = TestBed.createComponent(ShellLayout);
+
+    (fixture.componentInstance as unknown as { onSignOut: () => void }).onSignOut();
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(hardNavigate).toHaveBeenCalledWith('/login');
   });
 });

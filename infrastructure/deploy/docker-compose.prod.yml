@@ -41,6 +41,10 @@ x-backend-env: &backend-env
   # AI Command Center (Gemini) - set in .env. Left empty, the gateway
   # returns provider_error and the rest of the app is unaffected.
   LPG_GEMINI_API_KEY: ${LPG_GEMINI_API_KEY:-}
+  # Firebase Cloud Messaging - push notifications to the Customer and Driver apps. Set in .env
+  # as the service-account JSON on ONE line, single-quoted. Left empty, push is only logged
+  # (`stub_push_send`) and nothing reaches a phone; in-app notifications still work.
+  LPG_FCM_CREDENTIALS_JSON: ${LPG_FCM_CREDENTIALS_JSON:-}
 
 services:
   postgres:

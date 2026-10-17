@@ -224,8 +224,8 @@ class DeliveredLineRequest {
 /// delivery.
 class ProofOfDeliverySubmission {
   const ProofOfDeliverySubmission({
-    required this.signatureBlobRef,
-    required this.photoBlobRef,
+    this.signatureBlobRef,
+    this.photoBlobRef,
     required this.gpsLat,
     required this.gpsLng,
     required this.paymentMethod,
@@ -233,8 +233,10 @@ class ProofOfDeliverySubmission {
     this.dacCode,
   });
 
-  final String signatureBlobRef;
-  final String photoBlobRef;
+  /// Both optional: the OTP and GPS stamp are the required proof, so a driver who
+  /// cannot capture a signature or photo can still deliver.
+  final String? signatureBlobRef;
+  final String? photoBlobRef;
   final double gpsLat;
   final double gpsLng;
   final String paymentMethod;
@@ -242,8 +244,8 @@ class ProofOfDeliverySubmission {
   final String? dacCode;
 
   Map<String, dynamic> toJson() => {
-    'signature_blob_ref': signatureBlobRef,
-    'photo_blob_ref': photoBlobRef,
+    if (signatureBlobRef != null) 'signature_blob_ref': signatureBlobRef,
+    if (photoBlobRef != null) 'photo_blob_ref': photoBlobRef,
     'gps_lat': gpsLat,
     'gps_lng': gpsLng,
     'payment_method': paymentMethod,

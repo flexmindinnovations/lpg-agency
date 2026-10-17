@@ -17,6 +17,6 @@ export interface ProofOfDeliverySubmission {
   gps_lat: (number | string);
   gps_lng: (number | string);
   payment_method: 'cash' | 'upi' | 'card' | 'online_gateway' | 'credit';
-  photo_blob_ref: string;
-  signature_blob_ref: string;
+  photo_blob_ref?: (string | null);
+  signature_blob_ref?: (string | null);
 }

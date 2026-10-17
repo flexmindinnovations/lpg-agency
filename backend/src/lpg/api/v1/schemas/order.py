@@ -189,8 +189,9 @@ class ProofOfDeliverySubmission(BaseModel):
     `DeliverOrderRequest` below.
     """
 
-    signature_blob_ref: str = Field(min_length=1)
-    photo_blob_ref: str = Field(min_length=1)
+    #: Both optional — see `DeliverOrderCommand`. When supplied they must be non-empty.
+    signature_blob_ref: str | None = Field(default=None, min_length=1)
+    photo_blob_ref: str | None = Field(default=None, min_length=1)
     gps_lat: Decimal
     gps_lng: Decimal
     payment_method: PaymentMethod
@@ -209,8 +210,8 @@ class ProofOfDeliveryResponse(BaseModel):
     tenant_id: uuid.UUID
     order_id: uuid.UUID
     otp_verified_at: datetime
-    signature_blob_ref: str
-    photo_blob_ref: str
+    signature_blob_ref: str | None = None
+    photo_blob_ref: str | None = None
     gps_lat: Decimal
     gps_lng: Decimal
     payment_method: PaymentMethod

@@ -486,7 +486,7 @@
         <label class="deliver__section-label">Proof of Delivery</label>
 
         <div class="form-group">
-          <label>Signature</label>
+          <label>Signature (optional)</label>
           <canvas
             #signatureCanvas
             class="signature-pad"
@@ -516,7 +516,7 @@
           </div>
         </div>
 
-        <lpg-form-field label="Delivery photo" for="deliver_photo">
+        <lpg-form-field label="Delivery photo" for="deliver_photo" [optional]="true">
           <input
             id="deliver_photo"
             type="file"

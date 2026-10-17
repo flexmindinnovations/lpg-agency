@@ -1,9 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { interval, startWith } from 'rxjs';
 import { AppShellComponent, type NavGroup } from '@lpg/shared/ui/app-shell';
-import { AuthService, AuthTokenStore, LicenseStatusStore } from '@lpg/shared/data-access';
+import {
+  AuthService,
+  AuthTokenStore,
+  HARD_NAVIGATE,
+  LicenseStatusStore,
+} from '@lpg/shared/data-access';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -137,7 +142,7 @@ export class ShellLayout {
 
   private readonly authService = inject(AuthService);
   private readonly tokenStore = inject(AuthTokenStore);
-  private readonly router = inject(Router);
+  private readonly hardNavigate = inject(HARD_NAVIGATE);
   private readonly licenseStatusStore = inject(LicenseStatusStore);
   private readonly messageService = inject(MessageService);
   protected readonly commandPalette = inject(CommandPaletteService);
@@ -165,9 +170,9 @@ export class ShellLayout {
   }
 
   protected onSignOut(): void {
-    this.authService.logout().subscribe(() => {
-      void this.router.navigateByUrl('/login');
-    });
+    // A full page load, so signing out lands on the login page even from a tab left open
+    // across a deploy, where the router can no longer fetch the lazy-loaded login chunk.
+    this.authService.logout().subscribe(() => this.hardNavigate('/login'));
   }
 
   /** Nav tree filtered to routes the current user can actually access. */
