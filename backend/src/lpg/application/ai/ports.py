@@ -1,7 +1,7 @@
 """`ModelGatewayPort` — the single outbound seam for every AI model call.
 
-One provider today (Gemini), swappable without touching anything above this
-port: `infrastructure/ai/factory.py` picks the adapter class from
+Two providers (Gemini, Anthropic Claude), swappable without touching anything
+above this port: `infrastructure/ai/factory.py` picks the adapter class from
 `Settings.ai_provider`, and no other module imports a vendor AI SDK (matches
 `DocumentOcrPort`/`FileStorage`'s existing port/adapter shape exactly).
 
@@ -21,10 +21,11 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
     from datetime import datetime
 
 
@@ -37,6 +38,19 @@ class ToolDeclaration:
     name: str
     description: str
     parameters_schema: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationTurn:
+    """One earlier message in a multi-turn conversation, oldest first.
+
+    Plain text only: earlier tool calls are not replayed, so a model reading
+    history sees what was said, never the raw tool results behind it. The
+    WhatsApp assistant (ADR-052) is the first caller that needs this; the AI
+    Command Center still asks one independent question at a time."""
+
+    role: Literal["user", "assistant"]
+    text: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,10 +87,13 @@ class ModelGatewayPort(Protocol):
         user_prompt: str,
         tools: tuple[ToolDeclaration, ...],
         tool_executor: ToolExecutor,
+        history: Sequence[ConversationTurn] = (),
     ) -> AgentRunResult | None:
         """Drives the model's native function-calling loop: the model may
         request zero or more tool calls (via `tool_executor`, one at a time,
         results fed back automatically) before producing a final answer.
+        `history` is the conversation so far, oldest first, before
+        `user_prompt`.
 
         Returns `None` only on a genuine provider-level failure (timeout,
         safety-filter block, API error) — an advisory feature must never

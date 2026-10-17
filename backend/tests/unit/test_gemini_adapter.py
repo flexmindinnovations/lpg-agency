@@ -155,3 +155,28 @@ async def test_client_is_constructed_once_and_reused(gateway: GeminiModelGateway
         )
 
     ctor.assert_called_once()
+
+
+async def test_history_is_sent_before_the_new_prompt(gateway: GeminiModelGateway) -> None:
+    from lpg.application.ai.ports import ConversationTurn
+
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(return_value=_final_response("ok"))
+    with patch("google.genai.Client", return_value=mock_client):
+        await gateway.run_with_tools(
+            system_prompt="sys",
+            user_prompt="and now?",
+            tools=(),
+            tool_executor=AsyncMock(),
+            history=[
+                ConversationTurn(role="user", text="hi"),
+                ConversationTurn(role="assistant", text="hello"),
+            ],
+        )
+
+    contents = mock_client.aio.models.generate_content.await_args.kwargs["contents"]
+    assert [(c.role, c.parts[0].text) for c in contents] == [
+        ("user", "hi"),
+        ("model", "hello"),
+        ("user", "and now?"),
+    ]

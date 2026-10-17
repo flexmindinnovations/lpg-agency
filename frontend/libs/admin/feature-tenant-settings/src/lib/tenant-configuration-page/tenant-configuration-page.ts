@@ -96,6 +96,16 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       'Tenant opt-in for "Optimise stop order" on the Dispatch Board (AI Operational Intelligence) — defaults to off; the button stays hidden until this is set. A deterministic nearest-neighbour + 2-opt reorder of a route\'s pending stops by estimated distance, not a trained model. Set to true to enable; set to false to disable.',
   },
+  whatsapp_ai_enabled: {
+    label: 'WhatsApp Assistant Enabled',
+    description:
+      'Tenant opt-in for the WhatsApp customer assistant (ADR-052) — defaults to off. While off, customer WhatsApp messages are logged but not answered. Uses the same daily AI token budget as the AI Command Center. Set to true to enable; set to false to disable.',
+  },
+  whatsapp_phone_number_id: {
+    label: 'WhatsApp Phone Number ID',
+    description:
+      "The Meta WhatsApp Business phone number ID your customers message (from Meta's WhatsApp Manager, not the phone number itself). Messages to this number are routed to this agency. A number set on two agencies routes to neither.",
+  },
 };
 
 const RECOGNIZED_CONFIG_KEYS = [
@@ -113,6 +123,8 @@ const RECOGNIZED_CONFIG_KEYS = [
   'omc_provider',
   'omc_city',
   'route_optimization_enabled',
+  'whatsapp_ai_enabled',
+  'whatsapp_phone_number_id',
 ] as const;
 
 /** Best-effort label for a config key the frontend's catalog doesn't
