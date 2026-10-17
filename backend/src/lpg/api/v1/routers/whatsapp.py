@@ -1,4 +1,4 @@
-"""Meta WhatsApp Cloud API webhook (ADR-052).
+"""Meta WhatsApp Cloud API webhook (ADR-054).
 
 `GET /webhooks/whatsapp` answers Meta's one-time subscription handshake;
 `POST /webhooks/whatsapp` receives customer messages.

@@ -6,10 +6,8 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 
 import '../../../providers.dart';
-import '../../../widgets/form_field_widgets.dart';
 import '../../profile/data/profile_provider.dart';
 import '../data/kyc_provider.dart';
 
@@ -133,50 +131,29 @@ class _SubmitKycScreenState extends ConsumerState<SubmitKycScreen> {
   }
 
   Future<void> _showImageSourceSheet() async {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(sheetContext).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.borderDefault,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            LpgListTile(
-              leadingIcon: Icons.photo_camera_outlined,
-              title: 'Take Photo',
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            const SizedBox(height: 8),
-            LpgListTile(
-              leadingIcon: Icons.photo_library_outlined,
-              title: 'Choose from Gallery',
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
+    await LpgFeedback.showSheet<void>(
+      context,
+      title: 'Add a photo',
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LpgListTile(
+            leadingIcon: LpgIcons.camera,
+            title: 'Take Photo',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              _pickImage(ImageSource.camera);
+            },
+          ),
+          LpgListTile(
+            leadingIcon: LpgIcons.gallery,
+            title: 'Choose from Gallery',
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              _pickImage(ImageSource.gallery);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -236,13 +213,15 @@ class _SubmitKycScreenState extends ConsumerState<SubmitKycScreen> {
     setState(() => _submitting = false);
     result.when(
       onSuccess: (_) {
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.of(context).pop();
+        // Toast against the screen underneath, which outlives this one.
+        final navigator = Navigator.of(context);
+        final below = navigator.context;
+        navigator.pop();
         ref.invalidate(kycDocumentsProvider);
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Document submitted — we\'ll review it shortly.'),
-          ),
+        LpgFeedback.showToast(
+          below,
+          'Document submitted — we\'ll review it shortly.',
+          tone: LpgTone.success,
         );
       },
       onFailure: (failure) => setState(() => _error = failure.message),
@@ -251,61 +230,22 @@ class _SubmitKycScreenState extends ConsumerState<SubmitKycScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Add KYC Document',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Add KYC Document')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: LpgSpacing.page,
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (_error != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.statusDanger.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colors.statusDanger.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: colors.statusDanger),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: colors.statusDanger,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+                LpgBanner(tone: LpgTone.danger, message: _error!),
+                const SizedBox(height: LpgSpacing.lg),
               ],
-
-              const FieldLabel('Document Type'),
-              FormDropdownField<String>(
+              LpgDropdownField<String>(
+                label: 'Document type',
+                prefixIcon: LpgIcons.kyc,
                 value: _docType,
                 items: _docTypes,
                 onChanged: (v) => setState(() {
@@ -313,125 +253,141 @@ class _SubmitKycScreenState extends ConsumerState<SubmitKycScreen> {
                   _ocrHint = null;
                 }),
               ),
-              const SizedBox(height: 24),
-
-              const FieldLabel('Document Photo'),
-              GestureDetector(
+              const SizedBox(height: LpgSpacing.lg),
+              const LpgFieldLabel('Document photo', isRequired: true),
+              _PhotoPicker(
+                imageBytes: _imageBytes,
+                uploading: _uploading,
                 onTap: _uploading ? null : _showImageSourceSheet,
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceRaised,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.borderDefault),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _imageBytes == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_a_photo_outlined,
-                              size: 32,
-                              color: colors.textSecondary,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tap to add a photo',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.memory(_imageBytes!, fit: BoxFit.cover),
-                            if (_uploading)
-                              Container(
-                                color: Colors.black.withValues(alpha: 0.4),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                            else
-                              Positioned(
-                                right: 8,
-                                bottom: 8,
-                                child: Material(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  shape: const StadiumBorder(),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    child: Text(
-                                      'Change',
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(color: Colors.white),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                ),
               ),
               if (_ocrHint != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _ocrHint!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.textSecondary,
-                    fontStyle: FontStyle.italic,
-                  ),
+                const SizedBox(height: LpgSpacing.sm),
+                LpgBanner(
+                  tone: LpgTone.info,
+                  icon: LpgIcons.sparkle,
+                  message: _ocrHint!,
                 ),
               ],
-              const SizedBox(height: 24),
-
+              const SizedBox(height: LpgSpacing.lg),
               LpgTextField(
-                label: 'Document Number',
+                label: 'Document number',
+                isRequired: true,
+                prefixIcon: LpgIcons.number,
+                textCapitalization: TextCapitalization.characters,
                 controller: _numberController,
                 validator: (value) =>
                     value == null || value.trim().isEmpty ? 'Required' : null,
               ),
-              const SizedBox(height: 24),
-
+              const SizedBox(height: LpgSpacing.lg),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: _DateField(
-                      label: 'Issue Date (optional)',
+                      label: 'Issue date',
                       value: _issueDate,
                       onTap: () => _pickDate(isExpiry: false),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: LpgSpacing.md),
                   Expanded(
                     child: _DateField(
-                      label: 'Expiry Date (optional)',
+                      label: 'Expiry date',
                       value: _expiryDate,
                       onTap: () => _pickDate(isExpiry: true),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-
+              const SizedBox(height: LpgSpacing.xl),
               LpgButton(
                 label: 'Submit Document',
+                icon: LpgIcons.upload,
                 onPressed: _submit,
                 isLoading: _submitting,
                 expand: true,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The document photo slot: an empty dashed-feel prompt, then the picked
+/// image with an upload overlay or a "Change" chip.
+class _PhotoPicker extends StatelessWidget {
+  const _PhotoPicker({
+    required this.imageBytes,
+    required this.uploading,
+    required this.onTap,
+  });
+
+  final Uint8List? imageBytes;
+  final bool uploading;
+  final VoidCallback? onTap;
+
+  static const _height = 180.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    final text = context.lpgText;
+    final bytes = imageBytes;
+    return Semantics(
+      button: true,
+      label: bytes == null ? 'Add a document photo' : 'Change document photo',
+      child: LpgCard(
+        variant: bytes == null ? LpgCardVariant.tonal : LpgCardVariant.outlined,
+        padding: EdgeInsets.zero,
+        onTap: onTap,
+        child: SizedBox(
+          height: _height,
+          width: double.infinity,
+          child: bytes == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const LpgIconBox(icon: LpgIcons.addPhoto),
+                    const SizedBox(height: LpgSpacing.sm),
+                    Text('Tap to add a photo', style: text.titleSmall),
+                    const SizedBox(height: LpgSpacing.xs),
+                    Text(
+                      'Aadhaar and PAN details fill in automatically',
+                      style: text.bodySmall?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(LpgRadius.xl),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.memory(bytes, fit: BoxFit.cover),
+                      if (uploading)
+                        ColoredBox(
+                          color: colors.surfaceOverlay.withValues(alpha: 0.7),
+                          child: const Center(child: LpgLoadingIndicator()),
+                        )
+                      else
+                        Positioned(
+                          right: LpgSpacing.sm,
+                          bottom: LpgSpacing.sm,
+                          child: Chip(
+                            avatar: const Icon(
+                              LpgIcons.camera,
+                              size: LpgSizes.iconSm,
+                            ),
+                            label: const Text('Change'),
+                            backgroundColor: colors.card,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
         ),
       ),
     );
@@ -451,44 +407,32 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-
+    final colors = context.lpgColors;
+    final date = value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FieldLabel(label),
-        InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colors.borderDefault),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: 16,
-                  color: colors.textSecondary,
+        LpgFieldLabel(label),
+        Semantics(
+          button: true,
+          label: '$label, ${date == null ? 'not set' : LpgFormat.date(date)}',
+          excludeSemantics: true,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(LpgRadius.lg),
+            onTap: onTap,
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                prefixIcon: Icon(LpgIcons.calendar, size: LpgSizes.iconMd),
+                hintText: 'Optional',
+              ),
+              isEmpty: date == null,
+              child: Text(
+                date == null ? '' : LpgFormat.date(date),
+                style: context.lpgText.bodyLarge?.copyWith(
+                  color: colors.textPrimary,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    value == null
-                        ? 'Select'
-                        : DateFormat('MMM dd, yyyy').format(value!),
-                    style: TextStyle(
-                      color: value == null
-                          ? colors.textSecondary
-                          : colors.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),

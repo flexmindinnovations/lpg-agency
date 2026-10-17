@@ -1,4 +1,4 @@
-"""Ports for the WhatsApp customer assistant (ADR-052).
+"""Ports for the WhatsApp customer assistant (ADR-054).
 
 Customers message the agency's WhatsApp Business number; Meta's Cloud API
 delivers each message to our webhook, a background job runs it through the

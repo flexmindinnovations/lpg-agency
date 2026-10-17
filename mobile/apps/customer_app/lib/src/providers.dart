@@ -82,6 +82,10 @@ final kycApiProvider = Provider<KycApi>((ref) {
 /// Provides the singleton [PushNotificationService]. Overridden in
 /// `main.dart` with the instance whose FCM handlers are already wired;
 /// throws if that override is missed.
-final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
-  throw UnimplementedError('pushNotificationServiceProvider was not overridden');
+final pushNotificationServiceProvider = Provider<PushNotificationService>((
+  ref,
+) {
+  throw UnimplementedError(
+    'pushNotificationServiceProvider was not overridden',
+  );
 });

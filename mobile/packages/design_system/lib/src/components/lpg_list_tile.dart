@@ -1,95 +1,119 @@
 import 'package:flutter/material.dart';
 
+import '../icons.dart';
+import '../layout.dart';
 import '../theme.dart';
-import '../tokens.dart';
+import '../tone.dart';
+import 'lpg_icon_box.dart';
 
-/// A themed list row — order/complaint/notification list items, address
-/// rows on the Profile screen. Mirrors `dashboard_screen.dart`'s
-/// hand-built `_buildActivityItem` (icon in a bordered circle, title,
-/// trailing text) so that one-off gets replaced by a shared widget instead
-/// of every new list screen re-implementing the same row shape.
+/// A themed list row — order, complaint, notification and address rows.
+///
+/// Leading icon on a tinted square ([LpgIconBox]), title and optional
+/// subtitle, free-form trailing content, and an optional chevron for rows
+/// that open a detail screen. Rows are at least [LpgSizes.touchTarget] tall.
 class LpgListTile extends StatelessWidget {
   const LpgListTile({
     super.key,
     required this.title,
     this.subtitle,
     this.leadingIcon,
+    this.leadingTone = LpgTone.primary,
+    this.leading,
     this.trailing,
     this.onTap,
+    this.showChevron = false,
+    this.dense = false,
   });
 
   final String title;
   final String? subtitle;
   final IconData? leadingIcon;
+  final LpgTone leadingTone;
+
+  /// A custom leading widget (an avatar, say), used instead of
+  /// [leadingIcon].
+  final Widget? leading;
 
   /// Free-form trailing content — a status badge, a timestamp, an amount.
   final Widget? trailing;
   final VoidCallback? onTap;
 
+  /// Shows a trailing chevron after [trailing], signalling navigation.
+  final bool showChevron;
+
+  /// Tighter vertical padding for rows nested inside a card.
+  final bool dense;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: LpgTokens.spacingMd * 1.0,
-        vertical: LpgTokens.spacingSm * 1.0,
-      ),
-      child: Row(
-        children: [
-          if (leadingIcon != null) ...[
-            Container(
-              padding: const EdgeInsets.all(LpgTokens.spacingSm * 1.0),
-              decoration: BoxDecoration(
-                color: colors.surfaceRaised,
-                shape: BoxShape.circle,
-                border: colors.isHighContrast
-                    ? Border.all(color: colors.borderDefault)
-                    : null,
-              ),
-              child: Icon(leadingIcon, size: 16, color: colors.textSecondary),
-            ),
-            const SizedBox(width: LpgTokens.spacingMd * 1.0),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+    final leadingWidget =
+        leading ??
+        (leadingIcon == null
+            ? null
+            : LpgIconBox(icon: leadingIcon!, tone: leadingTone));
+
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: LpgSizes.touchTarget),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: LpgSpacing.md,
+          vertical: dense ? LpgSpacing.sm : LpgSpacing.smd,
+        ),
+        child: Row(
+          children: [
+            if (leadingWidget != null) ...[
+              leadingWidget,
+              const SizedBox(width: LpgSpacing.smd),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    subtitle!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                    title,
+                    style: text.titleSmall,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: LpgSpacing.xs / 2),
+                    Text(
+                      subtitle!,
+                      style: text.bodySmall?.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: LpgTokens.spacingMd * 1.0),
-            trailing!,
+            if (trailing != null) ...[
+              const SizedBox(width: LpgSpacing.smd),
+              trailing!,
+            ],
+            if (showChevron) ...[
+              const SizedBox(width: LpgSpacing.xs),
+              Icon(
+                LpgIcons.chevronRight,
+                size: LpgSizes.iconSm,
+                color: colors.textSecondary,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
 
     if (onTap == null) return row;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(LpgTokens.radiusMd * 1.0),
+      borderRadius: BorderRadius.circular(LpgRadius.lg),
       child: row,
     );
   }

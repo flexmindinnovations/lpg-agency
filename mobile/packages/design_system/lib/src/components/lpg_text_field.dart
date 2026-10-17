@@ -1,12 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../layout.dart';
 import '../theme.dart';
-import '../tokens.dart';
 
-/// The labeled, bordered text field every form in this app needs (order
-/// placement, address entry, KYC submission) — wraps `TextFormField` with
-/// consistent border/radius/focus-colour theming instead of each screen
-/// configuring its own `InputDecoration`.
+/// The label above a form control. Shared by [LpgTextField],
+/// [LpgDropdownField] and any custom control a screen builds, so every
+/// field in every form is labelled the same way.
+class LpgFieldLabel extends StatelessWidget {
+  const LpgFieldLabel(this.text, {super.key, this.isRequired = false});
+
+  final String text;
+
+  /// Appends a required marker, announced to screen readers as "required".
+  final bool isRequired;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: LpgSpacing.xs,
+        bottom: LpgSpacing.sm,
+      ),
+      child: Text.rich(
+        TextSpan(
+          text: text,
+          children: [
+            if (isRequired)
+              TextSpan(
+                text: ' *',
+                style: TextStyle(color: colors.statusDanger),
+                semanticsLabel: ', required',
+              ),
+          ],
+        ),
+        style: context.lpgText.labelLarge?.copyWith(
+          color: colors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+/// The labelled text field every form uses. Wraps `TextFormField`; borders,
+/// fill, radius and focus colour all come from `LpgTheme`'s
+/// `inputDecorationTheme`, so this widget only adds the label and the
+/// options screens actually need.
 class LpgTextField extends StatelessWidget {
   const LpgTextField({
     super.key,
@@ -17,13 +57,25 @@ class LpgTextField extends StatelessWidget {
     this.errorText,
     this.helperText,
     this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
     this.obscureText = false,
     this.maxLines = 1,
+    this.maxLength,
     this.enabled = true,
+    this.readOnly = false,
     this.validator,
     this.onChanged,
+    this.onSubmitted,
+    this.onTap,
+    this.prefixIcon,
+    this.prefixText,
     this.suffixIcon,
     this.autofocus = false,
+    this.focusNode,
+    this.isRequired = false,
+    this.autofillHints,
   });
 
   final String label;
@@ -33,71 +85,71 @@ class LpgTextField extends StatelessWidget {
   final String? errorText;
   final String? helperText;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
   final bool obscureText;
   final int maxLines;
+  final int? maxLength;
   final bool enabled;
+  final bool readOnly;
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
+  final void Function(String)? onSubmitted;
+  final VoidCallback? onTap;
+
+  /// Leading icon inside the field, e.g. a phone glyph on a phone field.
+  final IconData? prefixIcon;
+
+  /// Fixed leading text inside the field, e.g. `+91 `.
+  final String? prefixText;
   final Widget? suffixIcon;
   final bool autofocus;
+  final FocusNode? focusNode;
+  final bool isRequired;
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-    final radius = BorderRadius.circular(LpgTokens.radiusMd * 1.0);
-
-    OutlineInputBorder border(Color color, {double width = 1}) =>
-        OutlineInputBorder(
-          borderRadius: radius,
-          borderSide: BorderSide(color: color, width: width),
-        );
+    final colors = context.lpgColors;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (label.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              label.toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colors.textSecondary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.1,
-              ),
-            ),
-          ),
-        ],
+        if (label.isNotEmpty) LpgFieldLabel(label, isRequired: isRequired),
         TextFormField(
           controller: controller,
           initialValue: controller == null ? initialValue : null,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
           obscureText: obscureText,
           maxLines: obscureText ? 1 : maxLines,
+          maxLength: maxLength,
           enabled: enabled,
+          readOnly: readOnly,
           validator: validator,
           onChanged: onChanged,
+          onFieldSubmitted: onSubmitted,
+          onTap: onTap,
           autofocus: autofocus,
-          style: TextStyle(color: colors.textPrimary),
+          focusNode: focusNode,
+          autofillHints: autofillHints,
+          style: context.lpgText.bodyLarge?.copyWith(
+            color: enabled ? colors.textPrimary : colors.textSecondary,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
             errorText: errorText,
             helperText: helperText,
+            prefixText: prefixText,
+            prefixIcon: prefixIcon == null
+                ? null
+                : Icon(prefixIcon, size: LpgSizes.iconMd),
             suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: colors.surfaceBase,
-            hintStyle: TextStyle(color: colors.textSecondary),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: LpgTokens.spacingMd * 1.0,
-              vertical: LpgTokens.spacingMd * 1.0,
-            ),
-            border: border(colors.borderDefault),
-            enabledBorder: border(colors.borderDefault),
-            disabledBorder: border(colors.borderDefault),
-            focusedBorder: border(colors.actionPrimary, width: 2),
-            errorBorder: border(colors.statusDanger),
-            focusedErrorBorder: border(colors.statusDanger, width: 2),
+            fillColor: enabled ? colors.card : colors.surfaceOverlay,
           ),
         ),
       ],

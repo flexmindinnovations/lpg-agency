@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for the `messaging` schema (ADR-052).
+"""SQLAlchemy ORM models for the `messaging` schema (ADR-054).
 
 `uuid`/`datetime` are runtime imports for the declarative mapper, as in
 `models/ai.py`.

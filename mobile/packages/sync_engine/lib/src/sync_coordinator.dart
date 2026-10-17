@@ -125,9 +125,7 @@ class SyncCoordinator {
     final count = _db.syncOperations.id.count();
     final query = _db.selectOnly(_db.syncOperations)
       ..addColumns([count])
-      ..where(
-        _db.syncOperations.status.isIn(['pending', 'error', 'syncing']),
-      );
+      ..where(_db.syncOperations.status.isIn(['pending', 'error', 'syncing']));
     return query.map((row) => row.read(count) ?? 0).watchSingle();
   }
 
@@ -278,9 +276,9 @@ class SyncCoordinator {
   }
 
   Future<void> _write(String id, SyncOperationsCompanion values) async {
-    await (_db.update(_db.syncOperations)..where((t) => t.id.equals(id))).write(
-      values,
-    );
+    await (_db.update(
+      _db.syncOperations,
+    )..where((t) => t.id.equals(id))).write(values);
   }
 
   static String? _errorCode(Object? data) {

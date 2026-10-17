@@ -46,7 +46,7 @@ class ConversationTurn:
 
     Plain text only: earlier tool calls are not replayed, so a model reading
     history sees what was said, never the raw tool results behind it. The
-    WhatsApp assistant (ADR-052) is the first caller that needs this; the AI
+    WhatsApp assistant (ADR-054) is the first caller that needs this; the AI
     Command Center still asks one independent question at a time."""
 
     role: Literal["user", "assistant"]

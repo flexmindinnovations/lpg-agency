@@ -276,13 +276,13 @@ class Settings(BaseSettings):
     ai_provider: str = "gemini"
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
-    # `ai_provider="anthropic"` (ADR-052). `anthropic_effort` is the main
+    # `ai_provider="anthropic"` (ADR-054). `anthropic_effort` is the main
     # cost lever for chat traffic; a cheaper model is a one-variable change.
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-opus-5-5"
     anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
 
-    # -- WhatsApp Cloud API (ADR-052) ---------------------------------------
+    # -- WhatsApp Cloud API (ADR-054) ---------------------------------------
     # Meta's credentials for the agency's WhatsApp Business number(s). One
     # Meta app can serve several agencies' numbers: each tenant maps its own
     # number with the `whatsapp_phone_number_id` Tenant Configuration key,

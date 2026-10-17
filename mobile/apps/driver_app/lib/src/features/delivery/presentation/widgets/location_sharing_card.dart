@@ -15,8 +15,8 @@ class LocationSharingCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
+    final text = context.lpgText;
     final sharingState = ref.watch(locationSharingStateProvider).value;
     final controller = ref.read(locationSharingControllerProvider);
 
@@ -36,35 +36,43 @@ class LocationSharingCard extends ConsumerWidget {
       _ => 'Let customers track their delivery on the map.',
     };
 
+    final blocked =
+        sharingState?.status == LocationSharingStatus.permissionBlocked ||
+        sharingState?.status == LocationSharingStatus.error;
+
     return LpgCard(
+      variant: isSharing ? LpgCardVariant.tonal : LpgCardVariant.elevated,
+      tone: LpgTone.info,
       child: Row(
         children: [
-          Icon(
-            isSharing ? Icons.my_location : Icons.location_disabled,
-            color: isSharing ? colors.statusInfo : colors.textSecondary,
+          LpgIconBox(
+            icon: isSharing ? LpgIcons.myLocation : LpgIcons.locationOff,
+            tone: blocked
+                ? LpgTone.danger
+                : isSharing
+                ? LpgTone.info
+                : LpgTone.neutral,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: LpgSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Share live location',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
-                  ),
+                  style: text.titleSmall?.copyWith(color: colors.textPrimary),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: LpgSpacing.xs / 2),
                 Text(
                   subtitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.textSecondary,
+                  style: text.bodySmall?.copyWith(
+                    color: blocked ? colors.statusDanger : colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: LpgSpacing.sm),
           Switch(
             value: isSharing,
             onChanged: canShare

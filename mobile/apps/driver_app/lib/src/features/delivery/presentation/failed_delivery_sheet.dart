@@ -33,29 +33,36 @@ class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
-          24,
+          LpgSpacing.lg,
           0,
-          24,
-          24 + MediaQuery.viewInsetsOf(context).bottom,
+          LpgSpacing.lg,
+          LpgSpacing.lg + MediaQuery.viewInsetsOf(context).bottom,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Why did the delivery fail?',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
+            Row(
+              children: [
+                const LpgIconBox(icon: LpgIcons.warning, tone: LpgTone.danger),
+                const SizedBox(width: LpgSpacing.smd),
+                Expanded(
+                  child: Text(
+                    'Why did the delivery fail?',
+                    style: text.titleMedium?.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: LpgSpacing.smd),
             RadioGroup<String>(
               groupValue: _reason,
               onChanged: (v) => setState(() => _reason = v),
@@ -65,21 +72,17 @@ class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
                     RadioListTile<String>(
                       contentPadding: EdgeInsets.zero,
                       value: code,
-                      title: Text(label),
+                      title: Text(label, style: text.bodyLarge),
                     ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'What next?',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 4),
+            const SizedBox(height: LpgSpacing.sm),
+            const LpgFieldLabel('What next?'),
+            const SizedBox(height: LpgSpacing.xs),
             Wrap(
-              spacing: 8,
+              spacing: LpgSpacing.sm,
+              runSpacing: LpgSpacing.sm,
               children: [
                 for (final (value, label) in _actions)
                   ChoiceChip(
@@ -89,11 +92,12 @@ class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
                   ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: LpgSpacing.lg),
             LpgButton(
               label: 'Confirm failed delivery',
               expand: true,
-              variant: LpgButtonVariant.secondary,
+              variant: LpgButtonVariant.destructive,
+              icon: LpgIcons.cancel,
               onPressed: _reason == null
                   ? null
                   : () => Navigator.of(

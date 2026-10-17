@@ -65,7 +65,7 @@ class CacheFirstReader {
         await _cache?.write(type, id, data);
         return data;
       }
-      return _cache?.read(type, id);
+      return await _cache?.read(type, id);
     } on DioException catch (e) {
       if (absentWhen(e)) {
         // The resource genuinely no longer exists — evict, don't resurrect.

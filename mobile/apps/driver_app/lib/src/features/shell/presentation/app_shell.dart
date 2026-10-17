@@ -7,9 +7,9 @@ import '../../../offline/offline_banner.dart';
 import '../../../offline/sync_providers.dart';
 import '../../notifications/data/notifications_provider.dart';
 
-/// The Driver App shell: a persistent bottom `NavigationBar` across the four
-/// tabs (Today / Deliveries / Alerts / Profile). Mirrors the Customer App's
-/// `AppShell` — same edge-to-edge bar and high-contrast treatment.
+/// The Driver App shell: a persistent bottom [LpgNavigationBar] across the
+/// four tabs (Today / Deliveries / Alerts / Profile). Mirrors the Customer
+/// App's `AppShell` — same edge-to-edge bar and high-contrast treatment.
 ///
 /// It's the always-mounted widget, so it owns the Alerts-tab unread badge:
 /// refetched on app resume and whenever a foreground push lands (no realtime
@@ -47,21 +47,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       ref.invalidate(driverNotificationsProvider);
     });
 
-    final colors = Theme.of(context).extension<LpgColors>()!;
     final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
     final syncIssues = ref.watch(syncIssuesProvider).value?.length ?? 0;
-
-    Widget alertsIcon(IconData icon, Color color) => Badge(
-      isLabelVisible: unread > 0,
-      label: Text('$unread'),
-      child: Icon(icon, color: color),
-    );
-
-    // A small dot (not a count) — "something in the queue needs you".
-    Widget profileIcon(IconData icon, Color color) => Badge(
-      isLabelVisible: syncIssues > 0,
-      child: Icon(icon, color: color),
-    );
 
     return Scaffold(
       // The banner sits above the tab screens' own Scaffolds, so it has to
@@ -75,58 +62,35 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
       ),
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: colors.isHighContrast
-              ? Border(top: BorderSide(color: colors.borderStrong, width: 2))
-              : null,
-        ),
-        child: Material(
-          color: colors.surfaceRaised,
-          elevation: colors.isHighContrast ? 0 : 3,
-          child: NavigationBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            indicatorColor: colors.actionPrimary.withValues(alpha: 0.12),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            selectedIndex: widget.navigationShell.currentIndex,
-            onDestinationSelected: _onTap,
-            destinations: [
-              NavigationDestination(
-                icon: Icon(Icons.today_outlined, color: colors.textSecondary),
-                selectedIcon: Icon(Icons.today, color: colors.actionPrimary),
-                label: 'Today',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  Icons.local_shipping_outlined,
-                  color: colors.textSecondary,
-                ),
-                selectedIcon: Icon(
-                  Icons.local_shipping,
-                  color: colors.actionPrimary,
-                ),
-                label: 'Deliveries',
-              ),
-              NavigationDestination(
-                icon: alertsIcon(
-                  Icons.notifications_outlined,
-                  colors.textSecondary,
-                ),
-                selectedIcon: alertsIcon(
-                  Icons.notifications,
-                  colors.actionPrimary,
-                ),
-                label: 'Alerts',
-              ),
-              NavigationDestination(
-                icon: profileIcon(Icons.person_outline, colors.textSecondary),
-                selectedIcon: profileIcon(Icons.person, colors.actionPrimary),
-                label: 'Profile',
-              ),
-            ],
+      bottomNavigationBar: LpgNavigationBar(
+        selectedIndex: widget.navigationShell.currentIndex,
+        onDestinationSelected: _onTap,
+        destinations: [
+          const LpgNavDestination(
+            icon: LpgIcons.today,
+            selectedIcon: LpgIcons.todayFilled,
+            label: 'Today',
           ),
-        ),
+          const LpgNavDestination(
+            icon: LpgIcons.deliveries,
+            selectedIcon: LpgIcons.deliveriesFilled,
+            label: 'Deliveries',
+          ),
+          LpgNavDestination(
+            icon: LpgIcons.notifications,
+            selectedIcon: LpgIcons.notificationsFilled,
+            label: 'Alerts',
+            badgeCount: unread,
+          ),
+          // Sync issues badge the Profile tab — "something in the queue
+          // needs you" (the Sync status screen is reached from Profile).
+          LpgNavDestination(
+            icon: LpgIcons.profile,
+            selectedIcon: LpgIcons.profileFilled,
+            label: 'Profile',
+            badgeCount: syncIssues,
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,4 @@
-"""Unit tests for the WhatsApp webhook helpers (ADR-052): Meta's signature
+"""Unit tests for the WhatsApp webhook helpers (ADR-054): Meta's signature
 check and payload parsing."""
 
 from __future__ import annotations

@@ -2,7 +2,6 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
@@ -85,10 +84,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       setState(() => _isLoading = false);
       result.when(
         onSuccess: (data) {
+          final navigator = Navigator.of(context);
+          navigator.pop();
           ref.invalidate(profileProvider);
-          context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
+          LpgFeedback.showToast(
+            navigator.context,
+            'Profile updated successfully',
+            tone: LpgTone.success,
           );
         },
         onFailure: (failure) {
@@ -100,86 +102,92 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
+    const gap = SizedBox(height: LpgSpacing.mdl);
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Edit Profile',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+      appBar: AppBar(title: const Text('Edit Profile')),
+      body: SingleChildScrollView(
+        padding: LpgSpacing.page,
+        child: Form(
+          key: _formKey,
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Hero(
+                    tag: 'profile_avatar',
+                    child: LpgAvatar(
+                      name: widget.profile.fullName,
+                      size: LpgSizes.avatarLg,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: LpgSpacing.lg),
+                if (_error != null) ...[
+                  LpgBanner(tone: LpgTone.danger, message: _error!),
+                  const SizedBox(height: LpgSpacing.lg),
+                ],
+                LpgTextField(
+                  label: 'Full name',
+                  isRequired: true,
+                  prefixIcon: LpgIcons.user,
+                  controller: _fullNameController,
+                  textInputAction: TextInputAction.next,
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.name],
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
+                ),
+                gap,
+                LpgTextField(
+                  label: 'Phone number',
+                  isRequired: true,
+                  prefixIcon: LpgIcons.phone,
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.telephoneNumber],
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Required' : null,
+                ),
+                gap,
+                LpgTextField(
+                  label: 'Email address',
+                  prefixIcon: LpgIcons.email,
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
+                ),
+                gap,
+                LpgTextField(
+                  label: 'Alternate mobile',
+                  prefixIcon: LpgIcons.call,
+                  controller: _altMobileController,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                ),
+                gap,
+                LpgTextField(
+                  label: 'Contact person',
+                  prefixIcon: LpgIcons.user,
+                  controller: _contactPersonController,
+                  textInputAction: TextInputAction.done,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: LpgSpacing.xl),
+                LpgButton(
+                  label: 'Save Changes',
+                  icon: LpgIcons.check,
+                  onPressed: _save,
+                  isLoading: _isLoading,
+                  expand: true,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colors.statusDanger.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: colors.statusDanger),
-                        ),
-                        child: Text(
-                          _error!,
-                          style: TextStyle(color: colors.statusDanger),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                    LpgTextField(
-                      label: 'Full Name',
-                      controller: _fullNameController,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Phone Number',
-                      controller: _phoneController,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Email Address',
-                      controller: _emailController,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Alternate Mobile',
-                      controller: _altMobileController,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Contact Person',
-                      controller: _contactPersonController,
-                    ),
-                    const SizedBox(height: 40),
-                    LpgButton(
-                      label: 'Save Changes',
-                      onPressed: _save,
-                      isLoading: _isLoading,
-                      expand: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
     );
   }
 }

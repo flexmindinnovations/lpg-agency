@@ -1,4 +1,4 @@
-"""`handle_whatsapp_message` — answers one inbound WhatsApp message (ADR-052).
+"""`handle_whatsapp_message` — answers one inbound WhatsApp message (ADR-054).
 
 Enqueued by `POST /webhooks/whatsapp` once per customer message, so the
 webhook can acknowledge Meta immediately (Meta retries slow or failed

@@ -163,7 +163,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["push_channel"] = build_push_channel(settings)
 
     # Same reasoning: one HTTP client for every WhatsApp reply this worker
-    # sends (ADR-052).
+    # sends (ADR-054).
     from lpg.infrastructure.whatsapp.cloud_api import build_whatsapp_sender
 
     ctx["whatsapp_sender"] = build_whatsapp_sender(settings)

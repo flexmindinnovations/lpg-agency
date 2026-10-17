@@ -19,288 +19,256 @@ String _formatAddressSubtitle(CustomerAddressResponse address) {
       ? '${address.line1}, $line2'
       : address.line1;
 
-  final stateAndPincode = [address.state, address.pincode]
-      .where((s) => s != null && s.isNotEmpty)
-      .join(' ');
-  final secondLine = [address.city, stateAndPincode]
-      .where((s) => s != null && s.isNotEmpty)
-      .join(', ');
+  final stateAndPincode = [
+    address.state,
+    address.pincode,
+  ].where((s) => s != null && s.isNotEmpty).join(' ');
+  final secondLine = [
+    address.city,
+    stateAndPincode,
+  ].where((s) => s != null && s.isNotEmpty).join(', ');
 
   return secondLine.isEmpty ? firstLine : '$firstLine\n$secondLine';
 }
 
+/// The customer's account: who they are, their KYC standing, saved
+/// delivery addresses and payment methods, and sign-out.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(profileProvider);
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Profile',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
+        title: const Text('Profile'),
         actions: [
           if (profileAsync.hasValue && profileAsync.value != null)
             IconButton(
-              icon: Icon(Icons.edit_outlined, color: colors.actionPrimary),
+              icon: const Icon(LpgIcons.edit),
+              tooltip: 'Edit profile',
               onPressed: () =>
                   context.push('/profile/edit', extra: profileAsync.value),
             ),
         ],
       ),
       body: profileAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, stack) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 5),
+        error: (err, stack) => LpgErrorState(
           message: 'Failed to load profile\n${err.toString()}',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(profileProvider),
+          onRetry: () => ref.invalidate(profileProvider),
         ),
         data: (profile) {
           if (profile == null) {
-            return const LpgEmptyState(message: 'No profile data found.');
+            return const LpgEmptyState(
+              message: 'No profile data found.',
+              icon: LpgIcons.userOff,
+            );
           }
 
-          return ListView(
-            padding: const EdgeInsets.all(24.0),
-            children: [
-              // Avatar & Basic Info
-              Center(
-                child: Hero(
-                  tag: 'profile_avatar',
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundColor: colors.actionPrimary,
-                    child: Text(
-                      profile.fullName.isNotEmpty
-                          ? profile.fullName[0].toUpperCase()
-                          : '?',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: colors.textInverse,
-                        fontWeight: FontWeight.bold,
-                      ),
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(profileProvider),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: LpgSpacing.page,
+              children: [
+                LpgFadeSlideIn(child: _ProfileHeader(profile: profile)),
+                const SizedBox(height: LpgSpacing.md),
+                LpgFadeSlideIn(
+                  index: 1,
+                  child: _KycCard(status: profile.kycStatus),
+                ),
+                const LpgSectionHeader(title: 'Account details'),
+                LpgFadeSlideIn(
+                  index: 2,
+                  child: LpgCard(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: LpgSpacing.xs,
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  profile.fullName,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Center(
-                child: Text(
-                  profile.phoneNumber,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // KYC Status Card
-              Builder(
-                builder: (context) {
-                  final kyc = _kycDisplay(profile.kycStatus);
-                  final kycColor = _severityColor(colors, kyc.severity);
-                  return LpgCard(
-                    onTap: () => context.push('/profile/kyc'),
-                    child: Row(
+                    child: Column(
                       children: [
-                        Icon(kyc.icon, color: kycColor),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'KYC Status',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                              Text(
-                                kyc.label,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: kycColor,
-                                ),
-                              ),
-                            ],
+                        LpgListTile(
+                          leadingIcon: LpgIcons.user,
+                          title: 'Customer type',
+                          subtitle: LpgFormat.sentence(profile.customerType),
+                        ),
+                        const Divider(indent: LpgSpacing.md),
+                        LpgListTile(
+                          leadingIcon: LpgIcons.email,
+                          title: 'Email',
+                          subtitle: profile.email ?? 'Not provided',
+                        ),
+                        if (profile.consumerNumber != null) ...[
+                          const Divider(indent: LpgSpacing.md),
+                          LpgListTile(
+                            leadingIcon: LpgIcons.number,
+                            title: 'Consumer number',
+                            subtitle: profile.consumerNumber!,
                           ),
-                        ),
-                        LpgStatusBadge(
-                          label: kyc.label.toUpperCase(),
-                          severity: kyc.severity,
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.chevron_right, color: colors.textSecondary),
+                        ],
                       ],
                     ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-              Text(
-                'Account Details',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              LpgCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    LpgListTile(
-                      leadingIcon: Icons.person_outline,
-                      title: 'Customer Type',
-                      subtitle: profile.customerType,
-                    ),
-                    Divider(height: 1, indent: 56, color: colors.borderDefault),
-                    LpgListTile(
-                      leadingIcon: Icons.email_outlined,
-                      title: 'Email',
-                      subtitle: profile.email ?? 'Not provided',
-                    ),
-                    if (profile.consumerNumber != null) ...[
-                      Divider(
-                        height: 1,
-                        indent: 56,
-                        color: colors.borderDefault,
-                      ),
-                      LpgListTile(
-                        leadingIcon: Icons.numbers_outlined,
-                        title: 'Consumer Number',
-                        subtitle: profile.consumerNumber!,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Saved Addresses',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
                   ),
-                  LpgButton(
-                    label: 'Add New',
-                    onPressed: () => context.push(
-                      '/profile/addresses/new',
-                      extra: profile.id,
-                    ),
-                    variant: LpgButtonVariant.text,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (profile.addresses.isEmpty)
-                LpgEmptyState(
-                  message: 'No addresses saved yet.',
-                  icon: Icons.location_off_outlined,
-                )
-              else
-                ...profile.addresses.map(
-                  (address) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                ),
+                LpgSectionHeader(
+                  title: 'Saved addresses',
+                  actionLabel: 'Add new',
+                  onAction: () =>
+                      context.push('/profile/addresses/new', extra: profile.id),
+                ),
+                if (profile.addresses.isEmpty)
+                  const LpgCard(
+                    variant: LpgCardVariant.outlined,
                     child: LpgListTile(
-                      onTap: () => _showAddressActions(
-                        context,
-                        ref,
-                        profile.id,
-                        address,
-                      ),
-                      // Real values are 'delivery'/'billing'/'both'
-                      // (domain/customer/customer.py:133) -- 'home' was
-                      // never one of them, so this never actually matched.
-                      leadingIcon: switch (address.addressType.toLowerCase()) {
-                        'billing' => Icons.receipt_long_outlined,
-                        'both' => Icons.done_all,
-                        _ => Icons.local_shipping_outlined,
-                      },
-                      title: address.addressType.isEmpty
-                          ? ''
-                          : address.addressType[0].toUpperCase() +
-                                address.addressType.substring(1),
-                      subtitle: _formatAddressSubtitle(address),
-                      trailing: address.isPrimary
-                          ? const LpgStatusBadge(
-                              label: 'PRIMARY',
-                              severity: LpgStatusSeverity.info,
-                            )
-                          : null,
+                      leadingIcon: LpgIcons.locationOff,
+                      leadingTone: LpgTone.neutral,
+                      title: 'No addresses saved yet.',
+                      subtitle: 'Add one so we know where to deliver.',
                     ),
+                  )
+                else
+                  for (final (i, address) in profile.addresses.indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: LpgSpacing.smd),
+                      child: LpgFadeSlideIn(
+                        index: 3 + i,
+                        child: LpgCard(
+                          padding: EdgeInsets.zero,
+                          child: LpgListTile(
+                            onTap: () => _showAddressActions(
+                              context,
+                              ref,
+                              profile.id,
+                              address,
+                            ),
+                            // Real values are 'delivery'/'billing'/'both'
+                            // (domain/customer/customer.py:133) -- 'home' was
+                            // never one of them, so this never actually matched.
+                            leadingIcon: switch (address.addressType
+                                .toLowerCase()) {
+                              'billing' => LpgIcons.receipt,
+                              'both' => LpgIcons.allDone,
+                              _ => LpgIcons.truck,
+                            },
+                            title: LpgFormat.sentence(address.addressType),
+                            subtitle: _formatAddressSubtitle(address),
+                            trailing: address.isPrimary
+                                ? const LpgStatusBadge(
+                                    label: 'PRIMARY',
+                                    severity: LpgStatusSeverity.info,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                const LpgSectionHeader(title: 'Payment methods'),
+                LpgCard(
+                  padding: EdgeInsets.zero,
+                  child: LpgListTile(
+                    leadingIcon: LpgIcons.payment,
+                    leadingTone: LpgTone.accent,
+                    title: 'Cards & UPI',
+                    subtitle: 'No payment methods saved',
+                    showChevron: true,
+                    onTap: () => context.push('/profile/payments'),
                   ),
                 ),
-
-              const SizedBox(height: 32),
-              Text(
-                'Payment Methods',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
+                const SizedBox(height: LpgSpacing.xl),
+                LpgButton(
+                  label: 'Log Out',
+                  icon: LpgIcons.logout,
+                  onPressed: () async {
+                    // Drop the FCM token first, while the session is still
+                    // valid — a shared device shouldn't keep getting this
+                    // user's notifications.
+                    await ref
+                        .read(pushNotificationServiceProvider)
+                        .unregister();
+                    await ref.read(authControllerProvider).logout();
+                  },
+                  variant: LpgButtonVariant.secondary,
+                  expand: true,
                 ),
-              ),
-              const SizedBox(height: 12),
-              LpgCard(
-                padding: EdgeInsets.zero,
-                child: LpgListTile(
-                  leadingIcon: Icons.credit_card_outlined,
-                  title: 'Cards & UPI',
-                  subtitle: 'No payment methods saved',
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: colors.textSecondary,
-                  ),
-                  onTap: () => context.push('/profile/payments'),
-                ),
-              ),
-
-              const SizedBox(height: 48),
-              LpgButton(
-                label: 'Log Out',
-                onPressed: () async {
-                  // Drop the FCM token first, while the session is still
-                  // valid — a shared device shouldn't keep getting this
-                  // user's notifications.
-                  await ref.read(pushNotificationServiceProvider).unregister();
-                  await ref.read(authControllerProvider).logout();
-                },
-                variant: LpgButtonVariant.secondary,
-                expand: true,
-              ),
-              const SizedBox(height: 24),
-            ],
+              ],
+            ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.profile});
+
+  final CustomerResponse profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    return Row(
+      children: [
+        Hero(
+          tag: 'profile_avatar',
+          child: LpgAvatar(name: profile.fullName, size: LpgSizes.avatarLg),
+        ),
+        const SizedBox(width: LpgSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(profile.fullName, style: text.titleLarge),
+              const SizedBox(height: LpgSpacing.xs),
+              Text(
+                profile.phoneNumber,
+                style: text.bodyMedium?.copyWith(
+                  color: context.lpgColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _KycCard extends StatelessWidget {
+  const _KycCard({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final kyc = _kycDisplay(status);
+    final tone = kyc.severity.tone;
+    return LpgCard(
+      variant: LpgCardVariant.tonal,
+      tone: tone,
+      onTap: () => context.push('/profile/kyc'),
+      semanticLabel: 'KYC status: ${kyc.label}. Open KYC details.',
+      child: Row(
+        children: [
+          LpgIconBox(icon: kyc.icon, tone: tone),
+          const SizedBox(width: LpgSpacing.smd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('KYC status', style: context.lpgText.bodySmall),
+                const SizedBox(height: LpgSpacing.xs / 2),
+                Text(kyc.label, style: context.lpgText.titleMedium),
+              ],
+            ),
+          ),
+          Icon(
+            LpgIcons.chevronRight,
+            size: LpgSizes.iconMd,
+            color: context.lpgColors.textSecondary,
+          ),
+        ],
       ),
     );
   }
@@ -319,22 +287,22 @@ class ProfileScreen extends ConsumerWidget {
 ) => switch (status.toLowerCase()) {
   'verified' => (
     label: 'Verified',
-    icon: Icons.verified,
+    icon: LpgIcons.verified,
     severity: LpgStatusSeverity.success,
   ),
   'rejected' => (
     label: 'Rejected',
-    icon: Icons.error_outline,
+    icon: LpgIcons.error,
     severity: LpgStatusSeverity.danger,
   ),
   'expired' => (
     label: 'Expired',
-    icon: Icons.schedule_outlined,
+    icon: LpgIcons.clock,
     severity: LpgStatusSeverity.warning,
   ),
   _ => (
     label: 'Pending',
-    icon: Icons.pending_actions,
+    icon: LpgIcons.pending,
     severity: LpgStatusSeverity.warning,
   ),
 };
@@ -350,55 +318,34 @@ Future<void> _showAddressActions(
   String customerId,
   CustomerAddressResponse address,
 ) async {
-  final colors = Theme.of(context).extension<LpgColors>()!;
-  await showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (sheetContext) => Container(
-      decoration: BoxDecoration(
-        color: Theme.of(sheetContext).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colors.borderDefault,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
+  await LpgFeedback.showSheet<void>(
+    context,
+    title: 'Address',
+    builder: (sheetContext) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LpgListTile(
+          leadingIcon: LpgIcons.edit,
+          title: 'Edit Address',
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            context.push(
+              '/profile/addresses/${address.id}/edit',
+              extra: (customerId: customerId, address: address),
+            );
+          },
+        ),
+        if (!address.isPrimary)
           LpgListTile(
-            leadingIcon: Icons.edit_outlined,
-            title: 'Edit Address',
+            leadingIcon: LpgIcons.star,
+            leadingTone: LpgTone.accent,
+            title: 'Set as Primary',
             onTap: () {
               Navigator.of(sheetContext).pop();
-              context.push(
-                '/profile/addresses/${address.id}/edit',
-                extra: (customerId: customerId, address: address),
-              );
+              _setPrimaryAddress(context, ref, customerId, address.id);
             },
           ),
-          if (!address.isPrimary) ...[
-            const SizedBox(height: 8),
-            LpgListTile(
-              leadingIcon: Icons.star_outline,
-              title: 'Set as Primary',
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _setPrimaryAddress(context, ref, customerId, address.id);
-              },
-            ),
-          ],
-        ],
-      ),
+      ],
     ),
   );
 }
@@ -416,21 +363,16 @@ Future<void> _setPrimaryAddress(
   result.when(
     onSuccess: (_) {
       ref.invalidate(profileProvider);
-      ScaffoldMessenger.of(
+      LpgFeedback.showToast(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Primary address updated.')));
+        'Primary address updated.',
+        tone: LpgTone.success,
+      );
     },
-    onFailure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Could not update: ${failure.message}')),
+    onFailure: (failure) => LpgFeedback.showToast(
+      context,
+      'Could not update: ${failure.message}',
+      tone: LpgTone.danger,
     ),
   );
 }
-
-Color _severityColor(LpgColors colors, LpgStatusSeverity severity) =>
-    switch (severity) {
-      LpgStatusSeverity.success => colors.statusSuccess,
-      LpgStatusSeverity.warning => colors.statusWarning,
-      LpgStatusSeverity.danger => colors.statusDanger,
-      LpgStatusSeverity.info => colors.statusInfo,
-      LpgStatusSeverity.neutral => colors.textSecondary,
-    };

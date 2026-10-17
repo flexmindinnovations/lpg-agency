@@ -28,7 +28,10 @@ final devOtpLookupProvider = Provider<DevOtpLookup>(
       final result = await AuthApi(
         ref.read(apiClientProvider).dio,
       ).fetchDevOtp(phoneNumber: phoneNumber);
-      final code = result.when(onSuccess: (code) => code, onFailure: (_) => null);
+      final code = result.when(
+        onSuccess: (code) => code,
+        onFailure: (_) => null,
+      );
       return code;
     } on Object {
       // Best effort: the customer can still type the code from elsewhere.

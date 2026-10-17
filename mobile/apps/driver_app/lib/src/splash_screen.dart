@@ -9,57 +9,33 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
     return Scaffold(
-      backgroundColor: colors.surfaceBase,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: colors.surfaceRaised,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: colors.borderDefault),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: Image.asset(
-                  'assets/images/lpg_app_logo.jpg',
-                  fit: BoxFit.cover,
-                ),
+            const LpgFadeSlideIn(
+              child: LpgBrandMark(
+                image: AssetImage('assets/images/lpg_app_logo.jpg'),
+                size: LpgSizes.avatarLg * 1.75,
               ),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: LpgSpacing.xl),
             Text(
               'LPG Agency',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: colors.textPrimary,
-                letterSpacing: -0.5,
-              ),
+              style: text.headlineMedium?.copyWith(color: colors.textPrimary),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Driver',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
+            const SizedBox(height: LpgSpacing.sm),
+            const LpgStatusBadge(
+              label: 'DRIVER',
+              severity: LpgStatusSeverity.info,
+              icon: LpgIcons.truck,
             ),
-            const SizedBox(height: 64),
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(colors.actionPrimary),
-              ),
-            ),
+            const SizedBox(height: LpgSpacing.xxl),
+            const LpgLoadingIndicator(size: LpgSizes.iconLg),
           ],
         ),
       ),

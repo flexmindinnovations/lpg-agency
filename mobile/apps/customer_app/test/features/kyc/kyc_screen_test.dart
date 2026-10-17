@@ -20,15 +20,16 @@ KycDocumentResponse _doc({
   verifiedAt: status == 'verified' ? DateTime(2026, 8, 26) : null,
 );
 
-Widget _screen({List<KycDocumentResponse>? docs, Object? error}) => ProviderScope(
-  overrides: [
-    kycDocumentsProvider.overrideWith((ref) async {
-      if (error != null) throw error;
-      return docs ?? const [];
-    }),
-  ],
-  child: MaterialApp(theme: LpgTheme.light, home: const KycScreen()),
-);
+Widget _screen({List<KycDocumentResponse>? docs, Object? error}) =>
+    ProviderScope(
+      overrides: [
+        kycDocumentsProvider.overrideWith((ref) async {
+          if (error != null) throw error;
+          return docs ?? const [];
+        }),
+      ],
+      child: MaterialApp(theme: LpgTheme.light, home: const KycScreen()),
+    );
 
 void main() {
   group('KycScreen', () {
