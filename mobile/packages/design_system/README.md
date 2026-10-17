@@ -38,7 +38,8 @@ import 'package:design_system/design_system.dart';
 | Surfaces | `LpgCard` (elevated / outlined / tonal), `LpgHeroCard` (brand gradient) |
 | Lists | `LpgListTile`, `LpgSectionHeader`, `LpgKeyValueRow`, `LpgTimeline` |
 | Dashboard | `LpgStatTile`, `LpgQuickAction`, `LpgIconBox`, `LpgAvatar`, `LpgBrandMark` |
-| Inputs | `LpgButton` (primary / secondary / tonal / text / destructive), `LpgTextField`, `LpgDropdownField`, `LpgFieldLabel` |
+| Inputs | `LpgButton` (primary / secondary / tonal / text / destructive), `LpgTextField`, `LpgDropdownField`, `LpgChoiceChips`, `LpgQuantityStepper`, `LpgFieldLabel` |
+| Testing only | `LpgDevOtpBanner` (sign-in code until the SMS gateway ships) |
 | Status | `LpgStatusBadge`, `LpgBanner`, `LpgIconBadgeButton` |
 | States | `LpgSkeletonList`, `LpgShimmer` + `LpgSkeleton`, `LpgLoadingIndicator`, `LpgEmptyState`, `LpgErrorState` |
 | Feedback | `LpgFeedback.showToast`, `.showSheet`, `.confirm` |
