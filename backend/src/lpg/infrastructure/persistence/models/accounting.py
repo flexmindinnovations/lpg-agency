@@ -151,3 +151,39 @@ class CreditNoteModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )
+
+
+class OnlinePaymentModel(Base):
+    """A payment-gateway attempt (ADR-052) — see `a9e4c7b2d1f6`'s migration."""
+
+    __tablename__ = "online_payment"
+    __table_args__ = {"schema": "accounting"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("orders.order.id", ondelete="CASCADE")
+    )
+    customer_id: Mapped[uuid.UUID] = mapped_column(Uuid())
+    invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("accounting.invoice.id", ondelete="SET NULL"), nullable=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    provider: Mapped[str] = mapped_column(String(20))
+    provider_link_id: Mapped[str] = mapped_column(String(64))
+    short_url: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20))
+    provider_payment_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    applied_payment_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(Uuid())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), onupdate=text("now()")
+    )
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))

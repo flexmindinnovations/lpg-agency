@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../payments/presentation/pay_online_section.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/invoices_provider.dart';
 
@@ -250,9 +251,8 @@ class InvoiceDetailScreen extends ConsumerWidget {
                           title: payment.method
                               .replaceAll('_', ' ')
                               .toUpperCase(),
-                          subtitle: DateFormat(
-                            'MMM dd, yyyy • hh:mm a',
-                          ).format(payment.collectedAt),
+                          subtitle: DateFormat('MMM dd, yyyy • hh:mm a')
+                              .format(payment.collectedAt),
                           trailing: Text(
                             '₹${payment.amount.toStringAsFixed(2)}',
                             style: theme.textTheme.titleSmall?.copyWith(
@@ -267,6 +267,14 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 24),
+              PayOnlineSection(
+                orderId: invoice.orderId,
+                canPay:
+                    balanceDue > 0 &&
+                    (invoice.status == 'issued' ||
+                        invoice.status == 'partially_paid'),
+                onPaid: () => ref.invalidate(invoiceDetailProvider(invoiceId)),
+              ),
             ],
           );
         },

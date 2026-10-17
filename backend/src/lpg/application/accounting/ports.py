@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from lpg.domain.accounting.cash_handover import CashHandover
     from lpg.domain.accounting.credit_note import CreditNote
     from lpg.domain.accounting.invoice import Invoice
+    from lpg.domain.accounting.online_payment import OnlinePayment
 
 
 class InvoiceNumberSequence(Protocol):
@@ -127,3 +128,21 @@ class CreditNoteRepository(Protocol):
         """
 
     async def get_by_id(self, credit_note_id: uuid.UUID) -> CreditNote | None: ...
+
+
+class OnlinePaymentRepository(Protocol):
+    """Repository for the `OnlinePayment` aggregate (ADR-052)."""
+
+    def next_id(self) -> uuid.UUID: ...
+
+    async def add(self, payment: OnlinePayment) -> None: ...
+
+    async def save(self, payment: OnlinePayment) -> None:
+        """Persist a status change or invoice application."""
+
+    async def get_by_id(self, online_payment_id: uuid.UUID) -> OnlinePayment | None: ...
+
+    async def get_by_provider_link_id(self, provider_link_id: str) -> OnlinePayment | None: ...
+
+    async def list_for_order(self, order_id: uuid.UUID) -> list[OnlinePayment]:
+        """Every attempt for one order, newest first."""

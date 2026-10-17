@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../providers.dart';
+import '../../payments/presentation/pay_online_section.dart';
 import '../data/orders_provider.dart';
 
 /// Statuses a customer can no longer cancel from — already dispatched or
@@ -13,6 +14,17 @@ import '../data/orders_provider.dart';
 /// `pendingApproval: true` for a post-dispatch cancel per D-19), but there's
 /// no real path back from `delivered`/`cancelled`/`failed_delivery`.
 const _terminalStatuses = {'delivered', 'cancelled', 'failed_delivery'};
+
+/// Statuses in which the backend accepts an online prepayment: the price is
+/// fixed (`confirmed`) and the cylinders have not been delivered yet. After
+/// delivery, the balance is paid from the invoice instead.
+const _prepayableStatuses = {
+  'confirmed',
+  'assigned',
+  'ready_for_dispatch',
+  'out_for_delivery',
+  'failed_delivery',
+};
 
 class OrderDetailScreen extends ConsumerWidget {
   const OrderDetailScreen({super.key, required this.orderId});
@@ -107,9 +119,8 @@ class OrderDetailScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          DateFormat(
-                            'MMM dd, yyyy • hh:mm a',
-                          ).format(order.requestedDate),
+                          DateFormat('MMM dd, yyyy • hh:mm a')
+                              .format(order.requestedDate),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.textSecondary,
                           ),
@@ -216,7 +227,12 @@ class OrderDetailScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              PayOnlineSection(
+                orderId: orderId,
+                canPay: _prepayableStatuses.contains(order.status),
+              ),
+              const SizedBox(height: 8),
               if (order.status == 'out_for_delivery')
                 LpgButton(
                   label: 'Track Delivery',

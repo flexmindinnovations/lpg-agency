@@ -55,6 +55,12 @@ final orderApiProvider = Provider<OrderApi>((ref) {
   return OrderApi(apiClient.dio);
 });
 
+/// Provides the [PaymentApi] client (online payments, ADR-052).
+final paymentApiProvider = Provider<PaymentApi>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return PaymentApi(apiClient.dio);
+});
+
 /// Provides the [NotificationApi] client.
 final notificationApiProvider = Provider<NotificationApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
@@ -82,6 +88,10 @@ final kycApiProvider = Provider<KycApi>((ref) {
 /// Provides the singleton [PushNotificationService]. Overridden in
 /// `main.dart` with the instance whose FCM handlers are already wired;
 /// throws if that override is missed.
-final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
-  throw UnimplementedError('pushNotificationServiceProvider was not overridden');
+final pushNotificationServiceProvider = Provider<PushNotificationService>((
+  ref,
+) {
+  throw UnimplementedError(
+    'pushNotificationServiceProvider was not overridden',
+  );
 });

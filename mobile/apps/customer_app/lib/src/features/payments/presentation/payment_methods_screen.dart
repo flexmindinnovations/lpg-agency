@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 
 /// Payment methods management.
 ///
-/// A deliberate UI placeholder: the platform has no payment-gateway
-/// integration yet (Phase 19 plan — "Payment Gateways ... remain a UI
-/// placeholder"), so there is nothing to persist and the "Add" actions
-/// explain that rather than pretending to save a card. The screen still
-/// exists as its own route so the shape is in place for when a gateway
-/// (Razorpay/UPI) is wired in a later phase.
+/// Saving a card or UPI ID is still a placeholder. Online payment itself
+/// is live (ADR-052): customers pay on Razorpay's hosted page from an
+/// order's or invoice's details screen, which needs nothing stored here.
+/// The "Add" actions say so rather than pretending to save a card.
 class PaymentMethodsScreen extends StatelessWidget {
   const PaymentMethodsScreen({super.key});
 
@@ -61,8 +59,8 @@ class PaymentMethodsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'Until online payments go live, orders are paid by cash or UPI '
-            'directly to the delivery agent.',
+            'You can pay online (UPI, cards, net banking) from any confirmed '
+            "order's details screen, or pay the delivery agent on delivery.",
             style: theme.textTheme.bodySmall?.copyWith(
               color: colors.textSecondary,
             ),
@@ -100,7 +98,11 @@ class PaymentMethodsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Icon(Icons.schedule_outlined, size: 40, color: colors.actionPrimary),
+              Icon(
+                Icons.schedule_outlined,
+                size: 40,
+                color: colors.actionPrimary,
+              ),
               const SizedBox(height: 16),
               Text(
                 '$feature are coming soon',
