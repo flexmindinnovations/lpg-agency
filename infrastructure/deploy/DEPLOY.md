@@ -233,6 +233,31 @@ docker compose -f docker-compose.prod.yml up -d backend worker
 Until these are set the app still starts, but `/health/ready` reports storage
 as down and uploads/PDF generation fail.
 
+### Integrations: SMS, payments, WhatsApp, Claude, push
+
+Third-party credentials live in a second, optional file,
+`integrations.env`, which only the backend and worker read (so the Postgres
+admin password in `.env` never reaches them). Every integration stays off
+until its lines are filled in.
+
+```bash
+cd /opt/lpg-agency/infrastructure/deploy
+cp integrations.env.example integrations.env && chmod 600 integrations.env
+nano integrations.env      # uncomment and fill in what you are turning on
+docker compose -f docker-compose.prod.yml up -d backend worker
+```
+
+Leave unused lines commented out rather than blank. Then register the
+webhooks with the providers:
+
+| Provider | Webhook URL |
+|---|---|
+| Razorpay (Dashboard -> Webhooks, events `payment_link.paid`, `payment_link.expired`, `payment_link.cancelled`) | `https://lpg.vitessetec.com/api/v1/payments/razorpay/webhook` |
+| Meta WhatsApp (App -> WhatsApp -> Configuration, verify token = `LPG_WHATSAPP_VERIFY_TOKEN`) | `https://lpg.vitessetec.com/api/v1/webhooks/whatsapp` |
+
+Each agency's WhatsApp phone number ID goes in that tenant's Tenant
+Configuration (`whatsapp_phone_number_id`), not in this file.
+
 ---
 
 ## 6. First deploy
