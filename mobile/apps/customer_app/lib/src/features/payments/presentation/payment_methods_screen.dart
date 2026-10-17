@@ -100,7 +100,11 @@ class PaymentMethodsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Icon(Icons.schedule_outlined, size: 40, color: colors.actionPrimary),
+              Icon(
+                Icons.schedule_outlined,
+                size: 40,
+                color: colors.actionPrimary,
+              ),
               const SizedBox(height: 16),
               Text(
                 '$feature are coming soon',

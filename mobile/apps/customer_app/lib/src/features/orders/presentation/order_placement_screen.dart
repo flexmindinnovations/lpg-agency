@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../providers.dart';
-import '../../../widgets/form_field_widgets.dart';
 import '../../profile/data/profile_provider.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/orders_provider.dart';
@@ -144,45 +143,33 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
     final profileAsync = ref.watch(profileProvider);
     final cylinderTypesAsync = ref.watch(cylinderTypesProvider);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Order Gas Refill',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Order Gas Refill')),
       body: profileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => LpgEmptyState(
-          icon: Icons.error_outline,
+        loading: () => const LpgLoadingIndicator(),
+        error: (error, _) => LpgErrorState(
           message: 'Could not load your profile: $error',
+          onRetry: () => ref.invalidate(profileProvider),
         ),
         data: (profile) {
           if (profile == null) {
             return const LpgEmptyState(
-              icon: Icons.person_off_outlined,
+              icon: LpgIcons.userOff,
               message: 'Your profile has not loaded yet.',
             );
           }
           if (profile.addresses.isEmpty) {
             return LpgEmptyState(
-              icon: Icons.location_off_outlined,
+              icon: LpgIcons.addLocation,
+              title: 'Add a delivery address',
               message:
                   'You need a saved delivery address before placing an '
                   'order.',
               actionLabel: 'Add Address',
+              actionIcon: LpgIcons.add,
               onAction: () =>
                   context.push('/profile/addresses/new', extra: profile.id),
             );
@@ -198,157 +185,120 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
               )
               .id;
 
-          return Form(
-            child: ListView(
-              padding: const EdgeInsets.all(24.0),
-              children: [
-                if (_errorMessage != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colors.statusDanger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: colors.statusDanger.withValues(alpha: 0.3),
+          final sections = <Widget>[
+            if (_errorMessage != null) ...[
+              LpgBanner(tone: LpgTone.danger, message: _errorMessage!),
+              const SizedBox(height: LpgSpacing.lg),
+            ],
+            const LpgFieldLabel('Cylinder Type'),
+            cylinderTypesAsync.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => LpgBanner(
+                tone: LpgTone.danger,
+                message: 'Could not load cylinder types: $error',
+              ),
+              data: (types) {
+                if (types.isEmpty) {
+                  return const LpgBanner(
+                    message: 'No cylinder types are available right now.',
+                  );
+                }
+                _cylinderTypeId ??= types.first.id;
+                return Column(
+                  children: [
+                    for (final type in types)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
+                        child: _CylinderOption(
+                          title: type.name,
+                          subtitle: '${type.weightKg} kg',
+                          selected: type.id == _cylinderTypeId,
+                          onTap: () =>
+                              setState(() => _cylinderTypeId = type.id),
+                        ),
                       ),
-                    ),
-                    child: Row(
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: LpgSpacing.md),
+            LpgCard(
+              variant: LpgCardVariant.outlined,
+              padding: const EdgeInsets.symmetric(
+                horizontal: LpgSpacing.md,
+                vertical: LpgSpacing.smd,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.error_outline, color: colors.statusDanger),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(
-                              color: colors.statusDanger,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                        Text('Quantity', style: context.lpgText.titleSmall),
+                        Text(
+                          'Cylinders to deliver',
+                          style: context.lpgText.bodySmall,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                ],
-
-                const FieldLabel('Cylinder Type'),
-                cylinderTypesAsync.when(
-                  loading: () => const LinearProgressIndicator(),
-                  error: (error, _) => Text(
-                    'Could not load cylinder types: $error',
-                    style: TextStyle(color: colors.statusDanger),
+                  LpgQuantityStepper(
+                    value: _quantity,
+                    min: 1,
+                    onChanged: (v) => setState(() => _quantity = v),
                   ),
-                  data: (types) {
-                    if (types.isEmpty) {
-                      return Text(
-                        'No cylinder types are available right now.',
-                        style: TextStyle(color: colors.textSecondary),
-                      );
-                    }
-                    _cylinderTypeId ??= types.first.id;
-                    return FormDropdownField<String?>(
-                      value: _cylinderTypeId,
-                      items: {
-                        for (final type in types)
-                          type.id: '${type.name} (${type.weightKg} kg)',
-                      },
-                      onChanged: (v) => setState(() => _cylinderTypeId = v),
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
+                ],
+              ),
+            ),
+            const SizedBox(height: LpgSpacing.lg),
+            LpgDropdownField<String?>(
+              label: 'Delivery Address',
+              prefixIcon: LpgIcons.location,
+              value: _addressId,
+              items: {
+                for (final address in profile.addresses)
+                  address.id:
+                      '${LpgFormat.sentence(address.addressType)} — '
+                      '${address.line1}'
+                      '${address.isPrimary ? ' (Primary)' : ''}',
+              },
+              onChanged: (v) => setState(() => _addressId = v),
+            ),
+            const SizedBox(height: LpgSpacing.lg),
+            const LpgFieldLabel('Requested Date'),
+            _DateField(value: _requestedDate, onTap: () => _pickDate(context)),
+            const SizedBox(height: LpgSpacing.lg),
+            const LpgFieldLabel('Payment Method (optional)'),
+            LpgChoiceChips<String>(
+              options: _paymentMethods,
+              icons: const {
+                'cash': LpgIcons.cash,
+                'upi': LpgIcons.wallet,
+                'card': LpgIcons.payment,
+                'online_gateway': LpgIcons.security,
+              },
+              selected: _paymentMethod,
+              allowDeselect: true,
+              onSelected: (v) => setState(() => _paymentMethod = v),
+            ),
+          ];
 
-                const FieldLabel('Quantity'),
-                Row(
+          return Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: LpgSpacing.page,
                   children: [
-                    _QtyButton(
-                      icon: Icons.remove,
-                      onPressed: _quantity > 1
-                          ? () => setState(() => _quantity--)
-                          : null,
-                      colors: colors,
-                    ),
-                    const SizedBox(width: 20),
-                    Text(
-                      '$_quantity',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    _QtyButton(
-                      icon: Icons.add,
-                      onPressed: () => setState(() => _quantity++),
-                      colors: colors,
-                    ),
+                    for (var i = 0; i < sections.length; i++)
+                      LpgFadeSlideIn(index: i, child: sections[i]),
                   ],
                 ),
-                const SizedBox(height: 20),
-
-                const FieldLabel('Delivery Address'),
-                FormDropdownField<String?>(
-                  value: _addressId,
-                  items: {
-                    for (final address in profile.addresses)
-                      address.id:
-                          '${address.addressType.toUpperCase()} — '
-                          '${address.line1}'
-                          '${address.isPrimary ? ' (Primary)' : ''}',
-                  },
-                  onChanged: (v) => setState(() => _addressId = v),
-                ),
-                const SizedBox(height: 20),
-
-                const FieldLabel('Requested Date'),
-                InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => _pickDate(context),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: colors.borderDefault),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 18,
-                          color: colors.textSecondary,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          DateFormat('EEE, d MMM yyyy').format(_requestedDate),
-                          style: TextStyle(color: colors.textPrimary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                const FieldLabel('Payment Method (optional)'),
-                FormDropdownField<String?>(
-                  value: _paymentMethod,
-                  items: _paymentMethods,
-                  placeholder: 'No preference',
-                  onChanged: (v) => setState(() => _paymentMethod = v),
-                ),
-
-                const SizedBox(height: 32),
-                LpgButton(
-                  label: 'Place Order',
-                  isLoading: _submitting,
-                  expand: true,
-                  onPressed: () => _submit(profile),
-                ),
-              ],
-            ),
+              ),
+              _SubmitBar(
+                submitting: _submitting,
+                onSubmit: () => _submit(profile),
+              ),
+            ],
           );
         },
       ),
@@ -356,37 +306,132 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
   }
 }
 
-class _QtyButton extends StatelessWidget {
-  const _QtyButton({
-    required this.icon,
-    required this.onPressed,
-    required this.colors,
+/// One selectable cylinder type: a card that fills with the primary tint
+/// and shows a check when chosen.
+class _CylinderOption extends StatelessWidget {
+  const _CylinderOption({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
   });
 
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final LpgColors colors;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final disabled = onPressed == null;
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colors.surfaceRaised,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: disabled ? colors.borderDefault : colors.actionPrimary,
+    final colors = context.lpgColors;
+    return Semantics(
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      child: LpgCard(
+        variant: selected ? LpgCardVariant.tonal : LpgCardVariant.outlined,
+        padding: const EdgeInsets.all(LpgSpacing.smd),
+        onTap: onTap,
+        child: Row(
+          children: [
+            LpgIconBox(
+              icon: LpgIcons.cylinder,
+              tone: selected ? LpgTone.primary : LpgTone.neutral,
+            ),
+            const SizedBox(width: LpgSpacing.smd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: context.lpgText.titleSmall),
+                  Text(subtitle, style: context.lpgText.bodySmall),
+                ],
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: LpgMotion.small(context),
+              child: selected
+                  ? Icon(
+                      LpgIcons.successFilled,
+                      key: const ValueKey('on'),
+                      color: colors.actionPrimary,
+                    )
+                  : Icon(
+                      LpgIcons.circle,
+                      key: const ValueKey('off'),
+                      color: colors.borderStrong,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A read-only field that opens the date picker, styled like the text
+/// fields around it.
+class _DateField extends StatelessWidget {
+  const _DateField({required this.value, required this.onTap});
+
+  final DateTime value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Requested date, ${DateFormat('EEEE d MMMM yyyy').format(value)}',
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(LpgRadius.lg),
+        onTap: onTap,
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            prefixIcon: Icon(LpgIcons.calendar, size: LpgSizes.iconMd),
+            suffixIcon: Icon(LpgIcons.chevronDown),
+          ),
+          child: Text(
+            DateFormat('EEE, d MMM yyyy').format(value),
+            style: context.lpgText.bodyLarge,
           ),
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: disabled
-              ? colors.textSecondary.withValues(alpha: 0.3)
-              : colors.actionPrimary,
+      ),
+    );
+  }
+}
+
+/// The pinned footer holding the primary action, so "Place Order" is
+/// always in reach however long the form scrolls.
+class _SubmitBar extends StatelessWidget {
+  const _SubmitBar({required this.submitting, required this.onSubmit});
+
+  final bool submitting;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.card,
+        border: Border(top: BorderSide(color: colors.borderDefault)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            LpgSpacing.mdl,
+            LpgSpacing.smd,
+            LpgSpacing.mdl,
+            LpgSpacing.smd,
+          ),
+          child: LpgButton(
+            label: 'Place Order',
+            icon: LpgIcons.check,
+            isLoading: submitting,
+            expand: true,
+            onPressed: onSubmit,
+          ),
         ),
       ),
     );

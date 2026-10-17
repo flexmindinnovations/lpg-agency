@@ -44,17 +44,20 @@ CustomerAddressResponse _partialAddress() => const CustomerAddressResponse(
   isPrimary: true,
 );
 
-Widget _screen({CustomerResponse? profile, bool nullProfile = false, Object? error}) =>
-    ProviderScope(
-      overrides: [
-        profileProvider.overrideWith((ref) async {
-          if (error != null) throw error;
-          if (nullProfile) return null;
-          return profile ?? _profile();
-        }),
-      ],
-      child: MaterialApp(theme: LpgTheme.light, home: const ProfileScreen()),
-    );
+Widget _screen({
+  CustomerResponse? profile,
+  bool nullProfile = false,
+  Object? error,
+}) => ProviderScope(
+  overrides: [
+    profileProvider.overrideWith((ref) async {
+      if (error != null) throw error;
+      if (nullProfile) return null;
+      return profile ?? _profile();
+    }),
+  ],
+  child: MaterialApp(theme: LpgTheme.light, home: const ProfileScreen()),
+);
 
 void main() {
   group('ProfileScreen', () {
@@ -73,21 +76,25 @@ void main() {
     });
 
     testWidgets('lists a saved address with its PRIMARY badge', (tester) async {
-      await pumpScreen(tester, _screen(profile: _profile(addresses: [_address()])));
+      await pumpScreen(
+        tester,
+        _screen(profile: _profile(addresses: [_address()])),
+      );
 
       expect(find.text('PRIMARY'), findsOneWidget);
     });
 
-    testWidgets('a partial address (no city/state/pincode) has no dangling comma line', (
-      tester,
-    ) async {
-      await pumpScreen(
-        tester,
-        _screen(profile: _profile(addresses: [_partialAddress()])),
-      );
+    testWidgets(
+      'a partial address (no city/state/pincode) has no dangling comma line',
+      (tester) async {
+        await pumpScreen(
+          tester,
+          _screen(profile: _profile(addresses: [_partialAddress()])),
+        );
 
-      expect(find.text('789 Second Street'), findsOneWidget);
-    });
+        expect(find.text('789 Second Street'), findsOneWidget);
+      },
+    );
 
     testWidgets('shows an error state with retry when the load fails', (
       tester,

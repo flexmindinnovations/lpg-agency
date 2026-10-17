@@ -272,7 +272,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Something went wrong'), findsOneWidget);
     expect(find.text('Network down'), findsOneWidget);
-    await tester.tap(find.text('Try again'));
+    await tester.tap(find.text('Retry'));
     expect(retried, isTrue);
   });
 

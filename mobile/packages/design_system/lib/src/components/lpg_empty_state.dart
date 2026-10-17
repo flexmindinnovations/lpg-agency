@@ -104,7 +104,7 @@ class LpgErrorState extends StatelessWidget {
     this.title = 'Something went wrong',
     required this.message,
     this.onRetry,
-    this.retryLabel = 'Try again',
+    this.retryLabel = 'Retry',
   });
 
   final String title;

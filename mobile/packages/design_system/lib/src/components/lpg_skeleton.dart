@@ -132,6 +132,9 @@ class LpgSkeletonList extends StatelessWidget {
     return LpgShimmer(
       child: ListView.separated(
         padding: padding,
+        // Shrink-wrapped and non-scrolling, so it can stand in for a list
+        // both as a whole screen body and inside another scroll view.
+        shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: itemCount,
         separatorBuilder: (_, _) => const SizedBox(height: LpgSpacing.smd),
