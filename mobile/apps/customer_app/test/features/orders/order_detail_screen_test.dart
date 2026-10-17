@@ -55,7 +55,9 @@ Widget _screen({OrderResponse? order, Object? error}) => ProviderScope(
 
 void main() {
   group('OrderDetailScreen', () {
-    testWidgets('renders the order status and delivery address', (tester) async {
+    testWidgets('renders the order status and delivery address', (
+      tester,
+    ) async {
       await pumpScreen(tester, _screen(order: _order()));
 
       expect(find.text('Order Details'), findsOneWidget);

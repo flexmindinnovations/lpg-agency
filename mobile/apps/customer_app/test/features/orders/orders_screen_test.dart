@@ -62,7 +62,10 @@ void main() {
     testWidgets('an out-for-delivery order offers a Track action', (
       tester,
     ) async {
-      await pumpScreen(tester, _screen(orders: [_order(status: 'out_for_delivery')]));
+      await pumpScreen(
+        tester,
+        _screen(orders: [_order(status: 'out_for_delivery')]),
+      );
 
       expect(find.text('Track'), findsOneWidget);
     });

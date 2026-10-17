@@ -19,12 +19,14 @@ String _formatAddressSubtitle(CustomerAddressResponse address) {
       ? '${address.line1}, $line2'
       : address.line1;
 
-  final stateAndPincode = [address.state, address.pincode]
-      .where((s) => s != null && s.isNotEmpty)
-      .join(' ');
-  final secondLine = [address.city, stateAndPincode]
-      .where((s) => s != null && s.isNotEmpty)
-      .join(', ');
+  final stateAndPincode = [
+    address.state,
+    address.pincode,
+  ].where((s) => s != null && s.isNotEmpty).join(' ');
+  final secondLine = [
+    address.city,
+    stateAndPincode,
+  ].where((s) => s != null && s.isNotEmpty).join(', ');
 
   return secondLine.isEmpty ? firstLine : '$firstLine\n$secondLine';
 }

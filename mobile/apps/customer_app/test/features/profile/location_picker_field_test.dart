@@ -7,7 +7,9 @@ import 'package:maps/maps_testing.dart';
 
 Widget _host(Widget child) => MaterialApp(
   theme: LpgTheme.light,
-  home: Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: child)),
+  home: Scaffold(
+    body: Padding(padding: const EdgeInsets.all(16), child: child),
+  ),
 );
 
 void main() {

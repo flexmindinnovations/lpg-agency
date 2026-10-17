@@ -27,9 +27,8 @@ class PluginConnectivityMonitor implements ConnectivityMonitor {
   final Connectivity _connectivity;
 
   @override
-  Stream<bool> get onConnectivityChanged => _connectivity.onConnectivityChanged
-      .map(_hasConnection)
-      .distinct();
+  Stream<bool> get onConnectivityChanged =>
+      _connectivity.onConnectivityChanged.map(_hasConnection).distinct();
 
   @override
   Future<bool> get isOnline async =>

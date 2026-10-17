@@ -119,8 +119,9 @@ class OrderDetailScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          DateFormat('MMM dd, yyyy • hh:mm a')
-                              .format(order.requestedDate),
+                          DateFormat(
+                            'MMM dd, yyyy • hh:mm a',
+                          ).format(order.requestedDate),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colors.textSecondary,
                           ),

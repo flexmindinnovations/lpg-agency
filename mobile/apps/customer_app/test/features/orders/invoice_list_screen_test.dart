@@ -8,31 +8,37 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/pump_screen.dart';
 
-InvoiceResponse _invoice({String status = 'issued', String? number = '000042'}) =>
-    InvoiceResponse(
-      invoiceId: 'inv-abcd1234',
-      invoiceNumber: number,
-      tenantId: 't1',
-      customerId: 'c1',
-      orderId: 'o1',
-      status: status,
-      issuedAt: DateTime(2026, 8, 15),
-      lines: const [],
-      subtotal: 1000,
-      taxAmount: 180,
-      totalAmount: 1180,
-      version: 1,
-    );
-
-Widget _screen({List<InvoiceResponse>? invoices, Object? error}) => ProviderScope(
-  overrides: [
-    invoicesProvider.overrideWith((ref) async {
-      if (error != null) throw error;
-      return invoices ?? const [];
-    }),
-  ],
-  child: MaterialApp(theme: LpgTheme.light, home: const InvoiceListScreen()),
+InvoiceResponse _invoice({
+  String status = 'issued',
+  String? number = '000042',
+}) => InvoiceResponse(
+  invoiceId: 'inv-abcd1234',
+  invoiceNumber: number,
+  tenantId: 't1',
+  customerId: 'c1',
+  orderId: 'o1',
+  status: status,
+  issuedAt: DateTime(2026, 8, 15),
+  lines: const [],
+  subtotal: 1000,
+  taxAmount: 180,
+  totalAmount: 1180,
+  version: 1,
 );
+
+Widget _screen({List<InvoiceResponse>? invoices, Object? error}) =>
+    ProviderScope(
+      overrides: [
+        invoicesProvider.overrideWith((ref) async {
+          if (error != null) throw error;
+          return invoices ?? const [];
+        }),
+      ],
+      child: MaterialApp(
+        theme: LpgTheme.light,
+        home: const InvoiceListScreen(),
+      ),
+    );
 
 void main() {
   group('InvoiceListScreen', () {

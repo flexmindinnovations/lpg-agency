@@ -251,8 +251,9 @@ class InvoiceDetailScreen extends ConsumerWidget {
                           title: payment.method
                               .replaceAll('_', ' ')
                               .toUpperCase(),
-                          subtitle: DateFormat('MMM dd, yyyy • hh:mm a')
-                              .format(payment.collectedAt),
+                          subtitle: DateFormat(
+                            'MMM dd, yyyy • hh:mm a',
+                          ).format(payment.collectedAt),
                           trailing: Text(
                             '₹${payment.amount.toStringAsFixed(2)}',
                             style: theme.textTheme.titleSmall?.copyWith(
