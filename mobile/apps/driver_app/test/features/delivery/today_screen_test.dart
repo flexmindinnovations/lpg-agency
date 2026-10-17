@@ -88,6 +88,8 @@ void main() {
 
       expect(find.text('1 of 2 delivered'), findsOneWidget);
       expect(find.textContaining('Next stop · Stop 2'), findsOneWidget);
+      // The live-location card sits below the fold on a phone-sized screen.
+      await tester.scrollUntilVisible(find.text('Share live location'), 200);
       expect(find.text('Share live location'), findsOneWidget);
     });
 
@@ -98,7 +100,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Cash reconciliation pending'), findsOneWidget);
-      expect(find.textContaining('Declare ₹1200.00'), findsOneWidget);
+      expect(find.textContaining('Declare ₹1,200.00'), findsOneWidget);
     });
 
     testWidgets('nudges the driver to check the van load', (tester) async {

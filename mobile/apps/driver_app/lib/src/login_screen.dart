@@ -128,187 +128,138 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
     return Scaffold(
-      backgroundColor: colors.surfaceBase,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 48),
-              Center(
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: colors.actionPrimary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.local_shipping_rounded,
-                    size: 32,
-                    color: colors.actionPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Driver Sign In',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: colors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Sign in to your delivery account',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.statusDanger.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colors.statusDanger.withValues(alpha: 0.3),
+          padding: const EdgeInsets.fromLTRB(
+            LpgSpacing.lg,
+            LpgSpacing.xxl,
+            LpgSpacing.lg,
+            LpgSpacing.lg,
+          ),
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const LpgFadeSlideIn(
+                  child: Center(
+                    child: LpgBrandMark(
+                      image: AssetImage('assets/images/lpg_app_logo.jpg'),
                     ),
                   ),
-                  child: Row(
+                ),
+                const SizedBox(height: LpgSpacing.lg),
+                LpgFadeSlideIn(
+                  index: 1,
+                  child: Column(
                     children: [
-                      Icon(Icons.error_outline, color: colors.statusDanger),
-                      const SizedBox(width: 12),
-                      Expanded(
+                      Semantics(
+                        header: true,
                         child: Text(
-                          _errorMessage!,
-                          style: TextStyle(
-                            color: colors.statusDanger,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          'Driver Sign In',
+                          style: text.headlineMedium,
+                          textAlign: TextAlign.center,
                         ),
+                      ),
+                      const SizedBox(height: LpgSpacing.sm),
+                      Text(
+                        _codeRequested
+                            ? 'Enter the code we sent to ${_phoneController.text.trim()}'
+                            : 'Sign in to your delivery account',
+                        style: text.bodyLarge?.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-              ],
-
-              LpgCard(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    LpgTextField(
-                      label: 'Agency Code',
-                      controller: _tenantIdController,
-                      enabled: !_codeRequested,
-                    ),
-                    const SizedBox(height: 24),
-                    LpgTextField(
-                      label: 'Phone number',
-                      controller: _phoneController,
-                      enabled: !_codeRequested,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    if (_codeRequested) ...[
-                      const SizedBox(height: 24),
-                      if (_devOtp != null) ...[
-                        _DevOtpBanner(code: _devOtp!),
-                        const SizedBox(height: 16),
-                      ],
-                      LpgTextField(
-                        label: 'Verification code',
-                        controller: _codeController,
-                        keyboardType: TextInputType.number,
-                        autofocus: true,
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: LpgButton(
-                          label: 'Edit Agency Code / Phone Number',
-                          variant: LpgButtonVariant.text,
-                          onPressed: _submitting ? null : _editDetails,
+                const SizedBox(height: LpgSpacing.xl),
+                if (_errorMessage != null) ...[
+                  LpgBanner(tone: LpgTone.danger, message: _errorMessage!),
+                  const SizedBox(height: LpgSpacing.md),
+                ],
+                LpgFadeSlideIn(
+                  index: 2,
+                  child: LpgCard(
+                    padding: const EdgeInsets.all(LpgSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LpgTextField(
+                          label: 'Agency code',
+                          prefixIcon: LpgIcons.agency,
+                          controller: _tenantIdController,
+                          enabled: !_codeRequested,
+                          textInputAction: TextInputAction.next,
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-                    LpgButton(
-                      label: _codeRequested ? 'Verify Code' : 'Send Code',
-                      isLoading: _submitting,
-                      expand: true,
-                      onPressed: _codeRequested ? _verifyCode : _requestCode,
+                        const SizedBox(height: LpgSpacing.mdl),
+                        LpgTextField(
+                          label: 'Phone number',
+                          prefixIcon: LpgIcons.phone,
+                          controller: _phoneController,
+                          enabled: !_codeRequested,
+                          keyboardType: TextInputType.phone,
+                          autofillHints: const [AutofillHints.telephoneNumber],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _requestCode(),
+                        ),
+                        if (_codeRequested) ...[
+                          const SizedBox(height: LpgSpacing.mdl),
+                          if (_devOtp case final devOtp?) ...[
+                            LpgDevOtpBanner(code: devOtp),
+                            const SizedBox(height: LpgSpacing.md),
+                          ],
+                          LpgTextField(
+                            label: 'Verification code',
+                            prefixIcon: LpgIcons.lock,
+                            controller: _codeController,
+                            keyboardType: TextInputType.number,
+                            autofillHints: const [AutofillHints.oneTimeCode],
+                            autofocus: true,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _verifyCode(),
+                          ),
+                          const SizedBox(height: LpgSpacing.sm),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: LpgButton(
+                              label: 'Edit Agency Code / Phone Number',
+                              icon: LpgIcons.edit,
+                              variant: LpgButtonVariant.text,
+                              onPressed: _submitting ? null : _editDetails,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: LpgSpacing.lg),
+                        LpgButton(
+                          label: _codeRequested ? 'Verify Code' : 'Send Code',
+                          trailingIcon: _codeRequested
+                              ? LpgIcons.check
+                              : LpgIcons.chevronRight,
+                          isLoading: _submitting,
+                          expand: true,
+                          onPressed: _codeRequested
+                              ? _verifyCode
+                              : _requestCode,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 48),
-              Text(
-                'v1.0.0 (Build 1)',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary.withValues(alpha: 0.5),
+                const SizedBox(height: LpgSpacing.xl),
+                Text(
+                  'v1.0.0 (Build 1)',
+                  style: text.labelSmall?.copyWith(color: colors.textDisabled),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Shows the one-time code on screen while no SMS provider exists. Rendered
-/// only when the dev OTP lookup returned a code, so it disappears on its own
-/// once real delivery replaces it.
-class _DevOtpBanner extends StatelessWidget {
-  const _DevOtpBanner({required this.code});
-
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.actionPrimary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.actionPrimary.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Testing only: your code is',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          SelectableText(
-            code,
-            key: const Key('dev-otp-code'),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 4,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -134,7 +134,7 @@ void main() {
 
       await _pump(tester, container);
 
-      expect(find.text('₹1811.00'), findsOneWidget);
+      expect(find.text('₹1,811.00'), findsOneWidget);
       expect(find.textContaining('2 cash deliveries'), findsOneWidget);
       expect(
         find.widgetWithText(LpgButton, 'Declare handover'),
@@ -221,7 +221,7 @@ void main() {
 
       // Confirm dialog.
       expect(find.text('Confirm cash handover'), findsOneWidget);
-      await tester.tap(find.widgetWithText(FilledButton, 'Confirm'));
+      await tester.tap(find.widgetWithText(LpgButton, 'Confirm'));
       await tester.pumpAndSettle();
 
       // The op was queued with the right body...

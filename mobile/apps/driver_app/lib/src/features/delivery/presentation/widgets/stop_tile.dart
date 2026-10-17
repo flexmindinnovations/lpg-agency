@@ -17,7 +17,6 @@ class StopTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final done = stop.status == 'delivered' || stop.status == 'failed';
     final pending =
         ref
             .watch(pendingSyncAggregatesProvider)
@@ -25,19 +24,38 @@ class StopTile extends ConsumerWidget {
             ?.contains(stop.orderId) ??
         false;
 
+    final (IconData icon, LpgTone tone) = switch (stop.status) {
+      'delivered' => (LpgIcons.success, LpgTone.success),
+      'failed' => (LpgIcons.cancel, LpgTone.danger),
+      'en_route' => (LpgIcons.navigate, LpgTone.accent),
+      'cancelled' => (LpgIcons.blocked, LpgTone.neutral),
+      _ => (LpgIcons.location, LpgTone.primary),
+    };
+
     return LpgCard(
       padding: EdgeInsets.zero,
       onTap: onTap,
       child: LpgListTile(
-        leadingIcon: done ? Icons.check_circle_outline : Icons.circle_outlined,
+        leadingIcon: icon,
+        leadingTone: tone,
         title: 'Stop ${stop.sequenceNumber}',
         subtitle: 'Order ${stop.orderId.substring(0, 8).toUpperCase()}',
         trailing: pending
             ? const LpgStatusBadge(
                 label: 'PENDING SYNC',
                 severity: LpgStatusSeverity.info,
+                icon: LpgIcons.upload,
               )
-            : Text(stop.status.replaceAll('_', ' ')),
+            : LpgStatusBadge(
+                label: LpgFormat.statusLabel(stop.status),
+                severity: switch (stop.status) {
+                  'delivered' => LpgStatusSeverity.success,
+                  'failed' => LpgStatusSeverity.danger,
+                  'en_route' => LpgStatusSeverity.warning,
+                  _ => LpgStatusSeverity.neutral,
+                },
+              ),
+        showChevron: onTap != null,
       ),
     );
   }
