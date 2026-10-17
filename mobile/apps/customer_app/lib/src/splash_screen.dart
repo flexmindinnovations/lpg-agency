@@ -1,63 +1,39 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
+/// The agency logo shown on the splash and sign-in screens. Replace the
+/// asset to rebrand; [LpgBrandMark] handles sizing, radius and shadow.
+const appLogo = AssetImage('assets/images/lpg_app_logo.jpg');
+
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
+  static const _logoSize = 112.0;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
     return Scaffold(
-      backgroundColor: colors.surfaceBase,
+      backgroundColor: colors.canvas,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: colors.surfaceRaised,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: colors.borderDefault),
+        child: LpgFadeSlideIn(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const LpgBrandMark(image: appLogo, size: _logoSize),
+              const SizedBox(height: LpgSpacing.xl),
+              Text('LPG Agency', style: text.headlineMedium),
+              const SizedBox(height: LpgSpacing.sm),
+              Text(
+                'Your gas, delivered safely.',
+                style: text.bodyLarge?.copyWith(color: colors.textSecondary),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: Image.asset(
-                  'assets/images/lpg_app_logo.jpg',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(height: 48),
-            Text(
-              'LPG Agency',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: colors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Management Platform',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 64),
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(colors.actionPrimary),
-              ),
-            ),
-          ],
+              const SizedBox(height: LpgSpacing.xxl),
+              const LpgLoadingIndicator(),
+            ],
+          ),
         ),
       ),
     );

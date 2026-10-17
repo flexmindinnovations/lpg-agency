@@ -6,7 +6,7 @@ import 'package:maps/maps.dart';
 
 import '../../../providers.dart';
 import '../data/profile_provider.dart';
-import 'widgets/location_picker_field.dart';
+import 'widgets/address_form_fields.dart';
 
 /// Edits an existing saved address — mirrors `AddAddressScreen`'s form
 /// exactly (same fields, same `UpdateCustomerAddressRequest`/
@@ -118,11 +118,13 @@ class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
         // elsewhere in this app (order_detail_screen.dart's cancel flow):
         // invalidate only after the screen that would otherwise be
         // rebuilt mid-navigation is off the stack.
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.of(context).pop();
+        final navigator = Navigator.of(context);
+        navigator.pop();
         ref.invalidate(profileProvider);
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Address updated successfully')),
+        LpgFeedback.showToast(
+          navigator.context,
+          'Address updated successfully',
+          tone: LpgTone.success,
         );
       },
       onFailure: (failure) => setState(() => _error = failure.message),
@@ -131,137 +133,48 @@ class _EditAddressScreenState extends ConsumerState<EditAddressScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Edit Address',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+      appBar: AppBar(title: const Text('Edit Address')),
+      body: SingleChildScrollView(
+        padding: LpgSpacing.page,
+        child: Form(
+          key: _formKey,
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_error != null) ...[
+                  LpgBanner(tone: LpgTone.danger, message: _error!),
+                  const SizedBox(height: LpgSpacing.lg),
+                ],
+                AddressFormFields(
+                  addressType: _addressType,
+                  onAddressTypeChanged: (type) =>
+                      setState(() => _addressType = type),
+                  line1: _line1Controller,
+                  line2: _line2Controller,
+                  landmark: _landmarkController,
+                  area: _areaController,
+                  city: _cityController,
+                  state: _stateController,
+                  pincode: _pincodeController,
+                  pinnedLocation: _pinnedLocation,
+                  onPinnedLocationChanged: (loc) =>
+                      setState(() => _pinnedLocation = loc),
+                ),
+                const SizedBox(height: LpgSpacing.xl),
+                LpgButton(
+                  label: 'Save Changes',
+                  icon: LpgIcons.check,
+                  onPressed: _save,
+                  isLoading: _isLoading,
+                  expand: true,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colors.statusDanger.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: colors.statusDanger),
-                        ),
-                        child: Text(
-                          _error!,
-                          style: TextStyle(color: colors.statusDanger),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    Text('Address Type', style: theme.textTheme.labelLarge),
-                    const SizedBox(height: 8),
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(
-                          value: 'delivery',
-                          label: Text('Delivery'),
-                          icon: Icon(Icons.local_shipping_outlined),
-                        ),
-                        ButtonSegment(
-                          value: 'billing',
-                          label: Text('Billing'),
-                          icon: Icon(Icons.receipt_long_outlined),
-                        ),
-                        ButtonSegment(
-                          value: 'both',
-                          label: Text('Both'),
-                          icon: Icon(Icons.done_all),
-                        ),
-                      ],
-                      selected: {_addressType},
-                      onSelectionChanged: (Set<String> newSelection) {
-                        setState(() {
-                          _addressType = newSelection.first;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    LpgTextField(
-                      label: 'Address Line 1*',
-                      controller: _line1Controller,
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Address Line 2',
-                      controller: _line2Controller,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Landmark',
-                      controller: _landmarkController,
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(label: 'Area', controller: _areaController),
-                    const SizedBox(height: 20),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: LpgTextField(
-                            label: 'City',
-                            controller: _cityController,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: LpgTextField(
-                            label: 'State',
-                            controller: _stateController,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    LpgTextField(
-                      label: 'Pincode',
-                      controller: _pincodeController,
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 24),
-                    LocationPickerField(
-                      value: _pinnedLocation,
-                      tileProvider: ref.watch(mapTileProviderProvider),
-                      onChanged: (loc) => setState(() => _pinnedLocation = loc),
-                    ),
-                    const SizedBox(height: 40),
-                    LpgButton(
-                      label: 'Save Changes',
-                      onPressed: _save,
-                      isLoading: _isLoading,
-                      expand: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
     );
   }
 }
