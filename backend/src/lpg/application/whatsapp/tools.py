@@ -482,6 +482,8 @@ async def _get_payment_link(ctx: CustomerToolContext, args: dict[str, Any]) -> d
     link = await ctx.payment_links.create_payment_link(
         PaymentLinkRequest(
             order_id=order.id,
+            customer_id=ctx.customer_id,
+            requested_by=ctx.actor_id,
             order_number=order.order_number or "",
             amount=order.total_amount,
             customer_name=customer.full_name,

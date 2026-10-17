@@ -32,8 +32,8 @@ management, tracking, payment and all").
 - **Two-step booking:** `prepare_order` stores a quote; `place_order` only
   accepts a quote created before the current customer message and under 30
   minutes old, so the model can never propose and book in one turn.
-- **Payments:** `PaymentLinkPort`. Unconfigured until the Razorpay
-  integration supplies an adapter; until then the assistant offers cash/UPI
+- **Payments:** `PaymentLinkPort`, backed by the Razorpay `CreateOrderPaymentLinkUseCase`
+  (ADR-053) when gateway keys are set; otherwise the assistant offers cash/UPI
   on delivery.
 - **Safety and cost:** off per agency until `whatsapp_ai_enabled` is set;
   shares `ai_daily_token_budget` with the AI Command Center; every run is in

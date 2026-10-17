@@ -340,6 +340,22 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
         return value
 
+    @field_validator(
+        "anthropic_api_key",
+        "whatsapp_access_token",
+        "whatsapp_app_secret",
+        "whatsapp_verify_token",
+        mode="before",
+    )
+    @classmethod
+    def _blank_secret_is_unset(cls, value: object) -> object:
+        """`LPG_WHATSAPP_APP_SECRET=` (as in the env templates) means unset,
+        not an empty secret: an empty HMAC key or verify token would accept
+        anything anyone sends."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @field_validator("jwt_private_key", "jwt_public_key", mode="before")
     @classmethod
     def _unescape_pem_newlines(cls, value: object) -> object:

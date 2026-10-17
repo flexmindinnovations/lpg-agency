@@ -48,12 +48,13 @@ async def verify_whatsapp_webhook(
     """Echo `hub.challenge` when the verify token matches, as Meta requires."""
     import hmac
 
-    expected = get_settings().whatsapp_verify_token
+    secret = get_settings().whatsapp_verify_token
+    expected = secret.get_secret_value() if secret is not None else ""
     if (
         mode != "subscribe"
-        or expected is None
-        or verify_token is None
-        or not hmac.compare_digest(verify_token, expected.get_secret_value())
+        or not expected
+        or not verify_token
+        or not hmac.compare_digest(verify_token, expected)
         or challenge is None
     ):
         raise HTTPException(status_code=403, detail="Webhook verification failed.")

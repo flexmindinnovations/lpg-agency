@@ -21,6 +21,7 @@ Satisfies the worker contract in `worker.py`:
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -30,13 +31,19 @@ from lpg.application.whatsapp.use_cases import HandleInboundWhatsAppMessageUseCa
 from lpg.config.logging import get_logger
 from lpg.config.settings import get_settings
 from lpg.infrastructure.ai.factory import get_model_gateway
+from lpg.infrastructure.payments.factory import get_payment_gateway
 from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
-from lpg.infrastructure.whatsapp.payment_links import UnconfiguredPaymentLinks
+from lpg.infrastructure.whatsapp.payment_links import (
+    GatewayPaymentLinks,
+    UnconfiguredPaymentLinks,
+)
 from lpg.infrastructure.whatsapp.scope import build_scope_factory
 from lpg.infrastructure.whatsapp.tenant_resolver import SqlAlchemyWhatsAppTenantResolver
 from lpg.infrastructure.whatsapp.webhook import HANDLE_MESSAGE_JOB
 
 if TYPE_CHECKING:
+    from lpg.application.whatsapp.ports import PaymentLinkPort
+    from lpg.application.whatsapp.tools import WhatsAppScopeFactory
     from lpg.infrastructure.persistence.database import Database
 
 _logger = get_logger(__name__)
@@ -69,18 +76,33 @@ async def handle_whatsapp_message(ctx: dict[str, Any], message: dict[str, Any]) 
     field_encryptor = FernetFieldEncryptor(settings)
     event_dispatcher = ctx.get("event_dispatcher")
 
-    use_case = HandleInboundWhatsAppMessageUseCase(
-        tenant_id=tenant_id,
-        gateway=get_model_gateway(settings),
-        sender=ctx["whatsapp_sender"],
-        scope_factories=lambda actor_id: build_scope_factory(
+    def scope_factories(actor_id: uuid.UUID | None) -> WhatsAppScopeFactory:
+        return build_scope_factory(
             database=database,
             tenant_id=tenant_id,
             field_encryptor=field_encryptor,
             event_dispatcher=event_dispatcher,
             actor_id=actor_id,
-        ),
-        payment_links=UnconfiguredPaymentLinks(),
+        )
+
+    payment_gateway = get_payment_gateway(settings)
+    payment_links: PaymentLinkPort = (
+        GatewayPaymentLinks(
+            tenant_id=tenant_id,
+            gateway=payment_gateway,
+            scope_factory=scope_factories(None),
+            link_ttl=timedelta(minutes=settings.payment_link_ttl_minutes),
+        )
+        if payment_gateway.is_configured
+        else UnconfiguredPaymentLinks()
+    )
+
+    use_case = HandleInboundWhatsAppMessageUseCase(
+        tenant_id=tenant_id,
+        gateway=get_model_gateway(settings),
+        sender=ctx["whatsapp_sender"],
+        scope_factories=scope_factories,
+        payment_links=payment_links,
     )
     result = await use_case.execute(inbound)
     _logger.info("job_handle_whatsapp_message_completed", outcome=result.outcome)

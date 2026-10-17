@@ -356,6 +356,96 @@ async def test_messaging_rows_are_invisible_to_other_tenants(
     assert counts == {owner.tenant_id: 2, other.tenant_id: 0}
 
 
+async def test_payment_link_goes_through_the_shared_razorpay_use_case(
+    admin: AsyncEngine,
+    integration_settings: Settings,
+    redis_available: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not redis_available:
+        pytest.skip("Redis is not reachable")
+    from lpg.application.accounting.payment_gateway import PaymentLink
+    from lpg.infrastructure.jobs import whatsapp_jobs
+    from lpg.infrastructure.payments.razorpay import RazorpayPaymentGateway
+
+    class _StubbedRazorpay(RazorpayPaymentGateway):
+        def __init__(self) -> None:
+            super().__init__(
+                key_id="rzp_test_whatsapp",
+                key_secret="secret",
+                webhook_secret="whsec",
+                api_base_url="https://api.razorpay.invalid/v1",
+                callback_url="",
+                timeout_seconds=1,
+            )
+            self.requests: list[Any] = []
+
+        async def create_payment_link(self, request: Any) -> PaymentLink:
+            self.requests.append(request)
+            return PaymentLink(link_id="plink_wa", short_url="https://rzp.io/i/plink_wa")
+
+    seed = await _seed_tenant(admin)
+    order_number = f"ORD-WA-{uuid.uuid4().hex[:6]}"
+    async with admin.begin() as conn:
+        row = (
+            await conn.execute(
+                text(
+                    "SELECT branch_id, (SELECT id FROM customer.customer_address "
+                    "WHERE customer_id = c.id LIMIT 1) FROM customer.customer c WHERE id = :c"
+                ),
+                {"c": str(seed.customer_id)},
+            )
+        ).one()
+        order_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO orders.order (id, tenant_id, branch_id, customer_id, address_id, "
+                    "delivery_address_line, status, booking_source, requested_date, "
+                    "total_amount, order_number) VALUES (gen_random_uuid(), :t, :b, :c, :a, "
+                    "'12 MG Road', 'confirmed', 'whatsapp', now(), 903.00, :n) RETURNING id"
+                ),
+                {
+                    "t": str(seed.tenant_id),
+                    "b": str(row[0]),
+                    "c": str(seed.customer_id),
+                    "a": str(row[1]),
+                    "n": order_number,
+                },
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO orders.order_line (id, order_id, cylinder_type_id, "
+                "quantity_ordered, unit_price) VALUES (gen_random_uuid(), :o, :ct, 1, 903)"
+            ),
+            {"o": str(order_id), "ct": str(seed.cylinder_type_id)},
+        )
+
+    razorpay = _StubbedRazorpay()
+    monkeypatch.setattr(whatsapp_jobs, "get_payment_gateway", lambda _settings: razorpay)
+    gateway = _ScriptedGateway(turns=[[("get_payment_link", {"order_number": order_number})]])
+    message = _message(seed, "Send me a payment link")
+    result = await _run_job(integration_settings, gateway, _RecordingSender(), message, monkeypatch)
+
+    assert result == "answered"
+    assert gateway.results == [
+        {"available": True, "payment_url": "https://rzp.io/i/plink_wa", "amount": "903.00"}
+    ]
+    assert razorpay.requests[0].customer_phone == seed.customer_phone
+    async with admin.connect() as conn:
+        payment = (
+            await conn.execute(
+                text(
+                    "SELECT order_id, customer_id, status, short_url "
+                    "FROM accounting.online_payment WHERE tenant_id = :t"
+                ),
+                {"t": str(seed.tenant_id)},
+            )
+        ).one()
+    assert (payment.order_id, payment.customer_id) == (order_id, seed.customer_id)
+    assert payment.status == "created"
+
+
 # ==========================================================================
 # Webhook
 # ==========================================================================
@@ -482,3 +572,25 @@ async def test_verify_handshake_echoes_the_challenge(webhook: _Webhook) -> None:
     assert ok.status_code == 200
     assert ok.text == "12345"
     assert wrong.status_code == 403
+
+
+async def test_blank_secrets_reject_every_webhook(
+    webhook: _Webhook, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from lpg.config.settings import get_settings
+
+    monkeypatch.setenv("LPG_WHATSAPP_APP_SECRET", "")
+    monkeypatch.setenv("LPG_WHATSAPP_VERIFY_TOKEN", "")
+    get_settings.cache_clear()
+    body = json.dumps({"object": "whatsapp_business_account", "entry": []}).encode()
+
+    verify = await webhook.client.get(
+        "/api/v1/webhooks/whatsapp",
+        params={"hub.mode": "subscribe", "hub.verify_token": "", "hub.challenge": "1"},
+    )
+    forged = await webhook.client.post(
+        "/api/v1/webhooks/whatsapp", content=body, headers=_signed(body, secret="")
+    )
+
+    assert verify.status_code == 403
+    assert forged.status_code == 403

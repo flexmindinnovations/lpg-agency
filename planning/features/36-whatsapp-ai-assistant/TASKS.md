@@ -14,10 +14,11 @@ Plan: [PLAN.md](./PLAN.md).
 - [x] Tenant config keys `whatsapp_ai_enabled`, `whatsapp_phone_number_id` (backend + dashboard settings page).
 - [x] Unit tests (adapter, webhook parsing, assistant flows) and integration tests (routing, dedupe, booking end to end, RLS, webhook).
 - [x] ADR-054, env templates, module status.
+- [x] Razorpay payment links through `GatewayPaymentLinks` over `CreateOrderPaymentLinkUseCase` (ADR-053), with an integration test.
+- [x] Blank WhatsApp/Anthropic secrets treated as unset (an empty HMAC key or verify token would accept forged webhooks), with tests.
 
 ## Follow-ups (not started)
 
-- [ ] Razorpay `PaymentLinkPort` adapter wrapping `CreateOrderPaymentLinkUseCase` from the Razorpay PR (#12), once it merges. Only the adapter and the job wiring change; the tool and prompt already handle links.
 - [ ] Proactive order-status notifications through approved message templates (outside the 24-hour window).
 - [ ] A separate token budget for WhatsApp, if sharing `ai_daily_token_budget` with the AI Command Center proves too coarse.
 - [ ] Retention policy for `messaging.whatsapp_message`.

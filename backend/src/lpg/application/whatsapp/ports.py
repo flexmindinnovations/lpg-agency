@@ -119,6 +119,10 @@ class WhatsAppSenderPort(Protocol):
 @dataclass(frozen=True, slots=True)
 class PaymentLinkRequest:
     order_id: uuid.UUID
+    #: The customer the assistant is talking to; the order must be theirs.
+    customer_id: uuid.UUID
+    #: Audited as the link's creator.
+    requested_by: uuid.UUID
     order_number: str
     #: `None` while the order is unpriced (prices are fixed at confirmation).
     amount: Decimal | None
@@ -134,11 +138,16 @@ class PaymentLink:
 
 @runtime_checkable
 class PaymentLinkPort(Protocol):
-    """Online payment for an order. The Razorpay integration supplies the
-    real adapter; until then `UnconfiguredPaymentLinks` answers every call
-    with `None` and the assistant offers cash or UPI on delivery instead."""
+    """Online payment for an order: `GatewayPaymentLinks` when a payment
+    gateway is configured (Razorpay, ADR-053), otherwise
+    `UnconfiguredPaymentLinks`, which answers every call with `None` so the
+    assistant offers cash or UPI on delivery instead."""
 
-    async def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink | None: ...
+    async def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink | None:
+        """`None` when online payment is unavailable; raises
+        `ApplicationError` when this order cannot be paid online (nothing
+        due, not yet confirmed), which the tool reports to the customer."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)

@@ -12,7 +12,7 @@
 | `export_openapi.py --check` | no drift (webhook is excluded from the schema) |
 | Alembic upgrade / downgrade / re-upgrade of `a9c2e4f6b8d1` | clean |
 | New unit tests (adapter, webhook, assistant) | pass |
-| New integration tests `test_whatsapp_assistant_smoke.py` (7) | pass, against real PostgreSQL + Redis |
+| New integration tests `test_whatsapp_assistant_smoke.py` (9, incl. Razorpay payment link and blank-secret rejection) | pass, against real PostgreSQL + Redis |
 | Full backend suite (local PostgreSQL 16 + Redis, fake S3) | 1583 passed, 11 failed |
 
 The 11 failures are outside this feature and environmental or pre-existing:

@@ -118,3 +118,25 @@ def test_malformed_sender_is_skipped() -> None:
     bad = _message(text={"body": "hi"})
     bad["from"] = "not-a-number"
     assert parse_inbound_messages(_payload(bad)) == []
+
+
+def test_empty_secret_never_verifies() -> None:
+    body = b'{"object": "whatsapp_business_account"}'
+
+    assert not verify_signature(app_secret="", raw_body=body, signature_header=_sign(body, ""))
+
+
+def test_blank_whatsapp_secrets_are_unset() -> None:
+    from lpg.config.settings import Settings
+
+    settings = Settings(
+        whatsapp_app_secret="",
+        whatsapp_verify_token="  ",
+        whatsapp_access_token="",
+        anthropic_api_key="",
+    )
+
+    assert settings.whatsapp_app_secret is None
+    assert settings.whatsapp_verify_token is None
+    assert settings.whatsapp_access_token is None
+    assert settings.anthropic_api_key is None
