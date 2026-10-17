@@ -30,6 +30,7 @@ from lpg.application.common.errors import (
     IncompletePodError,
     NotFoundError,
     OtpMismatchError,
+    ServiceUnavailableError,
 )
 from lpg.application.delivery.ports import RouteStopOwner
 from lpg.application.order.ports import CancellationRecordEntry, ProofOfDeliveryEntry
@@ -44,6 +45,8 @@ from lpg.application.order.use_cases import (
     ConfirmOrderUseCase,
     DeliverOrderCommand,
     DeliverOrderUseCase,
+    DepartOrderCommand,
+    DepartOrderUseCase,
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
 )
@@ -827,6 +830,54 @@ class TestCancelOrderUseCase:
             )
         mock_order_repo.save.assert_not_called()
         mock_uow.commit.assert_not_called()
+
+
+class TestDepartOrderUseCase:
+    """The delivery OTP goes out after commit, so an SMS outage must not turn
+    an already-departed order into an error for the driver."""
+
+    async def _depart(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow: MagicMock,
+        otp_delivery: AsyncMock,
+    ) -> Order:
+        order, route = _assigned_order_with_route(uuid.uuid4())
+        order.dispatch(changed_by=uuid.uuid4())
+        route.change_status("loaded")
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(return_value=_make_customer())
+        otp_store = MagicMock()
+        otp_store.issue = AsyncMock(return_value="482913")
+
+        use_case = DepartOrderUseCase(
+            mock_order_repo, mock_route_repo, customer_repo, otp_store, otp_delivery, mock_uow
+        )
+        return await use_case.execute(
+            DepartOrderCommand(order_id=order.id, changed_by=uuid.uuid4())
+        )
+
+    async def test_sends_the_delivery_otp_to_the_customer(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        otp_delivery = AsyncMock()
+        result = await self._depart(mock_order_repo, mock_route_repo, mock_uow, otp_delivery)
+
+        assert result.status == "out_for_delivery"
+        otp_delivery.send.assert_awaited_once_with("+919876543210", "482913", purpose="delivery")
+
+    async def test_an_sms_outage_does_not_fail_the_departure(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        otp_delivery = AsyncMock()
+        otp_delivery.send.side_effect = ServiceUnavailableError("SMS down")
+        result = await self._depart(mock_order_repo, mock_route_repo, mock_uow, otp_delivery)
+
+        assert result.status == "out_for_delivery"
+        mock_uow.commit.assert_called_once()
 
 
 class TestRescheduleOrderUseCase:

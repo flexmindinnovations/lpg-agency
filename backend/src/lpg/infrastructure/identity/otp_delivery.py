@@ -1,8 +1,9 @@
-"""`LoggingOtpDelivery` implements `application/identity/ports.py::OtpDeliveryPort`.
+"""`OtpDeliveryPort` implementations (`application/identity/ports.py`).
 
-No SMS provider exists in this codebase yet (Phase 14, Notifications) — this
-is the only implementation, used in every environment until one ships. Logs
-the code at INFO instead of sending it.
+`SmsOtpDelivery` sends the code as an SMS through the configured
+`SmsChannel` (MSG91 today), used whenever `LPG_SMS_PROVIDER` names a real
+provider. `LoggingOtpDelivery` is the no-provider fallback: it logs the code
+at INFO instead of sending it.
 
 Outside production it also stashes the plaintext code in Redis under a
 short-TTL "dev inbox" key, readable back via the `/dev/otp-inbox/{phone_number}`
@@ -19,9 +20,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lpg.application.common.errors import ServiceUnavailableError
+from lpg.application.notification.ports import SmsDeliveryError, SmsTemplate
 from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
+    from lpg.application.identity.ports import OtpPurpose
+    from lpg.application.notification.ports import SmsChannel
     from lpg.config.settings import Settings
     from lpg.infrastructure.redis.client import RedisClient
 
@@ -34,14 +39,70 @@ def dev_otp_inbox_key(phone_number: str) -> str:
     return f"dev:otp-inbox:{phone_number}"
 
 
+async def _stash_in_dev_inbox(
+    redis: RedisClient, settings: Settings, phone_number: str, code: str
+) -> None:
+    if not settings.is_production:
+        await redis.client.set(dev_otp_inbox_key(phone_number), code, ex=_DEV_INBOX_TTL_SECONDS)
+
+
 class LoggingOtpDelivery:
     def __init__(self, redis: RedisClient, settings: Settings) -> None:
         self._redis = redis
         self._settings = settings
 
-    async def send(self, phone_number: str, code: str) -> None:
-        _logger.info("otp_delivery_dev_mode", phone_number=phone_number, code=code)
-        if not self._settings.is_production:
-            await self._redis.client.set(
-                dev_otp_inbox_key(phone_number), code, ex=_DEV_INBOX_TTL_SECONDS
+    async def send(
+        self,
+        phone_number: str,
+        code: str,
+        *,
+        purpose: OtpPurpose = "login",
+    ) -> None:
+        _logger.info("otp_delivery_dev_mode", phone_number=phone_number, code=code, purpose=purpose)
+        await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code)
+
+
+_OTP_TEMPLATES: dict[OtpPurpose, SmsTemplate] = {
+    "login": SmsTemplate.LOGIN_OTP,
+    "delivery": SmsTemplate.DELIVERY_OTP,
+}
+
+
+def _otp_body(purpose: OtpPurpose, code: str) -> str:
+    if purpose == "delivery":
+        return f"{code} is the OTP to confirm your LPG cylinder delivery."
+    return f"{code} is your OTP to sign in."
+
+
+class SmsOtpDelivery:
+    """Sends the code by SMS. Never logs the code itself.
+
+    Outside production the code also lands in the dev inbox, exactly as with
+    `LoggingOtpDelivery`, so UAT/E2E runs keep working against a real
+    provider without needing the handset.
+    """
+
+    def __init__(self, sms_channel: SmsChannel, redis: RedisClient, settings: Settings) -> None:
+        self._sms_channel = sms_channel
+        self._redis = redis
+        self._settings = settings
+
+    async def send(
+        self,
+        phone_number: str,
+        code: str,
+        *,
+        purpose: OtpPurpose = "login",
+    ) -> None:
+        await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code)
+        try:
+            await self._sms_channel.send(
+                to=phone_number,
+                body=_otp_body(purpose, code),
+                template=_OTP_TEMPLATES[purpose],
+                variables={"otp": code},
             )
+        except SmsDeliveryError as exc:
+            _logger.error("otp_sms_failed", purpose=purpose, error=str(exc))
+            msg = "We couldn't send the OTP right now. Please try again in a minute."
+            raise ServiceUnavailableError(msg) from exc
