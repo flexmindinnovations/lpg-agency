@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers.dart';
-import '../../../widgets/form_field_widgets.dart';
 import '../../orders/data/orders_provider.dart';
+import '../../orders/presentation/order_presentation.dart';
 import '../../profile/data/profile_provider.dart';
 import '../data/complaints_provider.dart';
 
@@ -102,108 +102,71 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
     final ordersAsync = ref.watch(ordersProvider);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Raise a Complaint',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
+    final fields = <Widget>[
+      if (_errorMessage != null) ...[
+        LpgBanner(tone: LpgTone.danger, message: _errorMessage!),
+        const SizedBox(height: LpgSpacing.lg),
+      ],
+      LpgDropdownField(
+        label: 'Category',
+        prefixIcon: LpgIcons.flag,
+        value: _category,
+        items: _categories,
+        onChanged: (v) => setState(() => _category = v!),
+      ),
+      const SizedBox(height: LpgSpacing.mdl),
+      const LpgFieldLabel('Priority'),
+      LpgChoiceChips<String>(
+        options: _priorities,
+        selected: _priority,
+        onSelected: (v) => setState(() => _priority = v ?? _priority),
+      ),
+      const SizedBox(height: LpgSpacing.mdl),
+      ordersAsync.when(
+        loading: () => const LinearProgressIndicator(),
+        error: (_, _) => const SizedBox.shrink(),
+        data: (orders) => LpgDropdownField<String?>(
+          label: 'Related order (optional)',
+          prefixIcon: LpgIcons.orders,
+          value: _orderId,
+          items: {for (final order in orders) order.id: order.reference},
+          placeholder: 'None',
+          onChanged: (v) => setState(() => _orderId = v),
         ),
       ),
+      const SizedBox(height: LpgSpacing.mdl),
+      LpgTextField(
+        label: 'Description',
+        controller: _descriptionController,
+        maxLines: 5,
+        textCapitalization: TextCapitalization.sentences,
+        hintText: 'Tell us what happened...',
+        isRequired: true,
+        validator: (v) => (v == null || v.trim().isEmpty)
+            ? 'Please describe the issue.'
+            : null,
+      ),
+      const SizedBox(height: LpgSpacing.xl),
+      LpgButton(
+        label: 'Submit Complaint',
+        icon: LpgIcons.check,
+        isLoading: _submitting,
+        expand: true,
+        onPressed: _submit,
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Raise a Complaint')),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(24.0),
+          padding: LpgSpacing.page,
           children: [
-            if (_errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.statusDanger.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: colors.statusDanger.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: colors.statusDanger),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: TextStyle(
-                          color: colors.statusDanger,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            const FieldLabel('Category'),
-            FormDropdownField(
-              value: _category,
-              items: _categories,
-              onChanged: (v) => setState(() => _category = v!),
-            ),
-            const SizedBox(height: 20),
-
-            const FieldLabel('Priority'),
-            FormDropdownField(
-              value: _priority,
-              items: _priorities,
-              onChanged: (v) => setState(() => _priority = v!),
-            ),
-            const SizedBox(height: 20),
-
-            const FieldLabel('Related order (optional)'),
-            ordersAsync.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (orders) => FormDropdownField<String?>(
-                value: _orderId,
-                items: {
-                  for (final order in orders)
-                    order.id:
-                        'Order #${order.id.substring(0, 8).toUpperCase()}',
-                },
-                placeholder: 'None',
-                onChanged: (v) => setState(() => _orderId = v),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            LpgTextField(
-              label: 'Description',
-              controller: _descriptionController,
-              maxLines: 5,
-              hintText: 'Tell us what happened...',
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Please describe the issue.'
-                  : null,
-            ),
-
-            const SizedBox(height: 32),
-            LpgButton(
-              label: 'Submit Complaint',
-              isLoading: _submitting,
-              expand: true,
-              onPressed: _submit,
-            ),
+            for (var i = 0; i < fields.length; i++)
+              LpgFadeSlideIn(index: i, child: fields[i]),
           ],
         ),
       ),

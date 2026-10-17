@@ -3,7 +3,6 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../data/kyc_provider.dart';
 
@@ -41,17 +40,17 @@ String _maskDocumentNumber(String number) {
   'verified' => (
     label: 'Verified',
     severity: LpgStatusSeverity.success,
-    icon: Icons.verified_outlined,
+    icon: LpgIcons.verified,
   ),
   'rejected' => (
     label: 'Rejected',
     severity: LpgStatusSeverity.danger,
-    icon: Icons.error_outline,
+    icon: LpgIcons.error,
   ),
   _ => (
     label: 'Pending Review',
     severity: LpgStatusSeverity.warning,
-    icon: Icons.pending_actions_outlined,
+    icon: LpgIcons.pending,
   ),
 };
 
@@ -61,39 +60,25 @@ class KycScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final docsAsync = ref.watch(kycDocumentsProvider);
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'KYC Documents',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('KYC Documents')),
       body: docsAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 3),
+        error: (err, _) => LpgErrorState(
           message: 'Failed to load your KYC documents\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(kycDocumentsProvider),
+          onRetry: () => ref.refresh(kycDocumentsProvider),
         ),
         data: (docs) {
           if (docs.isEmpty) {
             return LpgEmptyState(
+              title: 'Verify your identity',
               message:
                   "You haven't submitted any KYC documents yet. Verified "
                   "identity documents help us process your orders faster.",
-              icon: Icons.badge_outlined,
+              icon: LpgIcons.kyc,
               actionLabel: 'Add Document',
+              actionIcon: LpgIcons.add,
               onAction: () => context.push('/profile/kyc/new'),
             );
           }
@@ -101,21 +86,23 @@ class KycScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(kycDocumentsProvider.future),
             child: ListView(
-              padding: const EdgeInsets.all(24.0),
+              padding: LpgSpacing.page,
               children: [
-                for (final doc in docs) ...[
-                  _KycDocumentCard(doc: doc),
-                  const SizedBox(height: 16),
+                for (final (i, doc) in docs.indexed) ...[
+                  LpgFadeSlideIn(
+                    index: i,
+                    child: _KycDocumentCard(doc: doc),
+                  ),
+                  const SizedBox(height: LpgSpacing.smd),
                 ],
-                const SizedBox(height: 8),
+                const SizedBox(height: LpgSpacing.sm),
                 LpgButton(
                   label: 'Add Another Document',
                   variant: LpgButtonVariant.secondary,
                   expand: true,
-                  icon: Icons.add,
+                  icon: LpgIcons.add,
                   onPressed: () => context.push('/profile/kyc/new'),
                 ),
-                const SizedBox(height: 24),
               ],
             ),
           );
@@ -132,16 +119,16 @@ class _KycDocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
     final status = _statusDisplay(doc.verificationStatus);
-    final statusColor = switch (status.severity) {
-      LpgStatusSeverity.success => colors.statusSuccess,
-      LpgStatusSeverity.warning => colors.statusWarning,
-      LpgStatusSeverity.danger => colors.statusDanger,
-      LpgStatusSeverity.info => colors.statusInfo,
-      LpgStatusSeverity.neutral => colors.textSecondary,
-    };
+    const thumb = LpgSizes.iconBox + LpgSpacing.sm;
+
+    final placeholder = LpgIconBox(
+      icon: LpgIcons.kyc,
+      tone: status.severity.tone,
+      size: thumb,
+    );
 
     return LpgCard(
       child: Column(
@@ -149,99 +136,54 @@ class _KycDocumentCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (doc.fileUrl != null) ...[
+              if (doc.fileUrl != null)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(LpgRadius.lg),
                   child: Image.network(
                     doc.fileUrl!,
-                    width: 48,
-                    height: 48,
+                    width: thumb,
+                    height: thumb,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 48,
-                      height: 48,
-                      color: colors.surfaceRaised,
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: colors.textSecondary,
-                        size: 20,
-                      ),
+                    errorBuilder: (context, error, stackTrace) => LpgIconBox(
+                      icon: LpgIcons.imageBroken,
+                      tone: LpgTone.neutral,
+                      size: thumb,
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-              ] else ...[
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceRaised,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.badge_outlined,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-              ],
+                )
+              else
+                placeholder,
+              const SizedBox(width: LpgSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _docTypeLabel(doc.docType),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
+                    Text(_docTypeLabel(doc.docType), style: text.titleSmall),
+                    const SizedBox(height: LpgSpacing.xs / 2),
                     Text(
                       _maskDocumentNumber(doc.documentNumber),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
+                      style: text.bodySmall,
                     ),
                   ],
                 ),
               ),
-              LpgStatusBadge(label: status.label, severity: status.severity),
+              LpgStatusBadge(
+                label: status.label,
+                severity: status.severity,
+                icon: status.icon,
+              ),
             ],
           ),
           if (doc.verificationStatus == 'rejected' &&
               doc.rejectionReason != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colors.statusDanger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(status.icon, size: 16, color: statusColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      doc.rejectionReason!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const SizedBox(height: LpgSpacing.md),
+            LpgBanner(tone: LpgTone.danger, message: doc.rejectionReason!),
           ],
           if (doc.verifiedAt != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: LpgSpacing.smd),
             Text(
-              'Verified on ${DateFormat('MMM dd, yyyy').format(doc.verifiedAt!)}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.textSecondary,
-              ),
+              'Verified on ${LpgFormat.date(doc.verifiedAt!)}',
+              style: text.bodySmall?.copyWith(color: colors.statusSuccess),
             ),
           ],
         ],
