@@ -42,6 +42,8 @@ LPG Agency Management Platform
 
 **Phase 19 — Customer App V2** 🔄 **IN PROGRESS** — Planning professional-level features (Support, KYC, Addresses, Push Notifications, Invoicing, Live Tracking) with a Bottom Navigation Bar shell.
 
+**Online Payments (Razorpay)** 🔄 **BUILT, pending live keys** — 2026-10-17. Razorpay payment links for order prepayment and invoice settlement, webhook + refresh confirmation, Customer App "Pay Online". See [`planning/features/35-online-payments-razorpay/STATUS.md`](./features/35-online-payments-razorpay/STATUS.md), ADR-053.
+
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).

@@ -42,6 +42,9 @@ dependencies = [
     "rapidocr>=3.9.2",
     "onnxruntime>=1.29.0",
     "google-genai>=2.22.0",
+    # Outbound HTTPS to the Razorpay API (ADR-053) — async, already in the
+    # lockfile via google-genai; declared directly now that we import it.
+    "httpx>=0.28.0",
     "anthropic>=1.0",
 ]
 
@@ -51,7 +54,6 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
-    "httpx>=0.28.0",
     # Quality — Ruff replaces flake8 + black + isort, keeping the toolchain small
     "ruff>=0.8.0",
     "mypy>=1.13.0",
@@ -373,6 +375,12 @@ ignore_imports = [
     # its own UnitOfWork-scoped seam) the concrete SqlAlchemyUnitOfWork type.
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.accounting",
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.unit_of_work",
+    # ADR-053: dependencies/payments.py wires the payment gateway factory,
+    # the online-payment repository, and the webhook's own tenant-scoped
+    # Unit of Work (a webhook has no JWT to resolve a tenant from).
+    "lpg.api.v1.dependencies.payments -> lpg.infrastructure.payments.factory",
+    "lpg.api.v1.dependencies.payments -> lpg.infrastructure.persistence.repositories.accounting",
+    "lpg.api.v1.dependencies.payments -> lpg.infrastructure.persistence.unit_of_work",
     # R5: dependencies/complaint.py wires the complaint repository, unwrapping
     # to the concrete SqlAlchemyUnitOfWork the same way dependencies/accounting.py
     # above does — this replaces `routers/complaint.py` reaching around the

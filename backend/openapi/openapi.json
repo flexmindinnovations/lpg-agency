@@ -4629,6 +4629,137 @@
         "title": "OnboardingDraftResponse",
         "type": "object"
       },
+      "OnlinePaymentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OnlinePaymentResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OnlinePaymentListResponse",
+        "type": "object"
+      },
+      "OnlinePaymentResponse": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "applied_to_invoice": {
+            "title": "Applied To Invoice",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "invoice_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Id"
+          },
+          "online_payment_id": {
+            "format": "uuid",
+            "title": "Online Payment Id",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
+          },
+          "payment_url": {
+            "description": "Hosted checkout page to send the customer to.",
+            "title": "Payment Url",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "created",
+              "paid",
+              "expired",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "online_payment_id",
+          "order_id",
+          "invoice_id",
+          "amount",
+          "currency",
+          "status",
+          "provider",
+          "payment_url",
+          "expires_at",
+          "paid_at",
+          "payment_method",
+          "applied_to_invoice",
+          "created_at"
+        ],
+        "title": "OnlinePaymentResponse",
+        "type": "object"
+      },
       "OptimizeRouteResponse": {
         "description": "AI Operational Intelligence, Horizon 1 Stage 5 — the result of\n`POST /routes/{id}/optimize`. `km_saved` is a heuristic straight-line\n(haversine) estimate, not a routed-road distance; `route` is the\nalready-resequenced route (the reorder is applied immediately, not\nproposed for a separate accept step — fully reversible, since only\nsequence numbers moved).",
         "properties": {
@@ -9215,6 +9346,19 @@
           "is_active"
         ],
         "title": "WarehouseResponse",
+        "type": "object"
+      },
+      "WebhookAck": {
+        "properties": {
+          "received": {
+            "title": "Received",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "received"
+        ],
+        "title": "WebhookAck",
         "type": "object"
       },
       "WeighmentRecordListResponse": {
@@ -15483,6 +15627,49 @@
         ]
       }
     },
+    "/api/v1/online-payments/{online_payment_id}/refresh": {
+      "post": {
+        "operationId": "refresh_online_payment_api_v1_online_payments__online_payment_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "online_payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Online Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Re-check a payment link's status with the gateway",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
     "/api/v1/orders": {
       "get": {
         "description": "Order Queue — the dominant query pattern, status/branch/date filterable.",
@@ -16162,6 +16349,102 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/online-payments": {
+      "get": {
+        "operationId": "list_order_online_payments_api_v1_orders__order_id__online_payments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List an order's online payment attempts, newest first",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/payment-links": {
+      "post": {
+        "description": "Returns the still-open link instead of a new one if the amount due\nhas not changed, so repeated taps never produce two payable links.",
+        "operationId": "create_payment_link_api_v1_orders__order_id__payment_links_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Order not found or not visible to the caller."
+          },
+          "409": {
+            "description": "Nothing is due, or the order cannot be paid yet."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Payments are not configured or the gateway failed."
+          }
+        },
+        "summary": "Create a payment link for what is owed on an order",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/pod-attachments": {
       "post": {
         "description": "Pre-upload a delivery photo/signature blob before `POST .../deliver`.",
@@ -16301,6 +16584,31 @@
         "summary": "Get Order Tracking",
         "tags": [
           "Orders"
+        ]
+      }
+    },
+    "/api/v1/payments/razorpay/webhook": {
+      "post": {
+        "description": "Answers 200 for every verified event, including ones it ignores, so\nRazorpay does not keep retrying them; only a bad signature is refused.",
+        "operationId": "razorpay_webhook_api_v1_payments_razorpay_webhook_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Signature missing or invalid."
+          }
+        },
+        "summary": "Razorpay webhook receiver",
+        "tags": [
+          "Online Payments"
         ]
       }
     },

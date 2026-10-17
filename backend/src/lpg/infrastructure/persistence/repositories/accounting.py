@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -13,15 +13,18 @@ from lpg.application.accounting.ports import (
     CashHandoverRepository,
     CreditNoteRepository,
     InvoiceRepository,
+    OnlinePaymentRepository,
 )
 from lpg.domain.accounting.cash_handover import CashHandover
 from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import Invoice, InvoiceLine, Payment
+from lpg.domain.accounting.online_payment import OnlinePayment
 from lpg.infrastructure.persistence.models.accounting import (
     CashHandoverModel,
     CreditNoteModel,
     InvoiceLineModel,
     InvoiceModel,
+    OnlinePaymentModel,
     PaymentModel,
 )
 
@@ -102,6 +105,20 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                     total_amount=line.total_amount,
                 )
                 for line in invoice.lines
+            ],
+            # Non-empty only when a gateway prepayment was applied at
+            # generation time (ADR-053) — see `apply_online_payments_to_invoice`.
+            payments=[
+                PaymentModel(
+                    id=payment.id,
+                    tenant_id=invoice.tenant_id,
+                    invoice_id=invoice.id,
+                    method=payment.method,
+                    amount=payment.amount,
+                    collected_by=payment.collected_by,
+                    collected_at=payment.collected_at,
+                )
+                for payment in invoice.payments
             ],
         )
         self._session.add(model)
@@ -373,3 +390,100 @@ class SqlAlchemyCreditNoteRepository(CreditNoteRepository):
         if model is None:
             return None
         return self._to_domain(model)
+
+
+class SqlAlchemyOnlinePaymentRepository(OnlinePaymentRepository):
+    """SQLAlchemy implementation of ``OnlinePaymentRepository``.
+
+    Single-row reads lock the row (`FOR UPDATE`): they are only used on the
+    mutation paths (webhook, refresh), and a gateway can deliver the same
+    event twice concurrently — without the lock both deliveries could apply
+    the same money to the invoice.
+    """
+
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._uow = uow
+        self._session = uow.session
+
+    def next_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    def _to_domain(self, model: OnlinePaymentModel) -> OnlinePayment:
+        payment = OnlinePayment(
+            online_payment_id=model.id,
+            tenant_id=model.tenant_id,
+            order_id=model.order_id,
+            customer_id=model.customer_id,
+            invoice_id=model.invoice_id,
+            amount=model.amount,
+            currency=model.currency,
+            provider=model.provider,
+            provider_link_id=model.provider_link_id,
+            short_url=model.short_url,
+            status=model.status,
+            created_by=model.created_by,
+            created_at=model.created_at,
+            expires_at=model.expires_at,
+            provider_payment_id=model.provider_payment_id,
+            payment_method=model.payment_method,
+            paid_at=model.paid_at,
+            applied_payment_id=model.applied_payment_id,
+            version=model.version,
+        )
+        self._uow.register_aggregate(payment)
+        return payment
+
+    async def add(self, payment: OnlinePayment) -> None:
+        self._session.add(
+            OnlinePaymentModel(
+                id=payment.id,
+                tenant_id=payment.tenant_id,
+                order_id=payment.order_id,
+                customer_id=payment.customer_id,
+                invoice_id=payment.invoice_id,
+                amount=payment.amount,
+                currency=payment.currency,
+                provider=payment.provider,
+                provider_link_id=payment.provider_link_id,
+                short_url=payment.short_url,
+                status=payment.status,
+                created_by=payment.created_by,
+                created_at=payment.created_at,
+                expires_at=payment.expires_at,
+                version=payment.version,
+            )
+        )
+        self._uow.register_aggregate(payment)
+
+    async def save(self, payment: OnlinePayment) -> None:
+        model = await self._session.get(OnlinePaymentModel, payment.id)
+        if model is None:
+            msg = f"Cannot save changes to online payment {payment.id}: no existing row found."
+            raise ValueError(msg)
+        model.status = payment.status
+        model.invoice_id = payment.invoice_id
+        model.provider_payment_id = payment.provider_payment_id
+        model.payment_method = payment.payment_method
+        model.paid_at = payment.paid_at
+        model.applied_payment_id = payment.applied_payment_id
+        model.version = model.version + 1
+
+    async def _get_locked(self, *criteria: Any) -> OnlinePayment | None:
+        stmt = select(OnlinePaymentModel).where(*criteria).with_for_update()
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        return None if model is None else self._to_domain(model)
+
+    async def get_by_id(self, online_payment_id: uuid.UUID) -> OnlinePayment | None:
+        return await self._get_locked(OnlinePaymentModel.id == online_payment_id)
+
+    async def get_by_provider_link_id(self, provider_link_id: str) -> OnlinePayment | None:
+        return await self._get_locked(OnlinePaymentModel.provider_link_id == provider_link_id)
+
+    async def list_for_order(self, order_id: uuid.UUID) -> list[OnlinePayment]:
+        stmt = (
+            select(OnlinePaymentModel)
+            .where(OnlinePaymentModel.order_id == order_id)
+            .order_by(OnlinePaymentModel.created_at.desc())
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [self._to_domain(model) for model in models]

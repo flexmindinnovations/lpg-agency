@@ -1,7 +1,7 @@
 """create messaging schema whatsapp tables
 
 Revision ID: a9c2e4f6b8d1
-Revises: e7d1a3c5f9b2
+Revises: a9e4c7b2d1f6
 Create Date: 2026-10-17
 
 Delivers, for the WhatsApp customer assistant (ADR-054):
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 revision: str = "a9c2e4f6b8d1"
-down_revision: str | None = "e7d1a3c5f9b2"
+down_revision: str | None = "a9e4c7b2d1f6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
