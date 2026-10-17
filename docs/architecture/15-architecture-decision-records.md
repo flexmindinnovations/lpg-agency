@@ -1313,6 +1313,28 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-054: MSG91 as the SMS Provider, Behind a Template-Based `SmsChannel` Port
+
+**Status:** Accepted
+
+**Context:** No SMS was ever sent. Login and delivery OTPs went to `LoggingOtpDelivery` (a log line plus the non-production dev inbox) and order status SMS to `StubSmsChannel`. The product owner asked on 2026-10-17 for a production SMS gateway. In India every A2P SMS must match a template registered on a DLT portal against a registered sender header, so a port that takes free text can't work with any compliant provider.
+
+**Decision:** MSG91 is the default provider (India-first, DLT support, OTP-friendly pricing). `SmsChannel.send` now takes an `SmsTemplate` key and its variables alongside the plain-text body; each key maps to a provider template ID through `LPG_SMS_TEMPLATE_*` settings. `Msg91SmsChannel` calls the Flow API; sender ID, DLT entity and DLT template IDs live on the MSG91 template. `OtpDeliveryPort.send` gains a `purpose` (`login`, `delivery`) so the two OTPs use different templates. `LPG_SMS_PROVIDER=stub` (the default) keeps today's behaviour, so nothing changes until credentials are set. Details and the template wording: `planning/features/36-sms-gateway/PLAN.md`.
+
+**Consequences:**
+- Every SMS needs a registered template; a missing template ID fails that message and is recorded as failed in `notification_log`, never sent as free text.
+- `/auth/otp/request` returns 503 when the provider is down instead of pretending to send. The delivery OTP on `/depart` stays best-effort: the departure is already committed.
+- The non-production dev inbox (ADR-050) still fills when a real provider is configured, so UAT testing keeps working.
+- One sender ID serves every agency for now; per-agency senders are deferred.
+- Twilio or Gupshup is one new adapter class and one branch in `build_sms_channel`.
+
+**Alternatives Considered:**
+- **Twilio** — rejected as default: higher India pricing and DLT registration is done through Twilio support rather than self-serve.
+- **Gupshup** — viable; MSG91 preferred for its OTP tooling. Remains the natural second adapter.
+- **MSG91's own OTP API (it generates the code)** — rejected: `OtpService` already generates, hashes and rate-limits codes, and the Flow API serves OTP and order messages alike.
+
+---
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1364,6 +1386,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 045 | AI Model Gateway as a provider-agnostic tool-calling port, Gemini as the first adapter, a fixed read-only tool registry as the first consumer | Accepted |
 | 046 | Zero-click driver auto-assignment — deterministic scoring, opt-in kill switch, no new system-principal bypass | Accepted |
 | 047 | Global error-toast interceptor replaces per-component toasting, not a per-request opt-in mechanism | Accepted |
+| 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
 
 ## Deferred Decisions
 
