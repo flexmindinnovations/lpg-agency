@@ -23,6 +23,7 @@ from lpg.infrastructure.persistence.repositories.inventory import (
     SqlAlchemyInventoryLocationRepository,
 )
 from lpg.infrastructure.persistence.repositories.order import (
+    SqlAlchemyBranchStockReader,
     SqlAlchemyCancellationRecordRepository,
     SqlAlchemyOrderRepository,
 )
@@ -118,6 +119,7 @@ def build_scope_factory(
                     vehicles=SqlAlchemyVehicleRepository(uow),
                     employees=SqlAlchemyEmployeeRepository(uow),
                     inventory=SqlAlchemyInventoryLocationRepository(uow),
+                    branch_stock=SqlAlchemyBranchStockReader(uow),
                     complaints=_ComplaintUnitOfWork(uow),
                     complaint_numbers=SqlAlchemyReferenceNumberSequence(
                         uow, tenant_id, entity_type="complaint", prefix="CMP"

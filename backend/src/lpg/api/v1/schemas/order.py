@@ -158,6 +158,20 @@ class CreateOrderRequest(BaseModel):
     payment_method_preference: PaymentMethod | None = None
 
 
+class OrderableCylinderTypeResponse(BaseModel):
+    """A cylinder type the customer can book right now at the branch:
+    active, priced for the customer's type, and in stock."""
+
+    cylinder_type_id: uuid.UUID
+    name: str
+    weight_kg: Decimal
+    #: The price in effect today for this customer's type at the branch. The
+    #: order's price is fixed when the agency confirms it.
+    unit_price: Decimal
+    #: Filled cylinders the branch can still promise to new bookings.
+    available_quantity: int
+
+
 # ==========================================================================
 # Assign
 # ==========================================================================

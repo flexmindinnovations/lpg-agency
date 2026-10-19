@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from lpg.application.common.errors import NotFoundError
@@ -21,7 +21,15 @@ from lpg.application.order.ports import (
     ProofOfDeliveryEntry,
 )
 from lpg.domain.order.order import DeliveryAddress, Order, OrderLine
-from lpg.infrastructure.persistence.models.delivery import RouteModel, RouteStopModel
+from lpg.infrastructure.persistence.models.delivery import (
+    RouteModel,
+    RouteStopModel,
+    VehicleModel,
+)
+from lpg.infrastructure.persistence.models.inventory import (
+    InventoryBalanceModel,
+    InventoryLocationModel,
+)
 from lpg.infrastructure.persistence.models.order import (
     CancellationRecordModel,
     FailedDeliveryRecordModel,
@@ -30,6 +38,7 @@ from lpg.infrastructure.persistence.models.order import (
     OrderStatusHistoryModel,
     ProofOfDeliveryModel,
 )
+from lpg.infrastructure.persistence.models.tenant import WarehouseModel
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ColumnElement
@@ -474,3 +483,86 @@ class SqlAlchemyProofOfDeliveryRepository:
             recorded_at=row.recorded_at,
             dac_code=row.dac_code,
         )
+
+
+#: Statuses whose booked cylinders are still owed to the customer. Booked and
+#: confirmed orders hold no stock yet, so all of `quantity_ordered` counts as
+#: demand; from assignment on, the reserved part has already left the
+#: vehicle's filled balance and only the backordered `quantity_pending` does.
+_UNRESERVED_STATUSES = ("booked", "confirmed")
+_RESERVED_STATUSES = ("assigned", "ready_for_dispatch", "out_for_delivery")
+
+
+class SqlAlchemyBranchStockReader:
+    """`BranchStockReader` over the inventory, tenant, delivery and orders
+    schemas. Read-only; RLS scopes every table to the session's tenant.
+    """
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    async def available_filled_by_cylinder_type(
+        self, branch_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
+    ) -> dict[uuid.UUID, int]:
+        stock = await self._filled_stock(branch_id)
+        demand_by_type = await self._open_demand(branch_id, exclude_order_id)
+        for cylinder_type_id, demand in demand_by_type.items():
+            stock[cylinder_type_id] = stock.get(cylinder_type_id, 0) - demand
+        return stock
+
+    async def _filled_stock(self, branch_id: uuid.UUID) -> dict[uuid.UUID, int]:
+        branch_warehouses = select(WarehouseModel.id).where(
+            WarehouseModel.branch_id == branch_id,
+            WarehouseModel.is_active.is_(True),
+            WarehouseModel.is_deleted.is_(False),
+        )
+        branch_vehicles = select(VehicleModel.id).where(
+            VehicleModel.branch_id == branch_id, VehicleModel.is_deleted.is_(False)
+        )
+        stmt = (
+            select(InventoryBalanceModel.cylinder_type_id, func.sum(InventoryBalanceModel.quantity))
+            .join(
+                InventoryLocationModel,
+                InventoryLocationModel.id == InventoryBalanceModel.inventory_location_id,
+            )
+            .where(
+                InventoryBalanceModel.status == "filled",
+                InventoryBalanceModel.is_deleted.is_(False),
+                InventoryLocationModel.is_deleted.is_(False),
+                or_(
+                    and_(
+                        InventoryLocationModel.location_type == "warehouse",
+                        InventoryLocationModel.location_ref_id.in_(branch_warehouses),
+                    ),
+                    and_(
+                        InventoryLocationModel.location_type == "vehicle",
+                        InventoryLocationModel.location_ref_id.in_(branch_vehicles),
+                    ),
+                ),
+            )
+            .group_by(InventoryBalanceModel.cylinder_type_id)
+        )
+        result = await self._uow.session.execute(stmt)
+        return {cylinder_type_id: int(total or 0) for cylinder_type_id, total in result.all()}
+
+    async def _open_demand(
+        self, branch_id: uuid.UUID, exclude_order_id: uuid.UUID | None
+    ) -> dict[uuid.UUID, int]:
+        owed = case(
+            (OrderModel.status.in_(_UNRESERVED_STATUSES), OrderLineModel.quantity_ordered),
+            else_=OrderLineModel.quantity_pending,
+        )
+        stmt = (
+            select(OrderLineModel.cylinder_type_id, func.sum(owed))
+            .join(OrderModel, OrderModel.id == OrderLineModel.order_id)
+            .where(
+                OrderModel.branch_id == branch_id,
+                OrderModel.is_deleted.is_(False),
+                OrderModel.status.in_(_UNRESERVED_STATUSES + _RESERVED_STATUSES),
+            )
+            .group_by(OrderLineModel.cylinder_type_id)
+        )
+        if exclude_order_id is not None:
+            stmt = stmt.where(OrderModel.id != exclude_order_id)
+        result = await self._uow.session.execute(stmt)
+        return {cylinder_type_id: int(total or 0) for cylinder_type_id, total in result.all()}

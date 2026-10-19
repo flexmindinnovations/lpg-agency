@@ -5194,6 +5194,43 @@
         "title": "OrderTrackingResponse",
         "type": "object"
       },
+      "OrderableCylinderTypeResponse": {
+        "description": "A cylinder type the customer can book right now at the branch:\nactive, priced for the customer's type, and in stock.",
+        "properties": {
+          "available_quantity": {
+            "title": "Available Quantity",
+            "type": "integer"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "unit_price": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Unit Price",
+            "type": "string"
+          },
+          "weight_kg": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Weight Kg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "name",
+          "weight_kg",
+          "unit_price",
+          "available_quantity"
+        ],
+        "title": "OrderableCylinderTypeResponse",
+        "type": "object"
+      },
       "OtpRequestRequest": {
         "properties": {
           "phone_number": {
@@ -15764,7 +15801,7 @@
         ]
       },
       "post": {
-        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.",
+        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.\n\n409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,\nhas no price for the customer, or is out of stock at the branch.",
         "operationId": "create_order_api_v1_orders_post",
         "requestBody": {
           "content": {
@@ -15841,6 +15878,78 @@
           }
         },
         "summary": "Bulk Cancel Orders",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/orderable-cylinder-types": {
+      "get": {
+        "description": "Only the types a booking would accept: active, priced for the\ncustomer's type at the branch, and with filled stock left after open\norders. A customer login always gets its own list at its own branch;\nstaff pass `customer_id`, and `branch_id` defaults to the customer's.",
+        "operationId": "list_orderable_cylinder_types_api_v1_orders_orderable_cylinder_types_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OrderableCylinderTypeResponse"
+                  },
+                  "title": "Response List Orderable Cylinder Types Api V1 Orders Orderable Cylinder Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List the cylinder types a customer can book",
         "tags": [
           "Orders"
         ]

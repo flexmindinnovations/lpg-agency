@@ -1064,46 +1064,122 @@ class TestDepartBeforeVanLoaded:
 
 
 # ==========================================================================
-# Error messages name the cylinder type, not its id
+# Only orderable cylinders can be listed or booked
 # ==========================================================================
 
 
-class TestConfirmWithoutAPrice:
-    async def test_error_names_the_cylinder_type_and_customer_type(
+async def _seed_unpriced_cylinder_type(engine: AsyncEngine, tenant_id: uuid.UUID) -> uuid.UUID:
+    async with engine.begin() as conn:
+        unpriced_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
+                    "VALUES (gen_random_uuid(), :tenant_id, 'Commercial 47.5kg', 47.5) "
+                    "RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id)},
+            )
+        ).scalar_one()
+    return uuid.UUID(str(unpriced_id))
+
+
+class TestOrderableCylinderTypes:
+    async def test_lists_priced_in_stock_types_net_of_open_orders(
         self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
     ) -> None:
         client = stack.client
         fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
         admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
-        async with admin_engine_lpg_test.begin() as conn:
-            unpriced_id = (
-                await conn.execute(
-                    text(
-                        "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
-                        "VALUES (gen_random_uuid(), :tenant_id, 'Commercial 47.5kg', 47.5) "
-                        "RETURNING id"
-                    ),
-                    {"tenant_id": str(fixtures.tenant_id)},
-                )
-            ).scalar_one()
+        await _seed_unpriced_cylinder_type(admin_engine_lpg_test, fixtures.tenant_id)
+        await _create_order(client, fixtures, admin_headers, quantity=3)
+
+        staff_response = await client.get(
+            "/api/v1/orders/orderable-cylinder-types",
+            params={"customer_id": str(fixtures.customer_id)},
+            headers=admin_headers,
+        )
+        customer_response = await client.get(
+            "/api/v1/orders/orderable-cylinder-types",
+            headers={"Authorization": f"Bearer {fixtures.customer_token}"},
+        )
+
+        assert staff_response.status_code == 200, staff_response.text
+        assert customer_response.json() == staff_response.json()
+        [option] = staff_response.json()
+        assert option["cylinder_type_id"] == str(fixtures.cylinder_type_id)
+        assert Decimal(option["unit_price"]) == Decimal("950.00")
+        # 100 in the warehouse + 100 on the vehicle, less the 3 just booked.
+        assert option["available_quantity"] == 197
+
+    async def test_staff_must_name_the_customer(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures = await _seed_full_fixture_set(stack.client, admin_engine_lpg_test)
+        response = await stack.client.get(
+            "/api/v1/orders/orderable-cylinder-types",
+            headers={"Authorization": f"Bearer {fixtures.admin_token}"},
+        )
+        assert response.status_code == 422, response.text
+
+    async def test_booking_an_unpriced_type_names_it_and_books_nothing(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        unpriced_id = await _seed_unpriced_cylinder_type(admin_engine_lpg_test, fixtures.tenant_id)
         payload = _create_order_payload(fixtures)
         payload["lines"] = [{"cylinder_type_id": str(unpriced_id), "quantity": 1}]
-        create_response = await client.post(
+
+        response = await client.post(
             "/api/v1/orders",
             json=payload,
             headers={**admin_headers, "Idempotency-Key": str(uuid.uuid4())},
         )
-        assert create_response.status_code == 201, create_response.text
 
-        confirm_response = await client.post(
-            f"/api/v1/orders/{create_response.json()['id']}/confirm", headers=admin_headers
-        )
-
-        assert confirm_response.status_code == 404, confirm_response.text
-        detail = confirm_response.json()["detail"]
-        assert "'Commercial 47.5kg'" in detail
+        assert response.status_code == 409, response.text
+        assert response.json()["error_code"] == "CYLINDER_NOT_ORDERABLE"
+        detail = response.json()["detail"]
+        assert "Commercial 47.5kg" in detail
         assert "domestic customers" in detail
         assert str(unpriced_id) not in detail
+        orders = await client.get("/api/v1/orders", headers=admin_headers)
+        assert orders.json()["total"] == 0
+
+    async def test_booking_more_than_the_branch_has_is_refused(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        response = await client.post(
+            "/api/v1/orders",
+            json=_create_order_payload(fixtures, quantity=201),
+            headers={**admin_headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+
+        assert response.status_code == 409, response.text
+        assert "Only 200 filled" in response.json()["detail"]
+
+    async def test_confirm_is_not_blocked_by_the_orders_own_booking(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        # Books every filled cylinder the branch has.
+        order = await _create_order(client, fixtures, admin_headers, quantity=200)
+
+        confirm = await client.post(f"/api/v1/orders/{order['id']}/confirm", headers=admin_headers)
+        listed = await client.get(
+            "/api/v1/orders/orderable-cylinder-types",
+            params={"customer_id": str(fixtures.customer_id)},
+            headers=admin_headers,
+        )
+
+        assert confirm.status_code == 200, confirm.text
+        assert listed.json() == []
 
 
 # ==========================================================================
@@ -1653,6 +1729,18 @@ class TestRoleScopedReads:
                     {"tenant_id": str(fixtures.tenant_id)},
                 )
             ).scalar_one()
+        other_warehouse_id = await _seed_warehouse(
+            admin_engine_lpg_test,
+            tenant_id=fixtures.tenant_id,
+            branch_id=uuid.UUID(str(other_branch_id)),
+        )
+        await _seed_warehouse_stock(
+            admin_engine_lpg_test,
+            tenant_id=fixtures.tenant_id,
+            warehouse_id=other_warehouse_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+            quantity=10,
+        )
         other_branch_payload = _create_order_payload(fixtures)
         other_branch_payload["branch_id"] = str(other_branch_id)
         other_branch_response = await client.post(

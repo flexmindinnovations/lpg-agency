@@ -112,6 +112,28 @@ async def _seed_tenant(engine: AsyncEngine, *, enabled: bool = True) -> _Seed:
                 "ef": datetime.now(UTC) - timedelta(days=1),
             },
         )
+        # Filled stock at the branch, so the cylinder is orderable.
+        warehouse_id = await scalar(
+            "INSERT INTO tenant.warehouse (id, tenant_id, branch_id, name, address_line) "
+            "VALUES (gen_random_uuid(), :t, :b, 'Main WH', '1 Depot Rd') RETURNING id",
+            t=str(tenant_id),
+            b=str(branch_id),
+        )
+        location_id = await scalar(
+            "INSERT INTO inventory.inventory_location "
+            "(id, tenant_id, location_type, location_ref_id) "
+            "VALUES (gen_random_uuid(), :t, 'warehouse', :w) RETURNING id",
+            t=str(tenant_id),
+            w=str(warehouse_id),
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO inventory.inventory_balance "
+                "(id, tenant_id, inventory_location_id, cylinder_type_id, status, quantity) "
+                "VALUES (gen_random_uuid(), :t, :l, :ct, 'filled', 20)"
+            ),
+            {"t": str(tenant_id), "l": str(location_id), "ct": str(cylinder_type_id)},
+        )
         config = {
             "whatsapp_phone_number_id": json.dumps(phone_number_id),
             "whatsapp_ai_enabled": json.dumps(enabled),

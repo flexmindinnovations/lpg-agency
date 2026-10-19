@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from lpg.application.delivery.ports import DriverRepository, RouteRepository, VehicleRepository
     from lpg.application.inventory.ports import InventoryLocationRepository
     from lpg.application.order.ports import (
+        BranchStockReader,
         CancellationRecordRepository,
         OrderNumberSequence,
         OrderRepository,
@@ -171,6 +172,7 @@ class WhatsAppScope:
     vehicles: VehicleRepository
     employees: EmployeeRepository
     inventory: InventoryLocationRepository
+    branch_stock: BranchStockReader
     complaints: ComplaintUnitOfWork
     complaint_numbers: ComplaintNumberSequence
     assistant_runs: AssistantRunRepository

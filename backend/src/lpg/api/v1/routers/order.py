@@ -84,6 +84,7 @@ from lpg.api.v1.dependencies.order import (
     get_job_queue,
     get_order_number_sequence,
     get_order_repository,
+    get_orderable_cylinder_types,
     get_proof_of_delivery_repository,
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
@@ -100,6 +101,7 @@ from lpg.api.v1.schemas.order import (
     DeliverOrderResponse,
     DeliveryAddressPayload,
     DriverLocationSnapshot,
+    OrderableCylinderTypeResponse,
     OrderLineResponse,
     OrderPageResponse,
     OrderResponse,
@@ -127,6 +129,7 @@ from lpg.application.identity.ports import (
 )
 from lpg.application.inventory.ports import InventoryLocationRepository
 from lpg.application.order.booking_source import resolve_booking_source
+from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.ports import (
     CancellationRecordRepository,
     CreditLimitEvaluator,
@@ -322,8 +325,15 @@ async def create_order(
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
     order_number_sequence: Annotated[OrderNumberSequence, Depends(get_order_number_sequence)],
+    orderable_cylinder_types: Annotated[
+        OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
+    ],
 ) -> OrderResponse:
-    """Create a booking (`draft -> booked`). Idempotency-Key required."""
+    """Create a booking (`draft -> booked`). Idempotency-Key required.
+
+    409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,
+    has no price for the customer, or is out of stock at the branch.
+    """
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
         raise HTTPException(status_code=400, detail="Idempotency-Key header is required.")
@@ -342,7 +352,13 @@ async def create_order(
         customer_id = scoped_id
 
     booking_source = resolve_booking_source(principal.role, body.booking_source)
-    use_case = CreateOrderUseCase(order_repository, unit_of_work, order_number_sequence)
+    use_case = CreateOrderUseCase(
+        order_repository,
+        unit_of_work,
+        order_number_sequence,
+        customer_repository,
+        orderable_cylinder_types,
+    )
 
     async def _operation() -> dict[str, Any]:
         order = await use_case.execute(
@@ -375,6 +391,60 @@ async def create_order(
         operation=_operation,
     )
     return OrderResponse.model_validate(result)
+
+
+@router.get(
+    "/orders/orderable-cylinder-types",
+    response_model=list[OrderableCylinderTypeResponse],
+    dependencies=[Depends(require_permission("orders:create"))],
+    summary="List the cylinder types a customer can book",
+)
+async def list_orderable_cylinder_types(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    orderable_cylinder_types: Annotated[
+        OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
+    ],
+    customer_id: uuid.UUID | None = None,
+    branch_id: uuid.UUID | None = None,
+) -> list[OrderableCylinderTypeResponse]:
+    """Only the types a booking would accept: active, priced for the
+    customer's type at the branch, and with filled stock left after open
+    orders. A customer login always gets its own list at its own branch;
+    staff pass `customer_id`, and `branch_id` defaults to the customer's.
+    """
+    if principal.role == "customer":
+        customer = await customer_repository.get_by_identity_user_id(_require_actor(principal))
+        if customer is None:
+            raise HTTPException(
+                status_code=403, detail="No customer profile linked to this account."
+            )
+        branch_id = customer.branch_id
+    else:
+        if customer_id is None:
+            raise HTTPException(status_code=422, detail="customer_id is required.")
+        found = await customer_repository.get_by_id(customer_id)
+        if found is None:
+            msg = f"No customer visible with id {customer_id}."
+            raise NotFoundError(msg, customer_id=str(customer_id))
+        customer = found
+        branch_id = branch_id or customer.branch_id
+
+    options = await orderable_cylinder_types.list(
+        tenant_id=principal.tenant_id,
+        branch_id=branch_id,
+        customer_type=customer.customer_type,
+    )
+    return [
+        OrderableCylinderTypeResponse(
+            cylinder_type_id=option.cylinder_type_id,
+            name=option.name,
+            weight_kg=option.weight_kg,
+            unit_price=option.unit_price,
+            available_quantity=option.available_quantity,
+        )
+        for option in options
+    ]
 
 
 @router.get(
@@ -595,6 +665,9 @@ async def confirm_order(
     cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
     credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    orderable_cylinder_types: Annotated[
+        OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
+    ],
 ) -> OrderResponse:
     """`booked -> confirmed`. Resolves and snapshots unit prices; runs the
     BR-04/BR-19 stub policy checks (see `infrastructure/order/policies.py`).
@@ -607,6 +680,7 @@ async def confirm_order(
         cylinder_cap_policy,
         credit_limit_evaluator,
         unit_of_work,
+        orderable_cylinder_types,
     )
     order = await use_case.execute(ConfirmOrderCommand(order_id=order_id, changed_by=actor_id))
     return _order_to_response(order)

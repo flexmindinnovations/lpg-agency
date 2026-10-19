@@ -117,7 +117,10 @@ export type { NextConsumerNumberResponse } from './models/next-consumer-number-r
 export type { NotificationResponse } from './models/notification-response';
 export type { OnboardingDraftListResponse } from './models/onboarding-draft-list-response';
 export type { OnboardingDraftResponse } from './models/onboarding-draft-response';
+export type { OnlinePaymentListResponse } from './models/online-payment-list-response';
+export type { OnlinePaymentResponse } from './models/online-payment-response';
 export type { OptimizeRouteResponse } from './models/optimize-route-response';
+export type { OrderableCylinderTypeResponse } from './models/orderable-cylinder-type-response';
 export type { OrderLineResponse } from './models/order-line-response';
 export type { OrderPageResponse } from './models/order-page-response';
 export type { OrderResponse } from './models/order-response';
@@ -231,5 +234,6 @@ export type { VehicleResponse } from './models/vehicle-response';
 export type { VerifyComplianceDocumentRequest } from './models/verify-compliance-document-request';
 export type { VerifyKycDocumentRequest } from './models/verify-kyc-document-request';
 export type { WarehouseResponse } from './models/warehouse-response';
+export type { WebhookAck } from './models/webhook-ack';
 export type { WeighmentRecordListResponse } from './models/weighment-record-list-response';
 export type { WeighmentRecordResponse } from './models/weighment-record-response';

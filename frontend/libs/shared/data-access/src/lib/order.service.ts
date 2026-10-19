@@ -15,6 +15,7 @@ import { deliverOrderApiV1OrdersOrderIdDeliverPost } from './generated/fn/orders
 import { dispatchOrderApiV1OrdersOrderIdDispatchPost } from './generated/fn/orders/dispatch-order-api-v-1-orders-order-id-dispatch-post';
 import { getOrderApiV1OrdersOrderIdGet } from './generated/fn/orders/get-order-api-v-1-orders-order-id-get';
 import { listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet } from './generated/fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';
+import { listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet } from './generated/fn/orders/list-orderable-cylinder-types-api-v-1-orders-orderable-cylinder-types-get';
 import { listOrdersApiV1OrdersGet } from './generated/fn/orders/list-orders-api-v-1-orders-get';
 import { recordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost } from './generated/fn/orders/record-failed-delivery-api-v-1-orders-order-id-failed-delivery-post';
 import { rescheduleOrderApiV1OrdersOrderIdReschedulePost } from './generated/fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
@@ -29,6 +30,7 @@ import type { CreateOrderRequest } from './generated/models/create-order-request
 import type { DeliverOrderRequest } from './generated/models/deliver-order-request';
 import type { DeliverOrderResponse } from './generated/models/deliver-order-response';
 import type { OrderPageResponse } from './generated/models/order-page-response';
+import type { OrderableCylinderTypeResponse } from './generated/models/orderable-cylinder-type-response';
 import type { OrderResponse } from './generated/models/order-response';
 import type { OrderStatusHistoryEntryResponse } from './generated/models/order-status-history-entry-response';
 import type { PodAttachmentResponse } from './generated/models/pod-attachment-response';
@@ -64,6 +66,19 @@ export class OrderService {
       request,
       { headers },
     );
+  }
+
+  /**
+   * The cylinder types this customer can book right now at their branch:
+   * active, priced for their customer type, and in stock. The server refuses
+   * a booking for anything else, so the booking form offers only these.
+   */
+  listOrderableCylinderTypes(customerId: string): Observable<OrderableCylinderTypeResponse[]> {
+    return listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet(
+      this.http,
+      this.config.rootUrl,
+      { customer_id: customerId },
+    ).pipe(map((res) => res.body));
   }
 
   listOrders(params?: ListOrdersParams): Observable<OrderPageResponse> {

@@ -136,6 +136,10 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
           );
           return;
         }
+        if (failure.errorCode == 'CYLINDER_NOT_ORDERABLE') {
+          // Stock or prices changed since the list loaded; show the fresh one.
+          ref.invalidate(orderableCylinderTypesProvider);
+        }
         setState(() => _errorMessage = failure.message);
       },
     );
@@ -144,7 +148,21 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
-    final cylinderTypesAsync = ref.watch(cylinderTypesProvider);
+    final cylinderTypesAsync = ref.watch(orderableCylinderTypesProvider);
+    // Keep the customer's choice only while it is still on offer; otherwise
+    // default to the first orderable type.
+    final orderableTypes = cylinderTypesAsync.value ?? const [];
+    OrderableCylinderTypeResponse? selectedType;
+    for (final type in orderableTypes) {
+      if (type.cylinderTypeId == _cylinderTypeId) selectedType = type;
+    }
+    if (cylinderTypesAsync.hasValue && selectedType == null) {
+      selectedType = orderableTypes.isEmpty ? null : orderableTypes.first;
+      _cylinderTypeId = selectedType?.cylinderTypeId;
+    }
+    if (selectedType != null && _quantity > selectedType.availableQuantity) {
+      _quantity = selectedType.availableQuantity;
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Order Gas Refill')),
@@ -200,10 +218,11 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
               data: (types) {
                 if (types.isEmpty) {
                   return const LpgBanner(
-                    message: 'No cylinder types are available right now.',
+                    message:
+                        'No cylinders can be booked right now. Please try '
+                        'again later or contact your agency.',
                   );
                 }
-                _cylinderTypeId ??= types.first.id;
                 return Column(
                   children: [
                     for (final type in types)
@@ -211,10 +230,13 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
                         padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
                         child: _CylinderOption(
                           title: type.name,
-                          subtitle: '${type.weightKg} kg',
-                          selected: type.id == _cylinderTypeId,
-                          onTap: () =>
-                              setState(() => _cylinderTypeId = type.id),
+                          subtitle:
+                              '${type.weightKg} kg · '
+                              '${LpgFormat.currency(type.unitPrice)}',
+                          selected: type.cylinderTypeId == _cylinderTypeId,
+                          onTap: () => setState(
+                            () => _cylinderTypeId = type.cylinderTypeId,
+                          ),
                         ),
                       ),
                   ],
@@ -245,6 +267,7 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
                   LpgQuantityStepper(
                     value: _quantity,
                     min: 1,
+                    max: selectedType?.availableQuantity,
                     onChanged: (v) => setState(() => _quantity = v),
                   ),
                 ],

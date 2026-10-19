@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -188,6 +188,22 @@ class FakePriceLists:
             and e.customer_type == customer_type
         ]
 
+    async def list_for_tenant(self, tenant_id: uuid.UUID) -> list[PriceListEntry]:
+        return [e for e in self.entries if e.tenant_id == tenant_id]
+
+
+@dataclass
+class FakeBranchStock:
+    available: dict[uuid.UUID, int]
+
+    async def available_filled_by_cylinder_type(
+        self,
+        branch_id: uuid.UUID,  # noqa: ARG002
+        *,
+        exclude_order_id: uuid.UUID | None = None,  # noqa: ARG002
+    ) -> dict[uuid.UUID, int]:
+        return dict(self.available)
+
 
 @dataclass
 class FakeTenantConfiguration:
@@ -252,6 +268,7 @@ class World:
     orders: FakeOrders
     config: FakeTenantConfiguration
     runs: FakeAssistantRuns
+    stock: FakeBranchStock
     uows: list[FakeUnitOfWork] = field(default_factory=list)
     actors: list[uuid.UUID | None] = field(default_factory=list)
 
@@ -288,6 +305,7 @@ class World:
                 vehicles=MagicMock(),
                 employees=MagicMock(),
                 inventory=MagicMock(),
+                branch_stock=self.stock,
                 complaints=MagicMock(),
                 complaint_numbers=MagicMock(),
                 assistant_runs=self.runs,
@@ -316,14 +334,16 @@ def _customer(phone: str) -> Customer:
 
 @pytest.fixture
 def world() -> World:
+    cylinder = CylinderType(uuid.uuid4(), TENANT_ID, "14.2 kg Domestic", Decimal("14.2"))
     return World(
         customer=_customer(PHONE),
         other_customer=_customer("+919000000001"),
-        cylinder=CylinderType(uuid.uuid4(), TENANT_ID, "14.2 kg Domestic", Decimal("14.2")),
+        cylinder=cylinder,
         conversations=FakeConversations(),
         orders=FakeOrders(),
         config=FakeTenantConfiguration({"whatsapp_ai_enabled": True}),
         runs=FakeAssistantRuns(),
+        stock=FakeBranchStock({cylinder.id: 20}),
     )
 
 
@@ -574,6 +594,23 @@ async def test_expired_quote_cannot_be_placed(world: World) -> None:
 
     assert "expired" in str(result["error"])
     assert world.orders.orders == []
+
+
+async def test_out_of_stock_cylinder_is_neither_offered_nor_quoted(world: World) -> None:
+    ctx = _tool_ctx(world)
+    listed = await execute_customer_tool(ctx, "list_cylinder_options", {})
+    options = cast("list[dict[str, object]]", listed["cylinder_options"])
+    assert [o["name"] for o in options] == ["14.2 kg Domestic"]
+
+    world.stock.available[world.cylinder.id] = 0
+    listed = await execute_customer_tool(ctx, "list_cylinder_options", {})
+    quoted = await execute_customer_tool(
+        ctx, "prepare_order", {"cylinder_type_id": str(world.cylinder.id), "quantity": 1}
+    )
+
+    assert listed["cylinder_options"] == []
+    assert "out of stock" in str(quoted["error"])
+    assert await world.conversations.get_pending_quote(PHONE) is None
 
 
 async def test_prepare_order_validates_its_arguments(world: World) -> None:
