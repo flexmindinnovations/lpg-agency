@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   OnInit,
+  computed,
   inject,
   signal,
   viewChild,
@@ -25,12 +26,11 @@ import { InputNumber } from 'primeng/inputnumber';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import {
-  AdminCylinderTypeService,
   OrderService,
   WebSocketService,
   type CustomerAddressResponse,
   type CustomerResponse,
-  type CylinderTypeResponse,
+  type OrderableCylinderTypeResponse,
   type OrderResponse,
 } from '@lpg/shared/data-access';
 import {
@@ -96,7 +96,6 @@ const BOOKING_SOURCE_OPTIONS = (['staff', 'phone', 'walk_in', 'whatsapp'] as con
 export class OrderQueue implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly orderService = inject(OrderService);
-  private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly wsService = inject(WebSocketService);
@@ -121,13 +120,26 @@ export class OrderQueue implements OnInit {
         this.selectedCustomer.set(customer);
         this.selectedAddress.set(null);
         this.createForm.controls.address_id.setValue('');
+        this.loadOrderableCylinderTypes(customer);
       });
   }
 
   protected readonly orders = signal<OrderResponse[]>([]);
   protected readonly total = signal(0);
   protected readonly statusFilter = signal<string | null>(null);
-  protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
+  /**
+   * What the selected customer can book right now: active, priced for their
+   * customer type at their branch, and in stock. Anything else is left out,
+   * and the server refuses it too.
+   */
+  protected readonly cylinderTypes = signal<OrderableCylinderTypeResponse[]>([]);
+  protected readonly cylinderTypesLoading = signal(false);
+  protected readonly cylinderTypeOptions = computed(() =>
+    this.cylinderTypes().map((type) => ({
+      value: type.cylinder_type_id,
+      label: `${type.name} · ₹${type.unit_price} · ${type.available_quantity} in stock`,
+    })),
+  );
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -207,9 +219,6 @@ export class OrderQueue implements OnInit {
 
   ngOnInit(): void {
     this.loadOrders();
-    this.cylinderTypeService.listCylinderTypes().subscribe({
-      next: (ct) => this.cylinderTypes.set(ct),
-    });
     this.route.queryParamMap.subscribe((params) => {
       if (params.get('create') === 'true') {
         this.openCreateDrawer();
@@ -236,6 +245,35 @@ export class OrderQueue implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  private loadOrderableCylinderTypes(customer: CustomerResponse | null): void {
+    this.cylinderTypes.set([]);
+    while (this.lines.length > 1) this.lines.removeAt(0);
+    this.lines.at(0)?.reset({ cylinder_type_id: '', quantity: 1 });
+    if (!customer) return;
+
+    this.cylinderTypesLoading.set(true);
+    this.orderService.listOrderableCylinderTypes(customer.id).subscribe({
+      next: (types) => {
+        // A late answer for a customer no longer selected is dropped.
+        if (this.selectedCustomer()?.id !== customer.id) return;
+        this.cylinderTypes.set(types);
+        this.cylinderTypesLoading.set(false);
+      },
+      error: (err) => {
+        this.errorMessage.set(errorMessageFor(err));
+        this.cylinderTypesLoading.set(false);
+      },
+    });
+  }
+
+  /** Most of a cylinder type the branch can still promise, for the quantity input. */
+  protected availableFor(cylinderTypeId: string): number | null {
+    return (
+      this.cylinderTypes().find((type) => type.cylinder_type_id === cylinderTypeId)
+        ?.available_quantity ?? null
+    );
   }
 
   protected onStatusFilterChange(value: string | null): void {

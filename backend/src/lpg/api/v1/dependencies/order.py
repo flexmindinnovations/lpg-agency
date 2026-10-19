@@ -8,11 +8,17 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 
+from lpg.api.v1.dependencies.admin import (
+    get_cylinder_type_repository,
+    get_price_list_repository,
+)
 from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work, get_unit_of_work_factory
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.identity.ports import AuthenticatedPrincipal
+from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.ports import (
+    BranchStockReader,
     CancellationRecordRepository,
     CreditLimitEvaluator,
     CylinderCapPolicy,
@@ -21,6 +27,7 @@ from lpg.application.order.ports import (
     ProofOfDeliveryRepository,
 )
 from lpg.application.order.use_cases import CancelOrderUseCase
+from lpg.application.tenant.ports import CylinderTypeRepository, PriceListRepository
 from lpg.infrastructure.idempotency.service import IdempotencyService
 
 if TYPE_CHECKING:
@@ -70,6 +77,22 @@ def get_proof_of_delivery_repository(
     )
 
     return SqlAlchemyProofOfDeliveryRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_branch_stock_reader(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> BranchStockReader:
+    from lpg.infrastructure.persistence.repositories.order import SqlAlchemyBranchStockReader
+
+    return SqlAlchemyBranchStockReader(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_orderable_cylinder_types(
+    cylinder_types: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    price_lists: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    stock: Annotated[BranchStockReader, Depends(get_branch_stock_reader)],
+) -> OrderableCylinderTypes:
+    return OrderableCylinderTypes(cylinder_types, price_lists, stock)
 
 
 def get_cylinder_cap_policy() -> CylinderCapPolicy:

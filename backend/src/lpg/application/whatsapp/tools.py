@@ -30,6 +30,7 @@ from lpg.application.ai.ports import ToolDeclaration
 from lpg.application.common.errors import ApplicationError
 from lpg.application.common.tenant import RequestTenantContext
 from lpg.application.complaint.use_cases import RaiseComplaintCommand, RaiseComplaintUseCase
+from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.use_cases import (
     CancelOrderCommand,
     CancelOrderUseCase,
@@ -181,6 +182,10 @@ async def _find_own_order(scope: WhatsAppScope, ctx: CustomerToolContext, number
     raise ToolInputError(msg)
 
 
+def _orderable(scope: WhatsAppScope) -> OrderableCylinderTypes:
+    return OrderableCylinderTypes(scope.cylinder_types, scope.price_lists, scope.branch_stock)
+
+
 async def _cylinder_prices(
     scope: WhatsAppScope, customer: Customer, cylinder_type_id: uuid.UUID
 ) -> Decimal | None:
@@ -239,20 +244,20 @@ async def _list_cylinder_options(
 ) -> dict[str, object]:
     async with ctx.scope_factory() as scope:
         customer = await _load_customer(scope, ctx)
-        cylinder_types = await scope.cylinder_types.list_for_tenant(ctx.tenant_id)
-        options = []
-        for cylinder_type in cylinder_types:
-            if not cylinder_type.is_active:
-                continue
-            price = await _cylinder_prices(scope, customer, cylinder_type.id)
-            options.append(
-                {
-                    "cylinder_type_id": str(cylinder_type.id),
-                    "name": cylinder_type.name,
-                    "weight_kg": str(cylinder_type.weight_kg),
-                    "price": str(price) if price is not None else None,
-                }
-            )
+        orderable = await _orderable(scope).list(
+            tenant_id=ctx.tenant_id,
+            branch_id=customer.branch_id,
+            customer_type=customer.customer_type,
+        )
+    options = [
+        {
+            "cylinder_type_id": str(option.cylinder_type_id),
+            "name": option.name,
+            "weight_kg": str(option.weight_kg),
+            "price": str(option.unit_price),
+        }
+        for option in orderable
+    ]
     return {"cylinder_options": options, "currency": "INR"}
 
 
@@ -309,6 +314,12 @@ async def _prepare_order(ctx: CustomerToolContext, args: dict[str, Any]) -> dict
         if cylinder_type is None or not cylinder_type.is_active:
             msg = "Unknown cylinder type; use an id from list_cylinder_options."
             raise ToolInputError(msg)
+        await _orderable(scope).require(
+            tenant_id=ctx.tenant_id,
+            branch_id=customer.branch_id,
+            customer_type=customer.customer_type,
+            lines=[(cylinder_type.id, quantity)],
+        )
         unit_price = await _cylinder_prices(scope, customer, cylinder_type.id)
 
         quote = PendingOrderQuote(
@@ -369,7 +380,11 @@ async def _place_order(ctx: CustomerToolContext, _args: dict[str, Any]) -> dict[
         # and a failed booking rolls the clear back with it.
         await scope.conversations.set_pending_quote(ctx.customer_phone, None)
         order = await CreateOrderUseCase(
-            scope.orders, scope.unit_of_work, scope.order_numbers
+            scope.orders,
+            scope.unit_of_work,
+            scope.order_numbers,
+            scope.customers,
+            _orderable(scope),
         ).execute(
             CreateOrderCommand(
                 tenant_id=ctx.tenant_id,

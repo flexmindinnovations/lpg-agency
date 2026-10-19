@@ -201,3 +201,18 @@ class CreditLimitEvaluator(Protocol):
         Depends on Accounting (Phase 13, not built) for outstanding balance.
         """
         ...
+
+
+class BranchStockReader(Protocol):
+    async def available_filled_by_cylinder_type(
+        self, branch_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
+    ) -> dict[uuid.UUID, int]:
+        """Filled cylinders a new booking at `branch_id` can still claim, per
+        cylinder type: filled stock in the branch's active warehouses and on
+        its vehicles (vehicle stock is already net of reservations made at
+        assignment), minus what open orders at the branch have booked but not
+        yet reserved. `exclude_order_id` leaves one order's own demand out,
+        so confirming an order is not blocked by its own booking. A type
+        with no stock may be missing from the result or be zero or less.
+        """
+        ...

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 from lpg.application.common.errors import (
     ConflictError,
+    CylinderNotOrderableError,
     IncompletePodError,
     NotFoundError,
     OtpExpiredError,
@@ -46,6 +47,9 @@ from lpg.application.order.use_cases import (
     CancelOrderUseCase,
     ConfirmOrderCommand,
     ConfirmOrderUseCase,
+    CreateOrderCommand,
+    CreateOrderLine,
+    CreateOrderUseCase,
     DeliverOrderCommand,
     DeliverOrderUseCase,
     DepartOrderCommand,
@@ -395,6 +399,12 @@ class TestAssignOrderUseCase:
         assert len(planned_events) == 1
 
 
+def _permissive_orderable() -> MagicMock:
+    orderable = MagicMock()
+    orderable.require = AsyncMock()
+    return orderable
+
+
 class TestConfirmOrderUseCase:
     async def test_confirm_snapshots_price_and_calls_stub_policies(
         self, mock_order_repo: MagicMock, mock_uow: MagicMock
@@ -431,7 +441,13 @@ class TestConfirmOrderUseCase:
         credit_evaluator.evaluate = AsyncMock()
 
         use_case = ConfirmOrderUseCase(
-            mock_order_repo, customer_repo, price_list_repo, cap_policy, credit_evaluator, mock_uow
+            mock_order_repo,
+            customer_repo,
+            price_list_repo,
+            cap_policy,
+            credit_evaluator,
+            mock_uow,
+            _permissive_orderable(),
         )
         result = await use_case.execute(
             ConfirmOrderCommand(order_id=order.id, changed_by=uuid.uuid4())
@@ -463,13 +479,130 @@ class TestConfirmOrderUseCase:
         credit_evaluator.evaluate = AsyncMock()
 
         use_case = ConfirmOrderUseCase(
-            mock_order_repo, customer_repo, price_list_repo, cap_policy, credit_evaluator, mock_uow
+            mock_order_repo,
+            customer_repo,
+            price_list_repo,
+            cap_policy,
+            credit_evaluator,
+            mock_uow,
+            _permissive_orderable(),
         )
         with pytest.raises(NotFoundError):
             await use_case.execute(ConfirmOrderCommand(order_id=order.id, changed_by=uuid.uuid4()))
 
         mock_order_repo.save.assert_not_called()
         mock_uow.commit.assert_not_called()
+
+    async def test_not_orderable_any_more_raises_before_pricing(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        order = _make_order()
+        order.submit(changed_by=uuid.uuid4())
+        mock_order_repo.get_by_id.return_value = order
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(
+            return_value=_make_customer(customer_id=order.customer_id)
+        )
+        price_list_repo = MagicMock()
+        price_list_repo.list_for_tenant_and_cylinder_type = AsyncMock(return_value=[])
+        orderable = MagicMock()
+        orderable.require = AsyncMock(side_effect=CylinderNotOrderableError("out of stock"))
+
+        use_case = ConfirmOrderUseCase(
+            mock_order_repo,
+            customer_repo,
+            price_list_repo,
+            MagicMock(),
+            MagicMock(),
+            mock_uow,
+            orderable,
+        )
+        with pytest.raises(CylinderNotOrderableError):
+            await use_case.execute(ConfirmOrderCommand(order_id=order.id, changed_by=uuid.uuid4()))
+
+        # The order's own booking is left out of the branch's open demand.
+        assert orderable.require.await_args.kwargs["exclude_order_id"] == order.id
+        price_list_repo.list_for_tenant_and_cylinder_type.assert_not_called()
+        mock_order_repo.save.assert_not_called()
+
+
+class TestCreateOrderUseCase:
+    def _command(
+        self, customer_id: uuid.UUID, cylinder_type_id: uuid.UUID, other_type_id: uuid.UUID
+    ) -> CreateOrderCommand:
+        return CreateOrderCommand(
+            tenant_id=uuid.uuid4(),
+            branch_id=uuid.uuid4(),
+            customer_id=customer_id,
+            address_id=uuid.uuid4(),
+            delivery_address=DeliveryAddress(address_line="1 Main St"),
+            booking_source="staff",
+            requested_date=datetime(2026, 10, 20, tzinfo=UTC),
+            lines=[
+                CreateOrderLine(cylinder_type_id=cylinder_type_id, quantity=2),
+                CreateOrderLine(cylinder_type_id=other_type_id, quantity=1),
+            ],
+            created_by=uuid.uuid4(),
+        )
+
+    async def test_books_after_checking_every_line_is_orderable(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        customer = _make_customer(customer_type="industrial")
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(return_value=customer)
+        numbers = MagicMock()
+        numbers.next = AsyncMock(return_value="ORD-1")
+        mock_order_repo.next_id.side_effect = uuid.uuid4
+        orderable = _permissive_orderable()
+        cylinder_type_id, other_type_id = uuid.uuid4(), uuid.uuid4()
+        command = self._command(customer.id, cylinder_type_id, other_type_id)
+
+        order = await CreateOrderUseCase(
+            mock_order_repo, mock_uow, numbers, customer_repo, orderable
+        ).execute(command)
+
+        assert order.status == "booked"
+        orderable.require.assert_awaited_once_with(
+            tenant_id=command.tenant_id,
+            branch_id=command.branch_id,
+            customer_type="industrial",
+            lines=[(cylinder_type_id, 2), (other_type_id, 1)],
+        )
+        mock_uow.commit.assert_called_once()
+
+    async def test_not_orderable_books_nothing_and_draws_no_number(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        customer = _make_customer()
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(return_value=customer)
+        numbers = MagicMock()
+        numbers.next = AsyncMock(return_value="ORD-1")
+        orderable = MagicMock()
+        orderable.require = AsyncMock(side_effect=CylinderNotOrderableError("no price"))
+
+        with pytest.raises(CylinderNotOrderableError):
+            await CreateOrderUseCase(
+                mock_order_repo, mock_uow, numbers, customer_repo, orderable
+            ).execute(self._command(customer.id, uuid.uuid4(), uuid.uuid4()))
+
+        numbers.next.assert_not_called()
+        mock_order_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+    async def test_unknown_customer_is_not_found(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(NotFoundError):
+            await CreateOrderUseCase(
+                mock_order_repo, mock_uow, MagicMock(), customer_repo, _permissive_orderable()
+            ).execute(self._command(uuid.uuid4(), uuid.uuid4(), uuid.uuid4()))
+
+        mock_order_repo.save.assert_not_called()
 
 
 class TestDeliverOrderUseCase:

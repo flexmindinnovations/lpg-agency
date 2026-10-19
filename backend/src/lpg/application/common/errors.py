@@ -121,6 +121,17 @@ class RouteNotLoadedError(ConflictError):
     title = "The van has not been loaded for this route yet"
 
 
+class CylinderNotOrderableError(ConflictError):
+    """A booking named a cylinder type that cannot be ordered right now: it
+    is inactive, has no price for the customer's type and branch, or the
+    branch has too few filled cylinders of it. The message names the
+    cylinder and the reason so staff and customers can act on it.
+    """
+
+    error_code = "CYLINDER_NOT_ORDERABLE"
+    title = "This cylinder can't be ordered right now"
+
+
 class IdempotencyConflictError(ConflictError):
     """The same Idempotency-Key was reused with a different request payload.
 

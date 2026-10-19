@@ -38,4 +38,31 @@ final class CylinderTypeApi {
       return FailureResult(Failure(message: e.toString()));
     }
   }
+
+  /// The cylinder types the signed-in customer can book right now, from
+  /// `GET /api/v1/orders/orderable-cylinder-types` (the server works out the
+  /// customer and their branch from the login).
+  Future<Result<List<OrderableCylinderTypeResponse>>> listOrderable() async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        '/api/v1/orders/orderable-cylinder-types',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(
+        response.data!
+            .map(
+              (e) => OrderableCylinderTypeResponse.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
+            .toList(),
+      );
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 }

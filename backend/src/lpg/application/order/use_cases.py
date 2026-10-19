@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     from lpg.application.delivery.ports import RouteRepository
     from lpg.application.identity.ports import OtpDeliveryPort, OtpStore
     from lpg.application.inventory.ports import InventoryLocationRepository
+    from lpg.application.order.orderable import OrderableCylinderTypes
     from lpg.application.order.ports import (
         CancellationRecordRepository,
         CreditLimitEvaluator,
@@ -103,17 +104,37 @@ class CreateOrderCommand(Command):
 
 
 class CreateOrderUseCase:
+    """`draft -> booked`. Refuses a cylinder type that can't be ordered
+    (inactive, unpriced for this customer, or out of stock at the branch)
+    before an order number is drawn — see `OrderableCylinderTypes`.
+    """
+
     def __init__(
         self,
         repository: OrderRepository,
         unit_of_work: UnitOfWork,
         order_number_sequence: OrderNumberSequence,
+        customer_repository: CustomerRepository,
+        orderable_cylinder_types: OrderableCylinderTypes,
     ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
         self._order_number_sequence = order_number_sequence
+        self._customer_repository = customer_repository
+        self._orderable = orderable_cylinder_types
 
     async def execute(self, command: CreateOrderCommand) -> Order:
+        customer = await self._customer_repository.get_by_id(command.customer_id)
+        if customer is None:
+            msg = f"No customer visible with id {command.customer_id}."
+            raise NotFoundError(msg, customer_id=str(command.customer_id))
+        await self._orderable.require(
+            tenant_id=command.tenant_id,
+            branch_id=command.branch_id,
+            customer_type=customer.customer_type,
+            lines=[(line.cylinder_type_id, line.quantity) for line in command.lines],
+        )
+
         order_number = await self._order_number_sequence.next()
         order = Order(
             order_id=self._repository.next_id(),
@@ -156,6 +177,7 @@ class ConfirmOrderUseCase:
         cylinder_cap_policy: CylinderCapPolicy,
         credit_limit_evaluator: CreditLimitEvaluator,
         unit_of_work: UnitOfWork,
+        orderable_cylinder_types: OrderableCylinderTypes,
     ) -> None:
         self._order_repository = order_repository
         self._customer_repository = customer_repository
@@ -163,6 +185,7 @@ class ConfirmOrderUseCase:
         self._cylinder_cap_policy = cylinder_cap_policy
         self._credit_limit_evaluator = credit_limit_evaluator
         self._unit_of_work = unit_of_work
+        self._orderable = orderable_cylinder_types
 
     async def execute(self, command: ConfirmOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
@@ -175,6 +198,15 @@ class ConfirmOrderUseCase:
             raise NotFoundError(msg, customer_id=str(order.customer_id))
 
         requested_lines = [(line.cylinder_type_id, line.quantity_ordered) for line in order.lines]
+        # Stock or pricing may have changed since booking; the order's own
+        # booked quantity is left out of the branch's outstanding demand.
+        await self._orderable.require(
+            tenant_id=order.tenant_id,
+            branch_id=order.branch_id,
+            customer_type=customer.customer_type,
+            lines=requested_lines,
+            exclude_order_id=order.id,
+        )
         await self._cylinder_cap_policy.evaluate(
             tenant_id=order.tenant_id,
             customer_id=order.customer_id,

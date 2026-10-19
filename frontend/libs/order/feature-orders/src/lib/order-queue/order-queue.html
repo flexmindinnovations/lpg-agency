@@ -135,27 +135,45 @@
         </lpg-form-field>
 
         <div class="lines-header">
-          <label>Cylinders</label>
-          <button pButton type="button" text size="small" severity="secondary" (click)="addLine()">
+          <label id="create_lines_label">Cylinders</label>
+          <button
+            pButton
+            type="button"
+            text
+            size="small"
+            severity="secondary"
+            [disabled]="cylinderTypes().length === 0"
+            (click)="addLine()"
+          >
             <i class="pi pi-plus"></i>
             <span>Add line</span>
           </button>
         </div>
-        <div class="lines" formArrayName="lines">
+        @if (!cylinderTypesLoading() && cylinderTypes().length === 0) {
+        <p-message severity="warn" variant="simple" size="small">
+          No cylinder can be booked for this customer right now. A cylinder shows here only when it
+          is active, has a price for this customer's type at their branch, and has filled stock.
+        </p-message>
+        }
+        <div class="lines" formArrayName="lines" aria-labelledby="create_lines_label">
           @for (line of lines.controls; track $index) {
           <div [formGroupName]="$index" class="line-row">
             <p-select
               formControlName="cylinder_type_id"
-              [options]="cylinderTypes()"
-              optionLabel="name"
-              optionValue="id"
+              [options]="cylinderTypeOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [loading]="cylinderTypesLoading()"
               placeholder="Cylinder type"
+              ariaLabel="Cylinder type"
               class="line-row__type"
               [fluid]="true"
             ></p-select>
             <p-inputnumber
               formControlName="quantity"
               [min]="1"
+              [max]="availableFor(line.controls.cylinder_type_id.value) ?? undefined"
+              ariaLabel="Quantity"
               class="line-row__qty"
               [fluid]="true"
             />
