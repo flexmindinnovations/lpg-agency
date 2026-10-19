@@ -35,15 +35,20 @@ _logger = get_logger(__name__)
 _DEV_INBOX_TTL_SECONDS = 300
 
 
-def dev_otp_inbox_key(phone_number: str) -> str:
+def dev_otp_inbox_key(phone_number: str, purpose: OtpPurpose = "login") -> str:
+    # Delivery codes get their own slot so a customer signing in mid-delivery
+    # doesn't overwrite the code the driver's testing banner reads back.
+    if purpose == "delivery":
+        return f"dev:otp-inbox:delivery:{phone_number}"
     return f"dev:otp-inbox:{phone_number}"
 
 
 async def _stash_in_dev_inbox(
-    redis: RedisClient, settings: Settings, phone_number: str, code: str
+    redis: RedisClient, settings: Settings, phone_number: str, code: str, purpose: OtpPurpose
 ) -> None:
     if not settings.is_production:
-        await redis.client.set(dev_otp_inbox_key(phone_number), code, ex=_DEV_INBOX_TTL_SECONDS)
+        ttl = settings.delivery_otp_ttl_seconds if purpose == "delivery" else _DEV_INBOX_TTL_SECONDS
+        await redis.client.set(dev_otp_inbox_key(phone_number, purpose), code, ex=ttl)
 
 
 class LoggingOtpDelivery:
@@ -59,7 +64,7 @@ class LoggingOtpDelivery:
         purpose: OtpPurpose = "login",
     ) -> None:
         _logger.info("otp_delivery_dev_mode", phone_number=phone_number, code=code, purpose=purpose)
-        await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code)
+        await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code, purpose)
 
 
 _OTP_TEMPLATES: dict[OtpPurpose, SmsTemplate] = {
@@ -94,7 +99,7 @@ class SmsOtpDelivery:
         *,
         purpose: OtpPurpose = "login",
     ) -> None:
-        await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code)
+        await _stash_in_dev_inbox(self._redis, self._settings, phone_number, code, purpose)
         try:
             await self._sms_channel.send(
                 to=phone_number,

@@ -32,10 +32,10 @@ class OtpService:
     def _hash(code: str) -> str:
         return hashlib.sha256(code.encode("utf-8")).hexdigest()
 
-    async def issue(self, key: str) -> str:
+    async def issue(self, key: str, *, ttl_seconds: int | None = None) -> str:
         code = "".join(str(secrets.randbelow(10)) for _ in range(self._length))
         redis = self._client.client
-        await redis.set(key, self._hash(code), ex=self._ttl_seconds)
+        await redis.set(key, self._hash(code), ex=ttl_seconds or self._ttl_seconds)
         return code
 
     async def verify(self, key: str, code: str) -> bool:

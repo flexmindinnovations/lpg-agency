@@ -194,7 +194,8 @@ async def test_sms_otp_delivery_sends_the_purpose_template(
     assert len(channel.calls) == 1
     assert channel.calls[0]["template"] is template
     assert channel.calls[0]["variables"] == {"otp": "482913"}
-    assert redis.values[dev_otp_inbox_key("+919876543210")] == "482913"
+    # Delivery codes get their own inbox slot, so a login OTP can't overwrite one.
+    assert redis.values[dev_otp_inbox_key("+919876543210", purpose)] == "482913"  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio

@@ -16183,6 +16183,43 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/delivery-otp": {
+      "post": {
+        "description": "Send the customer a fresh delivery OTP for an `out_for_delivery` order,\nreplacing the earlier one (lost, never arrived, or expired). `409` when the\norder is not out for delivery; `503` when the SMS could not be sent.",
+        "operationId": "resend_delivery_otp_api_v1_orders__order_id__delivery_otp_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resend Delivery Otp",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/depart": {
       "post": {
         "description": "`ready_for_dispatch -> out_for_delivery` (\"driver departs\"). Issues\nthe delivery OTP to the customer's phone post-commit.\n\n`Idempotency-Key` is optional (the offline Driver App sends one so a\nqueued retry replays rather than re-issuing the OTP; online callers need\nnot) — see `run_idempotent`.",

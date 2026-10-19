@@ -881,6 +881,20 @@ class TestOrderFullLifecycle:
         driver_orders = driver_list_response.json()
         assert any(o["id"] == order_id for o in driver_orders["items"])
 
+        # 6b. "Send a new code": only the assigned driver can resend, and the
+        # fresh code replaces the one sent at departure.
+        not_yours_resend = await client.post(
+            f"/api/v1/orders/{order_id}/delivery-otp",
+            headers={"Authorization": f"Bearer {other_driver_token}"},
+        )
+        assert not_yours_resend.status_code == 404, not_yours_resend.text
+        resend_response = await client.post(
+            f"/api/v1/orders/{order_id}/delivery-otp", headers=driver_headers
+        )
+        assert resend_response.status_code == 204, resend_response.text
+        assert len(stack.otp_delivery.sent) == 2
+        otp_code = stack.otp_delivery.sent[-1][1]
+
         # 7. Pre-upload a POD attachment, then deliver in full (cash payment).
         upload_response = await client.post(
             f"/api/v1/orders/{order_id}/pod-attachments",

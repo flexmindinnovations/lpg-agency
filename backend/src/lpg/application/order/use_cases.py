@@ -26,7 +26,9 @@ from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
+    ConflictError,
     NotFoundError,
+    OtpExpiredError,
     OtpMismatchError,
     ServiceUnavailableError,
 )
@@ -336,6 +338,8 @@ class DepartOrderUseCase:
         otp_store: OtpStore,
         otp_delivery: OtpDeliveryPort,
         unit_of_work: UnitOfWork,
+        *,
+        delivery_otp_ttl_seconds: int,
     ) -> None:
         self._order_repository = order_repository
         self._route_repository = route_repository
@@ -343,6 +347,7 @@ class DepartOrderUseCase:
         self._otp_store = otp_store
         self._otp_delivery = otp_delivery
         self._unit_of_work = unit_of_work
+        self._delivery_otp_ttl_seconds = delivery_otp_ttl_seconds
 
     async def execute(self, command: DepartOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
@@ -380,12 +385,60 @@ class DepartOrderUseCase:
         # external I/O (Redis OTP store, delivery send) happens here now.
         if customer is not None:
             key = order_delivery_otp_key(order.tenant_id, order.id)
-            code = await self._otp_store.issue(key)
+            code = await self._otp_store.issue(key, ttl_seconds=self._delivery_otp_ttl_seconds)
             # The SMS adapter has already logged the failure; the order is
             # out for delivery either way, so the driver must not see an error.
             with contextlib.suppress(ServiceUnavailableError):
                 await self._otp_delivery.send(customer.phone_number, code, purpose="delivery")
         return order
+
+
+@dataclass(frozen=True, slots=True)
+class ResendDeliveryOtpCommand(Command):
+    order_id: uuid.UUID
+
+
+class ResendDeliveryOtpUseCase:
+    """Issues a fresh delivery OTP for an `out_for_delivery` order and sends
+    it to the customer, replacing any earlier code. The driver's way out when
+    the customer lost the SMS, it never arrived, or the code expired.
+
+    Unlike `DepartOrderUseCase`, a send failure is surfaced (503): nothing
+    else happened here, so the driver needs to know the code did not go out.
+    """
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        customer_repository: CustomerRepository,
+        otp_store: OtpStore,
+        otp_delivery: OtpDeliveryPort,
+        *,
+        delivery_otp_ttl_seconds: int,
+    ) -> None:
+        self._order_repository = order_repository
+        self._customer_repository = customer_repository
+        self._otp_store = otp_store
+        self._otp_delivery = otp_delivery
+        self._delivery_otp_ttl_seconds = delivery_otp_ttl_seconds
+
+    async def execute(self, command: ResendDeliveryOtpCommand) -> None:
+        order = await self._order_repository.get_by_id(command.order_id)
+        if order is None:
+            msg = f"No order visible with id {command.order_id}."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+        if order.status != "out_for_delivery":
+            msg = "A delivery code can only be sent while the order is out for delivery."
+            raise ConflictError(msg, order_id=str(order.id), status=order.status)
+
+        customer = await self._customer_repository.get_by_id(order.customer_id)
+        if customer is None:
+            msg = f"No customer visible with id {order.customer_id}."
+            raise NotFoundError(msg, customer_id=str(order.customer_id))
+
+        key = order_delivery_otp_key(order.tenant_id, order.id)
+        code = await self._otp_store.issue(key, ttl_seconds=self._delivery_otp_ttl_seconds)
+        await self._otp_delivery.send(customer.phone_number, code, purpose="delivery")
 
 
 @dataclass(frozen=True, slots=True)
@@ -496,7 +549,14 @@ class DeliverOrderUseCase:
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         key = order_delivery_otp_key(order.tenant_id, order.id)
-        otp_ok = await self._otp_store.verify(key, command.otp_code)
+        try:
+            otp_ok = await self._otp_store.verify(key, command.otp_code)
+        except OtpExpiredError as exc:
+            msg = (
+                "The delivery code has expired or was never sent. "
+                "Tap 'Send a new code' to send the customer a fresh one."
+            )
+            raise OtpExpiredError(msg, order_id=str(order.id)) from exc
         if not otp_ok:
             msg = "Incorrect delivery OTP."
             raise OtpMismatchError(msg, order_id=str(order.id))

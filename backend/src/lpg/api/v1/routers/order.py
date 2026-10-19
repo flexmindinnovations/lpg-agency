@@ -71,6 +71,7 @@ from lpg.api.v1.dependencies.identity import (
     get_otp_store,
     require_live_permission,
     require_permission,
+    require_rate_limit,
 )
 from lpg.api.v1.dependencies.inventory import get_inventory_location_repository
 from lpg.api.v1.dependencies.order import (
@@ -167,12 +168,15 @@ from lpg.application.order.use_cases import (
     RecordFailedDeliveryUseCase,
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
+    ResendDeliveryOtpCommand,
+    ResendDeliveryOtpUseCase,
 )
 from lpg.application.tenant.ports import (
     PriceListRepository,
     TenantConfigurationRepository,
 )
 from lpg.application.tenant_admin.ports import EmployeeRepository
+from lpg.config.settings import Settings, get_settings
 from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order
 from lpg.infrastructure.idempotency.service import (
     IdempotencyService,
@@ -731,6 +735,7 @@ async def depart_order(
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> OrderResponse:
     """`ready_for_dispatch -> out_for_delivery` ("driver departs"). Issues
     the delivery OTP to the customer's phone post-commit.
@@ -750,6 +755,7 @@ async def depart_order(
         otp_store,
         otp_delivery,
         unit_of_work,
+        delivery_otp_ttl_seconds=settings.delivery_otp_ttl_seconds,
     )
 
     async def _operation() -> dict[str, Any]:
@@ -764,6 +770,48 @@ async def depart_order(
         operation=_operation,
     )
     return OrderResponse.model_validate(result)
+
+
+@router.post(
+    "/orders/{order_id}/delivery-otp",
+    status_code=204,
+    dependencies=[Depends(require_permission("orders:deliver"))],
+)
+async def resend_delivery_otp(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    otp_store: Annotated[OtpStore, Depends(get_otp_store)],
+    otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    _rate_limit: Annotated[
+        None,
+        Depends(
+            require_rate_limit(
+                key_prefix="orders:delivery_otp_resend", limit=10, window_seconds=600
+            )
+        ),
+    ],
+) -> Response:
+    """Send the customer a fresh delivery OTP for an `out_for_delivery` order,
+    replacing the earlier one (lost, never arrived, or expired). `409` when the
+    order is not out for delivery; `503` when the SMS could not be sent.
+    """
+    await _require_own_driver_order(
+        order_id, principal, order_repository, driver_repository, route_repository
+    )
+    use_case = ResendDeliveryOtpUseCase(
+        order_repository,
+        customer_repository,
+        otp_store,
+        otp_delivery,
+        delivery_otp_ttl_seconds=settings.delivery_otp_ttl_seconds,
+    )
+    await use_case.execute(ResendDeliveryOtpCommand(order_id=order_id))
+    return Response(status_code=204)
 
 
 @router.post(
