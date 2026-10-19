@@ -593,7 +593,7 @@ class AssignOrderToRouteUseCase:
 
         active_routes = await self._route_repository.count_active_routes_for_order(order.id)
         if active_routes > 0:
-            msg = f"Order {order.id} is already assigned to an active route."
+            msg = f"Order {order.order_number or order.id} is already assigned to an active route."
             raise DuplicateRouteAssignmentError(msg, order_id=str(order.id))
 
         vehicle_location = await self._get_or_create_location.execute(
@@ -828,7 +828,7 @@ class CompleteRouteReconciliationUseCase:
             else None
         )
         if record is None or record.approved_by is None:
-            msg = f"Route {route.id}'s vehicle has no approved reconciliation yet."
+            msg = "This route's vehicle has no approved reconciliation yet."
             raise RouteReconciliationPendingError(msg, route_id=str(route.id))
 
         route.change_status("reconciled")

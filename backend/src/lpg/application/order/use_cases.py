@@ -196,8 +196,15 @@ class ConfirmOrderUseCase:
                 at=now,
             )
             if resolved is None:
-                msg = f"No price configured for cylinder type {line.cylinder_type_id}."
-                raise NotFoundError(msg, cylinder_type_id=str(line.cylinder_type_id))
+                msg = (
+                    f"No price configured for cylinder type {line.cylinder_type_id} "
+                    f"for {customer.customer_type} customers. Add one under Pricing."
+                )
+                raise NotFoundError(
+                    msg,
+                    cylinder_type_id=str(line.cylinder_type_id),
+                    customer_type=customer.customer_type,
+                )
             unit_prices[line.cylinder_type_id] = resolved.price
 
         order_total_preview = sum(

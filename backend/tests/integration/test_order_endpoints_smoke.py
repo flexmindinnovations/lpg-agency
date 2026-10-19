@@ -1064,6 +1064,49 @@ class TestDepartBeforeVanLoaded:
 
 
 # ==========================================================================
+# Error messages name the cylinder type, not its id
+# ==========================================================================
+
+
+class TestConfirmWithoutAPrice:
+    async def test_error_names_the_cylinder_type_and_customer_type(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        async with admin_engine_lpg_test.begin() as conn:
+            unpriced_id = (
+                await conn.execute(
+                    text(
+                        "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
+                        "VALUES (gen_random_uuid(), :tenant_id, 'Commercial 47.5kg', 47.5) "
+                        "RETURNING id"
+                    ),
+                    {"tenant_id": str(fixtures.tenant_id)},
+                )
+            ).scalar_one()
+        payload = _create_order_payload(fixtures)
+        payload["lines"] = [{"cylinder_type_id": str(unpriced_id), "quantity": 1}]
+        create_response = await client.post(
+            "/api/v1/orders",
+            json=payload,
+            headers={**admin_headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert create_response.status_code == 201, create_response.text
+
+        confirm_response = await client.post(
+            f"/api/v1/orders/{create_response.json()['id']}/confirm", headers=admin_headers
+        )
+
+        assert confirm_response.status_code == 404, confirm_response.text
+        detail = confirm_response.json()["detail"]
+        assert "'Commercial 47.5kg'" in detail
+        assert "domestic customers" in detail
+        assert str(unpriced_id) not in detail
+
+
+# ==========================================================================
 # Failed delivery -> reschedule -> deliver
 # ==========================================================================
 

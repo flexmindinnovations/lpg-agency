@@ -27,14 +27,20 @@ dependency yet).
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 
 from lpg.api.v1.dependencies.tenant import get_tenant_context
 from lpg.application.common.ports import TenantContext, UnitOfWork
+
+if TYPE_CHECKING:
+    from lpg.application.common.errors import ApplicationError
+    from lpg.domain.common.base import DomainError
+    from lpg.infrastructure.persistence.database import Database
 
 
 async def get_unit_of_work(
@@ -83,6 +89,8 @@ async def get_unit_of_work(
         # got 500 instead. `RequestValidationError` (a malformed request body,
         # resolved after this generator dep is already entered) must likewise
         # pass through to its 422 handler, not become a 500.
+        if isinstance(e, (ApplicationError, DomainError)):
+            await _name_cylinder_type(e, database, tenant_context)
         if isinstance(e, (HTTPException, RequestValidationError, ApplicationError, DomainError)):
             raise
 
@@ -93,6 +101,42 @@ async def get_unit_of_work(
         raise HTTPException(
             status_code=500, detail=f"An unexpected error occurred: {e!s}"
         ) from None
+
+
+async def _name_cylinder_type(
+    error: ApplicationError | DomainError, database: Database, tenant_context: TenantContext
+) -> None:
+    """Swap the cylinder type UUID in an error's message for its name.
+
+    Domain aggregates (inventory, ledger, order lines) only know cylinder
+    types by id, so their errors read "...for cylinder type bc4ace92-...",
+    which means nothing to the staff member reading it. Every such error
+    already carries ``cylinder_type_id`` in its context, so the name is
+    resolved here, once, instead of at each of the many call sites. The
+    request's own session has just been rolled back (its tenant GUC went
+    with it), so the lookup opens a fresh tenant-scoped one. Best effort:
+    if the lookup fails the original message stands.
+    """
+    from lpg.infrastructure.persistence.repositories.tenant import (
+        SqlAlchemyCylinderTypeRepository,
+    )
+    from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+    raw_id = error.context.get("cylinder_type_id")
+    if not raw_id or str(raw_id) not in error.message:
+        return
+    cylinder_type = None
+    try:
+        cylinder_type_id = uuid.UUID(str(raw_id))
+        async for session in database.open_session(tenant_id=tenant_context.tenant_id):
+            uow = SqlAlchemyUnitOfWork(session, tenant_context)
+            cylinder_type = await SqlAlchemyCylinderTypeRepository(uow).get(cylinder_type_id)
+    except Exception:  # noqa: BLE001 - naming is cosmetic, never mask the real error
+        return
+    if cylinder_type is None:
+        return
+    error.message = error.message.replace(str(raw_id), f"'{cylinder_type.name}'")
+    error.args = (error.message,)
 
 
 def get_unit_of_work_factory(

@@ -1,5 +1,12 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -29,6 +36,13 @@ import {
 } from '@lpg/shared/ui';
 
 const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as const;
+
+/** A price row with its cylinder type and branch resolved to names, so the
+ * grid shows, sorts, filters and searches by what staff recognise. */
+type PriceRow = PriceListEntryResponse & {
+  readonly cylinder_type_name: string;
+  readonly branch_name: string;
+};
 
 /**
  * Price list history + set-price drawer — `tenant:configure`.
@@ -153,7 +167,7 @@ const CUSTOMER_TYPES = ['domestic', 'commercial', 'industrial', 'government'] as
       } @else {
         <section class="grid-section">
           <lpg-data-grid
-            [rows]="prices()"
+            [rows]="priceRows()"
             [columns]="columns"
             [loading]="loading()"
             [searchQuery]="searchQuery()"
@@ -362,7 +376,20 @@ export class PriceListPage implements OnInit {
   protected readonly proposals = signal<PriceListProposalResponse[]>([]);
   protected readonly reviewingId = signal<string | null>(null);
 
-  protected readonly columns: DataGridColumn<PriceListEntryResponse>[] = [
+  protected readonly priceRows = computed<PriceRow[]>(() => {
+    const cylinderTypeNames = new Map(this.cylinderTypes().map((t) => [t.id, t.name]));
+    const branchNames = new Map(this.branches().map((b) => [b.id, b.name]));
+    return this.prices().map((price) => ({
+      ...price,
+      cylinder_type_name: cylinderTypeNames.get(price.cylinder_type_id) ?? price.cylinder_type_id,
+      branch_name: price.branch_id
+        ? (branchNames.get(price.branch_id) ?? price.branch_id)
+        : 'All branches',
+    }));
+  });
+
+  protected readonly columns: DataGridColumn<PriceRow>[] = [
+    { field: 'cylinder_type_name', header: 'Cylinder Type', sortable: true, filterable: true },
     {
       field: 'customer_type',
       header: 'Customer Type',
@@ -371,7 +398,7 @@ export class PriceListPage implements OnInit {
       cellRenderer: StatusChipCell,
     },
     { field: 'price', header: 'Price', sortable: true, numeric: true },
-    { field: 'branch_id', header: 'Branch', filterable: true },
+    { field: 'branch_name', header: 'Branch', sortable: true, filterable: true },
     {
       field: 'effective_from',
       header: 'Effective From',

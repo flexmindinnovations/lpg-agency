@@ -28,6 +28,7 @@ import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminStaffUserService,
   CustomerService,
+  OrderService,
   type CustomerResponse,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
@@ -83,6 +84,7 @@ function errorMessageFor(_error: unknown): string {
 export class FeatureComplaints implements OnInit {
   private readonly complaintService = inject(ComplaintService);
   private readonly customerService = inject(CustomerService);
+  private readonly orderService = inject(OrderService);
   private readonly adminStaffUserService = inject(AdminStaffUserService);
   private readonly messageService = inject(MessageService);
   private readonly fb = inject(NonNullableFormBuilder);
@@ -161,6 +163,13 @@ export class FeatureComplaints implements OnInit {
   // Drawer states
   readonly detailVisible = signal(false);
   readonly selectedComplaint = signal<Complaint | null>(null);
+  /** The linked order's number for the detail drawer — a complaint only
+   * carries the order's id. Null while loading, or when the viewer can't
+   * read orders; the drawer falls back to a short id then. */
+  protected readonly selectedOrderNumber = signal<string | null>(null);
+  private readonly canReadOrders = computed(
+    () => this.permissionChecker()?.permissions?.has('orders:read') ?? false,
+  );
 
   readonly registerModalVisible = signal(false);
   readonly registerLoading = signal(false);
@@ -369,6 +378,24 @@ export class FeatureComplaints implements OnInit {
   onRowAction(complaint: Complaint) {
     this.selectedComplaint.set(complaint);
     this.detailVisible.set(true);
+    this.loadOrderNumber(complaint.order_id);
+  }
+
+  private loadOrderNumber(orderId: string | null | undefined): void {
+    this.selectedOrderNumber.set(null);
+    if (!orderId || !this.canReadOrders()) return;
+    const sub = this.orderService
+      .getOrder(orderId)
+      .pipe(
+        map((order) => order.order_number ?? null),
+        catchError(() => of(null)),
+      )
+      .subscribe((orderNumber) => {
+        if (this.selectedComplaint()?.order_id === orderId) {
+          this.selectedOrderNumber.set(orderNumber);
+        }
+      });
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
   }
 
   /** Same shape as `feature-invoices`'s `openCustomerPreview` — a fresh
