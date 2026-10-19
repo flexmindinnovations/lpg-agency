@@ -1,13 +1,16 @@
 :host {
   display: block;
-  block-size: 100%;
 }
 
+/* A stacked, flowing page (no grid that scrolls on its own), so it grows with
+   its content instead of being capped at the viewport height. A fixed
+   `block-size: 100%` let the panels overflow past the page box, where
+   `.shell__main`'s own bottom padding no longer applies, so the last panel
+   ended flush against the bottom edge. */
 .calendar-container {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  block-size: 100%;
 }
 
 .calendar-section {

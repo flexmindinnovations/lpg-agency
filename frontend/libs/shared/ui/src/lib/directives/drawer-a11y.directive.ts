@@ -32,6 +32,10 @@ import { Drawer } from 'primeng/drawer';
  * `p-select`/`p-datepicker` overlays with `appendTo="body"` are fine, they
  * mount after this snapshot and stay interactive).
  */
+/** Overlays that can open above a modal drawer and must stay interactive. */
+const OVERLAY_SELECTOR =
+  'p-dialog, p-confirmdialog, p-confirm-dialog, p-toast, p-drawer, .p-dialog, .p-drawer, .p-toast';
+
 @Directive({
   // Augments PrimeNG's `<p-drawer>` by element — there is no attribute to hook,
   // and adding one at 40-plus call sites is exactly the churn this avoids.
@@ -142,8 +146,8 @@ export class DrawerA11yDirective implements OnDestroy {
   /**
    * Walk from the drawer host up toward `<body>`, marking every sibling that
    * isn't on the drawer's ancestor path as `inert`. Stops before `<body>` so
-   * app-level siblings of the shell (toast layer, confirm dialogs) stay live.
-   * The `<p-drawer>` host itself is never inerted, so its mask keeps working.
+   * app-level siblings of the shell stay live. The `<p-drawer>` host itself is
+   * never inerted, so its mask keeps working.
    */
   private inertBackground(): void {
     let node: HTMLElement = this.host.nativeElement;
@@ -151,14 +155,32 @@ export class DrawerA11yDirective implements OnDestroy {
     while (parent && parent !== document.body) {
       for (const sibling of Array.from(parent.children)) {
         if (sibling === node || !(sibling instanceof HTMLElement)) continue;
-        if (sibling.matches('p-dialog, p-drawer, .p-dialog, .p-drawer')) continue;
-        if (sibling.hasAttribute('inert')) continue;
-        sibling.setAttribute('inert', '');
-        this.inerted.push(sibling);
+        this.inertExceptOverlays(sibling);
       }
       node = parent;
       parent = node.parentElement;
     }
+  }
+
+  /**
+   * Inert `el` unless it is, or contains, an overlay that can open on top of
+   * the drawer (a dialog, confirm dialog, toast or another drawer). Overlays
+   * are usually wrapped in a feature component (e.g. a
+   * `<lpg-manage-permissions-dialog>` holding a `<p-dialog>`), so a wrapper
+   * that contains one is walked into and only its other children are inerted;
+   * inerting the wrapper would leave a dialog opened from the drawer visible
+   * on top but impossible to click or type into.
+   */
+  private inertExceptOverlays(el: HTMLElement): void {
+    if (el.matches(OVERLAY_SELECTOR) || el.hasAttribute('inert')) return;
+    if (el.querySelector(OVERLAY_SELECTOR)) {
+      for (const child of Array.from(el.children)) {
+        if (child instanceof HTMLElement) this.inertExceptOverlays(child);
+      }
+      return;
+    }
+    el.setAttribute('inert', '');
+    this.inerted.push(el);
   }
 
   private revert(): void {
