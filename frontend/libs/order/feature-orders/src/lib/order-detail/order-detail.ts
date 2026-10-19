@@ -239,9 +239,8 @@ export class OrderDetail implements OnInit {
   private drawing = false;
   private hasSignatureStrokes = false;
 
-  protected readonly deliverReady = computed(
-    () => !!this.signatureBlobRef() && !!this.photoBlobRef() && this.gpsCaptured(),
-  );
+  // The signature and photo are optional — the OTP and the GPS stamp are the required proof.
+  protected readonly deliverReady = computed(() => this.gpsCaptured());
 
   protected readonly statusLabel = statusLabel;
   protected readonly bookingSourceLabel = bookingSourceLabel;
@@ -568,12 +567,12 @@ export class OrderDetail implements OnInit {
     const order = this.order();
     const signatureBlobRef = this.signatureBlobRef();
     const photoBlobRef = this.photoBlobRef();
-    if (!order || !signatureBlobRef || !photoBlobRef || this.deliverForm.invalid) return;
+    if (!order || this.deliverForm.invalid) return;
     const val = this.deliverForm.getRawValue();
     this.loading.set(true);
     const proofOfDelivery: ProofOfDeliverySubmission = {
-      signature_blob_ref: signatureBlobRef,
-      photo_blob_ref: photoBlobRef,
+      ...(signatureBlobRef ? { signature_blob_ref: signatureBlobRef } : {}),
+      ...(photoBlobRef ? { photo_blob_ref: photoBlobRef } : {}),
       gps_lat: val.gps_lat,
       gps_lng: val.gps_lng,
       payment_method: val.payment_method as ProofOfDeliverySubmission['payment_method'],

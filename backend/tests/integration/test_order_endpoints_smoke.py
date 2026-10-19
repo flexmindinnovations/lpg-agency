@@ -1310,6 +1310,135 @@ class TestBookingSourceIsDerivedFromTheCaller:
         assert claimed_nothing.json()["booking_source"] == "mobile_app"
 
 
+class TestDeliveryWithoutAttachments:
+    """The signature and photo are optional: the OTP and GPS stamp are the required proof,
+    so a driver who cannot capture them (no camera, storage unavailable) can still deliver."""
+
+    async def _out_for_delivery(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> tuple[_Fixtures, str, str, dict[str, str]]:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order = await _create_order(client, fixtures, admin_headers, quantity=1)
+        order_id = order["id"]
+        for step in ("confirm",):
+            response = await client.post(f"/api/v1/orders/{order_id}/{step}", headers=admin_headers)
+            assert response.status_code == 200, response.text
+        assign = await client.post(
+            f"/api/v1/orders/{order_id}/assign",
+            json={"driver_id": str(fixtures.driver_id), "vehicle_id": str(fixtures.vehicle_id)},
+            headers=admin_headers,
+        )
+        assert assign.status_code == 200, assign.text
+        route_id = await _route_id_for_driver(admin_engine_lpg_test, driver_id=fixtures.driver_id)
+        await _load_route(
+            client,
+            route_id=route_id,
+            warehouse_id=fixtures.warehouse_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+            quantity=1,
+            headers=admin_headers,
+        )
+        dispatch = await client.post(f"/api/v1/orders/{order_id}/dispatch", headers=admin_headers)
+        assert dispatch.status_code == 200, dispatch.text
+        stack.otp_delivery.sent.clear()
+        depart = await client.post(f"/api/v1/orders/{order_id}/depart", headers=admin_headers)
+        assert depart.status_code == 200, depart.text
+        otp_code = stack.otp_delivery.sent[-1][1]
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+        return fixtures, order_id, otp_code, driver_headers
+
+    async def _deliver(
+        self,
+        stack: _AppAndClient,
+        fixtures: _Fixtures,
+        order_id: str,
+        otp_code: str,
+        headers: dict[str, str],
+        proof_extras: dict[str, str],
+    ) -> Any:
+        return await stack.client.post(
+            f"/api/v1/orders/{order_id}/deliver",
+            json={
+                "lines": [
+                    {
+                        "cylinder_type_id": str(fixtures.cylinder_type_id),
+                        "quantity_delivered": 1,
+                        "quantity_collected_empty": 0,
+                    }
+                ],
+                "otp_code": otp_code,
+                "proof_of_delivery": {
+                    "gps_lat": "12.9716",
+                    "gps_lng": "77.5946",
+                    "payment_method": "cash",
+                    "amount_collected": "0",
+                    **proof_extras,
+                },
+            },
+            headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+
+    async def _stored_refs(
+        self, engine: AsyncEngine, order_id: str
+    ) -> tuple[str | None, str | None]:
+        async with engine.connect() as conn:
+            row = (
+                await conn.execute(
+                    text(
+                        "SELECT signature_blob_ref, photo_blob_ref "
+                        "FROM orders.proof_of_delivery WHERE order_id = :oid"
+                    ),
+                    {"oid": order_id},
+                )
+            ).one()
+        return row[0], row[1]
+
+    async def test_delivers_with_neither_a_signature_nor_a_photo(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures, order_id, otp, headers = await self._out_for_delivery(
+            stack, admin_engine_lpg_test
+        )
+
+        response = await self._deliver(stack, fixtures, order_id, otp, headers, {})
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["order"]["status"] == "delivered"
+        assert body["proof_of_delivery"]["signature_blob_ref"] is None
+        assert body["proof_of_delivery"]["photo_blob_ref"] is None
+        assert await self._stored_refs(admin_engine_lpg_test, order_id) == (None, None)
+
+    async def test_stores_a_photo_supplied_without_a_signature(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures, order_id, otp, headers = await self._out_for_delivery(
+            stack, admin_engine_lpg_test
+        )
+
+        response = await self._deliver(
+            stack, fixtures, order_id, otp, headers, {"photo_blob_ref": "photo-ref"}
+        )
+
+        assert response.status_code == 200, response.text
+        assert await self._stored_refs(admin_engine_lpg_test, order_id) == (None, "photo-ref")
+
+    async def test_a_blank_reference_is_still_rejected(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        fixtures, order_id, otp, headers = await self._out_for_delivery(
+            stack, admin_engine_lpg_test
+        )
+
+        response = await self._deliver(
+            stack, fixtures, order_id, otp, headers, {"signature_blob_ref": ""}
+        )
+
+        assert response.status_code == 422, response.text
+
+
 class TestRoleScopedReads:
     async def test_customer_sees_only_their_own_order(
         self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine

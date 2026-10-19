@@ -12,6 +12,7 @@ export * from './lib/agency.service';
 // Phase 7 (Administration) — thin wrappers over the generated
 // `/admin/*` client functions, same pattern as auth.service.ts.
 export * from './lib/admin-tenant.service';
+export * from './lib/hard-navigate';
 export * from './lib/admin-branch.service';
 export * from './lib/admin-warehouse.service';
 export * from './lib/admin-cylinder-type.service';
