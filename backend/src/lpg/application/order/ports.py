@@ -204,6 +204,16 @@ class CreditLimitEvaluator(Protocol):
 
 
 class BranchStockReader(Protocol):
+    async def lock_branch_for_booking(self, branch_id: uuid.UUID) -> None:
+        """Hold the branch's booking lock until the current transaction ends.
+
+        Every booking or confirmation at the branch takes it before reading
+        the available stock, so two of them cannot both see the last
+        cylinders as free and both commit: the second waits until the first
+        has committed its order (or rolled back), then reads the stock again.
+        """
+        ...
+
     async def available_filled_by_cylinder_type(
         self, branch_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
     ) -> dict[uuid.UUID, int]:

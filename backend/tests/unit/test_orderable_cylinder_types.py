@@ -42,12 +42,18 @@ class FakePriceLists:
 class FakeStock:
     available: dict[uuid.UUID, int]
     excluded: list[uuid.UUID | None] = field(default_factory=list)
+    calls: list[str] = field(default_factory=list)
+
+    async def lock_branch_for_booking(self, branch_id: uuid.UUID) -> None:
+        assert branch_id == BRANCH_ID
+        self.calls.append("lock")
 
     async def available_filled_by_cylinder_type(
         self, branch_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
     ) -> dict[uuid.UUID, int]:
         assert branch_id == BRANCH_ID
         self.excluded.append(exclude_order_id)
+        self.calls.append("read")
         return self.available
 
 
@@ -168,6 +174,15 @@ async def test_require_accepts_an_orderable_booking(catalog: Catalog) -> None:
     )
 
     assert catalog.stock.excluded == [order_id]
+    # The branch is locked before its stock is read, so a concurrent booking
+    # waits for this one to commit instead of reading the same stock.
+    assert catalog.stock.calls == ["lock", "read"]
+
+
+async def test_listing_takes_no_lock(catalog: Catalog) -> None:
+    await catalog.service().list(tenant_id=TENANT_ID, branch_id=BRANCH_ID, customer_type="domestic")
+
+    assert catalog.stock.calls == ["read"]
 
 
 @pytest.mark.parametrize(

@@ -98,11 +98,16 @@ class OrderableCylinderTypes:
         """Raise `CylinderNotOrderableError` naming the first line that can't
         be ordered, and why. Quantities of the same type on several lines
         are added up before the stock check.
+
+        Takes the branch's booking lock first and keeps it until the caller's
+        transaction commits, so the check and the booking it allows happen
+        as one step for concurrent bookings at the same branch.
         """
         requested: dict[uuid.UUID, int] = defaultdict(int)
         for cylinder_type_id, quantity in lines:
             requested[cylinder_type_id] += quantity
 
+        await self._stock.lock_branch_for_booking(branch_id)
         prices = await self._price_lists.list_for_tenant(tenant_id)
         stock = await self._stock.available_filled_by_cylinder_type(
             branch_id, exclude_order_id=exclude_order_id

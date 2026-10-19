@@ -6,5 +6,7 @@
 - [x] Dashboard booking form uses the list
 - [x] Customer App order screen uses the list (needs a new APK)
 - [x] Unit and integration tests
-- [ ] Follow-up (not requested): stock is not reserved at booking, so two
-      bookings racing for the last cylinders can both pass the check.
+- [x] Concurrency: bookings and confirmations at one branch take a
+      transaction-scoped PostgreSQL advisory lock before the stock check, so
+      two can't both claim the last cylinders (before the fix, four
+      simultaneous 150-cylinder bookings against 200 in stock all succeeded).
