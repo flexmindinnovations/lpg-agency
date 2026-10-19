@@ -32,6 +32,7 @@ from lpg.application.common.errors import (
     NotFoundError,
     OtpExpiredError,
     OtpMismatchError,
+    RouteNotLoadedError,
     ServiceUnavailableError,
 )
 from lpg.application.delivery.ports import RouteStopOwner
@@ -49,6 +50,8 @@ from lpg.application.order.use_cases import (
     DeliverOrderUseCase,
     DepartOrderCommand,
     DepartOrderUseCase,
+    RecordFailedDeliveryCommand,
+    RecordFailedDeliveryUseCase,
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
     ResendDeliveryOtpCommand,
@@ -700,6 +703,77 @@ class TestDeliverOrderUseCase:
         pod_repo.create.assert_not_called()
         mock_uow.commit.assert_not_called()
 
+    @staticmethod
+    def _command(order: Order, cylinder_type_id: uuid.UUID) -> DeliverOrderCommand:
+        return DeliverOrderCommand(
+            order_id=order.id,
+            lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+            otp_code="123456",
+            signature_blob_ref=None,
+            photo_blob_ref=None,
+            gps_lat=Decimal("12.9"),
+            gps_lng=Decimal("77.6"),
+            payment_method="cash",
+            amount_collected=Decimal("3600"),
+            changed_by=uuid.uuid4(),
+        )
+
+    async def test_a_route_still_planned_is_refused_before_the_code_is_used(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """An order that departed before the van-load gate sits on a
+        `planned` route: refuse with the real reason, and leave the delivery
+        code unspent so it still works once the van is loaded."""
+        cylinder_type_id = uuid.uuid4()
+        order, route = _assigned_order_with_route(cylinder_type_id, reserved=4)
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        use_case, pod_repo, otp_store = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+
+        with pytest.raises(RouteNotLoadedError, match="hasn't been loaded"):
+            await use_case.execute(self._command(order, cylinder_type_id))
+        otp_store.verify.assert_not_called()
+        pod_repo.create.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+    async def test_a_loaded_route_is_started_so_a_stuck_delivery_goes_through(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """The office loads the van after the order already departed: the
+        route is `loaded`, never `in_progress`. Delivery starts it."""
+        cylinder_type_id = uuid.uuid4()
+        order, route = _assigned_order_with_route(cylinder_type_id, reserved=4)
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        route.change_status("loaded")
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
+            location_ref_id=route.vehicle_id
+        )
+        use_case, _pod_repo, _otp_store = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+
+        result = await use_case.execute(self._command(order, cylinder_type_id))
+
+        assert result.order.status == "delivered"
+        assert route.stops[0].status == "delivered"
+        assert route.status == "completed"
+        mock_uow.commit.assert_called_once()
+
     async def test_an_expired_code_tells_the_driver_to_send_a_new_one(
         self,
         mock_order_repo: MagicMock,
@@ -919,10 +993,14 @@ class TestDepartOrderUseCase:
         mock_route_repo: MagicMock,
         mock_uow: MagicMock,
         otp_delivery: AsyncMock,
+        *,
+        load_route: bool = True,
     ) -> Order:
         order, route = _assigned_order_with_route(uuid.uuid4())
         order.dispatch(changed_by=uuid.uuid4())
-        route.change_status("loaded")
+        if load_route:
+            route.change_status("loaded")
+        self.route = route
         mock_order_repo.get_by_id.return_value = order
         _stub_route_lookup(mock_route_repo, route)
         customer_repo = MagicMock()
@@ -963,6 +1041,29 @@ class TestDepartOrderUseCase:
 
         assert self.otp_store.issue.await_args.kwargs == {"ttl_seconds": 86400}
 
+    async def test_departing_moves_the_loaded_route_to_in_progress(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        await self._depart(mock_order_repo, mock_route_repo, mock_uow, AsyncMock())
+
+        assert self.route.status == "in_progress"
+
+    async def test_cannot_depart_until_the_van_is_loaded(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        """Regression: departing on a `planned` route left the order out for
+        delivery on a route that could never accept proof of delivery."""
+        otp_delivery = AsyncMock()
+        with pytest.raises(RouteNotLoadedError):
+            await self._depart(
+                mock_order_repo, mock_route_repo, mock_uow, otp_delivery, load_route=False
+            )
+
+        mock_order_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+        self.otp_store.issue.assert_not_called()
+        otp_delivery.send.assert_not_called()
+
     async def test_an_sms_outage_does_not_fail_the_departure(
         self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
     ) -> None:
@@ -972,6 +1073,30 @@ class TestDepartOrderUseCase:
 
         assert result.status == "out_for_delivery"
         mock_uow.commit.assert_called_once()
+
+
+class TestRecordFailedDeliveryUseCase:
+    async def test_a_route_still_planned_is_refused(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        order, route = _assigned_order_with_route(uuid.uuid4())
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        use_case = RecordFailedDeliveryUseCase(mock_order_repo, mock_route_repo, mock_uow)
+
+        with pytest.raises(RouteNotLoadedError):
+            await use_case.execute(
+                RecordFailedDeliveryCommand(
+                    order_id=order.id,
+                    reason_code="customer_unavailable",
+                    resolution_action="reschedule",
+                    recorded_by=uuid.uuid4(),
+                )
+            )
+        assert order.status == "out_for_delivery"
+        mock_uow.commit.assert_not_called()
 
 
 class TestResendDeliveryOtpUseCase:

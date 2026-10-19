@@ -111,6 +111,16 @@ class RouteReconciliationPendingError(ConflictError):
     title = "Vehicle reconciliation has not been approved yet"
 
 
+class RouteNotLoadedError(ConflictError):
+    """A driver can't start, deliver or fail a delivery while the order's
+    route is still `planned`: the van hasn't been loaded (BR-12), so the
+    route can never reach `in_progress`, which proof of delivery requires.
+    """
+
+    error_code = "ROUTE_NOT_LOADED"
+    title = "The van has not been loaded for this route yet"
+
+
 class IdempotencyConflictError(ConflictError):
     """The same Idempotency-Key was reused with a different request payload.
 

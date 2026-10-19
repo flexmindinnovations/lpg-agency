@@ -985,6 +985,85 @@ class TestOrderFullLifecycle:
 
 
 # ==========================================================================
+# Departing before the van is loaded
+# ==========================================================================
+
+
+class TestDepartBeforeVanLoaded:
+    async def test_driver_cannot_start_a_delivery_until_the_van_is_loaded(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        """Regression: an order marked ready for dispatch on a route still in
+        `planned` could depart, then every delivery attempt failed with
+        "Cannot record POD: route is in status 'planned'" and the driver app
+        bounced back to Start. Departing now waits for the van load."""
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+
+        order = await _create_order(client, fixtures, admin_headers, quantity=1)
+        order_id = order["id"]
+        await client.post(f"/api/v1/orders/{order_id}/confirm", headers=admin_headers)
+        await client.post(
+            f"/api/v1/orders/{order_id}/assign",
+            json={"driver_id": str(fixtures.driver_id), "vehicle_id": str(fixtures.vehicle_id)},
+            headers=admin_headers,
+        )
+        dispatch_response = await client.post(
+            f"/api/v1/orders/{order_id}/dispatch", headers=admin_headers
+        )
+        assert dispatch_response.status_code == 200, dispatch_response.text
+
+        early_depart = await client.post(
+            f"/api/v1/orders/{order_id}/depart", headers=driver_headers
+        )
+        assert early_depart.status_code == 409, early_depart.text
+        assert early_depart.json()["error_code"] == "ROUTE_NOT_LOADED"
+        still_waiting = await client.get(f"/api/v1/orders/{order_id}", headers=admin_headers)
+        assert still_waiting.json()["status"] == "ready_for_dispatch"
+        assert stack.otp_delivery.sent == []
+
+        route_id = await _route_id_for_driver(admin_engine_lpg_test, driver_id=fixtures.driver_id)
+        await _load_route(
+            client,
+            route_id=route_id,
+            warehouse_id=fixtures.warehouse_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+            quantity=1,
+            headers=admin_headers,
+        )
+        depart_response = await client.post(
+            f"/api/v1/orders/{order_id}/depart", headers=driver_headers
+        )
+        assert depart_response.status_code == 200, depart_response.text
+        otp_code = stack.otp_delivery.sent[-1][1]
+
+        deliver_response = await client.post(
+            f"/api/v1/orders/{order_id}/deliver",
+            json={
+                "lines": [
+                    {
+                        "cylinder_type_id": str(fixtures.cylinder_type_id),
+                        "quantity_delivered": 1,
+                        "quantity_collected_empty": 0,
+                    }
+                ],
+                "otp_code": otp_code,
+                "proof_of_delivery": {
+                    "gps_lat": "12.9716",
+                    "gps_lng": "77.5946",
+                    "payment_method": "cash",
+                    "amount_collected": "950.00",
+                },
+            },
+            headers={**driver_headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert deliver_response.status_code == 200, deliver_response.text
+        assert deliver_response.json()["order"]["status"] == "delivered"
+
+
+# ==========================================================================
 # Failed delivery -> reschedule -> deliver
 # ==========================================================================
 
@@ -1173,8 +1252,20 @@ class TestPostDispatchCancellationApproval:
             json={"driver_id": str(fixtures.driver_id), "vehicle_id": str(fixtures.vehicle_id)},
             headers=admin_headers,
         )
+        route_id = await _route_id_for_driver(admin_engine_lpg_test, driver_id=fixtures.driver_id)
+        await _load_route(
+            client,
+            route_id=route_id,
+            warehouse_id=fixtures.warehouse_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+            quantity=2,
+            headers=admin_headers,
+        )
         await client.post(f"/api/v1/orders/{order_id}/dispatch", headers=admin_headers)
-        await client.post(f"/api/v1/orders/{order_id}/depart", headers=admin_headers)
+        depart_response = await client.post(
+            f"/api/v1/orders/{order_id}/depart", headers=admin_headers
+        )
+        assert depart_response.status_code == 200, depart_response.text
 
         cancel_response = await client.post(
             f"/api/v1/orders/{order_id}/cancel",
@@ -1208,7 +1299,8 @@ class TestPostDispatchCancellationApproval:
             vehicle_id=fixtures.vehicle_id,
             cylinder_type_id=fixtures.cylinder_type_id,
         )
-        assert balance_after_approve == 100
+        # The reservation is released; the 2 loaded onto the van stay on it.
+        assert balance_after_approve == 102
 
 
 # ==========================================================================

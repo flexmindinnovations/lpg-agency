@@ -64,8 +64,39 @@ class StopDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     OrderResponse order,
   ) {
+    // The backend refuses to start, deliver or fail a stop until the office
+    // has loaded the van; say so here rather than letting the action bounce.
+    final vanNotLoaded =
+        ref.watch(stopRouteStatusProvider(order.id)) == 'planned';
     switch (order.status) {
-      case 'ready_for_dispatch' || 'assigned':
+      case 'assigned' || 'ready_for_dispatch' || 'out_for_delivery'
+          when vanNotLoaded:
+        return [
+          LpgBanner(
+            tone: LpgTone.warning,
+            icon: LpgIcons.cylinder,
+            title: 'Van not loaded yet',
+            message:
+                'The office hasn\'t finished loading your van for this route. '
+                'You can start this delivery once loading is complete.',
+            actionLabel: 'Check again',
+            onAction: () => ref.invalidate(activeRouteProvider),
+          ),
+        ];
+      case 'assigned':
+        return [
+          LpgBanner(
+            tone: LpgTone.info,
+            icon: LpgIcons.info,
+            title: 'Waiting for dispatch',
+            message:
+                'The office hasn\'t marked this order ready for dispatch yet. '
+                'You can start it once they do.',
+            actionLabel: 'Check again',
+            onAction: () => ref.invalidate(stopOrderProvider(orderId)),
+          ),
+        ];
+      case 'ready_for_dispatch':
         return [
           LpgButton(
             label: 'Start this delivery',

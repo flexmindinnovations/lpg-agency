@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
+import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/driver_position_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_destination_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
@@ -172,6 +173,69 @@ void main() {
         '/api/v1/orders/abcdef01aaaabbbb/depart',
       );
     });
+
+    for (final status in ['ready_for_dispatch', 'out_for_delivery']) {
+      testWidgets('a $status stop waits for the van to be loaded', (
+        tester,
+      ) async {
+        final container = ProviderContainer(
+          overrides: [
+            ..._mapOverrides,
+            stopOrderProvider.overrideWith(
+              (ref, id) async => _order(status: status),
+            ),
+            stopRouteStatusProvider.overrideWith((ref, id) => 'planned'),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container);
+
+        expect(find.text('Van not loaded yet'), findsOneWidget);
+        expect(find.text('Start this delivery'), findsNothing);
+        expect(find.text('Record delivery'), findsNothing);
+        expect(find.text('Delivery failed'), findsNothing);
+      });
+    }
+
+    testWidgets('a loaded van unlocks "Start this delivery"', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          stopOrderProvider.overrideWith(
+            (ref, id) async => _order(status: 'ready_for_dispatch'),
+          ),
+          stopRouteStatusProvider.overrideWith((ref, id) => 'loaded'),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(find.text('Van not loaded yet'), findsNothing);
+      expect(find.text('Start this delivery'), findsOneWidget);
+    });
+
+    testWidgets(
+      'an assigned stop waits for dispatch instead of offering Start',
+      (tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            ..._mapOverrides,
+            stopOrderProvider.overrideWith(
+              (ref, id) async => _order(status: 'assigned'),
+            ),
+            stopRouteStatusProvider.overrideWith((ref, id) => 'loaded'),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container);
+
+        expect(find.text('Waiting for dispatch'), findsOneWidget);
+        expect(find.text('Start this delivery'), findsNothing);
+      },
+    );
 
     testWidgets('the failed-delivery sheet queues an op with the reason', (
       tester,
