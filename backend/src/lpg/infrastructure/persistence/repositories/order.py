@@ -445,6 +445,20 @@ class SqlAlchemyProofOfDeliveryRepository:
         )
         self._uow.session.add(row)
         await self._uow.session.flush()
+        return self._to_entry(row)
+
+    async def get_by_order_id(self, order_id: uuid.UUID) -> ProofOfDeliveryEntry | None:
+        stmt = (
+            select(ProofOfDeliveryModel)
+            .where(ProofOfDeliveryModel.order_id == order_id)
+            .order_by(ProofOfDeliveryModel.recorded_at.desc())
+            .limit(1)
+        )
+        row = (await self._uow.session.execute(stmt)).scalar_one_or_none()
+        return self._to_entry(row) if row is not None else None
+
+    @staticmethod
+    def _to_entry(row: ProofOfDeliveryModel) -> ProofOfDeliveryEntry:
         return ProofOfDeliveryEntry(
             id=row.id,
             tenant_id=row.tenant_id,

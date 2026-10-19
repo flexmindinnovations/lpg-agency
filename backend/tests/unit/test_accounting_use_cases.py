@@ -30,6 +30,7 @@ from lpg.application.accounting.use_cases import (
     RequestRefundUseCase,
 )
 from lpg.application.common.errors import ConflictError, NotFoundError, ValidationError
+from lpg.application.order.ports import ProofOfDeliveryEntry
 from lpg.domain.accounting.cash_handover import CashHandover
 from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import Invoice, InvoiceLine
@@ -396,6 +397,138 @@ class TestGenerateInvoiceForOrderUseCase:
         invoice: Invoice = mock_invoice_repo.add.call_args[0][0]
         assert invoice.lines[0].subtotal == Decimal("0.0")
         assert invoice.lines[0].total_amount == Decimal("0.0")
+
+
+class TestDoorstepCollectionOnInvoice:
+    """Path B: what the driver collected at the door settles the invoice."""
+
+    @staticmethod
+    def _pod(method: str, amount: str) -> ProofOfDeliveryEntry:
+        now = datetime.now(UTC)
+        return ProofOfDeliveryEntry(
+            id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            order_id=uuid.uuid4(),
+            otp_verified_at=now,
+            signature_blob_ref=None,
+            photo_blob_ref=None,
+            gps_lat=Decimal("0"),
+            gps_lng=Decimal("0"),
+            payment_method=method,
+            amount_collected=Decimal(amount),
+            recorded_by=uuid.uuid4(),
+            recorded_at=now,
+        )
+
+    async def _generate(
+        self,
+        pod: ProofOfDeliveryEntry | None,
+        *,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+    ) -> Invoice:
+        # 2 x Rs.150 = Rs.300, no GST configured.
+        order = _make_order(
+            lines=[_make_order_line(quantity_delivered=2, unit_price=Decimal("150.00"))]
+        )
+        mock_order_repo.get_by_id = AsyncMock(return_value=order)
+        pod_reader = MagicMock()
+        pod_reader.get_by_order_id = AsyncMock(return_value=pod)
+        await GenerateInvoiceForOrderUseCase(
+            invoice_repository=mock_invoice_repo,
+            order_repository=mock_order_repo,
+            tenant_config_repository=mock_tenant_config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
+            proof_of_delivery_reader=pod_reader,
+        ).execute(tenant_id=uuid.uuid4(), order_id=order.id, delivered_at=datetime.now(UTC))
+        invoice: Invoice = mock_invoice_repo.add.call_args[0][0]
+        return invoice
+
+    @pytest.mark.parametrize("method", ["cash", "upi", "card", "online_gateway"])
+    async def test_full_doorstep_payment_marks_invoice_paid(
+        self,
+        method: str,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+    ) -> None:
+        invoice = await self._generate(
+            self._pod(method, "300.00"),
+            mock_invoice_repo=mock_invoice_repo,
+            mock_order_repo=mock_order_repo,
+            mock_tenant_config_repo=mock_tenant_config_repo,
+            mock_customer_repo=mock_customer_repo,
+            mock_invoice_number_sequence=mock_invoice_number_sequence,
+        )
+        assert invoice.status == "paid"
+        assert invoice.amount_paid == Decimal("300.00")
+        assert invoice.payments[0].method == method
+
+    async def test_part_payment_leaves_invoice_partially_paid(
+        self,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+    ) -> None:
+        invoice = await self._generate(
+            self._pod("cash", "100.00"),
+            mock_invoice_repo=mock_invoice_repo,
+            mock_order_repo=mock_order_repo,
+            mock_tenant_config_repo=mock_tenant_config_repo,
+            mock_customer_repo=mock_customer_repo,
+            mock_invoice_number_sequence=mock_invoice_number_sequence,
+        )
+        assert invoice.status == "partially_paid"
+        assert invoice.amount_paid == Decimal("100.00")
+
+    async def test_over_collection_is_capped_at_the_invoice_total(
+        self,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+    ) -> None:
+        invoice = await self._generate(
+            self._pod("cash", "500.00"),
+            mock_invoice_repo=mock_invoice_repo,
+            mock_order_repo=mock_order_repo,
+            mock_tenant_config_repo=mock_tenant_config_repo,
+            mock_customer_repo=mock_customer_repo,
+            mock_invoice_number_sequence=mock_invoice_number_sequence,
+        )
+        assert invoice.status == "paid"
+        assert invoice.amount_paid == Decimal("300.00")
+
+    @pytest.mark.parametrize(("method", "amount"), [("credit", "300.00"), ("cash", "0")])
+    async def test_credit_or_nothing_collected_leaves_invoice_issued(
+        self,
+        method: str,
+        amount: str,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_tenant_config_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+    ) -> None:
+        invoice = await self._generate(
+            self._pod(method, amount),
+            mock_invoice_repo=mock_invoice_repo,
+            mock_order_repo=mock_order_repo,
+            mock_tenant_config_repo=mock_tenant_config_repo,
+            mock_customer_repo=mock_customer_repo,
+            mock_invoice_number_sequence=mock_invoice_number_sequence,
+        )
+        assert invoice.status == "issued"
+        assert len(invoice.payments) == 0
 
 
 # ---------------------------------------------------------------------------

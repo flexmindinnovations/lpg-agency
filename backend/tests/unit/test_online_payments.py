@@ -352,6 +352,21 @@ class TestCreateOrderPaymentLink:
         assert payment.amount == Decimal("300.00")
         assert payment.invoice_id == invoice.id
 
+    async def test_no_link_once_driver_collection_settled_the_invoice(self) -> None:
+        order = _order(status="delivered")
+        invoice = _invoice(total=Decimal("500.00"), order_id=order.id)
+        invoice.record_payment(
+            payment_id=uuid.uuid4(),
+            method="cash",
+            amount=Decimal("500.00"),
+            collected_by=uuid.uuid4(),
+            collected_at=NOW,
+        )
+        gateway = _FakeGateway()
+        with pytest.raises(ConflictError):
+            await _create_use_case(_repos(order, invoice=invoice), gateway).execute(_command(order))
+        assert gateway.requests == []
+
     async def test_reuses_open_link_for_same_amount(self) -> None:
         order = _order()
         existing = _payment(

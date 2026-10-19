@@ -9,12 +9,18 @@ import '../../payments/presentation/pay_online_section.dart';
 import '../data/orders_provider.dart';
 import 'order_presentation.dart';
 
-/// Statuses a customer can no longer cancel from — already dispatched or
-/// resolved one way or another. `OrderApi.cancelOrder` still accepts a
-/// cancel request past this point (the backend answers with
-/// `pendingApproval: true` for a post-dispatch cancel per D-19), but there's
-/// no real path back from `delivered`/`cancelled`/`failed_delivery`.
-const _terminalStatuses = {'delivered', 'cancelled', 'failed_delivery'};
+/// Statuses a customer can still cancel from, mirroring the backend's
+/// order state machine (D-19): free before dispatch, a Manager-approved
+/// request once the driver is on the way (`pendingApproval: true`). Listed
+/// positively so a status the app doesn't know about (`closed`, or one
+/// added later) never offers Cancel.
+const _cancellableStatuses = {
+  'booked',
+  'confirmed',
+  'assigned',
+  'ready_for_dispatch',
+  'out_for_delivery',
+};
 
 /// Statuses in which the backend accepts an online prepayment: the price is
 /// fixed (`confirmed`) and the cylinders have not been delivered yet. After
@@ -60,7 +66,7 @@ class OrderDetailScreen extends ConsumerWidget {
           onRetry: () => ref.refresh(orderDetailProvider(orderId)),
         ),
         data: (order) {
-          final cancellable = !_terminalStatuses.contains(order.status);
+          final cancellable = _cancellableStatuses.contains(order.status);
           final sections = <Widget>[
             _SummaryCard(order: order),
             const LpgSectionHeader(title: 'Delivery address'),
@@ -120,6 +126,7 @@ class OrderDetailScreen extends ConsumerWidget {
             PayOnlineSection(
               orderId: orderId,
               canPay: _prepayableStatuses.contains(order.status),
+              onPaid: () => ref.invalidate(orderDetailProvider(orderId)),
             ),
             if (order.isTrackable)
               LpgButton(
@@ -140,12 +147,19 @@ class OrderDetailScreen extends ConsumerWidget {
             ],
           ];
 
-          return ListView(
-            padding: LpgSpacing.page,
-            children: [
-              for (var i = 0; i < sections.length; i++)
-                LpgFadeSlideIn(index: i, child: sections[i]),
-            ],
+          return RefreshIndicator(
+            onRefresh: () {
+              ref.invalidate(ordersProvider);
+              return ref.refresh(orderDetailProvider(orderId).future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: LpgSpacing.page,
+              children: [
+                for (var i = 0; i < sections.length; i++)
+                  LpgFadeSlideIn(index: i, child: sections[i]),
+              ],
+            ),
           );
         },
       ),

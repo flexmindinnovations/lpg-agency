@@ -41,7 +41,10 @@ async def _generate_invoice_for_delivered_order(
         SqlAlchemyOnlinePaymentRepository,
     )
     from lpg.infrastructure.persistence.repositories.customer import SqlAlchemyCustomerRepository
-    from lpg.infrastructure.persistence.repositories.order import SqlAlchemyOrderRepository
+    from lpg.infrastructure.persistence.repositories.order import (
+        SqlAlchemyOrderRepository,
+        SqlAlchemyProofOfDeliveryRepository,
+    )
     from lpg.infrastructure.persistence.repositories.reference_number import (
         SqlAlchemyReferenceNumberSequence,
     )
@@ -64,6 +67,7 @@ async def _generate_invoice_for_delivered_order(
                     uow, event.tenant_id, entity_type="invoice", prefix="INV", include_year=True
                 ),
                 online_payment_repository=SqlAlchemyOnlinePaymentRepository(uow),
+                proof_of_delivery_reader=SqlAlchemyProofOfDeliveryRepository(uow),
             )
             await use_case.execute(
                 tenant_id=event.tenant_id,

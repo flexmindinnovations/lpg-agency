@@ -65,6 +65,25 @@ void main() {
       expect(find.textContaining('CONFIRMED'), findsWidgets);
     });
 
+    testWidgets('offers Cancel Order while the order is still open', (
+      tester,
+    ) async {
+      await pumpScreen(tester, _screen(order: _order(status: 'confirmed')));
+
+      expect(find.text('Cancel Order'), findsOneWidget);
+    });
+
+    for (final status in ['delivered', 'closed', 'cancelled', 'draft']) {
+      testWidgets('never offers Cancel Order once the order is $status', (
+        tester,
+      ) async {
+        await pumpScreen(tester, _screen(order: _order(status: status)));
+
+        expect(find.text('Cancel Order'), findsNothing);
+        expect(find.text('Pay Online'), findsNothing);
+      });
+    }
+
     testWidgets('shows an error state with retry when the load fails', (
       tester,
     ) async {
