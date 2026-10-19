@@ -157,80 +157,26 @@ test.describe('Order to delivery — full workflow', () => {
     await page.locator('button[type="submit"]', { hasText: 'Assign' }).click();
     await expectOrderStatus(page, 'Assigned');
 
-    await page.getByRole('button', { name: 'Dispatch' }).click();
-    await expectOrderStatus(page, 'Ready For Dispatch');
-
     // ------------------------------------------------------------------
-    // Dispatch Board: Load Vehicle -> Start Route. Assigning a driver +
-    // vehicle to an order (above) finds an already-open (still "planned")
-    // Route for that driver+vehicle+day, or plans a new one — it does NOT
-    // reuse a route that's already moved past "planned" (loaded/in_progress
-    // routes are for a *different, earlier* batch of orders) — but
-    // `Route.record_proof_of_delivery` requires "in_progress" (409 "Cannot
-    // record POD: route is in status 'planned'." otherwise, domain/delivery/
-    // route.py), reachable only from here, never from the Order screen.
-    // Nothing in the Order Detail UI hints this second, separate step is
-    // still needed before a driver can actually deliver.
+    // Dispatch: assigning a driver + vehicle (above) put the order on a
+    // trip that isn't loaded yet. "Load & dispatch" on that trip loads the
+    // van from the godown with what its orders need and releases them to
+    // the driver in one step.
     //
-    // Because a second test run *today* can have an earlier run's route for
-    // the same driver+vehicle sitting in a later column, scope to the
-    // "Planned" column specifically — a plain `.route-card` search matching
-    // only on vehicle text could otherwise grab that older, already-past-
-    // planned route instead of the one this order's stop actually landed on.
+    // A second run *today* can leave an earlier run's trip for the same
+    // driver+vehicle in a later column, so scope to "Not loaded".
     // ------------------------------------------------------------------
     await page.goto(`${BASE_URL}/dispatch`);
-    const plannedColumn = page
+    const notLoadedColumn = page
       .locator('.route-column')
-      .filter({ has: page.locator('.route-column__header', { hasText: 'Planned' }) });
-    await plannedColumn.locator('.route-card', { hasText: VEHICLE_REG }).first().click();
-
-    // Not `.isVisible()` — it's a synchronous, non-retrying check, and right
-    // after the click above the drawer is still mid-open-animation with its
-    // `@if (selectedRoute(); as route)` content not yet rendered. A bare
-    // `.isVisible()` call here can resolve `false` before the button ever
-    // exists, silently skipping this entire block — which is exactly what
-    // produced the 409 "Cannot record POD: route is in status 'planned'."
-    // failures seen in earlier runs (Load Vehicle/Start Route never ran).
-    // `waitFor` actually waits, and the `.catch` keeps this conditional for
-    // the case where the route sensibly has no Load Vehicle step to do.
-    const hasLoadVehicle = await buttonWithLabel(page, 'Load Vehicle')
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (hasLoadVehicle) {
-      await buttonWithLabel(page, 'Load Vehicle').click();
-      await choosePrimeOption(page, '#load_warehouse', /Hyderabad Central/);
-      // No `id`/`inputId` on either control inside a load line — scope by
-      // the repeating row's class instead (same reasoning as
-      // `.line-row__qty` on the Create Booking form).
-      await page.locator('.load-line p-select').first().click();
-      await page.getByRole('option', { name: CYLINDER_TYPE }).click();
-      await page.locator('.load-line p-inputnumber input').first().fill('10');
-      await page.locator('button[type="submit"]', { hasText: 'Load' }).click();
-    }
-    const hasStartRoute = await page
-      .getByRole('button', { name: 'Start Route' })
-      .waitFor({ state: 'visible', timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (hasStartRoute) {
-      await page.getByRole('button', { name: 'Start Route' }).click();
-    }
-    // The Route Detail drawer never gets an explicit close — it's still
-    // open (modal mask genuinely up, not just animating) when the next step
-    // tries to interact with anything else, blocking every click after it
-    // for the rest of the test. Dismiss it before moving on.
-    //
-    // Not `keyboard.press('Escape')`: PrimeNG's drawer only honors Escape
-    // when its z-index matches the topmost overlay tracked by ZIndexUtils
-    // (`bindDocumentEscapeListener`, primeng-drawer.mjs) — if a toast from
-    // the just-clicked Start Route/Load button is still registered above
-    // it, Escape silently no-ops and the mask never clears, which is what
-    // produced the 180s "Account menu" timeout seen in earlier runs (300+
-    // retries against a mask that was never going away). The drawer's own
-    // close button calls `close()` directly, skipping that check.
-    await page.locator('.p-drawer-close-button').first().click();
+      .filter({ has: page.locator('.route-column__header', { hasText: 'Not loaded' }) });
+    await notLoadedColumn.locator('.route-card', { hasText: VEHICLE_REG }).first().click();
+    await buttonWithLabel(page, 'Load & dispatch').click();
+    await choosePrimeOption(page, '#trip_warehouse', /Hyderabad Central/);
+    await page.locator('button[type="submit"]', { hasText: 'dispatch' }).click();
     await page.locator('.p-drawer-mask').waitFor({ state: 'hidden', timeout: 10_000 });
+    await page.goto(orderUrl);
+    await expectOrderStatus(page, 'Ready For Dispatch');
 
     // ------------------------------------------------------------------
     // Driver: depart -> deliver (orders:deliver is driver-role-only, and

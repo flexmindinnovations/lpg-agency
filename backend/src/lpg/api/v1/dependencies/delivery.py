@@ -29,6 +29,7 @@ from lpg.application.delivery.use_cases import (
     AssignOrderToRouteUseCase,
     CompleteRouteReconciliationUseCase,
     ConfirmRouteLoadUseCase,
+    LoadAndDispatchRouteUseCase,
     LoadVehicleForRouteUseCase,
 )
 from lpg.application.inventory.ports import (
@@ -137,6 +138,30 @@ def get_load_vehicle_for_route_use_case(
     # gate don't all need updating.
     return LoadVehicleForRouteUseCase(
         route_repository,
+        inventory_location_repository,
+        unit_of_work,
+        weighment_record_repository,
+        tenant_config_repository,
+    )
+
+
+def get_load_and_dispatch_route_use_case(
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    inventory_location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    weighment_record_repository: Annotated[
+        WeighmentRecordRepository, Depends(get_weighment_record_repository)
+    ],
+    tenant_config_repository: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+) -> LoadAndDispatchRouteUseCase:
+    return LoadAndDispatchRouteUseCase(
+        route_repository,
+        order_repository,
         inventory_location_repository,
         unit_of_work,
         weighment_record_repository,

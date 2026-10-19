@@ -18,11 +18,13 @@ from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
+    ConflictError,
     DuplicateEmployeeCodeError,
     DuplicateRegistrationNumberError,
     DuplicateRouteAssignmentError,
     NotFoundError,
     RouteReconciliationPendingError,
+    ValidationError,
 )
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
 from lpg.domain.delivery.compliance_document import ComplianceDocument
@@ -486,6 +488,18 @@ class LoadVehicleForRouteCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class LoadAndDispatchRouteCommand:
+    route_id: uuid.UUID
+    warehouse_id: uuid.UUID
+    #: Confirmed orders to add to the trip; orders already on it are
+    #: always included.
+    order_ids: list[uuid.UUID]
+    #: Spare cylinders to carry beyond what the orders need.
+    extra_lines: list[LoadVehicleLine]
+    performed_by: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
 class CompleteRouteReconciliationCommand:
     route_id: uuid.UUID
 
@@ -640,6 +654,65 @@ class AssignOrderToRouteUseCase:
         return AssignOrderToRouteResult(route=route, order=order)
 
 
+class LoadOutWeighmentGate:
+    """Weighment Part 3 (MDG 2022 cl. 1.4(c)(d)), tenant opt-in only: a
+    tenant with `weighment_gate_enabled` set needs a passing 100% load-out
+    weighment recorded for this route for every cylinder type about to be
+    loaded. Skipped entirely when either repository is absent (see
+    `LoadVehicleForRouteUseCase`'s docstring).
+    """
+
+    def __init__(
+        self,
+        weighment_record_repository: WeighmentRecordRepository | None,
+        tenant_config_repository: TenantConfigurationRepository | None,
+    ) -> None:
+        self._weighment_repository = weighment_record_repository
+        self._tenant_config_repository = tenant_config_repository
+
+    async def _weighment_gate_enabled(self, tenant_id: uuid.UUID) -> bool:
+        from lpg.application.tenant.tenant_configuration import (
+            GetEffectiveTenantConfigurationQuery,
+            GetEffectiveTenantConfigurationUseCase,
+        )
+
+        if self._tenant_config_repository is None:
+            return False
+        config = await GetEffectiveTenantConfigurationUseCase(
+            self._tenant_config_repository
+        ).execute(
+            GetEffectiveTenantConfigurationQuery(
+                tenant_id=tenant_id, config_key="weighment_gate_enabled"
+            )
+        )
+        return bool(config.config_value) if config is not None else False
+
+    async def check(
+        self, tenant_id: uuid.UUID, route_id: uuid.UUID, cylinder_type_ids: set[uuid.UUID]
+    ) -> None:
+        from lpg.application.common.errors import WeighmentCheckRequiredError
+
+        if self._weighment_repository is None or self._tenant_config_repository is None:
+            return
+        if not await self._weighment_gate_enabled(tenant_id):
+            return
+
+        records = await self._weighment_repository.list_for_reference("route", route_id)
+        passing_cylinder_types = {
+            record.cylinder_type_id
+            for record in records
+            if record.context == "load_out_full_check" and record.result == "pass"
+        }
+        missing = cylinder_type_ids - passing_cylinder_types
+        if missing:
+            msg = (
+                f"{len(missing)} cylinder type(s) on this load manifest have no passing "
+                "100% weighment check recorded for this route yet — record one via "
+                "POST /routes/{route_id}/weighment before loading (MDG 2022 cl. 1.4(c)(d))."
+            )
+            raise WeighmentCheckRequiredError(msg, route_id=str(route_id))
+
+
 class LoadVehicleForRouteUseCase:
     """`planned -> loaded` (BR-12): moves stock warehouse -> vehicle and
     marks the route loaded, atomically. Reuses `InventoryLocation.unload()`/
@@ -678,57 +751,12 @@ class LoadVehicleForRouteUseCase:
         self._route_repository = route_repository
         self._inventory_repository = inventory_location_repository
         self._unit_of_work = unit_of_work
-        self._weighment_repository = weighment_record_repository
-        self._tenant_config_repository = tenant_config_repository
+        self._weighment_gate = LoadOutWeighmentGate(
+            weighment_record_repository, tenant_config_repository
+        )
         self._get_or_create_location = GetOrCreateInventoryLocationUseCase(
             inventory_location_repository
         )
-
-    async def _weighment_gate_enabled(self, tenant_id: uuid.UUID) -> bool:
-        from lpg.application.tenant.tenant_configuration import (
-            GetEffectiveTenantConfigurationQuery,
-            GetEffectiveTenantConfigurationUseCase,
-        )
-
-        if self._tenant_config_repository is None:
-            return False
-        config = await GetEffectiveTenantConfigurationUseCase(
-            self._tenant_config_repository
-        ).execute(
-            GetEffectiveTenantConfigurationQuery(
-                tenant_id=tenant_id, config_key="weighment_gate_enabled"
-            )
-        )
-        return bool(config.config_value) if config is not None else False
-
-    async def _require_passing_load_out_weighment(
-        self, tenant_id: uuid.UUID, route_id: uuid.UUID, lines: list[LoadVehicleLine]
-    ) -> None:
-        from lpg.application.common.errors import WeighmentCheckRequiredError
-
-        if self._weighment_repository is None or self._tenant_config_repository is None:
-            return
-        if not await self._weighment_gate_enabled(tenant_id):
-            return
-
-        records = await self._weighment_repository.list_for_reference("route", route_id)
-        passing_cylinder_types = {
-            record.cylinder_type_id
-            for record in records
-            if record.context == "load_out_full_check" and record.result == "pass"
-        }
-        missing = {
-            line.cylinder_type_id
-            for line in lines
-            if line.cylinder_type_id not in passing_cylinder_types
-        }
-        if missing:
-            msg = (
-                f"{len(missing)} cylinder type(s) on this load manifest have no passing "
-                "100% weighment check recorded for this route yet — record one via "
-                "POST /routes/{route_id}/weighment before loading (MDG 2022 cl. 1.4(c)(d))."
-            )
-            raise WeighmentCheckRequiredError(msg, route_id=str(route_id))
 
     async def execute(self, command: LoadVehicleForRouteCommand) -> Route:
         route = await self._route_repository.get_by_id(command.route_id)
@@ -736,7 +764,9 @@ class LoadVehicleForRouteUseCase:
             msg = f"No route visible with id {command.route_id}."
             raise NotFoundError(msg, route_id=str(command.route_id))
 
-        await self._require_passing_load_out_weighment(route.tenant_id, route.id, command.lines)
+        await self._weighment_gate.check(
+            route.tenant_id, route.id, {line.cylinder_type_id for line in command.lines}
+        )
 
         warehouse_location = await self._get_or_create_location.execute(
             tenant_id=route.tenant_id,
@@ -768,6 +798,184 @@ class LoadVehicleForRouteUseCase:
         await self._route_repository.save(route)
         await self._unit_of_work.commit()
         return route
+
+
+class LoadAndDispatchRouteUseCase:
+    """The trip sheet in one step, on a `planned` or `loaded` route: adds the
+    given confirmed orders, loads the van from the warehouse with whatever
+    the orders need beyond the van's free filled stock (plus any spares),
+    reserves every order's cylinders, and marks them `ready_for_dispatch`
+    so the driver can start. One transaction — nothing moves if any part
+    fails (stock short, an order already on another route, a weighment
+    check missing).
+
+    On a `planned` route this is the `-> loaded` transition (the driver's
+    `route_ready` push) and the manifest is what was loaded. On a `loaded`
+    route it is a top-up: the extra stock is added to the manifest and the
+    driver's earlier load confirmation is cleared. Orders that were put on
+    the route before its van was loaded reserved nothing (D-08); their
+    backorder is reserved here, so the driver can deliver them.
+    """
+
+    def __init__(
+        self,
+        route_repository: RouteRepository,
+        order_repository: OrderRepository,
+        inventory_location_repository: InventoryLocationRepository,
+        unit_of_work: UnitOfWork,
+        weighment_record_repository: WeighmentRecordRepository | None = None,
+        tenant_config_repository: TenantConfigurationRepository | None = None,
+    ) -> None:
+        self._route_repository = route_repository
+        self._order_repository = order_repository
+        self._inventory_repository = inventory_location_repository
+        self._unit_of_work = unit_of_work
+        self._weighment_gate = LoadOutWeighmentGate(
+            weighment_record_repository, tenant_config_repository
+        )
+        self._get_or_create_location = GetOrCreateInventoryLocationUseCase(
+            inventory_location_repository
+        )
+
+    async def execute(self, command: LoadAndDispatchRouteCommand) -> Route:
+        route = await self._route_repository.get_by_id(command.route_id)
+        if route is None:
+            msg = f"No route visible with id {command.route_id}."
+            raise NotFoundError(msg, route_id=str(command.route_id))
+        if route.status not in ("planned", "loaded"):
+            msg = "Only a trip that hasn't left yet can be loaded and dispatched."
+            raise ConflictError(msg, route_id=str(route.id), status=route.status)
+
+        waiting = await self._orders_waiting_on_route(route)
+        new_orders = await self._new_orders(route, command.order_ids)
+        if not waiting and not new_orders:
+            msg = "Add at least one order to the trip."
+            raise ValidationError(msg, route_id=str(route.id))
+
+        needed: dict[uuid.UUID, int] = {}
+        for order in waiting:
+            for line in order.lines:
+                _add(needed, line.cylinder_type_id, line.quantity_pending)
+        for order in new_orders:
+            for line in order.lines:
+                _add(needed, line.cylinder_type_id, line.quantity_ordered)
+
+        vehicle_location = await self._get_or_create_location.execute(
+            tenant_id=route.tenant_id, location_type="vehicle", location_ref_id=route.vehicle_id
+        )
+        to_load: dict[uuid.UUID, int] = {}
+        for cylinder_type_id, quantity in needed.items():
+            shortfall = quantity - vehicle_location.balance_of(cylinder_type_id, "filled")
+            if shortfall > 0:
+                _add(to_load, cylinder_type_id, shortfall)
+        for extra in command.extra_lines:
+            _add(to_load, extra.cylinder_type_id, extra.quantity)
+        to_load = {ct: quantity for ct, quantity in to_load.items() if quantity > 0}
+
+        warehouse_location = None
+        if to_load:
+            await self._weighment_gate.check(route.tenant_id, route.id, set(to_load))
+            warehouse_location = await self._get_or_create_location.execute(
+                tenant_id=route.tenant_id,
+                location_type="warehouse",
+                location_ref_id=command.warehouse_id,
+            )
+            for cylinder_type_id, quantity in to_load.items():
+                warehouse_location.unload(
+                    cylinder_type_id, "filled", quantity, performed_by=command.performed_by
+                )
+                vehicle_location.load(
+                    cylinder_type_id, "filled", quantity, performed_by=command.performed_by
+                )
+
+        manifest = [
+            LoadedLine(cylinder_type_id=ct, quantity=quantity) for ct, quantity in to_load.items()
+        ]
+        if route.status == "planned":
+            route.change_status("loaded")
+            route.record_load_manifest(manifest)
+        elif manifest:
+            route.add_to_load_manifest(manifest)
+
+        for order in waiting:
+            reservations = {
+                line.cylinder_type_id: line.quantity_pending
+                for line in order.lines
+                if line.quantity_pending > 0
+            }
+            for cylinder_type_id, quantity in reservations.items():
+                vehicle_location.reserve(
+                    cylinder_type_id,
+                    quantity,
+                    performed_by=command.performed_by,
+                    reference_order_id=order.id,
+                )
+            if reservations:
+                order.reserve_backorder(reservations)
+            if order.status == "assigned":
+                order.dispatch(changed_by=command.performed_by)
+
+        for order in new_orders:
+            for line in order.lines:
+                vehicle_location.reserve(
+                    line.cylinder_type_id,
+                    line.quantity_ordered,
+                    performed_by=command.performed_by,
+                    reference_order_id=order.id,
+                )
+            route.assign_order(order.id)
+            stop = next(s for s in route.stops if s.order_id == order.id)
+            order.assign(
+                route_stop_id=stop.id,
+                reservations={line.cylinder_type_id: line.quantity_ordered for line in order.lines},
+                backorders={},
+                changed_by=command.performed_by,
+            )
+            order.dispatch(changed_by=command.performed_by)
+
+        if warehouse_location is not None:
+            await self._inventory_repository.save(warehouse_location)
+        await self._inventory_repository.save(vehicle_location)
+        await self._route_repository.save(route)
+        for order in [*waiting, *new_orders]:
+            await self._order_repository.save(order)
+        await self._unit_of_work.commit()
+        return route
+
+    async def _orders_waiting_on_route(self, route: Route) -> list[Order]:
+        """Orders already on the route that haven't left yet. Released ones
+        (`ready_for_dispatch`) are included too: under the old board flow
+        they could be released before the van was loaded, with nothing
+        reserved.
+        """
+        orders = []
+        for stop in route.stops:
+            if stop.status != "pending":
+                continue
+            order = await self._order_repository.get_by_id(stop.order_id)
+            if order is not None and order.status in ("assigned", "ready_for_dispatch"):
+                orders.append(order)
+        return orders
+
+    async def _new_orders(self, route: Route, order_ids: list[uuid.UUID]) -> list[Order]:
+        on_route = {stop.order_id for stop in route.stops}
+        orders = []
+        for order_id in dict.fromkeys(order_ids):
+            if order_id in on_route:
+                continue
+            order = await self._order_repository.get_by_id(order_id)
+            if order is None:
+                msg = f"No order visible with id {order_id}."
+                raise NotFoundError(msg, order_id=str(order_id))
+            if await self._route_repository.count_active_routes_for_order(order.id) > 0:
+                msg = f"Order {order.order_number or order.id} is already on another active trip."
+                raise DuplicateRouteAssignmentError(msg, order_id=str(order.id))
+            orders.append(order)
+        return orders
+
+
+def _add(totals: dict[uuid.UUID, int], cylinder_type_id: uuid.UUID, quantity: int) -> None:
+    totals[cylinder_type_id] = totals.get(cylinder_type_id, 0) + quantity
 
 
 class ConfirmRouteLoadUseCase:

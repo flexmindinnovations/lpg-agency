@@ -2,8 +2,10 @@
   <div class="page-header">
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
-        <h1 class="page-title">Dispatch Board</h1>
-        <p class="page-subtitle">Plan routes, load vehicles, and assign orders to drivers.</p>
+        <h1 class="page-title">Dispatch</h1>
+        <p class="page-subtitle">
+          Make a trip for a driver: pick the orders, load the van from the godown, and send it out.
+        </p>
       </div>
     </ng-template>
   </div>
@@ -46,9 +48,9 @@
       </lpg-form-field>
     </div>
     <div class="data-toolbar__actions">
-      <button #planTriggerEl pButton type="button" (click)="openPlanModal()">
+      <button #newTripTriggerEl pButton type="button" (click)="openNewTrip()">
         <i class="pi pi-plus"></i>
-        <span>Plan Route</span>
+        <span>New trip</span>
       </button>
     </div>
   </div>
@@ -81,11 +83,11 @@
             </div>
             <div class="route-card__row">
               <i class="pi pi-map-marker"></i>
-              <span>{{ route.stops?.length ?? 0 }} stop(s)</span>
+              <span>{{ route.stops?.length ?? 0 }} order(s)</span>
             </div>
           </button>
           } @empty {
-          <p class="empty-hint">No routes.</p>
+          <p class="empty-hint">No trips.</p>
           }
         </div>
       </div>
@@ -93,161 +95,262 @@
     </div>
 
     <aside class="unassigned-panel">
-      <h2 class="section-title">Unassigned Orders</h2>
+      <h2 class="section-title">Orders waiting for a trip</h2>
       <div class="unassigned-list">
         @for (order of unassignedOrders(); track order.id) {
         <div class="unassigned-card">
           <div class="unassigned-card__info">
             <span class="unassigned-card__id" [pTooltip]="order.id" tooltipPosition="top"
-              >{{ order.order_number ?? order.id }}</span
+              >{{ order.order_number ?? shortId(order.id) }}</span
             >
             <span class="unassigned-card__addr">{{ order.delivery_address.address_line }}</span>
+            <span class="unassigned-card__addr">{{ orderCylinders(order) }}</span>
           </div>
           <button
             pButton
             type="button"
             severity="secondary"
             size="small"
-            [disabled]="assignableRoutes().length === 0"
-            (click)="openAssignOrderDrawer(order)"
+            (click)="openNewTrip(order)"
           >
-            Assign
+            New trip
           </button>
         </div>
         } @empty {
-        <p class="empty-hint">All confirmed orders are assigned to a route.</p>
+        <p class="empty-hint">Every confirmed order is on a trip.</p>
         }
       </div>
     </aside>
   </div>
 </div>
 
-<!-- Plan Route Drawer -->
+<!-- Trip Sheet Drawer -->
 <p-drawer
-  [(visible)]="showPlanModal"
+  [(visible)]="showTripSheet"
   position="right"
   [modal]="true"
-  [style]="{ width: '100%', maxWidth: '28rem' }"
-  header="Plan Delivery Route"
-  (onHide)="planTrigger()?.nativeElement?.focus()"
+  styleClass="!w-full md:!w-[44rem]"
+  [header]="tripRoute() ? 'Load & dispatch trip' : 'New trip'"
+  (onHide)="newTripTrigger()?.nativeElement?.focus()"
 >
-  <form [formGroup]="planForm" (ngSubmit)="onSubmitPlan()" class="dialog-form">
+  <form (ngSubmit)="onSubmitTrip()" class="dialog-form">
     <div class="dialog-form__fields">
-      <lpg-form-field
-        label="Branch"
-        for="plan_branch"
-        [control]="planForm.controls.branch_id"
-        [messages]="fieldMessages.branch_id"
-      >
-        <p-select
-          inputId="plan_branch"
-          formControlName="branch_id"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-      </lpg-form-field>
+      @if (tripError(); as msg) {
+      <p-message severity="error">{{ msg }}</p-message>
+      }
 
-      <lpg-form-field
-        label="Date"
-        for="date"
-        [control]="planForm.controls.date"
-        [messages]="fieldMessages.date"
-      >
-        <p-datepicker
-          inputId="date"
-          formControlName="date"
-          iconDisplay="input"
-          [showIcon]="true"
-          [showOnFocus]="false"
-          dateFormat="yy-mm-dd"
-          appendTo="body"
-          [fluid]="true"
-        />
-      </lpg-form-field>
-
-      <lpg-form-field
-        label="Driver"
-        for="driver_id"
-        [control]="planForm.controls.driver_id"
-        [messages]="fieldMessages.driver_id"
-      >
-        <p-select
-          inputId="driver_id"
-          formControlName="driver_id"
-          [options]="driverOptions()"
-          optionLabel="label"
-          optionValue="id"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-      </lpg-form-field>
-
-      <lpg-form-field
-        label="Vehicle"
-        for="vehicle_id"
-        [control]="planForm.controls.vehicle_id"
-        [messages]="fieldMessages.vehicle_id"
-      >
-        <p-select
-          inputId="vehicle_id"
-          formControlName="vehicle_id"
-          [options]="vehicleOptions()"
-          optionLabel="label"
-          optionValue="id"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-      </lpg-form-field>
-
-      @if (selectedVehicle(); as v) {
-      <div class="vehicle-summary">
-        <div class="detail-grid">
-          <div class="detail-field">
-            <span class="detail-field__label">Name</span>
-            <span>{{ v.make }} {{ v.model }}</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-field__label">Number</span>
-            <span>{{ v.registration_number }}</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-field__label">Capacity</span>
-            <span>{{ v.capacity_units }} cylinders</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-field__label">Ownership</span>
-            <span>{{ v.ownership_type | titlecase }}</span>
-          </div>
-          <div class="detail-field">
-            <span class="detail-field__label">Status</span>
-            <span>{{ v.status | titlecase }}</span>
-          </div>
+      <h3 class="section-title">1. Driver and van</h3>
+      @if (tripRoute(); as route) {
+      <div class="detail-grid">
+        <div class="detail-field">
+          <span class="detail-field__label">Driver</span>
+          <span>{{ driverNameById().get(route.driver_id) ?? route.driver_id }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Vehicle</span>
+          <span>{{ vehicleNameById().get(route.vehicle_id) ?? route.vehicle_id }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Date</span>
+          <span>{{ route.date | date: 'mediumDate' }}</span>
         </div>
       </div>
+      } @else {
+      <div class="trip-grid">
+        <lpg-form-field label="Driver" for="trip_driver">
+          <p-select
+            inputId="trip_driver"
+            name="trip_driver"
+            optionDisabled="disabled"
+            [options]="driverOptions()"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Select a driver"
+            [filter]="true"
+            [ngModel]="tripDriverId()"
+            (ngModelChange)="onTripDriverChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+        </lpg-form-field>
+        <lpg-form-field label="Vehicle" for="trip_vehicle">
+          <p-select
+            inputId="trip_vehicle"
+            name="trip_vehicle"
+            optionDisabled="disabled"
+            [options]="vehicleOptions()"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Select a vehicle"
+            [filter]="true"
+            [ngModel]="tripVehicleId()"
+            (ngModelChange)="onTripVehicleChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+        </lpg-form-field>
+        <lpg-form-field label="Date" for="trip_date">
+          <p-datepicker
+            inputId="trip_date"
+            name="trip_date"
+            iconDisplay="input"
+            [showIcon]="true"
+            [showOnFocus]="false"
+            dateFormat="yy-mm-dd"
+            appendTo="body"
+            [ngModel]="tripDate()"
+            (ngModelChange)="tripDate.set($event ?? tripDate())"
+            [fluid]="true"
+          />
+        </lpg-form-field>
+        @if (branches().length > 1) {
+        <lpg-form-field label="Branch" for="trip_branch">
+          <p-select
+            inputId="trip_branch"
+            name="trip_branch"
+            [options]="branches()"
+            optionLabel="name"
+            optionValue="id"
+            [ngModel]="tripBranchId()"
+            (ngModelChange)="onTripBranchChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+        </lpg-form-field>
+        }
+      </div>
+      }
+
+      <h3 class="section-title">2. Orders on this trip</h3>
+      @if (tripWaitingOrders().length > 0) {
+      <p class="empty-hint">
+        Already on this trip and going out with it: @for (order of tripWaitingOrders(); track
+        order.id) {<strong>{{ order.order_number ?? shortId(order.id) }}</strong>@if (!$last) {, } }
+      </p>
+      }
+      <div class="trip-orders">
+        @if (tripCandidateOrders().length > 0) {
+        <div class="trip-order trip-order--all">
+          <p-checkbox
+            [binary]="true"
+            inputId="trip_all"
+            name="trip_all"
+            [ngModel]="tripOrderIds().size === tripCandidateOrders().length"
+            (ngModelChange)="toggleAllTripOrders($event)"
+          />
+          <label for="trip_all">Select all ({{ tripCandidateOrders().length }})</label>
+        </div>
+        } @for (order of tripCandidateOrders(); track order.id) {
+        <div class="trip-order">
+          <p-checkbox
+            [binary]="true"
+            [inputId]="'trip_order_' + order.id"
+            [name]="'trip_order_' + order.id"
+            [ngModel]="isTripOrderPicked(order.id)"
+            (ngModelChange)="toggleTripOrder(order.id, $event)"
+          />
+          <label class="trip-order__info" [for]="'trip_order_' + order.id">
+            <span class="trip-order__number">{{ order.order_number ?? shortId(order.id) }}</span>
+            <span class="trip-order__addr">{{ order.delivery_address.address_line }}</span>
+          </label>
+          <span class="trip-order__qty">{{ orderCylinders(order) }}</span>
+        </div>
+        } @empty {
+        <p class="empty-hint trip-orders__empty">
+          No confirmed orders for this branch are waiting for a trip.
+        </p>
+        }
+      </div>
+
+      <h3 class="section-title">3. Load the van</h3>
+      <lpg-form-field label="Load from godown" for="trip_warehouse">
+        <p-select
+          inputId="trip_warehouse"
+          name="trip_warehouse"
+          [options]="tripWarehouseOptions()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select a godown"
+          [ngModel]="tripWarehouseId()"
+          (ngModelChange)="onTripWarehouseChange($event)"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+      </lpg-form-field>
+      <div class="load-sheet-wrap">
+        <table class="load-sheet">
+          <thead>
+            <tr>
+              <th scope="col">Cylinder</th>
+              <th scope="col">For orders</th>
+              <th scope="col">Already on van</th>
+              <th scope="col">Spare</th>
+              <th scope="col">To load</th>
+              <th scope="col">In godown</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of loadSheet(); track row.id) {
+            <tr [class.load-sheet__row--short]="row.short">
+              <th scope="row">{{ row.name }}</th>
+              <td>{{ row.forOrders }}</td>
+              <td>{{ row.onVan }}</td>
+              <td>
+                <p-inputnumber
+                  [inputId]="'trip_spare_' + row.id"
+                  [name]="'trip_spare_' + row.id"
+                  [ariaLabel]="'Spare ' + row.name"
+                  [min]="0"
+                  inputStyleClass="load-sheet__spare"
+                  [ngModel]="row.spare"
+                  (ngModelChange)="setTripSpare(row.id, $event)"
+                />
+              </td>
+              <td><strong>{{ row.toLoad }}</strong></td>
+              <td>
+                {{ row.inGodown ?? '—' }} @if (row.short) {
+                <span class="load-sheet__short"
+                  >Short by {{ row.toLoad - (row.inGodown ?? 0) }}</span
+                >
+                }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (tripShort()) {
+      <p-message severity="error">
+        The godown doesn't have enough filled cylinders. Remove some orders or spares, or receive
+        stock first.
+      </p-message>
+      } @if (tripOverCapacity()) {
+      <p-message severity="warn">
+        {{ tripTotals().onVanAfter }} cylinders is more than this van carries ({{
+        tripVehicle()?.capacity_units }}).
+      </p-message>
       }
     </div>
 
     <div class="modal-actions">
-      <button pButton type="button" severity="secondary" (click)="showPlanModal.set(false)">
+      <button pButton type="button" severity="secondary" (click)="showTripSheet.set(false)">
         Cancel
       </button>
-      <button pButton type="submit" [disabled]="loading() || planForm.invalid">
-        @if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Plan Route
+      <button pButton type="submit" [disabled]="!canSubmitTrip()">
+        @if (loading()) {<i class="pi pi-spin pi-spinner"></i> } Load {{ tripTotals().toLoad }}
+        &amp; dispatch {{ tripOrderCount() }} order(s)
       </button>
     </div>
   </form>
 </p-drawer>
 
-<!-- Route Detail Drawer -->
+<!-- Trip Detail Drawer -->
 <p-drawer
   [(visible)]="showRouteDetail"
   position="right"
   [modal]="true"
   styleClass="!w-full md:!w-[36rem]"
-  header="Route Detail"
+  header="Trip"
 >
   @if (selectedRoute(); as route) {
   <div class="route-detail">
@@ -270,11 +373,17 @@
       </div>
     </div>
 
+    @if (route.status === 'planned') {
+    <p-message severity="info">
+      This trip's van isn't loaded yet, so the driver can't start. Use Load &amp; dispatch.
+    </p-message>
+    }
+
     <div class="detail-actions">
-      @if (canLoadRoute()) {
-      <button pButton type="button" severity="secondary" (click)="openLoadForm()">
-        <i class="pi pi-inbox"></i>
-        <span>Load Vehicle</span>
+      @if (canLoadAndDispatch()) {
+      <button pButton type="button" (click)="openTripSheetFor(route)">
+        <i class="pi pi-send"></i>
+        <span>Load &amp; dispatch</span>
       </button>
       <button
         *lpgHasPermission="'weighment:record'"
@@ -288,26 +397,27 @@
         <i class="pi pi-verified"></i>
         <span>Log Load-Out Weighment</span>
       </button>
-      } @if (canStartRoute()) {
-      <button pButton type="button" [disabled]="loading()" (click)="onStartRoute()">
-        <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-play'"></i>
-        <span>Start Route</span>
+      } @if (canAddOrders()) {
+      <button pButton type="button" severity="secondary" (click)="openTripSheetFor(route)">
+        <i class="pi pi-plus"></i>
+        <span>Add orders</span>
       </button>
       } @if (canCancelRoute()) {
       <button
         pButton
         type="button"
         severity="danger"
+        [text]="true"
         [disabled]="loading()"
         (click)="onCancelRoute()"
       >
         <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-times'"></i>
-        <span>Cancel Route</span>
+        <span>Cancel trip</span>
       </button>
       } @if (canReconcileRoute()) {
       <button pButton type="button" [disabled]="loading()" (click)="onReconcileRoute()">
         <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check-square'"></i>
-        <span>Reconcile</span>
+        <span>Settle trip</span>
       </button>
       } @if (canDeclareCashHandover()) {
       <button
@@ -324,88 +434,35 @@
       }
     </div>
 
-    @if (route.status === 'completed') {
+    @if ((route.loaded_lines ?? []).length > 0) {
+    <div class="load-form">
+      <h3 class="section-title">Loaded from godown</h3>
+      <ul class="weighment-record-list">
+        @for (line of route.loaded_lines; track line.cylinder_type_id) {
+        <li>
+          <span>{{ cylinderTypeName(line.cylinder_type_id) }}</span>
+          <span>{{ line.quantity }}</span>
+        </li>
+        }
+      </ul>
+      <span class="empty-hint">
+        @if (route.load_confirmed_at) { Driver checked the van {{ route.load_confirmed_at | date:
+        'shortTime' }}. } @else { The driver hasn't checked the van yet. }
+      </span>
+    </div>
+    } @if (route.status === 'completed') {
     <p-message severity="info">
-      <span>Reconciling requires an approved reconciliation record for this vehicle.</span>
+      <span>Settling needs an approved reconciliation for this vehicle.</span>
       <button pButton type="button" text (click)="goToInventoryReconciliation()">
         Go to Inventory
       </button>
     </p-message>
-    } @if (showLoadForm()) {
-    <div class="load-form">
-      <h3 class="section-title">Load Vehicle</h3>
-      <form
-        [formGroup]="loadForm"
-        (ngSubmit)="onSubmitLoad()"
-        class="dialog-form dialog-form--inline"
-      >
-        <div class="dialog-form__fields">
-          <lpg-form-field
-            label="Warehouse"
-            for="load_warehouse"
-            [control]="loadForm.controls.warehouse_id"
-            [messages]="fieldMessages.warehouse_id"
-          >
-            <p-select
-              inputId="load_warehouse"
-              formControlName="warehouse_id"
-              [options]="warehouses()"
-              optionLabel="name"
-              optionValue="id"
-              [fluid]="true"
-              [appendTo]="'body'"
-            />
-          </lpg-form-field>
-
-          <span class="load-form__section-label">Cylinder Lines</span>
-          <div formArrayName="lines" class="load-lines">
-            @for (line of loadLines.controls; track $index) {
-            <div [formGroupName]="$index" class="load-line">
-              <p-select
-                formControlName="cylinder_type_id"
-                [options]="cylinderTypes()"
-                optionLabel="name"
-                optionValue="id"
-                placeholder="Cylinder type"
-                [fluid]="true"
-                [appendTo]="'body'"
-              />
-              <p-inputnumber formControlName="quantity" [min]="1" [fluid]="true" />
-              <button
-                pButton
-                type="button"
-                text
-                severity="danger"
-                iconOnly
-                aria-label="Remove line"
-                [disabled]="loadLines.length <= 1"
-                (click)="removeLoadLine($index)"
-              >
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-            }
-          </div>
-          <button pButton type="button" text class="add-line-button" (click)="addLoadLine()">
-            <i class="pi pi-plus"></i>
-            <span>Add Line</span>
-          </button>
-        </div>
-
-        <div class="modal-actions">
-          <button pButton type="button" severity="secondary" (click)="showLoadForm.set(false)">
-            Cancel
-          </button>
-          <button pButton type="submit" [disabled]="loadForm.invalid || loading()">Load</button>
-        </div>
-      </form>
-    </div>
     } @if (showLoadOutWeighmentForm()) {
     <div class="load-form">
       <h3 class="section-title">Log Load-Out Weighment</h3>
       <p-message severity="info">
         MDG 2022 cl. 1.4(c)(d) — 100% of cylinders on the manifest, weight-checked before dispatch.
-        Log one record per cylinder type; this only blocks loading for tenants that have opted into
+        Log one record per cylinder type; this only blocks loading for agencies that have opted into
         the weighment gate.
       </p-message>
 
@@ -569,7 +626,7 @@
     }
 
     <div class="stops-header">
-      <h3 class="section-title">Stops</h3>
+      <h3 class="section-title">Orders</h3>
       <div class="stops-header__actions">
         @if (canOptimizeSelectedRoute()) {
         <button
@@ -585,50 +642,9 @@
           <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-sparkles'"></i>
           <span>Optimise stop order</span>
         </button>
-        } @if (canAddStopToSelectedRoute()) {
-        <button pButton type="button" text (click)="openAddStopForm()">
-          <i class="pi pi-plus"></i>
-          <span>Add Stop</span>
-        </button>
         }
       </div>
     </div>
-
-    @if (showAddStopForm()) {
-    <div class="load-form">
-      <form
-        [formGroup]="addStopForm"
-        (ngSubmit)="onSubmitAddStop()"
-        class="dialog-form dialog-form--inline"
-      >
-        <div class="dialog-form__fields">
-          <lpg-form-field
-            label="Order"
-            for="add_stop_order"
-            [control]="addStopForm.controls.order_id"
-            [messages]="fieldMessages.order_id"
-            [hint]="unassignedOrderOptions().length === 0 ? 'No unassigned orders are available right now.' : ''"
-          >
-            <p-select
-              inputId="add_stop_order"
-              formControlName="order_id"
-              [options]="unassignedOrderOptions()"
-              optionLabel="label"
-              optionValue="id"
-              [fluid]="true"
-              [appendTo]="'body'"
-            />
-          </lpg-form-field>
-        </div>
-        <div class="modal-actions">
-          <button pButton type="button" severity="secondary" (click)="showAddStopForm.set(false)">
-            Cancel
-          </button>
-          <button pButton type="submit" [disabled]="addStopForm.invalid || loading()">Add</button>
-        </div>
-      </form>
-    </div>
-    }
 
     <div class="stops-list">
       @for (stop of route.stops ?? []; track stop.id) {
@@ -636,11 +652,16 @@
         <div class="stop-card__row">
           <span class="stop-card__seq">#{{ stop.sequence_number }}</span>
           <span class="stop-card__order" [pTooltip]="stop.order_id" tooltipPosition="top"
-            >Order {{ orderNumberById().get(stop.order_id) ?? shortId(stop.order_id) }}</span
+            >Order {{ orderById().get(stop.order_id)?.order_number ?? shortId(stop.order_id)
+            }}</span
           >
-          <p-tag [severity]="statusSeverity(stop.status)" [value]="statusLabel(stop.status)" />
+          <p-tag [severity]="statusSeverity(stop.status)" [value]="stopStatusLabel(stop.status)" />
         </div>
-        @if (stop.failure_reason) {
+        @if (orderById().get(stop.order_id); as order) {
+        <span class="stop-card__failure">
+          {{ order.delivery_address.address_line }} · {{ orderCylinders(order) }}
+        </span>
+        } @if (stop.failure_reason) {
         <span class="stop-card__failure">{{ stop.failure_reason }}</span>
         } @if (stop.proof_of_delivery; as pod) {
         <div class="stop-card__pod">
@@ -655,59 +676,11 @@
         }
       </div>
       } @empty {
-      <p class="empty-hint">No stops on this route yet.</p>
+      <p class="empty-hint">No orders on this trip yet.</p>
       }
     </div>
   </div>
   } @else {
-  <p class="empty-hint">Loading route…</p>
-  }
-</p-drawer>
-
-<!-- Assign Order to Route Drawer -->
-<p-drawer
-  [(visible)]="showAssignOrderDrawer"
-  position="right"
-  [modal]="true"
-  [style]="{ width: '100%', maxWidth: '28rem' }"
-  header="Assign Order to Route"
->
-  @if (selectedOrderForAssign(); as order) {
-  <form [formGroup]="assignOrderForm" (ngSubmit)="onSubmitAssignOrder()" class="dialog-form">
-    <div class="dialog-form__fields">
-      <p class="assign-order-summary">
-        Order
-        <strong [pTooltip]="order.id" tooltipPosition="top"
-          >{{ order.order_number ?? order.id }}</strong
-        >
-        — {{ order.delivery_address.address_line }}
-      </p>
-      <lpg-form-field
-        label="Target route"
-        for="assign_route"
-        [control]="assignOrderForm.controls.route_id"
-        [messages]="fieldMessages.route_id"
-        [hint]="assignableRoutes().length === 0 ? 'No planned or loaded routes are available. Plan a route first.' : ''"
-      >
-        <p-select
-          inputId="assign_route"
-          formControlName="route_id"
-          [options]="assignableRouteOptions()"
-          optionLabel="label"
-          optionValue="id"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-      </lpg-form-field>
-    </div>
-    <div class="modal-actions">
-      <button pButton type="button" severity="secondary" (click)="showAssignOrderDrawer.set(false)">
-        Cancel
-      </button>
-      <button pButton type="submit" [disabled]="assignOrderForm.invalid || loading()">
-        Assign
-      </button>
-    </div>
-  </form>
+  <p class="empty-hint">Loading trip…</p>
   }
 </p-drawer>

@@ -81,7 +81,6 @@
 .unassigned-panel,
 .unassigned-list,
 .route-detail,
-.load-lines,
 .stops-list {
   display: flex;
   flex-direction: column;
@@ -115,7 +114,6 @@
 }
 
 .route-card__date,
-.load-form__section-label,
 .stop-card__seq {
   font-weight: var(--typography-label-font-weight);
 }
@@ -137,8 +135,7 @@
   min-inline-size: 0;
 }
 
-.unassigned-card__addr,
-.assign-order-summary {
+.unassigned-card__addr {
   font-size: var(--typography-body-small-font-size);
   margin: 0;
 }
@@ -153,19 +150,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--spacing-md);
-}
-
-.vehicle-summary {
-  border: var(--border-width) solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface-raised);
-  padding: var(--spacing-sm) var(--spacing-md);
-  margin-block-start: var(--spacing-xs);
-}
-
-.vehicle-summary .detail-grid {
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-  gap: var(--spacing-sm);
 }
 
 .detail-field {
@@ -233,19 +217,6 @@
   font-size: var(--typography-secondary-font-size);
 }
 
-.load-line {
-  display: grid;
-  grid-template-columns: 1fr 8rem auto;
-  /* --spacing-xs (4px) is too tight for the cylinder-type select's focus
-     ring, which visibly overlapped the quantity input next to it. */
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-
-.add-line-button {
-  align-self: flex-end;
-}
-
 .stop-card {
   display: flex;
   flex-direction: column;
@@ -260,4 +231,107 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+}
+
+.trip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.trip-orders {
+  display: flex;
+  flex-direction: column;
+  max-block-size: 18rem;
+  overflow-y: auto;
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.trip-order {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding: var(--spacing-sm);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+}
+
+.trip-order label {
+  cursor: pointer;
+}
+
+.trip-orders__empty {
+  padding: var(--spacing-sm);
+}
+
+.trip-order:last-child {
+  border-block-end: none;
+}
+
+.trip-order--all {
+  grid-template-columns: auto 1fr;
+  background: var(--color-surface-overlay);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.trip-order__info {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.trip-order__number {
+  font-weight: var(--typography-label-font-weight);
+}
+
+.trip-order__addr,
+.trip-order__qty {
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-secondary);
+}
+
+.trip-order__addr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.load-sheet-wrap {
+  overflow-x: auto;
+}
+
+.load-sheet {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--typography-body-small-font-size);
+}
+
+.load-sheet th,
+.load-sheet td {
+  text-align: start;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+}
+
+.load-sheet thead th {
+  color: var(--color-text-secondary);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.load-sheet__row--short td,
+.load-sheet__row--short th,
+.load-sheet__short {
+  color: var(--color-status-danger);
+}
+
+.load-sheet__short {
+  display: block;
+  font-weight: var(--typography-label-font-weight);
+}
+
+/* PrimeNG renders the spare input outside this component's view, so the
+   width has to reach through encapsulation. */
+:host ::ng-deep .load-sheet__spare {
+  inline-size: 4.5rem;
 }

@@ -16,9 +16,10 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { DatePipe, TitleCasePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
+import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputNumber } from 'primeng/inputnumber';
@@ -33,15 +34,18 @@ import {
   AdminEmployeeService,
   AdminWarehouseService,
   DeliveryService,
+  InventoryService,
   NotifyService,
   OrderService,
   WeighmentService,
+  errorMessageFor as sharedErrorMessageFor,
   type AppError,
   type BranchResponse,
   type CashHandoverResponse,
   type CylinderTypeResponse,
   type DriverResponse,
   type EmployeeResponse,
+  type InventoryBalanceLine,
   type OrderResponse,
   type RouteResponse,
   type ScaleResponse,
@@ -59,12 +63,21 @@ const ROUTE_STATUS_COLUMNS = [
   'cancelled',
 ] as const;
 
+// Named for what staff do next with the trip, not the internal state.
 const ROUTE_STATUS_LABELS: Record<string, string> = {
-  planned: 'Planned',
-  loaded: 'Loaded',
-  in_progress: 'In Progress',
-  completed: 'Completed',
-  reconciled: 'Reconciled',
+  planned: 'Not loaded',
+  loaded: 'Ready to leave',
+  in_progress: 'On the road',
+  completed: 'Back, to settle',
+  reconciled: 'Settled',
+  cancelled: 'Cancelled',
+};
+
+const STOP_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  en_route: 'On the way',
+  delivered: 'Delivered',
+  failed: 'Failed',
   cancelled: 'Cancelled',
 };
 
@@ -76,6 +89,10 @@ const ROUTE_STATUS_SEVERITY: Record<string, 'success' | 'info' | 'warn' | 'dange
     completed: 'success',
     reconciled: 'success',
     cancelled: 'danger',
+    pending: 'secondary',
+    en_route: 'warn',
+    delivered: 'success',
+    failed: 'danger',
   };
 
 /** Routes can only be cancelled while still `planned` or `loaded` (see
@@ -83,24 +100,25 @@ const ROUTE_STATUS_SEVERITY: Record<string, 'success' | 'info' | 'warn' | 'dange
  * route is `in_progress` it has to run to completion. */
 const CANCELLABLE_ROUTE_STATUSES = new Set(['planned', 'loaded']);
 
+/** A trip that hasn't come back yet. */
+const ACTIVE_ROUTE_STATUSES = new Set(['planned', 'loaded', 'in_progress']);
+
 function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
 }
 
 function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
     case 'ROUTE_RECONCILIATION_PENDING':
-      return "This route's vehicle needs an approved reconciliation before it can be closed out. Approve one from Inventory first.";
-    case 'RESOURCE_NOT_FOUND':
-      return isAppError(error) && error.detail ? error.detail : 'That resource could not be found.';
+      return "This trip's vehicle needs an approved reconciliation before it can be settled. Approve one from Inventory first.";
     case 'INVALID_STATE_TRANSITION':
-      return 'That action is not valid for the route in its current state.';
+      return 'That action is not valid for the trip in its current state.';
+    case 'INSUFFICIENT_STOCK':
+      return "The godown doesn't have enough filled cylinders for this trip. Receive stock or remove some orders.";
     case 'WEIGHMENT_CHECK_REQUIRED':
-      return 'This tenant requires a passing 100% weighment check for every cylinder type on the manifest before loading. Use "Log Load-Out Weighment" first.';
+      return 'This agency weighs every cylinder before dispatch. Open the trip, use "Log Load-Out Weighment" for each cylinder type, then load again.';
     default:
-      return 'Something went wrong. Please try again.';
+      return sharedErrorMessageFor(error);
   }
 }
 
@@ -117,10 +135,10 @@ function toDateOnlyString(date: Date): string {
   imports: [
     HeaderTitlePortalDirective,
     DatePipe,
-    TitleCasePipe,
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
+    Checkbox,
     Drawer,
     DrawerA11yDirective,
     InputNumber,
@@ -144,26 +162,26 @@ export class FeatureDispatch implements OnInit {
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
+  private readonly inventoryService = inject(InventoryService);
   private readonly weighmentService = inject(WeighmentService);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
 
   protected readonly routes = signal<RouteResponse[]>([]);
-  // Active-only — this backs the Plan Route form's driver picker, which
-  // must never offer a driver who isn't currently available for a new
-  // assignment.
+  // Active-only — this backs the trip sheet's driver picker, which must
+  // never offer a driver who isn't currently available for a new trip.
   protected readonly drivers = signal<DriverResponse[]>([]);
-  // Unfiltered by status — a route already on the board can reference a
+  // Unfiltered by status — a trip already on the board can reference a
   // driver who has since gone on leave, and that driver's name still has
-  // to resolve (not fall back to a raw UUID) wherever the route is shown.
+  // to resolve (not fall back to a raw UUID) wherever the trip is shown.
   protected readonly allDrivers = signal<DriverResponse[]>([]);
   // Drivers themselves carry no name — DriverResponse only has a FK
   // (employee_id) into the Employee record where first_name/last_name
-  // actually live, so the driver's display name/code has to be resolved
+  // actually live, so the driver's display name has to be resolved
   // through this lookup rather than read directly off DriverResponse.
   protected readonly employees = signal<EmployeeResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
-  // Unfiltered by status, mirroring allDrivers above — a route already on
+  // Unfiltered by status, mirroring allDrivers above — a trip already on
   // the board can reference a vehicle now under maintenance.
   protected readonly allVehicles = signal<VehicleResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
@@ -171,9 +189,9 @@ export class FeatureDispatch implements OnInit {
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly scales = signal<ScaleResponse[]>([]);
   protected readonly unassignedOrders = signal<OrderResponse[]>([]);
-  // Broader than `unassignedOrders` (not status-filtered) — exists solely to
-  // back `orderNumberById` below, since a route stop's order is by
-  // definition no longer unassigned and would otherwise never resolve.
+  // Broader than `unassignedOrders` (not status-filtered) — backs
+  // `orderById` below, since an order on a trip is by definition no longer
+  // unassigned and would otherwise never resolve.
   private readonly recentOrders = signal<OrderResponse[]>([]);
 
   protected readonly shortId = shortId;
@@ -184,6 +202,7 @@ export class FeatureDispatch implements OnInit {
 
   protected readonly statusColumns = ROUTE_STATUS_COLUMNS;
   protected readonly statusLabel = (status: string) => ROUTE_STATUS_LABELS[status] ?? status;
+  protected readonly stopStatusLabel = (status: string) => STOP_STATUS_LABELS[status] ?? status;
   protected readonly statusSeverity = (status: string) =>
     ROUTE_STATUS_SEVERITY[status] ?? 'secondary';
 
@@ -213,8 +232,26 @@ export class FeatureDispatch implements OnInit {
     return map;
   });
 
+  /** Drivers and vans already on a trip that hasn't come back yet — a new
+   * trip for them is almost always a mistake (add orders to that trip
+   * instead), so the trip sheet offers them disabled. */
+  private readonly busyOnTrip = computed(() => {
+    const drivers = new Set<string>();
+    const vehicles = new Set<string>();
+    for (const route of this.routes()) {
+      if (!ACTIVE_ROUTE_STATUSES.has(route.status)) continue;
+      drivers.add(route.driver_id);
+      vehicles.add(route.vehicle_id);
+    }
+    return { drivers, vehicles };
+  });
+
   protected readonly driverOptions = computed(() =>
-    this.drivers().map((d) => ({ id: d.id, label: this.driverDisplayName(d) })),
+    this.drivers().map((d) => {
+      const busy = this.busyOnTrip().drivers.has(d.id);
+      const name = this.driverDisplayName(d);
+      return { id: d.id, label: busy ? `${name} (on a trip)` : name, disabled: busy };
+    }),
   );
 
   protected readonly vehicleNameById = computed(() => {
@@ -227,17 +264,41 @@ export class FeatureDispatch implements OnInit {
     return `${vehicle.make} ${vehicle.model} (${vehicle.registration_number})`;
   }
 
+  protected readonly vehicleOptions = computed(() =>
+    this.vehicles().map((v) => {
+      const busy = this.busyOnTrip().vehicles.has(v.id);
+      const name = this.vehicleDisplayName(v);
+      return { id: v.id, label: busy ? `${name} (on a trip)` : name, disabled: busy };
+    }),
+  );
+
   protected readonly warehouseNameById = computed(() => {
     const map = new Map<string, string>();
     for (const w of this.warehouses()) map.set(w.id, w.name);
     return map;
   });
 
-  /** `/scales` has no server-side warehouse filter, and unlike Inventory
-   * this screen has no single "selected warehouse" — the load-out weighment
-   * step can be logged for any of the tenant's active, certified scales, so
-   * the warehouse is shown in the label to disambiguate rather than
-   * filtering the list down. */
+  protected readonly cylinderTypeNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const c of this.cylinderTypes()) map.set(c.id, c.name);
+    return map;
+  });
+
+  protected cylinderTypeName(cylinderTypeId: string): string {
+    return this.cylinderTypeNameById().get(cylinderTypeId) ?? shortId(cylinderTypeId);
+  }
+
+  /** "2 × 14.2 kg, 1 × 19 kg" — what a cash memo carries, at a glance. */
+  protected orderCylinders(order: OrderResponse): string {
+    return order.lines
+      .map((l) => `${l.quantity_ordered} × ${this.cylinderTypeName(l.cylinder_type_id)}`)
+      .join(', ');
+  }
+
+  /** `/scales` has no server-side warehouse filter, and this screen has no
+   * single "selected warehouse" — the load-out weighment step can be logged
+   * for any of the tenant's active, certified scales, so the warehouse is
+   * shown in the label to disambiguate rather than filtering the list. */
   protected readonly activeScaleOptions = computed(() =>
     this.scales()
       .filter((s) => s.status === 'active')
@@ -245,19 +306,6 @@ export class FeatureDispatch implements OnInit {
         id: s.id,
         label: `${s.asset_tag} — ${this.warehouseNameById().get(s.warehouse_id) ?? 'Unknown warehouse'}`,
       })),
-  );
-
-  /** Read directly rather than as a computed() — the form control's
-   * valueChanges is an Observable, not a signal, and the p-select's
-   * (onChange) already drives change detection on selection, so a plain
-   * lookup called from the template stays in sync without extra plumbing. */
-  protected selectedVehicle(): VehicleResponse | null {
-    const id = this.planForm.controls.vehicle_id.value;
-    return this.vehicles().find((v) => v.id === id) ?? null;
-  }
-
-  protected readonly vehicleOptions = computed(() =>
-    this.vehicles().map((v) => ({ id: v.id, label: this.vehicleDisplayName(v) })),
   );
 
   protected readonly routesByStatus = computed(() => {
@@ -271,41 +319,8 @@ export class FeatureDispatch implements OnInit {
     return map;
   });
 
-  /** Only `planned`/`loaded` routes are valid targets for assigning an order. */
-  protected readonly assignableRoutes = computed(() =>
-    this.routes().filter((r) => r.status === 'planned' || r.status === 'loaded'),
-  );
-
-  protected readonly assignableRouteOptions = computed(() =>
-    this.assignableRoutes().map((r) => ({
-      id: r.id,
-      label: `${r.date.slice(0, 10)} — ${this.driverNameById().get(r.driver_id) ?? r.driver_id} (${this.statusLabel(r.status)})`,
-    })),
-  );
-
-  // ---------------------------------------------------------------------------
-  // Plan Route drawer
-  // ---------------------------------------------------------------------------
-
-  protected readonly showPlanModal = signal(false);
-  protected readonly planTrigger = viewChild<ElementRef<HTMLButtonElement>>('planTriggerEl');
-
-  protected readonly planForm = this.fb.group({
-    branch_id: ['', [Validators.required]],
-    driver_id: ['', [Validators.required]],
-    vehicle_id: ['', [Validators.required]],
-    date: [new Date(), [Validators.required]],
-  });
-
   protected readonly fieldMessages = {
-    branch_id: { required: 'Branch is required.' },
-    driver_id: { required: 'Driver is required.' },
-    vehicle_id: { required: 'Vehicle is required.' },
-    date: { required: 'Date is required.' },
-    warehouse_id: { required: 'Select a warehouse.' },
     actual_amount: { required: 'Enter the amount handed over.', min: 'Cannot be negative.' },
-    route_id: { required: 'Select a target route.' },
-    order_id: { required: 'Select an order.' },
     cylinder_type_id: { required: 'Select a cylinder type.' },
     scale_id: { required: 'Select a certified scale.' },
     total_cylinders: {
@@ -319,26 +334,287 @@ export class FeatureDispatch implements OnInit {
   };
 
   // ---------------------------------------------------------------------------
-  // Route Detail drawer (+ inline Load Vehicle sub-form)
+  // Trip sheet drawer
+  //
+  // How a distributor's godown actually dispatches: pick the delivery man
+  // and van, tick the cash memos (confirmed orders) going out, issue the
+  // cylinders those need against godown stock, and send the van. One
+  // `POST /routes/{id}/load-and-dispatch` does the stock transfer, the
+  // order assignment and the release to the driver together. Opened either
+  // for a new trip or for an existing one that hasn't left yet (top-up).
+  // ---------------------------------------------------------------------------
+
+  protected readonly showTripSheet = signal(false);
+  protected readonly newTripTrigger = viewChild<ElementRef<HTMLButtonElement>>('newTripTriggerEl');
+  /** The trip being loaded; null while it's a new one not yet created. */
+  protected readonly tripRoute = signal<RouteResponse | null>(null);
+  protected readonly tripBranchId = signal<string | null>(null);
+  protected readonly tripDriverId = signal<string | null>(null);
+  protected readonly tripVehicleId = signal<string | null>(null);
+  protected readonly tripDate = signal<Date>(new Date());
+  protected readonly tripWarehouseId = signal<string | null>(null);
+  protected readonly tripOrderIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly tripSpares = signal<Readonly<Record<string, number>>>({});
+  protected readonly tripError = signal<string | null>(null);
+  /** Filled cylinders per type — loaded when the godown/van is picked. */
+  private readonly godownStock = signal<ReadonlyMap<string, number> | null>(null);
+  private readonly vanStock = signal<ReadonlyMap<string, number>>(new Map());
+
+  protected readonly tripVehicle = computed(
+    () => this.allVehicles().find((v) => v.id === this.tripVehicleId()) ?? null,
+  );
+
+  protected readonly tripWarehouseOptions = computed(() => {
+    const branchId = this.tripBranchId();
+    const inBranch = this.warehouses().filter((w) => w.branch_id === branchId);
+    return inBranch.length > 0 ? inBranch : this.warehouses();
+  });
+
+  /** Confirmed orders not on any trip yet, for this trip's branch. */
+  protected readonly tripCandidateOrders = computed(() => {
+    const branchId = this.tripBranchId();
+    return this.unassignedOrders().filter((o) => !branchId || o.branch_id === branchId);
+  });
+
+  /** Orders already on the trip that haven't left yet — the load-and-
+   * dispatch call always includes them and loads any backorder they carry. */
+  protected readonly tripWaitingOrders = computed(() => {
+    const route = this.tripRoute();
+    if (!route) return [];
+    const pending = new Set(
+      (route.stops ?? []).filter((s) => s.status === 'pending').map((s) => s.order_id),
+    );
+    return this.recentOrders().filter(
+      (o) => pending.has(o.id) && (o.status === 'assigned' || o.status === 'ready_for_dispatch'),
+    );
+  });
+
+  /** One row per cylinder type: the same arithmetic the server does. */
+  protected readonly loadSheet = computed(() => {
+    const needed = new Map<string, number>();
+    const add = (id: string, qty: number) => needed.set(id, (needed.get(id) ?? 0) + qty);
+    for (const order of this.tripWaitingOrders()) {
+      for (const line of order.lines) add(line.cylinder_type_id, line.quantity_pending);
+    }
+    const picked = this.tripOrderIds();
+    for (const order of this.tripCandidateOrders()) {
+      if (!picked.has(order.id)) continue;
+      for (const line of order.lines) add(line.cylinder_type_id, line.quantity_ordered);
+    }
+    const spares = this.tripSpares();
+    const godown = this.godownStock();
+    const van = this.vanStock();
+    return this.cylinderTypes()
+      .filter((c) => c.is_active || needed.has(c.id))
+      .map((c) => {
+        const forOrders = needed.get(c.id) ?? 0;
+        const onVan = van.get(c.id) ?? 0;
+        const spare = spares[c.id] ?? 0;
+        const toLoad = Math.max(0, forOrders - onVan) + spare;
+        const inGodown = godown ? (godown.get(c.id) ?? 0) : null;
+        return {
+          id: c.id,
+          name: c.name,
+          forOrders,
+          onVan,
+          spare,
+          toLoad,
+          inGodown,
+          short: inGodown !== null && toLoad > inGodown,
+        };
+      });
+  });
+
+  protected readonly tripShort = computed(() => this.loadSheet().some((row) => row.short));
+
+  protected readonly tripTotals = computed(() => {
+    const rows = this.loadSheet();
+    const toLoad = rows.reduce((sum, row) => sum + row.toLoad, 0);
+    const onVanAfter = rows.reduce((sum, row) => sum + row.onVan + row.toLoad, 0);
+    return { toLoad, onVanAfter };
+  });
+
+  protected readonly tripOverCapacity = computed(() => {
+    const vehicle = this.tripVehicle();
+    return !!vehicle && this.tripTotals().onVanAfter > vehicle.capacity_units;
+  });
+
+  protected readonly tripOrderCount = computed(
+    () => this.tripOrderIds().size + this.tripWaitingOrders().length,
+  );
+
+  protected readonly canSubmitTrip = computed(
+    () =>
+      !this.loading() &&
+      !!this.tripBranchId() &&
+      !!this.tripDriverId() &&
+      !!this.tripVehicleId() &&
+      !!this.tripWarehouseId() &&
+      this.tripOrderCount() > 0 &&
+      !this.tripShort(),
+  );
+
+  protected openNewTrip(preselectOrder?: OrderResponse): void {
+    const branchId = preselectOrder?.branch_id ?? this.filterBranchId() ?? this.branches()[0]?.id;
+    this.tripRoute.set(null);
+    this.tripBranchId.set(branchId ?? null);
+    this.tripDriverId.set(null);
+    this.tripVehicleId.set(null);
+    this.tripDate.set(new Date());
+    this.tripOrderIds.set(new Set(preselectOrder ? [preselectOrder.id] : []));
+    this.tripSpares.set({});
+    this.tripError.set(null);
+    this.vanStock.set(new Map());
+    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.showTripSheet.set(true);
+  }
+
+  protected openTripSheetFor(route: RouteResponse): void {
+    this.tripRoute.set(route);
+    this.tripBranchId.set(route.branch_id);
+    this.tripDriverId.set(route.driver_id);
+    this.tripVehicleId.set(route.vehicle_id);
+    this.tripDate.set(new Date(route.date));
+    this.tripOrderIds.set(new Set());
+    this.tripSpares.set({});
+    this.tripError.set(null);
+    this.loadVanStock(route.vehicle_id);
+    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.showRouteDetail.set(false);
+    this.showTripSheet.set(true);
+  }
+
+  protected onTripDriverChange(driverId: string | null): void {
+    this.tripDriverId.set(driverId);
+    // A delivery man works out of one branch; the trip follows him.
+    const driver = this.drivers().find((d) => d.id === driverId);
+    if (driver && driver.branch_id !== this.tripBranchId()) {
+      this.onTripBranchChange(driver.branch_id);
+    }
+  }
+
+  protected onTripBranchChange(branchId: string | null): void {
+    this.tripBranchId.set(branchId);
+    this.tripOrderIds.set(new Set());
+    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+  }
+
+  protected onTripVehicleChange(vehicleId: string | null): void {
+    this.tripVehicleId.set(vehicleId);
+    if (vehicleId) this.loadVanStock(vehicleId);
+    else this.vanStock.set(new Map());
+  }
+
+  protected onTripWarehouseChange(warehouseId: string | null): void {
+    this.tripWarehouseId.set(warehouseId);
+    this.godownStock.set(null);
+    if (!warehouseId) return;
+    this.inventoryService.getBalance('warehouse', warehouseId).subscribe({
+      next: (balance) => this.godownStock.set(filledStock(balance.balances)),
+      // Stock is a guide here; the server still refuses a short load.
+      error: () => this.godownStock.set(null),
+    });
+  }
+
+  private loadVanStock(vehicleId: string): void {
+    this.vanStock.set(new Map());
+    this.inventoryService.getBalance('vehicle', vehicleId).subscribe({
+      next: (balance) => this.vanStock.set(filledStock(balance.balances)),
+    });
+  }
+
+  protected isTripOrderPicked(orderId: string): boolean {
+    return this.tripOrderIds().has(orderId);
+  }
+
+  protected toggleTripOrder(orderId: string, picked: boolean): void {
+    const next = new Set(this.tripOrderIds());
+    if (picked) next.add(orderId);
+    else next.delete(orderId);
+    this.tripOrderIds.set(next);
+  }
+
+  protected toggleAllTripOrders(picked: boolean): void {
+    this.tripOrderIds.set(new Set(picked ? this.tripCandidateOrders().map((o) => o.id) : []));
+  }
+
+  protected setTripSpare(cylinderTypeId: string, quantity: number | null): void {
+    this.tripSpares.set({ ...this.tripSpares(), [cylinderTypeId]: Math.max(0, quantity ?? 0) });
+  }
+
+  protected onSubmitTrip(): void {
+    if (!this.canSubmitTrip()) return;
+    this.loading.set(true);
+    this.tripError.set(null);
+    const existing = this.tripRoute();
+    if (existing) {
+      this.dispatchTrip(existing);
+      return;
+    }
+    this.deliveryService
+      .planRoute({
+        branch_id: this.tripBranchId() as string,
+        driver_id: this.tripDriverId() as string,
+        vehicle_id: this.tripVehicleId() as string,
+        route_date: this.tripDate().toISOString(),
+      })
+      .subscribe({
+        next: (route) => {
+          // Kept so a retry after a failed load reuses this trip.
+          this.tripRoute.set(route);
+          this.dispatchTrip(route);
+        },
+        error: (err) => {
+          this.tripError.set(errorMessageFor(err));
+          this.loading.set(false);
+        },
+      });
+  }
+
+  private dispatchTrip(route: RouteResponse): void {
+    const spares = this.tripSpares();
+    this.deliveryService
+      .loadAndDispatchRoute(route.id, {
+        warehouse_id: this.tripWarehouseId() as string,
+        order_ids: [...this.tripOrderIds()],
+        extra_lines: Object.entries(spares)
+          .filter(([, quantity]) => quantity > 0)
+          .map(([cylinder_type_id, quantity]) => ({ cylinder_type_id, quantity })),
+      })
+      .subscribe({
+        next: () => {
+          this.showTripSheet.set(false);
+          this.refreshAfterMutation(
+            `Trip dispatched for ${this.driverNameById().get(route.driver_id) ?? 'the driver'}.`,
+          );
+        },
+        error: (err) => {
+          this.tripError.set(errorMessageFor(err));
+          this.loading.set(false);
+          // A new trip was created even though loading failed; show it.
+          this.loadRoutes();
+        },
+      });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Trip detail drawer
   // ---------------------------------------------------------------------------
 
   protected readonly selectedRoute = signal<RouteResponse | null>(null);
   protected readonly showRouteDetail = signal(false);
-  protected readonly showLoadForm = signal(false);
 
-  protected readonly canStartRoute = computed(() => this.selectedRoute()?.status === 'loaded');
+  protected readonly canLoadAndDispatch = computed(
+    () => this.selectedRoute()?.status === 'planned',
+  );
+  protected readonly canAddOrders = computed(() => this.selectedRoute()?.status === 'loaded');
   protected readonly canCancelRoute = computed(() => {
     const status = this.selectedRoute()?.status;
     return !!status && CANCELLABLE_ROUTE_STATUSES.has(status);
   });
-  protected readonly canLoadRoute = computed(() => this.selectedRoute()?.status === 'planned');
-  protected readonly canAddStopToSelectedRoute = computed(() => {
-    const status = this.selectedRoute()?.status;
-    return status === 'planned' || status === 'loaded';
-  });
   // AI Operational Intelligence, Horizon 1 Stage 5 — same planned/loaded
-  // gate as adding a stop (`Route.resequence_stops()`'s own guard), plus
-  // a minimum of 3 pending stops: reordering 1-2 stops has nothing to
+  // gate as adding orders (`Route.resequence_stops()`'s own guard), plus a
+  // minimum of 3 pending stops: reordering 1-2 stops has nothing to
   // optimize, so the button stays hidden rather than offering a no-op.
   protected readonly canOptimizeSelectedRoute = computed(() => {
     const route = this.selectedRoute();
@@ -349,38 +625,21 @@ export class FeatureDispatch implements OnInit {
   protected readonly canReconcileRoute = computed(
     () => this.selectedRoute()?.status === 'completed',
   );
-  // Declaring the cash collected only makes sense once a route has actually
+  // Declaring the cash collected only makes sense once a trip has actually
   // run — same condition as Reconcile, which also only applies post-completion.
   protected readonly canDeclareCashHandover = computed(
     () => this.selectedRoute()?.status === 'completed',
   );
 
-  protected readonly loadForm = this.fb.group({
-    warehouse_id: ['', [Validators.required]],
-    lines: this.fb.array<ReturnType<typeof this.buildLoadLineGroup>>([]),
-  });
-
-  private buildLoadLineGroup() {
-    return this.fb.group({
-      cylinder_type_id: ['', [Validators.required]],
-      quantity: [1, [Validators.required, Validators.min(1)]],
-    });
-  }
-
-  protected get loadLines() {
-    return this.loadForm.controls.lines;
-  }
-
   // ---------------------------------------------------------------------------
-  // Log Load-Out Weighment (inline sub-form within the Route Detail drawer)
+  // Log Load-Out Weighment (inline sub-form within the trip detail drawer)
   //
-  // MDG 2022 cl. 1.4(c)(d) — 100% of cylinders checked before dispatch. Kept
-  // separate from Load Vehicle itself: a tenant that has opted into the
-  // gate (`weighment_gate_enabled`) needs a passing record per cylinder
-  // type *before* `POST .../load` will succeed (Weighment Part 3), so this
-  // has to be logged ahead of time, not as a field on that form. One record
-  // per cylinder type, so the sub-form stays open after each save to let
-  // staff work through the whole manifest.
+  // MDG 2022 cl. 1.4(c)(d) — 100% of cylinders checked before dispatch. A
+  // tenant that has opted into the gate (`weighment_gate_enabled`) needs a
+  // passing record per cylinder type *before* the load will succeed
+  // (Weighment Part 3), so it is logged ahead of loading. One record per
+  // cylinder type, so the sub-form stays open after each save to let staff
+  // work through the whole manifest.
   // ---------------------------------------------------------------------------
 
   protected readonly showLoadOutWeighmentForm = signal(false);
@@ -391,10 +650,6 @@ export class FeatureDispatch implements OnInit {
     total_cylinders: [1, [Validators.required, Validators.min(1)]],
     underweight_cylinder_count: [0, [Validators.required, Validators.min(0)]],
   });
-
-  protected cylinderTypeName(cylinderTypeId: string): string {
-    return this.cylinderTypes().find((c) => c.id === cylinderTypeId)?.name ?? cylinderTypeId;
-  }
 
   protected openLoadOutWeighmentForm(): void {
     const route = this.selectedRoute();
@@ -408,7 +663,6 @@ export class FeatureDispatch implements OnInit {
     this.weighmentService.listRouteWeighments(route.id).subscribe({
       next: (res) => this.routeWeighments.set(res.items),
     });
-    this.showLoadForm.set(false);
     this.showLoadOutWeighmentForm.set(true);
   }
 
@@ -446,7 +700,7 @@ export class FeatureDispatch implements OnInit {
   }
 
   // ---------------------------------------------------------------------------
-  // Declare Cash Handover (inline sub-form within the Route Detail drawer)
+  // Declare Cash Handover (inline sub-form within the trip detail drawer)
   // ---------------------------------------------------------------------------
 
   protected readonly showCashHandoverForm = signal(false);
@@ -455,43 +709,13 @@ export class FeatureDispatch implements OnInit {
     actual_amount: [0, [Validators.required, Validators.min(0)]],
   });
 
-  // ---------------------------------------------------------------------------
-  // Assign order to route drawer
-  // ---------------------------------------------------------------------------
-
-  protected readonly showAssignOrderDrawer = signal(false);
-  protected readonly selectedOrderForAssign = signal<OrderResponse | null>(null);
-  protected readonly assignOrderForm = this.fb.group({
-    route_id: ['', [Validators.required]],
-  });
-
-  // The reverse direction of the same assign-order-to-route action: picking
-  // an order from *within* an already-open Route Detail drawer (via the
-  // Stops section's "Add Stop" button) rather than starting from an
-  // unassigned order card on the board — same backend call either way.
-  protected readonly showAddStopForm = signal(false);
-  protected readonly addStopForm = this.fb.group({
-    order_id: ['', [Validators.required]],
-  });
-
-  protected readonly unassignedOrderOptions = computed(() =>
-    this.unassignedOrders().map((o) => ({
-      id: o.id,
-      label: `${o.order_number ?? shortId(o.id)} — ${o.delivery_address.address_line}`,
-    })),
-  );
-
   /** `RouteStopResponse` only carries `order_id`, not the full `Order`
-   * object (unlike the unassigned-orders list/dropdown, which already have
-   * `order_number` directly) — this map lets the stop card resolve the same
-   * readable order number without a backend join. Falls back to `shortId`
-   * for a stop whose order isn't in the currently-loaded unassigned list
-   * (e.g. already assigned elsewhere, loaded on a previous page). */
-  protected readonly orderNumberById = computed(() => {
-    const map = new Map<string, string>();
-    for (const o of this.recentOrders()) {
-      if (o.order_number) map.set(o.id, o.order_number);
-    }
+   * object — this map lets a stop card show the order number and address
+   * without a backend join. Falls back to `shortId` for a stop whose order
+   * isn't among the recently loaded orders. */
+  protected readonly orderById = computed(() => {
+    const map = new Map<string, OrderResponse>();
+    for (const o of this.recentOrders()) map.set(o.id, o);
     return map;
   });
 
@@ -506,7 +730,7 @@ export class FeatureDispatch implements OnInit {
     });
     this.warehouseService.listWarehouses().subscribe({
       next: (warehouses) => this.warehouses.set(warehouses),
-      error: () => this.errorMessage.set('Failed to load warehouses.'),
+      error: () => this.errorMessage.set('Failed to load godowns.'),
     });
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (types) => this.cylinderTypes.set(types),
@@ -573,9 +797,9 @@ export class FeatureDispatch implements OnInit {
   protected loadUnassignedOrders(): void {
     // No backend query filter for "unassigned" exists (`route_stop_id` isn't
     // a listOrders filter) — fetch recent orders (no status filter, so
-    // `recentOrders`/`orderNumberById` also cover already-assigned ones) and
+    // `recentOrders`/`orderById` also cover ones already on a trip) and
     // derive the confirmed-and-unassigned subset client-side.
-    this.orderService.listOrders({ limit: 100 }).subscribe({
+    this.orderService.listOrders({ limit: 200 }).subscribe({
       next: (page) => {
         this.recentOrders.set(page.items);
         this.unassignedOrders.set(
@@ -596,50 +820,11 @@ export class FeatureDispatch implements OnInit {
   }
 
   // ---------------------------------------------------------------------------
-  // Plan Route
-  // ---------------------------------------------------------------------------
-
-  protected openPlanModal(): void {
-    this.planForm.reset({
-      branch_id: '',
-      driver_id: this.drivers().length > 0 ? this.drivers()[0].id : '',
-      vehicle_id: this.vehicles().length > 0 ? this.vehicles()[0].id : '',
-      date: new Date(),
-    });
-    this.showPlanModal.set(true);
-  }
-
-  protected onSubmitPlan(): void {
-    if (this.planForm.invalid) return;
-
-    const val = this.planForm.getRawValue();
-    this.loading.set(true);
-    this.deliveryService
-      .planRoute({
-        branch_id: val.branch_id,
-        driver_id: val.driver_id,
-        vehicle_id: val.vehicle_id,
-        route_date: val.date.toISOString(),
-      })
-      .subscribe({
-        next: () => {
-          this.showPlanModal.set(false);
-          this.refreshAfterMutation('Route planned.');
-        },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
-      });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Route Detail
+  // Trip detail
   // ---------------------------------------------------------------------------
 
   protected openRouteDetail(route: RouteResponse): void {
-    this.showLoadForm.set(false);
-    this.showAddStopForm.set(false);
+    this.showLoadOutWeighmentForm.set(false);
     this.showCashHandoverForm.set(false);
     this.lastCashHandover.set(null);
     this.showRouteDetail.set(true);
@@ -664,22 +849,6 @@ export class FeatureDispatch implements OnInit {
     });
   }
 
-  protected onStartRoute(): void {
-    const route = this.selectedRoute();
-    if (!route) return;
-    this.loading.set(true);
-    this.deliveryService.updateRouteStatus(route.id, 'in_progress').subscribe({
-      next: () => {
-        this.refreshSelectedRoute();
-        this.refreshAfterMutation('Route started.');
-      },
-      error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
-        this.loading.set(false);
-      },
-    });
-  }
-
   protected onCancelRoute(): void {
     const route = this.selectedRoute();
     if (!route) return;
@@ -687,7 +856,7 @@ export class FeatureDispatch implements OnInit {
     this.deliveryService.updateRouteStatus(route.id, 'cancelled').subscribe({
       next: () => {
         this.refreshSelectedRoute();
-        this.refreshAfterMutation('Route cancelled.');
+        this.refreshAfterMutation('Trip cancelled.');
       },
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
@@ -724,7 +893,7 @@ export class FeatureDispatch implements OnInit {
     this.deliveryService.completeRouteReconciliation(route.id).subscribe({
       next: () => {
         this.refreshSelectedRoute();
-        this.refreshAfterMutation('Route reconciled.');
+        this.refreshAfterMutation('Trip settled.');
       },
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
@@ -769,107 +938,14 @@ export class FeatureDispatch implements OnInit {
         },
       });
   }
+}
 
-  // ---------------------------------------------------------------------------
-  // Load Vehicle (inline sub-form within the Route Detail drawer)
-  // ---------------------------------------------------------------------------
-
-  protected openLoadForm(): void {
-    this.loadForm.reset({ warehouse_id: this.warehouses()[0]?.id ?? '' });
-    this.loadLines.clear();
-    this.loadLines.push(this.buildLoadLineGroup());
-    this.showAddStopForm.set(false);
-    this.showLoadOutWeighmentForm.set(false);
-    this.showLoadForm.set(true);
+function filledStock(balances: InventoryBalanceLine[]): Map<string, number> {
+  const stock = new Map<string, number>();
+  for (const line of balances) {
+    if (line.status === 'filled') {
+      stock.set(line.cylinder_type_id, (stock.get(line.cylinder_type_id) ?? 0) + line.quantity);
+    }
   }
-
-  protected addLoadLine(): void {
-    this.loadLines.push(this.buildLoadLineGroup());
-  }
-
-  protected removeLoadLine(index: number): void {
-    if (this.loadLines.length > 1) this.loadLines.removeAt(index);
-  }
-
-  protected onSubmitLoad(): void {
-    const route = this.selectedRoute();
-    if (!route || this.loadForm.invalid) return;
-    const val = this.loadForm.getRawValue();
-    this.loading.set(true);
-    this.deliveryService
-      .loadVehicleForRoute(route.id, {
-        warehouse_id: val.warehouse_id,
-        lines: val.lines.map((line) => ({
-          cylinder_type_id: line.cylinder_type_id,
-          quantity: line.quantity,
-        })),
-      })
-      .subscribe({
-        next: () => {
-          this.showLoadForm.set(false);
-          this.refreshSelectedRoute();
-          this.refreshAfterMutation('Vehicle loaded.');
-        },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
-      });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Assign order to route
-  // ---------------------------------------------------------------------------
-
-  protected openAssignOrderDrawer(order: OrderResponse): void {
-    this.selectedOrderForAssign.set(order);
-    this.assignOrderForm.reset({ route_id: this.assignableRoutes()[0]?.id ?? '' });
-    this.showAssignOrderDrawer.set(true);
-  }
-
-  protected onSubmitAssignOrder(): void {
-    const order = this.selectedOrderForAssign();
-    if (!order || this.assignOrderForm.invalid) return;
-    const { route_id } = this.assignOrderForm.getRawValue();
-    this.loading.set(true);
-    this.deliveryService.assignOrderToRoute(route_id, order.id).subscribe({
-      next: () => {
-        this.showAssignOrderDrawer.set(false);
-        this.selectedOrderForAssign.set(null);
-        this.refreshAfterMutation('Order assigned to route.');
-      },
-      error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
-        this.loading.set(false);
-      },
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // Add Stop (inline sub-form within the Route Detail drawer)
-  // ---------------------------------------------------------------------------
-
-  protected openAddStopForm(): void {
-    this.addStopForm.reset({ order_id: this.unassignedOrders()[0]?.id ?? '' });
-    this.showLoadForm.set(false);
-    this.showAddStopForm.set(true);
-  }
-
-  protected onSubmitAddStop(): void {
-    const route = this.selectedRoute();
-    if (!route || this.addStopForm.invalid) return;
-    const { order_id } = this.addStopForm.getRawValue();
-    this.loading.set(true);
-    this.deliveryService.assignOrderToRoute(route.id, order_id).subscribe({
-      next: () => {
-        this.showAddStopForm.set(false);
-        this.refreshSelectedRoute();
-        this.refreshAfterMutation('Order assigned to route.');
-      },
-      error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
-        this.loading.set(false);
-      },
-    });
-  }
+  return stock;
 }

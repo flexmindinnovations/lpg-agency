@@ -321,6 +321,20 @@ class Route(AggregateRoot):
         """
         self._loaded_lines = list(lines)
 
+    def add_to_load_manifest(self, lines: Sequence[LoadedLine]) -> None:
+        """A top-up load onto an already-loaded van: adds to the manifest and
+        clears the driver's earlier confirmation, since the van they checked
+        no longer matches it.
+        """
+        totals = {line.cylinder_type_id: line.quantity for line in self._loaded_lines}
+        for line in lines:
+            totals[line.cylinder_type_id] = totals.get(line.cylinder_type_id, 0) + line.quantity
+        self._loaded_lines = [
+            LoadedLine(cylinder_type_id=cylinder_type_id, quantity=quantity)
+            for cylinder_type_id, quantity in totals.items()
+        ]
+        self._load_confirmed_at = None
+
     def confirm_load(self, confirmed_by: uuid.UUID) -> None:
         """The driver acknowledges the van matches the manifest. Idempotent;
         rejected (409) if the route isn't `loaded`.

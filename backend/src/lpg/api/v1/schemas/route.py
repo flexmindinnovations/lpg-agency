@@ -112,3 +112,13 @@ class LoadVehicleLineRequest(BaseModel):
 class LoadVehicleRequest(BaseModel):
     warehouse_id: uuid.UUID
     lines: list[LoadVehicleLineRequest] = Field(min_length=1)
+
+
+class LoadAndDispatchRequest(BaseModel):
+    """`POST /routes/{id}/load-and-dispatch` — the trip sheet in one step."""
+
+    warehouse_id: uuid.UUID
+    #: Confirmed orders to add; orders already on the trip are included anyway.
+    order_ids: list[uuid.UUID] = Field(default_factory=list, max_length=200)
+    #: Spare cylinders to carry on top of what the orders need.
+    extra_lines: list[LoadVehicleLineRequest] = Field(default_factory=list, max_length=50)
