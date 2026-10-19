@@ -247,11 +247,11 @@ const STAFF_ROLES = [
               </p-select>
             </lpg-form-field>
 
-            <div class="flex flex-col gap-4 mt-6">
-              <div class="flex items-center justify-between border border-gray-200 rounded p-4">
-                <div>
-                  <h4 class="font-medium text-gray-900 m-0">Permissions</h4>
-                  <p class="text-sm text-gray-500 m-0">Assign fine-grained permissions.</p>
+            <div class="manage-actions">
+              <div class="manage-action">
+                <div class="manage-action__text">
+                  <h4 class="manage-action__title">Permissions</h4>
+                  <p class="manage-action__description">Assign fine-grained permissions.</p>
                 </div>
                 <button
                   pButton
@@ -263,12 +263,10 @@ const STAFF_ROLES = [
                 </button>
               </div>
 
-              <div
-                class="flex items-center justify-between border border-red-200 rounded p-4 bg-red-50"
-              >
-                <div>
-                  <h4 class="font-medium text-red-900 m-0">Danger Zone</h4>
-                  <p class="text-sm text-red-700 m-0">Deactivate this account.</p>
+              <div class="manage-action manage-action--danger">
+                <div class="manage-action__text">
+                  <h4 class="manage-action__title">Danger Zone</h4>
+                  <p class="manage-action__description">Deactivate this account.</p>
                 </div>
                 <button pButton type="button" severity="danger" (click)="deactivate()">
                   Deactivate
@@ -316,6 +314,54 @@ const STAFF_ROLES = [
         display: flex;
         flex-direction: column;
         block-size: 100%;
+      }
+
+      /* Action rows in the Manage drawer. Token colours only, so the text
+         follows the active theme (light, dark, high contrast). */
+      .manage-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        margin-block-start: var(--spacing-md);
+      }
+
+      .manage-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+        border: var(--border-width) solid var(--color-border-strong);
+        border-radius: var(--radius-md);
+      }
+
+      .manage-action__text {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        min-inline-size: 0;
+      }
+
+      .manage-action__title {
+        margin: 0;
+        font-size: var(--typography-body-font-size);
+        font-weight: var(--typography-label-font-weight);
+        color: var(--color-text-primary);
+      }
+
+      .manage-action__description {
+        margin: 0;
+        font-size: var(--typography-body-small-font-size);
+        color: var(--color-text-secondary);
+      }
+
+      .manage-action--danger {
+        border-color: var(--color-status-danger);
+        background: color-mix(in srgb, var(--color-status-danger) 8%, transparent);
+      }
+
+      .manage-action--danger .manage-action__title {
+        color: var(--color-status-danger);
       }
     `,
   ],

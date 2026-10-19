@@ -93,7 +93,6 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
                 <p-fieldset
                   [legend]="group.module.replace('_', ' ') | titlecase"
                   [toggleable]="true"
-                  styleClass="mb-4"
                 >
                   <div class="permissions-grid">
                     @for (perm of group.permissions; track perm) {
@@ -107,7 +106,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
                           {{ perm.substring(group.module.length + 1) | titlecase }}
                           @if (getPermissionDescription(perm); as desc) {
                             <i
-                              class="pi pi-info-circle text-gray-400"
+                              class="pi pi-info-circle permission-info"
                               [pTooltip]="desc"
                               tooltipPosition="top"
                             ></i>
@@ -144,9 +143,12 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   styles: [
     `
       .permissions-container {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-lg);
         max-height: 50vh;
         overflow-y: auto;
-        padding-right: 0.5rem;
+        padding-right: var(--spacing-sm);
       }
       .permissions-grid {
         display: grid;
@@ -156,6 +158,9 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
       .permission-item {
         display: flex;
         align-items: center;
+      }
+      .permission-info {
+        color: var(--color-text-secondary);
       }
     `,
   ],
