@@ -446,8 +446,8 @@ class DeliverOrderCommand(Command):
     order_id: uuid.UUID
     lines: Sequence[DeliveredLine]
     otp_code: str
-    signature_blob_ref: str
-    photo_blob_ref: str
+    signature_blob_ref: str | None
+    photo_blob_ref: str | None
     gps_lat: Decimal
     gps_lng: Decimal
     payment_method: str
@@ -572,7 +572,10 @@ class DeliverOrderUseCase:
     def _validate_pod_fields(command: DeliverOrderCommand) -> None:
         from lpg.application.common.errors import IncompletePodError
 
-        if not command.signature_blob_ref.strip() or not command.photo_blob_ref.strip():
+        # Signature and photo are optional (the OTP gates delivery), but a
+        # reference that is sent must not be blank.
+        refs = (command.signature_blob_ref, command.photo_blob_ref)
+        if any(ref is not None and not ref.strip() for ref in refs):
             msg = "Signature/photo reference cannot be blank."
             raise IncompletePodError(msg, order_id=str(command.order_id))
         if not (Decimal("-90") <= command.gps_lat <= Decimal("90")):

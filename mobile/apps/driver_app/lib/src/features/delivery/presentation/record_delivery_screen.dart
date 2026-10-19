@@ -25,8 +25,8 @@ const _paymentMethods = <(String, String)>[
 ];
 
 /// The proof-of-delivery capture: quantities, payment, the customer's
-/// delivery OTP, a signature, a photo and a GPS stamp — then
-/// `POST /orders/{id}/deliver`.
+/// delivery OTP and a GPS stamp, plus an optional signature and photo —
+/// then `POST /orders/{id}/deliver`.
 class RecordDeliveryScreen extends ConsumerStatefulWidget {
   const RecordDeliveryScreen({super.key, required this.orderId});
 
@@ -87,10 +87,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       _error = null;
     });
     try {
-      final signatureBytes = await _signature.toPngBytes();
-      if (signatureBytes == null || _photoBytes == null) {
-        throw Exception('A signature and a photo are both required.');
-      }
+      // Signature and photo are optional; an untouched pad sends none.
+      final signatureBytes = _signature.isNotEmpty
+          ? await _signature.toPngBytes()
+          : null;
       if (_otpController.text.trim().isEmpty) {
         throw Exception('Enter the delivery code the customer received.');
       }
@@ -121,7 +121,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
             paymentMethod: _paymentMethod,
             amountCollected: amount,
             signatureBytes: signatureBytes,
-            photoBytes: _photoBytes!,
+            photoBytes: _photoBytes,
             dacCode: _dacController.text.trim().isEmpty
                 ? null
                 : _dacController.text.trim(),
@@ -253,7 +253,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               ),
               const _Section(
                 icon: LpgIcons.signature,
-                title: "Customer's signature",
+                title: "Customer's signature (optional)",
               ),
               LpgCard(
                 variant: LpgCardVariant.outlined,
@@ -286,7 +286,10 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                   ],
                 ),
               ),
-              const _Section(icon: LpgIcons.camera, title: 'Delivery photo'),
+              const _Section(
+                icon: LpgIcons.camera,
+                title: 'Delivery photo (optional)',
+              ),
               if (_photoBytes case final photo?) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(LpgRadius.xl),

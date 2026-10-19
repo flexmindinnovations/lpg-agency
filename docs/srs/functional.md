@@ -33,7 +33,7 @@ Requirements are grouped by module and numbered `FR-<Module>-<n>`. Each is trace
 | FR-DM-03 | System shall validate vehicle stock sufficiency before allowing order assignment. | Inferred | S |
 | FR-DM-04 | System shall record vehicle loading events (filled/empty quantities loaded). | Explicit | M |
 | FR-DM-05 | Driver App shall display assigned deliveries with navigation to customer location. | Explicit | M |
-| FR-DM-06 | System shall require OTP, signature, photo, and GPS capture to confirm delivery. | Explicit | M |
+| FR-DM-06 | System shall require OTP and GPS capture to confirm delivery; customer signature and photo are optional (amended 2026-10-19). | Explicit | M |
 | FR-DM-07 | System shall automatically update vehicle inventory after each delivery. | Explicit | M |
 | FR-DM-08 | Driver App shall support payment collection via Cash, UPI, and Card. | Explicit | M |
 | FR-DM-09 | System shall support end-of-shift vehicle and cash reconciliation, mandatory daily even with multi-day vehicle stock carry-over. | Confirmed (D-16, D-31) | M |

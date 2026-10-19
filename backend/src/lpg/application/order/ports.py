@@ -60,8 +60,8 @@ class ProofOfDeliveryEntry:
     tenant_id: uuid.UUID
     order_id: uuid.UUID
     otp_verified_at: datetime
-    signature_blob_ref: str
-    photo_blob_ref: str
+    signature_blob_ref: str | None
+    photo_blob_ref: str | None
     gps_lat: Decimal
     gps_lng: Decimal
     payment_method: str
@@ -164,8 +164,8 @@ class ProofOfDeliveryRepository(Protocol):
         tenant_id: uuid.UUID,
         order_id: uuid.UUID,
         otp_verified_at: datetime,
-        signature_blob_ref: str,
-        photo_blob_ref: str,
+        signature_blob_ref: str | None,
+        photo_blob_ref: str | None,
         gps_lat: Decimal,
         gps_lng: Decimal,
         payment_method: str,

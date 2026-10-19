@@ -291,6 +291,54 @@ void main() {
     );
   });
 
+  test(
+    'recordDelivery offline without signature or photo queues no media',
+    () async {
+      adapter.offline = true;
+      final outcome = await build(online: false).recordDelivery(
+        orderId: 'o3b',
+        lines: _lines,
+        otpCode: '123456',
+        gpsLat: 1.0,
+        gpsLng: 2.0,
+        paymentMethod: 'cash',
+        amountCollected: 900,
+      );
+
+      expect(outcome, isA<DeliverQueued>());
+      expect(media.keys, isEmpty);
+      final payload =
+          jsonDecode((await onlyOpOrNull())!.payload) as Map<String, dynamic>;
+      expect(payload['media'] as List, isEmpty);
+    },
+  );
+
+  test(
+    'recordDelivery online with only a photo uploads just the photo',
+    () async {
+      await build(online: true).recordDelivery(
+        orderId: 'o4c',
+        lines: _lines,
+        otpCode: '123456',
+        gpsLat: 1,
+        gpsLng: 2,
+        paymentMethod: 'cash',
+        amountCollected: 0,
+        photoBytes: [2],
+      );
+
+      expect(
+        adapter.paths.where((p) => p.endsWith('/pod-attachments')),
+        hasLength(1),
+      );
+      final pod =
+          (adapter.lastDeliverBody as Map<String, dynamic>)['proof_of_delivery']
+              as Map;
+      expect(pod.containsKey('signature_blob_ref'), isFalse);
+      expect(pod['photo_blob_ref'], isNotNull);
+    },
+  );
+
   test('recordDelivery online delivers inline and queues nothing', () async {
     final outcome = await build(online: true).recordDelivery(
       orderId: 'o4',
