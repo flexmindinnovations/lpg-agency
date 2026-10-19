@@ -1,4 +1,4 @@
-# 42 — Post-delivery customer actions — Plan
+# 43 — Post-delivery customer actions — Plan
 
 ## Problem (reported 2026-10-19)
 

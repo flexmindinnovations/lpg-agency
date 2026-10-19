@@ -51,3 +51,17 @@ final routeHistoryProvider = FutureProvider<List<RouteSummary>>((ref) async {
   return items.where((r) => finished.contains(r.status)).toList()
     ..sort((a, b) => (b.date ?? DateTime(0)).compareTo(a.date ?? DateTime(0)));
 });
+
+/// The status of the active route this stop belongs to, or `null` when the
+/// stop isn't on it (or the route can't be read). The stop screen uses it to
+/// hold back Start/Record delivery until the office has loaded the van —
+/// the backend refuses both while the route is still `planned`.
+final stopRouteStatusProvider = Provider.autoDispose.family<String?, String>((
+  ref,
+  orderId,
+) {
+  final route = ref.watch(activeRouteProvider).value;
+  if (route == null) return null;
+  final onRoute = route.stops.any((s) => s.orderId == orderId);
+  return onRoute ? route.status : null;
+});

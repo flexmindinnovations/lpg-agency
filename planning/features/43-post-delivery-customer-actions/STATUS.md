@@ -1,4 +1,4 @@
-# 42 — Post-delivery customer actions — Status
+# 43 — Post-delivery customer actions — Status
 
 **2026-10-19 — Done.** Backend ruff, ruff format, mypy --strict, import-linter,
 OpenAPI drift check and the unit suite pass. Migration `c8d4e2f6a1b3` was run

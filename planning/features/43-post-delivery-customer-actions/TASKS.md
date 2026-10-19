@@ -1,4 +1,4 @@
-# 42 — Post-delivery customer actions — Tasks
+# 43 — Post-delivery customer actions — Tasks
 
 - [x] Record the driver's doorstep collection on the generated invoice
 - [x] Backfill doorstep payments onto existing invoices (migration `c8d4e2f6a1b3`)

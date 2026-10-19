@@ -30,6 +30,7 @@ from lpg.application.common.errors import (
     NotFoundError,
     OtpExpiredError,
     OtpMismatchError,
+    RouteNotLoadedError,
     ServiceUnavailableError,
 )
 from lpg.application.delivery.use_cases import AssignOrderToRouteCommand, AssignOrderToRouteUseCase
@@ -291,6 +292,27 @@ class AssignOrderUseCase:
 # ==========================================================================
 
 
+def _require_loaded_route(route: Route | None, order_id: uuid.UUID) -> None:
+    """Departing, delivering and failing a delivery all need the order's
+    route to be past `planned`: until the office loads the van (BR-12) the
+    route can never reach `in_progress`, which proof of delivery requires.
+    Checked before anything is mutated or an OTP is consumed, so the driver
+    gets one clear reason instead of a delivery that bounces back to Start.
+    """
+    if route is not None and route.status == "planned":
+        msg = (
+            "The van for this route hasn't been loaded yet. Ask the office to "
+            "finish loading the vehicle, then try again."
+        )
+        raise RouteNotLoadedError(msg, order_id=str(order_id), route_id=str(route.id))
+
+
+def _start_route_if_loaded(route: Route | None) -> None:
+    """`loaded -> in_progress` the first time an order on the route is worked."""
+    if route is not None and route.status == "loaded":
+        route.change_status("in_progress")
+
+
 @dataclass(frozen=True, slots=True)
 class DispatchOrderCommand(Command):
     order_id: uuid.UUID
@@ -371,9 +393,9 @@ class DepartOrderUseCase:
             if owner is not None:
                 route = await self._route_repository.get_by_id(owner.route_id)
 
+        _require_loaded_route(route, order.id)
         order.depart(changed_by=command.changed_by)
-        if route is not None and route.status == "loaded":
-            route.change_status("in_progress")
+        _start_route_if_loaded(route)
 
         await self._order_repository.save(order)
         if route is not None:
@@ -548,6 +570,17 @@ class DeliverOrderUseCase:
             msg = f"No order visible with id {command.order_id}."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
+        vehicle_location = None
+        route = None
+        if order.route_stop_id is not None:
+            owner = await self._route_repository.get_stop_owner(order.route_stop_id)
+            if owner is not None:
+                vehicle_location = await self._inventory_repository.get_by_location_ref(
+                    "vehicle", owner.vehicle_id
+                )
+                route = await self._route_repository.get_by_id(owner.route_id)
+        _require_loaded_route(route, order.id)
+
         key = order_delivery_otp_key(order.tenant_id, order.id)
         try:
             otp_ok = await self._otp_store.verify(key, command.otp_code)
@@ -563,17 +596,10 @@ class DeliverOrderUseCase:
 
         self._validate_pod_fields(command)
 
-        vehicle_location = None
-        route = None
-        if order.route_stop_id is not None:
-            owner = await self._route_repository.get_stop_owner(order.route_stop_id)
-            if owner is not None:
-                vehicle_location = await self._inventory_repository.get_by_location_ref(
-                    "vehicle", owner.vehicle_id
-                )
-                route = await self._route_repository.get_by_id(owner.route_id)
-
-        # All mutation happens in memory before any save.
+        # All mutation happens in memory before any save. An order that
+        # departed before the van-load gate existed sits on a route that
+        # never left `loaded`; starting it here lets that delivery through.
+        _start_route_if_loaded(route)
         if vehicle_location is not None:
             for delivered in command.lines:
                 line = order.line_for(delivered.cylinder_type_id)
@@ -686,12 +712,14 @@ class RecordFailedDeliveryUseCase:
             owner = await self._route_repository.get_stop_owner(order.route_stop_id)
             if owner is not None:
                 route = await self._route_repository.get_by_id(owner.route_id)
+        _require_loaded_route(route, order.id)
 
         order.fail_delivery(
             reason_code=command.reason_code,
             resolution_action=command.resolution_action,
             recorded_by=command.recorded_by,
         )
+        _start_route_if_loaded(route)
         if route is not None and order.route_stop_id is not None:
             route.record_failed_delivery(order.route_stop_id, command.reason_code)
 

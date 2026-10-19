@@ -46,7 +46,9 @@ LPG Agency Management Platform
 
 **Optional delivery signature and photo** ✅ **DONE** — 2026-10-19. Drivers can record a delivery without the customer's signature or a photo; OTP and GPS still gate it (BR-08/BR-23 amended). See [`planning/features/39-optional-delivery-proof/STATUS.md`](./features/39-optional-delivery-proof/STATUS.md).
 
-**Post-delivery customer actions** ✅ **DONE** — 2026-10-19. The driver's doorstep payment now settles the invoice (plus a backfill), so Pay Online disappears once paid; the Customer App refetches order/invoice detail and never offers Cancel after delivery. See [`planning/features/42-post-delivery-customer-actions/STATUS.md`](./features/42-post-delivery-customer-actions/STATUS.md).
+**No delivery before the van is loaded** ✅ **DONE** — 2026-10-19. Drivers can't start, deliver or fail a stop until the office has loaded the van; the Driver App says so instead of bouncing back to Start. See [`planning/features/42-depart-after-van-load/STATUS.md`](./features/42-depart-after-van-load/STATUS.md).
+
+**Post-delivery customer actions** ✅ **DONE** — 2026-10-19. The driver's doorstep payment now settles the invoice (plus a backfill), so Pay Online disappears once paid; the Customer App refetches order/invoice detail and never offers Cancel after delivery. See [`planning/features/43-post-delivery-customer-actions/STATUS.md`](./features/43-post-delivery-customer-actions/STATUS.md).
 
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 
