@@ -24,7 +24,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, filter } from 'rxjs';
+import { debounceTime, filter, forkJoin } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -40,19 +40,25 @@ import { Tooltip } from 'primeng/tooltip';
 import {
   AdminCylinderTypeService,
   AdminEmployeeService,
+  AdminWarehouseService,
   AuthService,
   DeliveryService,
+  InventoryService,
   NotifyService,
   OrderService,
   WebSocketService,
+  type AppError,
   type CylinderTypeResponse,
   type DriverResponse,
   type EmployeeResponse,
+  type InventoryBalanceLine,
   type RecordFailedDeliveryRequest,
   type OrderResponse,
   type OrderStatusHistoryEntryResponse,
   type ProofOfDeliverySubmission,
+  type RouteResponse,
   type VehicleResponse,
+  type WarehouseResponse,
 } from '@lpg/shared/data-access';
 import { errorMessageFor, statusLabel, statusSeverity } from '../order-status.util';
 
@@ -67,6 +73,37 @@ interface OrderStatusChangedMessage {
 
 const FREE_CANCEL_STATUSES = new Set(['booked', 'confirmed', 'assigned', 'ready_for_dispatch']);
 const APPROVAL_CANCEL_STATUSES = new Set(['out_for_delivery', 'failed_delivery']);
+
+/** Trips that haven't come back yet; a driver or van on one is busy. */
+const ACTIVE_TRIP_STATUSES = ['planned', 'loaded', 'in_progress'] as const;
+/** Trips an order can still join from this page. */
+const OPEN_TRIP_STATUSES = new Set(['planned', 'loaded']);
+const NEW_TRIP = 'new';
+
+/** The order's journey, one step per thing the counter staff can see. */
+const PROGRESS_STEPS = ['Booked', 'Confirmed', 'On a trip', 'Out for delivery', 'Delivered'];
+const PROGRESS_STEP_BY_STATUS: Record<string, number> = {
+  booked: 0,
+  confirmed: 1,
+  assigned: 2,
+  ready_for_dispatch: 2,
+  out_for_delivery: 3,
+  failed_delivery: 3,
+  delivered: 4,
+  closed: 4,
+};
+
+/** Send out errors in the order page's words; the rest use the shared text. */
+function sendOutErrorMessage(error: unknown): string {
+  switch ((error as Partial<AppError> | null)?.errorCode) {
+    case 'INSUFFICIENT_STOCK':
+      return "The godown doesn't have enough filled cylinders for this order. Receive stock or pick another godown.";
+    case 'WEIGHMENT_CHECK_REQUIRED':
+      return 'This agency weighs every cylinder before dispatch. Log the load-out weighment for this trip on the Dispatch page, then send it out again.';
+    default:
+      return errorMessageFor(error);
+  }
+}
 
 const FAILED_DELIVERY_REASONS = [
   { label: 'Customer unavailable', value: 'customer_unavailable' },
@@ -124,6 +161,8 @@ export class OrderDetail implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly deliveryService = inject(DeliveryService);
   private readonly employeeService = inject(AdminEmployeeService);
+  private readonly warehouseService = inject(AdminWarehouseService);
+  private readonly inventoryService = inject(InventoryService);
   private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -158,7 +197,7 @@ export class OrderDetail implements OnInit {
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly drivers = signal<DriverResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
-  /** `DriverResponse` only carries `employee_id` (a UUID) — the Assign
+  /** `DriverResponse` only carries `employee_id` (a UUID) — the Send out
    * drawer's driver select otherwise rendered every row with a blank label
    * (`optionLabel="employee_code"` doesn't exist on that type), making
    * drivers indistinguishable from each other. Resolved here the same way
@@ -171,11 +210,11 @@ export class OrderDetail implements OnInit {
   protected readonly infoMessage = signal<string | null>(null);
 
   protected readonly showCancelDialog = signal(false);
-  protected readonly showAssignDrawer = signal(false);
+  protected readonly showSendOutDrawer = signal(false);
   protected readonly showFailedDeliveryDrawer = signal(false);
   protected readonly showDeliverDrawer = signal(false);
 
-  protected readonly assignTrigger = viewChild<ElementRef<HTMLButtonElement>>('assignTriggerEl');
+  protected readonly sendOutTrigger = viewChild<ElementRef<HTMLButtonElement>>('sendOutTriggerEl');
   protected readonly failedDeliveryTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('failedDeliveryTriggerEl');
   protected readonly deliverTrigger = viewChild<ElementRef<HTMLButtonElement>>('deliverTriggerEl');
@@ -186,16 +225,180 @@ export class OrderDetail implements OnInit {
     return map;
   });
 
-  protected readonly driverOptions = computed(() =>
-    this.drivers().map((d) => {
+  private readonly driverNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const d of this.drivers()) {
       const employee = this.employeeById().get(d.employee_id);
+      map.set(d.id, employee ? `${employee.first_name} ${employee.last_name}` : shortId(d.id));
+    }
+    return map;
+  });
+
+  private readonly vehicleNameById = computed(() => {
+    const map = new Map<string, string>();
+    for (const v of this.vehicles()) map.set(v.id, v.registration_number);
+    return map;
+  });
+
+  /** Trips in this order's branch that haven't come back yet. */
+  private readonly activeTrips = signal<RouteResponse[]>([]);
+
+  private readonly busyOnTrip = computed(() => {
+    const drivers = new Set<string>();
+    const vehicles = new Set<string>();
+    for (const trip of this.activeTrips()) {
+      drivers.add(trip.driver_id);
+      vehicles.add(trip.vehicle_id);
+    }
+    return { drivers, vehicles };
+  });
+
+  protected readonly driverOptions = computed(() =>
+    this.drivers()
+      .filter((d) => d.status === 'active' && d.branch_id === this.order()?.branch_id)
+      .map((d) => {
+        const busy = this.busyOnTrip().drivers.has(d.id);
+        const name = this.driverNameById().get(d.id) ?? shortId(d.id);
+        return { id: d.id, label: busy ? `${name} (on a trip)` : name, disabled: busy };
+      }),
+  );
+
+  protected readonly vehicleOptions = computed(() =>
+    this.vehicles()
+      .filter((v) => v.status === 'active' && v.branch_id === this.order()?.branch_id)
+      .map((v) => {
+        const busy = this.busyOnTrip().vehicles.has(v.id);
+        const name = `${v.registration_number} · holds ${v.capacity_units}`;
+        return { id: v.id, label: busy ? `${name} (on a trip)` : name, disabled: busy };
+      }),
+  );
+
+  /** The trip this order is already on, if it hasn't come back yet. */
+  protected readonly orderTrip = computed(() => {
+    const stopId = this.order()?.route_stop_id;
+    if (!stopId) return null;
+    return this.activeTrips().find((t) => (t.stops ?? []).some((s) => s.id === stopId)) ?? null;
+  });
+
+  protected tripLabel(trip: RouteResponse): string {
+    const driver = this.driverNameById().get(trip.driver_id) ?? 'Driver';
+    const van = this.vehicleNameById().get(trip.vehicle_id) ?? 'van';
+    const state = trip.status === 'planned' ? 'not loaded' : 'ready to leave';
+    const stops = (trip.stops ?? []).length;
+    return `${driver} · ${van} · ${stops} ${stops === 1 ? 'order' : 'orders'}, ${state}`;
+  }
+
+  protected readonly progressSteps = PROGRESS_STEPS;
+
+  /** Index of the current step, or null when the order left the normal path. */
+  protected readonly progressIndex = computed(() => {
+    const status = this.order()?.status;
+    return status ? (PROGRESS_STEP_BY_STATUS[status] ?? null) : null;
+  });
+
+  protected readonly progressNote = computed(() => {
+    const order = this.order();
+    if (!order) return null;
+    const trip = this.orderTrip();
+    switch (order.status) {
+      case 'confirmed':
+        return 'Next: send it out on a trip.';
+      case 'assigned':
+        return trip
+          ? `On ${this.tripLabel(trip)}. The van still needs loading.`
+          : 'On a trip. The van still needs loading.';
+      case 'ready_for_dispatch':
+        return trip
+          ? `Loaded on ${this.vehicleNameById().get(trip.vehicle_id) ?? 'the van'}, waiting for ${this.driverNameById().get(trip.driver_id) ?? 'the driver'} to leave.`
+          : 'Loaded, waiting for the driver to leave.';
+      case 'failed_delivery':
+        return 'The delivery failed. Reschedule it to send it out again.';
+      default:
+        return null;
+    }
+  });
+
+  // --- Send out ----------------------------------------------------------------
+
+  protected readonly warehouses = signal<WarehouseResponse[]>([]);
+  protected readonly sendTripId = signal<string>(NEW_TRIP);
+  protected readonly sendDriverId = signal<string | null>(null);
+  protected readonly sendVehicleId = signal<string | null>(null);
+  protected readonly sendWarehouseId = signal<string | null>(null);
+  protected readonly sendError = signal<string | null>(null);
+  private readonly godownStock = signal<ReadonlyMap<string, number> | null>(null);
+  private readonly vanStock = signal<ReadonlyMap<string, number>>(new Map());
+
+  protected readonly sendTripOptions = computed(() => [
+    { id: NEW_TRIP, label: 'New trip' },
+    ...this.activeTrips()
+      .filter((t) => OPEN_TRIP_STATUSES.has(t.status))
+      .map((t) => ({ id: t.id, label: this.tripLabel(t) })),
+  ]);
+
+  protected readonly isNewTrip = computed(
+    () => !this.orderTrip() && this.sendTripId() === NEW_TRIP,
+  );
+
+  /** The existing trip the order goes out on: the one it's on, or the one picked. */
+  private readonly sendTrip = computed(
+    () => this.orderTrip() ?? this.activeTrips().find((t) => t.id === this.sendTripId()) ?? null,
+  );
+
+  protected readonly sendVehicle = computed(() => {
+    const vehicleId = this.sendTrip()?.vehicle_id ?? this.sendVehicleId();
+    return this.vehicles().find((v) => v.id === vehicleId) ?? null;
+  });
+
+  protected readonly sendWarehouseOptions = computed(() => {
+    const branchId = this.order()?.branch_id;
+    const inBranch = this.warehouses().filter((w) => w.is_active && w.branch_id === branchId);
+    return inBranch.length > 0 ? inBranch : this.warehouses().filter((w) => w.is_active);
+  });
+
+  /** This order's cylinders against the van and the godown: the server's arithmetic. */
+  protected readonly sendLoadRows = computed(() => {
+    const order = this.order();
+    if (!order) return [];
+    const godown = this.godownStock();
+    const van = this.vanStock();
+    // An order already on a trip keeps what was reserved for it; only the rest is loaded.
+    const onTrip = order.status !== 'confirmed';
+    return order.lines.map((line) => {
+      const forOrder = onTrip ? line.quantity_pending : line.quantity_ordered;
+      const onVan = van.get(line.cylinder_type_id) ?? 0;
+      const toLoad = Math.max(0, forOrder - onVan);
+      const inGodown = godown ? (godown.get(line.cylinder_type_id) ?? 0) : null;
       return {
-        ...d,
-        display_label: employee
-          ? `${employee.employee_code} — ${employee.first_name} ${employee.last_name}`
-          : shortId(d.id),
+        id: line.id,
+        name:
+          this.cylinderTypeNameById().get(line.cylinder_type_id) ?? shortId(line.cylinder_type_id),
+        forOrder,
+        onVan,
+        toLoad,
+        inGodown,
+        short: inGodown !== null && toLoad > inGodown,
       };
-    }),
+    });
+  });
+
+  protected readonly sendShort = computed(() => this.sendLoadRows().some((row) => row.short));
+
+  /** Other orders on the same not-yet-loaded trip go out with this one. */
+  protected readonly sendCompanionCount = computed(() => {
+    const trip = this.sendTrip();
+    if (!trip || trip.status !== 'planned') return 0;
+    const orderId = this.order()?.id;
+    return (trip.stops ?? []).filter((s) => s.status === 'pending' && s.order_id !== orderId)
+      .length;
+  });
+
+  protected readonly canSubmitSendOut = computed(
+    () =>
+      !this.loading() &&
+      !!this.sendWarehouseId() &&
+      !this.sendShort() &&
+      (!this.isNewTrip() || (!!this.sendDriverId() && !!this.sendVehicleId())),
   );
 
   protected readonly canCancelFree = computed(() => {
@@ -215,8 +418,11 @@ export class OrderDetail implements OnInit {
   });
 
   protected readonly canConfirm = computed(() => this.order()?.status === 'booked');
-  protected readonly canAssign = computed(() => this.order()?.status === 'confirmed');
-  protected readonly canDispatch = computed(() => this.order()?.status === 'assigned');
+  /** A confirmed order, or one on a trip whose van isn't loaded yet. */
+  protected readonly canSendOut = computed(() => {
+    const status = this.order()?.status;
+    return status === 'confirmed' || status === 'assigned';
+  });
   protected readonly canDepart = computed(() => this.order()?.status === 'ready_for_dispatch');
   protected readonly canDeliverOrFail = computed(() => this.order()?.status === 'out_for_delivery');
   protected readonly canReschedule = computed(() => this.order()?.status === 'failed_delivery');
@@ -224,11 +430,6 @@ export class OrderDetail implements OnInit {
 
   protected readonly cancelForm = this.fb.group({
     reason: ['', [Validators.required, Validators.minLength(3)]],
-  });
-
-  protected readonly assignForm = this.fb.group({
-    driver_id: ['', [Validators.required]],
-    vehicle_id: ['', [Validators.required]],
   });
 
   protected readonly failedDeliveryForm = this.fb.group({
@@ -255,8 +456,6 @@ export class OrderDetail implements OnInit {
       required: 'A reason is required.',
       minlength: 'Give a little more detail.',
     },
-    driver_id: { required: 'Select a driver.' },
-    vehicle_id: { required: 'Select a vehicle.' },
     reason_code: { required: 'Select a reason.' },
     resolution_action: { required: 'Select a resolution.' },
     otp_code: { required: 'The delivery OTP is required.' },
@@ -301,8 +500,11 @@ export class OrderDetail implements OnInit {
     this.errorMessage.set(null);
     this.orderService.getOrder(orderId).subscribe({
       next: (order) => {
+        const branchChanged = order.branch_id !== this.order()?.branch_id;
         this.order.set(order);
         this.loading.set(false);
+        if (this.drivers().length === 0) this.loadFleet();
+        if (order.route_stop_id || branchChanged) this.loadActiveTrips(order.branch_id);
       },
       error: (err) => {
         this.errorMessage.set(errorMessageFor(err));
@@ -334,8 +536,37 @@ export class OrderDetail implements OnInit {
     this.loading.set(false);
   }
 
+  /** Every driver and van, for names on trips; Send out offers the order's branch only.
+   * A trip can use a van registered to another branch, so names can't be branch-filtered. */
+  private loadFleet(): void {
+    this.deliveryService.listDrivers(0, 200).subscribe({
+      next: (page) => this.drivers.set(page.items),
+    });
+    this.deliveryService.listVehicles(0, 200).subscribe({
+      next: (page) => this.vehicles.set(page.items),
+    });
+    this.employeeService.listEmployees({ limit: 200, role: 'driver' }).subscribe({
+      next: (page) => {
+        const map = new Map<string, EmployeeResponse>();
+        for (const employee of page.items) map.set(employee.id, employee);
+        this.employeeById.set(map);
+      },
+    });
+  }
+
+  private loadActiveTrips(branchId: string): void {
+    forkJoin(
+      ACTIVE_TRIP_STATUSES.map((status) =>
+        this.deliveryService.listRoutes(1, 100, status, branchId),
+      ),
+    ).subscribe({
+      next: (pages) => this.activeTrips.set(pages.flatMap((page) => page.items)),
+      error: () => this.activeTrips.set([]),
+    });
+  }
+
   // ---------------------------------------------------------------------------
-  // Confirm / Dispatch / Depart / Reschedule / Close — direct status advances
+  // Confirm / Depart / Reschedule / Close — direct status advances
   // ---------------------------------------------------------------------------
 
   protected onConfirm(): void {
@@ -344,16 +575,6 @@ export class OrderDetail implements OnInit {
     this.loading.set(true);
     this.orderService.confirmOrder(order.id).subscribe({
       next: (updated) => this.applyUpdate(updated, 'Order confirmed.'),
-      error: (err) => this.applyError(err),
-    });
-  }
-
-  protected onDispatch(): void {
-    const order = this.order();
-    if (!order) return;
-    this.loading.set(true);
-    this.orderService.dispatchOrder(order.id).subscribe({
-      next: (updated) => this.applyUpdate(updated, 'Order marked ready for dispatch.'),
       error: (err) => this.applyError(err),
     });
   }
@@ -390,40 +611,111 @@ export class OrderDetail implements OnInit {
   }
 
   // ---------------------------------------------------------------------------
-  // Assign
+  // Send out — pick a trip and a godown, load the van and dispatch in one step
   // ---------------------------------------------------------------------------
 
-  protected openAssignDrawer(): void {
+  protected openSendOutDrawer(): void {
     const order = this.order();
-    this.assignForm.reset({ driver_id: '', vehicle_id: '' });
-    this.deliveryService.listDrivers(0, 200, undefined, 'active', order?.branch_id).subscribe({
-      next: (page) => this.drivers.set(page.items),
-    });
-    this.deliveryService.listVehicles(0, 200, undefined, 'active', order?.branch_id).subscribe({
-      next: (page) => this.vehicles.set(page.items),
-    });
-    this.employeeService.listEmployees({ branch_id: order?.branch_id, limit: 200 }).subscribe({
-      next: (page) => {
-        const map = new Map<string, EmployeeResponse>();
-        for (const employee of page.items) map.set(employee.id, employee);
-        this.employeeById.set(map);
-      },
-    });
-    this.showAssignDrawer.set(true);
+    if (!order) return;
+    this.sendError.set(null);
+    this.sendTripId.set(NEW_TRIP);
+    this.sendDriverId.set(null);
+    this.onSendVehicleChange(this.orderTrip()?.vehicle_id ?? null);
+    if (this.warehouses().length === 0) {
+      this.warehouseService.listWarehouses().subscribe({
+        next: (warehouses) => {
+          this.warehouses.set(warehouses);
+          this.onSendWarehouseChange(this.sendWarehouseOptions()[0]?.id ?? null);
+        },
+        error: () => this.sendError.set('Failed to load godowns.'),
+      });
+    } else {
+      this.onSendWarehouseChange(this.sendWarehouseOptions()[0]?.id ?? null);
+    }
+    this.loadActiveTrips(order.branch_id);
+    this.showSendOutDrawer.set(true);
   }
 
-  protected onSubmitAssign(): void {
-    const order = this.order();
-    if (!order || this.assignForm.invalid) return;
-    const { driver_id, vehicle_id } = this.assignForm.getRawValue();
-    this.loading.set(true);
-    this.orderService.assignOrder(order.id, { driver_id, vehicle_id }).subscribe({
-      next: (updated) => {
-        this.showAssignDrawer.set(false);
-        this.applyUpdate(updated, 'Order assigned to driver and vehicle.');
-      },
-      error: (err) => this.applyError(err),
+  protected onSendTripChange(tripId: string): void {
+    this.sendTripId.set(tripId);
+    const trip = this.activeTrips().find((t) => t.id === tripId);
+    this.onSendVehicleChange(trip?.vehicle_id ?? this.sendVehicleId());
+  }
+
+  protected onSendVehicleChange(vehicleId: string | null): void {
+    if (this.isNewTrip() || !vehicleId) this.sendVehicleId.set(vehicleId);
+    this.vanStock.set(new Map());
+    if (!vehicleId) return;
+    this.inventoryService.getBalance('vehicle', vehicleId).subscribe({
+      next: (balance) => this.vanStock.set(filledStock(balance.balances)),
     });
+  }
+
+  protected onSendWarehouseChange(warehouseId: string | null): void {
+    this.sendWarehouseId.set(warehouseId);
+    this.godownStock.set(null);
+    if (!warehouseId) return;
+    this.inventoryService.getBalance('warehouse', warehouseId).subscribe({
+      next: (balance) => this.godownStock.set(filledStock(balance.balances)),
+      // Stock is a guide here; the server still refuses a short load.
+      error: () => this.godownStock.set(null),
+    });
+  }
+
+  protected onSubmitSendOut(): void {
+    const order = this.order();
+    if (!order || !this.canSubmitSendOut()) return;
+    this.loading.set(true);
+    this.sendError.set(null);
+    const trip = this.sendTrip();
+    if (trip) {
+      this.loadAndDispatch(order, trip);
+      return;
+    }
+    const requested = new Date(order.requested_date);
+    const now = new Date();
+    this.deliveryService
+      .planRoute({
+        branch_id: order.branch_id,
+        driver_id: this.sendDriverId() as string,
+        vehicle_id: this.sendVehicleId() as string,
+        route_date: (requested > now ? requested : now).toISOString(),
+      })
+      .subscribe({
+        next: (route) => {
+          // A retry after a failed load joins this trip instead of making another.
+          this.activeTrips.set([...this.activeTrips(), route]);
+          this.sendTripId.set(route.id);
+          this.loadAndDispatch(order, route);
+        },
+        error: (err) => this.failSendOut(err),
+      });
+  }
+
+  private loadAndDispatch(order: OrderResponse, trip: RouteResponse): void {
+    this.deliveryService
+      .loadAndDispatchRoute(trip.id, {
+        warehouse_id: this.sendWarehouseId() as string,
+        order_ids: order.status === 'confirmed' ? [order.id] : [],
+        extra_lines: [],
+      })
+      .subscribe({
+        next: () => {
+          this.showSendOutDrawer.set(false);
+          const driver = this.driverNameById().get(trip.driver_id) ?? 'the driver';
+          this.loading.set(false);
+          this.infoMessage.set(null);
+          this.notify.success(`Loaded and handed to ${driver}.`);
+          this.refresh();
+          this.loadActiveTrips(order.branch_id);
+        },
+        error: (err) => this.failSendOut(err),
+      });
+  }
+
+  private failSendOut(err: unknown): void {
+    this.sendError.set(sendOutErrorMessage(err));
+    this.loading.set(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -681,4 +973,14 @@ export class OrderDetail implements OnInit {
   protected backToQueue(): void {
     void this.router.navigate(['/orders']);
   }
+}
+
+function filledStock(balances: InventoryBalanceLine[]): Map<string, number> {
+  const stock = new Map<string, number>();
+  for (const line of balances) {
+    if (line.status === 'filled') {
+      stock.set(line.cylinder_type_id, (stock.get(line.cylinder_type_id) ?? 0) + line.quantity);
+    }
+  }
+  return stock;
 }

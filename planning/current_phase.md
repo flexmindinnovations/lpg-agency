@@ -50,7 +50,7 @@ LPG Agency Management Platform
 
 **Post-delivery customer actions** ✅ **DONE** — 2026-10-19. The driver's doorstep payment now settles the invoice (plus a backfill), so Pay Online disappears once paid; the Customer App refetches order/invoice detail and never offers Cancel after delivery. See [`planning/features/43-post-delivery-customer-actions/STATUS.md`](./features/43-post-delivery-customer-actions/STATUS.md).
 
-**Simpler dispatch (trip sheet)** ✅ **DONE** — 2026-10-19. One "New trip" drawer on the Dispatch page: pick driver and van, tick the orders, the load sheet works out the cylinders against godown stock, and one Load & dispatch call loads the van and releases the orders to the driver. Fixes orders assigned before loading that reserved nothing. ADR-056. See [`planning/features/45-simpler-dispatch/STATUS.md`](./features/45-simpler-dispatch/STATUS.md).
+**Simpler dispatch (trip sheet)** ✅ **DONE** — 2026-10-19. One "New trip" drawer on the Dispatch page: pick driver and van, tick the orders, the load sheet works out the cylinders against godown stock, and one Load & dispatch call loads the van and releases the orders to the driver. A single order can also go out from its own page with Send out, and the order page shows a progress line. Fixes orders assigned before loading that reserved nothing. ADR-056. See [`planning/features/45-simpler-dispatch/STATUS.md`](./features/45-simpler-dispatch/STATUS.md).
 
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 

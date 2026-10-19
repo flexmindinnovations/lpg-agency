@@ -6,6 +6,7 @@
 - [x] Trip sheet drawer, trip detail actions, board labels
 - [x] Unit, integration and e2e coverage
 - [x] ADR-056
+- [x] Order page: Send out drawer (replaces Assign + Dispatch) and a progress line (user ask, 2026-10-19)
 
 ## Follow-ups (not in scope)
 

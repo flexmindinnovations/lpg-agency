@@ -114,7 +114,7 @@ test.describe('Order to delivery — full workflow', () => {
     await context.setGeolocation({ latitude: 17.4058, longitude: 78.489 });
 
     // ------------------------------------------------------------------
-    // Admin: create -> confirm -> assign -> dispatch
+    // Admin: create -> confirm -> send out
     // ------------------------------------------------------------------
     await login(page, ADMIN.email, ADMIN.password);
 
@@ -149,33 +149,16 @@ test.describe('Order to delivery — full workflow', () => {
     await page.getByRole('button', { name: 'Confirm' }).click();
     await expectOrderStatus(page, 'Confirmed');
 
-    await page.getByRole('button', { name: 'Assign' }).click(); // see the leading-space note above
-    await choosePrimeOption(page, '#assign_driver', new RegExp(DRIVER_LABEL));
-    await choosePrimeOption(page, '#assign_vehicle', VEHICLE_REG);
-    // Disambiguate from the "Assign" trigger button that opened this drawer
-    // — the drawer's own submit is the only `type="submit"` button on the page.
-    await page.locator('button[type="submit"]', { hasText: 'Assign' }).click();
-    await expectOrderStatus(page, 'Assigned');
-
     // ------------------------------------------------------------------
-    // Dispatch: assigning a driver + vehicle (above) put the order on a
-    // trip that isn't loaded yet. "Load & dispatch" on that trip loads the
-    // van from the godown with what its orders need and releases them to
-    // the driver in one step.
-    //
-    // A second run *today* can leave an earlier run's trip for the same
-    // driver+vehicle in a later column, so scope to "Not loaded".
+    // Send out: one drawer picks a new trip's driver and van and the
+    // godown, then loads the van and releases the order to the driver.
     // ------------------------------------------------------------------
-    await page.goto(`${BASE_URL}/dispatch`);
-    const notLoadedColumn = page
-      .locator('.route-column')
-      .filter({ has: page.locator('.route-column__header', { hasText: 'Not loaded' }) });
-    await notLoadedColumn.locator('.route-card', { hasText: VEHICLE_REG }).first().click();
-    await buttonWithLabel(page, 'Load & dispatch').click();
-    await choosePrimeOption(page, '#trip_warehouse', /Hyderabad Central/);
-    await page.locator('button[type="submit"]', { hasText: 'dispatch' }).click();
+    await buttonWithLabel(page, 'Send out').click();
+    await choosePrimeOption(page, '#send_driver', new RegExp(DRIVER_LABEL));
+    await choosePrimeOption(page, '#send_vehicle', new RegExp(VEHICLE_REG));
+    await choosePrimeOption(page, '#send_warehouse', /Hyderabad Central/);
+    await page.locator('button[type="submit"]', { hasText: 'send out' }).click();
     await page.locator('.p-drawer-mask').waitFor({ state: 'hidden', timeout: 10_000 });
-    await page.goto(orderUrl);
     await expectOrderStatus(page, 'Ready For Dispatch');
 
     // ------------------------------------------------------------------

@@ -31,27 +31,16 @@
           <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i>
           <span>Confirm</span>
         </button>
-        } @if (canAssign()) {
+        } @if (canSendOut()) {
         <button
-          *lpgHasPermission="'orders:assign'"
-          #assignTriggerEl
+          *lpgHasPermission="'routes:manage'"
+          #sendOutTriggerEl
           pButton
           type="button"
-          (click)="openAssignDrawer()"
+          (click)="openSendOutDrawer()"
         >
-          <i class="pi pi-user-plus"></i>
-          <span>Assign</span>
-        </button>
-        } @if (canDispatch()) {
-        <button
-          *lpgHasPermission="'orders:dispatch'"
-          pButton
-          type="button"
-          [disabled]="loading()"
-          (click)="onDispatch()"
-        >
-          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-box'"></i>
-          <span>Dispatch</span>
+          <i class="pi pi-truck"></i>
+          <span>Send out</span>
         </button>
         } @if (canDepart()) {
         <button
@@ -139,7 +128,31 @@
   <p-message severity="error">{{ msg }}</p-message>
   } @if (infoMessage(); as msg) {
   <p-message severity="info">{{ msg }}</p-message>
-  } @if (order(); as o) {
+  } @if (order(); as o) { @if (progressIndex() !== null) {
+  <section class="progress" aria-label="Order progress">
+    <ol class="progress__steps">
+      @for (step of progressSteps; track step; let i = $index) {
+      <li
+        class="progress__step"
+        [class.progress__step--done]="i < (progressIndex() ?? 0)"
+        [class.progress__step--current]="i === progressIndex()"
+        [attr.aria-current]="i === progressIndex() ? 'step' : null"
+      >
+        <span class="progress__marker" aria-hidden="true">
+          @if (i < (progressIndex() ?? 0) || (i === progressIndex() && i === progressSteps.length -
+          1)) {
+          <i class="pi pi-check"></i>
+          } @else { {{ i + 1 }} }
+        </span>
+        <span class="progress__label">{{ step }}</span>
+      </li>
+      }
+    </ol>
+    @if (progressNote(); as note) {
+    <p class="progress__note">{{ note }}</p>
+    }
+  </section>
+  }
   <div class="detail-grid">
     <div class="detail-field">
       <span class="detail-field__label">Booking Source</span>
@@ -261,53 +274,139 @@
     </form>
   </p-drawer>
 
-  <!-- Assign Drawer -->
+  <!-- Send out Drawer -->
   <p-drawer
-    header="Assign Driver & Vehicle"
-    [(visible)]="showAssignDrawer"
+    header="Send out"
+    [(visible)]="showSendOutDrawer"
     position="right"
     [modal]="true"
-    [style]="{ width: '100%', maxWidth: '28rem' }"
-    (onHide)="assignTrigger()?.nativeElement?.focus()"
+    styleClass="!w-full md:!w-[34rem]"
+    (onHide)="sendOutTrigger()?.nativeElement?.focus()"
   >
-    <form [formGroup]="assignForm" (ngSubmit)="onSubmitAssign()" class="dialog-form">
+    <form class="dialog-form" (ngSubmit)="onSubmitSendOut()">
       <div class="dialog-form__fields">
-        <lpg-form-field
-          label="Driver"
-          for="assign_driver"
-          [control]="assignForm.controls.driver_id"
-          [messages]="fieldMessages.driver_id"
-        >
+        @if (sendError(); as msg) {
+        <p-message severity="error">{{ msg }}</p-message>
+        } @if (orderTrip(); as trip) {
+        <div class="detail-field">
+          <span class="detail-field__label">Trip</span>
+          <span>{{ tripLabel(trip) }}</span>
+        </div>
+        } @else {
+        <lpg-form-field label="Trip" for="send_trip">
           <p-select
-            inputId="assign_driver"
-            formControlName="driver_id"
+            inputId="send_trip"
+            name="send_trip"
+            [options]="sendTripOptions()"
+            optionLabel="label"
+            optionValue="id"
+            [ngModel]="sendTripId()"
+            (ngModelChange)="onSendTripChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+        </lpg-form-field>
+        @if (isNewTrip()) {
+        <lpg-form-field label="Driver" for="send_driver">
+          <p-select
+            inputId="send_driver"
+            name="send_driver"
             [options]="driverOptions()"
-            optionLabel="display_label"
+            optionLabel="label"
             optionValue="id"
+            optionDisabled="disabled"
+            placeholder="Select a driver"
+            [ngModel]="sendDriverId()"
+            (ngModelChange)="sendDriverId.set($event)"
             [fluid]="true"
-          ></p-select>
+            [appendTo]="'body'"
+          />
         </lpg-form-field>
-        <lpg-form-field
-          label="Vehicle"
-          for="assign_vehicle"
-          [control]="assignForm.controls.vehicle_id"
-          [messages]="fieldMessages.vehicle_id"
-        >
+        <lpg-form-field label="Van" for="send_vehicle">
           <p-select
-            inputId="assign_vehicle"
-            formControlName="vehicle_id"
-            [options]="vehicles()"
-            optionLabel="registration_number"
+            inputId="send_vehicle"
+            name="send_vehicle"
+            [options]="vehicleOptions()"
+            optionLabel="label"
             optionValue="id"
+            optionDisabled="disabled"
+            placeholder="Select a van"
+            [ngModel]="sendVehicleId()"
+            (ngModelChange)="onSendVehicleChange($event)"
             [fluid]="true"
-          ></p-select>
+            [appendTo]="'body'"
+          />
         </lpg-form-field>
+        } }
+        <lpg-form-field label="Load from godown" for="send_warehouse">
+          <p-select
+            inputId="send_warehouse"
+            name="send_warehouse"
+            [options]="sendWarehouseOptions()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select a godown"
+            [ngModel]="sendWarehouseId()"
+            (ngModelChange)="onSendWarehouseChange($event)"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+        </lpg-form-field>
+
+        <table class="load-sheet">
+          <thead>
+            <tr>
+              <th scope="col">Cylinder</th>
+              <th scope="col">For this order</th>
+              <th scope="col">Already on van</th>
+              <th scope="col">To load</th>
+              <th scope="col">In godown</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of sendLoadRows(); track row.id) {
+            <tr [class.load-sheet__row--short]="row.short">
+              <th scope="row">{{ row.name }}</th>
+              <td>{{ row.forOrder }}</td>
+              <td>{{ row.onVan }}</td>
+              <td><strong>{{ row.toLoad }}</strong></td>
+              <td>
+                {{ row.inGodown ?? '—' }} @if (row.short) {
+                <span class="load-sheet__short"
+                  >Short by {{ row.toLoad - (row.inGodown ?? 0) }}</span
+                >
+                }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (sendShort()) {
+        <p-message severity="error">
+          The godown doesn't have enough filled cylinders. Pick another godown or receive stock
+          first.
+        </p-message>
+        } @if (sendCompanionCount() > 0) {
+        <p-message severity="info">
+          This trip's van isn't loaded yet, so its other {{ sendCompanionCount() }} {{
+          sendCompanionCount() === 1 ? 'order goes' : 'orders go' }} out too. Their cylinders are
+          loaded from the same godown.
+        </p-message>
+        }
+        <p class="send-out__hint">
+          Send out loads the van from the godown and hands the order to the driver, who sees it in
+          the Driver App. Plan bigger trips on the Dispatch page.
+        </p>
       </div>
       <div class="modal-actions">
-        <button pButton type="button" severity="secondary" (click)="showAssignDrawer.set(false)">
+        <button pButton type="button" severity="secondary" (click)="showSendOutDrawer.set(false)">
           Close
         </button>
-        <button pButton type="submit" [disabled]="assignForm.invalid || loading()">Assign</button>
+        <button pButton type="submit" [disabled]="!canSubmitSendOut()">
+          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-truck'"></i>
+          <span>Load &amp; send out</span>
+        </button>
       </div>
     </form>
   </p-drawer>

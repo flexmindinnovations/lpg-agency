@@ -25,10 +25,11 @@ van, spare, to load, in godown) → **Load & dispatch**. See ADR-056.
 - **Application:** `LoadAndDispatchRouteUseCase`; the weighment gate is extracted to `LoadOutWeighmentGate` and shared with `LoadVehicleForRouteUseCase`.
 - **API:** `POST /routes/{id}/load-and-dispatch` (`routes:manage`), body `{warehouse_id, order_ids, extra_lines}`.
 - **Dashboard:** Dispatch page rebuilt around the trip sheet drawer; trip detail shows Load & dispatch / Add orders, what was loaded and whether the driver checked the van; columns renamed.
+- **Order page:** Send out replaces Assign and Dispatch for a confirmed (or not-yet-loaded) order: new trip (driver, van) or an open trip, plus godown, with the order's cylinders against van and godown stock; calls plan + load-and-dispatch. A progress line shows Booked → Confirmed → On a trip → Out for delivery → Delivered and the trip's driver and van.
 - **No migration. No Driver App change.**
 
 ## Tests
 
 - Unit: `tests/unit/test_load_and_dispatch_route.py` (11 cases).
 - Integration: `TestLoadAndDispatchThroughRealStack` in `test_route_endpoints_smoke.py` (backordered order released and delivered, short godown moves nothing).
-- E2E: `order-to-delivery-workflow.spec.ts` uses Load & dispatch.
+- E2E: `order-to-delivery-workflow.spec.ts` sends the order out from its own page.
