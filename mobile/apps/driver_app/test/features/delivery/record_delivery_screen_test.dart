@@ -225,17 +225,15 @@ void main() {
       expect(find.text('Cylinders'), findsOneWidget);
       expect(find.text('Payment'), findsOneWidget);
       expect(find.text('Delivery code'), findsOneWidget);
-      expect(find.text("Customer's signature"), findsOneWidget);
-      expect(find.text('Delivery photo'), findsOneWidget);
+      expect(find.text("Customer's signature (optional)"), findsOneWidget);
+      expect(find.text('Delivery photo (optional)'), findsOneWidget);
       expect(find.text('Take a photo'), findsOneWidget);
       expect(find.text('Confirm delivery'), findsOneWidget);
       // Amount prefilled from the order total.
       expect(find.text('905.50'), findsOneWidget);
     });
 
-    testWidgets('blocks submit until a signature and photo are captured', (
-      tester,
-    ) async {
+    testWidgets('delivers without a signature or photo', (tester) async {
       final adapter = _RecordingAdapter();
       final (:container, :harness) = _container(adapter);
       addTearDown(harness.dispose);
@@ -247,10 +245,17 @@ void main() {
         '123456',
       );
       await tester.tap(find.text('Confirm delivery'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('signature and a photo'), findsOneWidget);
-      expect(adapter.paths, isEmpty);
+      // Nothing to upload: straight to the deliver call, with no refs.
+      expect(adapter.paths, ['/api/v1/orders/order-1/deliver']);
+      final pod = adapter.deliverBody!['proof_of_delivery'] as Map;
+      expect(pod.containsKey('signature_blob_ref'), isFalse);
+      expect(pod.containsKey('photo_blob_ref'), isFalse);
+      expect(find.text('home'), findsOneWidget);
     });
 
     testWidgets('captures everything and posts the delivery', (tester) async {

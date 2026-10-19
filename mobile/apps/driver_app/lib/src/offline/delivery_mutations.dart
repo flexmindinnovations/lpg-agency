@@ -122,7 +122,8 @@ class DeliveryMutations {
     );
   }
 
-  /// `out_for_delivery → delivered` with proof of delivery. `dacCode` is
+  /// `out_for_delivery → delivered` with proof of delivery. The signature
+  /// and photo are optional — only what was captured is uploaded. `dacCode` is
   /// the OMC's own separate Delivery Authentication Code (Phase 20
   /// subsystem 4) — optional, distinct from `otpCode`, never gates
   /// delivery.
@@ -134,8 +135,8 @@ class DeliveryMutations {
     required double gpsLng,
     required String paymentMethod,
     required double amountCollected,
-    required List<int> signatureBytes,
-    required List<int> photoBytes,
+    List<int>? signatureBytes,
+    List<int>? photoBytes,
     String? dacCode,
   }) async {
     if (await _isOnline()) {
@@ -189,26 +190,38 @@ class DeliveryMutations {
     required double gpsLng,
     required String paymentMethod,
     required double amountCollected,
-    required List<int> signatureBytes,
-    required List<int> photoBytes,
+    List<int>? signatureBytes,
+    List<int>? photoBytes,
     String? dacCode,
   }) async {
-    final sig = await _orderApi.uploadPodAttachment(
-      orderId,
-      bytes: signatureBytes,
-      filename: 'signature.png',
-    );
-    if (sig case FailureResult(:final failure)) {
-      return _outcomeFor(failure);
+    String? signatureRef;
+    if (signatureBytes != null) {
+      final sig = await _orderApi.uploadPodAttachment(
+        orderId,
+        bytes: signatureBytes,
+        filename: 'signature.png',
+      );
+      switch (sig) {
+        case Success(:final value):
+          signatureRef = value.blobRef;
+        case FailureResult(:final failure):
+          return _outcomeFor(failure);
+      }
     }
-    final photo = await _orderApi.uploadPodAttachment(
-      orderId,
-      bytes: photoBytes,
-      filename: 'delivery.jpg',
-      contentType: 'image/jpeg',
-    );
-    if (photo case FailureResult(:final failure)) {
-      return _outcomeFor(failure);
+    String? photoRef;
+    if (photoBytes != null) {
+      final photo = await _orderApi.uploadPodAttachment(
+        orderId,
+        bytes: photoBytes,
+        filename: 'delivery.jpg',
+        contentType: 'image/jpeg',
+      );
+      switch (photo) {
+        case Success(:final value):
+          photoRef = value.blobRef;
+        case FailureResult(:final failure):
+          return _outcomeFor(failure);
+      }
     }
 
     final result = await _orderApi.deliverOrder(
@@ -217,8 +230,8 @@ class DeliveryMutations {
         lines: lines,
         otpCode: otpCode,
         proofOfDelivery: ProofOfDeliverySubmission(
-          signatureBlobRef: (sig as Success).value.blobRef,
-          photoBlobRef: (photo as Success).value.blobRef,
+          signatureBlobRef: signatureRef,
+          photoBlobRef: photoRef,
           gpsLat: gpsLat,
           gpsLng: gpsLng,
           paymentMethod: paymentMethod,
@@ -246,15 +259,19 @@ class DeliveryMutations {
     required double gpsLng,
     required String paymentMethod,
     required double amountCollected,
-    required List<int> signatureBytes,
-    required List<int> photoBytes,
+    List<int>? signatureBytes,
+    List<int>? photoBytes,
     String? dacCode,
   }) async {
     final mediaId = const Uuid().v4();
     final sigKey = 'pod/$mediaId/signature.png';
     final photoKey = 'pod/$mediaId/delivery.jpg';
-    await _mediaStore.write(sigKey, signatureBytes);
-    await _mediaStore.write(photoKey, photoBytes);
+    if (signatureBytes != null) {
+      await _mediaStore.write(sigKey, signatureBytes);
+    }
+    if (photoBytes != null) {
+      await _mediaStore.write(photoKey, photoBytes);
+    }
 
     final cached = await _cache?.read('order', orderId);
     if (cached != null) {
@@ -269,20 +286,22 @@ class DeliveryMutations {
         'uploadPath': '/api/v1/orders/$orderId/pod-attachments',
         'aggregateId': orderId,
         'media': [
-          {
-            'field': 'signature',
-            'key': sigKey,
-            'filename': 'signature.png',
-            'contentType': 'image/png',
-            'blobRef': null,
-          },
-          {
-            'field': 'photo',
-            'key': photoKey,
-            'filename': 'delivery.jpg',
-            'contentType': 'image/jpeg',
-            'blobRef': null,
-          },
+          if (signatureBytes != null)
+            {
+              'field': 'signature',
+              'key': sigKey,
+              'filename': 'signature.png',
+              'contentType': 'image/png',
+              'blobRef': null,
+            },
+          if (photoBytes != null)
+            {
+              'field': 'photo',
+              'key': photoKey,
+              'filename': 'delivery.jpg',
+              'contentType': 'image/jpeg',
+              'blobRef': null,
+            },
         ],
         'body': {
           'lines': [for (final l in lines) l.toJson()],

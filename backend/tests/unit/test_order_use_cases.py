@@ -586,6 +586,44 @@ class TestDeliverOrderUseCase:
 
         assert pod_repo.create.call_args.kwargs["dac_code"] == "654321"
 
+    async def test_delivery_without_signature_or_photo_is_recorded(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """Signature and photo are optional; the OTP still gates delivery."""
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        vehicle_location = _make_vehicle_location(location_ref_id=route.vehicle_id)
+        mock_inventory_repo.get_by_location_ref.return_value = vehicle_location
+        use_case, pod_repo, _otp = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+
+        await use_case.execute(
+            DeliverOrderCommand(
+                order_id=order.id,
+                lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+                otp_code="123456",
+                signature_blob_ref=None,
+                photo_blob_ref=None,
+                gps_lat=Decimal("12.9"),
+                gps_lng=Decimal("77.6"),
+                payment_method="cash",
+                amount_collected=Decimal("3600"),
+                changed_by=uuid.uuid4(),
+            )
+        )
+
+        kwargs = pod_repo.create.call_args.kwargs
+        assert kwargs["signature_blob_ref"] is None
+        assert kwargs["photo_blob_ref"] is None
+        mock_uow.commit.assert_called_once()
+
     async def test_omitted_dac_code_defaults_to_none(
         self,
         mock_order_repo: MagicMock,

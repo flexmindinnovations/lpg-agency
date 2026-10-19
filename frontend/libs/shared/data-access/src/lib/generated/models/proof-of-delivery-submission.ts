@@ -3,8 +3,10 @@
 
 
 /**
- * The first five fields are non-optional — a missing one is a 422
- * before the request ever reaches `DeliverOrderUseCase`. `dac_code` is the
+ * GPS, payment method and amount are non-optional — a missing one is a
+ * 422 before the request ever reaches `DeliverOrderUseCase`. The signature
+ * and photo refs are optional (the driver may skip either; the OTP on
+ * `DeliverOrderRequest` is what gates delivery). `dac_code` is the
  * OMC's own separate 6-digit Delivery Authentication Code (Phase 20
  * subsystem 4) — optional (coverage is ~90%, not 100%) and format-
  * validated only (this platform has no OMC portal API to check a DAC's
@@ -17,6 +19,6 @@ export interface ProofOfDeliverySubmission {
   gps_lat: (number | string);
   gps_lng: (number | string);
   payment_method: 'cash' | 'upi' | 'card' | 'online_gateway' | 'credit';
-  photo_blob_ref: string;
-  signature_blob_ref: string;
+  photo_blob_ref?: (string | null);
+  signature_blob_ref?: (string | null);
 }

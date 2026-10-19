@@ -52,3 +52,15 @@ class TestDacCodeFormat:
     def test_a_malformed_code_is_rejected(self, bad_value: str) -> None:
         with pytest.raises(ValidationError):
             _submission(dac_code=bad_value)
+
+
+class TestOptionalSignatureAndPhoto:
+    def test_signature_and_photo_may_be_omitted(self) -> None:
+        submission = _submission(signature_blob_ref=None, photo_blob_ref=None)
+        assert submission.signature_blob_ref is None
+        assert submission.photo_blob_ref is None
+
+    @pytest.mark.parametrize("field", ["signature_blob_ref", "photo_blob_ref"])
+    def test_an_empty_ref_is_rejected(self, field: str) -> None:
+        with pytest.raises(ValidationError):
+            _submission(**{field: ""})

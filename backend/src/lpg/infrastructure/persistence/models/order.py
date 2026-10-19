@@ -220,8 +220,11 @@ class ProofOfDeliveryModel(Base):
         Uuid(), ForeignKey("orders.order.id", ondelete="CASCADE")
     )
     otp_verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    signature_blob_ref: Mapped[str] = mapped_column(Text())
-    photo_blob_ref: Mapped[str] = mapped_column(Text())
+    # Optional since 2026-10-19 (BR-08/BR-23 amended): the driver may skip
+    # the customer signature and/or the delivery photo; the OTP still gates
+    # delivery.
+    signature_blob_ref: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    photo_blob_ref: Mapped[str | None] = mapped_column(Text(), nullable=True)
     gps_lat: Mapped[Decimal] = mapped_column(Numeric(9, 6))
     gps_lng: Mapped[Decimal] = mapped_column(Numeric(9, 6))
     payment_method: Mapped[str] = mapped_column(String(20))
