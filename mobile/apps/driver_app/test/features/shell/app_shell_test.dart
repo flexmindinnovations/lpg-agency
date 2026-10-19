@@ -35,6 +35,7 @@ Widget _app({int unread = 0}) => ProviderScope(
   overrides: [
     unreadNotificationCountProvider.overrideWith((ref) async => unread),
     pushMessagesProvider.overrideWith((ref) => const Stream.empty()),
+    notificationsRealtimeProvider.overrideWith((ref) => const Stream.empty()),
   ],
   child: MaterialApp.router(theme: LpgTheme.light, routerConfig: _router()),
 );

@@ -16,6 +16,7 @@ from lpg.domain.order.order import (
     BookingCreated,
     CylinderDelivered,
     DeliveryFailed,
+    OrderStatusChanged,
 )
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.jobs.pool import JobQueue
@@ -87,6 +88,19 @@ def register_notification_handlers(
 
     async def _on_route_status_changed(event: DomainEvent) -> None:
         assert isinstance(event, RouteStatusChanged)
+        if event.new_status == "in_progress":
+            # The office sees the driver leave the depot — one bell entry
+            # per route, not one per stop.
+            await job_queue.enqueue(
+                "send_notification",
+                {
+                    "type": "route_started_staff",
+                    "tenant_id": str(event.tenant_id),
+                    "route_id": str(event.route_id),
+                    "driver_id": str(event.driver_id),
+                },
+            )
+            return
         # `planned -> loaded` = the vehicle's packed and the driver should
         # head out. One push per route (the job resolves the stop count),
         # replacing the per-order `driver_assigned` push while the route was
@@ -103,9 +117,20 @@ def register_notification_handlers(
             },
         )
 
-        # TODO: a customer-facing "out for delivery" per order on
-        # `-> in_progress` still isn't wired (the `out_for_delivery` type's
-        # title/body/push flags exist but nothing enqueues it).
+    async def _on_order_status_changed(event: DomainEvent) -> None:
+        assert isinstance(event, OrderStatusChanged)
+        # `depart()` has no transition-specific event, so the customer's
+        # "out for delivery" push hangs off the generic status change.
+        if event.to_status != "out_for_delivery":
+            return
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "out_for_delivery",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+            },
+        )
 
     async def _on_cylinder_delivered(event: DomainEvent) -> None:
         assert isinstance(event, CylinderDelivered)
@@ -113,6 +138,16 @@ def register_notification_handlers(
             "send_notification",
             {
                 "type": "delivery_confirmed",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+            },
+        )
+        # The office's bell too — deliveries are the update staff most want
+        # to see without refreshing the order queue.
+        await job_queue.enqueue(
+            "send_notification",
+            {
+                "type": "order_delivered_staff",
                 "tenant_id": str(event.tenant_id),
                 "order_id": str(event.order_id),
             },
@@ -195,6 +230,7 @@ def register_notification_handlers(
     dispatcher.register(BookingConfirmed, _on_booking_confirmed)
     dispatcher.register(OrderAssignedToRoute, _on_order_assigned)
     dispatcher.register(RouteStatusChanged, _on_route_status_changed)
+    dispatcher.register(OrderStatusChanged, _on_order_status_changed)
     dispatcher.register(CylinderDelivered, _on_cylinder_delivered)
     dispatcher.register(InvoiceGenerated, _on_invoice_generated)
     dispatcher.register(DeliveryFailed, _on_delivery_failed)

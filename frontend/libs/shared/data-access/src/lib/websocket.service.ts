@@ -1,6 +1,7 @@
 import { Injectable, inject, OnDestroy } from '@angular/core';
 import { filter, map, Observable, Subject } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
+import { AuthTokenStore } from './auth-token.store';
 
 export interface RealtimeMessage {
   type: string;
@@ -10,11 +11,13 @@ export interface RealtimeMessage {
 @Injectable({ providedIn: 'root' })
 export class WebSocketService implements OnDestroy {
   private readonly config = inject(ApiConfiguration);
+  private readonly tokenStore = inject(AuthTokenStore);
   private socket: WebSocket | null = null;
   private readonly messageSubject = new Subject<RealtimeMessage>();
   private readonly connectionStateSubject = new Subject<
     'connected' | 'disconnected' | 'connecting'
   >();
+  private readonly tokenRejectedSubject = new Subject<void>();
 
   private activeIntents = new Set<string>();
   private reconnectAttempts = 0;
@@ -23,6 +26,13 @@ export class WebSocketService implements OnDestroy {
 
   readonly messages$ = this.messageSubject.asObservable();
   readonly connectionState$ = this.connectionStateSubject.asObservable();
+  /**
+   * The server closed the socket with 1008: the access token it was opened
+   * with has expired (they last 15 minutes). `AuthService` answers with a
+   * refresh, whose `refreshToken()` call reopens the socket. Without this
+   * an idle tab whose socket dropped stayed offline until the next HTTP 401.
+   */
+  readonly tokenRejected$ = this.tokenRejectedSubject.asObservable();
 
   connect(token: string): void {
     if (
@@ -66,13 +76,18 @@ export class WebSocketService implements OnDestroy {
       this.socket = null;
       this.connectionStateSubject.next('disconnected');
 
-      // 1008 Policy Violation (invalid token) -> don't auto-reconnect
       // 1000 Normal Closure -> don't auto-reconnect
-      if (event.code === 1008 || event.code === 1000) {
+      if (event.code === 1000) {
+        return;
+      }
+      // 1008 Policy Violation (invalid token) -> retrying with the same token
+      // is pointless; ask for a fresh one instead.
+      if (event.code === 1008) {
+        this.tokenRejectedSubject.next();
         return;
       }
 
-      this.scheduleReconnect(token);
+      this.scheduleReconnect();
     };
 
     this.socket.onerror = () => {
@@ -127,7 +142,7 @@ export class WebSocketService implements OnDestroy {
     this.socket?.send(JSON.stringify(payload));
   }
 
-  private scheduleReconnect(token: string): void {
+  private scheduleReconnect(): void {
     if (this.isDestroyed || this.reconnectTimeoutId) return;
 
     // Exponential backoff: 1s, 2s, 4s, 8s, 16s, capped at 30s
@@ -140,7 +155,10 @@ export class WebSocketService implements OnDestroy {
 
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null;
-      this.connect(token);
+      // The token the socket first opened with may have been refreshed (or
+      // expired) since; reconnect with whatever is current.
+      const token = this.tokenStore.accessToken();
+      if (token) this.connect(token);
     }, delay);
   }
 
@@ -149,5 +167,6 @@ export class WebSocketService implements OnDestroy {
     this.disconnect();
     this.messageSubject.complete();
     this.connectionStateSubject.complete();
+    this.tokenRejectedSubject.complete();
   }
 }

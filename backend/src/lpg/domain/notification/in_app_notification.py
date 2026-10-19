@@ -16,6 +16,9 @@ class InAppNotificationCreated(DomainEvent):
     recipient_user_id: uuid.UUID
     notification_type: str
     title: str
+    body: str
+    reference_type: str | None
+    reference_id: uuid.UUID | None
 
 
 class InAppNotification(AggregateRoot):
@@ -89,6 +92,9 @@ class InAppNotification(AggregateRoot):
                 recipient_user_id=recipient_user_id,
                 notification_type=notification_type,
                 title=title,
+                body=body,
+                reference_type=reference_type,
+                reference_id=reference_id,
             )
         )
         return notification

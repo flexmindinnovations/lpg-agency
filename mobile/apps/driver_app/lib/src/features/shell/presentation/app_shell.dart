@@ -5,15 +5,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../offline/offline_banner.dart';
 import '../../../offline/sync_providers.dart';
+import '../../delivery/data/active_route_provider.dart';
 import '../../notifications/data/notifications_provider.dart';
 
 /// The Driver App shell: a persistent bottom [LpgNavigationBar] across the
 /// four tabs (Today / Deliveries / Alerts / Profile). Mirrors the Customer
 /// App's `AppShell` — same edge-to-edge bar and high-contrast treatment.
 ///
-/// It's the always-mounted widget, so it owns the Alerts-tab unread badge:
-/// refetched on app resume and whenever a foreground push lands (no realtime
-/// WebSocket — the push itself is the signal).
+/// It's the always-mounted widget, so it owns the Alerts-tab unread badge
+/// and keeps the route current: both are refetched on app resume, when a
+/// foreground push lands, and when a notification arrives over `/ws`.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -29,9 +30,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(
-      onResume: () => ref.invalidate(unreadNotificationCountProvider),
-    );
+    _lifecycle = AppLifecycleListener(onResume: _refresh);
   }
 
   @override
@@ -42,9 +41,9 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(pushMessagesProvider, (_, _) {
-      ref.invalidate(unreadNotificationCountProvider);
-      ref.invalidate(driverNotificationsProvider);
+    ref.listen(pushMessagesProvider, (_, _) => _refresh());
+    ref.listen(notificationsRealtimeProvider, (_, next) {
+      if (next.hasValue) _refresh();
     });
 
     final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
@@ -93,6 +92,14 @@ class _AppShellState extends ConsumerState<AppShell> {
         ],
       ),
     );
+  }
+
+  /// A notification means something changed for this driver (new or
+  /// cancelled stop, route ready): refresh the badge, the inbox and the route.
+  void _refresh() {
+    ref.invalidate(unreadNotificationCountProvider);
+    ref.invalidate(driverNotificationsProvider);
+    ref.invalidate(activeRouteProvider);
   }
 
   void _onTap(int index) {

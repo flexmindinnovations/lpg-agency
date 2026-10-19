@@ -154,6 +154,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             elif notification_type in (
                 "cash_shortfall_staff",
                 "route_load_confirmed_staff",
+                "route_started_staff",
                 "compliance_document_expiring_staff",
                 "lpg_rate_review_staff",
                 "inventory_low_stock_staff",
@@ -214,7 +215,7 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                     branch_id=order.branch_id,
                     eligible_roles=_STAFF_ALERT_ROLES,
                 )
-            elif notification_type == "order_placed_staff":
+            elif notification_type in ("order_placed_staff", "order_delivered_staff"):
                 # Whole ops team, tenant-wide — resolved straight off the
                 # `identity.identity_user` role (not the employee ->
                 # phone -> identity hop `EmployeeBranchStaffResolver`
@@ -271,6 +272,10 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
                 _logger.warning("no_recipients_found", notification_type=notification_type)
                 return
 
+            # People know an order by its number (ORD000022), not its UUID.
+            if order is not None and order.order_number:
+                payload["order_ref"] = order.order_number
+
             # Format content
             title = _get_title(notification_type)
             body = _get_body(notification_type, payload)
@@ -279,7 +284,11 @@ async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> Non
             if notification_type == "cash_shortfall_staff":
                 reference_type = "cash_handover"
                 reference_id = uuid.UUID(payload["cash_handover_id"])
-            elif notification_type in ("route_ready", "route_load_confirmed_staff"):
+            elif notification_type in (
+                "route_ready",
+                "route_load_confirmed_staff",
+                "route_started_staff",
+            ):
                 reference_type = "route"
                 reference_id = uuid.UUID(payload["route_id"])
             elif notification_type == "compliance_document_expiring_staff":
@@ -456,6 +465,8 @@ def _get_title(notification_type: str) -> str:
         "order_placed_staff": "New Order",
         "cash_shortfall_staff": "Cash Shortfall Declared",
         "route_load_confirmed_staff": "Van Load Confirmed",
+        "route_started_staff": "Route Started",
+        "order_delivered_staff": "Order Delivered",
         "route_ready": "Route Ready",
         "stop_cancelled": "Stop Cancelled",
         "compliance_document_expiring_staff": "Compliance Document Expiring",
@@ -467,7 +478,7 @@ def _get_title(notification_type: str) -> str:
 
 
 def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
-    order_id_short = payload.get("order_id", "Unknown")[:8].upper()
+    order_id_short = payload.get("order_ref") or payload.get("order_id", "Unknown")[:8].upper()
     if notification_type == "cash_shortfall_staff":
         route_short = payload.get("route_id", "Unknown")[:8].upper()
         return (
@@ -479,6 +490,9 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         stops = payload.get("stop_count", "?")
         plural = "" if stops == "1" else "s"
         return f"Your route is ready — {stops} stop{plural}."
+    if notification_type == "route_started_staff":
+        route_short = payload.get("route_id", "Unknown")[:8].upper()
+        return f"A driver has left the depot on route #{route_short}."
     if notification_type == "route_load_confirmed_staff":
         route_short = payload.get("route_id", "Unknown")[:8].upper()
         return f"The driver confirmed the van load for route #{route_short}."
@@ -531,6 +545,7 @@ def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
         "order_placed_staff": (
             f"Order #{order_id_short} was just placed and is awaiting confirmation."
         ),
+        "order_delivered_staff": f"Order #{order_id_short} has been delivered.",
         "stop_cancelled": (f"Order #{order_id_short} was cancelled — you can skip that stop."),
     }
     return bodies.get(notification_type, "You have a new notification.")
@@ -566,7 +581,9 @@ def _should_send_sms(notification_type: str) -> bool:
 def _sms_variables(payload: dict[str, Any]) -> dict[str, str]:
     """Values for the template's placeholders. Every order SMS template takes
     the same one: the short order reference also shown in the body."""
-    return {"order_ref": str(payload.get("order_id", "Unknown"))[:8].upper()}
+    return {
+        "order_ref": payload.get("order_ref") or str(payload.get("order_id", "Unknown"))[:8].upper()
+    }
 
 
 def _should_send_push(notification_type: str) -> bool:

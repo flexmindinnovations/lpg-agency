@@ -131,6 +131,26 @@ class OrderClosed(DomainEvent):
     closed_by: uuid.UUID
 
 
+@dataclass(frozen=True, slots=True)
+class OrderStatusChanged(DomainEvent):
+    """Fired by *every* status transition, alongside any transition-specific
+    event above. The specific events (`BookingConfirmed`, `CylinderDelivered`,
+    ...) carry what their business consumers need; several transitions
+    (`dispatch`, `depart`, `reschedule`) have no specific event at all. This
+    one exists so a consumer that only cares "the order moved" — real-time
+    clients and status-change notifications — sees every move, including
+    `out_for_delivery`, with the actual from/to status.
+    """
+
+    order_id: uuid.UUID
+    tenant_id: uuid.UUID
+    customer_id: uuid.UUID
+    order_number: str | None
+    from_status: str | None
+    to_status: str
+    changed_by: uuid.UUID
+
+
 # ---------------------------------------------------------------------------
 # Domain errors
 # ---------------------------------------------------------------------------
@@ -789,6 +809,17 @@ class Order(AggregateRoot):
         self._pending_status_history.append(
             OrderStatusHistoryEntry(
                 from_status=from_status, to_status=to_status, changed_by=changed_by, reason=reason
+            )
+        )
+        self.record_event(
+            OrderStatusChanged(
+                order_id=self.id,
+                tenant_id=self._tenant_id,
+                customer_id=self._customer_id,
+                order_number=self._order_number,
+                from_status=from_status,
+                to_status=to_status,
+                changed_by=changed_by,
             )
         )
 

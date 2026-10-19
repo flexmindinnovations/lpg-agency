@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../dashboard/data/notifications_provider.dart';
+import '../../orders/data/orders_provider.dart';
 
 /// The main application shell for the Customer App.
 ///
@@ -22,9 +23,17 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(notificationsRealtimeProvider, (previous, next) {
-      next.whenData((_) {
+      next.whenData((message) {
         ref.invalidate(notificationsProvider);
         ref.invalidate(unreadNotificationCountProvider);
+        // Order notifications (confirmed, out for delivery, delivered, ...)
+        // mean the order itself moved: refresh the Home and Orders lists,
+        // and the order's own screen if it's open.
+        if (message['reference_type'] == 'order') {
+          ref.invalidate(ordersProvider);
+          final orderId = message['reference_id'];
+          if (orderId is String) ref.invalidate(orderDetailProvider(orderId));
+        }
       });
     });
 

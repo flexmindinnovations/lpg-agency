@@ -16,7 +16,13 @@ import pytest
 
 from lpg.domain.accounting.cash_handover import CashShortfallDeclared
 from lpg.domain.delivery.route import RouteLoadConfirmed, RouteStatusChanged
-from lpg.domain.order.order import BookingCancelled, BookingConfirmed, BookingCreated
+from lpg.domain.order.order import (
+    BookingCancelled,
+    BookingConfirmed,
+    BookingCreated,
+    CylinderDelivered,
+    OrderStatusChanged,
+)
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
 from lpg.infrastructure.events.notification_handlers import (
     register_notification_handlers,
@@ -254,3 +260,95 @@ async def test_booking_confirmed_still_notifies_the_customer() -> None:
     await dispatcher.dispatch([event])
 
     assert any(payload.get("type") == "booking_confirmed" for _, payload in queue.enqueued)
+
+
+def _status_changed(to_status: str) -> OrderStatusChanged:
+    return OrderStatusChanged(
+        order_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        order_number="ORD000022",
+        from_status="ready_for_dispatch",
+        to_status=to_status,
+        changed_by=uuid.uuid4(),
+    )
+
+
+@pytest.mark.asyncio
+async def test_out_for_delivery_notifies_the_customer() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = _status_changed("out_for_delivery")
+    await dispatcher.dispatch([event])
+
+    assert queue.enqueued == [
+        (
+            "send_notification",
+            {
+                "type": "out_for_delivery",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("to_status", ["confirmed", "assigned", "ready_for_dispatch", "delivered"])
+async def test_other_status_changes_enqueue_no_out_for_delivery(to_status: str) -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    await dispatcher.dispatch([_status_changed(to_status)])
+
+    assert queue.enqueued == []
+
+
+@pytest.mark.asyncio
+async def test_route_started_alerts_staff() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = RouteStatusChanged(
+        route_id=uuid.uuid4(),
+        old_status="loaded",
+        new_status="in_progress",
+        tenant_id=uuid.uuid4(),
+        driver_id=uuid.uuid4(),
+    )
+    await dispatcher.dispatch([event])
+
+    assert queue.enqueued == [
+        (
+            "send_notification",
+            {
+                "type": "route_started_staff",
+                "tenant_id": str(event.tenant_id),
+                "route_id": str(event.route_id),
+                "driver_id": str(event.driver_id),
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_delivery_notifies_the_customer_and_staff() -> None:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+
+    event = CylinderDelivered(
+        order_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        route_stop_id=None,
+        delivered_at=datetime.now(UTC),
+    )
+    await dispatcher.dispatch([event])
+
+    types = [payload["type"] for _, payload in queue.enqueued]
+    assert types == ["delivery_confirmed", "order_delivered_staff"]

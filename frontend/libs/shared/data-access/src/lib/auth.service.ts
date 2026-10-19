@@ -1,6 +1,18 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  catchError,
+  exhaustMap,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+  throttleTime,
+} from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { loginApiV1AuthLoginPost } from './generated/fn/authentication/login-api-v-1-auth-login-post';
 import { logoutApiV1AuthLogoutPost } from './generated/fn/authentication/logout-api-v-1-auth-logout-post';
@@ -80,6 +92,21 @@ export class AuthService {
 
   private refreshInFlight$: Observable<string> | null = null;
   private restoreInFlight$: Observable<boolean> | null = null;
+
+  constructor() {
+    // The realtime socket's token expired: refresh it (which reopens the
+    // socket). Throttled so a server that keeps rejecting can't loop us.
+    this.wsService.tokenRejected$
+      .pipe(
+        throttleTime(30000),
+        exhaustMap(() =>
+          this.tokenStore.accessToken()
+            ? this.refreshAccessToken().pipe(catchError(() => EMPTY))
+            : EMPTY,
+        ),
+      )
+      .subscribe();
+  }
 
   login(email: string, password: string): Observable<void> {
     return loginApiV1AuthLoginPost(this.http, this.config.rootUrl, {
