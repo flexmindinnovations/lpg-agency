@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ApiConfiguration } from '@lpg/shared/data-access';
+import { MessageService } from 'primeng/api';
 import { NotificationBell } from './notification-bell';
 
 describe('NotificationBell', () => {
@@ -15,6 +16,7 @@ describe('NotificationBell', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
+        MessageService,
       ],
     }).compileComponents();
 

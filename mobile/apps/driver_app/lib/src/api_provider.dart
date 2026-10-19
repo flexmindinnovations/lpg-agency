@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:realtime/realtime.dart';
 
 import 'push/push_notification_service.dart';
 
@@ -46,5 +47,13 @@ final notificationApiProvider = Provider<NotificationApi>(
 final pushNotificationServiceProvider = Provider<PushNotificationService>(
   (ref) => throw UnimplementedError(
     'pushNotificationServiceProvider must be overridden in main().',
+  ),
+);
+
+/// The shared `/ws` connection (`RealtimeClient`). `main()` overrides this
+/// before the first frame; the default fails loudly if that's missed.
+final realtimeClientProvider = Provider<RealtimeClient>(
+  (ref) => throw UnimplementedError(
+    'realtimeClientProvider must be overridden in main().',
   ),
 );

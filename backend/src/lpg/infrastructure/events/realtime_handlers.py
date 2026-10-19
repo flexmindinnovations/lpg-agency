@@ -19,15 +19,7 @@ from lpg.domain.delivery.route import (
 )
 from lpg.domain.inventory.inventory_location import GoodsReceived, InventoryAdjusted
 from lpg.domain.notification.in_app_notification import InAppNotificationCreated
-from lpg.domain.order.order import (
-    BookingCancelled,
-    BookingConfirmed,
-    BookingCreated,
-    CylinderDelivered,
-    DeliveryFailed,
-    InventoryReserved,
-    OrderClosed,
-)
+from lpg.domain.order.order import OrderStatusChanged
 
 if TYPE_CHECKING:
     from lpg.application.common.ports import RealtimePublisher
@@ -45,35 +37,24 @@ def register_realtime_handlers(
         message = {"type": "dashboard.metrics_stale"}
         await publisher.publish(channel, message)
 
-    async def on_order_status_changed(
-        event: BookingCreated
-        | BookingConfirmed
-        | BookingCancelled
-        | InventoryReserved
-        | CylinderDelivered
-        | DeliveryFailed
-        | OrderClosed,
-    ) -> None:
-        """Notify order state changes to the specific order channel and dashboard."""
-        order_id = str(getattr(event, "order_id", getattr(event, "booking_id", "")))
-        if not order_id:
-            return
+    async def on_order_status_changed(event: OrderStatusChanged) -> None:
+        """Every order transition, with its real from/to status.
 
-        status = (
-            type(event)
-            .__name__.replace("Booking", "")
-            .replace("Order", "")
-            .replace("Cylinder", "")
-            .lower()
-        )
+        Subscribed to `OrderStatusChanged` rather than the transition-specific
+        events: `dispatch`/`depart`/`reschedule` have no specific event, so
+        `out_for_delivery` never reached a client before.
+        """
+        order_id = str(event.order_id)
         message = {
             "type": "order.status_changed",
             "order_id": order_id,
-            "event": type(event).__name__,
-            "status": status,
+            "order_number": event.order_number,
+            "from_status": event.from_status,
+            "status": event.to_status,
+            "changed_by": str(event.changed_by),
         }
 
-        tenant = getattr(event, "tenant_id", "global")
+        tenant = event.tenant_id
         # Per-order channel: whoever has that order's detail screen open.
         await publisher.publish(f"tenant:{tenant}:order:{order_id}", message)
         # Tenant-wide order feed: list screens (Order Queue) that need to
@@ -82,11 +63,20 @@ def register_realtime_handlers(
         await publish_dashboard_update(event)
 
     async def on_notification_created(event: InAppNotificationCreated) -> None:
-        """Notify user of new in-app notification."""
+        """Notify user of new in-app notification.
+
+        Carries the text and reference so a client can show it (toast,
+        snackbar) and refresh the referenced screen without a fetch first.
+        """
         channel = f"tenant:{getattr(event, 'tenant_id', 'global')}:user:{event.recipient_user_id}"
         message = {
             "type": "notification.new",
             "notification_id": str(event.notification_id),
+            "notification_type": event.notification_type,
+            "title": event.title,
+            "body": event.body,
+            "reference_type": event.reference_type,
+            "reference_id": str(event.reference_id) if event.reference_id else None,
         }
         await publisher.publish(channel, message)
 
@@ -123,13 +113,7 @@ def register_realtime_handlers(
         await publisher.publish(f"tenant:{getattr(event, 'tenant_id', 'global')}:dispatch", message)
 
     # Order lifecycle
-    dispatcher.register(BookingCreated, on_order_status_changed)  # type: ignore[arg-type]
-    dispatcher.register(BookingConfirmed, on_order_status_changed)  # type: ignore[arg-type]
-    dispatcher.register(BookingCancelled, on_order_status_changed)  # type: ignore[arg-type]
-    dispatcher.register(InventoryReserved, on_order_status_changed)  # type: ignore[arg-type]
-    dispatcher.register(CylinderDelivered, on_order_status_changed)  # type: ignore[arg-type]
-    dispatcher.register(DeliveryFailed, on_order_status_changed)  # type: ignore[arg-type]
-    dispatcher.register(OrderClosed, on_order_status_changed)  # type: ignore[arg-type]
+    dispatcher.register(OrderStatusChanged, on_order_status_changed)  # type: ignore[arg-type]
 
     # Notifications
     dispatcher.register(InAppNotificationCreated, on_notification_created)  # type: ignore[arg-type]

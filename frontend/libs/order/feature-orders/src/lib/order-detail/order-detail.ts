@@ -23,6 +23,8 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime, filter } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
@@ -42,6 +44,7 @@ import {
   DeliveryService,
   NotifyService,
   OrderService,
+  WebSocketService,
   type CylinderTypeResponse,
   type DriverResponse,
   type EmployeeResponse,
@@ -52,6 +55,15 @@ import {
   type VehicleResponse,
 } from '@lpg/shared/data-access';
 import { errorMessageFor, statusLabel, statusSeverity } from '../order-status.util';
+
+/** `order.status_changed` over the realtime socket (`realtime_handlers.py`). */
+interface OrderStatusChangedMessage {
+  type: 'order.status_changed';
+  order_id: string;
+  order_number: string | null;
+  status: string;
+  changed_by: string;
+}
 
 const FREE_CANCEL_STATUSES = new Set(['booked', 'confirmed', 'assigned', 'ready_for_dispatch']);
 const APPROVAL_CANCEL_STATUSES = new Set(['out_for_delivery', 'failed_delivery']);
@@ -116,6 +128,30 @@ export class OrderDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
+  private readonly wsService = inject(WebSocketService);
+
+  constructor() {
+    // Live-refresh when this order changes elsewhere (the driver departs or
+    // delivers, another staff member confirms). The tenant-wide feed is the
+    // same one the Order Queue uses; the socket has no unsubscribe, so one
+    // shared intent beats one per order page visited.
+    this.wsService.subscribeTo('orders');
+    this.wsService
+      .on<OrderStatusChangedMessage>('order.status_changed')
+      .pipe(
+        filter((message) => message.order_id === this.order()?.id),
+        debounceTime(300),
+        takeUntilDestroyed(),
+      )
+      .subscribe((message) => {
+        this.load(message.order_id, { silent: true });
+        // Your own actions already toast their result.
+        if (message.changed_by !== this.auth.principal()?.userId) {
+          const ref = message.order_number ?? shortId(message.order_id);
+          this.notify.info(`${ref} is now ${statusLabel(message.status)}.`, 'Order updated');
+        }
+      });
+  }
 
   protected readonly order = signal<OrderResponse | null>(null);
   protected readonly history = signal<OrderStatusHistoryEntryResponse[]>([]);
@@ -259,8 +295,9 @@ export class OrderDetail implements OnInit {
     });
   }
 
-  private load(orderId: string): void {
-    this.loading.set(true);
+  private load(orderId: string, { silent = false } = {}): void {
+    // A live refresh keeps the page on screen instead of flashing the spinner.
+    if (!silent) this.loading.set(true);
     this.errorMessage.set(null);
     this.orderService.getOrder(orderId).subscribe({
       next: (order) => {

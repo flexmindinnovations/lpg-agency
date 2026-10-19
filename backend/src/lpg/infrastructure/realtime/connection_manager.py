@@ -59,7 +59,18 @@ class ConnectionManager:
         return len(self._connections)
 
     async def connect(self, websocket: WebSocket, channels: list[str]) -> None:
-        """Register a WebSocket for the given channels and start its sender."""
+        """Register a WebSocket for the given channels and start its sender.
+
+        A client subscribes in several messages (one per screen that mounts),
+        so a socket that is already registered only gains the new channels.
+        Re-registering it would replace its channel set and start a second
+        sender loop, leaving the first one orphaned.
+        """
+        if websocket in self._connections:
+            for channel in channels:
+                self.subscribe(websocket, channel)
+            return
+
         self._connections[websocket] = set(channels)
         for channel in channels:
             if channel not in self._subscriptions:

@@ -27,6 +27,7 @@ from lpg.domain.order.order import (
     Order,
     OrderClosed,
     OrderLine,
+    OrderStatusChanged,
 )
 
 
@@ -256,7 +257,7 @@ class TestOrderConfirm:
             unit_prices={order.lines[0].cylinder_type_id: Decimal("950.00")}, changed_by=changed_by
         )
 
-        events = order.events
+        events = [e for e in order.events if not isinstance(e, OrderStatusChanged)]
         assert len(events) == 1
         event = events[0]
         assert isinstance(event, BookingConfirmed)

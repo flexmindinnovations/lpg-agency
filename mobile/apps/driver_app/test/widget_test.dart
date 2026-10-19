@@ -86,6 +86,7 @@ Widget _appWith(AuthController authController) => ProviderScope(
     authControllerProvider.overrideWithValue(authController),
     activeRouteProvider.overrideWith((ref) async => null),
     unreadNotificationCountProvider.overrideWith((ref) async => 0),
+    notificationsRealtimeProvider.overrideWith((ref) => const Stream.empty()),
     // Never `init()`ed here, so no Firebase is touched — `DriverApp` only
     // reads `takeInitialRoute()` (null) and subscribes to `taps`.
     pushNotificationServiceProvider.overrideWithValue(

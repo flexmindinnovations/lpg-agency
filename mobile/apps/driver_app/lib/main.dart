@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:realtime/realtime.dart';
 import 'package:sync_engine/sync_engine.dart';
 
 import 'src/api_provider.dart';
@@ -30,6 +31,11 @@ const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'https://lpg.vitessetec.com',
 );
+
+/// The `/ws` origin for [_apiBaseUrl] (same host, WebSocket scheme).
+String _wsBaseUrl(String apiBaseUrl) => apiBaseUrl
+    .replaceFirst('https://', 'wss://')
+    .replaceFirst('http://', 'ws://');
 
 /// Driver App entry point.
 ///
@@ -85,6 +91,13 @@ void main() async {
   );
   syncCoordinator.start();
 
+  // Live updates over `/ws`. Connects lazily on the first subscription (the
+  // shell's, once signed in) and reconnects with backoff on its own.
+  final realtimeClient = RealtimeClient(
+    wsBaseUrl: _wsBaseUrl(_apiBaseUrl),
+    getAccessToken: () => authRepository.accessToken,
+  );
+
   // Push notifications. Isolated in try/catch: a missing/invalid
   // google-services.json (or a device without Play Services) must not take
   // the whole app down — everything else works fine without push.
@@ -107,6 +120,7 @@ void main() async {
         syncCoordinatorProvider.overrideWithValue(syncCoordinator),
         mediaStoreProvider.overrideWithValue(mediaStore),
         pushNotificationServiceProvider.overrideWithValue(pushService),
+        realtimeClientProvider.overrideWithValue(realtimeClient),
       ],
       child: const DriverApp(),
     ),

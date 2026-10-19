@@ -31,8 +31,16 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
 });
 
 /// Ticks when an FCM message lands while the app is foregrounded — the shell
-/// listens and invalidates the count/list so the badge stays live without a
-/// realtime WebSocket.
+/// listens and invalidates the count/list/route.
 final pushMessagesProvider = StreamProvider<void>((ref) {
   return ref.watch(pushNotificationServiceProvider).messages;
 });
+
+/// Live `notification.new` events for the signed-in driver over `/ws`
+/// (`RealtimeClient.subscribeToNotifications`) — a new stop, a cancelled
+/// stop, the route being ready. Covers the case push can't: a device where
+/// FCM isn't available or the push was dropped.
+final notificationsRealtimeProvider =
+    StreamProvider.autoDispose<Map<String, dynamic>>((ref) {
+      return ref.watch(realtimeClientProvider).subscribeToNotifications();
+    });

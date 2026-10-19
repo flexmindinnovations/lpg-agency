@@ -72,7 +72,7 @@ Authoritative as of 2026-08-18 — generated from
 | `identity` | `IdentityUserLocked`, `IdentityUserLoggedIn`, `IdentityUserLoginFailed`, `IdentityUserRoleChanged` |
 | `inventory` | `GoodsReceived`, `InventoryAdjusted` |
 | `notification` | `InAppNotificationCreated` |
-| `order` | `BookingCancelled`, `BookingConfirmed`, `BookingCreated`, `CylinderDelivered`, `DeliveryFailed`, `InventoryReserved`, `OrderClosed` |
+| `order` | `BookingCancelled`, `BookingConfirmed`, `BookingCreated`, `CylinderDelivered`, `DeliveryFailed`, `InventoryReserved`, `OrderClosed`, `OrderStatusChanged` |
 | `tenant` | `BranchRenamed`, `CylinderTypeRenamed`, `TenantRenamed`, `TenantStatusChanged`, `WarehouseRenamed` |
 | `tenant_admin` | `EmployeeRegistered`, `EmployeeStatusChanged` |
 | `complaint` | `ComplaintRaised`, `ComplaintResolved` |
@@ -103,6 +103,11 @@ Authoritative as of 2026-08-18 — generated from
 - **Payload:** `order_id, tenant_id, customer_id, booking_source, lines, requested_date`
 - **Business Rules:** BR-19, BR-04 (already passed)
 - **Idempotency:** Client-supplied `Idempotency-Key` on the create-order request prevents duplicate orders from a retried submission; the event only fires once per successfully-created order.
+
+### `OrderStatusChanged`
+- **Publisher:** Order Management, on **every** status transition (alongside any transition-specific event) | **Consumers:** Real-time (`order.status_changed`), Notifications (`out_for_delivery`)
+- **Payload:** `order_id, tenant_id, customer_id, order_number, from_status, to_status, changed_by`
+- **Why it exists:** `dispatch`/`depart`/`reschedule` have no transition-specific event, so before 2026-10-19 `out_for_delivery` never reached a client. Subscribe here when you need "the order moved"; subscribe to the specific event when you need its business payload.
 
 ### `BookingCancelled`
 - **Publisher:** Order Management | **Consumers:** Inventory (release reservation), Notifications
