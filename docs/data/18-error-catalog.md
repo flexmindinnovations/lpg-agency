@@ -63,6 +63,7 @@ None of the rows below have a corresponding exception class yet — **no busines
 | `INVALID_STATE_TRANSITION` | 409 | "This action is not valid for the resource's current state." | State machine violation | Refresh and check current status before retrying | Order Management |
 | `OTP_MISMATCH` | 409 | "The OTP entered does not match." | BR-08/BR-23 or login OTP mismatch | Re-enter the OTP or request a new one | Delivery / Authentication |
 | `OTP_EXPIRED` | 410 | "The OTP has expired." | 5-minute OTP window elapsed | Request a new OTP | Authentication |
+| `ROUTE_NOT_LOADED` **[Implemented]** | 409 | "The van for this route hasn't been loaded yet." | BR-12 — an order's route must be loaded before the driver can start, deliver or fail the delivery | Office completes vehicle loading for the route, then the driver retries | Delivery |
 | `INSUFFICIENT_VEHICLE_STOCK` | 409 | "Vehicle does not have sufficient stock for this delivery." | BR-09 | Reduce quantity or reschedule remainder as backorder | Delivery / Inventory |
 | `INSUFFICIENT_STOCK` | 409 | "This location does not have sufficient stock for this operation." | Inventory non-negative invariant | Verify actual stock or record a GRN/adjustment first | Inventory |
 | `INSUFFICIENT_LEDGER_BALANCE` | 409 | "Customer does not have sufficient empty cylinders for an exchange." | BR-05 | Use a New Purchase transaction instead, or verify actual holding | Cylinder Ledger |
