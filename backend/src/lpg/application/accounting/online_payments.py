@@ -254,6 +254,10 @@ class CreateOrderPaymentLinkUseCase:
     ) -> tuple[uuid.UUID | None, Decimal]:
         invoice = await self._invoice_repository.get_by_order_id(tenant_id, order.id)
         if invoice is not None:
+            if invoice.status not in ("issued", "partially_paid"):
+                # Paid, cancelled or refunded: nothing is owed on it.
+                msg = f"Nothing is due on this order; its invoice is {invoice.status}."
+                raise ConflictError(msg, order_id=str(order.id), invoice_status=invoice.status)
             # Paid-but-unapplied gateway money counts too: it is about to
             # land on this invoice and must not be asked for twice.
             pending = sum(

@@ -177,16 +177,26 @@ class InvoiceDetailScreen extends ConsumerWidget {
                   balanceDue > 0 &&
                   (invoice.status == 'issued' ||
                       invoice.status == 'partially_paid'),
-              onPaid: () => ref.invalidate(invoiceDetailProvider(invoiceId)),
+              onPaid: () {
+                ref.invalidate(invoiceDetailProvider(invoiceId));
+                ref.invalidate(invoicesProvider);
+              },
             ),
           ];
 
-          return ListView(
-            padding: LpgSpacing.page,
-            children: [
-              for (var i = 0; i < sections.length; i++)
-                LpgFadeSlideIn(index: i, child: sections[i]),
-            ],
+          return RefreshIndicator(
+            onRefresh: () {
+              ref.invalidate(invoicesProvider);
+              return ref.refresh(invoiceDetailProvider(invoiceId).future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: LpgSpacing.page,
+              children: [
+                for (var i = 0; i < sections.length; i++)
+                  LpgFadeSlideIn(index: i, child: sections[i]),
+              ],
+            ),
           );
         },
       ),

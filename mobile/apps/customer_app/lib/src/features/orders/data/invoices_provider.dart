@@ -23,14 +23,15 @@ final invoicesProvider = FutureProvider<List<InvoiceResponse>>((ref) async {
 });
 
 /// Provides a single invoice by its ID.
-final invoiceDetailProvider = FutureProvider.family<InvoiceResponse?, String>((
-  ref,
-  id,
-) async {
-  final api = ref.watch(invoiceApiProvider);
-  final result = await api.getInvoice(id);
-  return result.when(
-    onSuccess: (data) => data,
-    onFailure: (failure) => throw Exception(failure.message),
-  );
-});
+///
+/// `autoDispose` so every visit refetches it and shows the balance as it is
+/// now, not as it was when the invoice was first opened.
+final invoiceDetailProvider = FutureProvider.autoDispose
+    .family<InvoiceResponse?, String>((ref, id) async {
+      final api = ref.watch(invoiceApiProvider);
+      final result = await api.getInvoice(id);
+      return result.when(
+        onSuccess: (data) => data,
+        onFailure: (failure) => throw Exception(failure.message),
+      );
+    });

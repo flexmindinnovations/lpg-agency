@@ -23,17 +23,19 @@ final ordersProvider = FutureProvider<List<OrderResponse>>((ref) async {
 });
 
 /// Provides a single order by its ID.
-final orderDetailProvider = FutureProvider.family<OrderResponse, String>((
-  ref,
-  id,
-) async {
-  final api = ref.watch(orderApiProvider);
-  final result = await api.getOrder(id);
-  return result.when(
-    onSuccess: (data) => data,
-    onFailure: (failure) => throw Exception(failure.message),
-  );
-});
+///
+/// `autoDispose` so every visit to an order refetches it: a cached copy kept
+/// offering Cancel and Pay Online for an order that had since been
+/// delivered and paid.
+final orderDetailProvider = FutureProvider.autoDispose
+    .family<OrderResponse, String>((ref, id) async {
+      final api = ref.watch(orderApiProvider);
+      final result = await api.getOrder(id);
+      return result.when(
+        onSuccess: (data) => data,
+        onFailure: (failure) => throw Exception(failure.message),
+      );
+    });
 
 /// Live `order.status_changed` events for one order, over the backend's
 /// `/ws` (`RealtimeClient.subscribeToOrder`). `autoDispose` so the

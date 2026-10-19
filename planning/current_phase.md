@@ -46,6 +46,8 @@ LPG Agency Management Platform
 
 **Optional delivery signature and photo** ✅ **DONE** — 2026-10-19. Drivers can record a delivery without the customer's signature or a photo; OTP and GPS still gate it (BR-08/BR-23 amended). See [`planning/features/39-optional-delivery-proof/STATUS.md`](./features/39-optional-delivery-proof/STATUS.md).
 
+**Post-delivery customer actions** ✅ **DONE** — 2026-10-19. The driver's doorstep payment now settles the invoice (plus a backfill), so Pay Online disappears once paid; the Customer App refetches order/invoice detail and never offers Cancel after delivery. See [`planning/features/42-post-delivery-customer-actions/STATUS.md`](./features/42-post-delivery-customer-actions/STATUS.md).
+
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).

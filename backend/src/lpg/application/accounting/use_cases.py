@@ -27,11 +27,12 @@ if TYPE_CHECKING:
         InvoiceNumberSequence,
         InvoiceRepository,
         OnlinePaymentRepository,
+        ProofOfDeliveryReader,
     )
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.delivery.ports import RouteRepository
-    from lpg.application.order.ports import OrderRepository
+    from lpg.application.order.ports import OrderRepository, ProofOfDeliveryEntry
     from lpg.application.tenant.ports import TenantConfigurationRepository
     from lpg.domain.accounting.online_payment import OnlinePayment
 
@@ -102,6 +103,53 @@ def apply_online_payments_to_invoice(
     return changed
 
 
+#: Doorstep payment methods that settle the invoice there and then. `credit`
+#: means the customer took the cylinders on account, so nothing was paid.
+_DOORSTEP_SETTLEMENT_METHODS: frozenset[str] = frozenset({"cash", "upi", "card", "online_gateway"})
+
+
+def apply_doorstep_collection_to_invoice(
+    invoice: Invoice, proof_of_delivery: ProofOfDeliveryEntry | None
+) -> bool:
+    """Record what the driver collected at the door as an invoice payment
+    (`payment-flow.md` Path B step 4), so a delivery paid in cash or UPI
+    leaves a paid invoice and nothing is asked for a second time online.
+
+    Runs after gateway prepayments are applied: only the balance still
+    outstanding is recorded, and anything collected beyond it is logged.
+    Returns whether a payment was recorded.
+    """
+    if (
+        proof_of_delivery is None
+        or proof_of_delivery.payment_method not in _DOORSTEP_SETTLEMENT_METHODS
+        or proof_of_delivery.amount_collected <= 0
+    ):
+        return False
+    outstanding = invoice.total_amount - invoice.amount_paid
+    if invoice.status not in ("issued", "partially_paid") or outstanding <= 0:
+        _logger.warning(
+            "doorstep_collection_not_applied_invoice_settled",
+            invoice_id=str(invoice.id),
+            amount=str(proof_of_delivery.amount_collected),
+        )
+        return False
+    amount = min(proof_of_delivery.amount_collected, outstanding)
+    if amount < proof_of_delivery.amount_collected:
+        _logger.warning(
+            "doorstep_collection_exceeds_invoice",
+            invoice_id=str(invoice.id),
+            excess=str(proof_of_delivery.amount_collected - amount),
+        )
+    invoice.record_payment(
+        payment_id=uuid.uuid4(),
+        method=proof_of_delivery.payment_method,
+        amount=amount,
+        collected_by=proof_of_delivery.recorded_by,
+        collected_at=proof_of_delivery.recorded_at,
+    )
+    return True
+
+
 class GenerateInvoiceForOrderUseCase:
     """Generates an invoice for an order when it is delivered."""
 
@@ -113,6 +161,7 @@ class GenerateInvoiceForOrderUseCase:
         tenant_config_repository: TenantConfigurationRepository,
         invoice_number_sequence: InvoiceNumberSequence,
         online_payment_repository: OnlinePaymentRepository | None = None,
+        proof_of_delivery_reader: ProofOfDeliveryReader | None = None,
     ) -> None:
         self._invoice_repository = invoice_repository
         self._order_repository = order_repository
@@ -123,6 +172,9 @@ class GenerateInvoiceForOrderUseCase:
         # existing unit tests) need not wire it; the production event
         # handler always does, so gateway prepayments land on the invoice.
         self._online_payment_repository = online_payment_repository
+        # Optional for the same reason; when wired, the driver's doorstep
+        # collection is recorded on the new invoice.
+        self._proof_of_delivery_reader = proof_of_delivery_reader
 
     async def execute(
         self,
@@ -196,6 +248,10 @@ class GenerateInvoiceForOrderUseCase:
             prepayments = await self._online_payment_repository.list_for_order(order.id)
             for online_payment in apply_online_payments_to_invoice(invoice, prepayments):
                 await self._online_payment_repository.save(online_payment)
+        if self._proof_of_delivery_reader is not None:
+            apply_doorstep_collection_to_invoice(
+                invoice, await self._proof_of_delivery_reader.get_by_order_id(order.id)
+            )
         await self._invoice_repository.add(invoice)
         _logger.info("invoice_generated", invoice_id=str(invoice.id), order_id=str(order_id))
 

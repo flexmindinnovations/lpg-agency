@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     import uuid
     from decimal import Decimal
 
+    from lpg.application.order.ports import ProofOfDeliveryEntry
     from lpg.domain.accounting.cash_handover import CashHandover
     from lpg.domain.accounting.credit_note import CreditNote
     from lpg.domain.accounting.invoice import Invoice
@@ -146,3 +147,11 @@ class OnlinePaymentRepository(Protocol):
 
     async def list_for_order(self, order_id: uuid.UUID) -> list[OnlinePayment]:
         """Every attempt for one order, newest first."""
+
+
+class ProofOfDeliveryReader(Protocol):
+    """Read side of the order context's proof of delivery, which holds what
+    the driver collected at the door (`payment-flow.md` Path B).
+    """
+
+    async def get_by_order_id(self, order_id: uuid.UUID) -> ProofOfDeliveryEntry | None: ...
