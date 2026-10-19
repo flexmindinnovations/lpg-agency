@@ -158,6 +158,15 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # with `RouteOptimizationDisabledError` rather than silently
         # reordering stops.
         "route_optimization_enabled",
+        # WhatsApp customer assistant (ADR-055) — tenant opt-in, same
+        # default-off shape as `ai_gateway_enabled`: until a tenant sets this
+        # truthy, inbound WhatsApp messages are logged but never answered.
+        "whatsapp_ai_enabled",
+        # The Meta WhatsApp Business phone number id this tenant's customers
+        # message. The webhook routes inbound messages to the tenant whose
+        # current value matches (`tenant.whatsapp_resolve_tenant_id`); a
+        # number claimed by two tenants routes to neither.
+        "whatsapp_phone_number_id",
     }
 )
 

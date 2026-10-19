@@ -171,6 +171,8 @@ class _CustomerAppState extends ConsumerState<CustomerApp> {
       title: 'LPG Agency',
       theme: LpgTheme.light,
       darkTheme: LpgTheme.dark,
+      highContrastTheme: LpgTheme.highContrast,
+      highContrastDarkTheme: LpgTheme.highContrast,
       themeMode: ThemeMode.system,
       routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,

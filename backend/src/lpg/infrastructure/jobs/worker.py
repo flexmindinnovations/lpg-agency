@@ -55,6 +55,7 @@ from lpg.infrastructure.jobs.pricing_jobs import fetch_omc_rates
 from lpg.infrastructure.jobs.refill_jobs import predict_refill_due
 from lpg.infrastructure.jobs.refresh_views import refresh_materialized_views
 from lpg.infrastructure.jobs.stale_order_jobs import check_stale_unassigned_orders
+from lpg.infrastructure.jobs.whatsapp_jobs import handle_whatsapp_message
 from lpg.infrastructure.persistence.database import build_database
 
 if TYPE_CHECKING:
@@ -160,6 +161,16 @@ async def startup(ctx: dict[str, Any]) -> None:
     from lpg.infrastructure.channels.push_channel import build_push_channel
 
     ctx["push_channel"] = build_push_channel(settings)
+    # Same reason: the MSG91 channel holds an httpx client.
+    from lpg.infrastructure.channels.sms_channel import build_sms_channel
+
+    ctx["sms_channel"] = build_sms_channel(settings)
+
+    # Same reasoning: one HTTP client for every WhatsApp reply this worker
+    # sends (ADR-055).
+    from lpg.infrastructure.whatsapp.cloud_api import build_whatsapp_sender
+
+    ctx["whatsapp_sender"] = build_whatsapp_sender(settings)
 
     # A domain-event dispatcher wired to the realtime publisher, so an
     # `InAppNotification` created inside a job still emits `notification.new`
@@ -196,9 +207,10 @@ async def shutdown(ctx: dict[str, Any]) -> None:
     redis_client = ctx.get("redis")
     if redis_client is not None:
         await redis_client.disconnect()
-    push_channel = ctx.get("push_channel")
-    if push_channel is not None and hasattr(push_channel, "aclose"):
-        await push_channel.aclose()
+    for channel_key in ("push_channel", "sms_channel", "whatsapp_sender"):
+        channel = ctx.get(channel_key)
+        if channel is not None and hasattr(channel, "aclose"):
+            await channel.aclose()
     job_queue = ctx.get("job_queue")
     if job_queue is not None:
         await job_queue.disconnect()
@@ -229,7 +241,13 @@ class WorkerSettings:
         cron(check_reorder_levels, hour=7, minute=0),
     ]
 
-    functions: ClassVar = (ping, bulk_cancel_orders, send_notification, auto_assign_driver)
+    functions: ClassVar = (
+        ping,
+        bulk_cancel_orders,
+        send_notification,
+        auto_assign_driver,
+        handle_whatsapp_message,
+    )
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(str(get_settings().redis_url))

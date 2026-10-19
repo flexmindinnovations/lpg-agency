@@ -19,5 +19,6 @@ export 'src/invoice_api.dart';
 export 'src/kyc_api.dart';
 export 'src/notification_api.dart';
 export 'src/order_api.dart';
+export 'src/payment_api.dart';
 export 'src/route_api.dart';
 export 'src/models/models.dart';

@@ -28,66 +28,33 @@ class AppShell extends ConsumerWidget {
       });
     });
 
-    final colors = Theme.of(context).extension<LpgColors>()!;
-
     return Scaffold(
       body: navigationShell,
-      // Edge-to-edge bar, flush with the screen — no floating-pill margin.
-      // Real Material elevation (with M3's surface tint) lifts it off the
-      // content; high-contrast mode swaps that for an explicit top border
-      // since elevation tint alone isn't a strong enough separator there.
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: colors.isHighContrast
-              ? Border(top: BorderSide(color: colors.borderStrong, width: 2))
-              : null,
-        ),
-        child: Material(
-          color: colors.surfaceRaised,
-          elevation: colors.isHighContrast ? 0 : 3,
-          child: NavigationBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            indicatorColor: colors.actionPrimary.withValues(alpha: 0.12),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (int index) => _onTap(context, index),
-            destinations: [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined, color: colors.textSecondary),
-                selectedIcon: Icon(Icons.home, color: colors.actionPrimary),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  Icons.receipt_long_outlined,
-                  color: colors.textSecondary,
-                ),
-                selectedIcon: Icon(
-                  Icons.receipt_long,
-                  color: colors.actionPrimary,
-                ),
-                label: 'Orders',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  Icons.support_agent_outlined,
-                  color: colors.textSecondary,
-                ),
-                selectedIcon: Icon(
-                  Icons.support_agent,
-                  color: colors.actionPrimary,
-                ),
-                label: 'Support',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline, color: colors.textSecondary),
-                selectedIcon: Icon(Icons.person, color: colors.actionPrimary),
-                label: 'Profile',
-              ),
-            ],
+      bottomNavigationBar: LpgNavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: (index) => _onTap(context, index),
+        destinations: const [
+          LpgNavDestination(
+            icon: LpgIcons.home,
+            selectedIcon: LpgIcons.homeFilled,
+            label: 'Home',
           ),
-        ),
+          LpgNavDestination(
+            icon: LpgIcons.orders,
+            selectedIcon: LpgIcons.ordersFilled,
+            label: 'Orders',
+          ),
+          LpgNavDestination(
+            icon: LpgIcons.support,
+            selectedIcon: LpgIcons.supportFilled,
+            label: 'Support',
+          ),
+          LpgNavDestination(
+            icon: LpgIcons.profile,
+            selectedIcon: LpgIcons.profileFilled,
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }

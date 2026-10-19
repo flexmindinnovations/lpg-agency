@@ -122,7 +122,8 @@ class DeliveryMutations {
     );
   }
 
-  /// `out_for_delivery → delivered` with proof of delivery. `dacCode` is
+  /// `out_for_delivery → delivered` with proof of delivery. The signature
+  /// and photo are optional — only what was captured is uploaded. `dacCode` is
   /// the OMC's own separate Delivery Authentication Code (Phase 20
   /// subsystem 4) — optional, distinct from `otpCode`, never gates
   /// delivery.
@@ -193,20 +194,21 @@ class DeliveryMutations {
     List<int>? photoBytes,
     String? dacCode,
   }) async {
-    // Only what the driver actually captured is uploaded; both are optional.
-    String? signatureBlobRef;
+    String? signatureRef;
     if (signatureBytes != null) {
       final sig = await _orderApi.uploadPodAttachment(
         orderId,
         bytes: signatureBytes,
         filename: 'signature.png',
       );
-      if (sig case FailureResult(:final failure)) {
-        return _outcomeFor(failure);
+      switch (sig) {
+        case Success(:final value):
+          signatureRef = value.blobRef;
+        case FailureResult(:final failure):
+          return _outcomeFor(failure);
       }
-      signatureBlobRef = (sig as Success).value.blobRef;
     }
-    String? photoBlobRef;
+    String? photoRef;
     if (photoBytes != null) {
       final photo = await _orderApi.uploadPodAttachment(
         orderId,
@@ -214,10 +216,12 @@ class DeliveryMutations {
         filename: 'delivery.jpg',
         contentType: 'image/jpeg',
       );
-      if (photo case FailureResult(:final failure)) {
-        return _outcomeFor(failure);
+      switch (photo) {
+        case Success(:final value):
+          photoRef = value.blobRef;
+        case FailureResult(:final failure):
+          return _outcomeFor(failure);
       }
-      photoBlobRef = (photo as Success).value.blobRef;
     }
 
     final result = await _orderApi.deliverOrder(
@@ -226,8 +230,8 @@ class DeliveryMutations {
         lines: lines,
         otpCode: otpCode,
         proofOfDelivery: ProofOfDeliverySubmission(
-          signatureBlobRef: signatureBlobRef,
-          photoBlobRef: photoBlobRef,
+          signatureBlobRef: signatureRef,
+          photoBlobRef: photoRef,
           gpsLat: gpsLat,
           gpsLng: gpsLng,
           paymentMethod: paymentMethod,
@@ -262,9 +266,12 @@ class DeliveryMutations {
     final mediaId = const Uuid().v4();
     final sigKey = 'pod/$mediaId/signature.png';
     final photoKey = 'pod/$mediaId/delivery.jpg';
-    // Only what the driver captured is stored and later uploaded.
-    if (signatureBytes != null) await _mediaStore.write(sigKey, signatureBytes);
-    if (photoBytes != null) await _mediaStore.write(photoKey, photoBytes);
+    if (signatureBytes != null) {
+      await _mediaStore.write(sigKey, signatureBytes);
+    }
+    if (photoBytes != null) {
+      await _mediaStore.write(photoKey, photoBytes);
+    }
 
     final cached = await _cache?.read('order', orderId);
     if (cached != null) {

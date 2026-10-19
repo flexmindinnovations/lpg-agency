@@ -37,9 +37,21 @@ class StubDrawerComponent {
 })
 class StubDialogComponent {}
 
+/** A feature component wrapping its own dialog, like `lpg-manage-permissions-dialog`. */
+@Component({
+  selector: 'lpg-wrapped-dialog',
+  standalone: true,
+  imports: [StubDialogComponent],
+  template: `
+    <span class="wrapper-label">Wrapper chrome</span>
+    <p-dialog id="wrapped-dialog"><button id="dialog-action" type="button">Save</button></p-dialog>
+  `,
+})
+class WrappedDialogComponent {}
+
 @Component({
   standalone: true,
-  imports: [StubDrawerComponent, StubDialogComponent, DrawerA11yDirective],
+  imports: [StubDrawerComponent, StubDialogComponent, WrappedDialogComponent, DrawerA11yDirective],
   template: `
     <button id="trigger" type="button">Open</button>
     <div class="page-body"><a id="bg-link" href="#">background link</a></div>
@@ -48,6 +60,7 @@ class StubDialogComponent {}
       <button id="save" type="button">Save</button>
     </p-drawer>
     <p-dialog id="sibling-dialog"><button type="button">Action</button></p-dialog>
+    <lpg-wrapped-dialog />
   `,
 })
 class HostComponent {}
@@ -113,6 +126,16 @@ describe('DrawerA11yDirective', () => {
     expect(isInert('.page-body')).toBe(true);
     expect(isInert('p-drawer')).toBe(false);
     expect(isInert('#sibling-dialog')).toBe(false);
+  });
+
+  it('keeps a dialog wrapped in a feature component interactive', () => {
+    const { drawer, isInert } = setup();
+
+    drawer.onShow.emit();
+
+    expect(isInert('lpg-wrapped-dialog')).toBe(false);
+    expect(isInert('#wrapped-dialog')).toBe(false);
+    expect(isInert('.wrapper-label')).toBe(true);
   });
 
   it('clears inert and restores focus to the opener on close', () => {

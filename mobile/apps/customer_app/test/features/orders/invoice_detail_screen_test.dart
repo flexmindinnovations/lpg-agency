@@ -89,7 +89,10 @@ void main() {
     ) async {
       await pumpScreen(tester, _screen(error: Exception('down')));
 
-      expect(find.textContaining('Failed to load this invoice'), findsOneWidget);
+      expect(
+        find.textContaining('Failed to load this invoice'),
+        findsOneWidget,
+      );
       expect(find.text('Retry'), findsOneWidget);
     });
   });

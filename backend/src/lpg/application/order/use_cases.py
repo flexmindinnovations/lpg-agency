@@ -18,13 +18,18 @@ needs to be undone.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
-from lpg.application.common.errors import NotFoundError, OtpMismatchError
+from lpg.application.common.errors import (
+    NotFoundError,
+    OtpMismatchError,
+    ServiceUnavailableError,
+)
 from lpg.application.delivery.use_cases import AssignOrderToRouteCommand, AssignOrderToRouteUseCase
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
@@ -376,7 +381,10 @@ class DepartOrderUseCase:
         if customer is not None:
             key = order_delivery_otp_key(order.tenant_id, order.id)
             code = await self._otp_store.issue(key)
-            await self._otp_delivery.send(customer.phone_number, code)
+            # The SMS adapter has already logged the failure; the order is
+            # out for delivery either way, so the driver must not see an error.
+            with contextlib.suppress(ServiceUnavailableError):
+                await self._otp_delivery.send(customer.phone_number, code, purpose="delivery")
         return order
 
 
@@ -438,17 +446,13 @@ class DeliverOrderCommand(Command):
     order_id: uuid.UUID
     lines: Sequence[DeliveredLine]
     otp_code: str
+    signature_blob_ref: str | None
+    photo_blob_ref: str | None
     gps_lat: Decimal
     gps_lng: Decimal
     payment_method: str
     amount_collected: Decimal
     changed_by: uuid.UUID
-    # The customer's signature and a delivery photo are optional: a driver who cannot capture
-    # them (no camera permission, storage unavailable, nobody to sign) can still complete the
-    # delivery. When supplied they are stored; when omitted the proof of delivery simply has
-    # no attachment. The OTP and GPS stamp remain the required proof.
-    signature_blob_ref: str | None = None
-    photo_blob_ref: str | None = None
     # Delivery Authentication Code (Phase 20 subsystem 4) — the OMC's own
     # separate 6-digit code, distinct from `otp_code`. Optional (coverage is
     # ~90%, not 100%) and never gates delivery — format-validated at the API
@@ -568,10 +572,12 @@ class DeliverOrderUseCase:
     def _validate_pod_fields(command: DeliverOrderCommand) -> None:
         from lpg.application.common.errors import IncompletePodError
 
-        for ref in (command.signature_blob_ref, command.photo_blob_ref):
-            if ref is not None and not ref.strip():
-                msg = "Signature/photo reference cannot be blank when supplied."
-                raise IncompletePodError(msg, order_id=str(command.order_id))
+        # Signature and photo are optional (the OTP gates delivery), but a
+        # reference that is sent must not be blank.
+        refs = (command.signature_blob_ref, command.photo_blob_ref)
+        if any(ref is not None and not ref.strip() for ref in refs):
+            msg = "Signature/photo reference cannot be blank."
+            raise IncompletePodError(msg, order_id=str(command.order_id))
         if not (Decimal("-90") <= command.gps_lat <= Decimal("90")):
             msg = f"GPS latitude out of range: {command.gps_lat}."
             raise IncompletePodError(msg, order_id=str(command.order_id))

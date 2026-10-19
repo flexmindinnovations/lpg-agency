@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/order_tracking_provider.dart';
 import '../data/orders_provider.dart';
+import 'order_presentation.dart';
 
 /// A live driver position older than this is shown as paused rather than
 /// current — the Driver App sends a ping roughly every 15s.
@@ -24,34 +25,17 @@ class OrderTrackingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final orderAsync = ref.watch(orderDetailProvider(orderId));
     final trackingAsync = ref.watch(orderTrackingProvider(orderId));
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Track Order',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Track Order')),
       body: orderAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgLoadingIndicator(),
+        error: (err, _) => LpgErrorState(
           message: 'Failed to load order tracking: $err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(orderDetailProvider(orderId)),
+          onRetry: () => ref.refresh(orderDetailProvider(orderId)),
         ),
         data: (order) {
-          final status = order.status;
-
           return Column(
             children: [
               // Delivery-location map
@@ -60,7 +44,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                 child: trackingAsync.when(
                   loading: () => ColoredBox(
                     color: colors.surfaceOverlay,
-                    child: const Center(child: LpgLoadingIndicator()),
+                    child: const LpgLoadingIndicator(),
                   ),
                   error: (_, _) => const MapUnavailable(
                     message: 'The map is unavailable right now.',
@@ -78,27 +62,59 @@ class OrderTrackingScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Order Milestones
+              // Order details and milestones, on a sheet that overlaps the
+              // bottom of the map.
               Expanded(
                 flex: 4,
                 child: Container(
-                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: colors.surfaceBase,
+                    color: colors.card,
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(32),
+                      top: Radius.circular(LpgRadius.xxl),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
+                    border: colors.isHighContrast
+                        ? Border(
+                            top: BorderSide(
+                              color: colors.borderStrong,
+                              width: 2,
+                            ),
+                          )
+                        : null,
+                    boxShadow: colors.floatingShadow,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      LpgSpacing.mdl,
+                      LpgSpacing.lg,
+                      LpgSpacing.mdl,
+                      LpgSpacing.lg,
+                    ),
                     children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Order Status',
+                                  style: context.lpgText.labelMedium,
+                                ),
+                                const SizedBox(height: LpgSpacing.xs / 2),
+                                Text(
+                                  LpgFormat.sentence(order.status),
+                                  style: context.lpgText.titleLarge,
+                                ),
+                              ],
+                            ),
+                          ),
+                          LpgStatusBadge(
+                            label: order.statusLabel,
+                            severity: order.statusSeverity,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: LpgSpacing.md),
                       // Order + tracking reference — tap either to copy.
                       Row(
                         children: [
@@ -111,7 +127,7 @@ class OrderTrackingScreen extends ConsumerWidget {
                               value: order.orderNumber ?? order.id,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: LpgSpacing.sm),
                           Expanded(
                             child: _CopyableRef(
                               label: 'Tracking ID',
@@ -121,88 +137,12 @@ class OrderTrackingScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Divider(height: 1, color: colors.borderDefault),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Order Status',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                              Text(
-                                status.replaceAll('_', ' ').toUpperCase(),
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          LpgStatusBadge(
-                            label: status.replaceAll('_', ' ').toUpperCase(),
-                            severity: _getSeverity(status),
-                          ),
-                        ],
-                      ),
                       if (trackingAsync.value?.driver case final driver?) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(height: LpgSpacing.md),
                         _DriverRow(driver: driver),
                       ],
-                      const SizedBox(height: 24),
-                      Expanded(
-                        child: ListView(
-                          children: [
-                            _buildMilestone(
-                              context,
-                              title: 'Order Placed',
-                              time: 'Completed',
-                              isCompleted: true,
-                              isLast: false,
-                            ),
-                            _buildMilestone(
-                              context,
-                              title: 'Confirmed by Agency',
-                              time: status != 'booked'
-                                  ? 'Completed'
-                                  : 'Pending',
-                              isCompleted: status != 'booked',
-                              isLast: false,
-                              isCurrent: status == 'confirmed',
-                            ),
-                            _buildMilestone(
-                              context,
-                              title: 'Out for Delivery',
-                              time:
-                                  status == 'out_for_delivery' ||
-                                      status == 'delivered'
-                                  ? 'In Progress'
-                                  : 'Pending',
-                              isCompleted:
-                                  status == 'out_for_delivery' ||
-                                  status == 'delivered',
-                              isLast: false,
-                              isCurrent: status == 'out_for_delivery',
-                            ),
-                            _buildMilestone(
-                              context,
-                              title: 'Delivered',
-                              time: status == 'delivered'
-                                  ? 'Completed'
-                                  : 'Pending',
-                              isCompleted: status == 'delivered',
-                              isLast: true,
-                              isCurrent: status == 'delivered',
-                            ),
-                          ],
-                        ),
-                      ),
+                      const SizedBox(height: LpgSpacing.lg),
+                      LpgTimeline(steps: _milestones(order.status)),
                     ],
                   ),
                 ),
@@ -214,99 +154,46 @@ class OrderTrackingScreen extends ConsumerWidget {
     );
   }
 
-  LpgStatusSeverity _getSeverity(String status) {
-    return switch (status) {
-      'delivered' => LpgStatusSeverity.success,
-      'cancelled' || 'failed_delivery' => LpgStatusSeverity.danger,
-      'out_for_delivery' || 'ready_for_dispatch' => LpgStatusSeverity.warning,
-      _ => LpgStatusSeverity.info,
+  /// The four customer-facing milestones, with the step the order has
+  /// reached marked current (or failed, for a cancelled/failed order).
+  static List<LpgTimelineStep> _milestones(String status) {
+    const titles = [
+      'Order Placed',
+      'Confirmed by Agency',
+      'Out for Delivery',
+      'Delivered',
+    ];
+    final reached = switch (status) {
+      'booked' => 0,
+      'out_for_delivery' || 'failed_delivery' => 2,
+      'delivered' => 3,
+      _ => 1,
     };
-  }
+    final failed = status == 'cancelled' || status == 'failed_delivery';
 
-  Widget _buildMilestone(
-    BuildContext context, {
-    required String title,
-    required String time,
-    required bool isCompleted,
-    required bool isLast,
-    bool isCurrent = false,
-  }) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
-    return IntrinsicHeight(
-      child: Row(
-        children: [
-          Column(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: colors.surfaceRaised,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isCompleted
-                        ? colors.actionPrimary
-                        : colors.borderDefault,
-                  ),
-                ),
-                child: Center(
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: isCompleted
-                          ? colors.actionPrimary
-                          : colors.borderStrong,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isCompleted
-                        ? colors.actionPrimary
-                        : colors.borderDefault,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: isCurrent
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isCompleted
-                          ? colors.textPrimary
-                          : colors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    time,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return [
+      for (var i = 0; i < titles.length; i++)
+        () {
+          final LpgTimelineState state;
+          if (i < reached || status == 'delivered') {
+            state = LpgTimelineState.done;
+          } else if (i == reached) {
+            state = failed ? LpgTimelineState.failed : LpgTimelineState.current;
+          } else {
+            state = LpgTimelineState.upcoming;
+          }
+          return LpgTimelineStep(
+            title: titles[i],
+            state: state,
+            subtitle: switch (state) {
+              LpgTimelineState.done => 'Completed',
+              LpgTimelineState.current => 'In Progress',
+              LpgTimelineState.upcoming => 'Pending',
+              LpgTimelineState.failed => LpgFormat.sentence(status),
+            },
+          );
+        }(),
+    ];
   }
 }
 
@@ -352,14 +239,14 @@ class _TrackingMapState extends ConsumerState<_TrackingMap> {
     _mapController.fitCamera(
       CameraFit.bounds(
         bounds: LatLngBounds(destination, driver),
-        padding: const EdgeInsets.all(56),
+        padding: const EdgeInsets.all(LpgSpacing.xxl + LpgSpacing.sm),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final destination = widget.tracking.destination!;
     final driverAsync = ref.watch(driverLocationProvider(widget.orderId));
     final driver = driverAsync.value;
@@ -387,24 +274,25 @@ class _TrackingMapState extends ConsumerState<_TrackingMap> {
         ),
         if (widget.tracking.destinationIsApproximate)
           const Positioned(
-            top: 12,
-            left: 12,
-            right: 12,
+            top: LpgSpacing.smd,
+            left: LpgSpacing.smd,
+            right: LpgSpacing.smd,
             child: _ApproximateBanner(),
           ),
         Positioned(
-          right: 12,
-          bottom: 12,
+          right: LpgSpacing.smd,
+          bottom: LpgSpacing.lg,
           child: FloatingActionButton.small(
             heroTag: 'tracking-recenter',
+            tooltip: 'Recenter map',
             onPressed: () => _recenter(destination, driver?.point),
-            child: const Icon(Icons.center_focus_strong),
+            child: const Icon(LpgIcons.recenter),
           ),
         ),
         if (widget.tracking.isRouteActive)
           Positioned(
-            left: 12,
-            bottom: 12,
+            left: LpgSpacing.smd,
+            bottom: LpgSpacing.lg,
             child: _DriverStatusChip(
               driverPresent: driver != null,
               stale: isStale,
@@ -423,49 +311,69 @@ class _DriverStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
 
     final (label, icon, color) = switch ((driverPresent, stale)) {
       (false, _) => (
         "Waiting for the driver's location",
-        Icons.location_searching,
+        LpgIcons.locating,
         colors.textSecondary,
       ),
       (true, true) => (
         'Live location paused',
-        Icons.pause_circle_outline,
+        LpgIcons.paused,
         colors.statusWarning,
       ),
-      (true, false) => (
-        'Driver en route',
-        Icons.local_shipping,
-        colors.statusInfo,
-      ),
+      (true, false) => ('Driver en route', LpgIcons.truck, colors.statusInfo),
     };
 
+    return _MapOverlay(
+      shape: const StadiumBorder(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: LpgSizes.iconSm, color: color),
+          const SizedBox(width: LpgSpacing.sm),
+          Text(
+            label,
+            style: context.lpgText.labelMedium?.copyWith(
+              color: colors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A frosted card floating over the map, so overlays stay legible on any
+/// tile colour.
+class _MapOverlay extends StatelessWidget {
+  const _MapOverlay({required this.child, required this.shape});
+
+  final Widget child;
+  final ShapeBorder shape;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surfaceBase.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colors.borderDefault),
+      decoration: ShapeDecoration(
+        color: colors.card.withValues(alpha: colors.isHighContrast ? 1 : 0.94),
+        shape: shape is StadiumBorder
+            ? StadiumBorder(side: BorderSide(color: colors.borderDefault))
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(LpgRadius.lg),
+                side: BorderSide(color: colors.borderDefault),
+              ),
+        shadows: colors.cardShadow,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.textPrimary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        padding: const EdgeInsets.symmetric(
+          horizontal: LpgSpacing.smd,
+          vertical: LpgSpacing.sm,
         ),
+        child: child,
       ),
     );
   }
@@ -478,31 +386,23 @@ class _ApproximateBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surfaceBase.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.borderDefault),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.info_outline, size: 16, color: colors.textSecondary),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'Approximate location, based on the delivery address.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
+    final colors = context.lpgColors;
+    return _MapOverlay(
+      shape: const RoundedRectangleBorder(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(LpgIcons.info, size: LpgSizes.iconSm, color: colors.statusInfo),
+          const SizedBox(width: LpgSpacing.sm),
+          Flexible(
+            child: Text(
+              'Approximate location, based on the delivery address.',
+              style: context.lpgText.bodySmall?.copyWith(
+                color: colors.textPrimary,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -517,63 +417,22 @@ class _DriverRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
     final vehicle = [
       driver.vehicleModel,
       driver.vehicleNumber,
     ].where((s) => s != null && s.isNotEmpty).join(' · ');
 
-    return InkWell(
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        builder: (_) => _DriverSheet(driver: driver),
-      ),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: colors.surfaceOverlay,
-              child: Icon(
-                Icons.person_outline,
-                size: 20,
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Your driver',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    driver.name,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  if (vehicle.isNotEmpty)
-                    Text(
-                      vehicle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: colors.textSecondary),
-          ],
+    return LpgCard(
+      variant: LpgCardVariant.outlined,
+      padding: EdgeInsets.zero,
+      child: LpgListTile(
+        leading: LpgAvatar(name: driver.name, size: LpgSizes.iconBox),
+        title: driver.name,
+        subtitle: vehicle.isNotEmpty ? 'Your driver · $vehicle' : 'Your driver',
+        showChevron: true,
+        onTap: () => LpgFeedback.showSheet<void>(
+          context,
+          builder: (_) => _DriverSheet(driver: driver),
         ),
       ),
     );
@@ -587,56 +446,32 @@ class _DriverSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: colors.actionPrimary,
-                  child: Text(
-                    driver.name.isNotEmpty ? driver.name[0].toUpperCase() : '?',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: colors.textInverse,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    driver.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
+            LpgAvatar(name: driver.name),
+            const SizedBox(width: LpgSpacing.md),
+            Expanded(
+              child: Text(driver.name, style: context.lpgText.titleLarge),
             ),
-            const SizedBox(height: 20),
-            if ((driver.vehicleNumber ?? '').isNotEmpty)
-              _DriverDetailTile(
-                icon: Icons.local_shipping_outlined,
-                label: 'Vehicle',
-                value: [
-                  driver.vehicleModel,
-                  driver.vehicleNumber,
-                ].where((s) => s != null && s.isNotEmpty).join(' · '),
-              ),
-            if ((driver.phoneNumber ?? '').isNotEmpty)
-              _DriverPhoneTile(phone: driver.phoneNumber!),
           ],
         ),
-      ),
+        const SizedBox(height: LpgSpacing.mdl),
+        if ((driver.vehicleNumber ?? '').isNotEmpty)
+          _DriverDetailTile(
+            icon: LpgIcons.truck,
+            label: 'Vehicle',
+            value: [
+              driver.vehicleModel,
+              driver.vehicleNumber,
+            ].where((s) => s != null && s.isNotEmpty).join(' · '),
+          ),
+        if ((driver.phoneNumber ?? '').isNotEmpty)
+          _DriverPhoneTile(phone: driver.phoneNumber!),
+      ],
     );
   }
 }
@@ -674,47 +509,37 @@ class _DriverPhoneTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
       child: Row(
         children: [
-          Icon(Icons.phone_outlined, size: 20, color: colors.textSecondary),
-          const SizedBox(width: 16),
+          const LpgIconBox(icon: LpgIcons.phone, tone: LpgTone.neutral),
+          const SizedBox(width: LpgSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Phone',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
+                Text('Phone', style: context.lpgText.labelMedium),
                 Text(
                   phone,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.textPrimary,
-                  ),
+                  style: context.lpgText.bodyLarge,
                 ),
               ],
             ),
           ),
           IconButton(
             onPressed: () => _copy(context),
-            icon: const Icon(Icons.copy_rounded, size: 18),
+            icon: const Icon(LpgIcons.copy, size: LpgSizes.iconMd),
             tooltip: 'Copy',
-            visualDensity: VisualDensity.compact,
-            color: colors.textSecondary,
+            color: context.lpgColors.textSecondary,
           ),
-          const SizedBox(width: 4),
-          FilledButton.tonalIcon(
+          const SizedBox(width: LpgSpacing.xs),
+          LpgButton(
+            label: 'Call',
+            icon: LpgIcons.call,
+            variant: LpgButtonVariant.tonal,
             onPressed: () => _call(context),
-            icon: const Icon(Icons.call, size: 18),
-            label: const Text('Call'),
           ),
         ],
       ),
@@ -735,31 +560,18 @@ class _DriverDetailTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: LpgSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: colors.textSecondary),
-          const SizedBox(width: 16),
+          LpgIconBox(icon: icon, tone: LpgTone.neutral),
+          const SizedBox(width: LpgSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
+                Text(label, style: context.lpgText.labelMedium),
+                Text(value, style: context.lpgText.bodyLarge),
               ],
             ),
           ),
@@ -802,40 +614,47 @@ class _CopyableRef extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: () => _copy(context),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colors.textSecondary,
-              ),
+    final colors = context.lpgColors;
+    return Semantics(
+      button: true,
+      label: '$label $display, tap to copy',
+      excludeSemantics: true,
+      child: Material(
+        color: colors.surfaceOverlay,
+        borderRadius: BorderRadius.circular(LpgRadius.lg),
+        child: InkWell(
+          onTap: () => _copy(context),
+          borderRadius: BorderRadius.circular(LpgRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: LpgSpacing.smd,
+              vertical: LpgSpacing.sm,
             ),
-            const SizedBox(height: 2),
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    display,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
+                Text(label, style: context.lpgText.labelMedium),
+                const SizedBox(height: LpgSpacing.xs / 2),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        display,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.lpgText.titleSmall,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: LpgSpacing.xs + 2),
+                    Icon(
+                      LpgIcons.copy,
+                      size: LpgSizes.iconSm - 2,
+                      color: colors.textSecondary,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Icon(Icons.copy_rounded, size: 14, color: colors.textSecondary),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

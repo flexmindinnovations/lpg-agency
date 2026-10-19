@@ -19,8 +19,8 @@ void main() {
     ) async {
       await pumpScreen(tester, _screen());
 
-      expect(find.text('CATEGORY'), findsOneWidget);
-      expect(find.text('PRIORITY'), findsOneWidget);
+      expect(find.text('Category'), findsOneWidget);
+      expect(find.text('Priority'), findsOneWidget);
       expect(find.text('Submit Complaint'), findsOneWidget);
     });
 

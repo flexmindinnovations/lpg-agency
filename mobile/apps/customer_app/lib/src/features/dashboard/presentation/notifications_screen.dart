@@ -5,7 +5,6 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../providers.dart';
 import '../data/notifications_provider.dart';
@@ -43,85 +42,84 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsAsync = ref.watch(notificationsProvider);
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Notifications',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Notifications')),
       body: notificationsAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, stack) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(),
+        error: (err, stack) => LpgErrorState(
           message: 'Failed to load notifications',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(notificationsProvider),
+          onRetry: () => ref.refresh(notificationsProvider),
         ),
         data: (notifications) {
           if (notifications.isEmpty) {
             return const LpgEmptyState(
+              title: 'All caught up',
               message: 'No notifications yet',
-              icon: Icons.notifications_none_outlined,
+              icon: LpgIcons.notificationsOff,
             );
           }
 
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(notificationsProvider.future),
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: LpgSpacing.page,
               itemCount: notifications.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: LpgSpacing.sm),
               itemBuilder: (context, index) {
                 final item = notifications[index];
-                final icon = switch (item.notificationType) {
-                  'ORDER_UPDATE' => Icons.receipt_long_outlined,
-                  'PROMOTIONAL' => Icons.campaign_outlined,
-                  'SYSTEM' => Icons.settings_suggest_outlined,
-                  _ => Icons.notifications_outlined,
+                final (icon, tone) = switch (item.notificationType) {
+                  'ORDER_UPDATE' => (LpgIcons.orders, LpgTone.primary),
+                  'PROMOTIONAL' => (LpgIcons.announcement, LpgTone.accent),
+                  'SYSTEM' => (LpgIcons.settings, LpgTone.neutral),
+                  _ => (LpgIcons.notifications, LpgTone.info),
                 };
 
-                return LpgCard(
-                  padding: EdgeInsets.zero,
-                  child: LpgListTile(
-                    leadingIcon: icon,
-                    title: item.title,
-                    subtitle: item.body,
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          DateFormat('MMM dd').format(item.createdAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.textSecondary,
+                return LpgFadeSlideIn(
+                  index: index,
+                  child: LpgCard(
+                    // Unread items sit on a tinted card so they stand out
+                    // without relying on the dot alone.
+                    variant: item.isRead
+                        ? LpgCardVariant.outlined
+                        : LpgCardVariant.tonal,
+                    padding: EdgeInsets.zero,
+                    child: LpgListTile(
+                      leadingIcon: icon,
+                      leadingTone: tone,
+                      title: item.title,
+                      subtitle: item.body,
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            LpgFormat.relative(item.createdAt),
+                            style: context.lpgText.bodySmall,
                           ),
-                        ),
-                        if (!item.isRead)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: colors.actionPrimary,
-                                shape: BoxShape.circle,
+                          if (!item.isRead)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: LpgSpacing.xs,
+                              ),
+                              child: Semantics(
+                                label: 'Unread',
+                                child: Container(
+                                  width: LpgSpacing.sm,
+                                  height: LpgSpacing.sm,
+                                  decoration: BoxDecoration(
+                                    color: colors.accent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
+                      onTap: () => _handleTap(context, ref, item),
                     ),
-                    onTap: () => _handleTap(context, ref, item),
                   ),
                 );
               },

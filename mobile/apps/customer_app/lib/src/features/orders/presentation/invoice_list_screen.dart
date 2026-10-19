@@ -2,9 +2,9 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../data/invoices_provider.dart';
+import 'invoice_presentation.dart';
 
 class InvoiceListScreen extends ConsumerWidget {
   const InvoiceListScreen({super.key});
@@ -12,129 +12,78 @@ class InvoiceListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final invoicesAsync = ref.watch(invoicesProvider);
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final text = context.lpgText;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'My Invoices',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text('My Invoices')),
       body: invoicesAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, stack) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(),
+        error: (err, stack) => LpgErrorState(
           message: 'Failed to load invoices',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.refresh(invoicesProvider),
+          onRetry: () => ref.refresh(invoicesProvider),
         ),
         data: (invoices) {
           if (invoices.isEmpty) {
             return const LpgEmptyState(
               message: 'No invoices found.',
-              icon: Icons.receipt_outlined,
+              icon: LpgIcons.invoice,
             );
           }
 
           return RefreshIndicator(
             onRefresh: () async => ref.refresh(invoicesProvider.future),
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: LpgSpacing.page,
               itemCount: invoices.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: LpgSpacing.smd),
               itemBuilder: (context, index) {
                 final invoice = invoices[index];
-                final isPaid = invoice.status == 'paid';
-
-                return LpgCard(
-                  onTap: () =>
-                      context.push('/orders/invoices/${invoice.invoiceId}'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            // `invoiceNumber` already carries the backend's
-                            // own "INV-..." prefix — only the UUID fallback
-                            // needs one added, or this doubles up into
-                            // "INV-INV-2026-000011".
-                            invoice.invoiceNumber ??
-                                'INV-${invoice.invoiceId.substring(0, 8).toUpperCase()}',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          LpgStatusBadge(
-                            label: invoice.status.toUpperCase(),
-                            severity: isPaid
-                                ? LpgStatusSeverity.success
-                                : LpgStatusSeverity.warning,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 14,
-                            color: colors.textSecondary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(invoice.issuedAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Divider(height: 1, color: colors.borderDefault),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
+                return LpgFadeSlideIn(
+                  index: index,
+                  child: LpgCard(
+                    onTap: () =>
+                        context.push('/orders/invoices/${invoice.invoiceId}'),
+                    padding: const EdgeInsets.all(LpgSpacing.md),
+                    child: Row(
+                      children: [
+                        LpgIconBox(
+                          icon: LpgIcons.invoice,
+                          tone: invoice.statusSeverity.tone,
+                        ),
+                        const SizedBox(width: LpgSpacing.smd),
+                        Expanded(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Text(invoice.reference, style: text.titleSmall),
+                              const SizedBox(height: LpgSpacing.xs / 2),
                               Text(
-                                'Amount',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colors.textSecondary,
-                                ),
+                                LpgFormat.date(invoice.issuedAt),
+                                style: text.bodySmall,
                               ),
-                              Text(
-                                '₹${invoice.totalAmount.toStringAsFixed(2)}',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.textPrimary,
-                                ),
+                              const SizedBox(height: LpgSpacing.sm),
+                              LpgStatusBadge(
+                                label: invoice.statusLabel,
+                                severity: invoice.statusSeverity,
                               ),
                             ],
                           ),
-                          LpgButton(
-                            label: 'View',
-                            onPressed: () => context.push(
-                              '/orders/invoices/${invoice.invoiceId}',
+                        ),
+                        const SizedBox(width: LpgSpacing.sm),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              LpgFormat.currency(invoice.totalAmount),
+                              style: text.titleMedium,
                             ),
-                            variant: LpgButtonVariant.text,
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(height: LpgSpacing.xs),
+                            Text('View', style: text.labelMedium),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

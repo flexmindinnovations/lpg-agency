@@ -1288,6 +1288,107 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 ---
 
+## ADR-052: Mobile Design System — Semantic Lucide Icons, Bundled Inter, and a Shared Component Kit
+
+**Status:** Accepted
+
+**Context:** The Customer and Driver apps styled screens individually: raw `Icons.*`, `Colors.white`, numeric spacing and per-screen text styles, so the two apps did not look like one product and rebranding meant editing every screen. The product owner asked for a production UI overhaul on 2026-10-17 without supplying brand assets yet, while three other workstreams (payments, SMS, WhatsApp ordering) are adding screens in parallel.
+
+**Decision:** `mobile/packages/design_system` becomes the only source of visual decisions for both apps:
+- Colours, spacing, radii and type still come from the generated tokens (`design-tokens/tokens.json`); the theme adds an `LpgColors` ThemeExtension with surface roles, a hero gradient and elevation shadows, for light, dark and high contrast.
+- Icons are addressed by meaning through `LpgIcons`, backed by Lucide (`lucide_icons_flutter`, ISC licence). `phosphor_flutter` was tried first and rejected: it does not compile on current Flutter (`IconData` is now `final`).
+- The Inter typeface (SIL OFL) is bundled in the package so text renders identically on every device.
+- Screens are assembled from the package's component kit; statuses, money and dates go through `LpgFormat` and one presentation file per app.
+- Every animation honours `MediaQuery.disableAnimations`, and nothing animates forever once loaded.
+
+**Consequences:**
+- Rebranding is one token edit plus a regenerate, one `LpgBrandMark` image, and one font swap (package README, "Rebranding").
+- New screens from other workstreams get the look by using the kit; raw Material styling in an app is now a review finding.
+- Two new runtime dependencies in `design_system`: `lucide_icons_flutter` and `intl`; app bundles grow by the Inter font files.
+- Widget tests that matched on Material icons or unformatted amounts were updated to the new output (Indian digit grouping, `d MMM yyyy` dates).
+
+**Alternatives Considered:**
+- **Material Symbols only** — rejected: dated look the product owner asked to move away from, and no semantic layer.
+- **A third-party Flutter UI kit** — rejected: would fight the token pipeline the web dashboard shares.
+
+---
+
+## ADR-053: Online Payments Through Razorpay Payment Links, Behind a Provider-Agnostic Gateway Port
+
+**Status:** Accepted
+
+**Context:** `payment-flow.md` Path A (online prepayment) had no implementation; the Customer App's Payment Methods screen was a placeholder. The product owner asked for Razorpay on 2026-10-17. Three channels need to take money: the Customer App, staff on the dashboard, and the WhatsApp ordering assistant being built in parallel. Invoices are only generated at delivery (BR-17), so a prepayment exists before any invoice does.
+
+**Decision:**
+- A new `OnlinePayment` aggregate (`domain/accounting/online_payment.py`, table `accounting.online_payment`) records each gateway attempt for an order: `created -> paid | expired | cancelled`. Once paid it is *applied* to the order's invoice as an ordinary `accounting.payment` with method `online_gateway`: immediately if the invoice exists, otherwise by `GenerateInvoiceForOrderUseCase` when the invoice is generated at delivery.
+- The integration uses Razorpay **Payment Links** (a hosted checkout URL), not the native Checkout SDK. One URL works in every channel: the app opens it in the browser, staff can share it, WhatsApp can send it. No native SDK or app-store payment review is needed.
+- `PaymentGateway` (`application/accounting/payment_gateway.py`) is the port; `infrastructure/payments/razorpay.py` the only adapter, chosen by `LPG_PAYMENTS_PROVIDER`. It calls Razorpay's REST API with `httpx`; the synchronous `razorpay` SDK is not used.
+- Amount due is computed once, in `CreateOrderPaymentLinkUseCase`: the invoice's outstanding balance if invoiced; otherwise the confirmed order's total plus GST at the tenant's current rate (the same arithmetic as invoice generation), minus anything already paid online. An open link for the same amount is reused, so repeated taps never create two payable links.
+- Confirmation arrives by webhook (`POST /api/v1/payments/razorpay/webhook`, HMAC-SHA256 of the raw body with the webhook secret). The webhook has no JWT, so the tenant comes from the link's `notes.tenant_id`, which we wrote and the signature protects; the session is then opened for that tenant and RLS confines the lookup. `POST /online-payments/{id}/refresh` asks Razorpay directly, for local dev without a public URL and for missed webhooks.
+- Credentials are platform-wide env vars. A test key (`rzp_test_…`) is refused when `LPG_ENVIRONMENT=production`.
+
+**Consequences:**
+- Prepaid orders are visible through `GET /orders/{id}/online-payments`, not yet on the order or driver screens; the driver app cannot yet tell a prepaid order from a cash one (TASKS.md follow-up).
+- A prepayment larger than the delivered invoice (short delivery) applies only the outstanding amount and logs `online_payment_excess_needs_refund`; automated refunds are a follow-up.
+- All agencies collect into one Razorpay account. Per-agency accounts (separate keys or Razorpay Route) are a follow-up once the commercial model is decided.
+- New permission `payments:create` (customer + money-handling staff roles).
+
+**Alternatives Considered:**
+- **Razorpay Checkout SDK (`razorpay_flutter`) with order + signature verification** — rejected for now: native-only, does not serve WhatsApp or staff, and still needs the webhook for reliability.
+- **Recording prepayment on `Order`** — rejected: payments belong to accounting, and an order field cannot hold several attempts or their gateway ids.
+
+---
+
+## ADR-054: MSG91 as the SMS Provider, Behind a Template-Based `SmsChannel` Port
+
+**Status:** Accepted
+
+**Context:** No SMS was ever sent. Login and delivery OTPs went to `LoggingOtpDelivery` (a log line plus the non-production dev inbox) and order status SMS to `StubSmsChannel`. The product owner asked on 2026-10-17 for a production SMS gateway. In India every A2P SMS must match a template registered on a DLT portal against a registered sender header, so a port that takes free text can't work with any compliant provider.
+
+**Decision:** MSG91 is the default provider (India-first, DLT support, OTP-friendly pricing). `SmsChannel.send` now takes an `SmsTemplate` key and its variables alongside the plain-text body; each key maps to a provider template ID through `LPG_SMS_TEMPLATE_*` settings. `Msg91SmsChannel` calls the Flow API; sender ID, DLT entity and DLT template IDs live on the MSG91 template. `OtpDeliveryPort.send` gains a `purpose` (`login`, `delivery`) so the two OTPs use different templates. `LPG_SMS_PROVIDER=stub` (the default) keeps today's behaviour, so nothing changes until credentials are set. Details and the template wording: `planning/features/36-sms-gateway/PLAN.md`.
+
+**Consequences:**
+- Every SMS needs a registered template; a missing template ID fails that message and is recorded as failed in `notification_log`, never sent as free text.
+- `/auth/otp/request` returns 503 when the provider is down instead of pretending to send. The delivery OTP on `/depart` stays best-effort: the departure is already committed.
+- The non-production dev inbox (ADR-050) still fills when a real provider is configured, so UAT testing keeps working.
+- One sender ID serves every agency for now; per-agency senders are deferred.
+- Twilio or Gupshup is one new adapter class and one branch in `build_sms_channel`.
+
+**Alternatives Considered:**
+- **Twilio** — rejected as default: higher India pricing and DLT registration is done through Twilio support rather than self-serve.
+- **Gupshup** — viable; MSG91 preferred for its OTP tooling. Remains the natural second adapter.
+- **MSG91's own OTP API (it generates the code)** — rejected: `OtpService` already generates, hashes and rate-limits codes, and the Flow API serves OTP and order messages alike.
+
+---
+
+## ADR-055: WhatsApp Customer Assistant on Meta's Cloud API, Driven by the Model Gateway With Customer-Scoped Tools and a Two-Step Booking
+
+**Status:** Accepted
+
+**Context:** The product owner asked (2026-10-17) for a WhatsApp AI assistant covering the customer flow: booking refills, tracking, payment and the rest. Customers already message agencies on WhatsApp; the order model already records `booking_source="whatsapp"` but only for staff typing those orders in. ADR-045 built a provider-agnostic `ModelGatewayPort` with a Gemini adapter for the staff-facing AI Command Center. A separate thread is adding Razorpay payments.
+
+**Decision:**
+- **Channel:** Meta's WhatsApp Cloud API directly (no BSP). `GET/POST /api/v1/webhooks/whatsapp`: the POST is authenticated only by `X-Hub-Signature-256` (HMAC-SHA256 of the raw body with the Meta app secret), parses messages, and enqueues one `handle_whatsapp_message` ARQ job per message, keyed by Meta's message id; it never calls the model in the request. Left out of the OpenAPI document (Meta's contract, not a client contract).
+- **Tenant routing:** each agency sets its Meta phone number id in the `whatsapp_phone_number_id` Tenant Configuration key. `tenant.whatsapp_resolve_tenant_id` (SECURITY DEFINER, same bootstrap pattern as `auth_resolve_tenant_id_by_slug`) returns the tenant only when exactly one live tenant claims the number. One Meta app can serve every agency; its credentials are platform settings (`LPG_WHATSAPP_*`).
+- **Customer identity:** the sender's number, in E.164, matched against `customer.phone_number` in that tenant. Unknown numbers get a fixed reply, with no model call.
+- **Model:** a second `ModelGatewayPort` adapter, `AnthropicModelGateway` (`ai_provider="anthropic"`, default model `claude-opus-5-5`, effort `low`, server-side refusal fallback on). The port gains optional `history` (plain-text earlier turns). Gemini stays supported and gets `history` too.
+- **Tools:** nine customer tools (`application/whatsapp/tools.py`): account, cylinder options and prices, prepare order, place order, list orders, track, cancel, payment link, raise complaint. None takes a customer, phone or tenant argument; orders are found by number only among the sender's own orders; RLS scopes everything to the tenant. This backend boundary, not the prompt, is the safety line (as in ADR-045).
+- **Two-step booking:** `prepare_order` stores a pending quote (`messaging.whatsapp_conversation`); `place_order` books it only if the quote was made before the message being answered and is under 30 minutes old, and clears it in the order's own transaction. The model cannot propose and book in one turn, and a repeated "yes" cannot book twice.
+- **Controls:** `whatsapp_ai_enabled` kill switch (default off; messages are still logged). Model runs are recorded in `ai.assistant_run` (role `whatsapp_customer`) and count against the existing `ai_daily_token_budget`; a spent budget or a provider failure gets a fixed "unavailable" reply.
+- **Payments:** a `PaymentLinkPort`. `GatewayPaymentLinks` calls ADR-053's `CreateOrderPaymentLinkUseCase` (scoped to the customer), so amount, link reuse and the Razorpay webhook behave exactly as for the Customer App. With no gateway keys, `UnconfiguredPaymentLinks` returns nothing and the assistant offers cash or UPI on delivery.
+- **Secrets:** blank `LPG_WHATSAPP_*` / `LPG_ANTHROPIC_API_KEY` values are treated as unset, so an empty app secret or verify token can never accept a forged webhook.
+- **Storage:** new `messaging` schema: `whatsapp_message` (append-only log; unique `(tenant_id, direction, wa_message_id)` dedupes Meta's retries) and `whatsapp_conversation`. Both under RLS.
+
+**Consequences:**
+- Customer message text is stored (log and `assistant_run.question`). That is new personal data at rest; a retention policy is still owed (the same open DPDP question ADR-045 named).
+- Only replies inside Meta's 24-hour customer-service window are sent. Proactive order-status messages need approved templates and are not built.
+- The shared AI budget means heavy WhatsApp traffic can exhaust the Command Center's budget for the day.
+- Each tool call opens its own transaction, because a `UnitOfWork` commits once.
+
+**Alternatives Considered:**
+- **A BSP (Gupshup, Twilio, Interakt)** — rejected as the default: adds a vendor and per-message markup; the Cloud API is free to integrate and the sender is one adapter class to swap.
+- **Letting the model book directly, guarded by the prompt** — rejected: an order is a commitment the model alone should not make.
+- **A separate WhatsApp token budget** — deferred: one budget is simpler until real traffic says otherwise.
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1339,6 +1440,10 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 045 | AI Model Gateway as a provider-agnostic tool-calling port, Gemini as the first adapter, a fixed read-only tool registry as the first consumer | Accepted |
 | 046 | Zero-click driver auto-assignment — deterministic scoring, opt-in kill switch, no new system-principal bypass | Accepted |
 | 047 | Global error-toast interceptor replaces per-component toasting, not a per-request opt-in mechanism | Accepted |
+| 052 | Mobile design system: semantic Lucide icons, bundled Inter, shared component kit | Accepted |
+| 053 | Online payments through Razorpay payment links behind a provider-agnostic gateway port | Accepted |
+| 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
+| 055 | WhatsApp customer assistant on Meta's Cloud API, model gateway with customer-scoped tools, two-step booking | Accepted |
 
 ## Deferred Decisions
 

@@ -46,32 +46,32 @@ OrderTrackingView _view({
   driver: driver,
 );
 
-Widget _screen({
-  OrderTrackingView? view,
-  DriverPosition? driver,
-}) => ProviderScope(
-  overrides: [
-    orderDetailProvider.overrideWith((ref, id) async => _order()),
-    orderTrackingProvider.overrideWith((ref, id) async => view ?? _view()),
-    driverLocationProvider.overrideWith((ref, id) => Stream.value(driver)),
-    mapTileProviderProvider.overrideWithValue(FakeTileProvider()),
-  ],
-  child: MaterialApp(
-    theme: LpgTheme.light,
-    home: const OrderTrackingScreen(orderId: 'abcdef01aaaabbbb'),
-  ),
-);
+Widget _screen({OrderTrackingView? view, DriverPosition? driver}) =>
+    ProviderScope(
+      overrides: [
+        orderDetailProvider.overrideWith((ref, id) async => _order()),
+        orderTrackingProvider.overrideWith((ref, id) async => view ?? _view()),
+        driverLocationProvider.overrideWith((ref, id) => Stream.value(driver)),
+        mapTileProviderProvider.overrideWithValue(FakeTileProvider()),
+      ],
+      child: MaterialApp(
+        theme: LpgTheme.light,
+        home: const OrderTrackingScreen(orderId: 'abcdef01aaaabbbb'),
+      ),
+    );
 
 void main() {
   group('OrderTrackingScreen', () {
-    testWidgets('shows the map and the delivery milestones for a pinned address',
-        (tester) async {
-      await pumpScreen(tester, _screen(view: _view()));
+    testWidgets(
+      'shows the map and the delivery milestones for a pinned address',
+      (tester) async {
+        await pumpScreen(tester, _screen(view: _view()));
 
-      expect(find.byType(LocationMap), findsOneWidget);
-      expect(find.text('Order Placed'), findsOneWidget);
-      expect(find.text('Out for Delivery'), findsOneWidget);
-    });
+        expect(find.byType(LocationMap), findsOneWidget);
+        expect(find.text('Order Placed'), findsOneWidget);
+        expect(find.text('Out for Delivery'), findsOneWidget);
+      },
+    );
 
     testWidgets('shows the order number and a copyable tracking id', (
       tester,
@@ -87,8 +87,10 @@ void main() {
         },
       );
       addTearDown(
-        () => tester.binding.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null),
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
       );
 
       await pumpScreen(tester, _screen(view: _view()));
@@ -130,8 +132,10 @@ void main() {
         _screen(view: _view(routeStatus: 'in_progress')),
       );
 
-      expect(find.textContaining("Waiting for the driver's location"),
-          findsOneWidget);
+      expect(
+        find.textContaining("Waiting for the driver's location"),
+        findsOneWidget,
+      );
     });
 
     testWidgets('driver details sheet — vehicle, copy phone, call phone', (
@@ -180,7 +184,7 @@ void main() {
       expect(find.text('+91 90000 11111'), findsOneWidget);
       expect(find.textContaining('Tata Ace'), findsWidgets);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Call'));
+      await tester.tap(find.widgetWithText(LpgButton, 'Call'));
       await tester.pump();
       expect(launched, ['tel:+919000011111']); // stripped to digits + '+'
     });

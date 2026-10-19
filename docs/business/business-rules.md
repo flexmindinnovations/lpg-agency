@@ -22,7 +22,7 @@ These are the invariant rules the system must enforce. Rules marked **[Explicit]
 
 **BR-07 [Explicit]** — Orders progress through defined states: New/Pending → Assigned → Delivered, with a Cancelled branch (per blueprint's dashboard order categories).
 
-**BR-08 [Inferred]** — An order cannot be marked "Delivered" without a completed Proof of Delivery (OTP + signature/photo + GPS), since these are explicitly listed as delivery confirmation requirements.
+**BR-08 [Inferred]** — An order cannot be marked "Delivered" without a completed Proof of Delivery (OTP + GPS). *Amended 2026-10-19 (product owner, `planning/features/39-optional-delivery-proof/`): the customer signature and delivery photo are captured when available but are optional.*
 
 **BR-09 [Inferred, partially Confirmed — D-08]** — An order should not be assignable to a driver/vehicle whose current vehicle inventory has insufficient filled cylinder stock to fulfill it. Where stock is insufficient, **partial fulfillment is now permitted** (D-08): the order may be assigned with a partial line-item allocation, generating a Backorder for the remainder rather than blocking assignment entirely.
 
@@ -60,7 +60,7 @@ These are the invariant rules the system must enforce. Rules marked **[Explicit]
 
 ## 6. Delivery & Driver Rules
 
-**BR-23 [Explicit]** — Delivery confirmation requires OTP verification, customer signature, and photo proof, plus GPS capture (all four explicitly named in blueprint).
+**BR-23 [Explicit]** — Delivery confirmation requires OTP verification plus GPS capture. *Amended 2026-10-19 (product owner): customer signature and photo proof, originally also required by the blueprint, are now optional.*
 
 **BR-24 [Inferred]** — A driver should not be assigned deliveries exceeding the physical/loaded capacity of their vehicle — not explicit, but implied by the vehicle-loading example.
 

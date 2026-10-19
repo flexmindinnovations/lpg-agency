@@ -194,6 +194,27 @@ class Settings(BaseSettings):
     fcm_credentials_json: SecretStr = SecretStr("")
     fcm_project_id: str = ""
 
+    # -- SMS (OTP + order updates) ----------------------------------------
+    # `stub` (the default) logs and sends nothing, so every environment works
+    # without a provider; OTPs then go through `LoggingOtpDelivery` as before.
+    # `msg91` sends through MSG91's Flow API. Sender ID, DLT entity ID and
+    # the DLT template each MSG91 template is bound to are configured on the
+    # MSG91 side, so only the auth key and the MSG91 template IDs live here.
+    #
+    # DLT allows only registered templates, so every message needs an ID;
+    # a message whose ID is unset fails (and is logged as failed) rather
+    # than going out as free text. Template wording and variable names:
+    # `planning/features/36-sms-gateway/PLAN.md`.
+    sms_provider: Literal["stub", "msg91"] = "stub"
+    sms_request_timeout_seconds: float = Field(default=10.0, gt=0)
+    msg91_auth_key: SecretStr = SecretStr("")
+    msg91_base_url: str = "https://control.msg91.com"
+    sms_template_login_otp: str = ""
+    sms_template_delivery_otp: str = ""
+    sms_template_booking_confirmed: str = ""
+    sms_template_out_for_delivery: str = ""
+    sms_template_delivery_confirmed: str = ""
+
     # -- Observability ----------------------------------------------------
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_json: bool = True
@@ -276,6 +297,23 @@ class Settings(BaseSettings):
     ai_provider: str = "gemini"
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
+    # `ai_provider="anthropic"` (ADR-055). `anthropic_effort` is the main
+    # cost lever for chat traffic; a cheaper model is a one-variable change.
+    anthropic_api_key: SecretStr | None = None
+    anthropic_model: str = "claude-opus-5-5"
+    anthropic_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
+
+    # -- WhatsApp Cloud API (ADR-055) ---------------------------------------
+    # Meta's credentials for the agency's WhatsApp Business number(s). One
+    # Meta app can serve several agencies' numbers: each tenant maps its own
+    # number with the `whatsapp_phone_number_id` Tenant Configuration key,
+    # and the webhook routes inbound messages by that id. Unset by default:
+    # the webhook then refuses every request (no verify token, no app secret
+    # to check signatures with), and sending degrades to a logged no-op.
+    whatsapp_access_token: SecretStr | None = None
+    whatsapp_app_secret: SecretStr | None = None
+    whatsapp_verify_token: SecretStr | None = None
+    whatsapp_graph_api_version: str = "v23.0"
 
     # -- OMC Rate Ingestion (AI Operational Intelligence, Horizon 1 Stage 3) --
     # `omc_rate_provider` picks the adapter class in
@@ -285,6 +323,24 @@ class Settings(BaseSettings):
     # scrapeable public OMC source was found (see `infrastructure/pricing/
     # omc_scraper.py`'s module docstring for what was actually tried).
     omc_rate_provider: str = "none"
+
+    # -- Online payments (Razorpay, ADR-053) -------------------------------
+    # `payments_provider` picks the adapter in `infrastructure/payments/
+    # factory.py`. Credentials are unset by default: payment endpoints then
+    # answer 503 rather than calling Razorpay unauthenticated. Use the test
+    # key pair (`rzp_test_…`) everywhere except production; production
+    # refuses a test key (see `model_post_init`). The webhook secret is the
+    # one entered when creating the webhook in the Razorpay dashboard.
+    payments_provider: str = "razorpay"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: SecretStr | None = None
+    razorpay_webhook_secret: SecretStr | None = None
+    razorpay_api_base_url: str = "https://api.razorpay.com/v1"
+    razorpay_timeout_seconds: float = Field(default=10.0, gt=0)
+    # Razorpay requires a link to live at least 15 minutes.
+    payment_link_ttl_minutes: int = Field(default=1440, ge=16)
+    # Optional page the customer's browser returns to after paying.
+    payment_link_callback_url: str = ""
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -303,6 +359,22 @@ class Settings(BaseSettings):
                 parsed = json.loads(stripped)
                 return [str(origin).strip() for origin in parsed]
             return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return value
+
+    @field_validator(
+        "anthropic_api_key",
+        "whatsapp_access_token",
+        "whatsapp_app_secret",
+        "whatsapp_verify_token",
+        mode="before",
+    )
+    @classmethod
+    def _blank_secret_is_unset(cls, value: object) -> object:
+        """`LPG_WHATSAPP_APP_SECRET=` (as in the env templates) means unset,
+        not an empty secret: an empty HMAC key or verify token would accept
+        anything anyone sends."""
+        if isinstance(value, str) and not value.strip():
+            return None
         return value
 
     @field_validator("jwt_private_key", "jwt_public_key", mode="before")
@@ -387,6 +459,9 @@ class Settings(BaseSettings):
             if self.otp_delivery_dev_mode:
                 msg = f"otp_delivery_dev_mode must be disabled in environment {self.environment!r}"
                 raise ValueError(msg)
+        if self.is_production and self.razorpay_key_id.startswith("rzp_test_"):
+            msg = "A Razorpay test key (rzp_test_…) is not permitted in production"
+            raise ValueError(msg)
 
         # Matches `db_password`'s existing precedent: an unset secret isn't
         # hard-validated at Settings-construction (that would make every

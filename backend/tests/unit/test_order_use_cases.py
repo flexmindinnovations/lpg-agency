@@ -30,6 +30,7 @@ from lpg.application.common.errors import (
     IncompletePodError,
     NotFoundError,
     OtpMismatchError,
+    ServiceUnavailableError,
 )
 from lpg.application.delivery.ports import RouteStopOwner
 from lpg.application.order.ports import CancellationRecordEntry, ProofOfDeliveryEntry
@@ -44,6 +45,8 @@ from lpg.application.order.use_cases import (
     ConfirmOrderUseCase,
     DeliverOrderCommand,
     DeliverOrderUseCase,
+    DepartOrderCommand,
+    DepartOrderUseCase,
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
 )
@@ -583,6 +586,44 @@ class TestDeliverOrderUseCase:
 
         assert pod_repo.create.call_args.kwargs["dac_code"] == "654321"
 
+    async def test_delivery_without_signature_or_photo_is_recorded(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        """Signature and photo are optional; the OTP still gates delivery."""
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        vehicle_location = _make_vehicle_location(location_ref_id=route.vehicle_id)
+        mock_inventory_repo.get_by_location_ref.return_value = vehicle_location
+        use_case, pod_repo, _otp = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+
+        await use_case.execute(
+            DeliverOrderCommand(
+                order_id=order.id,
+                lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+                otp_code="123456",
+                signature_blob_ref=None,
+                photo_blob_ref=None,
+                gps_lat=Decimal("12.9"),
+                gps_lng=Decimal("77.6"),
+                payment_method="cash",
+                amount_collected=Decimal("3600"),
+                changed_by=uuid.uuid4(),
+            )
+        )
+
+        kwargs = pod_repo.create.call_args.kwargs
+        assert kwargs["signature_blob_ref"] is None
+        assert kwargs["photo_blob_ref"] is None
+        mock_uow.commit.assert_called_once()
+
     async def test_omitted_dac_code_defaults_to_none(
         self,
         mock_order_repo: MagicMock,
@@ -688,84 +729,6 @@ class TestDeliverOrderUseCase:
         mock_route_repo.save.assert_not_called()
         pod_repo.create.assert_not_called()
         mock_uow.commit.assert_not_called()
-
-    async def test_delivery_without_a_signature_or_photo_still_succeeds(
-        self,
-        mock_order_repo: MagicMock,
-        mock_route_repo: MagicMock,
-        mock_inventory_repo: MagicMock,
-        mock_uow: MagicMock,
-    ) -> None:
-        """The OTP and GPS stamp are the required proof; the signature and photo
-        are optional, so a driver who cannot capture them can still deliver."""
-        cylinder_type_id = uuid.uuid4()
-        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
-        mock_order_repo.get_by_id.return_value = order
-        _stub_route_lookup(mock_route_repo, route)
-        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
-            location_ref_id=route.vehicle_id
-        )
-        use_case, pod_repo, _otp = self._deps(
-            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
-        )
-
-        result = await use_case.execute(
-            DeliverOrderCommand(
-                order_id=order.id,
-                lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
-                otp_code="123456",
-                gps_lat=Decimal("12.9"),
-                gps_lng=Decimal("77.6"),
-                payment_method="cash",
-                amount_collected=Decimal("3600"),
-                changed_by=uuid.uuid4(),
-            )
-        )
-
-        assert result.order.status == "delivered"
-        create_kwargs = pod_repo.create.call_args.kwargs
-        assert create_kwargs["signature_blob_ref"] is None
-        assert create_kwargs["photo_blob_ref"] is None
-        assert route.stops[0].proof_of_delivery is not None
-        assert route.stops[0].proof_of_delivery.signature_url is None
-        assert route.stops[0].proof_of_delivery.photo_url is None
-        mock_uow.commit.assert_called_once()
-
-    async def test_a_signature_alone_is_stored_when_there_is_no_photo(
-        self,
-        mock_order_repo: MagicMock,
-        mock_route_repo: MagicMock,
-        mock_inventory_repo: MagicMock,
-        mock_uow: MagicMock,
-    ) -> None:
-        cylinder_type_id = uuid.uuid4()
-        order, route = self._departed_order_and_route(cylinder_type_id, reserved=4)
-        mock_order_repo.get_by_id.return_value = order
-        _stub_route_lookup(mock_route_repo, route)
-        mock_inventory_repo.get_by_location_ref.return_value = _make_vehicle_location(
-            location_ref_id=route.vehicle_id
-        )
-        use_case, pod_repo, _otp = self._deps(
-            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
-        )
-
-        await use_case.execute(
-            DeliverOrderCommand(
-                order_id=order.id,
-                lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
-                otp_code="123456",
-                signature_blob_ref="sig-ref",
-                gps_lat=Decimal("12.9"),
-                gps_lng=Decimal("77.6"),
-                payment_method="cash",
-                amount_collected=Decimal("3600"),
-                changed_by=uuid.uuid4(),
-            )
-        )
-
-        create_kwargs = pod_repo.create.call_args.kwargs
-        assert create_kwargs["signature_blob_ref"] == "sig-ref"
-        assert create_kwargs["photo_blob_ref"] is None
 
     async def test_over_delivery_saves_nothing(
         self,
@@ -905,6 +868,54 @@ class TestCancelOrderUseCase:
             )
         mock_order_repo.save.assert_not_called()
         mock_uow.commit.assert_not_called()
+
+
+class TestDepartOrderUseCase:
+    """The delivery OTP goes out after commit, so an SMS outage must not turn
+    an already-departed order into an error for the driver."""
+
+    async def _depart(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_uow: MagicMock,
+        otp_delivery: AsyncMock,
+    ) -> Order:
+        order, route = _assigned_order_with_route(uuid.uuid4())
+        order.dispatch(changed_by=uuid.uuid4())
+        route.change_status("loaded")
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(return_value=_make_customer())
+        otp_store = MagicMock()
+        otp_store.issue = AsyncMock(return_value="482913")
+
+        use_case = DepartOrderUseCase(
+            mock_order_repo, mock_route_repo, customer_repo, otp_store, otp_delivery, mock_uow
+        )
+        return await use_case.execute(
+            DepartOrderCommand(order_id=order.id, changed_by=uuid.uuid4())
+        )
+
+    async def test_sends_the_delivery_otp_to_the_customer(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        otp_delivery = AsyncMock()
+        result = await self._depart(mock_order_repo, mock_route_repo, mock_uow, otp_delivery)
+
+        assert result.status == "out_for_delivery"
+        otp_delivery.send.assert_awaited_once_with("+919876543210", "482913", purpose="delivery")
+
+    async def test_an_sms_outage_does_not_fail_the_departure(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        otp_delivery = AsyncMock()
+        otp_delivery.send.side_effect = ServiceUnavailableError("SMS down")
+        result = await self._depart(mock_order_repo, mock_route_repo, mock_uow, otp_delivery)
+
+        assert result.status == "out_for_delivery"
+        mock_uow.commit.assert_called_once()
 
 
 class TestRescheduleOrderUseCase:

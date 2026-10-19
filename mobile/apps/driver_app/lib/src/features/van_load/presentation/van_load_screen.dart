@@ -26,12 +26,10 @@ class VanLoadScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Van load')),
       body: loadAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 4),
+        error: (err, _) => LpgErrorState(
           message: 'Could not load the manifest.\n$err',
-          icon: Icons.error_outline,
-          actionLabel: 'Retry',
-          onAction: () => ref.invalidate(routeLoadProvider(routeId)),
+          onRetry: () => ref.invalidate(routeLoadProvider(routeId)),
         ),
         data: (load) => _Body(
           load: load,
@@ -43,13 +41,14 @@ class VanLoadScreen extends ConsumerWidget {
   }
 
   Future<void> _confirm(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
     await ref.read(deliveryMutationsProvider).confirmLoad(routeId);
     ref.invalidate(activeRouteProvider);
     ref.invalidate(pendingLoadProvider);
     if (!context.mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Van load confirmed.')),
+    LpgFeedback.showToast(
+      context,
+      'Van load confirmed.',
+      tone: LpgTone.success,
     );
     context.go('/');
   }
@@ -68,135 +67,85 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
-    final d = load.route.date;
-    final date = d == null
-        ? null
-        : '${d.year}-${d.month.toString().padLeft(2, '0')}-'
-              '${d.day.toString().padLeft(2, '0')}';
+    final colors = context.lpgColors;
+    final text = context.lpgText;
+    final date = load.route.date;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: LpgSpacing.page,
       children: [
         if (confirmed) ...[
-          _ConfirmedBanner(at: load.route.loadConfirmedAt),
-          const SizedBox(height: 16),
+          LpgFadeSlideIn(
+            child: LpgBanner(
+              tone: LpgTone.success,
+              icon: LpgIcons.successFilled,
+              message:
+                  'You confirmed this load${_on(load.route.loadConfirmedAt)}.',
+            ),
+          ),
+          const SizedBox(height: LpgSpacing.md),
         ],
-        LpgCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                date == null ? 'On your van' : 'On your van · $date',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (load.lines.isEmpty)
+        LpgFadeSlideIn(
+          index: 1,
+          child: LpgHeroCard(
+            watermark: LpgIcons.inventory,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'The office recorded no cylinders for this route.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                )
-              else
-                for (final line in load.lines) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        line.label,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        '× ${line.quantity}',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Total',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    '${load.totalCylinders} cylinder'
-                    '${load.totalCylinders == 1 ? '' : 's'}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  date == null
+                      ? 'On your van'
+                      : 'On your van · ${LpgFormat.date(date)}',
+                  style: text.titleSmall?.copyWith(color: colors.onHero),
+                ),
+                const SizedBox(height: LpgSpacing.sm),
+                Text(
+                  '${load.totalCylinders} cylinder'
+                  '${load.totalCylinders == 1 ? '' : 's'}',
+                  style: text.headlineMedium?.copyWith(color: colors.onHero),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 24),
+        const LpgSectionHeader(title: 'Manifest'),
+        LpgFadeSlideIn(
+          index: 2,
+          child: LpgCard(
+            child: load.lines.isEmpty
+                ? Text(
+                    'The office recorded no cylinders for this route.',
+                    style: text.bodyMedium?.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (final (i, line) in load.lines.indexed) ...[
+                        if (i > 0) const Divider(height: LpgSpacing.lg),
+                        LpgKeyValueRow(
+                          icon: LpgIcons.cylinder,
+                          label: line.label,
+                          value: '× ${line.quantity}',
+                          emphasize: true,
+                        ),
+                      ],
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: LpgSpacing.lg),
         if (!confirmed)
           LpgButton(
             label: 'Confirm load',
-            icon: Icons.check_circle_outline,
+            icon: LpgIcons.check,
             expand: true,
             onPressed: onConfirm,
           ),
-        const SizedBox(height: 24),
       ],
     );
   }
-}
 
-class _ConfirmedBanner extends StatelessWidget {
-  const _ConfirmedBanner({required this.at});
-
-  final DateTime? at;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
-    final when = at == null
-        ? ''
-        : ' on ${at!.year}-${at!.month.toString().padLeft(2, '0')}-'
-              '${at!.day.toString().padLeft(2, '0')}';
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.statusSuccess.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 18,
-            color: colors.statusSuccess,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'You confirmed this load$when.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  static String _on(DateTime? at) =>
+      at == null ? '' : ' on ${LpgFormat.date(at)}';
 }

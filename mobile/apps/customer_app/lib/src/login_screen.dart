@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
 import 'dev_otp_provider.dart';
+import 'splash_screen.dart' show appLogo;
 
 /// OTP sign-in — the Customer App's authentication path (Dashboard staff
 /// sign in with a password instead, `frontend/libs/auth/feature-login`).
@@ -152,178 +153,155 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
+    final colors = context.lpgColors;
+    final text = context.lpgText;
 
     return Scaffold(
-      backgroundColor: colors.surfaceBase,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 48),
-              Center(
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: colors.actionPrimary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.local_fire_department_rounded,
-                    size: 32,
-                    color: colors.actionPrimary,
-                  ),
+          padding: const EdgeInsets.fromLTRB(
+            LpgSpacing.lg,
+            LpgSpacing.xxl,
+            LpgSpacing.lg,
+            LpgSpacing.lg,
+          ),
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const LpgFadeSlideIn(
+                  child: Center(child: LpgBrandMark(image: appLogo)),
                 ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Welcome',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: colors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Sign in to your account',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.statusDanger.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colors.statusDanger.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
+                const SizedBox(height: LpgSpacing.lg),
+                LpgFadeSlideIn(
+                  index: 1,
+                  child: Column(
                     children: [
-                      Icon(Icons.error_outline, color: colors.statusDanger),
-                      const SizedBox(width: 12),
-                      Expanded(
+                      Semantics(
+                        header: true,
                         child: Text(
-                          _errorMessage!,
-                          style: TextStyle(
-                            color: colors.statusDanger,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          'Welcome',
+                          style: text.headlineMedium,
+                          textAlign: TextAlign.center,
                         ),
+                      ),
+                      const SizedBox(height: LpgSpacing.sm),
+                      Text(
+                        _codeRequested
+                            ? 'Enter the code we sent to ${_phoneController.text.trim()}'
+                            : 'Sign in with your phone number',
+                        style: text.bodyLarge?.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-              ],
-
-              LpgCard(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    LpgTextField(
-                      label: 'Agency Code',
-                      controller: _tenantIdController,
-                      enabled: !_codeRequested,
-                    ),
-                    const SizedBox(height: 24),
-                    LpgTextField(
-                      label: 'Phone number',
-                      controller: _phoneController,
-                      enabled: !_codeRequested,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    if (_codeRequested) ...[
-                      const SizedBox(height: 24),
-                      if (_testingOtp case final testingOtp?) ...[
-                        LpgDevOtpBanner(code: testingOtp),
-                        const SizedBox(height: 16),
-                      ],
-                      LpgTextField(
-                        label: 'Verification code',
-                        controller: _codeController,
-                        keyboardType: TextInputType.number,
-                        autofocus: true,
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: LpgButton(
-                          label: 'Edit Agency Code / Phone Number',
-                          variant: LpgButtonVariant.text,
-                          onPressed: _submitting ? null : _editDetails,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-                    LpgButton(
-                      label: _codeRequested ? 'Verify Code' : 'Send Code',
-                      isLoading: _submitting,
-                      expand: true,
-                      onPressed: _codeRequested ? _verifyCode : _requestCode,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 48),
-
-              Text(
-                'By signing in, you agree to our',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Terms of Service',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.actionPrimary,
-                      fontWeight: FontWeight.bold,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  Text(
-                    ' and ',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    'Privacy Policy',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.actionPrimary,
-                      fontWeight: FontWeight.bold,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
+                const SizedBox(height: LpgSpacing.xl),
+                if (_errorMessage != null) ...[
+                  LpgBanner(tone: LpgTone.danger, message: _errorMessage!),
+                  const SizedBox(height: LpgSpacing.md),
                 ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'v1.0.0 (Build 1)',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.textSecondary.withValues(alpha: 0.5),
+                LpgFadeSlideIn(
+                  index: 2,
+                  child: LpgCard(
+                    padding: const EdgeInsets.all(LpgSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LpgTextField(
+                          label: 'Agency code',
+                          prefixIcon: LpgIcons.agency,
+                          controller: _tenantIdController,
+                          enabled: !_codeRequested,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: LpgSpacing.mdl),
+                        LpgTextField(
+                          label: 'Phone number',
+                          prefixIcon: LpgIcons.phone,
+                          controller: _phoneController,
+                          enabled: !_codeRequested,
+                          keyboardType: TextInputType.phone,
+                          autofillHints: const [AutofillHints.telephoneNumber],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _requestCode(),
+                        ),
+                        AnimatedSize(
+                          duration: LpgMotion.medium(context),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: _codeRequested
+                              ? Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    const SizedBox(height: LpgSpacing.mdl),
+                                    if (_testingOtp case final testingOtp?) ...[
+                                      LpgDevOtpBanner(code: testingOtp),
+                                      const SizedBox(height: LpgSpacing.md),
+                                    ],
+                                    LpgTextField(
+                                      label: 'Verification code',
+                                      prefixIcon: LpgIcons.lock,
+                                      controller: _codeController,
+                                      keyboardType: TextInputType.number,
+                                      autofillHints: const [
+                                        AutofillHints.oneTimeCode,
+                                      ],
+                                      autofocus: true,
+                                      textInputAction: TextInputAction.done,
+                                      onSubmitted: (_) => _verifyCode(),
+                                    ),
+                                    const SizedBox(height: LpgSpacing.sm),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: LpgButton(
+                                        label:
+                                            'Edit Agency Code / Phone Number',
+                                        icon: LpgIcons.edit,
+                                        variant: LpgButtonVariant.text,
+                                        onPressed: _submitting
+                                            ? null
+                                            : _editDetails,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const SizedBox(width: double.infinity),
+                        ),
+                        const SizedBox(height: LpgSpacing.lg),
+                        LpgButton(
+                          label: _codeRequested ? 'Verify Code' : 'Send Code',
+                          trailingIcon: _codeRequested
+                              ? LpgIcons.check
+                              : LpgIcons.chevronRight,
+                          isLoading: _submitting,
+                          expand: true,
+                          onPressed: _codeRequested
+                              ? _verifyCode
+                              : _requestCode,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+                const SizedBox(height: LpgSpacing.xl),
+                Text(
+                  'By signing in, you agree to our Terms of Service and '
+                  'Privacy Policy.',
+                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: LpgSpacing.md),
+                Text(
+                  'v1.0.0 (Build 1)',
+                  style: text.labelSmall?.copyWith(color: colors.textDisabled),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),

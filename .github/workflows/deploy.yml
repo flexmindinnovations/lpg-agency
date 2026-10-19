@@ -136,3 +136,5 @@ jobs:
           host-key: ${{ secrets.DEPLOY_HOST_KEY }}
           ghcr-user: ${{ github.actor }}
           ghcr-token: ${{ secrets.GITHUB_TOKEN }}
+          # Optional. Turns on real push notifications (see DEPLOY.md, "Push").
+          fcm-service-account: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}

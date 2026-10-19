@@ -25,8 +25,8 @@ const _paymentMethods = <(String, String)>[
 ];
 
 /// The proof-of-delivery capture: quantities, payment, the customer's
-/// delivery OTP, a signature, a photo and a GPS stamp — then
-/// `POST /orders/{id}/deliver`.
+/// delivery OTP and a GPS stamp, plus an optional signature and photo —
+/// then `POST /orders/{id}/deliver`.
 class RecordDeliveryScreen extends ConsumerStatefulWidget {
   const RecordDeliveryScreen({super.key, required this.orderId});
 
@@ -87,8 +87,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
       _error = null;
     });
     try {
-      // The signature and photo are optional — the delivery code and the GPS stamp are the
-      // required proof. An untouched signature pad counts as "no signature".
+      // Signature and photo are optional; an untouched pad sends none.
       final signatureBytes = _signature.isNotEmpty
           ? await _signature.toPngBytes()
           : null;
@@ -135,14 +134,12 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         case DeliverSynced() || DeliverQueued():
           ref.invalidate(activeRouteProvider);
           ref.invalidate(routeHistoryProvider);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                outcome is DeliverQueued
-                    ? 'Delivery saved — it will sync when you are back online.'
-                    : 'Delivery recorded.',
-              ),
-            ),
+          LpgFeedback.showToast(
+            context,
+            outcome is DeliverQueued
+                ? 'Delivery saved — it will sync when you are back online.'
+                : 'Delivery recorded.',
+            tone: LpgTone.success,
           );
           // Back to the route view rather than the stop detail: a delivered
           // order drops out of the driver's visibility (and their last stop
@@ -159,17 +156,16 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.extension<LpgColors>()!;
+    final colors = context.lpgColors;
     final orderAsync = ref.watch(stopOrderProvider(widget.orderId));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Record delivery')),
       body: orderAsync.when(
-        loading: () => const Center(child: LpgLoadingIndicator()),
-        error: (err, _) => LpgEmptyState(
+        loading: () => const LpgSkeletonList(itemCount: 4),
+        error: (err, _) => LpgErrorState(
           message: 'Could not load this stop.\n$err',
-          icon: Icons.error_outline,
+          onRetry: () => ref.invalidate(stopOrderProvider(widget.orderId)),
         ),
         data: (order) {
           _prefill(order);
@@ -186,129 +182,141 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           final queuedEmpties =
               ref.watch(queuedEmptiesByTypeProvider).value ?? const {};
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: LpgSpacing.page,
             children: [
               if (_error != null) ...[
-                _ErrorBanner(message: _error!),
-                const SizedBox(height: 16),
+                LpgBanner(tone: LpgTone.danger, message: _error!),
+                const SizedBox(height: LpgSpacing.sm),
               ],
-              _section('Cylinders'),
+              const _Section(icon: LpgIcons.cylinder, title: 'Cylinders'),
               for (final line in order.lines)
-                _QuantityRow(
-                  ordered: line.quantityOrdered,
-                  delivered: _quantities[line.cylinderTypeId]?.$1 ?? 0,
-                  collected: _quantities[line.cylinderTypeId]?.$2 ?? 0,
-                  loadedForType: manifest[line.cylinderTypeId],
-                  emptiesQueuedElsewhere:
-                      queuedEmpties[line.cylinderTypeId] ?? 0,
-                  onChanged: (d, c) =>
-                      setState(() => _quantities[line.cylinderTypeId] = (d, c)),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: LpgSpacing.sm),
+                  child: _QuantityRow(
+                    ordered: line.quantityOrdered,
+                    delivered: _quantities[line.cylinderTypeId]?.$1 ?? 0,
+                    collected: _quantities[line.cylinderTypeId]?.$2 ?? 0,
+                    loadedForType: manifest[line.cylinderTypeId],
+                    emptiesQueuedElsewhere:
+                        queuedEmpties[line.cylinderTypeId] ?? 0,
+                    onChanged: (d, c) => setState(
+                      () => _quantities[line.cylinderTypeId] = (d, c),
+                    ),
+                  ),
                 ),
-              const SizedBox(height: 24),
-              _section('Payment'),
-              DropdownButtonFormField<String>(
-                initialValue: _paymentMethod,
-                decoration: const InputDecoration(labelText: 'Method'),
-                items: [
-                  for (final (value, label) in _paymentMethods)
-                    DropdownMenuItem(value: value, child: Text(label)),
-                ],
-                onChanged: (v) => setState(() => _paymentMethod = v!),
+              const _Section(icon: LpgIcons.payment, title: 'Payment'),
+              LpgChoiceChips<String>(
+                options: {
+                  for (final (value, label) in _paymentMethods) value: label,
+                },
+                icons: const {
+                  'cash': LpgIcons.cash,
+                  'upi': LpgIcons.wallet,
+                  'card': LpgIcons.payment,
+                  'online_gateway': LpgIcons.security,
+                  'credit': LpgIcons.invoice,
+                },
+                selected: _paymentMethod,
+                onSelected: (v) {
+                  if (v != null) setState(() => _paymentMethod = v);
+                },
               ),
-              const SizedBox(height: 12),
-              TextField(
+              const SizedBox(height: LpgSpacing.md),
+              LpgTextField(
+                label: 'Amount collected',
+                prefixIcon: LpgIcons.rupee,
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Amount collected (₹)',
-                ),
               ),
-              const SizedBox(height: 24),
-              _section('Delivery code'),
-              TextField(
+              const _Section(icon: LpgIcons.lock, title: 'Delivery code'),
+              LpgTextField(
+                label: '',
+                hintText: 'Code from the customer',
+                prefixIcon: LpgIcons.number,
                 controller: _otpController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Code from the customer',
-                ),
+                autofillHints: const [AutofillHints.oneTimeCode],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: LpgSpacing.smd),
               // Delivery Authentication Code (Phase 20 subsystem 4) — the
               // OMC's own separate code, distinct from the code above.
               // Optional: coverage is ~90%, not 100%, and it never gates
               // delivery.
-              TextField(
+              LpgTextField(
+                label: '',
+                hintText: 'OMC delivery code (DAC) — optional',
+                prefixIcon: LpgIcons.verified,
                 controller: _dacController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'OMC delivery code (DAC) — optional',
-                ),
               ),
-              const SizedBox(height: 24),
-              _section("Customer's signature (optional)"),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(color: colors.borderDefault),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+              const _Section(
+                icon: LpgIcons.signature,
+                title: "Customer's signature (optional)",
+              ),
+              LpgCard(
+                variant: LpgCardVariant.outlined,
+                padding: EdgeInsets.zero,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Signature(
-                      controller: _signature,
-                      height: 160,
-                      backgroundColor: colors.surfaceBase,
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(LpgRadius.xl),
+                      ),
+                      child: Signature(
+                        controller: _signature,
+                        height: _padHeight,
+                        backgroundColor: colors.card,
+                      ),
                     ),
+                    const Divider(height: 1),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: TextButton(
+                      child: TextButton.icon(
                         onPressed: _signature.clear,
-                        child: const Text('Clear'),
+                        icon: const Icon(
+                          LpgIcons.delete,
+                          size: LpgSizes.iconSm,
+                        ),
+                        label: const Text('Clear'),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              _section('Delivery photo (optional)'),
-              if (_photoBytes != null)
+              const _Section(
+                icon: LpgIcons.camera,
+                title: 'Delivery photo (optional)',
+              ),
+              if (_photoBytes case final photo?) ...[
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(LpgRadius.xl),
                   child: Image.memory(
-                    _photoBytes!,
-                    height: 160,
+                    photo,
+                    height: _padHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                   ),
                 ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _pickPhoto,
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: Text(
-                      _photoBytes == null ? 'Take a photo' : 'Retake',
-                    ),
-                  ),
-                  if (_photoBytes != null) ...[
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => setState(() => _photoBytes = null),
-                      child: const Text('Remove photo'),
-                    ),
-                  ],
-                ],
+                const SizedBox(height: LpgSpacing.sm),
+              ],
+              LpgButton(
+                label: _photoBytes == null ? 'Take a photo' : 'Retake',
+                icon: _photoBytes == null ? LpgIcons.addPhoto : LpgIcons.camera,
+                variant: LpgButtonVariant.secondary,
+                expand: true,
+                onPressed: _pickPhoto,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: LpgSpacing.xl),
               LpgButton(
                 label: 'Confirm delivery',
+                icon: LpgIcons.check,
                 expand: true,
                 isLoading: _submitting,
                 onPressed: _submitting ? null : () => _submit(order),
               ),
-              const SizedBox(height: 24),
             ],
           );
         },
@@ -316,15 +324,34 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     );
   }
 
-  Widget _section(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      title,
-      style: Theme.of(
-        context,
-      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-    ),
-  );
+  /// Height of the signature pad and the photo preview.
+  static const _padHeight = 160.0;
+}
+
+/// A form section heading with its icon.
+class _Section extends StatelessWidget {
+  const _Section({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.lpgColors;
+    return Padding(
+      padding: const EdgeInsets.only(top: LpgSpacing.lg, bottom: LpgSpacing.sm),
+      child: Semantics(
+        header: true,
+        child: Row(
+          children: [
+            Icon(icon, size: LpgSizes.iconSm, color: colors.textSecondary),
+            const SizedBox(width: LpgSpacing.sm),
+            Text(title, style: context.lpgText.titleSmall),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _QuantityRow extends StatelessWidget {
@@ -353,28 +380,22 @@ class _QuantityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    final theme = Theme.of(context);
     final loaded = loadedForType;
     final overLoaded =
         loaded != null && emptiesQueuedElsewhere + collected > loaded;
     return LpgCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Ordered: $ordered',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
+          Text('Ordered: $ordered', style: context.lpgText.bodySmall),
+          const SizedBox(height: LpgSpacing.sm),
           _Stepper(
             label: 'Delivered',
             value: delivered,
             max: ordered,
             onChanged: (v) => onChanged(v, collected.clamp(0, v)),
           ),
+          const SizedBox(height: LpgSpacing.sm),
           _Stepper(
             label: 'Empties collected',
             value: collected,
@@ -382,26 +403,12 @@ class _QuantityRow extends StatelessWidget {
             onChanged: (v) => onChanged(delivered, v),
           ),
           if (overLoaded) ...[
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  size: 18,
-                  color: colors.statusWarning,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'That is more empties than the van was loaded with for '
-                    'this type ($loaded loaded). Recheck before you submit.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.statusWarning,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: LpgSpacing.smd),
+            LpgBanner(
+              tone: LpgTone.warning,
+              message:
+                  'That is more empties than the van was loaded with for '
+                  'this type ($loaded loaded). Recheck before you submit.',
             ),
           ],
         ],
@@ -427,45 +434,14 @@ class _Stepper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label)),
-        IconButton(
-          onPressed: value > 0 ? () => onChanged(value - 1) : null,
-          icon: const Icon(Icons.remove_circle_outline),
-        ),
-        SizedBox(width: 24, child: Text('$value', textAlign: TextAlign.center)),
-        IconButton(
-          onPressed: value < max ? () => onChanged(value + 1) : null,
-          icon: const Icon(Icons.add_circle_outline),
+        Expanded(child: Text(label, style: context.lpgText.bodyLarge)),
+        LpgQuantityStepper(
+          value: value,
+          max: max,
+          semanticLabel: label,
+          onChanged: onChanged,
         ),
       ],
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<LpgColors>()!;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.statusDanger.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.statusDanger),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: colors.statusDanger),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(message, style: TextStyle(color: colors.statusDanger)),
-          ),
-        ],
-      ),
     );
   }
 }
