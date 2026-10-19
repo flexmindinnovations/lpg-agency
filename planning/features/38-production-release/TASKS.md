@@ -9,3 +9,4 @@
 - [ ] First Play Console upload (manual) and store listings
 - [ ] Follow-up: automate Play internal-track upload once the apps exist in the console
 - [ ] Follow-up: iOS build/sign/upload on a macOS runner
+- [x] Deploy installs the Firebase service account from the `FCM_SERVICE_ACCOUNT_JSON` secret and reports push status (2026-10-19)

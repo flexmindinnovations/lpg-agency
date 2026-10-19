@@ -22,6 +22,13 @@ inputs:
   ghcr-token:
     description: Token with read access to the packages (GITHUB_TOKEN)
     required: true
+  fcm-service-account:
+    description: >-
+      Optional Firebase service-account JSON for push notifications. When set,
+      the server writes it into integrations.env; when empty, the server's
+      existing push settings are left untouched.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -35,6 +42,7 @@ runs:
         HOST_KEY: ${{ inputs.host-key }}
         GHCR_USER: ${{ inputs.ghcr-user }}
         GHCR_TOKEN: ${{ inputs.ghcr-token }}
+        FCM_SERVICE_ACCOUNT: ${{ inputs.fcm-service-account }}
       run: |
         set -euo pipefail
         install -m 700 -d ~/.ssh
@@ -42,7 +50,13 @@ runs:
         chmod 600 ~/.ssh/deploy_key
         # Pinned host key: refuse to talk to anything that is not our server.
         printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
-        printf '%s\n' "$GHCR_TOKEN" | ssh \
+        # stdin: line 1 = registry token, line 2 = base64 service-account JSON
+        # (empty = leave push settings alone). Never on the command line.
+        fcm_b64=""
+        if [ -n "$FCM_SERVICE_ACCOUNT" ]; then
+          fcm_b64="$(printf '%s' "$FCM_SERVICE_ACCOUNT" | base64 -w0)"
+        fi
+        printf '%s\n%s\n' "$GHCR_TOKEN" "$fcm_b64" | ssh \
           -i ~/.ssh/deploy_key \
           -o BatchMode=yes \
           -o StrictHostKeyChecking=yes \

@@ -34,6 +34,8 @@ main() {
 
   IFS= read -r ghcr_token || true
   [[ -n "${ghcr_token:-}" ]] || { echo "refusing: registry token missing on stdin" >&2; exit 2; }
+  # Optional line 2: base64 Firebase service-account JSON (empty = keep as is).
+  IFS= read -r fcm_b64 || true
 
   [[ -f .env ]] || { echo "missing .env - run ./generate-env.sh first" >&2; exit 1; }
   compose=(docker compose -f docker-compose.prod.yml)
@@ -99,17 +101,56 @@ main() {
     return 1
   }
 
+  # Writes LPG_FCM_CREDENTIALS_JSON / LPG_FCM_PROJECT_ID into integrations.env,
+  # replacing any earlier (or commented-out) lines for them. The JSON is
+  # single-quoted so compose takes it literally (no $ or \ processing).
+  install_fcm_credentials() {
+    local json project_id tmp
+    json="$(printf '%s' "$1" | base64 -d 2>/dev/null | python3 -c '
+import json, sys
+sa = json.load(sys.stdin)
+assert sa.get("type") == "service_account" and sa.get("client_email") and sa.get("private_key")
+print(json.dumps(sa, separators=(",", ":")))
+' 2>/dev/null)" || { echo "!! FCM service account is not a valid service-account JSON - push settings left unchanged" >&2; return 0; }
+    [[ "$json" != *"'"* ]] || { echo "!! FCM service account contains a single quote - push settings left unchanged" >&2; return 0; }
+    project_id="$(printf '%s' "$json" | python3 -c 'import json, sys; print(json.load(sys.stdin).get("project_id", ""))')"
+    touch integrations.env && chmod 600 integrations.env
+    tmp="$(mktemp integrations.env.XXXXXX)"
+    grep -vE '^[[:space:]]*#?[[:space:]]*LPG_FCM_(CREDENTIALS_JSON|CREDENTIALS_PATH|PROJECT_ID)=' integrations.env > "$tmp" || true
+    printf "LPG_FCM_PROJECT_ID=%s\nLPG_FCM_CREDENTIALS_JSON='%s'\n" "$project_id" "$json" >> "$tmp"
+    chmod 600 "$tmp" && mv "$tmp" integrations.env
+    echo "FCM credentials installed for Firebase project $project_id"
+  }
+
+  # Which push channel the worker built at startup (no secrets in these lines).
+  report_push_status() {
+    local status
+    status="$("${compose[@]}" logs --no-color worker 2>/dev/null \
+      | grep -oE 'fcm_push_channel_enabled|fcm_credentials_[a-z_]+' | tail -1 || true)"
+    case "$status" in
+      fcm_push_channel_enabled) echo "push: FCM enabled" ;;
+      "") echo "push: not configured (stub channel, nothing is delivered)" ;;
+      *) echo "!! push: FCM misconfigured ($status) - stub channel in use" >&2 ;;
+    esac
+  }
+
   # ---- 4. pull, migrate, restart ---------------------------------------------------
   log "Deploying $sha"
   # Pull BEFORE touching .env: a tag that was never published must fail here,
   # leaving both the running stack and .env exactly as they were.
   IMAGE_TAG="$sha" "${compose[@]}" pull backend web
   set_tag "$sha"
+  if [[ -n "${fcm_b64:-}" ]]; then
+    install_fcm_credentials "$fcm_b64"
+  fi
+  unset fcm_b64
   "${compose[@]}" up -d --remove-orphans
 
   if healthy; then
     log "Healthy on $sha"
     "${compose[@]}" ps
+    sleep 5
+    report_push_status
     docker image prune -f >/dev/null
     exit 0
   fi
