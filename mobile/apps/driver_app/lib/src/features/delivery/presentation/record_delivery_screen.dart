@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 
+import '../../../api_provider.dart';
+import '../../../dev_otp_provider.dart';
 import '../../../offline/delivery_mutations.dart';
 import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
@@ -26,7 +29,8 @@ const _paymentMethods = <(String, String)>[
 
 /// The proof-of-delivery capture: quantities, payment, the customer's
 /// delivery OTP and a GPS stamp, plus an optional signature and photo —
-/// then `POST /orders/{id}/deliver`.
+/// then `POST /orders/{id}/deliver`. "Send a new code" re-sends the delivery
+/// OTP when the customer lost it or it expired.
 class RecordDeliveryScreen extends ConsumerStatefulWidget {
   const RecordDeliveryScreen({super.key, required this.orderId});
 
@@ -48,8 +52,47 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   String _paymentMethod = 'cash';
   Uint8List? _photoBytes;
   bool _submitting = false;
+  bool _resending = false;
   String? _error;
   bool _prefilled = false;
+
+  /// Testing only: the delivery code read back from the dev inbox.
+  String? _devCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDevCode();
+  }
+
+  Future<void> _loadDevCode() async {
+    final code = await ref.read(devDeliveryOtpLookupProvider)(widget.orderId);
+    if (mounted && code != null) setState(() => _devCode = code);
+  }
+
+  Future<void> _resendCode() async {
+    setState(() {
+      _resending = true;
+      _error = null;
+    });
+    final result = await ref
+        .read(orderApiProvider)
+        .resendDeliveryOtp(widget.orderId);
+    if (!mounted) return;
+    setState(() => _resending = false);
+    switch (result) {
+      case FailureResult(:final failure):
+        setState(() => _error = failure.message);
+      case Success():
+        _otpController.clear();
+        LpgFeedback.showToast(
+          context,
+          'A new code was sent to the customer.',
+          tone: LpgTone.success,
+        );
+        _loadDevCode();
+    }
+  }
 
   @override
   void dispose() {
@@ -239,6 +282,21 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 keyboardType: TextInputType.number,
                 autofillHints: const [AutofillHints.oneTimeCode],
               ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _resending ? null : _resendCode,
+                  icon: const Icon(LpgIcons.sync, size: LpgSizes.iconSm),
+                  label: Text(_resending ? 'Sending…' : 'Send a new code'),
+                ),
+              ),
+              if (_devCode case final code?) ...[
+                LpgDevOtpBanner(
+                  code: code,
+                  label: "Testing only: the customer's code is",
+                ),
+                const SizedBox(height: LpgSpacing.sm),
+              ],
               const SizedBox(height: LpgSpacing.smd),
               // Delivery Authentication Code (Phase 20 subsystem 4) — the
               // OMC's own separate code, distinct from the code above.

@@ -27,8 +27,10 @@ if TYPE_CHECKING:
     from contextlib import AbstractAsyncContextManager
 
 from lpg.application.common.errors import (
+    ConflictError,
     IncompletePodError,
     NotFoundError,
+    OtpExpiredError,
     OtpMismatchError,
     ServiceUnavailableError,
 )
@@ -49,6 +51,9 @@ from lpg.application.order.use_cases import (
     DepartOrderUseCase,
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
+    ResendDeliveryOtpCommand,
+    ResendDeliveryOtpUseCase,
+    order_delivery_otp_key,
 )
 from lpg.domain.customer.customer import Customer
 from lpg.domain.delivery.route import Route, RoutePlanned
@@ -695,6 +700,40 @@ class TestDeliverOrderUseCase:
         pod_repo.create.assert_not_called()
         mock_uow.commit.assert_not_called()
 
+    async def test_an_expired_code_tells_the_driver_to_send_a_new_one(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        cylinder_type_id = uuid.uuid4()
+        order, route = self._departed_order_and_route(cylinder_type_id)
+        mock_order_repo.get_by_id.return_value = order
+        _stub_route_lookup(mock_route_repo, route)
+        use_case, pod_repo, otp_store = self._deps(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, mock_uow
+        )
+        otp_store.verify = AsyncMock(side_effect=OtpExpiredError("The OTP has expired."))
+
+        with pytest.raises(OtpExpiredError, match="Send a new code"):
+            await use_case.execute(
+                DeliverOrderCommand(
+                    order_id=order.id,
+                    lines=[DeliveredLine(cylinder_type_id=cylinder_type_id, quantity_delivered=4)],
+                    otp_code="123456",
+                    signature_blob_ref=None,
+                    photo_blob_ref=None,
+                    gps_lat=Decimal("12.9"),
+                    gps_lng=Decimal("77.6"),
+                    payment_method="cash",
+                    amount_collected=Decimal("3600"),
+                    changed_by=uuid.uuid4(),
+                )
+            )
+        pod_repo.create.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
     async def test_blank_signature_ref_saves_nothing(
         self,
         mock_order_repo: MagicMock,
@@ -891,8 +930,16 @@ class TestDepartOrderUseCase:
         otp_store = MagicMock()
         otp_store.issue = AsyncMock(return_value="482913")
 
+        self.otp_store = otp_store
+
         use_case = DepartOrderUseCase(
-            mock_order_repo, mock_route_repo, customer_repo, otp_store, otp_delivery, mock_uow
+            mock_order_repo,
+            mock_route_repo,
+            customer_repo,
+            otp_store,
+            otp_delivery,
+            mock_uow,
+            delivery_otp_ttl_seconds=86400,
         )
         return await use_case.execute(
             DepartOrderCommand(order_id=order.id, changed_by=uuid.uuid4())
@@ -907,6 +954,15 @@ class TestDepartOrderUseCase:
         assert result.status == "out_for_delivery"
         otp_delivery.send.assert_awaited_once_with("+919876543210", "482913", purpose="delivery")
 
+    async def test_the_delivery_otp_lasts_for_the_delivery_ttl_not_the_login_ttl(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        """Regression: the code used the 5-minute login TTL, so it had
+        expired by the time most drivers reached the customer."""
+        await self._depart(mock_order_repo, mock_route_repo, mock_uow, AsyncMock())
+
+        assert self.otp_store.issue.await_args.kwargs == {"ttl_seconds": 86400}
+
     async def test_an_sms_outage_does_not_fail_the_departure(
         self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
     ) -> None:
@@ -916,6 +972,66 @@ class TestDepartOrderUseCase:
 
         assert result.status == "out_for_delivery"
         mock_uow.commit.assert_called_once()
+
+
+class TestResendDeliveryOtpUseCase:
+    def _use_case(
+        self, mock_order_repo: MagicMock, order: Order, otp_delivery: AsyncMock
+    ) -> tuple[ResendDeliveryOtpUseCase, MagicMock]:
+        mock_order_repo.get_by_id.return_value = order
+        customer_repo = MagicMock()
+        customer_repo.get_by_id = AsyncMock(return_value=_make_customer())
+        otp_store = MagicMock()
+        otp_store.issue = AsyncMock(return_value="190274")
+        use_case = ResendDeliveryOtpUseCase(
+            mock_order_repo,
+            customer_repo,
+            otp_store,
+            otp_delivery,
+            delivery_otp_ttl_seconds=86400,
+        )
+        return use_case, otp_store
+
+    async def test_issues_and_sends_a_fresh_code_while_out_for_delivery(
+        self, mock_order_repo: MagicMock
+    ) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4())
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        otp_delivery = AsyncMock()
+        use_case, otp_store = self._use_case(mock_order_repo, order, otp_delivery)
+
+        await use_case.execute(ResendDeliveryOtpCommand(order_id=order.id))
+
+        otp_store.issue.assert_awaited_once_with(
+            order_delivery_otp_key(order.tenant_id, order.id), ttl_seconds=86400
+        )
+        otp_delivery.send.assert_awaited_once_with("+919876543210", "190274", purpose="delivery")
+
+    async def test_refuses_an_order_that_is_not_out_for_delivery(
+        self, mock_order_repo: MagicMock
+    ) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4())
+        otp_delivery = AsyncMock()
+        use_case, otp_store = self._use_case(mock_order_repo, order, otp_delivery)
+
+        with pytest.raises(ConflictError):
+            await use_case.execute(ResendDeliveryOtpCommand(order_id=order.id))
+        otp_store.issue.assert_not_called()
+        otp_delivery.send.assert_not_called()
+
+    async def test_an_sms_outage_is_reported_to_the_driver(
+        self, mock_order_repo: MagicMock
+    ) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4())
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        otp_delivery = AsyncMock()
+        otp_delivery.send.side_effect = ServiceUnavailableError("SMS down")
+        use_case, _otp_store = self._use_case(mock_order_repo, order, otp_delivery)
+
+        with pytest.raises(ServiceUnavailableError):
+            await use_case.execute(ResendDeliveryOtpCommand(order_id=order.id))
 
 
 class TestRescheduleOrderUseCase:

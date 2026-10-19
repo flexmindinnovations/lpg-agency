@@ -260,6 +260,10 @@ class Settings(BaseSettings):
 
     otp_length: int = Field(default=6, ge=4, le=10)
     otp_ttl_seconds: int = Field(default=300, gt=0)  # 5 minutes, §1
+    # The delivery OTP is issued when the driver departs and checked at the
+    # doorstep, often hours later — the 5-minute login TTL expired it before
+    # most drivers arrived. 24 hours covers a full delivery day.
+    delivery_otp_ttl_seconds: int = Field(default=86400, gt=0)
     otp_request_rate_limit_per_hour: int = Field(default=5, ge=1)
 
     password_reset_token_ttl_seconds: int = Field(default=3600, gt=0)

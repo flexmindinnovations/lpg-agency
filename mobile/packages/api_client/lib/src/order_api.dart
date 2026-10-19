@@ -102,6 +102,38 @@ final class OrderApi {
   Future<Result<OrderResponse>> departOrder(String orderId) =>
       _postOrderAction('/api/v1/orders/$orderId/depart');
 
+  /// Sends the customer a fresh delivery OTP for an `out_for_delivery` order,
+  /// replacing the earlier one (lost, never arrived, or expired). A `409`
+  /// means the order is no longer out for delivery; a `503` means the SMS
+  /// could not be sent.
+  Future<Result<void>> resendDeliveryOtp(String orderId) async {
+    try {
+      await _dio.post<void>('/api/v1/orders/$orderId/delivery-otp');
+      return const Success(null);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// **Testing only.** The delivery OTP last sent for this order, from the
+  /// backend's dev inbox (`GET /dev/orders/{id}/delivery-otp`). That route
+  /// does not exist in production, so callers must treat a failure as "no
+  /// code to show".
+  Future<Result<String>> fetchDevDeliveryOtp(String orderId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/dev/orders/$orderId/delivery-otp',
+      );
+      return Success(response.data!['code'] as String);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Pre-upload a signature/photo blob for a proof of delivery. Returns the
   /// `blob_ref` to pass into [deliverOrder].
   Future<Result<PodAttachmentResponse>> uploadPodAttachment(

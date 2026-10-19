@@ -4,17 +4,25 @@ import '../layout.dart';
 import '../theme.dart';
 import '../tone.dart';
 
-/// **Testing only.** Shows a sign-in verification code on screen until an
-/// SMS/WhatsApp gateway delivers it. Callers render it only when the backend's
-/// dev inbox returned a code (the route does not exist in production). Remove
-/// this widget and its two call sites once real delivery ships.
+/// **Testing only.** Shows a verification code (sign-in, or the customer's
+/// delivery code) on screen until an SMS/WhatsApp gateway delivers it.
+/// Callers render it only when the backend's dev inbox returned a code (the
+/// route does not exist in production). Remove this widget and its call sites
+/// once real delivery ships.
 class LpgDevOtpBanner extends StatelessWidget {
-  const LpgDevOtpBanner({required this.code, super.key});
+  const LpgDevOtpBanner({
+    required this.code,
+    this.label = 'Testing only: your code is',
+    super.key,
+  });
 
   /// Key on the code text, so widget tests in both apps can find it.
   static const codeKey = Key('dev-otp-code');
 
   final String code;
+
+  /// The line above the code.
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +32,7 @@ class LpgDevOtpBanner extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: 'Testing only. Your verification code is $code',
+      label: '$label $code',
       child: Container(
         padding: const EdgeInsets.all(LpgSpacing.md),
         decoration: BoxDecoration(
@@ -35,7 +43,7 @@ class LpgDevOtpBanner extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              'Testing only: your code is',
+              label,
               style: text.labelMedium?.copyWith(color: colors.textSecondary),
             ),
             const SizedBox(height: LpgSpacing.xs),

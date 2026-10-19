@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api_provider.dart';
 
-/// Whether the login screen may display the OTP on screen.
+/// Whether the login and Record delivery screens may display OTPs on screen.
 ///
 /// TEMPORARY, for testing only: there is no SMS/WhatsApp gateway yet, so a
 /// tester has no other way to see the code. Defaults to on in debug builds
@@ -34,6 +34,29 @@ final devOtpLookupProvider = Provider<DevOtpLookup>(
       return code;
     } on Object {
       // Best effort: the driver can still type the code from elsewhere.
+      return null;
+    }
+  },
+);
+
+/// Looks up the delivery OTP last sent to an order's customer, or `null`
+/// when there is nothing to show (feature off, backend in production, no
+/// code pending). Same testing-only rules as [devOtpLookupProvider].
+typedef DevDeliveryOtpLookup = Future<String?> Function(String orderId);
+
+final devDeliveryOtpLookupProvider = Provider<DevDeliveryOtpLookup>(
+  (ref) => (orderId) async {
+    if (!showDevOtp) return null;
+    try {
+      final result = await ref
+          .read(orderApiProvider)
+          .fetchDevDeliveryOtp(orderId);
+      final code = result.when<String?>(
+        onSuccess: (code) => code,
+        onFailure: (_) => null,
+      );
+      return code;
+    } on Object {
       return null;
     }
   },

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
+import 'package:driver_app/src/dev_otp_provider.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/image_picker_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
@@ -184,6 +185,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
   bool online = true,
   RouteSummary? route,
   Map<String, int> queuedEmpties = const {},
+  String? devCode,
 }) {
   final harness = OfflineHarness(
     ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
@@ -201,6 +203,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
       queuedEmptiesByTypeProvider.overrideWith(
         (ref) => Stream.value(queuedEmpties),
       ),
+      devDeliveryOtpLookupProvider.overrideWithValue((_) async => devCode),
     ],
   );
   return (container: container, harness: harness);
@@ -336,6 +339,38 @@ void main() {
       expect(ops.single.type, 'order_deliver');
 
       expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('"Send a new code" asks the server to resend the code', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.tap(find.text('Send a new code'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(adapter.paths, ['/api/v1/orders/order-1/delivery-otp']);
+      expect(find.text('A new code was sent to the customer.'), findsOneWidget);
+    });
+
+    testWidgets('testing builds show the customer\'s code', (tester) async {
+      final (:container, :harness) = _container(
+        _RecordingAdapter(),
+        devCode: '482913',
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      expect(find.byKey(LpgDevOtpBanner.codeKey), findsOneWidget);
+      expect(find.text('482913'), findsOneWidget);
     });
 
     testWidgets('warns when empties collected exceed the van load manifest', (

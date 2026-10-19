@@ -116,9 +116,11 @@ class OtpStore(Protocol):
     only.
     """
 
-    async def issue(self, key: str) -> str:
+    async def issue(self, key: str, *, ttl_seconds: int | None = None) -> str:
         """Generate a new code, store its salted hash with a TTL, and return
         the plaintext code for the caller to hand to `OtpDeliveryPort`.
+        `ttl_seconds` overrides the default (login) TTL; issuing again for
+        the same `key` replaces the previous code.
         """
         ...
 

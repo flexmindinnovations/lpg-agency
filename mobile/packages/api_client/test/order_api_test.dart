@@ -200,6 +200,41 @@ void main() {
       );
     });
 
+    test('resendDeliveryOtp posts to the delivery-otp action', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return emptyResponse(204);
+      });
+
+      final result = await OrderApi(client.dio).resendDeliveryOtp('order-1');
+
+      expect(captured!.method, 'POST');
+      expect(captured!.path, '/api/v1/orders/order-1/delivery-otp');
+      expect(
+        result.when(onSuccess: (_) => true, onFailure: (_) => false),
+        isTrue,
+      );
+    });
+
+    test('fetchDevDeliveryOtp reads the code from the dev inbox', () async {
+      RequestOptions? captured;
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        captured = options;
+        return jsonResponse({'code': '482913'}, 200);
+      });
+
+      final result = await OrderApi(client.dio).fetchDevDeliveryOtp('order-1');
+
+      expect(captured!.path, '/api/v1/dev/orders/order-1/delivery-otp');
+      expect(
+        result.when(onSuccess: (code) => code, onFailure: (_) => null),
+        '482913',
+      );
+    });
+
     test('recordFailedDelivery sends the reason and optional action', () async {
       RequestOptions? captured;
       final client = ApiClient(baseUrl: 'https://api.test');
