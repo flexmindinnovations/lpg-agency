@@ -94,7 +94,9 @@
         @if (complaint.order_id) {
         <div class="info-item col-span-2">
           <span class="info-label">Order</span>
-          <span class="info-value font-mono">{{ shortId(complaint.order_id) }}</span>
+          <span class="info-value font-mono"
+            >{{ selectedOrderNumber() ?? shortId(complaint.order_id) }}</span
+          >
         </div>
         }
         <div class="info-item col-span-2">

@@ -282,6 +282,10 @@ ignore_imports = [
     # exist — exactly the composition root's role, scoped to one seam each,
     # so that routers and use cases never import infrastructure directly.
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.unit_of_work",
+    # dependencies/unit_of_work.py also names the cylinder type in an error
+    # message (see `_name_cylinder_type`) through its repository.
+    "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.database",
+    "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.repositories.tenant",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.identity -> lpg.infrastructure.persistence.repositories.identity",
     # R5: dependencies/identity.py also wires the tenant-slug resolver

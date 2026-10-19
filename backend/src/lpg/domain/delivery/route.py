@@ -391,7 +391,7 @@ class Route(AggregateRoot):
             raise InvariantViolation(msg)
 
         if any(stop.order_id == order_id for stop in self._stops):
-            msg = f"Order {order_id} is already assigned to this route."
+            msg = "This order is already assigned to this route."
             raise InvariantViolation(msg)
 
         stop_id = uuid.uuid4()
