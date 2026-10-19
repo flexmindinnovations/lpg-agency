@@ -501,6 +501,13 @@ class SqlAlchemyBranchStockReader:
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
         self._uow = unit_of_work
 
+    async def lock_branch_for_booking(self, branch_id: uuid.UUID) -> None:
+        # A transaction-scoped advisory lock: released by PostgreSQL itself
+        # on commit or rollback, so it can never be left held. Branch ids are
+        # UUIDs, unique across tenants, so the key needs no tenant part.
+        key = func.hashtextextended(f"order-booking:{branch_id}", 0)
+        await self._uow.session.execute(select(func.pg_advisory_xact_lock(key)))
+
     async def available_filled_by_cylinder_type(
         self, branch_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
     ) -> dict[uuid.UUID, int]:

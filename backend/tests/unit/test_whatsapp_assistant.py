@@ -196,6 +196,9 @@ class FakePriceLists:
 class FakeBranchStock:
     available: dict[uuid.UUID, int]
 
+    async def lock_branch_for_booking(self, branch_id: uuid.UUID) -> None:
+        pass
+
     async def available_filled_by_cylinder_type(
         self,
         branch_id: uuid.UUID,  # noqa: ARG002

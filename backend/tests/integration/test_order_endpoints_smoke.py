@@ -9,6 +9,7 @@ post-dispatch cancel -> approve, an illegal transition, role-scoped
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -1161,6 +1162,26 @@ class TestOrderableCylinderTypes:
 
         assert response.status_code == 409, response.text
         assert "Only 200 filled" in response.json()["detail"]
+
+    async def test_concurrent_bookings_cannot_both_take_the_last_cylinders(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        async def book() -> int:
+            # 150 each of the branch's 200: either fits alone, both don't.
+            response = await client.post(
+                "/api/v1/orders",
+                json=_create_order_payload(fixtures, quantity=150),
+                headers={**admin_headers, "Idempotency-Key": str(uuid.uuid4())},
+            )
+            return response.status_code
+
+        statuses = sorted(await asyncio.gather(*(book() for _ in range(4))))
+
+        assert statuses == [201, 409, 409, 409]
 
     async def test_confirm_is_not_blocked_by_the_orders_own_booking(
         self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine

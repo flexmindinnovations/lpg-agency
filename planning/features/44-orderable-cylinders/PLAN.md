@@ -48,3 +48,14 @@ assigned orders only count their unreserved backorder.
   quantity at what is in stock.
 
 Dispatch and van-loading are out of scope (another thread).
+
+## Concurrency (added 2026-10-19)
+
+The check and the insert it allows must be one step, or two bookings can
+both read the same free stock. `OrderableCylinderTypes.require()` first calls
+`BranchStockReader.lock_branch_for_booking()`, which takes
+`pg_advisory_xact_lock(hashtextextended('order-booking:<branch_id>', 0))`.
+PostgreSQL releases it when the use case's transaction commits or rolls back,
+so a concurrent booking at the same branch waits and then reads stock that
+includes the first order. Bookings at other branches are not blocked, and
+listing takes no lock.
