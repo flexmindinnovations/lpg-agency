@@ -3,6 +3,7 @@ import { HasPermissionDirective } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   OnInit,
   computed,
@@ -16,7 +17,9 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonDirective } from 'primeng/button';
+import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputNumber } from 'primeng/inputnumber';
@@ -31,13 +34,18 @@ import {
   InventoryService,
   NotifyService,
   WeighmentService,
-  type AppError,
+  errorMessageFor as sharedErrorMessageFor,
+  isAppError,
   type CylinderTypeResponse,
   type GoodsReceiptResponse,
   type InventoryBalanceLine,
   type InventoryBalanceResponse,
   type InventoryLocationType,
   type InventoryTransactionResponse,
+  type OmcReturnRequest,
+  type ReconciliationRecordResponse,
+  type StatusTransitionsResponse,
+  type StockRegisterLineResponse,
   type ReorderPolicyResponse,
   type ReorderSignalResponse,
   type ScaleResponse,
@@ -63,9 +71,23 @@ const CYLINDER_STATUSES = [
   'scrap',
 ] as const;
 
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
+/** Oil marketing companies a GRN comes from / empties go back to — the
+ * same closed set the API validates. */
+const OMC_OPTIONS = [
+  { label: 'IOCL (Indane)', value: 'iocl' },
+  { label: 'BPCL (Bharatgas)', value: 'bpcl' },
+  { label: 'HPCL (HP Gas)', value: 'hpcl' },
+  { label: 'Other', value: 'other' },
+] as const;
+type OmcCode = (typeof OMC_OPTIONS)[number]['value'];
+
+/** Statuses that can go back to the OMC (empties and defectives). */
+const OMC_RETURNABLE_STATUSES = ['empty', 'damaged', 'leakage', 'quarantine'] as const;
+
+/** How many days the stock register shows by default. */
+const STOCK_REGISTER_DEFAULT_DAYS = 7;
+
+type TransitionKind = keyof StatusTransitionsResponse;
 
 function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
@@ -73,11 +95,19 @@ function errorMessageFor(error: unknown): string {
       return 'Not enough stock available for that quantity.';
     case 'INVALID_STATUS_TRANSITION':
       return 'That status change is not permitted.';
-    case 'PERMISSION_DENIED':
-      return "You don't have permission to do that.";
+    case 'SELF_APPROVAL_NOT_ALLOWED':
+      return 'You recorded this count, so someone else has to approve it.';
+    case 'RECONCILIATION_ALREADY_DECIDED':
+      return 'This count has already been approved or rejected.';
     default:
-      return 'Something went wrong. Please try again.';
+      return sharedErrorMessageFor(error);
   }
+}
+
+/** Local calendar date → `yyyy-mm-dd`. */
+function toIsoDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 @Component({
@@ -94,6 +124,7 @@ function errorMessageFor(error: unknown): string {
     Textarea,
     Drawer,
     DrawerA11yDirective,
+    DatePicker,
     Message,
     Select,
     DataGridComponent,
@@ -112,6 +143,7 @@ export class FeatureInventory implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly weighmentService = inject(WeighmentService);
   private readonly notify = inject(NotifyService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
@@ -122,6 +154,14 @@ export class FeatureInventory implements OnInit {
     label: toSentenceCase(s),
     value: s,
   }));
+  protected readonly omcOptions = OMC_OPTIONS;
+  protected readonly omcReturnStatusOptions = OMC_RETURNABLE_STATUSES.map((s) => ({
+    label: toSentenceCase(s),
+    value: s,
+  }));
+
+  /** Allowed status moves, from the API (the domain's own rule, DA-17). */
+  private readonly transitions = signal<StatusTransitionsResponse | null>(null);
 
   /**
    * Validator-key → message, shared across the six inventory-operation forms
@@ -150,6 +190,7 @@ export class FeatureInventory implements OnInit {
       required: 'Enter the underweight count (0 if none).',
       min: 'Cannot be negative.',
     },
+    destination_omc: { required: 'Choose the OMC the cylinders go back to.' },
     reorder_point: { required: 'Enter a reorder point.', min: 'Cannot be negative.' },
     safety_stock: { required: 'Enter a safety stock level.', min: 'Cannot be negative.' },
   };
@@ -161,8 +202,11 @@ export class FeatureInventory implements OnInit {
   protected readonly transactionsCursor = signal<string | null>(null);
 
   protected readonly loading = signal(false);
+  /** Page-level load failures (balance, history, register). */
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly successMessage = signal<string | null>(null);
+  /** The open drawer's own failure — shown inside it, once (DA-16). Cleared
+   * whenever a drawer opens. */
+  protected readonly drawerError = signal<string | null>(null);
 
   protected readonly cylinderTypeNameById = computed(() => {
     const map = new Map<string, string>();
@@ -191,6 +235,8 @@ export class FeatureInventory implements OnInit {
   protected readonly showStatusChangeModal = signal(false);
   protected readonly showAdjustModal = signal(false);
   protected readonly showReconcileModal = signal(false);
+  protected readonly showOmcReturnModal = signal(false);
+  protected readonly showRejectModal = signal(false);
 
   // PrimeNG's Dialog/Drawer has no built-in "return focus to trigger"
   // behaviour — matches `apps/dashboard/src/app/home/home.ts`'s pattern.
@@ -205,6 +251,8 @@ export class FeatureInventory implements OnInit {
   protected readonly adjustTrigger = viewChild<ElementRef<HTMLButtonElement>>('adjustTriggerEl');
   protected readonly reconcileTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('reconcileTriggerEl');
+  protected readonly omcReturnTrigger =
+    viewChild<ElementRef<HTMLButtonElement>>('omcReturnTriggerEl');
 
   protected readonly balanceColumns: DataGridColumn<InventoryBalanceLine>[] = [
     {
@@ -215,7 +263,7 @@ export class FeatureInventory implements OnInit {
         this.cylinderTypeNameById().get(value as string) ?? (value as string),
     },
     { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
-    { field: 'quantity', header: 'Quantity', sortable: true, numeric: true },
+    { field: 'quantity', header: 'Quantity', sortable: true, numeric: true, width: 140 },
   ];
 
   protected readonly transactionColumns: DataGridColumn<InventoryTransactionResponse>[] = [
@@ -240,7 +288,20 @@ export class FeatureInventory implements OnInit {
   protected readonly grnForm = this.fb.group({
     cylinder_type_id: ['', [Validators.required]],
     quantity_received: [1, [Validators.required, Validators.min(1)]],
-    source_omc: [''],
+    source_omc: ['' as OmcCode | ''],
+    challan_number: ['', [Validators.maxLength(50)]],
+    invoice_number: ['', [Validators.maxLength(50)]],
+    truck_number: ['', [Validators.maxLength(20)]],
+  });
+
+  /** Empties (and defectives) going back to the OMC on its truck (DA-34). */
+  protected readonly omcReturnForm = this.fb.group({
+    destination_omc: ['' as OmcCode | '', [Validators.required]],
+    cylinder_type_id: ['', [Validators.required]],
+    status: ['empty' as (typeof OMC_RETURNABLE_STATUSES)[number], [Validators.required]],
+    quantity: [1, [Validators.required, Validators.min(1)]],
+    challan_number: ['', [Validators.maxLength(50)]],
+    truck_number: ['', [Validators.maxLength(20)]],
   });
 
   /** MDG 2022 cl. 1.2(iv) — 10% goods-receipt sample. Surfaced as a second
@@ -292,6 +353,36 @@ export class FeatureInventory implements OnInit {
 
   protected readonly lastReconciliationRecordId = signal<string | null>(null);
 
+  /** Counts recorded here and waiting for a second person's decision (DA-04). */
+  protected readonly pendingCounts = signal<ReconciliationRecordResponse[]>([]);
+  protected readonly countsError = signal<string | null>(null);
+  protected readonly rejectingCount = signal<ReconciliationRecordResponse | null>(null);
+  protected readonly rejectForm = this.fb.group({
+    reason: ['', [Validators.required, Validators.minLength(3)]],
+  });
+
+  // Stock register (DA-34): opening / receipts / issues / closing per day.
+  protected readonly registerFrom = signal<Date>(this.daysAgo(STOCK_REGISTER_DEFAULT_DAYS - 1));
+  protected readonly registerTo = signal<Date>(new Date());
+  protected readonly registerLines = signal<StockRegisterLineResponse[]>([]);
+  protected readonly registerLoading = signal(false);
+  protected readonly registerColumns: DataGridColumn<StockRegisterLineResponse>[] = [
+    { field: 'date', header: 'Date', sortable: true, width: 130 },
+    {
+      field: 'cylinder_type_id',
+      header: 'Cylinder Type',
+      sortable: true,
+      filterable: true,
+      valueFormatter: (value) =>
+        this.cylinderTypeNameById().get(value as string) ?? (value as string),
+    },
+    { field: 'status', header: 'Status', sortable: true, cellRenderer: StatusChipCell },
+    { field: 'opening', header: 'Opening', numeric: true, width: 120 },
+    { field: 'receipts', header: 'Receipts', numeric: true, width: 120 },
+    { field: 'issues', header: 'Issues', numeric: true, width: 120 },
+    { field: 'closing', header: 'Closing', numeric: true, width: 120 },
+  ];
+
   // ---------------------------------------------------------------------------
   // Reorder policy (AI Operational Intelligence, Horizon 1 Stage 4)
   // ---------------------------------------------------------------------------
@@ -333,7 +424,25 @@ export class FeatureInventory implements OnInit {
     { field: 'safety_stock', header: 'Safety Stock', numeric: true },
   ];
 
+  constructor() {
+    // Keep each "To" picker on a move the domain allows from the chosen
+    // "From" status (DA-17).
+    this.keepTargetAllowed(this.statusChangeForm, 'status_change');
+    this.keepTargetAllowed(this.adjustForm, 'adjustment');
+  }
+
   ngOnInit(): void {
+    this.inventoryService.getStatusTransitions().subscribe({
+      next: (t) => {
+        this.transitions.set(t);
+        this.statusChangeForm.controls.to_status.setValue(
+          this.firstTarget('status_change', this.statusChangeForm.controls.from_status.value),
+        );
+        this.adjustForm.controls.to_status.setValue(
+          this.firstTarget('adjustment', this.adjustForm.controls.from_status.value),
+        );
+      },
+    });
     this.warehouseService.listWarehouses().subscribe({ next: (w) => this.warehouses.set(w) });
     this.deliveryService.listVehicles(0, 200).subscribe({
       next: (page) => this.vehicles.set(page.items),
@@ -348,17 +457,65 @@ export class FeatureInventory implements OnInit {
     this.loadReorderSignals();
   }
 
+  // ---------------------------------------------------------------------------
+  // Allowed status moves (DA-17)
+  // ---------------------------------------------------------------------------
+
+  /** "From" statuses with at least one allowed move. */
+  protected fromStatusOptions(kind: TransitionKind): { label: string; value: string }[] {
+    const map = this.transitions()?.[kind];
+    if (!map) return this.statusOptions;
+    return this.statusOptions.filter((o) => (map[o.value] ?? []).length > 0);
+  }
+
+  /** The moves the domain allows from `from`. */
+  protected toStatusOptions(
+    kind: TransitionKind,
+    from: string,
+  ): { label: string; value: string }[] {
+    const targets = this.transitions()?.[kind]?.[from] ?? [];
+    return targets.map((t) => ({ label: toSentenceCase(t), value: t }));
+  }
+
+  private firstTarget(kind: TransitionKind, from: string): string {
+    return this.transitions()?.[kind]?.[from]?.[0] ?? '';
+  }
+
+  private keepTargetAllowed(
+    form: typeof this.statusChangeForm | typeof this.adjustForm,
+    kind: TransitionKind,
+  ): void {
+    form.controls.from_status.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((from) => {
+        const allowed = this.transitions()?.[kind]?.[from] ?? [];
+        if (!allowed.includes(form.controls.to_status.value)) {
+          form.controls.to_status.setValue(allowed[0] ?? '');
+        }
+      });
+  }
+
   protected onLocationTypeChange(value: InventoryLocationType): void {
     this.locationType.set(value);
     this.locationRefId.set(null);
     this.balance.set(null);
     this.transactions.set([]);
+    this.pendingCounts.set([]);
+    this.registerLines.set([]);
   }
 
   protected onLocationRefChange(value: string): void {
     this.locationRefId.set(value);
+    this.errorMessage.set(null);
+    this.reload();
+  }
+
+  /** Re-reads everything shown for the selected location. */
+  reload(): void {
     this.loadBalance();
     this.loadTransactions();
+    this.loadPendingCounts();
+    this.loadStockRegister();
   }
 
   protected loadBalance(): void {
@@ -402,12 +559,22 @@ export class FeatureInventory implements OnInit {
     });
   }
 
-  private refreshAfterMutation(): void {
-    this.successMessage.set('Done.');
+  private refreshAfterMutation(message: string): void {
     this.loading.set(false);
-    this.notify.success('Done.');
-    this.loadBalance();
-    this.loadTransactions();
+    this.notify.success(message);
+    this.reload();
+  }
+
+  /** A drawer's request failed: say why inside that drawer, once. */
+  private failInDrawer(err: unknown): void {
+    this.drawerError.set(errorMessageFor(err));
+    this.loading.set(false);
+  }
+
+  private daysAgo(days: number): Date {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d;
   }
 
   // ---------------------------------------------------------------------------
@@ -415,8 +582,16 @@ export class FeatureInventory implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected openGrnModal(): void {
-    this.grnForm.reset({ cylinder_type_id: '', quantity_received: 1, source_omc: '' });
+    this.grnForm.reset({
+      cylinder_type_id: '',
+      quantity_received: 1,
+      source_omc: '',
+      challan_number: '',
+      invoice_number: '',
+      truck_number: '',
+    });
     this.lastGrn.set(null);
+    this.drawerError.set(null);
     this.showGrnModal.set(true);
   }
 
@@ -430,6 +605,9 @@ export class FeatureInventory implements OnInit {
         cylinder_type_id: val.cylinder_type_id,
         quantity_received: val.quantity_received,
         source_omc: val.source_omc || null,
+        challan_number: val.challan_number.trim() || null,
+        invoice_number: val.invoice_number.trim() || null,
+        truck_number: val.truck_number.trim() || null,
       })
       .subscribe({
         next: (grn) => {
@@ -438,8 +616,10 @@ export class FeatureInventory implements OnInit {
           // closing it, so the same "Receive Goods" action can flow
           // straight into logging the MDG-required 10% check.
           this.loading.set(false);
-          this.loadBalance();
-          this.loadTransactions();
+          this.notify.success(
+            `${grn.grn_number ?? 'Goods receipt'} recorded — ${grn.quantity_received} cylinders.`,
+          );
+          this.reload();
           this.lastGrn.set(grn);
           const suggested = Math.max(1, Math.ceil(grn.quantity_received * 0.1));
           this.weighmentForm.reset({
@@ -448,10 +628,7 @@ export class FeatureInventory implements OnInit {
             underweight_cylinder_count: 0,
           });
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 
@@ -459,7 +636,6 @@ export class FeatureInventory implements OnInit {
   protected skipWeighmentSample(): void {
     this.showGrnModal.set(false);
     this.lastGrn.set(null);
-    this.successMessage.set('Done.');
   }
 
   protected onSubmitWeighmentSample(): void {
@@ -479,13 +655,10 @@ export class FeatureInventory implements OnInit {
         next: () => {
           this.showGrnModal.set(false);
           this.lastGrn.set(null);
-          this.successMessage.set('Weighment sample recorded.');
+          this.notify.success('Weighment sample recorded.');
           this.loading.set(false);
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 
@@ -501,6 +674,7 @@ export class FeatureInventory implements OnInit {
       status: 'filled',
       quantity: 1,
     });
+    this.drawerError.set(null);
     this.showTransferModal.set(true);
   }
 
@@ -519,12 +693,9 @@ export class FeatureInventory implements OnInit {
       .subscribe({
         next: () => {
           this.showTransferModal.set(false);
-          this.refreshAfterMutation();
+          this.refreshAfterMutation('Load transfer recorded.');
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 
@@ -534,6 +705,7 @@ export class FeatureInventory implements OnInit {
 
   protected openDeliveryCollectionModal(): void {
     this.deliveryCollectionForm.reset({ mode: 'delivery', cylinder_type_id: '', quantity: 1 });
+    this.drawerError.set(null);
     this.showDeliveryCollectionModal.set(true);
   }
 
@@ -550,12 +722,9 @@ export class FeatureInventory implements OnInit {
     request$.subscribe({
       next: () => {
         this.showDeliveryCollectionModal.set(false);
-        this.refreshAfterMutation();
+        this.refreshAfterMutation('Saved.');
       },
-      error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
-        this.loading.set(false);
-      },
+      error: (err) => this.failInDrawer(err),
     });
   }
 
@@ -567,9 +736,10 @@ export class FeatureInventory implements OnInit {
     this.statusChangeForm.reset({
       cylinder_type_id: '',
       from_status: 'filled',
-      to_status: 'leakage',
+      to_status: this.firstTarget('status_change', 'filled'),
       quantity: 1,
     });
+    this.drawerError.set(null);
     this.showStatusChangeModal.set(true);
   }
 
@@ -588,12 +758,9 @@ export class FeatureInventory implements OnInit {
       .subscribe({
         next: () => {
           this.showStatusChangeModal.set(false);
-          this.refreshAfterMutation();
+          this.refreshAfterMutation('Status changed.');
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 
@@ -601,10 +768,11 @@ export class FeatureInventory implements OnInit {
     this.adjustForm.reset({
       cylinder_type_id: '',
       from_status: 'filled',
-      to_status: 'leakage',
+      to_status: this.firstTarget('adjustment', 'filled'),
       quantity: 1,
       reason: '',
     });
+    this.drawerError.set(null);
     this.showAdjustModal.set(true);
   }
 
@@ -624,12 +792,9 @@ export class FeatureInventory implements OnInit {
       .subscribe({
         next: () => {
           this.showAdjustModal.set(false);
-          this.refreshAfterMutation();
+          this.refreshAfterMutation('Adjustment recorded.');
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 
@@ -640,9 +805,11 @@ export class FeatureInventory implements OnInit {
   protected openReconcileModal(): void {
     this.reconcileForm.reset({ cylinder_type_id: '', status: 'filled', actual_quantity: 0 });
     this.lastReconciliationRecordId.set(null);
+    this.drawerError.set(null);
     this.showReconcileModal.set(true);
   }
 
+  /** Records the count only — stock changes when someone else approves it. */
   protected onSubmitReconcile(): void {
     const refId = this.locationRefId();
     if (!refId || this.reconcileForm.invalid) return;
@@ -658,30 +825,129 @@ export class FeatureInventory implements OnInit {
         next: (record) => {
           this.lastReconciliationRecordId.set(record.id);
           this.loading.set(false);
-          this.loadBalance();
-          this.loadTransactions();
+          this.loadPendingCounts();
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 
-  protected onApproveReconciliation(): void {
-    const recordId = this.lastReconciliationRecordId();
-    if (!recordId) return;
+  protected loadPendingCounts(): void {
+    const refId = this.locationRefId();
+    if (!refId) return;
+    this.inventoryService
+      .listReconciliationRecords(this.locationType(), refId, 'pending')
+      .subscribe({
+        next: (records) => this.pendingCounts.set(records),
+        error: () => this.pendingCounts.set([]),
+      });
+  }
+
+  protected onApproveCount(record: ReconciliationRecordResponse): void {
+    this.countsError.set(null);
     this.loading.set(true);
-    this.inventoryService.approveReconciliationRecord(recordId).subscribe({
-      next: () => {
-        this.showReconcileModal.set(false);
-        this.refreshAfterMutation();
-      },
+    this.inventoryService.approveReconciliationRecord(record.id).subscribe({
+      next: () => this.refreshAfterMutation('Count approved — stock corrected.'),
       error: (err) => {
-        this.errorMessage.set(errorMessageFor(err));
+        this.countsError.set(errorMessageFor(err));
         this.loading.set(false);
       },
     });
+  }
+
+  protected openRejectCount(record: ReconciliationRecordResponse): void {
+    this.rejectingCount.set(record);
+    this.rejectForm.reset({ reason: '' });
+    this.drawerError.set(null);
+    this.showRejectModal.set(true);
+  }
+
+  protected onSubmitReject(): void {
+    const record = this.rejectingCount();
+    if (!record || this.rejectForm.invalid) return;
+    this.loading.set(true);
+    this.inventoryService
+      .rejectReconciliationRecord(record.id, this.rejectForm.getRawValue().reason.trim())
+      .subscribe({
+        next: () => {
+          this.showRejectModal.set(false);
+          this.rejectingCount.set(null);
+          this.refreshAfterMutation('Count rejected — stock unchanged.');
+        },
+        error: (err) => this.failInDrawer(err),
+      });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Empties return to the OMC (DA-34)
+  // ---------------------------------------------------------------------------
+
+  protected openOmcReturnModal(): void {
+    this.omcReturnForm.reset({
+      destination_omc: '',
+      cylinder_type_id: '',
+      status: 'empty',
+      quantity: 1,
+      challan_number: '',
+      truck_number: '',
+    });
+    this.drawerError.set(null);
+    this.showOmcReturnModal.set(true);
+  }
+
+  protected onSubmitOmcReturn(): void {
+    const refId = this.locationRefId();
+    if (!refId || this.omcReturnForm.invalid) return;
+    const val = this.omcReturnForm.getRawValue();
+    const request: OmcReturnRequest = {
+      destination_omc: val.destination_omc as OmcCode,
+      cylinder_type_id: val.cylinder_type_id,
+      status: val.status,
+      quantity: val.quantity,
+      challan_number: val.challan_number.trim() || null,
+      truck_number: val.truck_number.trim() || null,
+    };
+    this.loading.set(true);
+    this.inventoryService.returnStockToOmc(refId, request).subscribe({
+      next: (note) => {
+        this.showOmcReturnModal.set(false);
+        this.refreshAfterMutation(`${note.return_number} recorded — ${note.quantity} cylinders.`);
+      },
+      error: (err) => this.failInDrawer(err),
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stock register (DA-34)
+  // ---------------------------------------------------------------------------
+
+  protected onRegisterRangeChange(which: 'from' | 'to', value: Date | null): void {
+    if (!value) return;
+    (which === 'from' ? this.registerFrom : this.registerTo).set(value);
+    this.loadStockRegister();
+  }
+
+  protected loadStockRegister(): void {
+    const refId = this.locationRefId();
+    if (!refId) return;
+    this.registerLoading.set(true);
+    this.inventoryService
+      .getStockRegister(
+        this.locationType(),
+        refId,
+        toIsoDate(this.registerFrom()),
+        toIsoDate(this.registerTo()),
+      )
+      .subscribe({
+        next: (register) => {
+          this.registerLines.set(register.lines);
+          this.registerLoading.set(false);
+        },
+        error: (err) => {
+          this.registerLines.set([]);
+          this.registerLoading.set(false);
+          this.errorMessage.set(errorMessageFor(err));
+        },
+      });
   }
 
   // ---------------------------------------------------------------------------
@@ -707,6 +973,7 @@ export class FeatureInventory implements OnInit {
       reorder_point: 10,
       safety_stock: 0,
     });
+    this.drawerError.set(null);
     this.showReorderPolicyModal.set(true);
   }
 
@@ -728,10 +995,7 @@ export class FeatureInventory implements OnInit {
           this.loadReorderPolicies();
           this.loadReorderSignals();
         },
-        error: (err) => {
-          this.errorMessage.set(errorMessageFor(err));
-          this.loading.set(false);
-        },
+        error: (err) => this.failInDrawer(err),
       });
   }
 }

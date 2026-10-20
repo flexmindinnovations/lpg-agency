@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { errorMessageFor, isAppError } from './problem-details';
@@ -17,6 +17,10 @@ const AUTH_ENDPOINT_SEGMENTS = ['/auth/login', '/auth/refresh', '/auth/otp/verif
  * that genuinely needs error feedback (e.g. the notification drawer's
  * user-initiated load) calls NotifyService directly instead. */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** Set on a request whose caller shows the error itself, inline (e.g. inside
+ * the drawer that sent it), so the same failure isn't also toasted. */
+export const SKIP_ERROR_TOAST = new HttpContextToken<boolean>(() => false);
 
 function isAuthEndpoint(url: string): boolean {
   return AUTH_ENDPOINT_SEGMENTS.some((segment) => url.includes(segment));
@@ -54,7 +58,8 @@ export const globalErrorToastInterceptor: HttpInterceptorFn = (request, next) =>
           : null;
       const isAuthOrSessionExpiry = isAuthEndpoint(request.url) || status === 401;
 
-      if (MUTATING_METHODS.has(request.method) && !isAuthOrSessionExpiry) {
+      const shownInline = request.context.get(SKIP_ERROR_TOAST);
+      if (MUTATING_METHODS.has(request.method) && !isAuthOrSessionExpiry && !shownInline) {
         notify.error(errorMessageFor(error));
       }
 

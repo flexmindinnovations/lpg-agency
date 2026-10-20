@@ -10,8 +10,6 @@
 
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
-  } @if (successMessage(); as msg) {
-  <p-message severity="success">{{ msg }}</p-message>
   }
 
   <!-- Low-stock banner -- AI Operational Intelligence, Horizon 1 Stage 4.
@@ -29,7 +27,7 @@
       <div class="location-picker__field">
         <label for="location_type">Location Type</label>
         <p-select
-          id="location_type"
+          inputId="location_type"
           [options]="[
             { label: 'Warehouse', value: 'warehouse' },
             { label: 'Vehicle', value: 'vehicle' }
@@ -45,7 +43,7 @@
           >{{ locationType() === 'warehouse' ? 'Warehouse' : 'Vehicle' }}</label
         >
         <p-select
-          id="location_ref"
+          inputId="location_ref"
           [options]="locationOptions()"
           optionLabel="label"
           optionValue="value"
@@ -67,6 +65,18 @@
       >
         <i class="pi pi-inbox"></i>
         <span>Receive Goods</span>
+      </button>
+      <button
+        *lpgHasPermission="'inventory:load'"
+        #omcReturnTriggerEl
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="!locationRefId()"
+        (click)="openOmcReturnModal()"
+      >
+        <i class="pi pi-replay"></i>
+        <span>Return to OMC</span>
       </button>
       }
       <button
@@ -147,12 +157,105 @@
   @if (locationRefId()) {
   <h2 class="section-title">Balance</h2>
   <lpg-data-grid
-    style="min-block-size: 260px"
     [rows]="balance()?.balances ?? []"
     [columns]="balanceColumns"
     [loading]="loading()"
+    [autoHeight]="true"
+    [pageSize]="100"
     ariaLabel="Inventory balance"
   />
+
+  @if (pendingCounts().length > 0) {
+  <section class="pending-counts" aria-labelledby="pending-counts-title">
+    <h2 id="pending-counts-title" class="section-title">Counts awaiting approval</h2>
+    <p class="empty-hint">
+      Stock is corrected only when someone other than the counter approves the count.
+    </p>
+    @if (countsError(); as msg) {
+    <p-message severity="error" role="alert">{{ msg }}</p-message>
+    }
+    <ul class="pending-counts__list">
+      @for (count of pendingCounts(); track count.id) {
+      <li class="pending-counts__item">
+        <span class="pending-counts__what">
+          <strong>{{ cylinderTypeNameById().get(count.cylinder_type_id) ?? 'Cylinder' }}</strong>
+          · {{ count.status }} · counted {{ count.actual_quantity }}, book {{
+          count.expected_quantity }}
+          <span
+            [class.pending-counts__variance--loss]="count.variance < 0"
+            class="pending-counts__variance"
+            >({{ count.variance > 0 ? '+' : '' }}{{ count.variance }})</span
+          >
+        </span>
+        <span class="pending-counts__actions">
+          <button
+            *lpgHasPermission="'reconciliation:approve'"
+            pButton
+            type="button"
+            size="small"
+            [disabled]="loading()"
+            (click)="onApproveCount(count)"
+          >
+            Approve
+          </button>
+          <button
+            *lpgHasPermission="'reconciliation:approve'"
+            pButton
+            type="button"
+            size="small"
+            severity="secondary"
+            [disabled]="loading()"
+            (click)="openRejectCount(count)"
+          >
+            Reject
+          </button>
+        </span>
+      </li>
+      }
+    </ul>
+  </section>
+  }
+
+  <section aria-labelledby="stock-register-title">
+    <div class="register-header">
+      <h2 id="stock-register-title" class="section-title">Stock register</h2>
+      <div class="register-range">
+        <label for="register_from">From</label>
+        <p-datepicker
+          inputId="register_from"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          iconDisplay="input"
+          appendTo="body"
+          [maxDate]="registerTo()"
+          [ngModel]="registerFrom()"
+          (ngModelChange)="onRegisterRangeChange('from', $event)"
+        />
+        <label for="register_to">To</label>
+        <p-datepicker
+          inputId="register_to"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          iconDisplay="input"
+          appendTo="body"
+          [minDate]="registerFrom()"
+          [ngModel]="registerTo()"
+          (ngModelChange)="onRegisterRangeChange('to', $event)"
+        />
+      </div>
+    </div>
+    <p class="empty-hint">
+      Opening, receipts, issues and closing per cylinder type and status for each day (up to 92
+      days).
+    </p>
+    <lpg-data-grid
+      [rows]="registerLines()"
+      [columns]="registerColumns"
+      [loading]="registerLoading()"
+      [autoHeight]="true"
+      ariaLabel="Stock register"
+    />
+  </section>
 
   <h2 class="section-title">Transaction History</h2>
   <lpg-data-grid
@@ -186,7 +289,9 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="grnTrigger()?.nativeElement?.focus()"
   >
-    @if (!lastGrn()) {
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    } @if (!lastGrn()) {
     <form [formGroup]="grnForm" (ngSubmit)="onSubmitGrn()" class="dialog-form">
       <div class="dialog-form__fields">
         <lpg-form-field
@@ -223,7 +328,47 @@
           [control]="grnForm.controls.source_omc"
           [optional]="true"
         >
-          <input pInputText id="grn_source_omc" formControlName="source_omc" [fluid]="true" />
+          <p-select
+            inputId="grn_source_omc"
+            formControlName="source_omc"
+            [options]="omcOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select the OMC"
+            ariaLabel="Source OMC"
+            [showClear]="true"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
+        <lpg-form-field
+          label="Challan number"
+          for="grn_challan"
+          [control]="grnForm.controls.challan_number"
+          [optional]="true"
+        >
+          <input pInputText id="grn_challan" formControlName="challan_number" [fluid]="true" />
+        </lpg-form-field>
+        <lpg-form-field
+          label="Invoice number"
+          for="grn_invoice"
+          [control]="grnForm.controls.invoice_number"
+          [optional]="true"
+        >
+          <input pInputText id="grn_invoice" formControlName="invoice_number" [fluid]="true" />
+        </lpg-form-field>
+        <lpg-form-field
+          label="Truck number"
+          for="grn_truck"
+          [control]="grnForm.controls.truck_number"
+          [optional]="true"
+        >
+          <input
+            pInputText
+            id="grn_truck"
+            formControlName="truck_number"
+            placeholder="e.g. TS09AB1234"
+            [fluid]="true"
+          />
         </lpg-form-field>
       </div>
       <div class="modal-actions">
@@ -320,6 +465,9 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="transferTrigger()?.nativeElement?.focus()"
   >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
     <form [formGroup]="transferForm" (ngSubmit)="onSubmitTransfer()" class="dialog-form">
       <div class="dialog-form__fields">
         <lpg-form-field
@@ -417,6 +565,9 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="deliveryCollectionTrigger()?.nativeElement?.focus()"
   >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
     <form
       [formGroup]="deliveryCollectionForm"
       (ngSubmit)="onSubmitDeliveryCollection()"
@@ -496,6 +647,9 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="statusChangeTrigger()?.nativeElement?.focus()"
   >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
     <form [formGroup]="statusChangeForm" (ngSubmit)="onSubmitStatusChange()" class="dialog-form">
       <div class="dialog-form__fields">
         <lpg-form-field
@@ -522,7 +676,7 @@
           <p-select
             inputId="sc_from_status"
             formControlName="from_status"
-            [options]="statusOptions"
+            [options]="fromStatusOptions('status_change')"
             optionLabel="label"
             optionValue="value"
             [fluid]="true"
@@ -537,7 +691,8 @@
           <p-select
             inputId="sc_to_status"
             formControlName="to_status"
-            [options]="statusOptions"
+            [options]="toStatusOptions('status_change', statusChangeForm.controls.from_status.value)"
+            placeholder="No move allowed from this status"
             optionLabel="label"
             optionValue="value"
             [fluid]="true"
@@ -583,6 +738,9 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="adjustTrigger()?.nativeElement?.focus()"
   >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
     <form [formGroup]="adjustForm" (ngSubmit)="onSubmitAdjust()" class="dialog-form">
       <div class="dialog-form__fields">
         <lpg-form-field
@@ -609,7 +767,7 @@
           <p-select
             inputId="adj_from_status"
             formControlName="from_status"
-            [options]="statusOptions"
+            [options]="fromStatusOptions('adjustment')"
             optionLabel="label"
             optionValue="value"
             [fluid]="true"
@@ -624,7 +782,8 @@
           <p-select
             inputId="adj_to_status"
             formControlName="to_status"
-            [options]="statusOptions"
+            [options]="toStatusOptions('adjustment', adjustForm.controls.from_status.value)"
+            placeholder="No move allowed from this status"
             optionLabel="label"
             optionValue="value"
             [fluid]="true"
@@ -677,6 +836,9 @@
     [style]="{ width: '100%', maxWidth: '32rem' }"
     (onHide)="reconcileTrigger()?.nativeElement?.focus()"
   >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
     <form [formGroup]="reconcileForm" (ngSubmit)="onSubmitReconcile()" class="dialog-form">
       <div class="dialog-form__fields">
         <lpg-form-field
@@ -734,23 +896,163 @@
       </div>
       } @else {
       <div class="reconcile-approve-hint">
-        <p-message severity="info">Count recorded. Approve to finalize the correction.</p-message>
+        <p-message severity="info">
+          Count recorded. Stock is unchanged until someone else approves it under "Counts awaiting
+          approval".
+        </p-message>
       </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showReconcileModal.set(false)">
           Close
         </button>
-        <button
-          *lpgHasPermission="'reconciliation:approve'"
-          pButton
-          type="button"
-          (click)="onApproveReconciliation()"
-          [disabled]="loading()"
-        >
-          Approve
-        </button>
       </div>
       }
+    </form>
+  </p-drawer>
+
+  <!-- Return empties to the OMC (DA-34) -->
+  <p-drawer
+    header="Return to OMC"
+    [(visible)]="showOmcReturnModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+    (onHide)="omcReturnTrigger()?.nativeElement?.focus()"
+  >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
+    <form [formGroup]="omcReturnForm" (ngSubmit)="onSubmitOmcReturn()" class="dialog-form">
+      <div class="dialog-form__fields">
+        <lpg-form-field
+          label="OMC"
+          for="ret_omc"
+          [control]="omcReturnForm.controls.destination_omc"
+          [messages]="fieldMessages.destination_omc"
+        >
+          <p-select
+            inputId="ret_omc"
+            formControlName="destination_omc"
+            [options]="omcOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select the OMC"
+            ariaLabel="OMC"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
+        <lpg-form-field
+          label="Cylinder type"
+          for="ret_cylinder_type"
+          [control]="omcReturnForm.controls.cylinder_type_id"
+          [messages]="fieldMessages.cylinder_type_id"
+        >
+          <p-select
+            inputId="ret_cylinder_type"
+            formControlName="cylinder_type_id"
+            [options]="cylinderTypes()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select a cylinder type"
+            ariaLabel="Cylinder type"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
+        <lpg-form-field
+          label="Condition"
+          for="ret_status"
+          [control]="omcReturnForm.controls.status"
+          [messages]="fieldMessages.status"
+          hint="Defective cylinders go back to the bottling plant too."
+        >
+          <p-select
+            inputId="ret_status"
+            formControlName="status"
+            [options]="omcReturnStatusOptions"
+            optionLabel="label"
+            optionValue="value"
+            ariaLabel="Condition"
+            [fluid]="true"
+          ></p-select>
+        </lpg-form-field>
+        <lpg-form-field
+          label="Quantity"
+          for="ret_quantity"
+          [control]="omcReturnForm.controls.quantity"
+          [messages]="fieldMessages.quantity"
+        >
+          <p-inputnumber
+            inputId="ret_quantity"
+            formControlName="quantity"
+            [min]="1"
+            [fluid]="true"
+          />
+        </lpg-form-field>
+        <lpg-form-field
+          label="Challan number"
+          for="ret_challan"
+          [control]="omcReturnForm.controls.challan_number"
+          [optional]="true"
+        >
+          <input pInputText id="ret_challan" formControlName="challan_number" [fluid]="true" />
+        </lpg-form-field>
+        <lpg-form-field
+          label="Truck number"
+          for="ret_truck"
+          [control]="omcReturnForm.controls.truck_number"
+          [optional]="true"
+        >
+          <input pInputText id="ret_truck" formControlName="truck_number" [fluid]="true" />
+        </lpg-form-field>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showOmcReturnModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="omcReturnForm.invalid || loading()">
+          Record return
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Reject a recorded count (DA-04) -->
+  <p-drawer
+    header="Reject count"
+    [(visible)]="showRejectModal"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+  >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
+    <form [formGroup]="rejectForm" (ngSubmit)="onSubmitReject()" class="dialog-form">
+      <div class="dialog-form__fields">
+        <p class="empty-hint">The count is closed and stock stays as it is.</p>
+        <lpg-form-field
+          label="Reason"
+          for="reject_reason"
+          [control]="rejectForm.controls.reason"
+          [messages]="fieldMessages.reason"
+        >
+          <textarea
+            pTextarea
+            id="reject_reason"
+            formControlName="reason"
+            rows="3"
+            [fluid]="true"
+          ></textarea>
+        </lpg-form-field>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showRejectModal.set(false)">
+          Cancel
+        </button>
+        <button pButton type="submit" [disabled]="rejectForm.invalid || loading()">Reject</button>
+      </div>
     </form>
   </p-drawer>
 
@@ -766,6 +1068,9 @@
     [style]="{ width: '100%', maxWidth: '36rem' }"
     (onHide)="reorderPolicyTrigger()?.nativeElement?.focus()"
   >
+    @if (drawerError(); as msg) {
+    <p-message severity="error" role="alert" styleClass="drawer-error">{{ msg }}</p-message>
+    }
     <form [formGroup]="reorderPolicyForm" (ngSubmit)="onSubmitReorderPolicy()" class="dialog-form">
       <div class="dialog-form__fields">
         <p class="page-lede">
