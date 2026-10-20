@@ -269,6 +269,23 @@ class PodAttachmentResponse(BaseModel):
 # ==========================================================================
 
 
+class AmendOrderRequest(BaseModel):
+    """Edit a booking before it is put on a trip (DO-13). Omitted fields
+    keep their current value; `lines` replaces every line."""
+
+    lines: list[CreateOrderLineRequest] | None = Field(default=None, min_length=1)
+    requested_date: datetime | None = None
+    #: One of the customer's saved addresses.
+    address_id: uuid.UUID | None = None
+    payment_method_preference: PaymentMethod | None = None
+
+
+class RescheduleOrderRequest(BaseModel):
+    #: Deliver on this date instead of retrying on the same trip: the order
+    #: leaves the trip and goes back to Confirmed, waiting for a new one.
+    requested_date: datetime | None = None
+
+
 class RecordFailedDeliveryRequest(BaseModel):
     reason_code: FailedDeliveryReasonCode
     resolution_action: FailedDeliveryResolutionAction | None = None

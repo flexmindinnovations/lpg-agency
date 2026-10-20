@@ -1584,6 +1584,93 @@ class TestOrderListShowsAndFindsCustomers:
         assert backwards.status_code == 422
 
 
+class TestEditAndRescheduleBooking:
+    """DO-13: edit a booking before it is on a trip; reschedule a failed
+    delivery to another day."""
+
+    async def test_edit_quantity_and_date_reprices_a_confirmed_order(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order = await _create_order(client, fixtures, headers, quantity=1)
+        await client.post(f"/api/v1/orders/{order['id']}/confirm", headers=headers)
+        tomorrow = (datetime.now(UTC) + timedelta(days=1)).replace(microsecond=0)
+
+        edited = await client.patch(
+            f"/api/v1/orders/{order['id']}",
+            json={
+                "lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 3}],
+                "requested_date": tomorrow.isoformat(),
+            },
+            headers=headers,
+        )
+        assert edited.status_code == 200, edited.text
+        body = edited.json()
+        assert body["status"] == "confirmed"
+        assert body["lines"][0]["quantity_ordered"] == 3
+        assert Decimal(body["total_amount"]) == Decimal("2850.00")
+        reloaded = (await client.get(f"/api/v1/orders/{order['id']}", headers=headers)).json()
+        assert reloaded["lines"][0]["quantity_ordered"] == 3
+        assert reloaded["requested_date"].startswith(tomorrow.date().isoformat())
+
+        past = await client.patch(
+            f"/api/v1/orders/{order['id']}",
+            json={"requested_date": "2020-01-01T00:00:00Z"},
+            headers=headers,
+        )
+        assert past.status_code == 409, past.text
+
+    async def test_an_order_on_a_trip_cannot_be_edited_and_reschedules_to_a_date(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order_id = await _order_out_for_delivery(client, admin_engine_lpg_test, fixtures, headers)
+
+        locked = await client.patch(
+            f"/api/v1/orders/{order_id}",
+            json={"lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 1}]},
+            headers=headers,
+        )
+        assert locked.status_code == 409, locked.text
+
+        failed = await client.post(
+            f"/api/v1/orders/{order_id}/failed-delivery",
+            json={"reason_code": "customer_unavailable"},
+            headers={"Authorization": f"Bearer {fixtures.driver_token}"},
+        )
+        assert failed.status_code == 200, failed.text
+        history = (await client.get(f"/api/v1/orders/{order_id}/history", headers=headers)).json()
+        assert any(h["reason"] == "customer_unavailable" for h in history)
+
+        filled_before = await _vehicle_filled_balance(
+            admin_engine_lpg_test,
+            vehicle_id=fixtures.vehicle_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+        )
+        tomorrow = (datetime.now(UTC) + timedelta(days=1)).replace(microsecond=0)
+        rescheduled = await client.post(
+            f"/api/v1/orders/{order_id}/reschedule",
+            json={"requested_date": tomorrow.isoformat()},
+            headers=headers,
+        )
+        assert rescheduled.status_code == 200, rescheduled.text
+        assert rescheduled.json()["status"] == "confirmed"
+        assert rescheduled.json()["route_stop_id"] is None
+        assert rescheduled.json()["requested_date"].startswith(tomorrow.date().isoformat())
+        assert (
+            await _vehicle_filled_balance(
+                admin_engine_lpg_test,
+                vehicle_id=fixtures.vehicle_id,
+                cylinder_type_id=fixtures.cylinder_type_id,
+            )
+            == filled_before + 2
+        ), "the van's reservation for the order is released"
+
+
 class TestBookingRules:
     """DO-10 / DO-11."""
 

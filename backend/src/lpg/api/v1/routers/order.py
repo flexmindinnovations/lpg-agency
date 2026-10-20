@@ -93,6 +93,7 @@ from lpg.api.v1.dependencies.order import (
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.order import (
+    AmendOrderRequest,
     AssignOrderRequest,
     BookingSource,
     BulkCancelOrderResultItem,
@@ -119,6 +120,7 @@ from lpg.api.v1.schemas.order import (
     ProofOfDeliveryResponse,
     RecordFailedDeliveryRequest,
     RejectCancellationRequest,
+    RescheduleOrderRequest,
     TrackingDriverInfo,
 )
 from lpg.application.common.errors import NotFoundError, ValidationError
@@ -150,6 +152,8 @@ from lpg.application.order.ports import (
     ProofOfDeliveryRepository,
 )
 from lpg.application.order.use_cases import (
+    AmendOrderCommand,
+    AmendOrderUseCase,
     ApproveOrderCancellationCommand,
     ApproveOrderCancellationUseCase,
     AssignOrderCommand,
@@ -979,6 +983,65 @@ async def resend_delivery_otp(
     return Response(status_code=204)
 
 
+@router.patch(
+    "/orders/{order_id}",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("orders:confirm"))],
+)
+async def amend_order(
+    order_id: uuid.UUID,
+    body: AmendOrderRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    price_list_repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    orderable_cylinder_types: Annotated[
+        OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
+    ],
+    cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
+    credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OrderResponse:
+    """Edit a booked or confirmed order before it is put on a trip (DO-13):
+    quantities, cylinder types, delivery address (one of the customer's
+    saved addresses) or delivery date. A confirmed order is re-priced at
+    today's prices. Needs `orders:confirm` — the staff who accept bookings
+    are the ones who change them.
+
+    409 when the order is already on a trip (`CONFLICT`), the date is in the
+    past, the address is not the customer's (`ADDRESS_NOT_FOUND`), or a
+    booking rule fails (`CYLINDER_NOT_ORDERABLE`, `CYLINDER_CAP_EXCEEDED`,
+    `CREDIT_LIMIT_EXCEEDED`).
+    """
+    actor_id = _require_actor(principal)
+    order = await AmendOrderUseCase(
+        order_repository,
+        customer_repository,
+        price_list_repository,
+        orderable_cylinder_types,
+        cylinder_cap_policy,
+        credit_limit_evaluator,
+        unit_of_work,
+    ).execute(
+        AmendOrderCommand(
+            order_id=order_id,
+            changed_by=actor_id,
+            lines=(
+                [
+                    CreateOrderLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
+                    for line in body.lines
+                ]
+                if body.lines is not None
+                else None
+            ),
+            requested_date=body.requested_date,
+            address_id=body.address_id,
+            payment_method_preference=body.payment_method_preference,
+        )
+    )
+    return _order_to_response(order)
+
+
 @router.post(
     "/orders/{order_id}/reschedule",
     response_model=OrderResponse,
@@ -991,12 +1054,20 @@ async def reschedule_order(
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    inventory_location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
+    body: RescheduleOrderRequest | None = None,
 ) -> OrderResponse:
-    """`failed_delivery -> ready_for_dispatch`. Also resets the paired
-    `RouteStop` back to `pending` so the retry can reach `delivered` (see
-    `RescheduleOrderUseCase`'s docstring).
+    """Without a body: `failed_delivery -> ready_for_dispatch`, retrying on
+    the same trip (the paired `RouteStop` goes back to `pending`).
+
+    With `requested_date` (DO-13): `failed_delivery -> confirmed` — the order
+    leaves its trip (the stop stays failed, the van's reservation is
+    released) and waits to be planned onto a trip on that date. A date in
+    the past is a 409.
 
     `Idempotency-Key` is optional — see `run_idempotent`.
     """
@@ -1004,11 +1075,16 @@ async def reschedule_order(
         order_id, principal, order_repository, driver_repository, route_repository
     )
     actor_id = _require_actor(principal)
-    use_case = RescheduleOrderUseCase(order_repository, route_repository, unit_of_work)
+    requested_date = body.requested_date if body is not None else None
+    use_case = RescheduleOrderUseCase(
+        order_repository, route_repository, unit_of_work, inventory_location_repository
+    )
 
     async def _operation() -> dict[str, Any]:
         order = await use_case.execute(
-            RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
+            RescheduleOrderCommand(
+                order_id=order_id, changed_by=actor_id, requested_date=requested_date
+            )
         )
         return _order_to_response(order).model_dump(mode="json")
 
@@ -1016,7 +1092,10 @@ async def reschedule_order(
         idempotency_service,
         tenant_id=principal.tenant_id,
         idempotency_key=request.headers.get("Idempotency-Key"),
-        fingerprint_payload={"order_id": str(order_id)},
+        fingerprint_payload={
+            "order_id": str(order_id),
+            "requested_date": requested_date.isoformat() if requested_date else None,
+        },
         operation=_operation,
     )
     return OrderResponse.model_validate(result)

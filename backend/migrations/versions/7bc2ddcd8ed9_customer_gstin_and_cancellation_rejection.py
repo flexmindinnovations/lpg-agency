@@ -1,4 +1,4 @@
-"""customer gstin and cancellation-request rejection
+"""customer gstin, cancellation-request rejection, editable order lines
 
 QA fixes (planning/features/47-qa-fixes/orders.md):
 
@@ -12,6 +12,10 @@ QA fixes (planning/features/47-qa-fixes/orders.md):
   approved nor rejected, so the one-pending-request-per-order partial unique
   index is rebuilt to exclude rejected rows — otherwise a declined request
   would block the customer from ever asking again.
+- `DELETE` on `orders.order_line` for the application role (DO-13): staff
+  can now edit a booking before it is put on a trip, which may drop a
+  cylinder type from it. Only `Order.amend()` (booked/confirmed orders)
+  removes lines.
 
 Revision ID: 7bc2ddcd8ed9
 Revises: c8d4e2f6a1b3
@@ -34,6 +38,26 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 _PENDING_INDEX = "uq_cancellation_record_pending_per_order"
+
+
+def _order_line_delete(statement: str) -> str:
+    """`GRANT`/`REVOKE DELETE ON orders.order_line` for the application role,
+    resolved the same way the orders-schema migration grants it."""
+    return f"""
+        DO $$
+        DECLARE
+            app_role text := CASE current_database()
+                WHEN 'lpg_uat' THEN 'lpg_app_uat'
+                ELSE 'lpg_app'
+            END;
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
+                EXECUTE format('{statement} DELETE ON orders.order_line %s %I',
+                    CASE WHEN '{statement}' = 'GRANT' THEN 'TO' ELSE 'FROM' END, app_role);
+            END IF;
+        END
+        $$;
+    """
 
 
 def upgrade() -> None:
@@ -79,9 +103,11 @@ def upgrade() -> None:
         schema="orders",
         postgresql_where=sa.text("approved_by IS NULL AND rejected_by IS NULL"),
     )
+    op.execute(_order_line_delete("GRANT"))
 
 
 def downgrade() -> None:
+    op.execute(_order_line_delete("REVOKE"))
     # Rejected requests would collide with the narrower index; they are
     # decided and carry no pending state, so drop them first.
     op.execute("DELETE FROM orders.cancellation_record WHERE rejected_by IS NOT NULL")

@@ -309,16 +309,30 @@ class SqlAlchemyOrderRepository:
             row.route_stop_id = order.route_stop_id
             row.total_amount = order.total_amount
             row.metadata_json = order.metadata
+            # Editable before the order is put on a trip (`Order.amend()`,
+            # `Order.reschedule_to()`).
+            row.requested_date = order.requested_date
+            row.address_id = order.address_id
+            row.delivery_address_line = delivery_address.address_line
+            row.delivery_latitude = _to_decimal(delivery_address.latitude)
+            row.delivery_longitude = _to_decimal(delivery_address.longitude)
+            row.payment_method_preference = order.payment_method_preference
             row.updated_at = datetime.now(UTC)
             row.version += 1
 
-        # Lines are only ever added at Order construction, never removed —
-        # sync is select-or-insert-then-update-in-place per line id.
+        # Lines are added at construction and may be replaced by
+        # `Order.amend()` before the order is on a trip — sync is
+        # delete-missing, then insert-or-update-in-place per line id.
         line_stmt = select(OrderLineModel).where(OrderLineModel.order_id == order.id)
         existing_lines = {
             line_row.id: line_row
             for line_row in (await self._uow.session.execute(line_stmt)).scalars()
         }
+        current_line_ids = {line.id for line in order.lines}
+        for line_id, removed_row in existing_lines.items():
+            if line_id not in current_line_ids:
+                await self._uow.session.delete(removed_row)
+        await self._uow.session.flush()
         for line in order.lines:
             line_row = existing_lines.get(line.id)
             if line_row is None:
@@ -336,6 +350,7 @@ class SqlAlchemyOrderRepository:
                     )
                 )
             else:
+                line_row.quantity_ordered = line.quantity_ordered
                 line_row.quantity_delivered = line.quantity_delivered
                 line_row.quantity_pending = line.quantity_pending
                 line_row.quantity_collected_empty = line.quantity_collected_empty
