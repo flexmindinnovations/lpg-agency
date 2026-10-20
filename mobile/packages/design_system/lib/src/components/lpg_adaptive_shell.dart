@@ -11,20 +11,27 @@ class LpgContentWidth extends StatelessWidget {
     super.key,
     required this.child,
     this.maxWidth = LpgBreakpoints.contentMaxWidth,
+    this.paintCanvas = false,
   });
 
   final Widget child;
   final double maxWidth;
 
+  /// Paints the page canvas either side of the column — for a full-screen
+  /// route that has no shell [Scaffold] behind it.
+  final bool paintCanvas;
+
   @override
   Widget build(BuildContext context) {
-    return Align(
+    final capped = Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: child,
       ),
     );
+    if (!paintCanvas) return capped;
+    return ColoredBox(color: context.lpgColors.canvas, child: capped);
   }
 }
 

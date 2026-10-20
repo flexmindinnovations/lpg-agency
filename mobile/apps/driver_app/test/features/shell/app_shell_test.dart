@@ -40,9 +40,17 @@ Widget _app({int unread = 0}) => ProviderScope(
   child: MaterialApp.router(theme: LpgTheme.light, routerConfig: _router()),
 );
 
+/// Phone-sized window: the shell shows the bottom bar below 600px wide.
+void _usePhoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   group('AppShell', () {
     testWidgets('renders the four tabs and starts on Today', (tester) async {
+      _usePhoneSize(tester);
       await tester.pumpWidget(_app());
       await tester.pumpAndSettle();
 
@@ -80,6 +88,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(Badge, '3'), findsOneWidget);
+    });
+
+    testWidgets('uses a navigation rail on a tablet (DR-12)', (tester) async {
+      tester.view.physicalSize = const Size(820, 1180);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_app(unread: 3));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.text('TODAY BODY'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
     });
   });
 }

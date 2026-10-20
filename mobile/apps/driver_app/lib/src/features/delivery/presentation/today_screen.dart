@@ -256,7 +256,7 @@ class _PendingLoadCard extends StatelessWidget {
       tone: LpgTone.info,
       padding: EdgeInsets.zero,
       onTap: () =>
-          context.goNamed('vanLoad', pathParameters: {'routeId': route.id}),
+          context.pushNamed('vanLoad', pathParameters: {'routeId': route.id}),
       child: LpgListTile(
         leadingIcon: LpgIcons.inventory,
         leadingTone: LpgTone.info,
@@ -284,7 +284,7 @@ class _PendingCashCard extends StatelessWidget {
       variant: LpgCardVariant.tonal,
       tone: LpgTone.warning,
       padding: EdgeInsets.zero,
-      onTap: () => context.goNamed(
+      onTap: () => context.pushNamed(
         'cashHandover',
         pathParameters: {'routeId': view.routeId},
       ),

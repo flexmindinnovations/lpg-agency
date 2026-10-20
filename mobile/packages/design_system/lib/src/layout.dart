@@ -81,6 +81,9 @@ abstract final class LpgBreakpoints {
   /// label and its value never sit a whole tablet-width apart.
   static const double contentMaxWidth = 720;
 
+  /// The widest a single short form (sign-in) grows: phone-width, centred.
+  static const double formMaxWidth = 480;
+
   /// Whether [context] is wider than a phone.
   static bool isWide(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= medium;

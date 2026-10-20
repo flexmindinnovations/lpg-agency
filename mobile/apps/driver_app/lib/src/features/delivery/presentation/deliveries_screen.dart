@@ -102,7 +102,7 @@ class DeliveriesScreen extends ConsumerWidget {
                             route: r,
                             cashPending: r.id == pendingCashRouteId,
                             onTap: r.status == 'completed'
-                                ? () => context.goNamed(
+                                ? () => context.pushNamed(
                                     'cashHandover',
                                     pathParameters: {'routeId': r.id},
                                   )
