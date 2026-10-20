@@ -11,8 +11,10 @@ export interface ProofOfDeliveryResponse {
   otp_verified_at: string;
   payment_method: 'cash' | 'upi' | 'card' | 'online_gateway' | 'credit';
   photo_blob_ref?: (string | null);
+  photo_url?: (string | null);
   recorded_at: string;
   recorded_by: string;
   signature_blob_ref?: (string | null);
+  signature_url?: (string | null);
   tenant_id: string;
 }

@@ -12,5 +12,6 @@ export const COMPLAINT_CATEGORY: ComplaintCategory[] = [
   'BillingDispute',
   'DriverConduct',
   'LateDelivery',
+  'GasLeak',
   'Other'
 ];

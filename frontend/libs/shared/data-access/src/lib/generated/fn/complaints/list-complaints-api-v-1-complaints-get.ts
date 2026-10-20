@@ -8,11 +8,12 @@ import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
 import { ComplaintListResponse } from '../../models/complaint-list-response';
+import { ComplaintStatus } from '../../models/complaint-status';
 
 export interface ListComplaintsApiV1ComplaintsGet$Params {
   skip?: number;
   limit?: number;
-  status?: (string | null);
+  status?: (ComplaintStatus | null);
   customer_id?: (string | null);
 }
 
