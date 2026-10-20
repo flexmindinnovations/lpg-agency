@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
@@ -51,6 +51,7 @@ from lpg.api.v1.schemas.compliance import (
     SuggestCylinderTestDueDateResponse,
     TdtBandDistributionResponse,
     TdtQuarterlyRatingResponse,
+    TestDueBasis,
     WeighmentRecordListResponse,
     WeighmentRecordResponse,
 )
@@ -479,6 +480,7 @@ def _cylinder_unit_to_response(unit: CylinderUnit) -> CylinderUnitResponse:
         custody_ref_id=unit.custody_ref_id,
         last_tested_at=unit.last_tested_at,
         test_due_date=unit.test_due_date,
+        test_due_basis=cast("TestDueBasis", unit.test_due_basis),
         is_due_for_test=unit.is_due_for_test(as_of=datetime.now(UTC).date()),
         is_retired=unit.is_retired,
     )
@@ -510,6 +512,8 @@ async def register_cylinder_unit(
                 custody_ref_id=request.custody_ref_id,
                 manufacture_date=request.manufacture_date,
                 owner_omc=request.owner_omc,
+                last_tested_at=request.last_tested_at,
+                test_due_date=request.test_due_date,
             )
         )
     except ConflictError as exc:

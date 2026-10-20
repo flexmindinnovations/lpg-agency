@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -100,6 +101,11 @@ class RegisterCylinderUnitRequest(BaseModel):
     custody_ref_id: uuid.UUID | None = None
     manufacture_date: date | None = None
     owner_omc: str | None = None
+    #: The last periodic test, if any. With no `test_due_date`, the next test
+    #: falls due 5 years later; with neither, 10 years after manufacture.
+    last_tested_at: date | None = None
+    #: The due date stencilled on the cylinder, when known.
+    test_due_date: date | None = None
 
 
 class RecordCylinderStatutoryTestRequest(BaseModel):
@@ -127,6 +133,9 @@ class ReceiveCylinderUnitRequest(BaseModel):
     warehouse_id: uuid.UUID
 
 
+TestDueBasis = Literal["recorded", "manufacture", "unknown"]
+
+
 class CylinderUnitResponse(BaseModel):
     id: uuid.UUID
     cylinder_type_id: uuid.UUID
@@ -139,6 +148,9 @@ class CylinderUnitResponse(BaseModel):
     custody_ref_id: uuid.UUID | None
     last_tested_at: date | None
     test_due_date: date | None
+    #: `recorded`, `manufacture` (never tested: due 10 years after
+    #: manufacture) or `unknown` (no test and no manufacture date on file).
+    test_due_basis: TestDueBasis = "recorded"
     is_due_for_test: bool
     is_retired: bool
 

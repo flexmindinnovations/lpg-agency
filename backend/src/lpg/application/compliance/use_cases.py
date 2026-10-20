@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command, Query
-from lpg.domain.compliance.cylinder_unit import CylinderUnit, default_test_due_date
+from lpg.domain.compliance.cylinder_unit import (
+    PERIODIC_TEST_INTERVAL_MONTHS,
+    CylinderUnit,
+    default_test_due_date,
+)
 from lpg.domain.compliance.scale import Scale
 from lpg.domain.compliance.weighment_record import (
     WeighmentRecord,
@@ -296,6 +300,10 @@ class RegisterCylinderUnitCommand(Command):
     custody_ref_id: uuid.UUID | None = None
     manufacture_date: date | None = None
     owner_omc: str | None = None
+    #: The last periodic test on file, if the cylinder has been tested.
+    last_tested_at: date | None = None
+    #: The due date stencilled on the cylinder; derived when not given.
+    test_due_date: date | None = None
 
 
 class RegisterCylinderUnitUseCase:
@@ -335,6 +343,8 @@ class RegisterCylinderUnitUseCase:
             custody_ref_id=command.custody_ref_id,
             manufacture_date=command.manufacture_date,
             owner_omc=command.owner_omc,
+            last_tested_at=command.last_tested_at,
+            test_due_date=command.test_due_date,
         )
         await self._repository.save(unit)
         await self._unit_of_work.commit()
@@ -388,11 +398,10 @@ class SuggestStatutoryTestDueDateQuery(Query):
 
 
 class SuggestStatutoryTestDueDateUseCase:
-    """Resolves `cylinder_statutory_test_interval_months` and returns a
-    suggested due date — `None` if the tenant has never set the key (no
-    guessed interval, ever). Never called by `RecordStatutoryTestUseCase`
-    itself; a caller (typically the API layer, for a form's "suggest"
-    action) uses this separately."""
+    """The suggested next due date after a test: the tenant's
+    `cylinder_statutory_test_interval_months` when set, otherwise the
+    statutory 5 years. Never applied by `RecordStatutoryTestUseCase` itself;
+    a form offers it and the user confirms the stencilled date."""
 
     def __init__(self, tenant_config_repository: TenantConfigurationRepository) -> None:
         self._tenant_config_repository = tenant_config_repository
@@ -411,7 +420,7 @@ class SuggestStatutoryTestDueDateUseCase:
             )
         )
         if config is None:
-            return None
+            return default_test_due_date(query.tested_at, PERIODIC_TEST_INTERVAL_MONTHS)
         try:
             interval_months = int(config.config_value)
         except (TypeError, ValueError):
@@ -422,7 +431,7 @@ class SuggestStatutoryTestDueDateUseCase:
                 tenant_id=str(query.tenant_id),
                 value=config.config_value,
             )
-            return None
+            interval_months = PERIODIC_TEST_INTERVAL_MONTHS
         return default_test_due_date(query.tested_at, interval_months)
 
 

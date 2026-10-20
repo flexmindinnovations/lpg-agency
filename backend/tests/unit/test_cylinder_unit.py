@@ -94,6 +94,30 @@ class TestIsDueForTest:
         assert unit.is_due_for_test(as_of=date(2026, 5, 31)) is False
 
 
+class TestStatutoryDueDateFromManufacture:
+    """DO-32: a never-tested cylinder falls due 10 years after manufacture."""
+
+    def test_a_2010_cylinder_never_tested_is_overdue(self) -> None:
+        unit = _unit(manufacture_date=date(2010, 1, 1), test_due_date=None)
+        assert unit.test_due_date == date(2020, 1, 1)
+        assert unit.test_due_basis == "manufacture"
+        assert unit.is_due_for_test(as_of=date(2026, 10, 20)) is True
+
+    def test_a_last_test_on_file_sets_the_next_due_five_years_on(self) -> None:
+        unit = _unit(manufacture_date=date(2010, 1, 1), last_tested_at=date(2024, 3, 1))
+        assert unit.test_due_date == date(2029, 3, 1)
+        assert unit.test_due_basis == "recorded"
+
+    def test_a_stencilled_due_date_wins(self) -> None:
+        unit = _unit(manufacture_date=date(2010, 1, 1), test_due_date=date(2027, 6, 30))
+        assert unit.test_due_basis == "recorded"
+        assert unit.is_due_for_test(as_of=date(2026, 10, 20)) is False
+
+    def test_nothing_on_file_is_unknown(self) -> None:
+        unit = _unit(test_due_date=None)
+        assert unit.test_due_basis == "unknown"
+
+
 class TestRecordStatutoryTest:
     def test_sets_last_tested_and_due_date_and_records_an_event(self) -> None:
         unit = _unit()

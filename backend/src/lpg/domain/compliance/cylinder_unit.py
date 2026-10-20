@@ -18,13 +18,14 @@ test-due date is intrinsic to the unit itself, the same way a scale's
 `certificate_expiry_date` is intrinsic to the scale) rather than inventing a
 new pattern.
 
-**The exact statutory retest interval is not known.** Rule 35(1) defers to
-IS 15975, which prior research never retrieved (`docs/research/feature-gap-
-analysis.md` §7, item 2) — the commonly-quoted "5 years" is US DOT/49 CFR,
-not Indian LPG cylinders. `test_due_date` is therefore always an explicit,
-caller-supplied fact per unit, never computed here from a hardcoded
-interval. See `application/compliance/use_cases.py`'s `RecordStatutoryTest
-UseCase` for the tenant-configurable *suggestion* (never a silent default).
+**Statutory retest interval.** Gas Cylinders Rules 2016 (Rule 35 with
+IS 15975) put an LPG cylinder's first periodic test 10 years after its
+manufacture and every 5 years after that — the "A/B/C/D-yy" quarter code
+stencilled on every Indian LPG cylinder is exactly this due date. A unit
+never tested therefore falls due 10 years from `manufacture_date` (DO-32: a
+2010 cylinder with no test on file is overdue, not "never due"). A recorded
+test's own due date always wins; tenants can still override the 5-year
+suggestion through `cylinder_statutory_test_interval_months`.
 
 This is a narrow, additive slice: `CylinderUnit` is a new, independent
 registry. It does not touch `InventoryLocation`'s bulk-quantity commands or
@@ -74,6 +75,15 @@ _CONDITION_TRANSITIONS: dict[str, frozenset[str]] = {
     "repair": frozenset({"empty"}),
     "scrap": frozenset(),
 }
+
+#: Gas Cylinders Rules 2016 / IS 15975 — first periodic test of an LPG
+#: cylinder, counted from its manufacture date.
+FIRST_PERIODIC_TEST_INTERVAL_MONTHS = 120
+#: ...and every periodic test after that.
+PERIODIC_TEST_INTERVAL_MONTHS = 60
+
+#: Where a unit's `test_due_date` came from.
+TEST_DUE_BASES: frozenset[str] = frozenset({"recorded", "manufacture", "unknown"})
 
 # ---------------------------------------------------------------------------
 # Domain events
@@ -217,6 +227,12 @@ class CylinderUnit(AggregateRoot):
         self._manufacture_date = manufacture_date
         self._owner_omc = owner_omc
         self._last_tested_at = last_tested_at
+        if test_due_date is None and last_tested_at is not None:
+            test_due_date = default_test_due_date(last_tested_at, PERIODIC_TEST_INTERVAL_MONTHS)
+        if test_due_date is None and manufacture_date is not None:
+            test_due_date = default_test_due_date(
+                manufacture_date, FIRST_PERIODIC_TEST_INTERVAL_MONTHS
+            )
         self._test_due_date = test_due_date
         self._is_retired = is_retired
 
@@ -282,13 +298,27 @@ class CylinderUnit(AggregateRoot):
     def is_retired(self) -> bool:
         return self._is_retired
 
+    @property
+    def test_due_basis(self) -> str:
+        """`recorded` (a test is on file), `manufacture` (never tested — due
+        10 years from manufacture) or `unknown` (no test and no manufacture
+        date, so the due date can't be known: staff must read it off the
+        cylinder's stencil)."""
+        if self._test_due_date is None:
+            return "unknown"
+        if self._last_tested_at is None and self._manufacture_date is not None:
+            first_due = default_test_due_date(
+                self._manufacture_date, FIRST_PERIODIC_TEST_INTERVAL_MONTHS
+            )
+            if self._test_due_date == first_due:
+                return "manufacture"
+        return "recorded"
+
     def is_due_for_test(self, *, as_of: date) -> bool:
-        """A unit with no `test_due_date` on file (never tested) is **not**
-        treated as due — a deliberate, documented policy choice so the
-        registry stays usable for onboarding existing bulk stock without
-        requiring a first test before every unit can even be registered.
-        A real gap against Rule 26's intent, not a researched answer — see
-        ADR-042's open questions."""
+        """Due on or after its test due date — recorded, or derived from the
+        manufacture date for a unit never tested. Only a unit with neither a
+        test nor a manufacture date on file is not treated as due (nothing
+        to compute from); `test_due_basis` reports it as `unknown`."""
         return self._test_due_date is not None and self._test_due_date <= as_of
 
     # ------------------------------------------------------------------
@@ -298,8 +328,8 @@ class CylinderUnit(AggregateRoot):
     def record_statutory_test(
         self, *, tested_at: date, due_date: date, performed_by: uuid.UUID
     ) -> None:
-        """`due_date` is always caller-supplied — never computed here from
-        an assumed interval (the actual IS 15975 interval is unconfirmed)."""
+        """`due_date` is the tester's own figure (the date stencilled after
+        the test); the 5-year interval is only offered as a suggestion."""
         self._require_not_retired()
         self._last_tested_at = tested_at
         self._test_due_date = due_date
@@ -448,12 +478,8 @@ class CylinderUnit(AggregateRoot):
 
 
 def default_test_due_date(tested_at: date, interval_months: int) -> date:
-    """Pure helper for `RecordStatutoryTestUseCase`'s *suggested* due date
-    — `interval_months` always comes from tenant configuration (see
-    `cylinder_statutory_test_interval_months`'s own docstring in
-    `domain/tenant/tenant_configuration.py`), never a constant here. The
-    caller decides whether to accept the suggestion; this function never
-    runs unless a tenant has actually set the config key."""
+    """`tested_at` (or a manufacture date) plus `interval_months`, clamped
+    to the end of a shorter month."""
     if interval_months <= 0:
         msg = f"Test interval months must be positive, got {interval_months}."
         raise InvariantViolation(msg)

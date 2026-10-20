@@ -259,14 +259,14 @@ async def test_register_list_lifecycle_smoke(
     assert batch_resp.json()["updated_count"] == 1
 
     # No cylinder_statutory_test_interval_months configured for this tenant
-    # -> no guessed suggestion.
+    # -> the statutory 5-year periodic interval is suggested.
     suggest = await client.get(
         "/api/v1/cylinder-units/suggest-test-due-date",
         params={"tested_at": "2026-01-15"},
         headers=headers,
     )
     assert suggest.status_code == 200, suggest.text
-    assert suggest.json()["suggested_due_date"] is None
+    assert suggest.json()["suggested_due_date"] == "2031-01-15"
 
     # Record an overdue test, then confirm receive() is blocked (Rule 26).
     overdue_due_date = (datetime.now(UTC).date() - timedelta(days=5)).isoformat()
