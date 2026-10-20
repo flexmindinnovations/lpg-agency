@@ -28,6 +28,8 @@
         [rows]="invoices()"
         [columns]="columns"
         [loading]="isLoading()"
+        [error]="loadError()"
+        (retry)="loadInvoices()"
         [searchQuery]="searchQuery()"
         ariaLabel="Invoices list"
       ></lpg-data-grid>
@@ -60,7 +62,7 @@
     <div class="detail-info-grid">
       <div class="info-item">
         <span class="info-label">Date</span>
-        <span class="info-value">{{ inv.issued_at | date:'mediumDate' }}</span>
+        <span class="info-value">{{ inv.issued_at | lpgDate }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">Order</span>
@@ -195,7 +197,7 @@
     <div class="preview-grid">
       <div class="info-item">
         <span class="info-label">Requested Date</span>
-        <span class="info-value">{{ o.requested_date | date:'mediumDate' }}</span>
+        <span class="info-value">{{ o.requested_date | lpgDate }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">Booking Source</span>

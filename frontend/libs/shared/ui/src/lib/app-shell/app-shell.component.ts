@@ -50,6 +50,8 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
     Breadcrumb,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Escape closes the phone menu (a no-op when it is not open).
+  host: { '(document:keydown.escape)': 'closeNav(true)' },
   template: `
     <a class="shell__skip-link" href="#shell-main-content">Skip to main content</a>
 
@@ -73,7 +75,6 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         id="shell-sidebar"
         class="shell__sidebar-wrapper"
         [attr.inert]="isPhone() && !navOpen() ? '' : null"
-        (keydown.escape)="closeNav(true)"
       >
         <nav class="shell__sidebar" aria-label="Main navigation">
           <!-- Brand -->

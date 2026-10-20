@@ -41,6 +41,7 @@ import {
   type BranchResponse,
   type CustomerResponse,
   type KycDocumentResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
@@ -106,6 +107,8 @@ export class FeatureCustomers implements OnInit {
   protected readonly selectedCustomer = signal<CustomerResponse | null>(null);
   protected readonly kycDocuments = signal<KycDocumentResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
 
   // Document preview — an in-app modal rather than `target="_blank"`, so
@@ -286,8 +289,9 @@ export class FeatureCustomers implements OnInit {
     });
   }
 
-  private reloadList(): void {
+  protected reloadList(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.customerService.list(0, 100, this.searchQuery() || undefined).subscribe({
       next: (res) => {
         this.customers.set(res.items);
@@ -300,11 +304,10 @@ export class FeatureCustomers implements OnInit {
           this.selectedCustomer.set(updated ?? null);
         }
       },
-      // GET — not covered by the global error-toast interceptor
-      // (mutating methods only).
-      error: () => {
+      // Shown in the grid as an error state with Retry, not a toast.
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
         this.loading.set(false);
-        this.notify.error('Failed to load customers.');
       },
     });
   }

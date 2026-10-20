@@ -7,7 +7,7 @@ import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { AdminBranchService, NotifyService, type BranchResponse } from '@lpg/shared/data-access';
+import { AdminBranchService, NotifyService, type BranchResponse, errorMessageFor } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
@@ -86,7 +86,7 @@ class BranchStatusCell {
         </div>
       }
 
-      @if (!loading() && branches().length === 0) {
+      @if (!loading() && !loadError() && branches().length === 0) {
         <div class="empty-state">
           <i class="pi pi-map-marker empty-state__icon"></i>
           <p class="empty-state__title">No branches found</p>
@@ -101,6 +101,8 @@ class BranchStatusCell {
             [rows]="branches()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Branches"
           />
@@ -202,6 +204,8 @@ export class BranchesPage implements OnInit {
 
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   /** Filters `branches()` client-side (the full list is already loaded) via
    *  `lpg-data-grid`'s built-in quick filter — see its own `searchQuery`
    *  input docstring. */
@@ -235,14 +239,18 @@ export class BranchesPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.branchService.listBranches().subscribe({
       next: (branches) => {
         this.branches.set(branches);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

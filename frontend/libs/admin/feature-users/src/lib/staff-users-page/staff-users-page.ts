@@ -12,6 +12,7 @@ import {
   AdminStaffUserService,
   NotifyService,
   type StaffUserResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
@@ -113,7 +114,7 @@ const STAFF_ROLES = [
         </div>
       }
 
-      @if (!loading() && users().length === 0) {
+      @if (!loading() && !loadError() && users().length === 0) {
         <div class="empty-state">
           <i class="pi pi-users empty-state__icon"></i>
           <p class="empty-state__title">No staff users found</p>
@@ -128,6 +129,8 @@ const STAFF_ROLES = [
             [rows]="users()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Staff users"
           />
@@ -373,6 +376,8 @@ export class StaffUsersPage implements OnInit {
 
   protected readonly users = signal<StaffUserResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
   protected readonly inviteDrawerVisible = signal(false);
@@ -434,14 +439,18 @@ export class StaffUsersPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.staffUserService.listStaffUsers().subscribe({
       next: (users) => {
         this.users.set(users);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

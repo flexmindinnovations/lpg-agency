@@ -355,6 +355,12 @@ body {
   min-block-size: var(--component-control-height);
 }
 
+/* A button label never breaks mid-label ("Chang / Status"); the row wraps
+   whole buttons instead (QA DA-21 at 820px and 390px). */
+.data-toolbar__actions .p-button {
+  white-space: nowrap;
+}
+
 /* ========================================================================
    GRID SECTION — wraps `lpg-data-grid` so it fills the remaining vertical
    space in its page (flex:1) instead of falling back to the grid's own

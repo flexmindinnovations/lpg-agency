@@ -14,6 +14,7 @@ import {
   NotifyService,
   type BranchResponse,
   type WarehouseResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
@@ -94,7 +95,7 @@ class WarehouseStatusCell {
         </div>
       }
 
-      @if (!loading() && warehouses().length === 0) {
+      @if (!loading() && !loadError() && warehouses().length === 0) {
         <div class="empty-state">
           <i class="pi pi-building empty-state__icon"></i>
           <p class="empty-state__title">No warehouses found</p>
@@ -111,6 +112,8 @@ class WarehouseStatusCell {
             [rows]="warehouses()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Warehouses"
           />
@@ -233,6 +236,8 @@ export class WarehousesPage implements OnInit {
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
 
   protected readonly createDrawerVisible = signal(false);
@@ -266,14 +271,18 @@ export class WarehousesPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.warehouseService.listWarehouses().subscribe({
       next: (warehouses) => {
         this.warehouses.set(warehouses);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

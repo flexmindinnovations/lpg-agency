@@ -24,6 +24,7 @@ import {
   type CylinderTypeResponse,
   type PriceListEntryResponse,
   type PriceListProposalResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
@@ -153,7 +154,7 @@ type PriceRow = PriceListEntryResponse & {
         </div>
       }
 
-      @if (!loading() && prices().length === 0) {
+      @if (!loading() && !loadError() && prices().length === 0) {
         <div class="empty-state">
           <i class="pi pi-tag empty-state__icon"></i>
           <p class="empty-state__title">No prices set</p>
@@ -168,6 +169,8 @@ type PriceRow = PriceListEntryResponse & {
             [rows]="priceRows()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Prices"
           />
@@ -362,6 +365,8 @@ export class PriceListPage implements OnInit {
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly searchQuery = signal('');
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
   protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({
@@ -455,14 +460,18 @@ export class PriceListPage implements OnInit {
     });
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.priceListService.listPrices().subscribe({
       next: (prices) => {
         this.prices.set(prices);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 
