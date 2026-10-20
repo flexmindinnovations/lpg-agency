@@ -8656,6 +8656,31 @@
         "title": "SuggestCylinderTestDueDateResponse",
         "type": "object"
       },
+      "SupportContactsResponse": {
+        "properties": {
+          "agency_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agency Phone"
+          },
+          "emergency_helpline": {
+            "title": "Emergency Helpline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emergency_helpline",
+          "agency_phone"
+        ],
+        "title": "SupportContactsResponse",
+        "type": "object"
+      },
       "TdtBandDistributionResponse": {
         "properties": {
           "order_count": {
@@ -19117,6 +19142,27 @@
         "summary": "Set Scale Status",
         "tags": [
           "Compliance — Weighment"
+        ]
+      }
+    },
+    "/api/v1/support/contacts": {
+      "get": {
+        "operationId": "get_support_contacts_api_v1_support_contacts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportContactsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The emergency helpline and the agency's support phone",
+        "tags": [
+          "Support"
         ]
       }
     },

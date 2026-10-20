@@ -214,6 +214,7 @@ export type { SetWarehouseActiveRequest } from './models/set-warehouse-active-re
 export type { StaffUserResponse } from './models/staff-user-response';
 export type { SubmitKycDocumentRequest } from './models/submit-kyc-document-request';
 export type { SuggestCylinderTestDueDateResponse } from './models/suggest-cylinder-test-due-date-response';
+export type { SupportContactsResponse } from './models/support-contacts-response';
 export type { TdtBandDistributionResponse } from './models/tdt-band-distribution-response';
 export type { TdtQuarterlyRatingResponse } from './models/tdt-quarterly-rating-response';
 export type { TenantConfigurationResponse } from './models/tenant-configuration-response';
