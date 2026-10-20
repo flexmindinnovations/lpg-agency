@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ApiConfiguration, NotificationService } from '@lpg/shared/data-access';
 import { NotificationDrawer } from './notification-drawer';
@@ -25,11 +25,15 @@ describe('NotificationDrawer', () => {
   let fixture: ComponentFixture<NotificationDrawer>;
   let list: jest.Mock;
   let markRead: jest.Mock;
+  let markAllRead: jest.Mock;
+  let changed: Subject<void>;
   let navigate: jest.SpyInstance;
 
   beforeEach(async () => {
     list = jest.fn().mockReturnValue(of({ items: [item()] }));
     markRead = jest.fn().mockReturnValue(of(undefined));
+    markAllRead = jest.fn().mockReturnValue(of(undefined));
+    changed = new Subject<void>();
 
     await TestBed.configureTestingModule({
       imports: [NotificationDrawer],
@@ -44,8 +48,14 @@ describe('NotificationDrawer', () => {
           useValue: {
             list,
             markRead,
+            markAllRead,
+            changed$: changed,
             routeFor: (n: { reference_type?: string; reference_id?: string }) =>
-              n.reference_type === 'order' && n.reference_id ? ['/orders', n.reference_id] : null,
+              n.reference_type === 'order' && n.reference_id
+                ? { commands: ['/orders', n.reference_id] }
+                : n.reference_type === 'complaint' && n.reference_id
+                  ? { commands: ['/complaints'], queryParams: { complaint: n.reference_id } }
+                  : null,
           },
         },
       ],
@@ -85,7 +95,7 @@ describe('NotificationDrawer', () => {
     component.open(item() as never);
 
     expect(markRead).toHaveBeenCalledWith('n1');
-    expect(navigate).toHaveBeenCalledWith(['/orders', 'o9']);
+    expect(navigate).toHaveBeenCalledWith(['/orders', 'o9'], { queryParams: undefined });
     expect(component.visible()).toBe(false);
   });
 
@@ -93,7 +103,7 @@ describe('NotificationDrawer', () => {
     component.open(item({ is_read: true }) as never);
 
     expect(markRead).not.toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/orders', 'o9']);
+    expect(navigate).toHaveBeenCalledWith(['/orders', 'o9'], { queryParams: undefined });
   });
 
   it('open() on a notification with no linkable reference just marks it read', () => {
@@ -129,5 +139,57 @@ describe('NotificationDrawer', () => {
     list.mockReturnValue(of({ items: [item({ id: 'a' }), item({ id: 'new' })] }));
     component.loadNotifications();
     expect(component.visibleNotifications().map((n) => n.id)).toEqual(['new']);
+  });
+
+  it('open() deep-links a complaint and shows it read straight away', async () => {
+    list.mockReturnValue(
+      of({ items: [item({ reference_type: 'complaint', reference_id: 'c1' })] }),
+    );
+    component.visible.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.open(component.notifications()[0]);
+
+    expect(navigate).toHaveBeenCalledWith(['/complaints'], { queryParams: { complaint: 'c1' } });
+    expect(component.notifications()[0].is_read).toBe(true);
+  });
+
+  it('groups by day and reloads live while open', async () => {
+    const today = new Date().toISOString();
+    list.mockReturnValue(of({ items: [item({ id: 'a', created_at: today })] }));
+    component.visible.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.groups().map((g) => g.label)).toEqual(['Today']);
+
+    changed.next();
+    expect(list).toHaveBeenCalledTimes(2);
+
+    component.visible.set(false);
+    changed.next();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  it('markAllAsRead() clears every unread marker', async () => {
+    list.mockReturnValue(of({ items: [item({ id: 'a' }), item({ id: 'b' })] }));
+    component.visible.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.hasUnread()).toBe(true);
+
+    component.markAllAsRead();
+
+    expect(markAllRead).toHaveBeenCalled();
+    expect(component.hasUnread()).toBe(false);
+  });
+
+  it('shows a friendly empty state', async () => {
+    list.mockReturnValue(of({ items: [] }));
+    component.visible.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.body.textContent).toContain("You're all caught up");
   });
 });

@@ -9,7 +9,23 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
+  gap: var(--spacing-sm, 0.5rem);
   padding: var(--spacing-md, 1rem) var(--spacing-lg, 1.5rem) var(--spacing-xs, 0.25rem);
+}
+
+.drawer-action {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+  cursor: pointer;
+  color: var(--color-action-primary);
+  font-size: var(--typography-body-small-font-size, 0.875rem);
+  font-weight: var(--typography-label-font-weight, 500);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.drawer-action:hover {
+  background-color: var(--color-surface-overlay);
 }
 
 .drawer-clear {
@@ -39,12 +55,29 @@
   padding: var(--spacing-xs, 0.25rem) var(--spacing-lg, 1.5rem) var(--spacing-md, 1rem);
 }
 
-.empty-state {
+.notification-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 0.5rem);
+}
+
+.notification-group__label {
+  margin: 0;
+  font-size: var(--typography-caption-font-size, 0.75rem);
+  font-weight: var(--typography-label-font-weight, 600);
   color: var(--color-text-secondary);
-  font-size: var(--typography-body-small-font-size, 0.875rem);
-  font-style: italic;
-  padding: var(--spacing-md, 1rem) 0;
-  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.notification-dot {
+  display: inline-block;
+  width: var(--spacing-sm, 0.5rem);
+  height: var(--spacing-sm, 0.5rem);
+  margin-right: var(--spacing-xs, 0.25rem);
+  border-radius: 50%;
+  background-color: var(--color-action-primary);
+  vertical-align: middle;
 }
 
 .notification-item {
