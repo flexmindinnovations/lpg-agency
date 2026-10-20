@@ -28,6 +28,7 @@ import { Select } from 'primeng/select';
 import {
   OrderService,
   WebSocketService,
+  type OrderStatusValue,
   type CustomerAddressResponse,
   type CustomerResponse,
   type OrderableCylinderTypeResponse,
@@ -40,24 +41,44 @@ import {
   HasPermissionDirective,
   PageHeaderComponent,
   BOOKING_SOURCE_LABELS,
+  EmptyStateComponent,
   StatusChipCell,
+  formatCurrencyInr,
+  formatReportDate,
   shortId,
 } from '@lpg/shared/ui';
+import { InputText } from 'primeng/inputtext';
+import { Subject } from 'rxjs';
 import { CustomerAutocomplete } from '../customer-autocomplete/customer-autocomplete';
-import { errorMessageFor, STATUS_SEVERITY } from '../order-status.util';
+import {
+  DATE_INPUT_FORMAT,
+  DATE_INPUT_PLACEHOLDER,
+  STATUS_LABELS,
+  deliveryDayIso,
+  STATUS_SEVERITY,
+  endOfLocalDayIso,
+  errorMessageFor,
+  startOfLocalDayIso,
+} from '../order-status.util';
 
-const STATUS_OPTIONS = [
-  { label: 'Draft', value: 'draft' },
-  { label: 'Booked', value: 'booked' },
-  { label: 'Confirmed', value: 'confirmed' },
-  { label: 'Assigned', value: 'assigned' },
-  { label: 'Ready for Dispatch', value: 'ready_for_dispatch' },
-  { label: 'Out for Delivery', value: 'out_for_delivery' },
-  { label: 'Delivered', value: 'delivered' },
-  { label: 'Failed Delivery', value: 'failed_delivery' },
-  { label: 'Cancelled', value: 'cancelled' },
-  { label: 'Closed', value: 'closed' },
-] as const;
+const STATUS_OPTIONS = (
+  [
+    'booked',
+    'confirmed',
+    'assigned',
+    'ready_for_dispatch',
+    'out_for_delivery',
+    'failed_delivery',
+    'delivered',
+    'cancelled',
+    'closed',
+  ] as const
+).map((value) => ({ value, label: STATUS_LABELS[value] }));
+
+/** A typed search term only, never a half-typed string, counts as a customer. */
+function isCustomer(value: unknown): value is CustomerResponse {
+  return typeof value === 'object' && value !== null && 'id' in value;
+}
 
 // What staff can record on a dashboard booking. The server fills in `staff` ("Dashboard") when
 // nothing is chosen and sets `mobile_app` itself for the Customer App, so neither a staff user
@@ -88,6 +109,8 @@ const BOOKING_SOURCE_OPTIONS = (['staff', 'phone', 'walk_in', 'whatsapp'] as con
     CustomerAutocomplete,
     FormFieldComponent,
     HasPermissionDirective,
+    EmptyStateComponent,
+    InputText,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './order-queue.html',
@@ -114,19 +137,37 @@ export class OrderQueue implements OnInit {
     // The customer is a real form control now (`lpg-customer-autocomplete` is
     // a CVA); mirror it into the signal the address-dependent template blocks
     // read, and clear the address whenever the customer changes.
-    this.createForm.controls.customer.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe((customer) => {
-        this.selectedCustomer.set(customer);
-        this.selectedAddress.set(null);
-        this.createForm.controls.address_id.setValue('');
-        this.loadOrderableCylinderTypes(customer);
-      });
+    // While the user is still typing, the control holds the search text,
+    // not a customer: nothing is loaded and no error shows until a customer
+    // is actually picked (DO-09).
+    this.createForm.controls.customer.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+      const customer = isCustomer(value) ? value : null;
+      if (customer?.id === this.selectedCustomer()?.id) return;
+      this.selectedCustomer.set(customer);
+      this.selectedAddress.set(null);
+      this.createForm.controls.address_id.setValue('');
+      this.loadOrderableCylinderTypes(customer);
+      if (customer) this.preselectAddress(customer);
+    });
+
+    this.searchChanges
+      .pipe(debounceTime(350), takeUntilDestroyed())
+      .subscribe(() => this.loadOrders());
   }
+
+  private readonly searchChanges = new Subject<void>();
+  protected readonly searchText = signal('');
+  protected readonly dateRange = signal<Date[] | null>(null);
+  protected readonly dateInputFormat = DATE_INPUT_FORMAT;
+  protected readonly today = new Date(new Date().setHours(0, 0, 0, 0));
+  protected readonly dateInputPlaceholder = DATE_INPUT_PLACEHOLDER;
+  protected readonly hasFilters = computed(
+    () => !!this.statusFilter() || !!this.searchText().trim() || !!this.dateRange()?.[0],
+  );
 
   protected readonly orders = signal<OrderResponse[]>([]);
   protected readonly total = signal(0);
-  protected readonly statusFilter = signal<string | null>(null);
+  protected readonly statusFilter = signal<OrderStatusValue | null>(null);
   /**
    * What the selected customer can book right now: active, priced for their
    * customer type at their branch, and in stock. Anything else is left out,
@@ -164,16 +205,35 @@ export class OrderQueue implements OnInit {
     {
       field: 'order_number',
       header: 'Order #',
+      width: 130,
       valueFormatter: (value, row) => (value as string | null) ?? shortId(row.id),
-      tooltipValueGetter: (_value, row) => row.id,
+      tooltipValueGetter: (_value, row) => row.order_number ?? row.id,
       onLinkClick: (row) => this.viewOrder(row),
+    },
+    {
+      field: 'customer.full_name',
+      header: 'Customer',
+      flex: 2,
+      valueFormatter: (_value, row) => row.customer?.full_name ?? '—',
+      tooltipValueGetter: (_value, row) =>
+        [row.customer?.full_name, row.customer?.consumer_number].filter(Boolean).join(' · '),
+    },
+    {
+      field: 'customer.phone_number',
+      header: 'Phone',
+      valueFormatter: (_value, row) => row.customer?.phone_number ?? '—',
+    },
+    {
+      field: 'customer.consumer_number',
+      header: 'Consumer no.',
+      valueFormatter: (_value, row) => row.customer?.consumer_number ?? '—',
     },
     {
       field: 'status',
       header: 'Status',
       sortable: true,
       cellRenderer: StatusChipCell,
-      cellRendererParams: { severityMap: STATUS_SEVERITY },
+      cellRendererParams: { severityMap: STATUS_SEVERITY, labelMap: STATUS_LABELS },
     },
     {
       field: 'booking_source',
@@ -186,15 +246,15 @@ export class OrderQueue implements OnInit {
     },
     {
       field: 'requested_date',
-      header: 'Requested',
+      header: 'Delivery date',
       sortable: true,
-      valueFormatter: (value) => new Date(value as string).toLocaleString(),
+      valueFormatter: (value) => formatReportDate(value),
     },
     {
       field: 'total_amount',
       header: 'Total',
       numeric: true,
-      valueFormatter: (value) => (value ? `₹${value}` : '—'),
+      valueFormatter: (value) => (value ? formatCurrencyInr(value) : '—'),
     },
   ];
 
@@ -230,8 +290,15 @@ export class OrderQueue implements OnInit {
     if (!opts.silent) {
       this.loading.set(true);
     }
+    const [from, to] = this.dateRange() ?? [];
     this.orderService
-      .listOrders({ status: this.statusFilter() ?? undefined, limit: 100 })
+      .listOrders({
+        status: this.statusFilter() ?? undefined,
+        search: this.searchText(),
+        fromDate: from ? startOfLocalDayIso(from) : undefined,
+        toDate: from ? endOfLocalDayIso(to ?? from) : undefined,
+        limit: 100,
+      })
       .subscribe({
         next: (page) => {
           this.orders.set(page.items);
@@ -276,9 +343,43 @@ export class OrderQueue implements OnInit {
     );
   }
 
-  protected onStatusFilterChange(value: string | null): void {
+  protected onStatusFilterChange(value: OrderStatusValue | null): void {
     this.statusFilter.set(value);
     this.loadOrders();
+  }
+
+  protected onSearchChange(value: string): void {
+    this.searchText.set(value);
+    this.searchChanges.next();
+  }
+
+  protected onDateRangeChange(value: Date[] | null): void {
+    this.dateRange.set(value);
+    // A range is applied once both ends are picked (or cleared).
+    if (!value || !value[0] || value[1]) this.loadOrders();
+  }
+
+  protected clearFilters(): void {
+    this.statusFilter.set(null);
+    this.searchText.set('');
+    this.dateRange.set(null);
+    this.loadOrders();
+  }
+
+  /** The primary address is chosen for the office so a booking is a few keys. */
+  private preselectAddress(customer: CustomerResponse): void {
+    const address =
+      customer.addresses.find((a) => a.is_primary) ??
+      (customer.addresses.length === 1 ? customer.addresses[0] : null);
+    if (!address) return;
+    this.createForm.controls.address_id.setValue(address.id);
+    this.selectedAddress.set(address);
+  }
+
+  protected addressLabel(address: CustomerAddressResponse): string {
+    return [address.line_1, address.line_2, address.area, address.city, address.pincode]
+      .filter(Boolean)
+      .join(', ');
   }
 
   protected viewOrder(order: OrderResponse): void {
@@ -323,7 +424,10 @@ export class OrderQueue implements OnInit {
   protected onSubmitCreate(): void {
     const customer = this.selectedCustomer();
     const address = this.selectedAddress();
-    if (!customer || !address || this.createForm.invalid) return;
+    if (!customer || !address || this.createForm.invalid) {
+      this.createForm.markAllAsTouched();
+      return;
+    }
 
     const val = this.createForm.getRawValue();
     this.loading.set(true);
@@ -331,14 +435,9 @@ export class OrderQueue implements OnInit {
       .createOrder({
         branch_id: customer.branch_id,
         customer_id: customer.id,
-        address_id: val.address_id,
-        delivery_address: {
-          address_line: address.line_1,
-          latitude: address.latitude ? Number(address.latitude) : null,
-          longitude: address.longitude ? Number(address.longitude) : null,
-        },
+        address_id: address.id,
         booking_source: val.booking_source,
-        requested_date: val.requested_date.toISOString(),
+        requested_date: deliveryDayIso(val.requested_date),
         lines: val.lines.map((line) => ({
           cylinder_type_id: line.cylinder_type_id,
           quantity: line.quantity,
