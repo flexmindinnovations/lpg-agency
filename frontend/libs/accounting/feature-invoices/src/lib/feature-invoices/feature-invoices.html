@@ -8,19 +8,99 @@
 </div>
 
 <div class="invoice-container">
+  @if (heldOrders().length > 0) {
+  <section class="held-panel" aria-labelledby="held-heading">
+    <div class="held-panel__header">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      <div>
+        <h2 id="held-heading" class="held-panel__title">
+          {{ heldOrders().length }} {{ heldOrders().length === 1 ? 'order is' : 'orders are' }}
+          waiting for an invoice
+        </h2>
+        <p class="held-panel__hint">
+          Usually because GST was not set for the cylinder type when it was delivered. Set the HSN
+          code and GST rate in Admin › Cylinder Types, then issue the invoice here.
+        </p>
+      </div>
+    </div>
+    <ul class="held-list">
+      @for (order of heldOrders(); track order.order_id) {
+      <li class="held-list__item">
+        <span class="held-list__order">{{ order.order_number ?? 'Order' }}</span>
+        <span>{{ order.customer_name }}</span>
+        <span class="held-list__meta"
+          >{{ order.status === 'cancelled' ? 'Cancellation charge ' + (order.cancellation_charge |
+          currency:'INR') : 'Delivered' }} · {{ order.occurred_at | date:'d MMM y' }}</span
+        >
+        <button
+          pButton
+          type="button"
+          size="small"
+          [disabled]="issuingOrderId() === order.order_id"
+          (click)="issueHeldInvoice(order)"
+        >
+          <i
+            [class]="issuingOrderId() === order.order_id ? 'pi pi-spin pi-spinner' : 'pi pi-file'"
+          ></i>
+          <span>Issue invoice</span>
+        </button>
+      </li>
+      }
+    </ul>
+  </section>
+  }
+
   <section class="invoice-list-section">
-    <div class="search-bar">
+    <div class="search-bar" role="search">
       <p-iconfield class="search-input">
         <p-inputicon class="pi pi-search"></p-inputicon>
         <input
           pInputText
-          type="text"
+          type="search"
           class="w-full"
-          placeholder="Search invoices..."
+          aria-label="Search invoices"
+          placeholder="Invoice, order or consumer no., or customer name"
           [value]="searchQuery()"
-          (input)="searchQuery.set($any($event.target).value)"
+          (input)="onSearch($any($event.target).value)"
         />
       </p-iconfield>
+      <p-select
+        [options]="statusOptions"
+        [ngModel]="statusFilter()"
+        (ngModelChange)="onStatusChange($event)"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All statuses"
+        [showClear]="true"
+        ariaLabel="Filter by status"
+        styleClass="filter-select"
+      />
+      <label class="date-filter">
+        <span>From</span>
+        <input
+          pInputText
+          type="date"
+          [value]="issuedFrom()"
+          (change)="onDateChange('from', $any($event.target).value)"
+        />
+      </label>
+      <label class="date-filter">
+        <span>To</span>
+        <input
+          pInputText
+          type="date"
+          [value]="issuedTo()"
+          (change)="onDateChange('to', $any($event.target).value)"
+        />
+      </label>
+      @if (statusFilter() || issuedFrom() || issuedTo() || searchQuery()) {
+      <button pButton type="button" severity="secondary" [text]="true" (click)="clearFilters()">
+        Clear
+      </button>
+      }
+      <button pButton type="button" severity="secondary" (click)="exportCsv()">
+        <i class="pi pi-file-excel"></i><span>Export CSV</span>
+      </button>
     </div>
 
     <section class="grid-section">
@@ -28,10 +108,19 @@
         [rows]="invoices()"
         [columns]="columns"
         [loading]="isLoading()"
-        [searchQuery]="searchQuery()"
+        [pageSize]="0"
         ariaLabel="Invoices list"
       ></lpg-data-grid>
     </section>
+    <p-paginator
+      [first]="(page() - 1) * pageSize()"
+      [rows]="pageSize()"
+      [totalRecords]="total()"
+      [rowsPerPageOptions]="[25, 50, 100]"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{first}–{last} of {totalRecords} invoices"
+      (onPageChange)="onPageChange($event)"
+    />
   </section>
 </div>
 
@@ -45,9 +134,7 @@
   <ng-template #header>
     <div class="detail-card-title">
       <h2>Invoice Details</h2>
-      <p class="invoice-num">
-        {{ selectedInvoice()?.invoice_number ?? selectedInvoice()?.invoice_id }}
-      </p>
+      <p class="invoice-num">{{ selectedInvoice()?.invoice_number ?? 'Not numbered' }}</p>
     </div>
   </ng-template>
 
@@ -60,12 +147,12 @@
     <div class="detail-info-grid">
       <div class="info-item">
         <span class="info-label">Date</span>
-        <span class="info-value">{{ inv.issued_at | date:'mediumDate' }}</span>
+        <span class="info-value">{{ inv.issued_at | date:'d MMM y' }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">Order</span>
         <button type="button" class="info-value info-link" (click)="openOrderPreview(inv.order_id)">
-          {{ inv.order_number ?? inv.order_id }}
+          {{ inv.order_number ?? 'View order' }}
         </button>
       </div>
       <div class="info-item">
@@ -75,13 +162,32 @@
           class="info-value info-link"
           (click)="openCustomerPreview(inv.customer_id)"
         >
-          {{ customerNameById().get(inv.customer_id) ?? inv.customer_consumer_number ??
-          inv.customer_id }}
+          {{ inv.customer_name ?? inv.customer_consumer_number ?? 'View customer' }}
         </button>
       </div>
       <div class="info-item">
         <span class="info-label">Amount</span>
         <span class="info-value">{{ inv.total_amount | currency:'INR' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Paid</span>
+        <span class="info-value">{{ (inv.amount_paid ?? 0) | currency:'INR' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Balance due</span>
+        <span class="info-value" [class.info-value--due]="+(inv.balance_due ?? 0) > 0"
+          >{{ (inv.balance_due ?? 0) | currency:'INR' }}</span
+        >
+      </div>
+      <div class="info-item">
+        <span class="info-label">Customer GSTIN</span>
+        <span class="info-value">{{ inv.customer_gstin ?? 'Unregistered (B2C)' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Place of supply</span>
+        <span class="info-value"
+          >{{ placeOfSupply(inv) }}{{ inv.is_inter_state ? ' · Inter-state (IGST)' : '' }}</span
+        >
       </div>
     </div>
 
@@ -95,11 +201,13 @@
         <div class="line-item">
           <div class="line-info">
             <span class="line-name"
-              >{{ cylinderTypeNameById().get(line.cylinder_type_id) ?? 'Cylinder Type ' +
-              line.cylinder_type_id }}</span
+              >{{ line.description ?? cylinderTypeNameById().get(line.cylinder_type_id) ?? 'LPG
+              cylinder' }}</span
             >
             <span class="line-qty"
-              >{{ line.quantity }} &times; {{ line.unit_price | currency:'INR' }}</span
+              >{{ line.quantity }} &times; {{ line.unit_price | currency:'INR' }} · HSN {{
+              line.hsn_code ?? '—' }} · GST {{ line.gst_rate_percent ? (+line.gst_rate_percent) +
+              '%' : '—' }}</span
             >
           </div>
           <span class="line-total">{{ line.total_amount | currency:'INR' }}</span>
@@ -113,18 +221,129 @@
 
     <div class="totals-section">
       <div class="total-row">
-        <span class="total-label">Subtotal</span>
+        <span class="total-label">Taxable value</span>
         <span class="total-value">{{ inv.subtotal | currency:'INR' }}</span>
       </div>
+      @if (inv.is_inter_state) {
       <div class="total-row">
-        <span class="total-label">Tax Amount</span>
-        <span class="total-value">{{ inv.tax_amount | currency:'INR' }}</span>
+        <span class="total-label">IGST</span>
+        <span class="total-value">{{ (inv.igst_amount ?? inv.tax_amount) | currency:'INR' }}</span>
       </div>
+      } @else {
+      <div class="total-row">
+        <span class="total-label">CGST</span>
+        <span class="total-value">{{ (inv.cgst_amount ?? 0) | currency:'INR' }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">SGST</span>
+        <span class="total-value">{{ (inv.sgst_amount ?? 0) | currency:'INR' }}</span>
+      </div>
+      }
       <div class="total-row grand-total">
         <span class="total-label">Total Amount</span>
         <span class="total-value">{{ inv.total_amount | currency:'INR' }}</span>
       </div>
     </div>
+
+    <div class="lines-section">
+      <div class="section-header">
+        <h3 class="section-heading">Payments</h3>
+      </div>
+      @if ((inv.payments ?? []).length > 0) {
+      <div class="line-list">
+        @for (payment of inv.payments; track payment.payment_id) {
+        <div class="line-item">
+          <div class="line-info">
+            <span class="line-name">{{ paymentMethodLabel(payment.method) }}</span>
+            <span class="line-qty"
+              >{{ payment.collected_at | date:'d MMM y, h:mm a' }}{{ payment.reference ? ' · Ref ' +
+              payment.reference : '' }}</span
+            >
+          </div>
+          <span class="line-total">{{ payment.amount | currency:'INR' }}</span>
+        </div>
+        }
+      </div>
+      } @else {
+      <p class="empty-hint">No payments recorded yet.</p>
+      }
+    </div>
+
+    @if (creditNotes().length > 0) {
+    <div class="lines-section">
+      <div class="section-header">
+        <h3 class="section-heading">Refunds and credit notes</h3>
+      </div>
+      <div class="line-list">
+        @for (note of creditNotes(); track note.id) {
+        <div class="line-item">
+          <div class="line-info">
+            <span class="line-name">{{ note.credit_note_number ?? 'Credit note' }}</span>
+            <span class="line-qty"
+              >{{ note.reason }} · {{ note.requested_at | date:'d MMM y' }}</span
+            >
+          </div>
+          <div class="credit-note-actions">
+            <span class="line-total">{{ note.amount | currency:'INR' }}</span>
+            @if (note.is_approved) {
+            <p-tag value="Approved" severity="success" />
+            } @else if (canApproveRefund()) {
+            <button
+              pButton
+              type="button"
+              size="small"
+              [disabled]="submitting()"
+              (click)="approveCreditNote(note)"
+            >
+              Approve
+            </button>
+            } @else {
+            <p-tag value="Awaiting approval" severity="warn" />
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    } @if (paymentLinkUrl(); as url) {
+    <p-message severity="success" styleClass="w-full">
+      <span class="payment-link"
+        >Payment link ready: <a [href]="url" target="_blank" rel="noopener">{{ url }}</a></span
+      >
+      <button pButton type="button" size="small" [text]="true" (click)="copyPaymentLink()">
+        <i class="pi pi-copy"></i><span>Copy</span>
+      </button>
+    </p-message>
+    } @if (paymentLinkError(); as message) {
+    <p-message severity="warn" styleClass="w-full">{{ message }}</p-message>
+    } @if (canRecordPayment() && +(inv.balance_due ?? 0) > 0) {
+    <div class="print-actions">
+      <button pButton type="button" (click)="openPaymentDrawer()">
+        <i class="pi pi-wallet"></i><span>Record payment</span>
+      </button>
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="submitting()"
+        (click)="sendPaymentLink()"
+      >
+        <i class="pi pi-send"></i><span>Send payment link</span>
+      </button>
+    </div>
+    } @if (canRecordPayment() && +(inv.amount_paid ?? 0) > 0 && inv.status !== 'refunded') {
+    <div class="print-actions">
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        [outlined]="true"
+        (click)="openRefundDrawer()"
+      >
+        <i class="pi pi-replay"></i><span>Refund / credit note</span>
+      </button>
+    </div>
+    }
 
     <div class="print-actions">
       <button pButton type="button" [disabled]="isPrinting()" (click)="printPdf()">
@@ -245,3 +464,117 @@
   </div>
   }
 </p-dialog>
+
+<p-drawer
+  [visible]="paymentDrawerVisible()"
+  (visibleChange)="paymentDrawerVisible.set($event)"
+  position="right"
+  [modal]="true"
+  header="Record payment"
+  [style]="{ width: '100%', maxWidth: '32rem' }"
+>
+  <form [formGroup]="paymentForm" (ngSubmit)="submitPayment()" novalidate class="dialog-form">
+    <div class="dialog-form__fields">
+      <p class="page-lede">
+        Balance due on {{ selectedInvoice()?.invoice_number ?? 'this invoice' }}:
+        <strong>{{ (selectedInvoice()?.balance_due ?? 0) | currency:'INR' }}</strong>
+      </p>
+      <lpg-form-field label="Method" for="payment-method" [control]="paymentForm.controls.method">
+        <p-select
+          inputId="payment-method"
+          formControlName="method"
+          [options]="paymentMethodOptions"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Amount (₹)"
+        for="payment-amount"
+        [control]="paymentForm.controls.amount"
+        [messages]="{ required: 'Enter the amount received.', pattern: 'Enter an amount like 950.50.' }"
+      >
+        <input
+          pInputText
+          id="payment-amount"
+          inputmode="decimal"
+          formControlName="amount"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        [label]="referenceRequired() ? 'Cheque no. / UTR' : 'Reference'"
+        for="payment-reference"
+        [control]="paymentForm.controls.reference"
+        [optional]="!referenceRequired()"
+        hint="UPI transaction id, cheque number or bank UTR."
+        [messages]="{ required: 'Enter the cheque number or bank reference.' }"
+      >
+        <input pInputText id="payment-reference" formControlName="reference" [fluid]="true" />
+      </lpg-form-field>
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="paymentDrawerVisible.set(false)">
+        Cancel
+      </button>
+      <button pButton type="submit" [disabled]="submitting()">
+        @if (submitting()) {
+        <i class="pi pi-spin pi-spinner"></i>
+        } Record payment
+      </button>
+    </div>
+  </form>
+</p-drawer>
+
+<p-drawer
+  [visible]="refundDrawerVisible()"
+  (visibleChange)="refundDrawerVisible.set($event)"
+  position="right"
+  [modal]="true"
+  header="Refund / credit note"
+  [style]="{ width: '100%', maxWidth: '32rem' }"
+>
+  <form [formGroup]="refundForm" (ngSubmit)="submitRefund()" novalidate class="dialog-form">
+    <div class="dialog-form__fields">
+      <p class="page-lede">
+        A refund is raised as a credit note against {{ selectedInvoice()?.invoice_number ?? 'this
+        invoice' }} and takes effect once a manager approves it. Paid so far: {{
+        (selectedInvoice()?.amount_paid ?? 0) | currency:'INR' }}.
+      </p>
+      <lpg-form-field
+        label="Amount (₹)"
+        for="refund-amount"
+        [control]="refundForm.controls.amount"
+        [messages]="{ required: 'Enter the refund amount.', pattern: 'Enter an amount like 950.50.' }"
+      >
+        <input
+          pInputText
+          id="refund-amount"
+          inputmode="decimal"
+          formControlName="amount"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Reason"
+        for="refund-reason"
+        [control]="refundForm.controls.reason"
+        [messages]="{ required: 'Say why the money is being refunded.' }"
+      >
+        <input pInputText id="refund-reason" formControlName="reason" [fluid]="true" />
+      </lpg-form-field>
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="refundDrawerVisible.set(false)">
+        Cancel
+      </button>
+      <button pButton type="submit" [disabled]="submitting()">
+        @if (submitting()) {
+        <i class="pi pi-spin pi-spinner"></i>
+        } Request refund
+      </button>
+    </div>
+  </form>
+</p-drawer>

@@ -266,3 +266,97 @@
   border-block-start: var(--border-width) solid var(--color-border-default);
   border-block-end: var(--border-width) solid var(--color-border-default);
 }
+
+/* --- Filters (DA-07) ---------------------------------------------------- */
+.search-bar {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-input {
+  min-inline-size: 16rem;
+}
+
+.date-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+/* --- Invoices on hold (DA-06) ------------------------------------------- */
+.held-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: var(--border-width) solid var(--color-status-warning);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.held-panel__header {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.held-panel__header > .pi {
+  color: var(--color-status-warning);
+  margin-block-start: var(--spacing-xs);
+}
+
+.held-panel__title {
+  margin: 0;
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.held-panel__hint {
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.held-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.held-list__item {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr auto auto;
+  gap: var(--spacing-md);
+  align-items: center;
+  padding-block: var(--spacing-xs);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+.held-list__order {
+  font-weight: var(--typography-label-font-weight);
+}
+
+.held-list__meta {
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+/* --- Payments and credit notes (DA-07) ---------------------------------- */
+.info-value--due {
+  color: var(--color-status-danger);
+}
+
+.credit-note-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.payment-link {
+  overflow-wrap: anywhere;
+}
