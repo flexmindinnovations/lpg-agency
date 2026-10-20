@@ -704,6 +704,9 @@ class TestRouteEndpointsThroughRealStack:
         my_route_response = await client.get("/api/v1/routes/active", headers=driver_headers)
         assert my_route_response.status_code == 200, my_route_response.text
         assert my_route_response.json()["id"] == route_id
+        # Stops carry the order number the dashboard shows, not just the UUID.
+        assert order["order_number"]
+        assert my_route_response.json()["stops"][0]["order_number"] == order["order_number"]
 
         loc_response = await client.post(
             f"/api/v1/routes/{route_id}/location",

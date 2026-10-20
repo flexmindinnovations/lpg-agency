@@ -171,6 +171,7 @@ class RouteStop:
         "failure_reason",
         "id",
         "order_id",
+        "order_number",
         "proof_of_delivery",
         "route_id",
         "sequence_number",
@@ -187,10 +188,14 @@ class RouteStop:
         status: str = "pending",
         proof_of_delivery: ProofOfDelivery | None = None,
         failure_reason: str | None = None,
+        order_number: str | None = None,
     ) -> None:
         self.id = stop_id
         self.route_id = route_id
         self.order_id = order_id
+        #: The order's human-facing number (ORD000027), read alongside the
+        #: stop for display only — never written back by this aggregate.
+        self.order_number = order_number
         self.sequence_number = sequence_number
         self.status = status
         self.proof_of_delivery = proof_of_delivery

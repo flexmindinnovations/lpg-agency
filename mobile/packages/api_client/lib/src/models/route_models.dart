@@ -3,6 +3,7 @@ class RouteStopSummary {
   const RouteStopSummary({
     required this.id,
     required this.orderId,
+    this.orderNumber,
     required this.sequenceNumber,
     required this.status,
   });
@@ -11,12 +12,17 @@ class RouteStopSummary {
       RouteStopSummary(
         id: json['id'] as String,
         orderId: json['order_id'] as String,
+        orderNumber: json['order_number'] as String?,
         sequenceNumber: json['sequence_number'] as int,
         status: json['status'] as String,
       );
 
   final String id;
   final String orderId;
+
+  /// The order's number (e.g. "ORD000027"), as the dashboard shows it.
+  /// Null only from an older server.
+  final String? orderNumber;
   final int sequenceNumber;
   final String status;
 }

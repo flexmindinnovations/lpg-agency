@@ -53,6 +53,15 @@ abstract final class LpgFormat {
   static String statusLabel(String status) =>
       status.replaceAll('_', ' ').toUpperCase();
 
+  /// An order as people know it: its number (`ORD000027`), the same one
+  /// the dashboard shows. Falls back to a short id (`#4C6826F9`) only for
+  /// an order the server sent without a number.
+  static String orderNumber(String? orderNumber, String orderId) {
+    if (orderNumber != null && orderNumber.isNotEmpty) return orderNumber;
+    final short = orderId.length > 8 ? orderId.substring(0, 8) : orderId;
+    return '#${short.toUpperCase()}';
+  }
+
   /// A backend code as running text: `out_for_delivery` -> `Out for
   /// delivery`.
   static String sentence(String code) {

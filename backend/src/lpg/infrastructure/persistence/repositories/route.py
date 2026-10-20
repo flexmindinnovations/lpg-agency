@@ -17,9 +17,11 @@ from sqlalchemy import func, select
 from lpg.application.delivery.ports import RouteStopOwner
 from lpg.domain.delivery.route import LoadedLine, ProofOfDelivery, Route, RouteStop
 from lpg.infrastructure.persistence.models.delivery import RouteModel, RouteStopModel
+from lpg.infrastructure.persistence.models.order import OrderModel
 
 if TYPE_CHECKING:
     import datetime
+    from collections.abc import Sequence
 
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -141,7 +143,8 @@ class SqlAlchemyRouteRepository:
         result = await self._uow.session.scalars(stmt)
         stops_models = result.all()
 
-        return self._to_domain(model, list(stops_models))
+        order_numbers = await self._order_numbers(stops_models)
+        return self._to_domain(model, list(stops_models), order_numbers)
 
     async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None:
         stmt = (
@@ -162,7 +165,8 @@ class SqlAlchemyRouteRepository:
         )
         stops_models = (await self._uow.session.scalars(stmt_stops)).all()
 
-        return self._to_domain(model, list(stops_models))
+        order_numbers = await self._order_numbers(stops_models)
+        return self._to_domain(model, list(stops_models), order_numbers)
 
     async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
         stmt = (
@@ -183,7 +187,8 @@ class SqlAlchemyRouteRepository:
         )
         stops_models = (await self._uow.session.scalars(stmt_stops)).all()
 
-        return self._to_domain(model, list(stops_models))
+        order_numbers = await self._order_numbers(stops_models)
+        return self._to_domain(model, list(stops_models), order_numbers)
 
     async def get_route_with_open_stop_for(
         self, driver_id: uuid.UUID, vehicle_id: uuid.UUID, route_date: datetime.date
@@ -207,7 +212,8 @@ class SqlAlchemyRouteRepository:
             .order_by(RouteStopModel.sequence_number)
         )
         stops_models = (await self._uow.session.scalars(stmt_stops)).all()
-        return self._to_domain(model, list(stops_models))
+        order_numbers = await self._order_numbers(stops_models)
+        return self._to_domain(model, list(stops_models), order_numbers)
 
     async def count_active_routes_for_order(self, order_id: uuid.UUID) -> int:
         stmt = (
@@ -259,7 +265,8 @@ class SqlAlchemyRouteRepository:
         for sm in stops_models:
             stops_by_route.setdefault(sm.route_id, []).append(sm)
 
-        return [self._to_domain(m, stops_by_route.get(m.id, [])) for m in models]
+        order_numbers = await self._order_numbers(stops_models)
+        return [self._to_domain(m, stops_by_route.get(m.id, []), order_numbers) for m in models]
 
     async def count_routes(
         self,
@@ -290,7 +297,24 @@ class SqlAlchemyRouteRepository:
             stmt = stmt.where(RouteModel.route_date <= date_to)
         return stmt
 
-    def _to_domain(self, model: RouteModel, stop_models: list[RouteStopModel]) -> Route:
+    async def _order_numbers(
+        self, stop_models: Sequence[RouteStopModel]
+    ) -> dict[uuid.UUID, str | None]:
+        """Each stop's order number, so the Driver App can show ORD000027
+        like the dashboard does instead of a UUID prefix."""
+        order_ids = {sm.order_id for sm in stop_models}
+        if not order_ids:
+            return {}
+        stmt = select(OrderModel.id, OrderModel.order_number).where(OrderModel.id.in_(order_ids))
+        rows = (await self._uow.session.execute(stmt)).all()
+        return {row[0]: row[1] for row in rows}
+
+    def _to_domain(
+        self,
+        model: RouteModel,
+        stop_models: list[RouteStopModel],
+        order_numbers: dict[uuid.UUID, str | None] | None = None,
+    ) -> Route:
         stops = []
         for sm in stop_models:
             pod = None
@@ -311,6 +335,7 @@ class SqlAlchemyRouteRepository:
                     status=sm.status,
                     proof_of_delivery=pod,
                     failure_reason=sm.failure_reason,
+                    order_number=(order_numbers or {}).get(sm.order_id),
                 )
             )
 

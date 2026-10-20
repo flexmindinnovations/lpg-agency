@@ -121,9 +121,10 @@ class OrderTrackingScreen extends ConsumerWidget {
                           Expanded(
                             child: _CopyableRef(
                               label: 'Order',
-                              display:
-                                  order.orderNumber ??
-                                  '#${order.id.substring(0, 8).toUpperCase()}',
+                              display: LpgFormat.orderNumber(
+                                order.orderNumber,
+                                order.id,
+                              ),
                               value: order.orderNumber ?? order.id,
                             ),
                           ),
