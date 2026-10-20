@@ -128,7 +128,10 @@ void main() {
       await tester.tap(find.text('Send Code'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('valid 10-digit mobile number'), findsOneWidget);
+      expect(
+        find.textContaining('valid 10-digit mobile number'),
+        findsOneWidget,
+      );
       expect(repo.requestOtpArgs, isNull);
     });
 
