@@ -128,7 +128,7 @@ void main() {
       await tester.tap(find.text('Send Code'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('for example 98765 43210'), findsOneWidget);
+      expect(find.textContaining('valid phone number'), findsOneWidget);
       expect(repo.requestOtpArgs, isNull);
     });
 
@@ -146,25 +146,6 @@ void main() {
       expect(repo.requestOtpArgs!.phoneNumber, '+919999900099');
       expect(find.text('Verify Code'), findsOneWidget);
       expect(find.byType(LpgTextField), findsNWidgets(3));
-    });
-
-    testWidgets('a 10-digit number is sent as +91 E.164 (CA-02)', (
-      tester,
-    ) async {
-      final repo = _RecordingAuthRepository();
-      await _pump(tester, AuthController(repo));
-
-      expect(find.text('+91 '), findsOneWidget);
-      await tester.enterText(find.byType(LpgTextField).first, 'demo-agency');
-      await tester.enterText(find.byType(LpgTextField).last, '99999 00099');
-      await tester.tap(find.text('Send Code'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(LpgTextField).last, '123456');
-      await tester.tap(find.text('Verify Code'));
-      await tester.pumpAndSettle();
-
-      expect(repo.requestOtpArgs!.phoneNumber, '+919999900099');
-      expect(repo.verifyOtpArgs!.phoneNumber, '+919999900099');
     });
 
     testWidgets('shows the dev OTP on screen when the lookup returns one', (

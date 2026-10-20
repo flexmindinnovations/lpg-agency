@@ -1,7 +1,6 @@
 import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
@@ -31,9 +30,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _codeRequested = false;
 
-  /// The number the code was sent to, in E.164 — what verify must send.
-  String? _requestedPhone;
-
   /// Testing only: the code read back from the backend's dev inbox so a tester
   /// can sign in without an SMS. Null in production (route absent). Remove with
   /// the SMS/WhatsApp gateway integration.
@@ -52,9 +48,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _requestCode() async {
     debugPrint('LoginScreen: _requestCode called');
     final tenantId = _tenantIdController.text.trim();
-    final rawPhone = _phoneController.text.trim();
+    final phone = _phoneController.text.trim();
 
-    if (tenantId.isEmpty || rawPhone.isEmpty) {
+    if (tenantId.isEmpty || phone.isEmpty) {
       setState(
         () => _errorMessage = 'Please enter both Agency Code and Phone number.',
       );
@@ -67,14 +63,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // was created with (e.g. `dev-tenant`), not a fixed pattern. An
     // earlier version of this screen validated against an invented
     // `AB123456`-style regex that no real tenant's slug would ever match.
-    // The backend matches accounts on E.164 (`+919876543210`); people type
-    // ten digits, or add 0 / 91 / spaces. Normalise here (CA-02).
-    final phone = PhoneNumbers.normalize(rawPhone);
-    if (phone == null) {
-      setState(
-        () => _errorMessage =
-            'Enter your 10-digit mobile number, for example 98765 43210.',
-      );
+    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(phone)) {
+      setState(() => _errorMessage = 'Please enter a valid phone number.');
       return;
     }
 
@@ -101,7 +91,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         onSuccess: (_) {
           debugPrint('LoginScreen: OTP requested successfully');
           _codeRequested = true;
-          _requestedPhone = phone;
           _testingOtp = testingOtp;
         },
         onFailure: (failure) {
@@ -135,13 +124,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
-    debugPrint('LoginScreen: Verifying OTP for $_requestedPhone');
+    debugPrint(
+      'LoginScreen: Verifying OTP for ${_phoneController.text.trim()}',
+    );
 
     final result = await ref
         .read(authControllerProvider)
         .verifyOtp(
           tenantId: _tenantIdController.text.trim(),
-          phoneNumber: _requestedPhone!,
+          phoneNumber: _phoneController.text.trim(),
           code: _codeController.text.trim(),
         );
 
@@ -197,7 +188,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: LpgSpacing.sm),
                       Text(
                         _codeRequested
-                            ? 'Enter the code we sent to $_requestedPhone'
+                            ? 'Enter the code we sent to ${_phoneController.text.trim()}'
                             : 'Sign in with your phone number',
                         style: text.bodyLarge?.copyWith(
                           color: colors.textSecondary,
@@ -228,20 +219,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: LpgSpacing.mdl),
                         LpgTextField(
-                          label: 'Mobile number',
+                          label: 'Phone number',
                           prefixIcon: LpgIcons.phone,
-                          // India's code is shown, so a 10-digit number is
-                          // all anyone needs to type (CA-02).
-                          prefixText: '${PhoneNumbers.indiaDialCode} ',
-                          hintText: '10-digit mobile number',
                           controller: _phoneController,
                           enabled: !_codeRequested,
                           keyboardType: TextInputType.phone,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9+\s\-]'),
-                            ),
-                          ],
                           autofillHints: const [AutofillHints.telephoneNumber],
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _requestCode(),
