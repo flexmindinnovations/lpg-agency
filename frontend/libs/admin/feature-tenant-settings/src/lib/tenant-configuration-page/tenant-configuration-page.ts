@@ -1,5 +1,12 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -245,8 +252,8 @@ class ConfigKeyCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openCreateDrawer()">
               <i class="pi pi-plus"></i><span>Set Value</span>
@@ -413,6 +420,13 @@ class ConfigKeyCell {
   ],
 })
 export class TenantConfigurationPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('tenant-configuration');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly configService = inject(AdminTenantConfigurationService);
   private readonly notify = inject(NotifyService);

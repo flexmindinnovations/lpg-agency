@@ -462,6 +462,25 @@ export class DataGridComponent<TRow = unknown> {
     this.scheduleCellRendererRefresh();
   }
 
+  /**
+   * Download what the grid shows as CSV (DA-14): visible columns, current
+   * sort and quick filter, every page, with each cell as rendered by its
+   * `valueFormatter` (names and formatted dates rather than ids and ISO
+   * strings). AG Grid Community's own exporter — no extra dependency.
+   */
+  exportCsv(fileName: string): void {
+    this.gridApi?.exportDataAsCsv({
+      fileName: fileName.endsWith('.csv') ? fileName : `${fileName}.csv`,
+      processCellCallback: (params) => {
+        const formatter = this.columns().find(
+          (column) => column.field === params.column.getColId(),
+        )?.valueFormatter;
+        if (!formatter || !params.node?.data) return String(params.value ?? '');
+        return formatter(params.value, params.node.data as TRow);
+      },
+    });
+  }
+
   protected onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectionChange.emit(selectedRows as TRow[]);

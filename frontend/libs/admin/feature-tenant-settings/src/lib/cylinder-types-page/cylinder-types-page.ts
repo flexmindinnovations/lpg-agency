@@ -1,5 +1,12 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -81,8 +88,8 @@ class CylinderTypeStatusCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openCreateDrawer()">
               <i class="pi pi-plus"></i><span>Add Cylinder Type</span>
@@ -205,6 +212,13 @@ class CylinderTypeStatusCell {
   ],
 })
 export class CylinderTypesPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('cylinder-types');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly notify = inject(NotifyService);
