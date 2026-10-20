@@ -76,3 +76,28 @@ class PrincipalResponse(BaseModel):
     # The staff member's home branch (null for tenant-wide roles) — the
     # dashboard's default wherever a form asks for a branch.
     branch_id: str | None = None
+    #: The person's own name from My Profile, when they have set one.
+    display_name: str | None = None
+
+
+class MyProfileResponse(BaseModel):
+    """`GET`/`PATCH /auth/me/profile` (DA-30)."""
+
+    user_id: str
+    email: str | None
+    role: str
+    display_name: str | None
+    contact_phone: str | None
+
+
+class UpdateMyProfileRequest(BaseModel):
+    display_name: str | None = Field(default=None, max_length=120)
+    #: A contact number for colleagues; never a sign-in identifier.
+    contact_phone: str | None = Field(default=None, max_length=20)
+
+
+class ChangeMyPasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1)
+    #: Length policy (`Settings.password_min_length`) is checked by the use
+    #: case, which reports it against this field.
+    new_password: str = Field(min_length=1, max_length=256)

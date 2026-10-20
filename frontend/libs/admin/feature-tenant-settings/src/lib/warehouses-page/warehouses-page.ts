@@ -1,5 +1,14 @@
+import { selectableByName, notBlank } from '@lpg/shared/util';
+import { ConfirmationService } from 'primeng/api';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -148,7 +157,7 @@ class WarehouseStatusCell {
               <p-select
                 inputId="warehouse-branch"
                 formControlName="branchId"
-                [options]="branches()"
+                [options]="selectableBranches()"
                 optionLabel="name"
                 optionValue="id"
                 appendTo="body"
@@ -229,9 +238,12 @@ export class WarehousesPage implements OnInit {
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly branchService = inject(AdminBranchService);
   private readonly notify = inject(NotifyService);
+  private readonly confirmation = inject(ConfirmationService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
+  /** Only active, named branches can be picked (DA-19). */
+  protected readonly selectableBranches = computed(() => selectableByName(this.branches()));
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
 
@@ -257,7 +269,7 @@ export class WarehousesPage implements OnInit {
 
   protected readonly form = this.formBuilder.group({
     branchId: ['', [Validators.required]],
-    name: ['', [Validators.required]],
+    name: ['', [Validators.required, notBlank]],
     addressLine: ['', [Validators.required]],
   });
 
@@ -307,7 +319,21 @@ export class WarehousesPage implements OnInit {
   }
 
   protected toggleActive(warehouse: WarehouseResponse): void {
-    const nextActive = !warehouse.is_active;
+    if (!warehouse.is_active) {
+      this.setActive(warehouse, true);
+      return;
+    }
+    this.confirmation.confirm({
+      header: 'Deactivate godown?',
+      message: `"${warehouse.name}" will no longer be offered in forms. You can activate it again later.`,
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.setActive(warehouse, false),
+    });
+  }
+
+  private setActive(warehouse: WarehouseResponse, nextActive: boolean): void {
     this.warehouseService.setActive(warehouse.id, nextActive).subscribe({
       next: () => {
         this.notify.success(`"${warehouse.name}" ${nextActive ? 'activated' : 'deactivated'}.`);

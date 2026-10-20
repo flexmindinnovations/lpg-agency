@@ -27,6 +27,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
+from lpg.api.v1.dependencies.admin import get_audit_trail, get_staff_user_repository
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_customer_login_provisioner,
@@ -41,13 +42,16 @@ from lpg.api.v1.dependencies.identity import (
     get_refresh_token_repository,
     get_tenant_slug_resolver,
     get_token_hasher,
+    require_phone_rate_limit,
     require_rate_limit,
 )
 from lpg.api.v1.dependencies.license import get_license_status_checker
 from lpg.api.v1.dependencies.tenant import get_tenant_status_checker
 from lpg.api.v1.schemas.identity import (
+    ChangeMyPasswordRequest,
     LoginRequest,
     LogoutRequest,
+    MyProfileResponse,
     OtpRequestRequest,
     OtpVerifyRequest,
     PasswordForgotRequest,
@@ -55,10 +59,20 @@ from lpg.api.v1.schemas.identity import (
     PrincipalResponse,
     RefreshRequest,
     TokenResponse,
+    UpdateMyProfileRequest,
 )
+from lpg.application.audit.ports import AuditTrail
 from lpg.application.common.errors import RefreshTokenInvalidError
 from lpg.application.identity.login import LoginCommand, LoginUseCase
 from lpg.application.identity.logout import LogoutCommand, LogoutUseCase
+from lpg.application.identity.my_profile import (
+    ChangeMyPasswordCommand,
+    ChangeMyPasswordUseCase,
+    GetMyProfileQuery,
+    GetMyProfileUseCase,
+    UpdateMyProfileCommand,
+    UpdateMyProfileUseCase,
+)
 from lpg.application.identity.otp_request import RequestOtpCommand, RequestOtpUseCase
 from lpg.application.identity.otp_verify import VerifyOtpCommand, VerifyOtpUseCase
 from lpg.application.identity.password_reset import (
@@ -79,6 +93,7 @@ from lpg.application.identity.ports import (
     PasswordResetTokenRepository,
     PermissionRepository,
     RefreshTokenRepository,
+    StaffUserRepository,
     TenantSlugResolver,
     TokenHasher,
 )
@@ -87,6 +102,7 @@ from lpg.application.identity.tokens import TokenPair
 from lpg.application.license.ports import LicenseStatusChecker
 from lpg.application.tenant.status import TenantStatusChecker
 from lpg.config.settings import Settings, get_settings
+from lpg.domain.identity.user import IdentityUser
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -175,9 +191,19 @@ async def otp_request(
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
+    # CA-03: 5 codes an hour per number; the per-IP limit is generous because
+    # many customers can share one carrier NAT or office router.
     _rate_limit: Annotated[
         None,
-        Depends(require_rate_limit(key_prefix="auth:otp_request", limit=5, window_seconds=3600)),
+        Depends(require_rate_limit(key_prefix="auth:otp_request", limit=30, window_seconds=3600)),
+    ],
+    _phone_rate_limit: Annotated[
+        None,
+        Depends(
+            require_phone_rate_limit(
+                key_prefix="auth:otp_request:phone", limit=5, window_seconds=3600
+            )
+        ),
     ],
 ) -> None:
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
@@ -305,6 +331,7 @@ async def password_forgot(
         token_hasher,
         email_sender,
         reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+        link_base=settings.dashboard_url,
     )
     # Always 204, regardless of whether the email matched an account — the
     # use case itself already guarantees no user-enumeration; the router
@@ -336,6 +363,7 @@ async def me(
     user_repository: Annotated[IdentityUserRepository, Depends(get_identity_user_repository)],
 ) -> PrincipalResponse:
     email = None
+    display_name = getattr(principal, "user_display_name", None)
     if principal.user_id is not None:
         user = await user_repository.get(principal.user_id)
         email = user.email if user else None
@@ -346,4 +374,86 @@ async def me(
         permissions=sorted(principal.permission_codes),
         email=email,
         branch_id=str(principal.branch_id) if principal.branch_id else None,
+        display_name=display_name if display_name and display_name != email else None,
+    )
+
+
+# -- My Profile (DA-30) ---------------------------------------------------------------
+
+
+def _own_user_id(principal: AuthenticatedPrincipal) -> uuid.UUID:
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    return principal.user_id
+
+
+def _profile_response(user: IdentityUser) -> MyProfileResponse:
+    return MyProfileResponse(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role,
+        display_name=user.display_name,
+        contact_phone=user.contact_phone,
+    )
+
+
+@router.get("/me/profile", response_model=MyProfileResponse, summary="Your own profile")
+async def get_my_profile(
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+) -> MyProfileResponse:
+    user = await GetMyProfileUseCase(repository).execute(
+        GetMyProfileQuery(user_id=_own_user_id(principal))
+    )
+    return _profile_response(user)
+
+
+@router.patch(
+    "/me/profile", response_model=MyProfileResponse, summary="Edit your own name and phone"
+)
+async def update_my_profile(
+    body: UpdateMyProfileRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+) -> MyProfileResponse:
+    user = await UpdateMyProfileUseCase(repository, audit).execute(
+        UpdateMyProfileCommand(
+            user_id=_own_user_id(principal),
+            display_name=body.display_name,
+            contact_phone=body.contact_phone,
+        )
+    )
+    return _profile_response(user)
+
+
+@router.post(
+    "/me/password",
+    status_code=204,
+    summary="Change your own password",
+    description="Requires the current password. 422 with field errors when it is wrong "
+    "or the new one breaks the password policy.",
+)
+async def change_my_password(
+    body: ChangeMyPasswordRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    password_hasher: Annotated[PasswordHasher, Depends(get_password_hasher)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+    _rate_limit: Annotated[
+        None,
+        Depends(
+            require_rate_limit(key_prefix="auth:password_change", limit=10, window_seconds=3600)
+        ),
+    ],
+) -> None:
+    await ChangeMyPasswordUseCase(
+        repository, password_hasher, audit, min_length=settings.password_min_length
+    ).execute(
+        ChangeMyPasswordCommand(
+            user_id=_own_user_id(principal),
+            current_password=body.current_password,
+            new_password=body.new_password,
+        )
     )

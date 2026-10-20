@@ -4,14 +4,18 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '@lpg/shared/data-access';
 import { ResetPasswordPage } from './reset-password-page';
 
-function configure(queryParams: Record<string, string>, authServiceMock: unknown) {
+function configure(
+  queryParams: Record<string, string>,
+  authServiceMock: unknown,
+  data: Record<string, string> = {},
+) {
   return TestBed.configureTestingModule({
     imports: [ResetPasswordPage],
     providers: [
       { provide: AuthService, useValue: authServiceMock },
       {
         provide: ActivatedRoute,
-        useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+        useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams), data } },
       },
     ],
   }).compileComponents();
@@ -86,5 +90,28 @@ describe('ResetPasswordPage', () => {
     component['submit']();
 
     expect(component['errorMessage']()).toContain('expired');
+  });
+
+  it('uses set-up wording when opened from an invitation link', async () => {
+    const authServiceMock = { confirmPasswordReset: jest.fn().mockReturnValue(of(undefined)) };
+    await configure({ token: 'invite-token' }, authServiceMock, { mode: 'setup' });
+
+    const fixture = TestBed.createComponent(ResetPasswordPage);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Set your password');
+
+    const component = fixture.componentInstance;
+    component['form'].setValue({
+      newPassword: 'my-first-passphrase',
+      confirmPassword: 'my-first-passphrase',
+    });
+    component['submit']();
+    fixture.detectChanges();
+
+    expect(authServiceMock.confirmPasswordReset).toHaveBeenCalledWith(
+      'invite-token',
+      'my-first-passphrase',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Your password is set');
   });
 });

@@ -23,6 +23,7 @@ export * from './lib/license.service';
 export * from './lib/license-status.store';
 export * from './lib/license.guard';
 export * from './lib/admin-staff-user.service';
+export * from './lib/my-profile.service';
 export * from './lib/admin-audit-log.service';
 export * from './lib/admin-employee.service';
 export * from './lib/customer.service';

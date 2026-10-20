@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { InputPassword } from 'primeng/inputpassword';
@@ -27,6 +27,24 @@ function loginErrorMessageFor(error: unknown): string {
         ? error.detail
         : 'Something went wrong signing in. Please try again.';
   }
+}
+
+/**
+ * The page to return to after sign-in: the `returnUrl` `authGuard` set, when
+ * it is an internal path this kind of session can open — otherwise the
+ * default (`/platform` for `super_admin`, Home for everyone else). Never an
+ * absolute or protocol-relative URL (open-redirect protection).
+ */
+export function postLoginUrl(returnUrl: string | null, isPlatformSession: boolean): string {
+  const fallback = isPlatformSession ? '/platform' : '/';
+  if (!returnUrl || !returnUrl.startsWith('/') || returnUrl.startsWith('//')) {
+    return fallback;
+  }
+  if (returnUrl.includes('\\') || returnUrl.startsWith('/login')) {
+    return fallback;
+  }
+  const isPlatformUrl = returnUrl === '/platform' || returnUrl.startsWith('/platform/');
+  return isPlatformUrl === isPlatformSession ? returnUrl : fallback;
 }
 
 /**
@@ -89,10 +107,7 @@ function loginErrorMessageFor(error: unknown): string {
             label="Password"
             for="login-password"
             [control]="form.controls.password"
-            [messages]="{
-              required: 'Password is required.',
-              minlength: 'Password must be at least 12 characters.',
-            }"
+            [messages]="{ required: 'Password is required.' }"
           >
             <div class="password-field">
               <input
@@ -233,6 +248,7 @@ export class LoginPage {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -245,7 +261,8 @@ export class LoginPage {
 
   protected readonly form = this.formBuilder.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(12)]],
+    // No length rule here: sign-in checks the password, it does not set one.
+    password: ['', [Validators.required]],
   });
 
   protected passwordVisible(): boolean {
@@ -271,22 +288,13 @@ export class LoginPage {
 
     this.authService.login(email, password).subscribe({
       next: () => {
-        // A genuine `super_admin` session has no tenant dashboard to land
-        // on (D-01) — default it into the Platform Console instead. Anyone
-        // else holding `ai:read` lands on the AI Command Center instead of
-        // the Agency Overview dashboard, per the user's own request — it's
-        // the page most of this feature's audience actually wants first.
-        // Always this smart default now, never a preserved `redirectTo` —
-        // `authGuard` deliberately stopped setting one (see its own
-        // docstring): it can't tell "session just expired mid-use" apart
-        // from "never authenticated, deep link", and bouncing back to
-        // whatever page triggered a forced re-login was the wrong default
-        // for the former.
-        const principal = this.authService.principal();
-        const isPlatformSession = principal?.role === 'super_admin';
-        const isAiEligible = !isPlatformSession && !!principal?.permissions.has('ai:read');
-        const defaultRoute = isPlatformSession ? '/platform' : isAiEligible ? '/ai-assistant' : '/';
-        void this.router.navigateByUrl(defaultRoute);
+        // A `super_admin` session has no tenant dashboard (D-01) — it goes to
+        // the Platform Console. Everyone else lands on Home, which works
+        // whether or not the AI Assistant is enabled (DA-26). A `returnUrl`
+        // from `authGuard` wins when it is safe (`postLoginUrl`).
+        const isPlatformSession = this.authService.principal()?.role === 'super_admin';
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        void this.router.navigateByUrl(postLoginUrl(returnUrl, isPlatformSession));
       },
       error: (error: unknown) => {
         this.submitting.set(false);

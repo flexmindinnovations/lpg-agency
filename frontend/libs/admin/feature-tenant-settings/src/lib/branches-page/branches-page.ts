@@ -1,3 +1,5 @@
+import { notBlank } from '@lpg/shared/util';
+import { ConfirmationService } from 'primeng/api';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -199,6 +201,7 @@ export class BranchesPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly branchService = inject(AdminBranchService);
   private readonly notify = inject(NotifyService);
+  private readonly confirmation = inject(ConfirmationService);
 
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
@@ -227,7 +230,7 @@ export class BranchesPage implements OnInit {
   ];
 
   protected readonly form = this.formBuilder.group({
-    name: ['', [Validators.required]],
+    name: ['', [Validators.required, notBlank, Validators.maxLength(200)]],
     region: [''],
   });
 
@@ -276,7 +279,21 @@ export class BranchesPage implements OnInit {
   }
 
   protected toggleActive(branch: BranchResponse): void {
-    const nextActive = !branch.is_active;
+    if (!branch.is_active) {
+      this.setActive(branch, true);
+      return;
+    }
+    this.confirmation.confirm({
+      header: 'Deactivate branch?',
+      message: `"${branch.name}" will no longer be offered in forms. You can activate it again later.`,
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.setActive(branch, false),
+    });
+  }
+
+  private setActive(branch: BranchResponse, nextActive: boolean): void {
     this.branchService.setActive(branch.id, nextActive).subscribe({
       next: () => {
         this.notify.success(`"${branch.name}" ${nextActive ? 'activated' : 'deactivated'}.`);

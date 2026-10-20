@@ -1,3 +1,4 @@
+import { selectableByName } from '@lpg/shared/util';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
@@ -244,7 +245,7 @@ type PriceRow = PriceListEntryResponse & {
               <p-select
                 inputId="price-branch"
                 formControlName="branchId"
-                [options]="branches()"
+                [options]="selectableBranches()"
                 optionLabel="name"
                 optionValue="id"
                 placeholder="Tenant-wide default"
@@ -362,6 +363,8 @@ export class PriceListPage implements OnInit {
   protected readonly prices = signal<PriceListEntryResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
+  /** Only active, named branches can be picked (DA-19). */
+  protected readonly selectableBranches = computed(() => selectableByName(this.branches()));
   protected readonly searchQuery = signal('');
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);

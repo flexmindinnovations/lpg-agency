@@ -49,7 +49,8 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      }
+      },
+      "dependsOn": ["ensure-prime-license"]
     },
     "serve": {
       "continuous": true,
@@ -62,7 +63,8 @@
         "development": {
           "buildTarget": "dashboard:build:development"
         }
-      }
+      },
+      "dependsOn": ["ensure-prime-license"]
     },
     "lint": {
       "executor": "@nx/eslint:lint"
@@ -73,7 +75,8 @@
       "options": {
         "jestConfig": "apps/dashboard/jest.config.cts",
         "tsConfig": "apps/dashboard/tsconfig.spec.json"
-      }
+      },
+      "dependsOn": ["ensure-prime-license"]
     },
     "serve-static": {
       "continuous": true,
@@ -84,6 +87,14 @@
         "staticFilePath": "dist/apps/dashboard/browser",
         "spa": true
       }
+    },
+    "ensure-prime-license": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/ensure-prime-license.mjs",
+        "cwd": "{workspaceRoot}"
+      },
+      "cache": false
     }
   }
 }

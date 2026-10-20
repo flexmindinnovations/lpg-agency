@@ -3,6 +3,8 @@
 
 export interface StaffUserResponse {
   branch_id: (string | null);
+  contact_phone?: (string | null);
+  display_name?: (string | null);
   email: (string | null);
   id: string;
   is_active: boolean;

@@ -564,6 +564,12 @@ export class OrderDetail implements OnInit {
   }
 
   private loadActiveTrips(branchId: string): void {
+    // `/routes` needs `routes:read`; roles without it (e.g. an accountant)
+    // would only get a 403 — skip the call (DO-31).
+    if (!this.auth.principal()?.permissions.has('routes:read')) {
+      this.activeTrips.set([]);
+      return;
+    }
     forkJoin(
       ACTIVE_TRIP_STATUSES.map((status) =>
         this.deliveryService.listRoutes(1, 100, status, branchId),

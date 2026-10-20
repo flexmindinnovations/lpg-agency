@@ -195,6 +195,19 @@ class License(AggregateRoot):
             raise InvariantViolation(msg, license_id=str(self.id))
         self._activated_at = at
 
+    def replace_key(self, *, key_hash: str, key_prefix: str) -> None:
+        """Swap in a newly generated key for a licence nobody activated yet.
+
+        The plaintext key is shown once, at issue; if it is lost before
+        activation (QA finding DA-09: the issue dialog was closed) the only
+        recovery is a new key. An activated or revoked licence keeps its key.
+        """
+        if self._revoked_at is not None or self._activated_at is not None:
+            msg = "Only a licence that is waiting for activation can get a new key."
+            raise InvariantViolation(msg, license_id=str(self.id))
+        self._key_hash = key_hash
+        self._key_prefix = key_prefix
+
     def revoke(self, *, at: datetime) -> None:
         if self._revoked_at is not None:
             msg = "This license has already been revoked."

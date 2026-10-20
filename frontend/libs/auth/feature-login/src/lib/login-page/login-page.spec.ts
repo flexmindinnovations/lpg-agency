@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '@lpg/shared/data-access';
-import { LoginPage } from './login-page';
+import { LoginPage, postLoginUrl } from './login-page';
 
 describe('LoginPage', () => {
   let authServiceMock: { login: jest.Mock; principal: jest.Mock };
@@ -89,7 +89,7 @@ describe('LoginPage', () => {
     expect(navigateByUrlSpy).toHaveBeenCalledWith('/');
   });
 
-  it('defaults an ai:read-holding non-platform session to /ai-assistant', () => {
+  it('lands an ai:read-holding session on Home, not the AI Assistant', () => {
     authServiceMock.login.mockReturnValue(of(undefined));
     authServiceMock.principal.mockReturnValue({
       role: 'manager',
@@ -103,7 +103,7 @@ describe('LoginPage', () => {
 
     component['submit']();
 
-    expect(navigateByUrlSpy).toHaveBeenCalledWith('/ai-assistant');
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/');
   });
 
   it('a super_admin session still defaults to /platform even if it somehow also holds ai:read', () => {
@@ -184,5 +184,46 @@ describe('LoginPage', () => {
     component['submit']();
 
     expect(component['errorMessage']()).toContain('Something went wrong signing in');
+  });
+
+  it('accepts a short password on the sign-in form', () => {
+    const fixture = TestBed.createComponent(LoginPage);
+    fixture.detectChanges();
+    const form = fixture.componentInstance['form'];
+    form.setValue({ email: 'a@example.com', password: 'short' });
+    expect(form.valid).toBe(true);
+  });
+
+  it('returns to the returnUrl after sign-in', () => {
+    authServiceMock.login.mockReturnValue(of(undefined));
+    authServiceMock.principal.mockReturnValue({ role: 'manager', permissions: new Set() });
+    const fixture = TestBed.createComponent(LoginPage);
+    const route = fixture.componentInstance['route'];
+    jest
+      .spyOn(route.snapshot.queryParamMap, 'get')
+      .mockImplementation((key: string) => (key === 'returnUrl' ? '/orders/42' : null));
+    fixture.detectChanges();
+    fixture.componentInstance['form'].setValue({ email: 'm@example.com', password: 'pw' });
+
+    fixture.componentInstance['submit']();
+
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/orders/42');
+  });
+});
+
+describe('postLoginUrl', () => {
+  it.each([
+    [null, false, '/'],
+    ['/orders?status=open', false, '/orders?status=open'],
+    ['//evil.example', false, '/'],
+    ['https://evil.example', false, '/'],
+    ['/\\evil.example', false, '/'],
+    ['/login', false, '/'],
+    ['/platform/licenses', false, '/'],
+    ['/platform/licenses', true, '/platform/licenses'],
+    ['/orders', true, '/platform'],
+    [null, true, '/platform'],
+  ])('postLoginUrl(%p, platform=%p) -> %p', (returnUrl, isPlatform, expected) => {
+    expect(postLoginUrl(returnUrl, isPlatform)).toBe(expected);
   });
 });

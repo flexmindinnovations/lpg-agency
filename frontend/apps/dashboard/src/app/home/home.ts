@@ -37,6 +37,7 @@ import {
   WebSocketService,
 } from '@lpg/shared/data-access';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SetupChecklist } from './setup-checklist/setup-checklist';
 
 interface KpiData {
   title: string;
@@ -93,6 +94,7 @@ function statusLabel(status: string): string {
     ActivityListComponent,
     EmptyStateComponent,
     SkeletonComponent,
+    SetupChecklist,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -103,6 +105,8 @@ function statusLabel(status: string): string {
           subtitle="Live summary of your agency's operational data across every module."
         />
       </ng-template>
+
+      <lpg-setup-checklist />
 
       <!-- KPI Section — each card links to the module it summarises. -->
       <section class="dashboard__kpis">

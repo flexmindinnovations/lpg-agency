@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, StringConstraints
 
 from lpg.domain.tenant.tenant import (
     NAME_MAX_LENGTH,
@@ -69,7 +69,7 @@ class AgencyUserSetupResponse(BaseModel):
     user_id: str
     email: str | None
     role: str
-    #: `/reset-password?token=...` - prefix it with the site's origin.
+    #: `/set-password?token=...` - prefix it with the site's origin.
     setup_path: str
     setup_token_expires_at: datetime
 
@@ -88,17 +88,21 @@ class BranchResponse(BaseModel):
     is_active: bool
 
 
+#: Trimmed before length checks, so a name of only spaces is a 422 (DA-19).
+_BranchName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
 class CreateBranchRequest(BaseModel):
-    name: str = Field(min_length=1)
-    region: str | None = None
+    name: _BranchName
+    region: str | None = Field(default=None, max_length=200)
 
 
 class RenameBranchRequest(BaseModel):
-    name: str = Field(min_length=1)
+    name: _BranchName
 
 
 class SetBranchRegionRequest(BaseModel):
-    region: str | None = None
+    region: str | None = Field(default=None, max_length=200)
 
 
 class SetBranchActiveRequest(BaseModel):
@@ -289,6 +293,9 @@ class StaffUserResponse(BaseModel):
     role: str
     branch_id: str | None
     is_active: bool
+    #: The name and contact number the person set in My Profile, if any.
+    display_name: str | None = None
+    contact_phone: str | None = None
 
 
 class InviteStaffUserRequest(BaseModel):
@@ -325,3 +332,15 @@ class AuditLogEntryResponse(BaseModel):
 class AuditLogPageResponse(BaseModel):
     items: list[AuditLogEntryResponse]
     next_cursor: str | None
+
+
+# -- Setup checklist (DA-32) ----------------------------------------------------------
+
+
+class SetupProgressResponse(BaseModel):
+    """Which first-time setup steps the agency has done, in the order to do
+    them. Keys: branch, warehouse, cylinder_types, prices, gst, staff, drivers,
+    vehicles."""
+
+    steps: dict[str, bool]
+    complete: bool

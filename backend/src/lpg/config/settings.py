@@ -91,6 +91,9 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:4200"]
     )
     cors_allow_credentials: bool = True
+    #: Public origin of the Dashboard, used to build the absolute links in
+    #: invite / set-password / reset-password emails.
+    dashboard_url: str = "http://localhost:4200"
 
     # -- Database ---------------------------------------------------------
     # The application connects as a non-superuser role without BYPASSRLS, so

@@ -13,13 +13,20 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command
-from lpg.application.common.errors import LicenseAlreadyIssuedError, NotFoundError
+from lpg.application.common.errors import (
+    ConflictError,
+    LicenseAlreadyIssuedError,
+    NotFoundError,
+)
+from lpg.application.license.activate_license import sync_tenant_with_license
+from lpg.domain.common.base import InvariantViolation
 from lpg.domain.license.license import License
 
 if TYPE_CHECKING:
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.identity.ports import TokenHasher
     from lpg.application.license.ports import LicenseRepository, LicenseStatusChecker
+    from lpg.application.tenant.ports import TenantRepository
 
 
 def _generate_license_key() -> str:
@@ -31,6 +38,10 @@ def _generate_license_key() -> str:
     encoded = base64.b32encode(raw).decode("ascii")  # 16 chars, no padding
     groups = [encoded[i : i + 4] for i in range(0, len(encoded), 4)]
     return "LPG-" + "-".join(groups)
+
+
+def _key_prefix(plaintext_key: str) -> str:
+    return "-".join(plaintext_key.split("-")[:2])  # e.g. "LPG-7K2M"
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +74,7 @@ class IssueLicenseUseCase:
             raise LicenseAlreadyIssuedError(msg, tenant_id=str(command.tenant_id))
 
         plaintext_key = _generate_license_key()
-        key_prefix = "-".join(plaintext_key.split("-")[:2])  # e.g. "LPG-7K2M"
+        key_prefix = _key_prefix(plaintext_key)
 
         license_ = License(
             uuid.uuid4(),
@@ -76,6 +87,49 @@ class IssueLicenseUseCase:
             device_caps=command.device_caps,
         )
         await self._repository.add(license_)
+        await self._unit_of_work.commit()
+        return license_, plaintext_key
+
+
+@dataclass(frozen=True, slots=True)
+class ReplaceLicenseKeyCommand(Command):
+    tenant_id: uuid.UUID
+
+
+class ReplaceLicenseKeyUseCase:
+    """Generate a new key for a licence still waiting for activation (DA-9).
+
+    The plaintext key is shown once, when the licence is issued. If the Super
+    Admin closed that dialog without activating or copying it, the licence
+    could never be activated from the UI. This mints a fresh key (the old one
+    stops working) and returns its plaintext once, exactly like issuing.
+    """
+
+    def __init__(
+        self,
+        repository: LicenseRepository,
+        token_hasher: TokenHasher,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._repository = repository
+        self._token_hasher = token_hasher
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ReplaceLicenseKeyCommand) -> tuple[License, str]:
+        license_ = await self._repository.get_by_tenant_id(command.tenant_id)
+        if license_ is None:
+            msg = f"No licence exists for tenant '{command.tenant_id}'."
+            raise NotFoundError(msg, tenant_id=str(command.tenant_id))
+
+        plaintext_key = _generate_license_key()
+        try:
+            license_.replace_key(
+                key_hash=self._token_hasher.hash(plaintext_key),
+                key_prefix=_key_prefix(plaintext_key),
+            )
+        except InvariantViolation as exc:
+            raise ConflictError(exc.message, tenant_id=str(command.tenant_id)) from exc
+        await self._repository.save(license_)
         await self._unit_of_work.commit()
         return license_, plaintext_key
 
@@ -116,9 +170,15 @@ class SetLicensePlanTierCommand(Command):
 
 
 class SetLicensePlanTierUseCase:
-    def __init__(self, repository: LicenseRepository, unit_of_work: UnitOfWork) -> None:
+    def __init__(
+        self,
+        repository: LicenseRepository,
+        unit_of_work: UnitOfWork,
+        tenant_repository: TenantRepository | None = None,
+    ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
+        self._tenant_repository = tenant_repository
 
     async def execute(self, command: SetLicensePlanTierCommand) -> None:
         license_ = await self._repository.get_by_tenant_id(command.tenant_id)
@@ -133,6 +193,8 @@ class SetLicensePlanTierUseCase:
         license_.set_plan_tier(command.plan_tier)
 
         await self._repository.save(license_)
+        if license_.activated_at is not None:
+            await sync_tenant_with_license(self._tenant_repository, license_)
         await self._unit_of_work.commit()
 
 

@@ -146,6 +146,8 @@ class SqlAlchemyLicenseRepository:
             msg = f"Cannot save license {license.id} — no matching row was loaded."
             raise LookupError(msg)
 
+        row.key_hash = license.key_hash
+        row.key_prefix = license.key_prefix
         row.plan_tier = license.plan_tier
         row.device_caps = license.device_caps
         row.activated_at = license.activated_at

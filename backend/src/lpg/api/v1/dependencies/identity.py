@@ -98,6 +98,42 @@ def require_rate_limit(
     return _dependency
 
 
+def require_phone_rate_limit(
+    *, key_prefix: str, limit: int, window_seconds: int
+) -> Callable[[Request], Coroutine[None, None, None]]:
+    """Per-phone-number limit for the OTP endpoints (CA-03).
+
+    `require_rate_limit` keys on the client IP only, so everyone behind one
+    carrier-grade NAT or office router shares a single budget. Throttling each
+    *number* is what actually stops OTP flooding and guessing; the per-IP limit
+    can then be generous. Reads `tenant_id`/`phone_number` from the JSON body
+    (Starlette caches it, so the endpoint still receives it). The key uses the
+    number's last 10 digits, so "+91 98765 43210" and "9876543210" share one
+    budget; this is only a throttling key - sign-in matching is unchanged. A
+    body it can't read is left to the endpoint's own validation.
+    """
+
+    async def _dependency(request: Request) -> None:
+        from lpg.infrastructure.rate_limit.limiter import RateLimiter
+
+        state, _settings = _get_app_state_and_settings()
+        if state.redis is None:
+            return
+        try:
+            body = await request.json()
+            tenant = str(body["tenant_id"]).strip().upper()
+            phone = "".join(ch for ch in str(body["phone_number"]) if ch.isdigit())[-10:]
+        except Exception:  # noqa: BLE001 - malformed body: the endpoint answers 422
+            return
+        if not phone:
+            return
+        await RateLimiter(state.redis).enforce(
+            key=f"{key_prefix}:{tenant}:{phone}", limit=limit, window_seconds=window_seconds
+        )
+
+    return _dependency
+
+
 def get_current_principal(
     tenant_context: Annotated[TenantContext, Depends(get_tenant_context)],
 ) -> AuthenticatedPrincipal:

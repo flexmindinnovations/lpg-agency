@@ -234,15 +234,6 @@
             "type": "string"
           },
           "from_status": {
-            "enum": [
-              "filled",
-              "empty",
-              "damaged",
-              "leakage",
-              "quarantine",
-              "repair",
-              "scrap"
-            ],
             "title": "From Status",
             "type": "string"
           },
@@ -258,15 +249,6 @@
             "type": "string"
           },
           "to_status": {
-            "enum": [
-              "filled",
-              "empty",
-              "damaged",
-              "leakage",
-              "quarantine",
-              "repair",
-              "scrap"
-            ],
             "title": "To Status",
             "type": "string"
           }
@@ -938,15 +920,6 @@
             "type": "string"
           },
           "from_status": {
-            "enum": [
-              "filled",
-              "empty",
-              "damaged",
-              "leakage",
-              "quarantine",
-              "repair",
-              "scrap"
-            ],
             "title": "From Status",
             "type": "string"
           },
@@ -956,15 +929,6 @@
             "type": "integer"
           },
           "to_status": {
-            "enum": [
-              "filled",
-              "empty",
-              "damaged",
-              "leakage",
-              "quarantine",
-              "repair",
-              "scrap"
-            ],
             "title": "To Status",
             "type": "string"
           }
@@ -991,6 +955,27 @@
           "status"
         ],
         "title": "ChangeEmployeeStatusRequest",
+        "type": "object"
+      },
+      "ChangeMyPasswordRequest": {
+        "properties": {
+          "current_password": {
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangeMyPasswordRequest",
         "type": "object"
       },
       "ComplaintAssignmentResponse": {
@@ -1477,6 +1462,7 @@
       "CreateBranchRequest": {
         "properties": {
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -1484,6 +1470,7 @@
           "region": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -2311,16 +2298,6 @@
             "title": "Serial Number",
             "type": "string"
           },
-          "test_due_basis": {
-            "default": "recorded",
-            "enum": [
-              "recorded",
-              "manufacture",
-              "unknown"
-            ],
-            "title": "Test Due Basis",
-            "type": "string"
-          },
           "test_due_date": {
             "anyOf": [
               {
@@ -3023,28 +3000,6 @@
             "title": "License Number",
             "type": "string"
           },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "phone_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phone Number"
-          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -3314,34 +3269,10 @@
       },
       "GoodsReceiptRequest": {
         "properties": {
-          "challan_number": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Challan Number"
-          },
           "cylinder_type_id": {
             "format": "uuid",
             "title": "Cylinder Type Id",
             "type": "string"
-          },
-          "invoice_number": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invoice Number"
           },
           "quantity_received": {
             "minimum": 1.0,
@@ -3351,12 +3282,6 @@
           "source_omc": {
             "anyOf": [
               {
-                "enum": [
-                  "iocl",
-                  "bpcl",
-                  "hpcl",
-                  "other"
-                ],
                 "type": "string"
               },
               {
@@ -3364,18 +3289,6 @@
               }
             ],
             "title": "Source Omc"
-          },
-          "truck_number": {
-            "anyOf": [
-              {
-                "maxLength": 20,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Truck Number"
           }
         },
         "required": [
@@ -3387,17 +3300,6 @@
       },
       "GoodsReceiptResponse": {
         "properties": {
-          "challan_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Challan Number"
-          },
           "cylinder_type_id": {
             "format": "uuid",
             "title": "Cylinder Type Id",
@@ -3418,17 +3320,6 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
-          },
-          "invoice_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Invoice Number"
           },
           "quantity_received": {
             "title": "Quantity Received",
@@ -3459,17 +3350,6 @@
             "format": "uuid",
             "title": "Tenant Id",
             "type": "string"
-          },
-          "truck_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Truck Number"
           },
           "warehouse_id": {
             "format": "uuid",
@@ -4618,6 +4498,61 @@
         "title": "MoveCylinderCustodyRequest",
         "type": "object"
       },
+      "MyProfileResponse": {
+        "description": "`GET`/`PATCH /auth/me/profile` (DA-30).",
+        "properties": {
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "role",
+          "display_name",
+          "contact_phone"
+        ],
+        "title": "MyProfileResponse",
+        "type": "object"
+      },
       "NextConsumerNumberResponse": {
         "properties": {
           "consumer_number": {
@@ -4698,155 +4633,6 @@
           "created_at"
         ],
         "title": "NotificationResponse",
-        "type": "object"
-      },
-      "OmcReturnRequest": {
-        "description": "Empties (or segregated defective cylinders) going back to the plant.",
-        "properties": {
-          "challan_number": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Challan Number"
-          },
-          "cylinder_type_id": {
-            "format": "uuid",
-            "title": "Cylinder Type Id",
-            "type": "string"
-          },
-          "destination_omc": {
-            "enum": [
-              "iocl",
-              "bpcl",
-              "hpcl",
-              "other"
-            ],
-            "title": "Destination Omc",
-            "type": "string"
-          },
-          "quantity": {
-            "minimum": 1.0,
-            "title": "Quantity",
-            "type": "integer"
-          },
-          "status": {
-            "default": "empty",
-            "enum": [
-              "empty",
-              "damaged",
-              "leakage",
-              "quarantine"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "truck_number": {
-            "anyOf": [
-              {
-                "maxLength": 20,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Truck Number"
-          }
-        },
-        "required": [
-          "cylinder_type_id",
-          "quantity",
-          "destination_omc"
-        ],
-        "title": "OmcReturnRequest",
-        "type": "object"
-      },
-      "OmcReturnResponse": {
-        "properties": {
-          "challan_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Challan Number"
-          },
-          "cylinder_type_id": {
-            "format": "uuid",
-            "title": "Cylinder Type Id",
-            "type": "string"
-          },
-          "destination_omc": {
-            "title": "Destination Omc",
-            "type": "string"
-          },
-          "dispatched_at": {
-            "format": "date-time",
-            "title": "Dispatched At",
-            "type": "string"
-          },
-          "dispatched_by": {
-            "format": "uuid",
-            "title": "Dispatched By",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "quantity": {
-            "title": "Quantity",
-            "type": "integer"
-          },
-          "return_number": {
-            "title": "Return Number",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "truck_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Truck Number"
-          },
-          "warehouse_id": {
-            "format": "uuid",
-            "title": "Warehouse Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "return_number",
-          "warehouse_id",
-          "cylinder_type_id",
-          "status",
-          "quantity",
-          "destination_omc",
-          "challan_number",
-          "truck_number",
-          "dispatched_by",
-          "dispatched_at"
-        ],
-        "title": "OmcReturnResponse",
         "type": "object"
       },
       "OnboardingDraftListResponse": {
@@ -5926,7 +5712,7 @@
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
-          "branch_id": {
+          "display_name": {
             "anyOf": [
               {
                 "type": "string"
@@ -5935,7 +5721,7 @@
                 "type": "null"
               }
             ],
-            "title": "Branch Id"
+            "title": "Display Name"
           },
           "email": {
             "anyOf": [
@@ -6772,15 +6558,6 @@
             "type": "string"
           },
           "status": {
-            "enum": [
-              "filled",
-              "empty",
-              "damaged",
-              "leakage",
-              "quarantine",
-              "repair",
-              "scrap"
-            ],
             "title": "Status",
             "type": "string"
           }
@@ -6791,22 +6568,6 @@
           "actual_quantity"
         ],
         "title": "ReconciliationRecordCreateRequest",
-        "type": "object"
-      },
-      "ReconciliationRecordListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ReconciliationRecordResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "ReconciliationRecordListResponse",
         "type": "object"
       },
       "ReconciliationRecordResponse": {
@@ -6858,66 +6619,9 @@
             "title": "Inventory Location Id",
             "type": "string"
           },
-          "recorded_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Recorded At"
-          },
           "recorded_by": {
             "format": "uuid",
             "title": "Recorded By",
-            "type": "string"
-          },
-          "rejected_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rejected At"
-          },
-          "rejected_by": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rejected By"
-          },
-          "rejection_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rejection Reason"
-          },
-          "state": {
-            "default": "pending",
-            "enum": [
-              "pending",
-              "approved",
-              "rejected"
-            ],
-            "title": "State",
             "type": "string"
           },
           "status": {
@@ -6948,21 +6652,6 @@
           "approved_at"
         ],
         "title": "ReconciliationRecordResponse",
-        "type": "object"
-      },
-      "ReconciliationRejectRequest": {
-        "properties": {
-          "reason": {
-            "maxLength": 1000,
-            "minLength": 3,
-            "title": "Reason",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "title": "ReconciliationRejectRequest",
         "type": "object"
       },
       "RecordCollectionRequest": {
@@ -7474,18 +7163,6 @@
             "title": "Cylinder Type Id",
             "type": "string"
           },
-          "last_tested_at": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Tested At"
-          },
           "manufacture_date": {
             "anyOf": [
               {
@@ -7524,18 +7201,6 @@
             "minLength": 1,
             "title": "Serial Number",
             "type": "string"
-          },
-          "test_due_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Test Due Date"
           }
         },
         "required": [
@@ -7837,6 +7502,7 @@
       "RenameBranchRequest": {
         "properties": {
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -8656,6 +8322,7 @@
           "region": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -8914,6 +8581,28 @@
         "title": "SetWarehouseActiveRequest",
         "type": "object"
       },
+      "SetupProgressResponse": {
+        "description": "Which first-time setup steps the agency has done, in the order to do\nthem. Keys: branch, warehouse, cylinder_types, prices, gst, staff, drivers,\nvehicles.",
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "steps": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Steps",
+            "type": "object"
+          }
+        },
+        "required": [
+          "steps",
+          "complete"
+        ],
+        "title": "SetupProgressResponse",
+        "type": "object"
+      },
       "StaffUserResponse": {
         "properties": {
           "branch_id": {
@@ -8926,6 +8615,28 @@
               }
             ],
             "title": "Branch Id"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "email": {
             "anyOf": [
@@ -8959,125 +8670,6 @@
           "is_active"
         ],
         "title": "StaffUserResponse",
-        "type": "object"
-      },
-      "StatusTransitionsResponse": {
-        "description": "The legal target statuses for each status — the same rule the server\nenforces, so a client never offers a move that would be refused.",
-        "properties": {
-          "adjustment": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "title": "Adjustment",
-            "type": "object"
-          },
-          "status_change": {
-            "additionalProperties": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "title": "Status Change",
-            "type": "object"
-          }
-        },
-        "required": [
-          "status_change",
-          "adjustment"
-        ],
-        "title": "StatusTransitionsResponse",
-        "type": "object"
-      },
-      "StockRegisterLineResponse": {
-        "properties": {
-          "closing": {
-            "title": "Closing",
-            "type": "integer"
-          },
-          "cylinder_type_id": {
-            "format": "uuid",
-            "title": "Cylinder Type Id",
-            "type": "string"
-          },
-          "date": {
-            "format": "date",
-            "title": "Date",
-            "type": "string"
-          },
-          "issues": {
-            "title": "Issues",
-            "type": "integer"
-          },
-          "opening": {
-            "title": "Opening",
-            "type": "integer"
-          },
-          "receipts": {
-            "title": "Receipts",
-            "type": "integer"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "date",
-          "cylinder_type_id",
-          "status",
-          "opening",
-          "receipts",
-          "issues",
-          "closing"
-        ],
-        "title": "StockRegisterLineResponse",
-        "type": "object"
-      },
-      "StockRegisterResponse": {
-        "properties": {
-          "date_from": {
-            "format": "date",
-            "title": "Date From",
-            "type": "string"
-          },
-          "date_to": {
-            "format": "date",
-            "title": "Date To",
-            "type": "string"
-          },
-          "lines": {
-            "items": {
-              "$ref": "#/components/schemas/StockRegisterLineResponse"
-            },
-            "title": "Lines",
-            "type": "array"
-          },
-          "location_ref_id": {
-            "format": "uuid",
-            "title": "Location Ref Id",
-            "type": "string"
-          },
-          "location_type": {
-            "enum": [
-              "warehouse",
-              "vehicle"
-            ],
-            "title": "Location Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "location_type",
-          "location_ref_id",
-          "date_from",
-          "date_to",
-          "lines"
-        ],
-        "title": "StockRegisterResponse",
         "type": "object"
       },
       "SubmitKycDocumentRequest": {
@@ -9734,6 +9326,36 @@
           "role"
         ],
         "title": "UpdateEmployeeRequest",
+        "type": "object"
+      },
+      "UpdateMyProfileRequest": {
+        "properties": {
+          "contact_phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "title": "UpdateMyProfileRequest",
         "type": "object"
       },
       "UpdateRouteStatusRequest": {
@@ -11163,6 +10785,28 @@
         ]
       }
     },
+    "/api/v1/admin/setup-progress": {
+      "get": {
+        "description": "Whether the agency has a branch, warehouse, cylinder types, prices, a GST rate, staff, drivers and vehicles - for the checklist on Home (DA-32).",
+        "operationId": "get_setup_progress_api_v1_admin_setup_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "New-agency setup checklist",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/tenant": {
       "get": {
         "operationId": "get_tenant_api_v1_admin_tenant_get",
@@ -11405,6 +11049,7 @@
     },
     "/api/v1/admin/users/{user_id}/deactivate": {
       "patch": {
+        "description": "Signs the user out everywhere and blocks sign-in until reactivated. 409 for your own account or the agency's last active agency admin.",
         "operationId": "deactivate_staff_user_api_v1_admin_users__user_id__deactivate_patch",
         "parameters": [
           {
@@ -11530,8 +11175,45 @@
         ]
       }
     },
+    "/api/v1/admin/users/{user_id}/reactivate": {
+      "patch": {
+        "operationId": "reactivate_staff_user_api_v1_admin_users__user_id__reactivate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reactivate a deactivated staff user",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/users/{user_id}/role": {
       "patch": {
+        "description": "Also resets the user's permissions to the new role's defaults.",
         "operationId": "reassign_role_api_v1_admin_users__user_id__role_patch",
         "parameters": [
           {
@@ -11910,6 +11592,101 @@
           }
         },
         "summary": "The current authenticated principal",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me/password": {
+      "post": {
+        "description": "Requires the current password. 422 with field errors when it is wrong or the new one breaks the password policy.",
+        "operationId": "change_my_password_api_v1_auth_me_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMyPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change your own password",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me/profile": {
+      "get": {
+        "operationId": "get_my_profile_api_v1_auth_me_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Your own profile",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "patch": {
+        "operationId": "update_my_profile_api_v1_auth_me_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit your own name and phone",
         "tags": [
           "Authentication"
         ]
@@ -12455,7 +12232,7 @@
     },
     "/api/v1/compliance-documents": {
       "get": {
-        "description": "Tenant-wide compliance-document list for the drivers/vehicles pages —\n`expiry` is `expiring` (<=30 days), `expired`, or `upcoming` (overdue or\ndue within 90 days — the compliance calendar). Sorted by expiry date.",
+        "description": "Tenant-wide compliance-document list for the drivers/vehicles pages —\n`expiry` is `expiring` (<=30 days) or `expired`.",
         "operationId": "list_compliance_documents_api_v1_compliance_documents_get",
         "parameters": [
           {
@@ -15442,96 +15219,8 @@
       }
     },
     "/api/v1/inventory-locations/{location_type}/{location_ref_id}/reconciliation-records": {
-      "get": {
-        "description": "Stock counts at this location, newest first — `state=pending` is the\napprover's queue.",
-        "operationId": "list_reconciliation_records_api_v1_inventory_locations__location_type___location_ref_id__reconciliation_records_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "location_type",
-            "required": true,
-            "schema": {
-              "enum": [
-                "warehouse",
-                "vehicle"
-              ],
-              "title": "Location Type",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "location_ref_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Location Ref Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "pending",
-                    "approved",
-                    "rejected"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 200,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReconciliationRecordListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Reconciliation Records",
-        "tags": [
-          "Inventory"
-        ]
-      },
       "post": {
-        "description": "Record a physical count against the tracked balance. Stock does not\nchange until someone else approves the count.",
+        "description": "Record a physical count against the tracked balance.\n\nRecording is routine; approval is the gated step.",
         "operationId": "create_reconciliation_record_api_v1_inventory_locations__location_type___location_ref_id__reconciliation_records_post",
         "parameters": [
           {
@@ -15658,83 +15347,6 @@
           }
         },
         "summary": "Change Cylinder Status",
-        "tags": [
-          "Inventory"
-        ]
-      }
-    },
-    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/stock-register": {
-      "get": {
-        "description": "Daily stock register: opening, receipts, issues and closing per\ncylinder type and status, for each IST day in the range (max 92 days).",
-        "operationId": "get_stock_register_api_v1_inventory_locations__location_type___location_ref_id__stock_register_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "location_type",
-            "required": true,
-            "schema": {
-              "enum": [
-                "warehouse",
-                "vehicle"
-              ],
-              "title": "Location Type",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "location_ref_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Location Ref Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "date_from",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "title": "Date From",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "date_to",
-            "required": true,
-            "schema": {
-              "format": "date",
-              "title": "Date To",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StockRegisterResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Stock Register",
         "tags": [
           "Inventory"
         ]
@@ -15943,28 +15555,6 @@
           }
         },
         "summary": "Currently-breached reorder thresholds",
-        "tags": [
-          "Inventory"
-        ]
-      }
-    },
-    "/api/v1/inventory/status-transitions": {
-      "get": {
-        "description": "Which status each status may move to, for Change Status and Adjust.",
-        "operationId": "get_status_transitions_api_v1_inventory_status_transitions_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatusTransitionsResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Status Transitions",
         "tags": [
           "Inventory"
         ]
@@ -18391,6 +17981,49 @@
         ]
       }
     },
+    "/api/v1/platform/license/{tenant_id}/key": {
+      "post": {
+        "description": "For when the one-time key shown at issue was lost before activation. The old key stops working; the new plaintext key is returned once. 409 if the licence is already activated or revoked.",
+        "operationId": "replace_license_key_api_v1_platform_license__tenant_id__key_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedLicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate a new key for a licence that is not activated yet",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
     "/api/v1/platform/license/{tenant_id}/plan-tier": {
       "patch": {
         "operationId": "set_license_plan_tier_api_v1_platform_license__tenant_id__plan_tier_patch",
@@ -18537,7 +18170,7 @@
     },
     "/api/v1/reconciliation-records/{record_id}/approve": {
       "post": {
-        "description": "Approve a pending count and book its variance into stock, once.\nLive-checked (`docs/data/17-api-security.md` §7). 409\n`RECONCILIATION_ALREADY_DECIDED` on a repeat, 409\n`SELF_APPROVAL_NOT_ALLOWED` for the person who counted.",
+        "description": "Approve a reconciliation record. Live-checked (`docs/data/17-api-security.md` §7).",
         "operationId": "approve_reconciliation_record_api_v1_reconciliation_records__record_id__approve_post",
         "parameters": [
           {
@@ -18574,60 +18207,6 @@
           }
         },
         "summary": "Approve Reconciliation Record",
-        "tags": [
-          "Inventory"
-        ]
-      }
-    },
-    "/api/v1/reconciliation-records/{record_id}/reject": {
-      "post": {
-        "description": "Close a pending count without changing stock (e.g. recount needed).",
-        "operationId": "reject_reconciliation_record_api_v1_reconciliation_records__record_id__reject_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "record_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Record Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReconciliationRejectRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReconciliationRecordResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Reject Reconciliation Record",
         "tags": [
           "Inventory"
         ]
@@ -20613,60 +20192,6 @@
           }
         },
         "summary": "Record Goods Receipt",
-        "tags": [
-          "Inventory"
-        ]
-      }
-    },
-    "/api/v1/warehouses/{warehouse_id}/omc-returns": {
-      "post": {
-        "description": "Dispatch empties (or segregated defective cylinders) back to the OMC's\nbottling plant — debits the warehouse and issues a numbered return note.\n409 INSUFFICIENT_STOCK if the warehouse holds fewer.",
-        "operationId": "return_stock_to_omc_api_v1_warehouses__warehouse_id__omc_returns_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "warehouse_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Warehouse Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OmcReturnRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OmcReturnResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Return Stock To Omc",
         "tags": [
           "Inventory"
         ]

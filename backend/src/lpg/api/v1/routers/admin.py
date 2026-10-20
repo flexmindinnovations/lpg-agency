@@ -35,6 +35,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.admin import (
     get_audit_log_repository,
+    get_audit_trail,
     get_branch_repository,
     get_cylinder_type_repository,
     get_feature_flag_override_repository,
@@ -46,6 +47,7 @@ from lpg.api.v1.dependencies.admin import (
     get_tenant_repository,
     get_warehouse_repository,
 )
+from lpg.api.v1.dependencies.delivery import get_driver_repository, get_vehicle_repository
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_email_sender,
@@ -90,6 +92,7 @@ from lpg.api.v1.schemas.admin import (
     SetFeatureFlagOverrideRequest,
     SetPriceRequest,
     SetTenantConfigurationRequest,
+    SetupProgressResponse,
     SetWarehouseActiveRequest,
     StaffUserResponse,
     TenantConfigurationResponse,
@@ -104,9 +107,10 @@ from lpg.api.v1.schemas.license import (
     LinkedDeviceResponse,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
-from lpg.application.audit.ports import AuditLogRepository
+from lpg.application.audit.ports import AuditLogRepository, AuditTrail
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.delivery.ports import DriverRepository, VehicleRepository
 from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
     EmailSender,
@@ -127,6 +131,8 @@ from lpg.application.identity.staff_user import (
     ListPermissionsUseCase,
     ListStaffUsersQuery,
     ListStaffUsersUseCase,
+    ReactivateStaffUserCommand,
+    ReactivateStaffUserUseCase,
     ReassignRoleCommand,
     ReassignRoleUseCase,
     UpdateStaffUserPermissionsCommand,
@@ -210,6 +216,7 @@ from lpg.application.tenant.price_list_proposal import (
     RejectPriceListProposalUseCase,
 )
 from lpg.application.tenant.rename_tenant import RenameTenantCommand, RenameTenantUseCase
+from lpg.application.tenant.setup_progress import GetSetupProgressQuery, GetSetupProgressUseCase
 from lpg.application.tenant.tenant_configuration import (
     GetEffectiveTenantConfigurationQuery,
     GetEffectiveTenantConfigurationUseCase,
@@ -281,6 +288,42 @@ async def rename_tenant(
         primary_contact_email=tenant.primary_contact_email,
         country=tenant.country,
     )
+
+
+# -- Setup checklist ----------------------------------------------------------------
+
+
+@router.get(
+    "/setup-progress",
+    response_model=SetupProgressResponse,
+    summary="New-agency setup checklist",
+    description="Whether the agency has a branch, warehouse, cylinder types, prices, a GST "
+    "rate, staff, drivers and vehicles - for the checklist on Home (DA-32).",
+)
+async def get_setup_progress(
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    branches: Annotated[BranchRepository, Depends(get_branch_repository)],
+    warehouses: Annotated[WarehouseRepository, Depends(get_warehouse_repository)],
+    cylinder_types: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    prices: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    configuration: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    staff: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    drivers: Annotated[DriverRepository, Depends(get_driver_repository)],
+    vehicles: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
+) -> SetupProgressResponse:
+    progress = await GetSetupProgressUseCase(
+        branches=branches,
+        warehouses=warehouses,
+        cylinder_types=cylinder_types,
+        prices=prices,
+        configuration=configuration,
+        staff=staff,
+        drivers=drivers,
+        vehicles=vehicles,
+    ).execute(GetSetupProgressQuery(tenant_id=principal.tenant_id))
+    return SetupProgressResponse(steps=progress.done, complete=progress.complete)
 
 
 # -- Branches -------------------------------------------------------------------
@@ -950,8 +993,11 @@ async def activate_license(
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    tenant_repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
 ) -> LicenseResponse:
-    use_case = ActivateLicenseUseCase(repository, token_hasher, status_checker, unit_of_work)
+    use_case = ActivateLicenseUseCase(
+        repository, token_hasher, status_checker, unit_of_work, tenant_repository
+    )
     license_ = await use_case.execute(
         ActivateLicenseCommand(tenant_id=principal.tenant_id, presented_key=body.key)
     )
@@ -994,6 +1040,13 @@ async def revoke_linked_device(
 # -- Staff Users ------------------------------------------------------------------
 
 
+def _actor_id(principal: AuthenticatedPrincipal) -> uuid.UUID:
+    """The acting admin's id - every staff-management rule needs it."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    return principal.user_id
+
+
 @router.get("/users", response_model=list[StaffUserResponse], summary="List staff users")
 async def list_staff_users(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
@@ -1008,6 +1061,8 @@ async def list_staff_users(
             role=u.role,
             branch_id=str(u.branch_id) if u.branch_id else None,
             is_active=u.is_active,
+            display_name=u.display_name,
+            contact_phone=u.contact_phone,
         )
         for u in users
     ]
@@ -1033,6 +1088,7 @@ async def invite_staff_user(
         token_hasher,
         email_sender,
         reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+        link_base=settings.dashboard_url,
     )
     user = await use_case.execute(
         InviteStaffUserCommand(
@@ -1048,31 +1104,70 @@ async def invite_staff_user(
         role=user.role,
         branch_id=str(user.branch_id) if user.branch_id else None,
         is_active=user.is_active,
+        display_name=user.display_name,
+        contact_phone=user.contact_phone,
     )
 
 
-@router.patch("/users/{user_id}/deactivate", status_code=204, summary="Deactivate a staff user")
+@router.patch(
+    "/users/{user_id}/deactivate",
+    status_code=204,
+    summary="Deactivate a staff user",
+    description=(
+        "Signs the user out everywhere and blocks sign-in until reactivated. "
+        "409 for your own account or the agency's last active agency admin."
+    ),
+)
 async def deactivate_staff_user(
     user_id: uuid.UUID,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     refresh_token_repository: Annotated[
         RefreshTokenRepository, Depends(get_refresh_token_repository)
     ],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = DeactivateStaffUserUseCase(repository, refresh_token_repository)
-    await use_case.execute(DeactivateStaffUserCommand(user_id=user_id))
+    use_case = DeactivateStaffUserUseCase(repository, refresh_token_repository, audit)
+    await use_case.execute(
+        DeactivateStaffUserCommand(user_id=user_id, actor_id=_actor_id(principal))
+    )
 
 
-@router.patch("/users/{user_id}/role", status_code=204, summary="Reassign a staff user's role")
+@router.patch(
+    "/users/{user_id}/reactivate",
+    status_code=204,
+    summary="Reactivate a deactivated staff user",
+)
+async def reactivate_staff_user(
+    user_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+) -> None:
+    use_case = ReactivateStaffUserUseCase(repository, audit)
+    await use_case.execute(
+        ReactivateStaffUserCommand(user_id=user_id, actor_id=_actor_id(principal))
+    )
+
+
+@router.patch(
+    "/users/{user_id}/role",
+    status_code=204,
+    summary="Reassign a staff user's role",
+    description="Also resets the user's permissions to the new role's defaults.",
+)
 async def reassign_role(
     user_id: uuid.UUID,
     body: ReassignRoleRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = ReassignRoleUseCase(repository)
-    await use_case.execute(ReassignRoleCommand(user_id=user_id, new_role=body.new_role))
+    use_case = ReassignRoleUseCase(repository, permission_repository, audit)
+    await use_case.execute(
+        ReassignRoleCommand(user_id=user_id, new_role=body.new_role, actor_id=_actor_id(principal))
+    )
 
 
 @router.get(
@@ -1099,14 +1194,17 @@ async def get_user_permissions(
 async def update_user_permissions(
     user_id: uuid.UUID,
     body: UpdateStaffUserPermissionsRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     staff_repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository)
+    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository, audit)
     await use_case.execute(
         UpdateStaffUserPermissionsCommand(
-            user_id=user_id, permission_codes=set(body.permission_codes)
+            user_id=user_id,
+            permission_codes=set(body.permission_codes),
+            actor_id=_actor_id(principal),
         )
     )
 

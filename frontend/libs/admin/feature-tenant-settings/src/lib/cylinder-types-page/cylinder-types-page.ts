@@ -1,3 +1,4 @@
+import { ConfirmationService } from 'primeng/api';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -208,6 +209,7 @@ export class CylinderTypesPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly notify = inject(NotifyService);
+  private readonly confirmation = inject(ConfirmationService);
 
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly loading = signal(false);
@@ -282,7 +284,21 @@ export class CylinderTypesPage implements OnInit {
   }
 
   protected toggleActive(cylinderType: CylinderTypeResponse): void {
-    const nextActive = !cylinderType.is_active;
+    if (!cylinderType.is_active) {
+      this.setActive(cylinderType, true);
+      return;
+    }
+    this.confirmation.confirm({
+      header: 'Deactivate cylinder type?',
+      message: `"${cylinderType.name}" will no longer be offered in forms. You can activate it again later.`,
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.setActive(cylinderType, false),
+    });
+  }
+
+  private setActive(cylinderType: CylinderTypeResponse, nextActive: boolean): void {
     this.cylinderTypeService.setActive(cylinderType.id, nextActive).subscribe({
       next: () => {
         this.notify.success(`"${cylinderType.name}" ${nextActive ? 'activated' : 'deactivated'}.`);

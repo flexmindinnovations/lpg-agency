@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from lpg.domain.identity.password_reset_token import PasswordResetToken
 from lpg.domain.identity.refresh_token import RefreshToken
@@ -313,6 +313,21 @@ class SqlAlchemyPermissionRepository:
             return frozenset(row.code for row in result)
         return frozenset()  # pragma: no cover
 
+    async def get_permission_codes_for_role(self, role: str) -> frozenset[str]:
+        async for session in self._database.session():
+            result = await session.execute(
+                text("""
+                    SELECT p.code
+                    FROM identity.role_permission rp
+                    JOIN identity.role r ON r.id = rp.role_id
+                    JOIN identity.permission p ON p.id = rp.permission_id
+                    WHERE r.code = :role
+                """),
+                {"role": role},
+            )
+            return frozenset(row.code for row in result)
+        return frozenset()  # pragma: no cover
+
     async def set_permissions_for_user(
         self, user_id: uuid.UUID, permission_codes: set[str]
     ) -> None:
@@ -418,6 +433,23 @@ class SqlAlchemyStaffUserRepository:
             row.password_hash = user.password_hash
             row.failed_login_count = user.failed_login_count
             row.locked_until = user.locked_until
+            row.display_name = user.display_name
+            row.contact_phone = user.contact_phone
+
+    async def count_active_with_role(self, role: str) -> int:
+        async for session in self._database.session(tenant_id=self._tenant_id):
+            result = await session.execute(
+                select(func.count())
+                .select_from(IdentityUserModel)
+                .where(
+                    IdentityUserModel.tenant_id == self._tenant_id,
+                    IdentityUserModel.role == role,
+                    IdentityUserModel.is_active.is_(True),
+                    IdentityUserModel.is_deleted.is_(False),
+                )
+            )
+            return int(result.scalar_one())
+        return 0  # pragma: no cover
 
     @staticmethod
     def _to_domain(row: IdentityUserModel) -> IdentityUser:
@@ -433,4 +465,6 @@ class SqlAlchemyStaffUserRepository:
             failed_login_count=row.failed_login_count,
             locked_until=row.locked_until,
             version=row.version,
+            display_name=row.display_name,
+            contact_phone=row.contact_phone,
         )

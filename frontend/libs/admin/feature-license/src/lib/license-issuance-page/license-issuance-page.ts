@@ -8,6 +8,7 @@ import { MultiSelect } from 'primeng/multiselect';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
+import { ConfirmationService } from 'primeng/api';
 import {
   AgencyService,
   LicenseService,
@@ -127,10 +128,11 @@ const VALIDITY_OPTIONS = [
               <p-select
                 inputId="issue-tenant-id"
                 formControlName="tenantId"
-                [options]="newOrTrialAgencyOptions()"
+                [options]="unlicensedAgencyOptions()"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Select a new or trial tenant"
+                placeholder="Select an agency without a license"
+                emptyMessage="Every agency already has a license"
                 appendTo="body"
                 [fluid]="true"
                 (onChange)="onIssueTenantChange($event.value)"
@@ -204,7 +206,7 @@ const VALIDITY_OPTIONS = [
       <!-- Shown-once plaintext key dialog -->
       <p-dialog
         [visible]="issuedKey() !== null"
-        (visibleChange)="$event ? null : dismissIssuedKey()"
+        (visibleChange)="$event ? null : closeIssuedKeyDialog()"
         [modal]="true"
         [closable]="false"
         header="License issued"
@@ -247,7 +249,7 @@ const VALIDITY_OPTIONS = [
                 Activate license
               </button>
             }
-            <button pButton type="button" (click)="dismissIssuedKey()">Done</button>
+            <button pButton type="button" (click)="closeIssuedKeyDialog()">Done</button>
           </div>
         }
       </p-dialog>
@@ -371,6 +373,50 @@ const VALIDITY_OPTIONS = [
               </form>
             </div>
 
+            @if (license.status === 'pending_activation') {
+              <form
+                [formGroup]="activateForm"
+                (ngSubmit)="activateWithKey(license.tenant_id)"
+                class="dialog-form dialog-form--inline"
+                novalidate
+              >
+                <div class="dialog-form__fields">
+                  <lpg-form-field
+                    label="Activate with key"
+                    for="detail-activation-key"
+                    hint="Paste the key that was shown when this license was issued."
+                    [control]="activateForm.controls.key"
+                    [messages]="{ required: 'Paste the license key.' }"
+                  >
+                    <input
+                      pInputText
+                      id="detail-activation-key"
+                      formControlName="key"
+                      autocomplete="off"
+                      [fluid]="true"
+                    />
+                  </lpg-form-field>
+                </div>
+                <div class="modal-actions">
+                  <button
+                    pButton
+                    type="button"
+                    severity="secondary"
+                    [disabled]="replacingKey()"
+                    (click)="confirmReplaceKey(license)"
+                  >
+                    Generate new key
+                  </button>
+                  <button pButton type="submit" severity="success" [disabled]="activating()">
+                    @if (activating()) {
+                      <i class="pi pi-spin pi-spinner"></i>
+                    }
+                    Activate license
+                  </button>
+                </div>
+              </form>
+            }
+
             <div class="modal-actions">
               <button pButton type="button" severity="secondary" (click)="closeDetails()">
                 Close
@@ -380,7 +426,7 @@ const VALIDITY_OPTIONS = [
                 type="button"
                 severity="danger"
                 [disabled]="license.status === 'revoked'"
-                (click)="revoke(license.tenant_id)"
+                (click)="confirmRevoke(license)"
               >
                 Revoke license
               </button>
@@ -456,12 +502,14 @@ export class LicenseIssuancePage implements OnInit {
   private readonly licenseService = inject(LicenseService);
   private readonly agencyService = inject(AgencyService);
   private readonly notify = inject(NotifyService);
+  private readonly confirmation = inject(ConfirmationService);
 
   protected readonly loading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly savingPlanTier = signal(false);
   protected readonly savingDeviceCap = signal(false);
   protected readonly activating = signal(false);
+  protected readonly replacingKey = signal(false);
   protected readonly licenses = signal<LicenseResponse[]>([]);
   protected readonly agencies = signal<TenantResponse[]>([]);
   protected readonly issueDrawerVisible = signal(false);
@@ -481,13 +529,14 @@ export class LicenseIssuancePage implements OnInit {
   }));
   protected readonly validityOptions = VALIDITY_OPTIONS.map((option) => ({ ...option }));
 
-  /** New/not-yet-onboarded tenants — the natural candidates for a first
-   * license (`domain/tenant/tenant.py`'s lifecycle: `trial` is where every
-   * tenant starts before a license activates it further). */
-  protected readonly newOrTrialAgencyOptions = () =>
-    this.agencies()
-      .filter((agency) => agency.status === 'trial')
+  /** Only agencies with no license at all can be issued one (DA-28) — an
+   * agency that already has one is managed from its row instead. */
+  protected readonly unlicensedAgencyOptions = () => {
+    const licensed = new Set(this.licenses().map((license) => license.tenant_id));
+    return this.agencies()
+      .filter((agency) => !licensed.has(agency.id))
       .map((agency) => ({ label: `${agency.name} (${agency.slug})`, value: agency.id }));
+  };
 
   protected readonly statusLabel = (status: string) => toSentenceCase(status);
   protected readonly formatDate = formatTimestamp;
@@ -546,6 +595,10 @@ export class LicenseIssuancePage implements OnInit {
 
   protected readonly planTierForm = this.formBuilder.group({
     planTier: ['standard', [Validators.required]],
+  });
+
+  protected readonly activateForm = this.formBuilder.group({
+    key: ['', [Validators.required]],
   });
 
   protected readonly deviceCapForm = this.formBuilder.group({
@@ -623,6 +676,68 @@ export class LicenseIssuancePage implements OnInit {
     });
   }
 
+  /** Closing without activating is allowed (the agency can activate it
+   * later, or the platform can from the license's row) — but the key is
+   * never shown again, so ask first. */
+  protected closeIssuedKeyDialog(): void {
+    if (this.activatedLicense()) {
+      this.dismissIssuedKey();
+      return;
+    }
+    this.confirmation.confirm({
+      header: 'Close without activating?',
+      message:
+        'This key will not be shown again. The license stays pending until someone activates it with this key — you can also generate a new key from the license later.',
+      acceptLabel: 'Close',
+      rejectLabel: 'Keep open',
+      accept: () => this.dismissIssuedKey(),
+    });
+  }
+
+  protected activateWithKey(tenantId: string): void {
+    if (this.activating()) return;
+    if (this.activateForm.invalid) {
+      this.activateForm.markAllAsTouched();
+      return;
+    }
+    this.activating.set(true);
+    this.licenseService
+      .activateOnBehalfOf(tenantId, this.activateForm.getRawValue().key.trim())
+      .subscribe({
+        next: () => {
+          this.activating.set(false);
+          this.notify.success('License activated.');
+          this.reload();
+          this.closeDetails();
+        },
+        error: () => this.activating.set(false),
+      });
+  }
+
+  protected confirmReplaceKey(license: LicenseResponse): void {
+    this.confirmation.confirm({
+      header: 'Generate a new key?',
+      message: `The current key for ${license.tenant_name ?? 'this agency'} will stop working.`,
+      acceptLabel: 'Generate new key',
+      rejectLabel: 'Cancel',
+      accept: () => this.replaceKey(license.tenant_id),
+    });
+  }
+
+  private replaceKey(tenantId: string): void {
+    this.replacingKey.set(true);
+    this.licenseService.replaceKey(tenantId).subscribe({
+      next: (issued) => {
+        this.replacingKey.set(false);
+        this.closeDetails();
+        this.activatedLicense.set(null);
+        this.issuedKey.set(issued);
+        this.reload();
+      },
+      error: () => this.replacingKey.set(false),
+    });
+  }
+
   protected dismissIssuedKey(): void {
     this.issuedKey.set(null);
     this.activatedLicense.set(null);
@@ -632,6 +747,7 @@ export class LicenseIssuancePage implements OnInit {
     this.selectedLicense.set(license);
     this.planTierForm.reset({ planTier: license.plan_tier });
     this.deviceCapForm.reset({ appTypes: [], maxDevices: null });
+    this.activateForm.reset({ key: '' });
     this.showDetailDrawer.set(true);
   }
 
@@ -672,7 +788,18 @@ export class LicenseIssuancePage implements OnInit {
     });
   }
 
-  protected revoke(tenantId: string): void {
+  protected confirmRevoke(license: LicenseResponse): void {
+    this.confirmation.confirm({
+      header: 'Revoke license?',
+      message: `${license.tenant_name ?? 'This agency'} will lose access to the platform.`,
+      acceptLabel: 'Revoke',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.revoke(license.tenant_id),
+    });
+  }
+
+  private revoke(tenantId: string): void {
     this.licenseService.revokeLicense(tenantId).subscribe({
       next: () => {
         this.notify.success('License revoked.');

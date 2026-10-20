@@ -31,6 +31,7 @@ scope to set `app.current_tenant_id` from.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import uuid
 from datetime import UTC, date, datetime, timedelta
@@ -386,6 +387,46 @@ async def main() -> None:
             instead of primary-key collisions.
             """
             return uuid.uuid5(_NS, f"{tenant_id}:{kind}:{key}")
+
+        # --- Licence ------------------------------------------------------
+        # Sign-in refuses a tenant whose licence is not activated (409
+        # LICENSE_NOT_ACTIVATED), so a freshly seeded local database was
+        # unusable until someone issued and activated one by hand through the
+        # Platform Console (QA finding SU-02). Seed an active Premium licence
+        # once; an existing unrevoked licence is left alone. The key itself is
+        # never needed locally, so only a hash of a throwaway value is stored.
+        has_licence = (
+            await conn.execute(
+                text("SELECT 1 FROM platform.license WHERE tenant_id = :t AND revoked_at IS NULL"),
+                p,
+            )
+        ).scalar()
+        if not has_licence:
+            await conn.execute(
+                text(
+                    "INSERT INTO platform.license (id, tenant_id, key_hash, key_prefix, "
+                    "plan_tier, validity_period_seconds, issued_at, activated_at) "
+                    "VALUES (:id, :t, :hash, 'LPG-DEMO', 'premium', :validity, :now, :now)"
+                ),
+                {
+                    **p,
+                    "id": sid("license", "demo"),
+                    "hash": hashlib.sha256(uuid.uuid4().bytes).hexdigest(),
+                    "validity": int(timedelta(days=365).total_seconds()),
+                    "now": now,
+                },
+            )
+            print("[seed] licence: active Premium licence issued and activated")
+        # Keep the agency's status and plan in step with its licence (DA-28).
+        await conn.execute(
+            text(
+                "UPDATE tenant.tenant t SET subscription_plan = l.plan_tier, "
+                "status = CASE WHEN t.status = 'trial' THEN 'active' ELSE t.status END "
+                "FROM platform.license l WHERE l.tenant_id = t.id AND t.id = :t "
+                "AND l.activated_at IS NOT NULL AND l.revoked_at IS NULL"
+            ),
+            p,
+        )
 
         # --- Branches and warehouses --------------------------------------
         # `branch` and `warehouse` carry no unique key beyond the PK, so the

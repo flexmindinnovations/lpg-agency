@@ -1,5 +1,13 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { ConfirmationService } from 'primeng/api';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -10,9 +18,11 @@ import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import {
   AdminStaffUserService,
+  AuthService,
   NotifyService,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
+import { ASSIGNABLE_STAFF_ROLES, ROLE_LABELS, roleLabel } from '@lpg/shared/util';
 import {
   DataGridComponent,
   type DataGridColumn,
@@ -21,42 +31,24 @@ import {
 } from '@lpg/shared/ui';
 import { ManagePermissionsDialogComponent } from '../manage-permissions-dialog/manage-permissions-dialog';
 
-/** AG Grid renders a boolean-valued column with its own checkbox cell by
- * default, ignoring `valueFormatter` (same fix as Cylinder Types' own
- * "Status" column) — this swaps that for plain "Active"/"Inactive" text. */
-@Component({
-  selector: 'lpg-staff-user-status-cell',
-  standalone: true,
-  template: `{{ label() }}`,
-})
-class StaffUserStatusCell {
-  protected readonly label = signal('');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
-  agInit(params: any): void {
-    this.label.set(params.value ? 'Active' : 'Inactive');
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  refresh(params: any): boolean {
-    this.agInit(params);
-    return true;
-  }
+/** One grid row: the API user plus the derived, displayable fields. */
+interface StaffUserRow extends StaffUserResponse {
+  readonly name: string;
+  readonly status: 'active' | 'inactive';
+  readonly isSelf: boolean;
 }
 
-const STAFF_ROLES = [
-  { label: 'Super Admin (super_admin)', value: 'super_admin' },
-  { label: 'Agency Admin (agency_admin)', value: 'agency_admin' },
-  { label: 'Manager (manager)', value: 'manager' },
-  { label: 'Warehouse Staff (warehouse_staff)', value: 'warehouse_staff' },
-  { label: 'Dispatcher (dispatcher)', value: 'dispatcher' },
-  { label: 'Accountant (accountant)', value: 'accountant' },
-];
+const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(value), value }));
 
 /**
  * Staff list + invite drawer + manage-user drawer —
  * `users:manage`. Customer/Driver accounts are excluded server-side
  * (`ListStaffUsersUseCase`'s own docstring) — this screen is Dashboard
  * staff only.
+ *
+ * Deactivation always asks first and can be undone with Reactivate (DA-01).
+ * Your own row offers neither, and the server also refuses deactivating or
+ * demoting the agency's last active admin, so an agency can't lock itself out.
  */
 @Component({
   selector: 'lpg-staff-users-page',
@@ -82,7 +74,7 @@ const STAFF_ROLES = [
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Staff Users</h1>
-            <p class="page-subtitle">Manage user accounts and role assignments.</p>
+            <p class="page-subtitle">Who can sign in to the dashboard, and what they can do.</p>
           </div>
         </ng-template>
       </div>
@@ -125,7 +117,7 @@ const STAFF_ROLES = [
       } @else {
         <section class="grid-section">
           <lpg-data-grid
-            [rows]="users()"
+            [rows]="rows()"
             [columns]="columns"
             [loading]="loading()"
             [searchQuery]="searchQuery()"
@@ -219,87 +211,138 @@ const STAFF_ROLES = [
         position="right"
         [modal]="true"
         [closeOnEscape]="true"
-        [header]="'Manage ' + selectedUserEmail()"
+        [header]="'Manage ' + (selected()?.name ?? '')"
         styleClass="w-full"
         [style]="{ width: '100%', maxWidth: '32rem' }"
       >
-        <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
-          <div class="dialog-form__fields">
-            <p class="page-lede">
-              Reassign the role, manage specific permissions, or deactivate the account.
-            </p>
-
-            <lpg-form-field
-              label="New role (for reassignment)"
-              for="manage-role"
-              [control]="manageForm.controls.newRole"
-            >
-              <p-select
-                inputId="manage-role"
-                formControlName="newRole"
-                [options]="roles"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="- select to reassign -"
-                appendTo="body"
-                [fluid]="true"
-              >
-              </p-select>
-            </lpg-form-field>
-
-            <div class="manage-actions">
-              <div class="manage-action">
-                <div class="manage-action__text">
-                  <h4 class="manage-action__title">Permissions</h4>
-                  <p class="manage-action__description">Assign fine-grained permissions.</p>
+        @if (selected(); as user) {
+          <form id="manageUserForm" [formGroup]="manageForm" novalidate class="dialog-form">
+            <div class="dialog-form__fields">
+              <dl class="user-summary">
+                <div>
+                  <dt>Email</dt>
+                  <dd>{{ user.email || '—' }}</dd>
                 </div>
+                <div>
+                  <dt>Phone</dt>
+                  <dd>{{ user.contact_phone || '—' }}</dd>
+                </div>
+                <div>
+                  <dt>Role</dt>
+                  <dd>{{ roleName(user.role) }}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{{ user.is_active ? 'Active' : 'Deactivated' }}</dd>
+                </div>
+              </dl>
+
+              @if (user.isSelf) {
+                <p class="self-note" role="note">
+                  <i class="pi pi-info-circle" aria-hidden="true"></i>
+                  This is your own account. Another admin has to change your role, permissions or
+                  status, so you can't lock yourself out by mistake.
+                </p>
+              } @else {
+                <lpg-form-field
+                  label="Role"
+                  for="manage-role"
+                  hint="Changing the role resets permissions to that role's defaults."
+                  [control]="manageForm.controls.newRole"
+                >
+                  <p-select
+                    inputId="manage-role"
+                    formControlName="newRole"
+                    [options]="roles"
+                    optionLabel="label"
+                    optionValue="value"
+                    appendTo="body"
+                    [fluid]="true"
+                  >
+                  </p-select>
+                </lpg-form-field>
+
+                <div class="manage-actions">
+                  <div class="manage-action">
+                    <div class="manage-action__text">
+                      <h4 class="manage-action__title">Permissions</h4>
+                      <p class="manage-action__description">
+                        Fine-tune what this person can do beyond their role.
+                      </p>
+                    </div>
+                    <button
+                      pButton
+                      type="button"
+                      severity="secondary"
+                      (click)="openPermissionsDialog()"
+                    >
+                      Manage
+                    </button>
+                  </div>
+
+                  @if (user.is_active) {
+                    <div class="manage-action manage-action--danger">
+                      <div class="manage-action__text">
+                        <h4 class="manage-action__title">Deactivate account</h4>
+                        <p class="manage-action__description">
+                          Signs them out everywhere and blocks sign-in. You can reactivate later.
+                        </p>
+                      </div>
+                      <button
+                        pButton
+                        type="button"
+                        severity="danger"
+                        [disabled]="busy()"
+                        (click)="confirmDeactivate(user)"
+                      >
+                        Deactivate
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="manage-action">
+                      <div class="manage-action__text">
+                        <h4 class="manage-action__title">Reactivate account</h4>
+                        <p class="manage-action__description">
+                          Lets them sign in again with their existing password.
+                        </p>
+                      </div>
+                      <button pButton type="button" [disabled]="busy()" (click)="reactivate(user)">
+                        Reactivate
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="modal-actions mt-6">
+              <button
+                pButton
+                type="button"
+                severity="secondary"
+                (click)="manageDrawerVisible.set(false)"
+              >
+                Close
+              </button>
+              @if (!user.isSelf) {
                 <button
                   pButton
                   type="button"
-                  severity="secondary"
-                  (click)="openPermissionsDialog()"
+                  (click)="reassignRole()"
+                  [disabled]="busy() || manageForm.controls.newRole.value === user.role"
                 >
-                  Manage
+                  Save role
                 </button>
-              </div>
-
-              <div class="manage-action manage-action--danger">
-                <div class="manage-action__text">
-                  <h4 class="manage-action__title">Danger Zone</h4>
-                  <p class="manage-action__description">Deactivate this account.</p>
-                </div>
-                <button pButton type="button" severity="danger" (click)="deactivate()">
-                  Deactivate
-                </button>
-              </div>
+              }
             </div>
-          </div>
-
-          <div class="modal-actions mt-6">
-            <button
-              pButton
-              type="button"
-              severity="secondary"
-              (click)="manageDrawerVisible.set(false)"
-            >
-              Cancel
-            </button>
-            <button
-              pButton
-              type="button"
-              (click)="reassignRole()"
-              [disabled]="!manageForm.controls.newRole.value"
-            >
-              Reassign role
-            </button>
-          </div>
-        </form>
+          </form>
+        }
       </p-drawer>
 
       <lpg-manage-permissions-dialog
         [(visible)]="managePermissionsVisible"
-        [userId]="selectedUserId()"
-        [userEmail]="selectedUserEmail()"
+        [userId]="selected()?.id ?? ''"
+        [userEmail]="selected()?.name ?? ''"
       />
     </div>
   `,
@@ -363,59 +406,111 @@ const STAFF_ROLES = [
       .manage-action--danger .manage-action__title {
         color: var(--color-status-danger);
       }
+
+      .user-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--spacing-md);
+        margin: 0;
+      }
+
+      .user-summary dt {
+        font-size: var(--typography-body-small-font-size);
+        color: var(--color-text-secondary);
+      }
+
+      .user-summary dd {
+        margin: 0;
+        color: var(--color-text-primary);
+        overflow-wrap: anywhere;
+      }
+
+      .self-note {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin: 0;
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+        background: var(--color-surface-overlay);
+        color: var(--color-text-secondary);
+      }
     `,
   ],
 })
 export class StaffUsersPage implements OnInit {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly staffUserService = inject(AdminStaffUserService);
+  private readonly authService = inject(AuthService);
+  private readonly confirmationService = inject(ConfirmationService);
   private readonly notify = inject(NotifyService);
 
   protected readonly users = signal<StaffUserResponse[]>([]);
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
+  protected readonly busy = signal(false);
   protected readonly inviteDrawerVisible = signal(false);
   protected readonly manageDrawerVisible = signal(false);
   protected readonly managePermissionsVisible = signal(false);
 
-  protected readonly selectedUserId = signal('');
-  protected readonly selectedUserEmail = signal('');
+  private readonly selectedId = signal<string | null>(null);
 
-  protected readonly roles = [...STAFF_ROLES];
+  protected readonly roles = ROLE_OPTIONS;
+  protected readonly roleName = roleLabel;
 
-  protected readonly columns: DataGridColumn<StaffUserResponse>[] = [
+  protected readonly rows = computed<StaffUserRow[]>(() => {
+    const me = this.authService.principal()?.userId;
+    return this.users().map((user) => ({
+      ...user,
+      name: user.display_name || user.email || 'Unnamed user',
+      status: user.is_active ? 'active' : 'inactive',
+      isSelf: user.id === me,
+    }));
+  });
+
+  protected readonly selected = computed(
+    () => this.rows().find((row) => row.id === this.selectedId()) ?? null,
+  );
+
+  protected readonly columns: DataGridColumn<StaffUserRow>[] = [
     {
-      field: 'email',
-      header: 'Email',
+      field: 'name',
+      header: 'Name',
       sortable: true,
       filterable: true,
+      valueFormatter: (_value, row) => (row.isSelf ? `${row.name} (you)` : row.name),
       onLinkClick: (row) => this.openManageDrawer(row),
     },
+    { field: 'email', header: 'Email', sortable: true, filterable: true },
     {
       field: 'role',
       header: 'Role',
       sortable: true,
       filterable: true,
       cellRenderer: StatusChipCell,
+      cellRendererParams: { labelMap: ROLE_LABELS, severityMap: { agency_admin: 'info' } },
     },
     {
-      field: 'is_active',
+      field: 'status',
       header: 'Status',
       sortable: true,
-      cellRenderer: StaffUserStatusCell,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        labelMap: { active: 'Active', inactive: 'Deactivated' },
+        severityMap: { active: 'success', inactive: 'secondary' },
+      },
     },
     {
       field: 'id',
-      header: '',
-      // A boolean-valued field re-used purely as the link column's
-      // clickable label ("Deactivate" for an active user, nothing for
-      // an already-deactivated one — no reactivate endpoint exists) —
-      // `onLinkClick` itself no-ops defensively for an already-inactive
-      // row. Matches Linked Devices' own Revoke column exactly.
-      valueFormatter: (_value, row) => (row.is_active ? 'Deactivate' : ''),
+      header: 'Action',
+      // Never one click: Deactivate asks first, Reactivate undoes it, and
+      // your own row offers neither (DA-01).
+      valueFormatter: (_value, row) =>
+        row.isSelf ? '' : row.is_active ? 'Deactivate…' : 'Reactivate',
       onLinkClick: (row) => {
-        if (row.is_active) this.deactivateUser(row);
+        if (row.isSelf) return;
+        if (row.is_active) this.confirmDeactivate(row);
+        else this.reactivate(row);
       },
     },
   ];
@@ -426,7 +521,6 @@ export class StaffUsersPage implements OnInit {
   });
 
   protected readonly manageForm = this.formBuilder.group({
-    userId: ['', [Validators.required]],
     newRole: [''],
   });
 
@@ -450,11 +544,9 @@ export class StaffUsersPage implements OnInit {
     this.inviteDrawerVisible.set(true);
   }
 
-  protected openManageDrawer(user: StaffUserResponse): void {
-    this.manageForm.reset();
-    this.selectedUserId.set(user.id);
-    this.selectedUserEmail.set(user.email ?? '');
-    this.manageForm.patchValue({ userId: user.id });
+  protected openManageDrawer(user: StaffUserRow): void {
+    this.selectedId.set(user.id);
+    this.manageForm.reset({ newRole: user.role });
     this.manageDrawerVisible.set(true);
   }
 
@@ -462,45 +554,59 @@ export class StaffUsersPage implements OnInit {
     this.managePermissionsVisible.set(true);
   }
 
-  protected deactivate(): void {
-    const { userId } = this.manageForm.getRawValue();
-    if (!userId) {
-      this.manageForm.markAllAsTouched();
-      return;
-    }
-    this.staffUserService.deactivateStaffUser(userId).subscribe({
-      next: () => {
-        this.notify.success('User deactivated.');
-        this.manageDrawerVisible.set(false);
-        this.reload();
-      },
+  protected confirmDeactivate(user: StaffUserRow): void {
+    this.confirmationService.confirm({
+      header: 'Deactivate this account?',
+      message:
+        `${user.name} will be signed out everywhere and won't be able to sign in. ` +
+        'You can reactivate the account later.',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonProps: { severity: 'danger' },
+      rejectButtonProps: { severity: 'secondary' },
+      defaultFocus: 'reject',
+      accept: () => this.deactivate(user),
     });
   }
 
-  /** The grid's own "Deactivate" action column — a direct, one-click path
-   * distinct from `deactivate()` above, which operates on whichever user
-   * is currently loaded into the "Manage User" drawer's form. */
-  protected deactivateUser(user: StaffUserResponse): void {
+  private deactivate(user: StaffUserRow): void {
+    this.busy.set(true);
     this.staffUserService.deactivateStaffUser(user.id).subscribe({
       next: () => {
-        this.notify.success(`"${user.email}" deactivated.`);
+        this.busy.set(false);
+        this.notify.success(`${user.name} has been deactivated.`);
         this.reload();
       },
+      error: () => this.busy.set(false),
+    });
+  }
+
+  protected reactivate(user: StaffUserRow): void {
+    this.busy.set(true);
+    this.staffUserService.reactivateStaffUser(user.id).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.notify.success(`${user.name} can sign in again.`);
+        this.reload();
+      },
+      error: () => this.busy.set(false),
     });
   }
 
   protected reassignRole(): void {
-    const { userId, newRole } = this.manageForm.getRawValue();
-    if (!userId || !newRole) {
-      this.manageForm.markAllAsTouched();
-      return;
-    }
-    this.staffUserService.reassignRole(userId, newRole).subscribe({
+    const user = this.selected();
+    const { newRole } = this.manageForm.getRawValue();
+    if (!user || !newRole || newRole === user.role) return;
+    this.busy.set(true);
+    this.staffUserService.reassignRole(user.id, newRole).subscribe({
       next: () => {
-        this.notify.success('Role reassigned.');
+        this.busy.set(false);
+        this.notify.success(`${user.name} is now ${roleLabel(newRole)}.`);
         this.manageDrawerVisible.set(false);
         this.reload();
       },
+      error: () => this.busy.set(false),
     });
   }
 
@@ -519,7 +625,7 @@ export class StaffUsersPage implements OnInit {
     this.staffUserService.inviteStaffUser(email, role).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.notify.success(`Invite sent to ${email}.`);
+        this.notify.success(`${email} has been invited.`);
         this.inviteDrawerVisible.set(false);
         this.form.reset();
         this.reload();

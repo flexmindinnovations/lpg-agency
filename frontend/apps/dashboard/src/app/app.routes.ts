@@ -34,6 +34,21 @@ export const appRoutes: Route[] = [
     path: 'login',
     loadChildren: () => import('@lpg/auth/feature-login').then((m) => m.authFeatureLoginRoutes),
   },
+  // The links the backend emails: `/reset-password?token=…` (forgot password)
+  // and `/set-password?token=…` (invitation / new agency). The page is loaded
+  // directly rather than redirected so the `token` query param is never lost.
+  {
+    path: 'reset-password',
+    loadComponent: () => import('@lpg/auth/feature-login').then((m) => m.ResetPasswordPage),
+    title: 'Choose a new password',
+    data: { mode: 'reset' },
+  },
+  {
+    path: 'set-password',
+    loadComponent: () => import('@lpg/auth/feature-login').then((m) => m.ResetPasswordPage),
+    title: 'Set your password',
+    data: { mode: 'setup' },
+  },
   {
     path: 'license-required',
     loadComponent: () =>
@@ -396,6 +411,15 @@ export const appRoutes: Route[] = [
           import('@lpg/notification/feature-notifications').then(
             (m) => m.notificationFeatureNotificationsRoutes,
           ),
+      },
+      {
+        // Where `permissionGuard` sends a signed-in user whose role lacks
+        // the page's permission (DO-31) — an explicit state, not a silent
+        // bounce to Home.
+        path: 'no-access',
+        loadComponent: () => import('./not-found/not-found').then((m) => m.NotFound),
+        data: { variant: 'no-access' },
+        title: 'No access',
       },
       {
         path: '**',

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { deactivateStaffUserApiV1AdminUsersUserIdDeactivatePatch } from './generated/fn/administration/deactivate-staff-user-api-v-1-admin-users-user-id-deactivate-patch';
+import { reactivateStaffUserApiV1AdminUsersUserIdReactivatePatch } from './generated/fn/administration/reactivate-staff-user-api-v-1-admin-users-user-id-reactivate-patch';
 import { inviteStaffUserApiV1AdminUsersPost } from './generated/fn/administration/invite-staff-user-api-v-1-admin-users-post';
 import { listStaffUsersApiV1AdminUsersGet } from './generated/fn/administration/list-staff-users-api-v-1-admin-users-get';
 import { reassignRoleApiV1AdminUsersUserIdRolePatch } from './generated/fn/administration/reassign-role-api-v-1-admin-users-user-id-role-patch';
@@ -35,6 +36,13 @@ export class AdminStaffUserService {
 
   deactivateStaffUser(userId: string): Observable<void> {
     return deactivateStaffUserApiV1AdminUsersUserIdDeactivatePatch(this.http, this.config.rootUrl, {
+      user_id: userId,
+    }).pipe(map(() => undefined));
+  }
+
+  /** Undo a deactivation (DA-01). */
+  reactivateStaffUser(userId: string): Observable<void> {
+    return reactivateStaffUserApiV1AdminUsersUserIdReactivatePatch(this.http, this.config.rootUrl, {
       user_id: userId,
     }).pipe(map(() => undefined));
   }
