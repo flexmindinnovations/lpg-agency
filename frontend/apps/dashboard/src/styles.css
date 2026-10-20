@@ -898,17 +898,11 @@ p-toast {
   letter-spacing: 0.01em;
 }
 
-.p-tag.p-tag-danger {
-  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent) !important;
-  color: #991b1b !important;
-  border: 1px solid color-mix(in srgb, var(--color-status-danger) 24%, transparent) !important;
-  font-weight: 600 !important;
-}
-
-[data-theme='dark'] .p-tag.p-tag-danger {
-  background: color-mix(in srgb, var(--color-status-danger) 20%, transparent) !important;
-  color: #f87171 !important;
-  border: 1px solid color-mix(in srgb, var(--color-status-danger) 35%, transparent) !important;
+/* Chip colours come from the --component-chip-* tokens via the preset's
+   `tag` section (per theme, all AA). High contrast gives every chip a border
+   since its tint is plain white there. */
+[data-theme='high-contrast'] .p-tag {
+  border: var(--border-width) solid currentColor !important;
 }
 
 /* Danger Button refinements — high-contrast solid fill with white text */
@@ -935,7 +929,14 @@ p-toast {
   font-size: var(--typography-body-small-font-size) !important;
 }
 
-/* Toast refinements — bottom-right (set on <p-toast> in the shells). Solid. */
+/* Toast refinements. Toasts sit top-centre, just under the shell header
+   (set on <p-toast> in the shells): bottom-right put them on top of every
+   drawer's footer buttons, and top-right on its close button (QA DO-21). */
+.p-toast.p-toast-top-center {
+  inset-block-start: calc(var(--component-app-shell-top-bar-height) + var(--spacing-sm)) !important;
+  max-inline-size: calc(100vw - 2 * var(--spacing-md));
+}
+
 .p-toast-message {
   border-radius: var(--radius-md) !important;
   background: var(--surface-acrylic) !important;
