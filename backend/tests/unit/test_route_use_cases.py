@@ -17,9 +17,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from lpg.application.common.errors import (
+    DriverAlreadyOnTripError,
     DuplicateRouteAssignmentError,
     NotFoundError,
     RouteReconciliationPendingError,
+    VehicleAlreadyOnTripError,
     WeighmentCheckRequiredError,
 )
 from lpg.application.delivery.use_cases import (
@@ -135,6 +137,9 @@ def mock_route_repo() -> MagicMock:
     repo.get_by_id = AsyncMock(return_value=None)
     repo.count_active_routes_for_order = AsyncMock(return_value=0)
     repo.get_route_with_open_stop_for = AsyncMock(return_value=None)
+    repo.lock_crew = AsyncMock()
+    repo.get_active_route_for_driver = AsyncMock(return_value=None)
+    repo.get_active_route_for_vehicle = AsyncMock(return_value=None)
     repo.get_stop_owner = AsyncMock(return_value=None)
     return repo
 
@@ -237,6 +242,57 @@ class TestPlanRouteUseCase:
         assert len(events) == 1
         mock_route_repo.save.assert_called_once()
         mock_uow.commit.assert_called_once()
+
+    async def test_a_driver_with_an_open_trip_cannot_get_a_second_one(
+        self, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        driver_id = uuid.uuid4()
+        open_trip = Route(
+            route_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            branch_id=uuid.uuid4(),
+            driver_id=driver_id,
+            vehicle_id=uuid.uuid4(),
+            status="in_progress",
+        )
+        mock_route_repo.get_active_route_for_driver.return_value = open_trip
+
+        with pytest.raises(DriverAlreadyOnTripError):
+            await PlanRouteUseCase(mock_route_repo, mock_uow).execute(
+                PlanRouteCommand(
+                    tenant_id=uuid.uuid4(),
+                    branch_id=uuid.uuid4(),
+                    driver_id=driver_id,
+                    vehicle_id=uuid.uuid4(),
+                )
+            )
+
+        mock_route_repo.lock_crew.assert_awaited_once()
+        mock_route_repo.save.assert_not_called()
+
+    async def test_a_van_on_an_open_trip_cannot_get_a_second_one(
+        self, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        vehicle_id = uuid.uuid4()
+        mock_route_repo.get_active_route_for_vehicle.return_value = Route(
+            route_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            branch_id=uuid.uuid4(),
+            driver_id=uuid.uuid4(),
+            vehicle_id=vehicle_id,
+            status="loaded",
+        )
+
+        with pytest.raises(VehicleAlreadyOnTripError):
+            await PlanRouteUseCase(mock_route_repo, mock_uow).execute(
+                PlanRouteCommand(
+                    tenant_id=uuid.uuid4(),
+                    branch_id=uuid.uuid4(),
+                    driver_id=uuid.uuid4(),
+                    vehicle_id=vehicle_id,
+                )
+            )
+        mock_route_repo.save.assert_not_called()
 
 
 # ==========================================================================

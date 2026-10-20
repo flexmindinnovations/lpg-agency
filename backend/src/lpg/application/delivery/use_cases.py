@@ -19,12 +19,14 @@ from typing import TYPE_CHECKING
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
     ConflictError,
+    DriverAlreadyOnTripError,
     DuplicateEmployeeCodeError,
     DuplicateRegistrationNumberError,
     DuplicateRouteAssignmentError,
     NotFoundError,
     RouteReconciliationPendingError,
     ValidationError,
+    VehicleAlreadyOnTripError,
 )
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
 from lpg.domain.delivery.compliance_document import ComplianceDocument
@@ -36,6 +38,7 @@ from lpg.domain.order.vehicle_capacity_checker import VehicleCapacityChecker
 if TYPE_CHECKING:
     import datetime
     import uuid
+    from collections.abc import Sequence
 
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.compliance.ports import WeighmentRecordRepository
@@ -51,6 +54,7 @@ if TYPE_CHECKING:
     )
     from lpg.application.order.ports import OrderRepository
     from lpg.application.tenant.ports import TenantConfigurationRepository
+    from lpg.domain.inventory.inventory_location import InventoryLocation
     from lpg.domain.order.order import Order
 
 
@@ -544,6 +548,53 @@ class GetActiveRouteForDriverQuery:
 # ---------------------------------------------------------------------------
 
 
+async def ensure_crew_is_free(
+    repository: RouteRepository, *, driver_id: uuid.UUID, vehicle_id: uuid.UUID
+) -> None:
+    """One open trip per driver and per vehicle (DO-23). Takes the crew lock
+    first, so the check holds until this transaction commits. Every path that
+    opens a new trip calls this — the dashboard's own "on a trip" hint is a
+    convenience, not the guard."""
+    await repository.lock_crew(driver_id, vehicle_id)
+    driver_trip = await repository.get_active_route_for_driver(driver_id)
+    if driver_trip is not None:
+        msg = (
+            f"This driver already has an open trip ({driver_trip.status.replace('_', ' ')}). "
+            "Add the orders to that trip, or wait until it is finished."
+        )
+        raise DriverAlreadyOnTripError(msg, route_id=str(driver_trip.id))
+    vehicle_trip = await repository.get_active_route_for_vehicle(vehicle_id)
+    if vehicle_trip is not None:
+        msg = (
+            f"This vehicle is already on an open trip ({vehicle_trip.status.replace('_', ' ')}). "
+            "Choose another vehicle, or wait until that trip is finished."
+        )
+        raise VehicleAlreadyOnTripError(msg, route_id=str(vehicle_trip.id))
+
+
+def van_manifest(
+    vehicle_location: InventoryLocation, orders_on_trip: Sequence[Order]
+) -> list[LoadedLine]:
+    """Every filled cylinder the van carries for this trip, by type: its free
+    filled stock plus what is reserved for the trip's orders (reservations
+    debit the free balance, but the cylinders are still physically on the
+    van). This is what the driver checks — leftover stock included (DR-04).
+    """
+    totals: dict[uuid.UUID, int] = {}
+    for (cylinder_type_id, status), quantity in vehicle_location.balances.items():
+        if status == "filled" and quantity > 0:
+            _add(totals, cylinder_type_id, quantity)
+    for order in orders_on_trip:
+        for line in order.lines:
+            reserved = line.quantity_ordered - line.quantity_pending - line.quantity_delivered
+            if reserved > 0:
+                _add(totals, line.cylinder_type_id, reserved)
+    return [
+        LoadedLine(cylinder_type_id=cylinder_type_id, quantity=quantity)
+        for cylinder_type_id, quantity in sorted(totals.items(), key=lambda item: str(item[0]))
+    ]
+
+
 class PlanRouteUseCase:
     """Creates a new route assignment for a driver and vehicle."""
 
@@ -552,6 +603,9 @@ class PlanRouteUseCase:
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: PlanRouteCommand) -> Route:
+        await ensure_crew_is_free(
+            self._repository, driver_id=command.driver_id, vehicle_id=command.vehicle_id
+        )
         route = Route(
             route_id=self._repository.next_id(),
             tenant_id=command.tenant_id,
@@ -638,7 +692,7 @@ class AssignOrderToRouteUseCase:
                     reference_order_id=order.id,
                 )
 
-        route.assign_order(order.id)
+        route.assign_order(order.id, order_number=order.order_number)
         new_stop = next(s for s in route.stops if s.order_id == order.id)
         order.assign(
             route_stop_id=new_stop.id,
@@ -747,16 +801,30 @@ class LoadVehicleForRouteUseCase:
         unit_of_work: UnitOfWork,
         weighment_record_repository: WeighmentRecordRepository | None = None,
         tenant_config_repository: TenantConfigurationRepository | None = None,
+        order_repository: OrderRepository | None = None,
     ) -> None:
         self._route_repository = route_repository
         self._inventory_repository = inventory_location_repository
         self._unit_of_work = unit_of_work
+        self._order_repository = order_repository
         self._weighment_gate = LoadOutWeighmentGate(
             weighment_record_repository, tenant_config_repository
         )
         self._get_or_create_location = GetOrCreateInventoryLocationUseCase(
             inventory_location_repository
         )
+
+    async def _orders_on(self, route: Route) -> list[Order]:
+        if self._order_repository is None:
+            return []
+        orders = []
+        for stop in route.stops:
+            if stop.status != "pending":
+                continue
+            order = await self._order_repository.get_by_id(stop.order_id)
+            if order is not None:
+                orders.append(order)
+        return orders
 
     async def execute(self, command: LoadVehicleForRouteCommand) -> Route:
         route = await self._route_repository.get_by_id(command.route_id)
@@ -786,12 +854,7 @@ class LoadVehicleForRouteUseCase:
             )
 
         route.change_status("loaded")
-        route.record_load_manifest(
-            [
-                LoadedLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
-                for line in command.lines
-            ]
-        )
+        route.record_load_manifest(van_manifest(vehicle_location, await self._orders_on(route)))
 
         await self._inventory_repository.save(warehouse_location)
         await self._inventory_repository.save(vehicle_location)
@@ -888,14 +951,9 @@ class LoadAndDispatchRouteUseCase:
                     cylinder_type_id, "filled", quantity, performed_by=command.performed_by
                 )
 
-        manifest = [
-            LoadedLine(cylinder_type_id=ct, quantity=quantity) for ct, quantity in to_load.items()
-        ]
-        if route.status == "planned":
+        was_planned = route.status == "planned"
+        if was_planned:
             route.change_status("loaded")
-            route.record_load_manifest(manifest)
-        elif manifest:
-            route.add_to_load_manifest(manifest)
 
         for order in waiting:
             reservations = {
@@ -923,7 +981,7 @@ class LoadAndDispatchRouteUseCase:
                     performed_by=command.performed_by,
                     reference_order_id=order.id,
                 )
-            route.assign_order(order.id)
+            route.assign_order(order.id, order_number=order.order_number)
             stop = next(s for s in route.stops if s.order_id == order.id)
             order.assign(
                 route_stop_id=stop.id,
@@ -932,6 +990,12 @@ class LoadAndDispatchRouteUseCase:
                 changed_by=command.performed_by,
             )
             order.dispatch(changed_by=command.performed_by)
+
+        manifest = van_manifest(vehicle_location, [*waiting, *new_orders])
+        if was_planned:
+            route.record_load_manifest(manifest)
+        else:
+            route.update_load_manifest(manifest)
 
         if warehouse_location is not None:
             await self._inventory_repository.save(warehouse_location)

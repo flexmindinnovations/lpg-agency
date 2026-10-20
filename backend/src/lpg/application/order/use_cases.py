@@ -33,7 +33,11 @@ from lpg.application.common.errors import (
     RouteNotLoadedError,
     ServiceUnavailableError,
 )
-from lpg.application.delivery.use_cases import AssignOrderToRouteCommand, AssignOrderToRouteUseCase
+from lpg.application.delivery.use_cases import (
+    AssignOrderToRouteCommand,
+    AssignOrderToRouteUseCase,
+    ensure_crew_is_free,
+)
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
 from lpg.domain.delivery.route import ProofOfDelivery as RouteProofOfDelivery
 from lpg.domain.delivery.route import Route
@@ -306,6 +310,9 @@ class AssignOrderUseCase:
             command.driver_id, command.vehicle_id, route_date
         )
         if route is None:
+            await ensure_crew_is_free(
+                self._route_repository, driver_id=command.driver_id, vehicle_id=command.vehicle_id
+            )
             route = Route(
                 route_id=self._route_repository.next_id(),
                 tenant_id=order.tenant_id,

@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from lpg.application.delivery.ports import RouteStopOwner
 from lpg.domain.delivery.route import LoadedLine, ProofOfDelivery, Route, RouteStop
@@ -147,11 +147,19 @@ class SqlAlchemyRouteRepository:
         return self._to_domain(model, list(stops_models), order_numbers)
 
     async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None:
+        # A trip already on the road always wins: a newer planned trip (only
+        # possible from data created before DO-23's guard) must never hide
+        # the stops the driver is in the middle of delivering.
+        status_rank = case(
+            (RouteModel.status == "in_progress", 0),
+            (RouteModel.status == "loaded", 1),
+            else_=2,
+        )
         stmt = (
             select(RouteModel)
             .where(RouteModel.driver_id == driver_id)
             .where(RouteModel.status.in_(["planned", "loaded", "in_progress"]))
-            .order_by(RouteModel.created_at.desc())
+            .order_by(status_rank, RouteModel.created_at.desc())
             .limit(1)
         )
         model = await self._uow.session.scalar(stmt)
@@ -167,6 +175,14 @@ class SqlAlchemyRouteRepository:
 
         order_numbers = await self._order_numbers(stops_models)
         return self._to_domain(model, list(stops_models), order_numbers)
+
+    async def lock_crew(self, driver_id: uuid.UUID, vehicle_id: uuid.UUID) -> None:
+        # Transaction-scoped advisory locks (released on commit/rollback),
+        # taken in a fixed order so two callers can never deadlock.
+        for key in sorted((f"route-driver:{driver_id}", f"route-vehicle:{vehicle_id}")):
+            await self._uow.session.execute(
+                select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0)))
+            )
 
     async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
         stmt = (

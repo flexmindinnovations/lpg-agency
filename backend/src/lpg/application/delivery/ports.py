@@ -102,7 +102,15 @@ class RouteRepository(Protocol):
 
     async def get_by_id(self, route_id: uuid.UUID) -> Route | None: ...
 
-    async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None: ...
+    async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None:
+        """The driver's open trip — the one on the road first, then a loaded
+        one, then a planned one; newest within the same status."""
+        ...
+
+    async def lock_crew(self, driver_id: uuid.UUID, vehicle_id: uuid.UUID) -> None:
+        """Serialises trip creation for this driver and this vehicle until the
+        transaction ends, so two dispatchers can't both open a trip for them."""
+        ...
 
     async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
         """Same shape as `get_active_route_for_driver` — the auto-assignment

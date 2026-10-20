@@ -443,6 +443,10 @@ class TestRoleScopedReads:
         vehicle_id = await _seed_vehicle(
             admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
         )
+        # One open trip per van (DO-23): driver B gets their own vehicle.
+        other_vehicle_id = await _seed_vehicle(
+            admin_engine_lpg_test, tenant_id=tenant_id, branch_id=branch_id
+        )
 
         own_route_id = await _plan_route(
             client,
@@ -455,7 +459,7 @@ class TestRoleScopedReads:
             client,
             branch_id=branch_id,
             driver_id=driver_b_id,
-            vehicle_id=vehicle_id,
+            vehicle_id=other_vehicle_id,
             headers=admin_headers,
         )
 

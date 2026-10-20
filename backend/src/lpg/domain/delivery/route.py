@@ -151,12 +151,20 @@ class ProofOfDelivery:
 
 @dataclass(frozen=True, slots=True)
 class LoadedLine:
-    """One line of the van's load manifest — snapshotted when the office
-    loads the route, shown to the driver to check against.
+    """One line of the van's load manifest: the filled cylinders of one type
+    the van carries for this trip — what was loaded plus stock already on the
+    van — so the driver checks the whole van, not only what was just added.
     """
 
     cylinder_type_id: uuid.UUID
     quantity: int
+
+
+def _manifest_totals(lines: Sequence[LoadedLine]) -> dict[uuid.UUID, int]:
+    totals: dict[uuid.UUID, int] = {}
+    for line in lines:
+        totals[line.cylinder_type_id] = totals.get(line.cylinder_type_id, 0) + line.quantity
+    return {ct: quantity for ct, quantity in totals.items() if quantity > 0}
 
 
 # ---------------------------------------------------------------------------
@@ -326,18 +334,15 @@ class Route(AggregateRoot):
         """
         self._loaded_lines = list(lines)
 
-    def add_to_load_manifest(self, lines: Sequence[LoadedLine]) -> None:
-        """A top-up load onto an already-loaded van: adds to the manifest and
-        clears the driver's earlier confirmation, since the van they checked
-        no longer matches it.
+    def update_load_manifest(self, lines: Sequence[LoadedLine]) -> None:
+        """A top-up onto an already-loaded van: the manifest becomes what the
+        van now carries. If that differs from what the driver checked, their
+        earlier confirmation is cleared — the van no longer matches it.
         """
-        totals = {line.cylinder_type_id: line.quantity for line in self._loaded_lines}
-        for line in lines:
-            totals[line.cylinder_type_id] = totals.get(line.cylinder_type_id, 0) + line.quantity
-        self._loaded_lines = [
-            LoadedLine(cylinder_type_id=cylinder_type_id, quantity=quantity)
-            for cylinder_type_id, quantity in totals.items()
-        ]
+        new_lines = [line for line in lines if line.quantity > 0]
+        if _manifest_totals(new_lines) == _manifest_totals(self._loaded_lines):
+            return
+        self._loaded_lines = new_lines
         self._load_confirmed_at = None
 
     def confirm_load(self, confirmed_by: uuid.UUID) -> None:
@@ -403,8 +408,9 @@ class Route(AggregateRoot):
                 )
             )
 
-    def assign_order(self, order_id: uuid.UUID) -> None:
-        """Assign an order to this route."""
+    def assign_order(self, order_id: uuid.UUID, *, order_number: str | None = None) -> None:
+        """Assign an order to this route. `order_number` is carried on the new
+        stop for display, so a response built from this route shows it."""
         if self._status not in ("planned", "loaded"):
             msg = f"Cannot assign order to route in status '{self._status}'."
             raise InvariantViolation(msg)
@@ -420,6 +426,7 @@ class Route(AggregateRoot):
             route_id=self.id,
             order_id=order_id,
             sequence_number=sequence_number,
+            order_number=order_number,
         )
         self._stops.append(stop)
 

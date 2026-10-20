@@ -101,6 +101,23 @@ class DuplicateRouteAssignmentError(ConflictError):
     title = "Order already assigned to another active route"
 
 
+class DriverAlreadyOnTripError(ConflictError):
+    """The driver already has an open trip (`planned`, `loaded` or
+    `in_progress`). One driver drives one trip at a time — further orders go
+    onto that trip, or a new trip is planned once it is done."""
+
+    error_code = "DRIVER_ALREADY_ON_TRIP"
+    title = "This driver already has an open trip"
+
+
+class VehicleAlreadyOnTripError(ConflictError):
+    """The vehicle is already on another open trip — a van's stock can only
+    belong to one trip's manifest at a time."""
+
+    error_code = "VEHICLE_ALREADY_ON_TRIP"
+    title = "This vehicle is already on an open trip"
+
+
 class RouteReconciliationPendingError(ConflictError):
     """A route cannot move `completed -> reconciled` until its vehicle's
     `InventoryLocation` has an *approved* `ReconciliationRecord` (BR-14) —

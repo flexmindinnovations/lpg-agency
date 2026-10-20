@@ -188,6 +188,9 @@ def mock_route_repo() -> MagicMock:
     repo.save = AsyncMock()
     repo.get_by_id = AsyncMock(return_value=None)
     repo.get_route_with_open_stop_for = AsyncMock(return_value=None)
+    repo.lock_crew = AsyncMock()
+    repo.get_active_route_for_driver = AsyncMock(return_value=None)
+    repo.get_active_route_for_vehicle = AsyncMock(return_value=None)
     repo.count_active_routes_for_order = AsyncMock(return_value=0)
     repo.get_stop_owner = AsyncMock(return_value=None)
     return repo
