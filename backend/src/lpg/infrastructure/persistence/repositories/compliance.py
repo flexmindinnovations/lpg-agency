@@ -461,10 +461,20 @@ class SqlAlchemyTdtRatingRepository:
             OrderStatusHistoryModel.changed_at < quarter_end,
         )
 
-        booked_at = func.max(
-            case(
-                (OrderStatusHistoryModel.to_status == "booked", OrderStatusHistoryModel.changed_at)
-            )
+        # An order created straight into `booked` (staff and app bookings,
+        # imported history) may have no `-> booked` history row; it was
+        # booked when it was created, so fall back to that rather than
+        # dropping the order from the rating (DA-37).
+        booked_at = func.coalesce(
+            func.max(
+                case(
+                    (
+                        OrderStatusHistoryModel.to_status == "booked",
+                        OrderStatusHistoryModel.changed_at,
+                    )
+                )
+            ),
+            func.min(OrderModel.created_at),
         )
         delivered_at = func.max(
             case(
@@ -488,11 +498,6 @@ class SqlAlchemyTdtRatingRepository:
                 OrderStatusHistoryModel.order_id.in_(delivered_in_window),
             )
             .group_by(OrderModel.id, OrderModel.branch_id)
-            # Defensive, not expected to ever trigger: every order's own
-            # transition graph requires passing through `booked` before it
-            # can ever reach `delivered` (domain.order.order's
-            # _TRANSITIONS), so a delivered order missing a booked_at
-            # would indicate corrupt history data, not a normal case.
             .having(booked_at.is_not(None))
         )
         if branch_id is not None:
