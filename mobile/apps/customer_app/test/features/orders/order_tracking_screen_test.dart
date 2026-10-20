@@ -50,6 +50,7 @@ Widget _screen({OrderTrackingView? view, DriverPosition? driver}) =>
     ProviderScope(
       overrides: [
         orderDetailProvider.overrideWith((ref, id) async => _order()),
+        deliveryCodeProvider.overrideWith((ref, id) async => '482913'),
         orderTrackingProvider.overrideWith((ref, id) async => view ?? _view()),
         driverLocationProvider.overrideWith((ref, id) => Stream.value(driver)),
         mapTileProviderProvider.overrideWithValue(FakeTileProvider()),
@@ -73,7 +74,7 @@ void main() {
       },
     );
 
-    testWidgets('shows the order number and a copyable tracking id', (
+    testWidgets('shows the delivery code and a copyable order number', (
       tester,
     ) async {
       final copied = <String>[];
@@ -96,13 +97,13 @@ void main() {
       await pumpScreen(tester, _screen(view: _view()));
 
       expect(find.text('ORD000042'), findsOneWidget);
-      expect(find.text('ABCDEF01'), findsOneWidget); // shortened id
+      expect(find.text('ABCDEF01'), findsNothing); // no UUID fragment (CA-16)
+      expect(find.text('482913'), findsOneWidget); // CA-04
 
-      await tester.tap(find.text('ABCDEF01'));
+      await tester.tap(find.text('ORD000042'));
       await tester.pump();
 
-      expect(copied, ['abcdef01aaaabbbb']); // the full id is copied
-      expect(find.text('Tracking ID copied'), findsOneWidget);
+      expect(copied, ['ORD000042']);
     });
 
     testWidgets('shows an "approximate location" banner when geocoded', (
