@@ -22,10 +22,15 @@
 />
 } @else if (isEmpty()) {
 <lpg-empty-state
-  title="No delivered orders in this period"
-  description="No TDT rating can be computed until at least one order is delivered — or band thresholds are configured for this tenant."
+  title="No qualifying orders in this period"
+  description="TDT counts orders that were booked and delivered within the period. None qualify yet."
 />
-} @else {
+} @else { @if (bandsMissing()) {
+<lpg-empty-state
+  title="Star bands are not configured"
+  description="Orders were delivered in this period, but no TDT star bands are set, so no rating can be given. An admin can set them under Settings › TDT Rating."
+/>
+}
 <div class="tdt-summary">
   <lpg-section-card heading="Overall Rating" class="tdt-summary__rating">
     <lpg-star-rating [stars]="overallStars()" size="lg" />
@@ -46,7 +51,7 @@
   [columns]="columns"
   [loading]="loading()"
   [autoHeight]="true"
-  [pageSize]="5"
+  [pageSize]="10"
   ariaLabel="TDT rating distribution by star band"
 />
 }

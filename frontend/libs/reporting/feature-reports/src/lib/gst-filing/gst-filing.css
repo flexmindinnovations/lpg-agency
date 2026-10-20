@@ -1,3 +1,26 @@
 :host {
   display: block;
 }
+
+.gst-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--spacing-md);
+  margin: 0 0 var(--spacing-lg);
+}
+
+.gst-summary dt {
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.gst-summary dd {
+  margin: 0;
+  font-weight: var(--typography-label-font-weight);
+}
+
+.gst-table-heading {
+  margin: var(--spacing-lg) 0 var(--spacing-sm);
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-label-font-weight);
+}

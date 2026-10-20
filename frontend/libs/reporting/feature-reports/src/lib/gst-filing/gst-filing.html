@@ -1,17 +1,78 @@
-<h2 class="section-heading">GST Filing Summary</h2>
+<h2 class="section-heading">GST (GSTR-1)</h2>
+
+<lib-report-filters [showBranch]="false" (apply)="load($event)" (exportCsv)="exportCsv()" />
 
 @if (store.error()) {
 <lpg-empty-state
   tone="error"
-  title="Couldn't load GST filing"
+  title="Couldn't load the GST report"
   [description]="store.error() ?? ''"
 />
-} @else {
+} @else if (report(); as r) {
+<dl class="gst-summary" aria-label="Totals for the period">
+  <div>
+    <dt>Invoices</dt>
+    <dd>{{ r.invoice_count }}</dd>
+  </div>
+  <div>
+    <dt>Taxable value</dt>
+    <dd>{{ formatCurrencyInr(r.totals.taxable_value) }}</dd>
+  </div>
+  <div>
+    <dt>CGST</dt>
+    <dd>{{ formatCurrencyInr(r.totals.cgst) }}</dd>
+  </div>
+  <div>
+    <dt>SGST</dt>
+    <dd>{{ formatCurrencyInr(r.totals.sgst) }}</dd>
+  </div>
+  <div>
+    <dt>IGST</dt>
+    <dd>{{ formatCurrencyInr(r.totals.igst) }}</dd>
+  </div>
+  <div>
+    <dt>Total GST</dt>
+    <dd>{{ formatCurrencyInr(r.totals.total_tax) }}</dd>
+  </div>
+</dl>
+
+<h3 class="gst-table-heading">B2B — registered customers (table 4A)</h3>
 <lpg-data-grid
-  [rows]="store.gstFiling()"
-  [columns]="columns"
+  [rows]="r.b2b"
+  [columns]="invoiceColumns"
   [loading]="store.loading()"
   [autoHeight]="true"
-  ariaLabel="GST filing summary"
+  [pageSize]="10"
+  ariaLabel="GSTR-1 B2B invoices"
+/>
+
+<h3 class="gst-table-heading">B2C large — inter-state above ₹1 lakh (table 5)</h3>
+<lpg-data-grid
+  [rows]="r.b2cl"
+  [columns]="invoiceColumns"
+  [loading]="store.loading()"
+  [autoHeight]="true"
+  [pageSize]="10"
+  ariaLabel="GSTR-1 B2C large invoices"
+/>
+
+<h3 class="gst-table-heading">B2C small — by place of supply and rate (table 7)</h3>
+<lpg-data-grid
+  [rows]="r.b2cs"
+  [columns]="b2csColumns"
+  [loading]="store.loading()"
+  [autoHeight]="true"
+  [pageSize]="10"
+  ariaLabel="GSTR-1 B2C small summary"
+/>
+
+<h3 class="gst-table-heading">HSN summary (table 12)</h3>
+<lpg-data-grid
+  [rows]="r.hsn"
+  [columns]="hsnColumns"
+  [loading]="store.loading()"
+  [autoHeight]="true"
+  [pageSize]="10"
+  ariaLabel="GSTR-1 HSN summary"
 />
 }

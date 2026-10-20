@@ -1,3 +1,21 @@
 :host {
   display: block;
 }
+
+.report-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-lg);
+  margin: var(--spacing-md) 0 0;
+}
+
+.report-totals dt {
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.report-totals dd {
+  margin: 0;
+  font-weight: var(--typography-label-font-weight);
+}

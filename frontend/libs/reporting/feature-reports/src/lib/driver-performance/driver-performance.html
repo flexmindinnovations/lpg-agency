@@ -1,4 +1,6 @@
-<h2 class="section-heading">Driver Performance (Last 30 Days)</h2>
+<h2 class="section-heading">Driver Performance</h2>
+
+<lib-report-filters (apply)="load($event)" (exportCsv)="exportCsv()" />
 
 @if (store.error()) {
 <lpg-empty-state
@@ -12,7 +14,7 @@
   [columns]="columns"
   [loading]="store.loading()"
   [autoHeight]="true"
-  [pageSize]="15"
-  ariaLabel="Driver performance, last 30 days"
+  [pageSize]="25"
+  ariaLabel="Driver performance by driver and day"
 />
 }

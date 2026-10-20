@@ -1,4 +1,6 @@
-<h2 class="section-heading">Daily Sales (Last 30 Days)</h2>
+<h2 class="section-heading">Daily Sales</h2>
+
+<lib-report-filters (apply)="load($event)" (exportCsv)="exportCsv()" />
 
 @if (store.error()) {
 <lpg-empty-state
@@ -12,7 +14,26 @@
   [columns]="columns"
   [loading]="store.loading()"
   [autoHeight]="true"
-  [pageSize]="15"
-  ariaLabel="Daily sales, last 30 days"
+  [pageSize]="25"
+  ariaLabel="Daily sales by day and branch"
 />
-}
+@if (store.dailySales().length > 0) {
+<dl class="report-totals" aria-label="Totals for the period">
+  <div>
+    <dt>Invoices</dt>
+    <dd>{{ totals().invoices }}</dd>
+  </div>
+  <div>
+    <dt>Taxable value</dt>
+    <dd>{{ formatCurrencyInr(totals().taxable) }}</dd>
+  </div>
+  <div>
+    <dt>GST</dt>
+    <dd>{{ formatCurrencyInr(totals().tax) }}</dd>
+  </div>
+  <div>
+    <dt>Revenue</dt>
+    <dd>{{ formatCurrencyInr(totals().revenue) }}</dd>
+  </div>
+</dl>
+} }
