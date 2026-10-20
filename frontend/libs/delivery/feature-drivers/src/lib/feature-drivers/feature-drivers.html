@@ -10,7 +10,11 @@
 
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
-  }
+  } @if (licenceWarnings(); as warn) { @if (warn.text) {
+  <p-message [severity]="warn.expired > 0 ? 'error' : 'warn'" role="status"
+    >{{ warn.text }}</p-message
+  >
+  } }
 
   <div class="data-toolbar">
     <div class="search-bar data-toolbar__filters">
@@ -188,6 +192,20 @@
     <div class="detail-view">
       <div class="detail-view__fields">
         <div class="detail-item">
+          <span class="detail-label">Name</span>
+          <span class="detail-value"
+            >{{ driver.name ?? employeeNameById().get(driver.employee_id) ?? '—' }}</span
+          >
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Phone</span>
+          @if (driver.phone_number; as phone) {
+          <a class="detail-value" [href]="'tel:' + phone">{{ phone }}</a>
+          } @else {
+          <span class="detail-value">—</span>
+          }
+        </div>
+        <div class="detail-item">
           <span class="detail-label">Employee Code</span>
           <span class="detail-value"
             >{{ employeeCodeById().get(driver.employee_id) ?? driver.employee_id }}</span
@@ -208,7 +226,12 @@
         </div>
         <div class="detail-item">
           <span class="detail-label">License Expiry</span>
-          <span class="detail-value">{{ driver.license_expiry_date ?? '—' }}</span>
+          <span class="detail-value detail-value--with-tag">
+            {{ driver.license_expiry_date ?? '—' }} @if (licenceState(driver.license_expiry_date);
+            as state) { @if (state !== 'valid') {
+            <p-tag [value]="licenceLabel[state]" [severity]="licenceSeverity[state]" />
+            } }
+          </span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Duty Status</span>

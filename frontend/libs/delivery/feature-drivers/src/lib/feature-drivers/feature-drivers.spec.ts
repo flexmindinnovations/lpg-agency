@@ -4,7 +4,7 @@ import { of, throwError } from 'rxjs';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
-import { FeatureDrivers } from './feature-drivers';
+import { FeatureDrivers, licenceState } from './feature-drivers';
 import {
   AdminEmployeeService,
   ApiConfiguration,
@@ -89,6 +89,52 @@ describe('FeatureDrivers', () => {
 
       expect(internals().driverRows()[0].employee_name).toBe('Ravi Kumar');
     });
+
+    it('prefers the name the driver API returns over the employee directory', () => {
+      internals().drivers.set([{ ...driver('d1', 'e9'), name: 'Asha Patil' }]);
+
+      expect(internals().driverRows()[0].employee_name).toBe('Asha Patil');
+    });
+  });
+
+  describe('licence expiry warning', () => {
+    type Internals = {
+      drivers: WritableSignal<DriverResponse[]>;
+      licenceWarnings: () => { expired: number; expiring: number; text: string };
+    };
+    const iso = (offsetDays: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    it('counts expired and soon-expiring licences across all drivers', () => {
+      const internals = component as unknown as Internals;
+      internals.drivers.set([
+        { id: 'a', license_expiry_date: iso(-1) },
+        { id: 'b', license_expiry_date: iso(5) },
+        { id: 'c', license_expiry_date: iso(200) },
+        { id: 'd', license_expiry_date: null },
+      ] as DriverResponse[]);
+
+      expect(internals.licenceWarnings()).toEqual({
+        expired: 1,
+        expiring: 1,
+        text: '1 driver licence has expired. 1 expires within 30 days. Renew them from the driver details.',
+      });
+    });
+  });
+});
+
+describe('licenceState', () => {
+  const today = new Date(2026, 9, 20);
+
+  it('classifies a licence against today', () => {
+    expect(licenceState(null, today)).toBe('missing');
+    expect(licenceState('2026-10-19', today)).toBe('expired');
+    expect(licenceState('2026-10-20', today)).toBe('expiring');
+    expect(licenceState('2026-11-19', today)).toBe('expiring');
+    expect(licenceState('2026-11-20', today)).toBe('valid');
   });
 });
 
