@@ -1321,6 +1321,7 @@ class TestFailedDeliveryAndReschedule:
         failed_body = {
             "reason_code": "customer_unavailable",
             "resolution_action": "reschedule",
+            "note": "Gate locked, asked for Thursday",
         }
         failed_response = await client.post(
             f"/api/v1/orders/{order_id}/failed-delivery",
@@ -1329,6 +1330,10 @@ class TestFailedDeliveryAndReschedule:
         )
         assert failed_response.status_code == 200, failed_response.text
         assert failed_response.json()["status"] == "failed_delivery"
+        history = await client.get(f"/api/v1/orders/{order_id}/history", headers=admin_headers)
+        assert history.json()[-1]["reason"] == (
+            "Customer unavailable — Gate locked, asked for Thursday"
+        )
 
         # Replay (same key, same body) -> stored result, no re-transition.
         failed_replay = await client.post(

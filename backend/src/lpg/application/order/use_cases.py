@@ -767,6 +767,7 @@ class RecordFailedDeliveryCommand(Command):
     reason_code: str
     resolution_action: str | None
     recorded_by: uuid.UUID
+    note: str | None = None
 
 
 class RecordFailedDeliveryUseCase:
@@ -802,6 +803,7 @@ class RecordFailedDeliveryUseCase:
             reason_code=command.reason_code,
             resolution_action=command.resolution_action,
             recorded_by=command.recorded_by,
+            note=command.note,
         )
         _start_route_if_loaded(route)
         if route is not None and order.route_stop_id is not None:

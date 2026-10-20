@@ -197,6 +197,16 @@ PAYMENT_METHODS: frozenset[str] = frozenset({"cash", "upi", "card", "online_gate
 FAILED_DELIVERY_REASON_CODES: frozenset[str] = frozenset(
     {"customer_unavailable", "wrong_address", "payment_refused", "vehicle_issue", "safety_issue"}
 )
+# How each reason reads in the order's status history — the line the
+# customer and the office see for a failed delivery.
+FAILED_DELIVERY_REASON_LABELS: dict[str, str] = {
+    "customer_unavailable": "Customer unavailable",
+    "wrong_address": "Wrong address",
+    "payment_refused": "Payment refused",
+    "vehicle_issue": "Vehicle issue",
+    "safety_issue": "Safety issue",
+}
+FAILED_DELIVERY_NOTE_MAX_LENGTH = 500
 FAILED_DELIVERY_RESOLUTION_ACTIONS: frozenset[str] = frozenset(
     {"reschedule", "cancel", "return_stock"}
 )
@@ -694,13 +704,28 @@ class Order(AggregateRoot):
         )
 
     def fail_delivery(
-        self, *, reason_code: str, resolution_action: str | None, recorded_by: uuid.UUID
+        self,
+        *,
+        reason_code: str,
+        resolution_action: str | None,
+        recorded_by: uuid.UUID,
+        note: str | None = None,
     ) -> None:
-        """`out_for_delivery -> failed_delivery` (D-12)."""
+        """`out_for_delivery -> failed_delivery` (D-12). The status-history
+        entry reads as the reason, plus the driver's optional `note` (what
+        the reason codes can't say: "gate locked, neighbour says back at 6",
+        "customer asked for Thursday").
+        """
         self._ensure_transition_allowed("failed_delivery")
         self._validate_failed_delivery_reason_code(reason_code)
         if resolution_action is not None:
             self._validate_resolution_action(resolution_action)
+        note = (note or "").strip() or None
+        if note is not None and len(note) > FAILED_DELIVERY_NOTE_MAX_LENGTH:
+            msg = f"The note must be at most {FAILED_DELIVERY_NOTE_MAX_LENGTH} characters."
+            raise InvariantViolation(msg)
+        label = FAILED_DELIVERY_REASON_LABELS[reason_code]
+        history_reason = f"{label} — {note}" if note else label
 
         self._pending_failed_delivery_entries.append(
             FailedDeliveryEntry(
@@ -709,7 +734,7 @@ class Order(AggregateRoot):
                 recorded_by=recorded_by,
             )
         )
-        self._apply_transition("failed_delivery", changed_by=recorded_by)
+        self._apply_transition("failed_delivery", changed_by=recorded_by, reason=history_reason)
         self.record_event(
             DeliveryFailed(
                 order_id=self.id,

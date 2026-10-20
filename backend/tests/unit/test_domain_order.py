@@ -424,6 +424,40 @@ class TestOrderFailDelivery:
         assert entry.reason_code == "payment_refused"
         assert entry.resolution_action == "cancel"
 
+    def test_history_reads_as_the_reason(self) -> None:
+        order = _make_order()
+        _advance(order, "out_for_delivery")
+        order.fail_delivery(
+            reason_code="customer_unavailable", resolution_action=None, recorded_by=uuid.uuid4()
+        )
+        assert order.pending_status_history[-1].reason == "Customer unavailable"
+
+    def test_history_carries_the_drivers_note(self) -> None:
+        """DR-09: the five D-12 reasons can't say everything; a note can."""
+        order = _make_order()
+        _advance(order, "out_for_delivery")
+        order.fail_delivery(
+            reason_code="customer_unavailable",
+            resolution_action="reschedule",
+            recorded_by=uuid.uuid4(),
+            note="  Asked for Thursday morning ",
+        )
+        assert (
+            order.pending_status_history[-1].reason
+            == "Customer unavailable — Asked for Thursday morning"
+        )
+
+    def test_rejects_an_overlong_note(self) -> None:
+        order = _make_order()
+        _advance(order, "out_for_delivery")
+        with pytest.raises(InvariantViolation, match="note"):
+            order.fail_delivery(
+                reason_code="wrong_address",
+                resolution_action=None,
+                recorded_by=uuid.uuid4(),
+                note="x" * 501,
+            )
+
 
 class TestOrderCancelFree:
     @pytest.mark.parametrize("status", ["booked", "confirmed", "assigned", "ready_for_dispatch"])

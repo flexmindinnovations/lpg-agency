@@ -1116,6 +1116,7 @@ async def record_failed_delivery(
                 reason_code=body.reason_code,
                 resolution_action=body.resolution_action,
                 recorded_by=actor_id,
+                note=body.note,
             )
         )
         return _order_to_response(order).model_dump(mode="json")
