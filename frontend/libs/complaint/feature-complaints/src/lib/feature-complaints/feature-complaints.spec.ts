@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { MessageService } from 'primeng/api';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { FeatureComplaints } from './feature-complaints';
 
@@ -10,7 +11,7 @@ describe('FeatureComplaints', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeatureComplaints],
-      providers: [{ provide: PERMISSION_CHECKER, useValue: signal(null) }],
+      providers: [MessageService, { provide: PERMISSION_CHECKER, useValue: signal(null) }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FeatureComplaints);

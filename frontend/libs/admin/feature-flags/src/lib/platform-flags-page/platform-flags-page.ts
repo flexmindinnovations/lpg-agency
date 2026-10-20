@@ -284,7 +284,6 @@ class FlagDefaultCell {
                     formControlName="startsAt"
                     [showIcon]="true"
                     iconDisplay="input"
-                    dateFormat="dd-mm-yy"
                     appendTo="body"
                     [fluid]="true"
                   ></p-datepicker>
@@ -301,7 +300,6 @@ class FlagDefaultCell {
                     formControlName="endsAt"
                     [showIcon]="true"
                     iconDisplay="input"
-                    dateFormat="dd-mm-yy"
                     appendTo="body"
                     [fluid]="true"
                   ></p-datepicker>
