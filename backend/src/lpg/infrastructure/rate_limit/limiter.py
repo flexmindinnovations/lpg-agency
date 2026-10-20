@@ -28,6 +28,12 @@ if TYPE_CHECKING:
     from lpg.infrastructure.redis.client import RedisClient
 
 
+def too_many_attempts_message(retry_after_seconds: int) -> str:
+    minutes = max(1, -(-retry_after_seconds // 60))  # round up, at least 1
+    unit = "minute" if minutes == 1 else "minutes"
+    return f"Too many attempts. Please try again in {minutes} {unit}."
+
+
 @dataclass(frozen=True, slots=True)
 class RateLimitResult:
     allowed: bool
@@ -67,8 +73,13 @@ class RateLimiter:
         fail closed rather than branch on the result itself."""
         result = await self.check(key=key, limit=limit, window_seconds=window_seconds)
         if not result.allowed:
-            msg = f"Rate limit exceeded for {key!r}."
+            # The message reaches end users (a customer's login screen showed
+            # "Rate limit exceeded for 'auth:otp_request:127.0.0.1'" - CA-03),
+            # so it never names the key, which can hold an IP or phone number.
+            # The key stays in the error's context, which is only logged.
             raise RateLimitExceededError(
-                msg, retry_after_seconds=result.retry_after_seconds, key=key
+                too_many_attempts_message(result.retry_after_seconds),
+                retry_after_seconds=result.retry_after_seconds,
+                key=key,
             )
         return result

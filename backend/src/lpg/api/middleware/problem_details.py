@@ -33,7 +33,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from lpg.application.common.errors import ApplicationError
+from lpg.application.common.errors import ApplicationError, RateLimitExceededError
 from lpg.config.logging import get_logger
 from lpg.domain.common.base import DomainError
 
@@ -114,6 +114,11 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
     if errors:
         extra["errors"] = errors
 
+    headers: dict[str, str] = {}
+    if isinstance(exc, RateLimitExceededError):
+        extra["retry_after_seconds"] = exc.retry_after_seconds
+        headers["Retry-After"] = str(exc.retry_after_seconds)
+
     _logger.warning(
         "application_error",
         error_code=exc.error_code,
@@ -121,7 +126,7 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
         detail=exc.message,
         **exc.context,
     )
-    return _problem_response(
+    response = _problem_response(
         status_code=exc.http_status,
         title=exc.title,
         error_code=exc.error_code,
@@ -130,6 +135,8 @@ async def application_error_handler(request: Request, exc: Exception) -> JSONRes
         trace_id=_trace_id(request),
         extra=extra or None,
     )
+    response.headers.update(headers)
+    return response
 
 
 async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:

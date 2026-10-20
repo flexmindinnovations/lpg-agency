@@ -41,6 +41,7 @@ from lpg.api.v1.dependencies.identity import (
     get_refresh_token_repository,
     get_tenant_slug_resolver,
     get_token_hasher,
+    require_phone_rate_limit,
     require_rate_limit,
 )
 from lpg.api.v1.dependencies.license import get_license_status_checker
@@ -175,9 +176,19 @@ async def otp_request(
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     tenant_slug_resolver: Annotated[TenantSlugResolver, Depends(get_tenant_slug_resolver)],
+    # CA-03: 5 codes an hour per number; the per-IP limit is generous because
+    # many customers can share one carrier NAT or office router.
     _rate_limit: Annotated[
         None,
-        Depends(require_rate_limit(key_prefix="auth:otp_request", limit=5, window_seconds=3600)),
+        Depends(require_rate_limit(key_prefix="auth:otp_request", limit=30, window_seconds=3600)),
+    ],
+    _phone_rate_limit: Annotated[
+        None,
+        Depends(
+            require_phone_rate_limit(
+                key_prefix="auth:otp_request:phone", limit=5, window_seconds=3600
+            )
+        ),
     ],
 ) -> None:
     tenant_uuid = await _resolve_tenant_id(body.tenant_id, tenant_slug_resolver)
