@@ -69,6 +69,22 @@ class BookingCancelled(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class CancellationRequested(DomainEvent):
+    """A cancellation that needs a Manager's approval (D-19) is waiting.
+
+    The order's status is unchanged until someone approves it, so nothing
+    else tells the office a decision is pending — this is what puts it in
+    their notification bell.
+    """
+
+    order_id: uuid.UUID
+    tenant_id: uuid.UUID
+    order_number: str | None
+    requested_by: uuid.UUID | None
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class InventoryReserved(DomainEvent):
     """Published by Order Management at assignment (`confirmed -> assigned`).
 
@@ -743,9 +759,12 @@ class Order(AggregateRoot):
             )
         )
 
-    def request_cancellation_approval(self, *, reason: str) -> None:
-        """Pure guard — only from `_APPROVAL_CANCEL_STATES` (D-19). Status
-        is unchanged; the use case creates the pending `CancellationRecord`.
+    def request_cancellation_approval(
+        self, *, reason: str, requested_by: uuid.UUID | None = None
+    ) -> None:
+        """Guard — only from `_APPROVAL_CANCEL_STATES` (D-19). Status is
+        unchanged; the use case creates the pending `CancellationRecord`.
+        Records `CancellationRequested` so the approvers hear about it.
         """
         if self._status not in _APPROVAL_CANCEL_STATES:
             msg = (
@@ -756,6 +775,15 @@ class Order(AggregateRoot):
         if not reason.strip():
             msg = "Cancellation reason cannot be empty."
             raise InvariantViolation(msg, order_id=str(self.id))
+        self.record_event(
+            CancellationRequested(
+                order_id=self.id,
+                tenant_id=self._tenant_id,
+                order_number=self._order_number,
+                requested_by=requested_by,
+                reason=reason.strip(),
+            )
+        )
 
     def approve_cancellation(
         self, *, approved_by: uuid.UUID, cancellation_charge: Decimal, reason: str

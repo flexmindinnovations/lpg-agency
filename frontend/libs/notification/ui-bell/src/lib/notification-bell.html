@@ -1,5 +1,5 @@
 <p-overlaybadge
-  [value]="unreadCount() > 0 ? unreadCount().toString() : ''"
+  [value]="unreadCount() > 99 ? '99+' : unreadCount() > 0 ? unreadCount().toString() : ''"
   [badgeDisabled]="unreadCount() === 0"
   severity="danger"
 >
@@ -10,7 +10,7 @@
     rounded
     severity="secondary"
     iconOnly
-    aria-label="Notifications"
+    [attr.aria-label]="unreadCount() > 0 ? 'Notifications, ' + unreadCount() + ' unread' : 'Notifications'"
     (click)="toggled.emit()"
   >
     <i class="pi pi-bell"></i>

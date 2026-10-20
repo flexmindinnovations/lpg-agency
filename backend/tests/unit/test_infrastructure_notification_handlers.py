@@ -36,6 +36,10 @@ class _FakeJobQueue:
     async def enqueue(self, function_name: str, *args: Any, **_: Any) -> None:
         self.enqueued.append((function_name, args[0] if args else {}))
 
+    async def notify(self, payload: dict[str, Any]) -> None:
+        """The `Notifier` port — recorded like the job it used to enqueue."""
+        self.enqueued.append(("send_notification", payload))
+
 
 def _booking_created(source: str) -> BookingCreated:
     return BookingCreated(
@@ -352,3 +356,169 @@ async def test_delivery_notifies_the_customer_and_staff() -> None:
 
     types = [payload["type"] for _, payload in queue.enqueued]
     assert types == ["delivery_confirmed", "order_delivered_staff"]
+
+
+# --- QA fixes (DO-27 / CA-05): every event the office, customer or driver
+# --- must hear about produces a notification payload.
+
+
+def _types(queue: _FakeJobQueue) -> list[str]:
+    return [payload["type"] for _, payload in queue.enqueued]
+
+
+async def _dispatch(event: Any) -> _FakeJobQueue:
+    queue = _FakeJobQueue()
+    dispatcher = DomainEventDispatcher()
+    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    await dispatcher.dispatch([event])
+    return queue
+
+
+@pytest.mark.asyncio
+async def test_cancellation_request_alerts_the_approvers_but_not_the_requester() -> None:
+    from lpg.domain.order.order import CancellationRequested
+
+    requester = uuid.uuid4()
+    event = CancellationRequested(
+        order_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        order_number="ORD000009",
+        requested_by=requester,
+        reason="Booked twice",
+    )
+    queue = await _dispatch(event)
+    assert queue.enqueued == [
+        (
+            "send_notification",
+            {
+                "type": "cancellation_requested_staff",
+                "tenant_id": str(event.tenant_id),
+                "order_id": str(event.order_id),
+                "reason": "Booked twice",
+                "actor_id": str(requester),
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_failed_delivery_tells_the_office_and_the_customer() -> None:
+    from lpg.domain.order.order import DeliveryFailed
+
+    event = DeliveryFailed(
+        order_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        route_stop_id=uuid.uuid4(),
+        reason_code="customer_unavailable",
+        recorded_by=uuid.uuid4(),
+    )
+    queue = await _dispatch(event)
+    assert _types(queue) == ["delivery_failed_staff", "delivery_failed_customer"]
+    assert all(p["reason_code"] == "customer_unavailable" for _, p in queue.enqueued)
+
+
+@pytest.mark.asyncio
+async def test_cancellation_tells_the_customer_with_the_charge() -> None:
+    event = BookingCancelled(
+        order_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        cancelled_by=uuid.uuid4(),
+        approved_by=uuid.uuid4(),
+        reason="x",
+        cancellation_charge=Decimal("50.00"),
+    )
+    queue = await _dispatch(event)
+    assert _types(queue) == ["order_cancelled_customer", "stop_cancelled"]
+    assert queue.enqueued[0][1]["cancellation_charge"] == "50.00"
+
+
+@pytest.mark.asyncio
+async def test_complaints_alert_staff_and_the_assignee() -> None:
+    from lpg.domain.complaint.complaint import ComplaintAssigned, ComplaintRaised
+    from lpg.domain.complaint.value_objects import ComplaintCategory, ComplaintPriority
+
+    raised = ComplaintRaised(
+        complaint_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        category=ComplaintCategory.SHORT_DELIVERY,
+        priority=ComplaintPriority.HIGH,
+        sla_due_at=datetime.now(UTC),
+    )
+    assert _types(await _dispatch(raised)) == ["complaint_raised_staff"]
+
+    assignee, manager = uuid.uuid4(), uuid.uuid4()
+    assigned = ComplaintAssigned(
+        complaint_id=raised.complaint_id,
+        tenant_id=raised.tenant_id,
+        assigned_to=assignee,
+        assigned_by=manager,
+    )
+    queue = await _dispatch(assigned)
+    assert _types(queue) == ["complaint_assigned"]
+    assert queue.enqueued[0][1]["assigned_to"] == str(assignee)
+
+    self_assigned = ComplaintAssigned(
+        complaint_id=raised.complaint_id,
+        tenant_id=raised.tenant_id,
+        assigned_to=manager,
+        assigned_by=manager,
+    )
+    assert _types(await _dispatch(self_assigned)) == []
+
+
+@pytest.mark.asyncio
+async def test_online_payment_tells_customer_and_accounts_once() -> None:
+    from lpg.domain.accounting.invoice import PaymentCollected
+    from lpg.domain.accounting.online_payment import OnlinePaymentReceived
+
+    online = OnlinePaymentReceived(
+        online_payment_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        order_id=uuid.uuid4(),
+        customer_id=uuid.uuid4(),
+        amount=Decimal("1811.00"),
+        provider="razorpay",
+        provider_payment_id="pay_1",
+        paid_at=datetime.now(UTC),
+    )
+    queue = await _dispatch(online)
+    assert _types(queue) == ["payment_received_customer", "payment_received_staff"]
+    assert queue.enqueued[0][1]["amount"] == "1811.00"
+
+    def _collected(method: str) -> PaymentCollected:
+        return PaymentCollected(
+            payment_id=uuid.uuid4(),
+            tenant_id=online.tenant_id,
+            invoice_id=uuid.uuid4(),
+            method=method,
+            amount=Decimal("1811.00"),
+            collected_by=uuid.uuid4(),
+            collected_at=datetime.now(UTC),
+        )
+
+    # The gateway payment applied to the invoice is not announced twice.
+    assert _types(await _dispatch(_collected("online_gateway"))) == []
+    assert _types(await _dispatch(_collected("cash"))) == ["payment_received_customer"]
+
+
+@pytest.mark.asyncio
+async def test_route_changes_reach_the_driver() -> None:
+    from lpg.domain.delivery.route import RouteStopsResequenced
+
+    tenant, route, driver = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+
+    def _status(old: str, new: str) -> RouteStatusChanged:
+        return RouteStatusChanged(
+            route_id=route, old_status=old, new_status=new, tenant_id=tenant, driver_id=driver
+        )
+
+    assert _types(await _dispatch(_status("planned", "loaded"))) == ["route_ready"]
+    assert _types(await _dispatch(_status("loaded", "cancelled"))) == ["route_cancelled_driver"]
+    assert _types(await _dispatch(_status("planned", "cancelled"))) == []
+    # A rescheduled stop reopening a finished trip is not "left the depot".
+    assert _types(await _dispatch(_status("completed", "in_progress"))) == []
+    resequenced = RouteStopsResequenced(
+        route_id=route, tenant_id=tenant, old_order=(), new_order=()
+    )
+    assert _types(await _dispatch(resequenced)) == ["route_resequenced"]

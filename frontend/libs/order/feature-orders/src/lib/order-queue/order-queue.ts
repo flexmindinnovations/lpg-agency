@@ -106,8 +106,10 @@ export class OrderQueue implements OnInit {
     // burst — e.g. a bulk cancel — triggers one refetch, and silent so it
     // doesn't flash the loading spinner over a populated grid.
     this.wsService.subscribeTo('orders');
+    // `changes$` also fires after a reconnect, so a dropped socket can't
+    // leave the list stale.
     this.wsService
-      .on('order.status_changed')
+      .changes$('order.status_changed')
       .pipe(debounceTime(500), takeUntilDestroyed())
       .subscribe(() => this.loadOrders({ silent: true }));
 

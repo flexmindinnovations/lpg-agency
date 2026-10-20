@@ -12,6 +12,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
@@ -90,6 +91,7 @@ export class FeatureComplaints implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissionChecker = inject(PERMISSION_CHECKER);
+  private readonly activatedRoute = inject(ActivatedRoute, { optional: true });
 
   readonly registerTriggerEl = viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
@@ -339,6 +341,7 @@ export class FeatureComplaints implements OnInit {
         this.resolveCustomers(res.items.map((c) => c.customer_id)).subscribe(() => {
           this.complaints.set(res.items);
           this.loading.set(false);
+          this.openLinkedComplaint(res.items);
         });
       },
       error: (_err) => {
@@ -373,6 +376,15 @@ export class FeatureComplaints implements OnInit {
         this.customerById.set(next);
       }),
     );
+  }
+
+  /** `/complaints?complaint=<id>` — a notification's deep link — opens
+   *  that complaint's details once the list has loaded. */
+  private openLinkedComplaint(items: readonly Complaint[]): void {
+    const id = this.activatedRoute?.snapshot.queryParamMap.get('complaint');
+    if (!id || this.detailVisible()) return;
+    const complaint = items.find((c) => c.id === id);
+    if (complaint) this.onRowAction(complaint);
   }
 
   onRowAction(complaint: Complaint) {

@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
-import { catchError, of } from 'rxjs';
+import { catchError, debounceTime, of } from 'rxjs';
 import {
   ActivityListComponent,
   type ActivityItem,
@@ -379,10 +379,14 @@ export class Home implements OnDestroy {
     this.loadDashboardData();
     this.loadRefillsDueSoon();
 
+    // DO-24: KPIs follow order and trip events live. Debounced so a burst
+    // (a whole trip delivered) is one refetch; a reconnect refetches what
+    // was missed while the socket was down.
     this.wsService.subscribeTo('dashboard');
+    this.wsService.subscribeTo('orders');
     this.wsService
-      .on('dashboard.metrics_stale')
-      .pipe(takeUntilDestroyed())
+      .changes$('dashboard.metrics_stale', 'order.status_changed')
+      .pipe(debounceTime(1000), takeUntilDestroyed())
       .subscribe(() => {
         this.loadDashboardData();
       });

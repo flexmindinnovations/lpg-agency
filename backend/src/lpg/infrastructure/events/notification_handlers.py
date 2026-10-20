@@ -1,239 +1,221 @@
-"""Notification domain event handlers."""
+"""Notification domain event handlers.
 
-import structlog
+Each handler maps one domain event to notification payloads — the type and
+the ids the message is about — and hands them to a `Notifier`. In the API
+process that is `InAppFirstNotifier`: the in-app rows (bell, customer
+inbox, driver Alerts) are written right after the triggering transaction
+commits and published live over `/ws`; email / SMS / push go to the arq
+worker. Who receives what, and the wording, live in
+`infrastructure/notification/catalog.py`.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from lpg.domain.accounting.cash_handover import CashShortfallDeclared
-from lpg.domain.accounting.invoice import InvoiceGenerated
-from lpg.domain.common.base import DomainEvent
+from lpg.domain.accounting.invoice import InvoiceGenerated, PaymentCollected
+from lpg.domain.accounting.online_payment import OnlinePaymentReceived
+from lpg.domain.complaint.complaint import ComplaintAssigned, ComplaintRaised
 from lpg.domain.delivery.route import (
     OrderAssignedToRoute,
     RouteLoadConfirmed,
     RouteStatusChanged,
+    RouteStopsResequenced,
 )
 from lpg.domain.order.order import (
     BookingCancelled,
     BookingConfirmed,
     BookingCreated,
+    CancellationRequested,
     CylinderDelivered,
     DeliveryFailed,
     OrderStatusChanged,
 )
-from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
-from lpg.infrastructure.jobs.pool import JobQueue
 
-_logger = structlog.get_logger(__name__)
+if TYPE_CHECKING:
+    from lpg.domain.common.base import DomainEvent
+    from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
+    from lpg.infrastructure.notification.delivery import Notifier
+
+#: Gateway payments are announced once, by `OnlinePaymentReceived`, not
+#: again when they are applied to the invoice.
+_ONLINE_GATEWAY_METHOD = "online_gateway"
 
 
-def register_notification_handlers(
-    dispatcher: DomainEventDispatcher,
-    job_queue: JobQueue,
-) -> None:
-    """Register notification handlers.
+def register_notification_handlers(dispatcher: DomainEventDispatcher, notifier: Notifier) -> None:
+    """Register notification handlers. Thin: no DB access here."""
 
-    Handlers are intentionally thin — no DB access here. They only enqueue an ARQ job.
-    """
+    async def notify(notification_type: str, event: Any, **ids: object) -> None:
+        payload: dict[str, Any] = {
+            "type": notification_type,
+            "tenant_id": str(event.tenant_id),
+        }
+        payload.update({k: str(v) for k, v in ids.items() if v is not None})
+        await notifier.notify(payload)
 
     async def _on_booking_created(event: DomainEvent) -> None:
         assert isinstance(event, BookingCreated)
-        # Skip orders the staff created themselves in the dashboard — they
-        # already know. Everything else (mobile_app, phone, walk_in,
-        # whatsapp, api) is an order that arrived and needs someone to
-        # confirm it.
+        # Orders the staff created themselves in the dashboard need no alert
+        # — they already know. Everything else (app, phone, WhatsApp, ...)
+        # is waiting for someone to confirm it.
         if event.booking_source == "staff":
             return
-        # In-app only (see `_should_send_*` in `notification_jobs.py`) —
-        # staff live in the dashboard, not the mobile apps that register
-        # push tokens.
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "order_placed_staff",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
-        )
-        # Acknowledge the customer immediately — `booking_confirmed` only
-        # fires once the agency confirms, which can be minutes to hours
-        # later. This closes the loop at the moment the order is placed.
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "order_placed",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
-        )
+        await notify("order_placed_staff", event, order_id=event.order_id)
+        # Acknowledge the customer at once — confirmation can be hours away.
+        await notify("order_placed", event, order_id=event.order_id)
 
     async def _on_booking_confirmed(event: DomainEvent) -> None:
         assert isinstance(event, BookingConfirmed)
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "booking_confirmed",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
+        await notify("booking_confirmed", event, order_id=event.order_id)
+
+    async def _on_cancellation_requested(event: DomainEvent) -> None:
+        assert isinstance(event, CancellationRequested)
+        await notify(
+            "cancellation_requested_staff",
+            event,
+            order_id=event.order_id,
+            reason=event.reason,
+            actor_id=event.requested_by,
         )
 
     async def _on_order_assigned(event: DomainEvent) -> None:
         assert isinstance(event, OrderAssignedToRoute)
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "driver_assigned",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
-        )
+        # Only reaches the driver once the trip is already theirs (loaded or
+        # out) — while it is being built, `route_ready` covers every stop.
+        await notify("driver_assigned", event, order_id=event.order_id, route_id=event.route_id)
 
     async def _on_route_status_changed(event: DomainEvent) -> None:
         assert isinstance(event, RouteStatusChanged)
-        if event.new_status == "in_progress":
-            # The office sees the driver leave the depot — one bell entry
-            # per route, not one per stop.
-            await job_queue.enqueue(
-                "send_notification",
-                {
-                    "type": "route_started_staff",
-                    "tenant_id": str(event.tenant_id),
-                    "route_id": str(event.route_id),
-                    "driver_id": str(event.driver_id),
-                },
-            )
-            return
-        # `planned -> loaded` = the vehicle's packed and the driver should
-        # head out. One push per route (the job resolves the stop count),
-        # replacing the per-order `driver_assigned` push while the route was
-        # still being built.
-        if event.new_status != "loaded":
-            return
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "route_ready",
-                "tenant_id": str(event.tenant_id),
-                "driver_id": str(event.driver_id),
-                "route_id": str(event.route_id),
-            },
-        )
+        ids = {"route_id": event.route_id, "driver_id": event.driver_id}
+        if event.new_status == "loaded":
+            # The trip sheet is ready: the driver's "new trip" alert.
+            await notify("route_ready", event, **ids)
+        elif event.new_status == "in_progress" and event.old_status in ("planned", "loaded"):
+            # The office sees the van leave — once per trip, not when a
+            # rescheduled stop reopens a completed trip.
+            await notify("route_started_staff", event, **ids)
+        elif event.new_status == "cancelled" and event.old_status == "loaded":
+            await notify("route_cancelled_driver", event, **ids)
+
+    async def _on_route_resequenced(event: DomainEvent) -> None:
+        assert isinstance(event, RouteStopsResequenced)
+        await notify("route_resequenced", event, route_id=event.route_id)
 
     async def _on_order_status_changed(event: DomainEvent) -> None:
         assert isinstance(event, OrderStatusChanged)
-        # `depart()` has no transition-specific event, so the customer's
-        # "out for delivery" push hangs off the generic status change.
-        if event.to_status != "out_for_delivery":
-            return
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "out_for_delivery",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
-        )
+        # `depart()` has no transition-specific event.
+        if event.to_status == "out_for_delivery":
+            await notify("out_for_delivery", event, order_id=event.order_id)
 
     async def _on_cylinder_delivered(event: DomainEvent) -> None:
         assert isinstance(event, CylinderDelivered)
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "delivery_confirmed",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
-        )
-        # The office's bell too — deliveries are the update staff most want
-        # to see without refreshing the order queue.
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "order_delivered_staff",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
-        )
+        await notify("delivery_confirmed", event, order_id=event.order_id)
+        await notify("order_delivered_staff", event, order_id=event.order_id)
 
-    async def _on_invoice_generated(event: DomainEvent) -> None:
-        assert isinstance(event, InvoiceGenerated)
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "invoice_generated",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
+    async def _on_delivery_failed(event: DomainEvent) -> None:
+        assert isinstance(event, DeliveryFailed)
+        await notify(
+            "delivery_failed_staff",
+            event,
+            order_id=event.order_id,
+            reason_code=event.reason_code,
+            actor_id=event.recorded_by,
         )
-
-    async def _on_cash_shortfall_declared(event: DomainEvent) -> None:
-        assert isinstance(event, CashShortfallDeclared)
-        # The office needs to know a driver handed over less cash than the
-        # route's deliveries collected (BR-32). Fires only on a genuine
-        # shortfall — `CashHandover.declare` records no event when the
-        # amounts match or the driver hands over more.
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "cash_shortfall_staff",
-                "tenant_id": str(event.tenant_id),
-                "cash_handover_id": str(event.cash_handover_id),
-                "route_id": str(event.route_id),
-                "expected_amount": str(event.expected_amount),
-                "actual_amount": str(event.actual_amount),
-                "shortfall": str(event.shortfall),
-            },
-        )
-
-    async def _on_route_load_confirmed(event: DomainEvent) -> None:
-        assert isinstance(event, RouteLoadConfirmed)
-        # The office likes to know a driver has actually checked the van
-        # against the manifest before heading out — accountability, not a
-        # gate. In-app only (staff live in the dashboard).
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "route_load_confirmed_staff",
-                "tenant_id": str(event.tenant_id),
-                "route_id": str(event.route_id),
-                "driver_id": str(event.driver_id),
-            },
+        await notify(
+            "delivery_failed_customer",
+            event,
+            order_id=event.order_id,
+            reason_code=event.reason_code,
         )
 
     async def _on_booking_cancelled(event: DomainEvent) -> None:
         assert isinstance(event, BookingCancelled)
-        # Only matters to a driver who's already out running the route the
-        # cancelled order was on — the job resolves the stop -> route ->
-        # driver and drops it unless the route is `in_progress`.
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "stop_cancelled",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
+        charge = event.cancellation_charge
+        await notify(
+            "order_cancelled_customer",
+            event,
+            order_id=event.order_id,
+            cancellation_charge=charge if charge else None,
+        )
+        # A driver who already has the trip (loaded / out) is told to skip
+        # the stop; the resolver drops it otherwise.
+        await notify("stop_cancelled", event, order_id=event.order_id)
+
+    async def _on_invoice_generated(event: DomainEvent) -> None:
+        assert isinstance(event, InvoiceGenerated)
+        await notify(
+            "invoice_generated", event, order_id=event.order_id, invoice_id=event.invoice_id
         )
 
-    async def _on_delivery_failed(event: DomainEvent) -> None:
-        assert isinstance(event, DeliveryFailed)
-        # We need branch_id for staff resolution, which isn't on DeliveryFailed.
-        # send_notification job will have to fetch the order to get the branch_id.
-        # We'll pass order_id and the job will fetch it.
-        await job_queue.enqueue(
-            "send_notification",
-            {
-                "type": "delivery_failed_staff",
-                "tenant_id": str(event.tenant_id),
-                "order_id": str(event.order_id),
-            },
+    async def _on_online_payment_received(event: DomainEvent) -> None:
+        assert isinstance(event, OnlinePaymentReceived)
+        ids = {"order_id": event.order_id, "amount": event.amount}
+        await notify("payment_received_customer", event, **ids)
+        await notify("payment_received_staff", event, **ids)
+
+    async def _on_payment_collected(event: DomainEvent) -> None:
+        assert isinstance(event, PaymentCollected)
+        if event.method == _ONLINE_GATEWAY_METHOD:
+            return
+        await notify(
+            "payment_received_customer",
+            event,
+            invoice_id=event.invoice_id,
+            amount=event.amount,
+        )
+
+    async def _on_complaint_raised(event: DomainEvent) -> None:
+        assert isinstance(event, ComplaintRaised)
+        await notify("complaint_raised_staff", event, complaint_id=event.complaint_id)
+
+    async def _on_complaint_assigned(event: DomainEvent) -> None:
+        assert isinstance(event, ComplaintAssigned)
+        if event.assigned_to == event.assigned_by:
+            return  # took it themselves
+        await notify(
+            "complaint_assigned",
+            event,
+            complaint_id=event.complaint_id,
+            assigned_to=event.assigned_to,
+        )
+
+    async def _on_cash_shortfall_declared(event: DomainEvent) -> None:
+        assert isinstance(event, CashShortfallDeclared)
+        # Fires only on a genuine shortfall (BR-32).
+        await notify(
+            "cash_shortfall_staff",
+            event,
+            cash_handover_id=event.cash_handover_id,
+            route_id=event.route_id,
+            expected_amount=event.expected_amount,
+            actual_amount=event.actual_amount,
+            shortfall=event.shortfall,
+        )
+
+    async def _on_route_load_confirmed(event: DomainEvent) -> None:
+        assert isinstance(event, RouteLoadConfirmed)
+        await notify(
+            "route_load_confirmed_staff",
+            event,
+            route_id=event.route_id,
+            driver_id=event.driver_id,
         )
 
     dispatcher.register(BookingCreated, _on_booking_created)
     dispatcher.register(BookingConfirmed, _on_booking_confirmed)
+    dispatcher.register(CancellationRequested, _on_cancellation_requested)
     dispatcher.register(OrderAssignedToRoute, _on_order_assigned)
     dispatcher.register(RouteStatusChanged, _on_route_status_changed)
+    dispatcher.register(RouteStopsResequenced, _on_route_resequenced)
     dispatcher.register(OrderStatusChanged, _on_order_status_changed)
     dispatcher.register(CylinderDelivered, _on_cylinder_delivered)
-    dispatcher.register(InvoiceGenerated, _on_invoice_generated)
     dispatcher.register(DeliveryFailed, _on_delivery_failed)
+    dispatcher.register(BookingCancelled, _on_booking_cancelled)
+    dispatcher.register(InvoiceGenerated, _on_invoice_generated)
+    dispatcher.register(OnlinePaymentReceived, _on_online_payment_received)
+    dispatcher.register(PaymentCollected, _on_payment_collected)
+    dispatcher.register(ComplaintRaised, _on_complaint_raised)
+    dispatcher.register(ComplaintAssigned, _on_complaint_assigned)
     dispatcher.register(CashShortfallDeclared, _on_cash_shortfall_declared)
     dispatcher.register(RouteLoadConfirmed, _on_route_load_confirmed)
-    dispatcher.register(BookingCancelled, _on_booking_cancelled)

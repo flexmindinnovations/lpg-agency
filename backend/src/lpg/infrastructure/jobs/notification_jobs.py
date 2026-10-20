@@ -1,4 +1,20 @@
-"""Notification jobs."""
+"""`send_notification` — the arq job for notification delivery.
+
+Two kinds of caller enqueue it:
+
+- **Domain-event handlers** (`events/notification_handlers.py` through
+  `InAppFirstNotifier`) have already written the in-app rows in the API
+  process and set ``in_app_delivered`` — the job only sends email / SMS /
+  push.
+- **Crons** (stale orders, auto-assignment fallbacks, compliance expiry,
+  refill nudges, rate proposals, reorder points) enqueue a bare payload —
+  the job writes the in-app rows too.
+
+What each type says, who receives it and which channels it uses lives in
+`infrastructure/notification/catalog.py`; recipient lookup in
+`recipients.py`. The payload carries the type, ``tenant_id`` and the ids
+the message is about (``order_id``, ``route_id``, ``complaint_id``, ...).
+"""
 
 from __future__ import annotations
 
@@ -7,600 +23,49 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lpg.application.notification.ports import SmsTemplate
-from lpg.domain.notification.in_app_notification import InAppNotification
-from lpg.domain.notification.notification_log import NotificationLog
+from lpg.infrastructure.notification.delivery import (
+    IN_APP_DELIVERED,
+    deliver_external,
+    write_in_app,
+)
+from lpg.infrastructure.notification.recipients import NotificationResolver
 
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.database import Database
 
 _logger = structlog.get_logger(__name__)
 
-# Roles that receive operational alerts. `manager` is the actual role
-# string used everywhere (`order.py` / `route.py`'s own
-# `principal.role in ("dispatcher", "manager")` checks, the seed data, the
-# `tenant.employee` table) — it was previously `branch_manager`, which no
-# code path ever produces, so managers silently never got
-# `delivery_failed_staff` alerts.
-_STAFF_ALERT_ROLES = frozenset({"agency_admin", "manager", "dispatcher"})
-
-# Never an alert recipient regardless of type.
-_NON_STAFF_ROLES = frozenset({"customer", "driver"})
-
 
 async def send_notification(ctx: dict[str, Any], payload: dict[str, Any]) -> None:
-    """ARQ job to process and send a notification.
-
-    Payload format:
-    {
-        "type": "order_placed" | "booking_confirmed" | "driver_assigned" |
-                "out_for_delivery" | "delivery_confirmed" | "invoice_generated" |
-                "delivery_failed_staff" | "order_placed_staff" |
-                "order_unassignable_staff" | "order_stale_unassigned_staff",
-        "tenant_id": str,
-        "order_id": str,
-        # Every order-lifecycle type resolves its recipient (customer, the
-        # assigned driver for "driver_assigned", or branch staff for
-        # "delivery_failed_staff"/"order_unassignable_staff"/
-        # "order_stale_unassigned_staff") by fetching the order itself —
-        # the payload carries nothing else.
-        # "compliance_document_expiring_staff" is not order-scoped — it
-        # carries "document_id"/"owner_type"/"owner_id"/"doc_type"/
-        # "expiry_date" instead (see `compliance_jobs.
-        # check_compliance_expiry`, which enqueues it).
-        # "refill_due_customer" is not order-scoped either — it carries
-        # "customer_id"/"refill_due_date" instead (see `refill_jobs.
-        # predict_refill_due`, which enqueues it).
-        # "lpg_rate_review_staff" carries "proposal_count" instead (see
-        # `pricing_jobs.fetch_omc_rates`, which enqueues it).
-        # "inventory_low_stock_staff" carries "inventory_location_id"/
-        # "cylinder_type_id"/"on_hand"/"reorder_point" instead (see
-        # `inventory_jobs.check_reorder_levels`, which enqueues it).
-    }
-    """
+    """Resolve recipients, write the in-app rows (unless the API process
+    already did) and send the external channels, in one transaction with
+    the delivery log."""
     structlog.contextvars.bind_contextvars(
         correlation_id=str(uuid.uuid4()),
         job_name="send_notification",
         tenant_id=payload.get("tenant_id"),
+        notification_type=payload.get("type"),
     )
-
-    tenant_id = uuid.UUID(payload["tenant_id"])
-    notification_type = payload["type"]
-
-    # Imports inside the job to avoid circular dependencies
     from lpg.application.common.tenant import RequestTenantContext
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
+    tenant_id = uuid.UUID(str(payload["tenant_id"]))
     database: Database = ctx["database"]
 
     async for session in database.open_session(tenant_id=tenant_id):
-        tenant_context = RequestTenantContext(tenant_id=tenant_id)
         async with SqlAlchemyUnitOfWork(
-            session, tenant_context, event_dispatcher=ctx.get("event_dispatcher")
+            session,
+            RequestTenantContext(tenant_id=tenant_id),
+            event_dispatcher=ctx.get("event_dispatcher"),
         ) as uow:
-            from lpg.config.settings import get_settings
-            from lpg.infrastructure.channels.email_channel import StubEmailChannel
-            from lpg.infrastructure.channels.sms_channel import build_sms_channel
-            from lpg.infrastructure.notification.staff_resolver import (
-                EmployeeBranchStaffResolver,
-            )
-            from lpg.infrastructure.persistence.repositories.customer import (
-                SqlAlchemyCustomerRepository,
-            )
-            from lpg.infrastructure.persistence.repositories.driver import (
-                SqlAlchemyDriverRepository,
-            )
-            from lpg.infrastructure.persistence.repositories.employee import (
-                SqlAlchemyEmployeeRepository,
-            )
-            from lpg.infrastructure.persistence.repositories.identity import (
-                SqlAlchemyIdentityUserRepository,
-            )
-            from lpg.infrastructure.persistence.repositories.notification import (
-                SqlAlchemyDeviceTokenRepository,
-                SqlAlchemyInAppNotificationRepository,
-                SqlAlchemyNotificationLogRepository,
-            )
-            from lpg.infrastructure.persistence.repositories.order import (
-                SqlAlchemyOrderRepository,
-            )
-            from lpg.infrastructure.persistence.repositories.route import (
-                SqlAlchemyRouteRepository,
-            )
-            from lpg.infrastructure.security.field_encryption import FernetFieldEncryptor
-
-            field_encryptor = FernetFieldEncryptor(get_settings())
-
-            in_app_repo = SqlAlchemyInAppNotificationRepository(session)
-            log_repo = SqlAlchemyNotificationLogRepository(uow)
-            device_repo = SqlAlchemyDeviceTokenRepository(session)
-            identity_repo = SqlAlchemyIdentityUserRepository(database)
-
-            # Resolve recipients. The order-lifecycle handlers
-            # (`notification_handlers.py`) put nothing but `order_id` on the
-            # payload and resolve their recipient by fetching the order;
-            # `cash_shortfall_staff` is route-scoped and carries no order.
-            recipient_user_ids: list[uuid.UUID] = []
-
-            # `route_ready` is a mid-route addition the driver must know about
-            # now; `driver_assigned` for a still-being-built route is covered
-            # by the one `route_ready` push, so its push/SMS is suppressed.
-            driver_assigned_live = False
-
-            order_repo = SqlAlchemyOrderRepository(uow)
-            order = (
-                await order_repo.get_by_id(uuid.UUID(payload["order_id"]))
-                if "order_id" in payload
-                else None
-            )
-            if notification_type == "route_ready":
-                driver = await SqlAlchemyDriverRepository(uow).get_by_id(
-                    uuid.UUID(payload["driver_id"])
-                )
-                if driver is not None and driver.identity_user_id is not None:
-                    recipient_user_ids = [driver.identity_user_id]
-                route = await SqlAlchemyRouteRepository(uow).get_by_id(
-                    uuid.UUID(payload["route_id"])
-                )
-                payload["stop_count"] = str(len(route.stops)) if route is not None else "?"
-            elif notification_type == "refill_due_customer":
-                # Not order-scoped — the daily refill-due cron
-                # (`infrastructure/jobs/refill_jobs.predict_refill_due`)
-                # carries `customer_id` directly instead of an `order_id`.
-                customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
-                customer = await customer_repo.get_by_id(uuid.UUID(payload["customer_id"]))
-                if customer and customer.identity_user_id:
-                    recipient_user_ids = [customer.identity_user_id]
-            elif notification_type in (
-                "cash_shortfall_staff",
-                "route_load_confirmed_staff",
-                "route_started_staff",
-                "compliance_document_expiring_staff",
-                "lpg_rate_review_staff",
-                "inventory_low_stock_staff",
-            ):
-                # Tenant-wide ops team — a cash discrepancy (or a driver
-                # confirming the van load, or a licence/RC about to expire)
-                # is the office's business, not one branch's. Same
-                # identity-role resolution as `order_placed_staff` (the demo
-                # seed doesn't wire the employee -> phone -> identity hop
-                # `EmployeeBranchStaffResolver` needs).
-                from lpg.infrastructure.persistence.repositories.identity import (
-                    SqlAlchemyStaffUserRepository,
-                )
-
-                staff_repo = SqlAlchemyStaffUserRepository(database, tenant_id)
-                staff = await staff_repo.list_for_tenant(tenant_id, exclude_roles=_NON_STAFF_ROLES)
-                recipient_user_ids = [
-                    u.id for u in staff if u.role in _STAFF_ALERT_ROLES and u.is_active
-                ]
-            elif order is None:
-                _logger.warning("order_not_found", order_id=payload.get("order_id"))
-            elif notification_type == "delivery_failed_staff":
-                employee_repo = SqlAlchemyEmployeeRepository(uow)
-                resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
-                recipient_user_ids = await resolver.resolve_for_branch(
-                    tenant_id=tenant_id,
-                    branch_id=order.branch_id,
-                    eligible_roles=_STAFF_ALERT_ROLES,
-                )
-            elif notification_type == "order_unassignable_staff":
-                # Auto-assignment (order-to-delivery fulfillment automation)
-                # found no eligible idle driver/vehicle in the order's own
-                # branch -- the "ranked queue for human review" pattern this
-                # codebase already uses for diversion detection, applied to
-                # automation's own failure path. Same branch-scoped
-                # resolution as `delivery_failed_staff`.
-                employee_repo = SqlAlchemyEmployeeRepository(uow)
-                resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
-                recipient_user_ids = await resolver.resolve_for_branch(
-                    tenant_id=tenant_id,
-                    branch_id=order.branch_id,
-                    eligible_roles=_STAFF_ALERT_ROLES,
-                )
-            elif notification_type == "order_stale_unassigned_staff":
-                # The hourly stale-unassigned-order alert cron
-                # (`stale_order_jobs.check_stale_unassigned_orders`) --
-                # a tenant-wide safety net beyond auto-assignment's own
-                # per-order `order_unassignable_staff` fallback: this
-                # fires for ANY order that's simply never gotten an
-                # assignment attempt (auto-assignment disabled, or a
-                # dispatcher hasn't gotten to it yet), not just the ones
-                # auto-assignment itself tried and failed. Same
-                # branch-scoped resolution as `order_unassignable_staff`.
-                employee_repo = SqlAlchemyEmployeeRepository(uow)
-                resolver = EmployeeBranchStaffResolver(employee_repo, identity_repo)
-                recipient_user_ids = await resolver.resolve_for_branch(
-                    tenant_id=tenant_id,
-                    branch_id=order.branch_id,
-                    eligible_roles=_STAFF_ALERT_ROLES,
-                )
-            elif notification_type in ("order_placed_staff", "order_delivered_staff"):
-                # Whole ops team, tenant-wide — resolved straight off the
-                # `identity.identity_user` role (not the employee ->
-                # phone -> identity hop `EmployeeBranchStaffResolver`
-                # does, which the demo seed doesn't wire up). A new order
-                # is everyone's business at a small agency; branch scoping
-                # can come back if a tenant actually runs branches
-                # independently.
-                from lpg.infrastructure.persistence.repositories.identity import (
-                    SqlAlchemyStaffUserRepository,
-                )
-
-                staff_repo = SqlAlchemyStaffUserRepository(database, tenant_id)
-                staff = await staff_repo.list_for_tenant(tenant_id, exclude_roles=_NON_STAFF_ROLES)
-                recipient_user_ids = [
-                    u.id for u in staff if u.role in _STAFF_ALERT_ROLES and u.is_active
-                ]
-            elif notification_type == "driver_assigned":
-                # This one goes to the driver who was just assigned, not the
-                # customer — resolved via the order's `route_stop_id` -> its
-                # `Route`'s `driver_id`, the same path `order.py`'s
-                # `_require_own_driver_order` ownership check uses.
-                if order.route_stop_id is not None:
-                    route_repo = SqlAlchemyRouteRepository(uow)
-                    owner = await route_repo.get_stop_owner(order.route_stop_id)
-                    if owner is not None:
-                        driver_repo = SqlAlchemyDriverRepository(uow)
-                        driver = await driver_repo.get_by_id(owner.driver_id)
-                        if driver and driver.identity_user_id:
-                            recipient_user_ids = [driver.identity_user_id]
-                        route = await route_repo.get_by_id(owner.route_id)
-                        driver_assigned_live = route is not None and route.status == "in_progress"
-            elif notification_type == "stop_cancelled":
-                # Only reaches the driver if they're already out running the
-                # route — a cancellation before they leave the depot needs no
-                # push (they'll see the stop's status when they open the app).
-                if order.route_stop_id is not None:
-                    route_repo = SqlAlchemyRouteRepository(uow)
-                    owner = await route_repo.get_stop_owner(order.route_stop_id)
-                    if owner is not None:
-                        route = await route_repo.get_by_id(owner.route_id)
-                        if route is not None and route.status == "in_progress":
-                            driver = await SqlAlchemyDriverRepository(uow).get_by_id(
-                                owner.driver_id
-                            )
-                            if driver and driver.identity_user_id:
-                                recipient_user_ids = [driver.identity_user_id]
-            else:
-                customer_repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
-                customer = await customer_repo.get_by_id(order.customer_id)
-                if customer and customer.identity_user_id:
-                    recipient_user_ids = [customer.identity_user_id]
-
-            if not recipient_user_ids:
-                _logger.warning("no_recipients_found", notification_type=notification_type)
+            prepared = await NotificationResolver(uow, tenant_id).prepare(payload)
+            if prepared is None:
                 return
-
-            # People know an order by its number (ORD000022), not its UUID.
-            if order is not None and order.order_number:
-                payload["order_ref"] = order.order_number
-
-            # Format content
-            title = _get_title(notification_type)
-            body = _get_body(notification_type, payload)
-            reference_type: str
-            reference_id: uuid.UUID | None
-            if notification_type == "cash_shortfall_staff":
-                reference_type = "cash_handover"
-                reference_id = uuid.UUID(payload["cash_handover_id"])
-            elif notification_type in (
-                "route_ready",
-                "route_load_confirmed_staff",
-                "route_started_staff",
-            ):
-                reference_type = "route"
-                reference_id = uuid.UUID(payload["route_id"])
-            elif notification_type == "compliance_document_expiring_staff":
-                reference_type = "compliance_document"
-                reference_id = uuid.UUID(payload["document_id"])
-            elif notification_type == "refill_due_customer":
-                reference_type = "customer"
-                reference_id = uuid.UUID(payload["customer_id"])
-            elif notification_type == "lpg_rate_review_staff":
-                reference_type = "price_list_proposal"
-                reference_id = None
-            elif notification_type == "inventory_low_stock_staff":
-                reference_type = "inventory_location"
-                reference_id = uuid.UUID(payload["inventory_location_id"])
-            else:
-                reference_type = "order"
-                reference_id = uuid.UUID(payload["order_id"]) if "order_id" in payload else None
-
-            # Channels — per instance, not just per type: a `driver_assigned`
-            # only pushes for a live mid-route addition.
-            send_email = _should_send_email(notification_type)
-            sms_template = _SMS_TEMPLATES.get(notification_type)
-            send_push = _should_send_push(notification_type)
-            if notification_type == "driver_assigned":
-                send_push = driver_assigned_live
-
-            email_channel = StubEmailChannel()
-            # Built once at worker startup (MSG91 holds an httpx client);
-            # `StubSmsChannel` when no provider is configured.
-            sms_channel = ctx.get("sms_channel") or build_sms_channel(get_settings())
-            # Built once at worker startup (holds an OAuth token + httpx
-            # client); `StubPushChannel` when Firebase isn't configured.
-            from lpg.infrastructure.channels.push_channel import build_push_channel
-
-            push_channel = ctx.get("push_channel") or build_push_channel(get_settings())
-
-            push_data = {
-                "type": notification_type,
-                **(
-                    {"reference_type": reference_type, "reference_id": str(reference_id)}
-                    if reference_id is not None
-                    else {}
-                ),
-            }
-
-            for user_id in recipient_user_ids:
-                # 1. In-App Notification (Always)
-                in_app = InAppNotification.create(
-                    tenant_id=tenant_id,
-                    recipient_user_id=user_id,
-                    notification_type=notification_type,
-                    title=title,
-                    body=body,
-                    reference_type=reference_type,
-                    reference_id=reference_id,
-                )
-                await in_app_repo.add(in_app)
-                # `SqlAlchemyInAppNotificationRepository.add` is raw SQL and
-                # doesn't track the aggregate — register it so
-                # `InAppNotificationCreated` reaches the realtime handler on
-                # commit and the client's unread badge updates live.
-                uow.register_aggregate(in_app)
-
-                # Retrieve IdentityUser for external channels
-                user = await identity_repo.get(user_id)
-                if not user:
-                    continue
-
-                # 2. Email Channel
-                if send_email and user.email:
-                    email_log = NotificationLog.create(
-                        tenant_id=tenant_id,
-                        recipient_user_id=user_id,
-                        notification_type=notification_type,
-                        channel="email",
-                        recipient_address=user.email,
-                        subject=title,
-                        body=body,
-                        reference_type=reference_type,
-                        reference_id=reference_id,
-                    )
-                    await log_repo.add(email_log)
-
-                    try:
-                        await email_channel.send(to=user.email, subject=title, body=body)
-                        email_log.mark_sent()
-                    except Exception as e:
-                        email_log.mark_failed(str(e))
-                        _logger.exception("email_send_failed", user_id=str(user_id))
-
-                    await log_repo.save(email_log)
-
-                # 3. SMS Channel
-                if sms_template is not None and user.phone_number:
-                    sms_log = NotificationLog.create(
-                        tenant_id=tenant_id,
-                        recipient_user_id=user_id,
-                        notification_type=notification_type,
-                        channel="sms",
-                        recipient_address=user.phone_number,
-                        subject=None,
-                        body=body,
-                        reference_type=reference_type,
-                        reference_id=reference_id,
-                    )
-                    await log_repo.add(sms_log)
-
-                    try:
-                        await sms_channel.send(
-                            to=user.phone_number,
-                            body=body,
-                            template=sms_template,
-                            variables=_sms_variables(payload),
-                        )
-                        sms_log.mark_sent()
-                    except Exception as e:
-                        sms_log.mark_failed(str(e))
-                        _logger.exception("sms_send_failed", user_id=str(user_id))
-
-                    await log_repo.save(sms_log)
-
-                # 4. Push Channel — one FCM request per registered device.
-                if send_push:
-                    from lpg.application.notification.ports import PushTokenInvalidError
-
-                    for device in await device_repo.list_for_user(user_id):
-                        push_log = NotificationLog.create(
-                            tenant_id=tenant_id,
-                            recipient_user_id=user_id,
-                            notification_type=notification_type,
-                            channel="push",
-                            recipient_address=f"{device.platform}:...{device.token[-8:]}",
-                            subject=title,
-                            body=body,
-                            reference_type=reference_type,
-                            reference_id=reference_id,
-                        )
-                        await log_repo.add(push_log)
-
-                        try:
-                            await push_channel.send(
-                                token=device.token,
-                                platform=device.platform,
-                                title=title,
-                                body=body,
-                                data=push_data,
-                            )
-                            push_log.mark_sent()
-                        except PushTokenInvalidError:
-                            # Dead token — prune it so we stop trying.
-                            await device_repo.delete_by_token(device.token)
-                            push_log.mark_failed("token unregistered")
-                            _logger.info("push_token_pruned", token_suffix=device.token[-8:])
-                        except Exception as e:
-                            push_log.mark_failed(str(e))
-                            _logger.exception("push_send_failed", user_id=str(user_id))
-
-                        await log_repo.save(push_log)
-
-            _logger.info("notification_job_completed", recipients_count=len(recipient_user_ids))
-
-
-def _get_title(notification_type: str) -> str:
-    titles = {
-        "order_placed": "Order Received",
-        "booking_confirmed": "Order Confirmed",
-        "driver_assigned": "New Delivery Assigned",
-        "out_for_delivery": "Out for Delivery",
-        "delivery_confirmed": "Delivery Confirmed",
-        "invoice_generated": "Invoice Generated",
-        "delivery_failed_staff": "Delivery Failed Alert",
-        "order_unassignable_staff": "Order Needs Manual Assignment",
-        "order_stale_unassigned_staff": "Order Awaiting Assignment",
-        "order_placed_staff": "New Order",
-        "cash_shortfall_staff": "Cash Shortfall Declared",
-        "route_load_confirmed_staff": "Van Load Confirmed",
-        "route_started_staff": "Route Started",
-        "order_delivered_staff": "Order Delivered",
-        "route_ready": "Route Ready",
-        "stop_cancelled": "Stop Cancelled",
-        "compliance_document_expiring_staff": "Compliance Document Expiring",
-        "refill_due_customer": "Time for a Refill?",
-        "lpg_rate_review_staff": "New LPG Rate Proposals to Review",
-        "inventory_low_stock_staff": "Low Stock Alert",
-    }
-    return titles.get(notification_type, "Notification")
-
-
-def _get_body(notification_type: str, payload: dict[str, Any]) -> str:
-    order_id_short = payload.get("order_ref") or payload.get("order_id", "Unknown")[:8].upper()
-    if notification_type == "cash_shortfall_staff":
-        route_short = payload.get("route_id", "Unknown")[:8].upper()
-        return (
-            f"Cash shortfall of ₹{payload.get('shortfall', '?')} on route "
-            f"#{route_short}: expected ₹{payload.get('expected_amount', '?')}, "
-            f"driver handed over ₹{payload.get('actual_amount', '?')}."
-        )
-    if notification_type == "route_ready":
-        stops = payload.get("stop_count", "?")
-        plural = "" if stops == "1" else "s"
-        return f"Your route is ready — {stops} stop{plural}."
-    if notification_type == "route_started_staff":
-        route_short = payload.get("route_id", "Unknown")[:8].upper()
-        return f"A driver has left the depot on route #{route_short}."
-    if notification_type == "route_load_confirmed_staff":
-        route_short = payload.get("route_id", "Unknown")[:8].upper()
-        return f"The driver confirmed the van load for route #{route_short}."
-    if notification_type == "refill_due_customer":
-        due = payload.get("refill_due_date") or "soon"
-        return f"Your cylinder is expected to run low around {due}. Book a refill anytime."
-    if notification_type == "lpg_rate_review_staff":
-        count = payload.get("proposal_count", "New")
-        plural = "" if count == "1" else "s"
-        return (
-            f"{count} LPG rate proposal{plural} for next month are ready for review on the "
-            "Price List page."
-        )
-    if notification_type == "inventory_low_stock_staff":
-        on_hand = payload.get("on_hand", "?")
-        reorder_point = payload.get("reorder_point", "?")
-        return (
-            f"Filled stock is down to {on_hand}, at or below the reorder point of "
-            f"{reorder_point}. Time to reorder."
-        )
-    if notification_type == "compliance_document_expiring_staff":
-        doc_label = str(payload.get("doc_type", "document")).replace("_", " ")
-        owner_label = payload.get("owner_type", "record")
-        expiry = payload.get("expiry_date") or "soon"
-        return (
-            f"A {owner_label}'s {doc_label} expires on {expiry}. "
-            "Please arrange a renewal and upload the replacement."
-        )
-    bodies = {
-        "order_placed": (
-            f"We've received your order #{order_id_short}. "
-            "You'll be notified once the agency confirms it."
-        ),
-        "booking_confirmed": f"Your order #{order_id_short} has been confirmed.",
-        "driver_assigned": f"You've been assigned to deliver order #{order_id_short}.",
-        "out_for_delivery": f"Your order #{order_id_short} is out for delivery.",
-        "delivery_confirmed": f"Your order #{order_id_short} has been delivered successfully.",
-        "invoice_generated": f"An invoice has been generated for your order #{order_id_short}.",
-        "delivery_failed_staff": (
-            f"Delivery failed for order #{order_id_short}. Please check the system."
-        ),
-        "order_unassignable_staff": (
-            f"Order #{order_id_short} has no available driver in its branch and needs "
-            "manual assignment."
-        ),
-        "order_stale_unassigned_staff": (
-            f"Order #{order_id_short} is still confirmed with no driver assigned. "
-            "Please assign it manually."
-        ),
-        "order_placed_staff": (
-            f"Order #{order_id_short} was just placed and is awaiting confirmation."
-        ),
-        "order_delivered_staff": f"Order #{order_id_short} has been delivered.",
-        "stop_cancelled": (f"Order #{order_id_short} was cancelled — you can skip that stop."),
-    }
-    return bodies.get(notification_type, "You have a new notification.")
-
-
-def _should_send_email(notification_type: str) -> bool:
-    # `cash_shortfall_staff` also goes to email — a money discrepancy wants a
-    # written trail the office can forward, not just a dashboard badge.
-    return notification_type in {
-        "booking_confirmed",
-        "delivery_confirmed",
-        "invoice_generated",
-        "cash_shortfall_staff",
-        "lpg_rate_review_staff",
-        "inventory_low_stock_staff",
-    }
-
-
-# Each SMS-bearing type and the DLT-registered template it goes out as.
-# `driver_assigned` dropped SMS with Phase 25-B — the driver app has push
-# now, and an SMS per stop assigned is expensive noise.
-_SMS_TEMPLATES: dict[str, SmsTemplate] = {
-    "booking_confirmed": SmsTemplate.BOOKING_CONFIRMED,
-    "out_for_delivery": SmsTemplate.OUT_FOR_DELIVERY,
-    "delivery_confirmed": SmsTemplate.DELIVERY_CONFIRMED,
-}
-
-
-def _should_send_sms(notification_type: str) -> bool:
-    return notification_type in _SMS_TEMPLATES
-
-
-def _sms_variables(payload: dict[str, Any]) -> dict[str, str]:
-    """Values for the template's placeholders. Every order SMS template takes
-    the same one: the short order reference also shown in the body."""
-    return {
-        "order_ref": payload.get("order_ref") or str(payload.get("order_id", "Unknown"))[:8].upper()
-    }
-
-
-def _should_send_push(notification_type: str) -> bool:
-    # Every customer- and driver-facing lifecycle event. The `*_staff` alerts
-    # (`delivery_failed_staff`, `order_placed_staff`, `cash_shortfall_staff`,
-    # `route_load_confirmed_staff`) are intentionally excluded — staff use the
-    # dashboard, not the mobile apps that register device tokens.
-    # `driver_assigned` isn't here either:
-    # the job decides per instance (only a live mid-route addition pushes;
-    # the initial batch is covered by one `route_ready`).
-    return notification_type in {
-        "order_placed",
-        "booking_confirmed",
-        "out_for_delivery",
-        "delivery_confirmed",
-        "invoice_generated",
-        "route_ready",
-        "stop_cancelled",
-        "refill_due_customer",
-    }
+            if not payload.get(IN_APP_DELIVERED):
+                await write_in_app(uow, prepared)
+            await deliver_external(ctx, uow, database, prepared)
+            await uow.commit()
+            _logger.info(
+                "notification_job_completed",
+                recipients_count=len(prepared.recipient_user_ids),
+            )

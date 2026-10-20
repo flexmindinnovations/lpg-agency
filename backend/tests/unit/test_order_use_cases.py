@@ -1101,7 +1101,10 @@ class TestCancelOrderUseCase:
         assert result.pending_approval is True
         assert result.order.status == "out_for_delivery"
         cancellation_repo.create.assert_called_once()
-        mock_order_repo.save.assert_not_called()
+        # Saved unchanged only so the unit of work dispatches the
+        # `CancellationRequested` event that alerts the approvers.
+        mock_order_repo.save.assert_called_once_with(result.order)
+        assert [type(e).__name__ for e in result.order.events][-1] == "CancellationRequested"
         mock_route_repo.save.assert_not_called()
         mock_uow.commit.assert_called_once()
 

@@ -18,6 +18,8 @@ import {
 } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
@@ -39,6 +41,7 @@ import {
   InventoryService,
   NotifyService,
   OrderService,
+  WebSocketService,
   WeighmentService,
   errorMessageFor as sharedErrorMessageFor,
   type AppError,
@@ -170,6 +173,24 @@ export class FeatureDispatch implements OnInit {
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly wsService = inject(WebSocketService);
+
+  constructor() {
+    // DO-24: keep the board live. Order status changes (a new confirmed
+    // order waiting for a trip, a cancellation) arrive on the orders feed;
+    // trip changes (load, depart, deliver, fail) on the dispatch feed. A
+    // reconnect refetches whatever was missed while the socket was down.
+    this.wsService.subscribeTo('orders');
+    this.wsService.subscribeTo('dispatch');
+    this.wsService
+      .changes$('order.status_changed', 'delivery.route_updated', 'driver.updated')
+      .pipe(debounceTime(500), takeUntilDestroyed())
+      .subscribe(() => {
+        this.loadRoutes();
+        this.loadUnassignedOrders();
+        this.refreshSelectedRoute();
+      });
+  }
 
   protected readonly routes = signal<RouteResponse[]>([]);
   // Active-only — this backs the trip sheet's driver picker, which must

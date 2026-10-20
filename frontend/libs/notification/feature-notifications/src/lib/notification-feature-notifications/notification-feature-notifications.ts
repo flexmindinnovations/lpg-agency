@@ -2,67 +2,43 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   inject,
   signal,
-  forwardRef,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
+import { SelectButton } from 'primeng/selectbutton';
+import { FormsModule } from '@angular/forms';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { DataGridComponent, type DataGridColumn } from '@lpg/shared/ui';
-import { NotificationService, NotifyService } from '@lpg/shared/data-access';
+import { EmptyStateComponent, SkeletonComponent } from '@lpg/shared/ui';
+import {
+  NotificationService,
+  NotifyService,
+  groupNotificationsByDay,
+} from '@lpg/shared/data-access';
 import type { NotificationResponse } from '@lpg/shared/data-access';
 
-@Component({
-  selector: 'lib-notification-action-cell',
-  standalone: true,
-  imports: [ButtonDirective],
-  template: `
-    <div class="flex items-center h-full">
-      @if (!row?.is_read) {
-        <button
-          pButton
-          type="button"
-          text
-          rounded
-          severity="secondary"
-          size="small"
-          iconOnly
-          aria-label="Mark as read"
-          (click)="handleClick()"
-        >
-          <i class="pi pi-check"></i>
-        </button>
-      }
-    </div>
-  `,
-})
-export class NotificationActionCell {
-  private readonly notificationService = inject(NotificationService);
-  private readonly parent = inject(forwardRef(() => NotificationFeatureNotifications));
-  row: NotificationResponse | undefined;
+type InboxFilter = 'all' | 'unread';
 
-  agInit(params: any): void {
-    this.row = params.data;
-  }
-
-  refresh(params: any): boolean {
-    this.agInit(params);
-    return true;
-  }
-
-  handleClick(): void {
-    if (this.row) {
-      this.notificationService.markRead(this.row.id).subscribe(() => {
-        this.parent.loadNotifications();
-      });
-    }
-  }
-}
-
+/**
+ * The full inbox: newest first, grouped by day, unread ones marked, each
+ * opening the order / complaint / trip it is about. Stays live — new
+ * alerts and reads on other tabs or devices reload it (`changed$`).
+ */
 @Component({
   selector: 'lib-notification-feature-notifications',
-  imports: [HeaderTitlePortalDirective, ButtonDirective, DataGridComponent],
+  imports: [
+    DatePipe,
+    FormsModule,
+    HeaderTitlePortalDirective,
+    ButtonDirective,
+    SelectButton,
+    EmptyStateComponent,
+    SkeletonComponent,
+  ],
   templateUrl: './notification-feature-notifications.html',
   styleUrl: './notification-feature-notifications.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,38 +50,27 @@ export class NotificationFeatureNotifications implements OnInit {
 
   protected readonly notifications = signal<NotificationResponse[]>([]);
   protected readonly loading = signal(false);
-
-  protected readonly columns: DataGridColumn<NotificationResponse>[] = [
-    {
-      field: 'title',
-      header: 'Title',
-      sortable: true,
-      flex: 2,
-      // Click the title to open what the notification is about (and mark
-      // it read). Rows with no linkable reference just mark read.
-      onLinkClick: (row) => this.open(row),
-      tooltipValueGetter: (_v, row) =>
-        this.notificationService.routeFor(row) ? 'Open' : row.title,
-    },
-    { field: 'body', header: 'Message', sortable: true, flex: 3 },
-    {
-      field: 'is_read',
-      header: 'Status',
-      sortable: true,
-      valueFormatter: (value: unknown) => (value ? 'Read' : 'Unread'),
-    },
-    {
-      field: 'created_at',
-      header: 'Date',
-      sortable: true,
-      valueFormatter: (value: unknown) => new Date(value as string).toLocaleString(),
-    },
-    {
-      field: 'id',
-      header: 'Actions',
-      cellRenderer: NotificationActionCell,
-    },
+  protected readonly loaded = signal(false);
+  protected readonly filter = signal<InboxFilter>('all');
+  protected readonly filterOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Unread', value: 'unread' },
   ];
+
+  protected readonly unreadCount = this.notificationService.unreadCount;
+  protected readonly groups = computed(() => {
+    const items =
+      this.filter() === 'unread'
+        ? this.notifications().filter((n) => !n.is_read)
+        : this.notifications();
+    return groupNotificationsByDay(items);
+  });
+
+  constructor() {
+    this.notificationService.changed$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.loadNotifications({ silent: true }));
+  }
 
   ngOnInit(): void {
     this.loadNotifications();
@@ -113,54 +78,57 @@ export class NotificationFeatureNotifications implements OnInit {
     this.notificationService.refreshUnreadCount();
   }
 
+  protected hasLink(notification: NotificationResponse): boolean {
+    return this.notificationService.routeFor(notification) !== null;
+  }
+
+  protected setFilter(value: InboxFilter | null): void {
+    this.filter.set(value ?? 'all');
+  }
+
   /** Mark a notification read and navigate to what it references. */
   open(notification: NotificationResponse): void {
-    const route = this.notificationService.routeFor(notification);
-    if (!notification.is_read) {
-      this.notificationService.markRead(notification.id).subscribe({
-        next: () => this.loadNotifications(),
-      });
-    }
-    if (route) {
-      void this.router.navigate(route);
+    const link = this.notificationService.routeFor(notification);
+    if (!notification.is_read) this.markAsRead(notification.id);
+    if (link) {
+      void this.router.navigate(link.commands, { queryParams: link.queryParams });
     }
   }
 
-  loadNotifications(): void {
-    this.loading.set(true);
+  loadNotifications(options: { silent?: boolean } = {}): void {
+    if (!options.silent) this.loading.set(true);
     this.notificationService.list(0, 100).subscribe({
       next: (res) => {
         this.notifications.set(res.items);
         this.loading.set(false);
+        this.loaded.set(true);
       },
       // GET — not covered by the global error-toast interceptor
       // (mutating methods only).
       error: () => {
         this.loading.set(false);
-        this.notify.error('Failed to load notifications');
+        this.loaded.set(true);
+        if (!options.silent) this.notify.error('Failed to load notifications');
       },
     });
   }
 
   markAsRead(id: string): void {
-    this.loading.set(true);
+    // Optimistic — the row loses its unread styling at once.
+    this.notifications.update((items) =>
+      items.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+    );
     this.notificationService.markRead(id).subscribe({
-      next: () => {
-        this.notify.success('Notification marked as read');
-        this.loadNotifications();
-      },
-      error: () => this.loading.set(false),
+      error: () => this.loadNotifications({ silent: true }),
     });
   }
 
   markAllAsRead(): void {
-    this.loading.set(true);
     this.notificationService.markAllRead().subscribe({
       next: () => {
+        this.notifications.update((items) => items.map((n) => ({ ...n, is_read: true })));
         this.notify.success('All notifications marked as read');
-        this.loadNotifications();
       },
-      error: () => this.loading.set(false),
     });
   }
 }

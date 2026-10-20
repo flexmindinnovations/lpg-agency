@@ -1,6 +1,7 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:realtime/realtime.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../dashboard/data/notifications_provider.dart';
@@ -31,6 +32,11 @@ class AppShell extends ConsumerWidget {
         // mean the order itself moved: refresh the Home and Orders lists,
         // and the order's own screen if it's open. A delivery also issues
         // (and may settle) the order's invoice.
+        // After a dropped connection any order may have moved meanwhile.
+        if (message['type'] == reconnectedMessageType) {
+          ref.invalidate(ordersProvider);
+          ref.invalidate(invoicesProvider);
+        }
         if (message['reference_type'] == 'order') {
           ref.invalidate(ordersProvider);
           ref.invalidate(invoicesProvider);
