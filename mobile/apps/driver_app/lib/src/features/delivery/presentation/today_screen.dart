@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cash_handover/data/cash_handover_provider.dart';
+import '../../profile/data/profile_provider.dart';
 import '../../van_load/data/van_load_provider.dart';
 import '../data/active_route_provider.dart';
 import 'widgets/location_sharing_card.dart';
@@ -85,14 +86,20 @@ LpgStatusSeverity _routeSeverity(String status) => switch (status) {
   _ => LpgStatusSeverity.info,
 };
 
-/// The headline: how far through today's route the driver is.
-class _RouteHero extends StatelessWidget {
+/// The headline: how far through today's route the driver is, with the
+/// route's date and the van it runs on.
+class _RouteHero extends ConsumerWidget {
   const _RouteHero({required this.route});
 
   final RouteSummary route;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicle = ref.watch(driverProfileProvider).value?.vehicle;
+    final subtitle = [
+      if (route.date case final date?) LpgFormat.date(date),
+      if (vehicle != null) vehicle.registrationNumber,
+    ].join(' · ');
     final colors = context.lpgColors;
     final text = context.lpgText;
     final total = route.stops.length;
@@ -120,6 +127,15 @@ class _RouteHero extends StatelessWidget {
               ),
             ],
           ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: LpgSpacing.xs),
+            Text(
+              subtitle,
+              style: text.bodySmall?.copyWith(
+                color: colors.onHero.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
           const SizedBox(height: LpgSpacing.md),
           Text(
             '$delivered of $total delivered',

@@ -55,10 +55,6 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   String? _error;
   bool _prefilled = false;
 
-  /// True while a finger is on the signature pad — the page stops scrolling
-  /// so a downward stroke draws instead of dragging the form.
-  bool _signing = false;
-
   /// The error banner beside "Confirm delivery", scrolled into view on error.
   final _errorKey = GlobalKey();
 
@@ -254,7 +250,6 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               ref.watch(queuedEmptiesByTypeProvider).value ?? const {};
           return ListView(
             padding: LpgSpacing.page,
-            physics: _signing ? const NeverScrollableScrollPhysics() : null,
             children: [
               const _Section(icon: LpgIcons.cylinder, title: 'Cylinders'),
               for (final line in order.lines)
@@ -344,19 +339,17 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Listener(
-                      onPointerDown: (_) => setState(() => _signing = true),
-                      onPointerUp: (_) => setState(() => _signing = false),
-                      onPointerCancel: (_) => setState(() => _signing = false),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(LpgRadius.xl),
-                        ),
-                        child: Signature(
-                          controller: _signature,
-                          height: _padHeight,
-                          backgroundColor: colors.card,
-                        ),
+                    // The pad owns vertical drags so a stroke draws rather
+                    // than scrolling; it is kept short so the form still
+                    // scrolls above and below it.
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(LpgRadius.xl),
+                      ),
+                      child: Signature(
+                        controller: _signature,
+                        height: _padHeight,
+                        backgroundColor: colors.card,
                       ),
                     ),
                     const Divider(height: 1),
