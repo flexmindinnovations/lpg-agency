@@ -814,13 +814,18 @@ class CancelOrderUseCase:
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         if order.requires_cancellation_approval:
-            order.request_cancellation_approval(reason=command.reason)
+            order.request_cancellation_approval(
+                reason=command.reason, requested_by=command.cancelled_by
+            )
             if await self._cancellation_repository.get_pending_by_order_id(order.id) is not None:
                 msg = (
                     f"{_order_label(order)} already has a cancellation request "
                     "waiting for approval."
                 )
                 raise ConflictError(msg, order_id=str(order.id))
+            # Saved (no state change) so the unit of work tracks the order
+            # and dispatches its `CancellationRequested` after commit.
+            await self._order_repository.save(order)
             await self._cancellation_repository.create(
                 record_id=self._cancellation_repository.next_id(),
                 tenant_id=order.tenant_id,

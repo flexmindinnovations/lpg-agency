@@ -62,6 +62,7 @@ from lpg.infrastructure.events.cylinder_ledger_handlers import (
     register_cylinder_ledger_handlers,
 )
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
+from lpg.infrastructure.events.low_stock_handlers import register_low_stock_handlers
 from lpg.infrastructure.events.notification_handlers import (
     register_notification_handlers,
 )
@@ -78,6 +79,7 @@ from lpg.infrastructure.health import (
 from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.jobs.pool import JobQueue
+from lpg.infrastructure.notification.delivery import InAppFirstNotifier
 from lpg.infrastructure.persistence.database import Database
 from lpg.infrastructure.realtime.connection_manager import ConnectionManager
 from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
@@ -188,7 +190,17 @@ async def lifespan(
     register_cylinder_ledger_handlers(_state.event_dispatcher, database)
     register_tenant_admin_handlers(_state.event_dispatcher, database)
     register_accounting_handlers(_state.event_dispatcher, database)
-    register_notification_handlers(_state.event_dispatcher, job_queue)
+    # In-app rows are written here, after commit, so the bell and the
+    # apps' inboxes never depend on the worker; push/SMS/email are queued.
+    register_notification_handlers(
+        _state.event_dispatcher,
+        InAppFirstNotifier(database, _state.event_dispatcher, job_queue),
+    )
+    register_low_stock_handlers(
+        _state.event_dispatcher,
+        database,
+        InAppFirstNotifier(database, _state.event_dispatcher, job_queue),
+    )
     register_auto_assignment_handlers(_state.event_dispatcher, job_queue)
     _state.job_queue = job_queue
 

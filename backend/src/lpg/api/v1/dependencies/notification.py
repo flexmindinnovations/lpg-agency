@@ -15,7 +15,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
-from lpg.application.common.ports import UnitOfWork
+from lpg.application.common.ports import RealtimePublisher, UnitOfWork
 from lpg.application.notification.ports import (
     DeviceTokenRepository,
     InAppNotificationRepository,
@@ -44,3 +44,11 @@ def get_device_token_repository(
 
     assert isinstance(unit_of_work, SqlAlchemyUnitOfWork)
     return SqlAlchemyDeviceTokenRepository(unit_of_work.session)
+
+
+def get_realtime_publisher() -> RealtimePublisher | None:
+    """The process's Redis publisher, or None before the lifespan ran
+    (tests building the app without Redis) — publishing is best-effort."""
+    from lpg.api.app import get_app_state
+
+    return get_app_state().realtime_publisher

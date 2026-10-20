@@ -57,16 +57,23 @@ NOTIFY_DEDUPE_HOURS = 20
 
 async def check_reorder_levels_for_tenant(
     uow: SqlAlchemyUnitOfWork,
-    job_queue: JobQueue,
+    job_queue: JobQueue | None,
     *,
     tenant_id: uuid.UUID,
+    record_predictions: bool = True,
+    collected: list[dict[str, Any]] | None = None,
 ) -> int:
     """Records every breach to `ai.prediction`, enqueues a notification for
     whichever ones aren't within their dedupe window, and marks those
     notified. Split out from the cron loop so it's testable against a
     single seeded tenant, the same reason every other Horizon 1 cron is.
     `uow` must already be tenant-scoped (RLS) for `tenant_id`. Returns the
-    number of notifications actually enqueued."""
+    number of notifications actually enqueued.
+
+    The post-commit low-stock check (`events/low_stock_handlers.py`) passes
+    no queue and a `collected` list instead — it writes the in-app alert
+    itself once this transaction commits — and skips the prediction log,
+    which is the daily cron's job."""
     reorder_policy_repo = SqlAlchemyReorderPolicyRepository(uow)
     prediction_repo = SqlAlchemyPredictionRepository(uow)
 
@@ -81,37 +88,45 @@ async def check_reorder_levels_for_tenant(
     notified = 0
 
     for signal in signals:
-        await record_prediction.execute(
-            RecordPredictionCommand(
-                tenant_id=tenant_id,
-                prediction_type=PREDICTION_TYPE,
-                subject_type="inventory_location",
-                subject_id=signal.inventory_location_id,
-                model_version=MODEL_VERSION,
-                value={
-                    "cylinder_type_id": str(signal.cylinder_type_id),
-                    "on_hand": signal.on_hand,
-                    "reorder_point": signal.reorder_point,
-                    "safety_stock": signal.safety_stock,
-                },
+        if record_predictions:
+            await record_prediction.execute(
+                RecordPredictionCommand(
+                    tenant_id=tenant_id,
+                    prediction_type=PREDICTION_TYPE,
+                    subject_type="inventory_location",
+                    subject_id=signal.inventory_location_id,
+                    model_version=MODEL_VERSION,
+                    value={
+                        "cylinder_type_id": str(signal.cylinder_type_id),
+                        "on_hand": signal.on_hand,
+                        "reorder_point": signal.reorder_point,
+                        "safety_stock": signal.safety_stock,
+                    },
+                )
             )
-        )
 
         if signal.last_reorder_notified_at is not None and (
             now - signal.last_reorder_notified_at
         ) < timedelta(hours=NOTIFY_DEDUPE_HOURS):
             continue
 
+        payload: dict[str, Any] = {
+            "type": "inventory_low_stock_staff",
+            "tenant_id": str(tenant_id),
+            "inventory_location_id": str(signal.inventory_location_id),
+            "cylinder_type_id": str(signal.cylinder_type_id),
+            "on_hand": str(signal.on_hand),
+            "reorder_point": str(signal.reorder_point),
+        }
+        if collected is not None:
+            collected.append(payload)
+            await reorder_policy_repo.mark_reorder_notified(signal.policy_id)
+            notified += 1
+            continue
+        assert job_queue is not None
         await job_queue.enqueue(
             "send_notification",
-            {
-                "type": "inventory_low_stock_staff",
-                "tenant_id": str(tenant_id),
-                "inventory_location_id": str(signal.inventory_location_id),
-                "cylinder_type_id": str(signal.cylinder_type_id),
-                "on_hand": str(signal.on_hand),
-                "reorder_point": str(signal.reorder_point),
-            },
+            payload,
             # ARQ's own dedupe primitive against overlapping runs the same
             # day — `last_reorder_notified_at` above is the real,
             # persistent dedupe; this only guards concurrent job attempts.

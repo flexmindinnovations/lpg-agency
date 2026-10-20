@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lpg.application.common.errors import NotFoundError
+from lpg.config.logging import get_logger
 
 if TYPE_CHECKING:
     import uuid
 
-    from lpg.application.common.ports import UnitOfWork
+    from lpg.application.common.ports import RealtimePublisher, UnitOfWork
     from lpg.application.notification.ports import (
         DeviceTokenRepository,
         InAppNotificationRepository,
@@ -37,10 +38,41 @@ class CountUnreadUseCase:
         return await self._repository.count_unread(user_id)
 
 
+_logger = get_logger(__name__)
+
+
+async def _publish_best_effort(
+    publisher: RealtimePublisher | None, channel: str, message: dict[str, str]
+) -> None:
+    """Realtime is an enhancement (ADR-015): the read is already committed,
+    and a Redis hiccup must not turn it into an error — other tabs catch up
+    on their next fetch."""
+    if publisher is None:
+        return
+    try:
+        await publisher.publish(channel, message)
+    except Exception:  # noqa: BLE001 - best-effort, logged
+        _logger.warning("notification_read_publish_failed", message_type=message.get("type"))
+
+
+def user_channel(tenant_id: uuid.UUID, user_id: uuid.UUID) -> str:
+    """The per-user realtime channel (the `notifications` intent)."""
+    return f"tenant:{tenant_id}:user:{user_id}"
+
+
 class MarkReadUseCase:
-    def __init__(self, uow: UnitOfWork, repository: InAppNotificationRepository) -> None:
+    """Marks one notification read, then tells the user's other tabs and
+    devices (after commit) so their badge and inbox follow."""
+
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        repository: InAppNotificationRepository,
+        publisher: RealtimePublisher | None = None,
+    ) -> None:
         self._uow = uow
         self._repository = repository
+        self._publisher = publisher
 
     async def execute(self, notification_id: uuid.UUID, user_id: uuid.UUID) -> None:
         async with self._uow:
@@ -50,16 +82,35 @@ class MarkReadUseCase:
 
             notification.mark_read()
             await self._repository.save(notification)
+            await self._uow.commit()
+
+        await _publish_best_effort(
+            self._publisher,
+            user_channel(notification.tenant_id, user_id),
+            {"type": "notification.read", "notification_id": str(notification_id)},
+        )
 
 
 class MarkAllReadUseCase:
-    def __init__(self, uow: UnitOfWork, repository: InAppNotificationRepository) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        repository: InAppNotificationRepository,
+        publisher: RealtimePublisher | None = None,
+    ) -> None:
         self._uow = uow
         self._repository = repository
+        self._publisher = publisher
 
-    async def execute(self, user_id: uuid.UUID) -> None:
+    async def execute(self, user_id: uuid.UUID, tenant_id: uuid.UUID | None = None) -> None:
         async with self._uow:
             await self._repository.mark_all_read(user_id)
+            await self._uow.commit()
+
+        if tenant_id is not None:
+            await _publish_best_effort(
+                self._publisher, user_channel(tenant_id, user_id), {"type": "notification.read_all"}
+            )
 
 
 class RegisterDeviceUseCase:

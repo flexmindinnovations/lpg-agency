@@ -28,6 +28,17 @@ class ComplaintRaised(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class ComplaintAssigned(DomainEvent):
+    """Fired when a complaint is (re)assigned to a staff member — they are
+    told it's now theirs to handle."""
+
+    complaint_id: uuid.UUID
+    tenant_id: uuid.UUID
+    assigned_to: uuid.UUID
+    assigned_by: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
 class ComplaintResolved(DomainEvent):
     """Fired when a complaint reaches a terminal outcome — resolved,
     compensated, or rejected (D-20). `outcome` distinguishes which.
@@ -205,6 +216,14 @@ class Complaint(AggregateRoot):
 
         self.updated_at = now
         self.updated_by = assigned_by
+        self.record_event(
+            ComplaintAssigned(
+                complaint_id=self.id,
+                tenant_id=self.tenant_id,
+                assigned_to=assigned_to,
+                assigned_by=assigned_by,
+            )
+        )
 
     def resolve(
         self,

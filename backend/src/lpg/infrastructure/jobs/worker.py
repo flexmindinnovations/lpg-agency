@@ -197,6 +197,15 @@ async def startup(ctx: dict[str, Any]) -> None:
     await job_queue.connect()
     ctx["job_queue"] = job_queue
 
+    # Jobs that change orders/routes through a dispatcher-wired unit of work
+    # (auto-assignment) notify people exactly as the API does.
+    from lpg.infrastructure.events.notification_handlers import (
+        register_notification_handlers,
+    )
+    from lpg.infrastructure.notification.delivery import InAppFirstNotifier
+
+    register_notification_handlers(dispatcher, InAppFirstNotifier(database, dispatcher, job_queue))
+
     _logger.info("worker_started", environment=settings.environment)
 
 
