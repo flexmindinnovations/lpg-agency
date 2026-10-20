@@ -15,6 +15,7 @@ from lpg.api.v1.schemas.cylinder_ledger import (
     CylinderLedgerBalanceItem,
     CylinderLedgerResponse,
 )
+from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.cylinder_ledger.use_cases import (
@@ -22,8 +23,33 @@ from lpg.application.cylinder_ledger.use_cases import (
     GetCylinderLedgerUseCase,
 )
 from lpg.application.identity.ports import AuthenticatedPrincipal
+from lpg.domain.customer.customer import Customer
+from lpg.domain.cylinder_ledger.cylinder_ledger import CylinderLedger
 
 router = APIRouter(prefix="/customers/{customer_id}/ledger", tags=["Cylinder Ledger"])
+
+
+async def _require_customer(
+    customer_repository: CustomerRepository, customer_id: uuid.UUID
+) -> Customer:
+    """404 for a customer that does not exist in this tenant (DO-22) —
+    otherwise an unknown id reads as an empty ledger."""
+    customer = await customer_repository.get_by_id(customer_id)
+    if customer is None:
+        raise NotFoundError("Customer not found.", customer_id=str(customer_id))
+    return customer
+
+
+def _to_response(ledger: CylinderLedger, customer: Customer) -> CylinderLedgerResponse:
+    return CylinderLedgerResponse(
+        customer_id=ledger.customer_id,
+        balances=[
+            CylinderLedgerBalanceItem(cylinder_type_id=ct_id, quantity=q)
+            for ct_id, q in ledger.balances.items()
+        ],
+        customer_name=customer.full_name,
+        consumer_number=customer.consumer_number,
+    )
 
 
 @router.get(
@@ -55,17 +81,12 @@ async def get_ledger(
         effective_customer_id = own_customer.id
 
     async with unit_of_work:
+        customer = await _require_customer(customer_repository, effective_customer_id)
         ledger = await use_case.execute(
             tenant_id=principal.tenant_id,
             customer_id=effective_customer_id,
         )
-        return CylinderLedgerResponse(
-            customer_id=ledger.customer_id,
-            balances=[
-                CylinderLedgerBalanceItem(cylinder_type_id=ct_id, quantity=q)
-                for ct_id, q in ledger.balances.items()
-            ],
-        )
+        return _to_response(ledger, customer)
 
 
 @router.post(
@@ -79,13 +100,17 @@ async def adjust_balance(
     use_case: Annotated[AdjustLedgerBalanceUseCase, Depends(get_adjust_ledger_balance_use_case)],
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
 ) -> CylinderLedgerResponse:
+    """Manually correct a customer's cylinder balance. 404 for an unknown
+    customer."""
     # A manual adjustment is always attributable to a real staff member --
     # a principal without a user_id (e.g. a machine token) cannot make one.
     if principal.user_id is None:
         raise HTTPException(status_code=401, detail="User ID is required.")
 
     async with unit_of_work:
+        customer = await _require_customer(customer_repository, customer_id)
         ledger = await use_case.execute(
             tenant_id=principal.tenant_id,
             customer_id=customer_id,
@@ -95,10 +120,4 @@ async def adjust_balance(
             performed_by=principal.user_id,
         )
         await unit_of_work.commit()
-        return CylinderLedgerResponse(
-            customer_id=ledger.customer_id,
-            balances=[
-                CylinderLedgerBalanceItem(cylinder_type_id=ct_id, quantity=q)
-                for ct_id, q in ledger.balances.items()
-            ],
-        )
+        return _to_response(ledger, customer)

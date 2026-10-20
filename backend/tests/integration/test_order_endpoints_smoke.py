@@ -1680,6 +1680,26 @@ class TestEditAndRescheduleBooking:
         ), "the van's reservation for the order is released"
 
 
+class TestCustomerLedger:
+    """DO-22: the ledger names the customer and 404s for an unknown one."""
+
+    async def test_ledger_names_the_customer_and_404s_for_unknown(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        ledger = await client.get(
+            f"/api/v1/customers/{fixtures.customer_id}/ledger", headers=headers
+        )
+        assert ledger.status_code == 200, ledger.text
+        assert ledger.json()["customer_name"] == "Order Smoke Customer"
+
+        unknown = await client.get(f"/api/v1/customers/{uuid.uuid4()}/ledger", headers=headers)
+        assert unknown.status_code == 404, unknown.text
+
+
 class TestBookingRules:
     """DO-10 / DO-11."""
 

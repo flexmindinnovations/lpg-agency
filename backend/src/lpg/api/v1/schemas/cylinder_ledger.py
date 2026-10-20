@@ -17,3 +17,6 @@ class CylinderLedgerBalanceItem(BaseModel):
 class CylinderLedgerResponse(BaseModel):
     customer_id: uuid.UUID
     balances: list[CylinderLedgerBalanceItem]
+    #: Whose ledger this is (DO-22).
+    customer_name: str | None = None
+    consumer_number: str | None = None
