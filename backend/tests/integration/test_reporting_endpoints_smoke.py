@@ -22,6 +22,7 @@ to produce non-empty rows) is R7's job, not this one's.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -31,6 +32,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
+
+# Reports accept at most a year (DA-12); this window covers everything the
+# tests seed relative to now().
+_TODAY = datetime.now(UTC).date()
+_RANGE_START = (_TODAY - timedelta(days=180)).isoformat()
+_RANGE_END = (_TODAY + timedelta(days=180)).isoformat()
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -478,7 +485,8 @@ class TestReportingEndpointsThroughTheRealStack:
         client = real_lifespan_client
 
         sales_response = await client.get(
-            "/api/v1/reporting/sales?start_date=2020-01-01&end_date=2030-01-01", headers=headers
+            f"/api/v1/reporting/sales?start_date={_RANGE_START}&end_date={_RANGE_END}",
+            headers=headers,
         )
         assert sales_response.status_code == 200, sales_response.text
         assert sales_response.json() == []
@@ -488,7 +496,8 @@ class TestReportingEndpointsThroughTheRealStack:
         assert gst_response.json() == []
 
         drivers_response = await client.get(
-            "/api/v1/reporting/drivers?start_date=2020-01-01&end_date=2030-01-01", headers=headers
+            f"/api/v1/reporting/drivers?start_date={_RANGE_START}&end_date={_RANGE_END}",
+            headers=headers,
         )
         assert drivers_response.status_code == 200, drivers_response.text
         assert drivers_response.json() == []
@@ -532,7 +541,8 @@ class TestReportingEndpointsThroughTheRealStack:
         headers = {"Authorization": f"Bearer {token}"}
 
         response = await real_lifespan_client.get(
-            "/api/v1/reporting/sales?start_date=2020-01-01&end_date=2030-01-01", headers=headers
+            f"/api/v1/reporting/sales?start_date={_RANGE_START}&end_date={_RANGE_END}",
+            headers=headers,
         )
         assert response.status_code == 200, response.text
         body = response.json()
@@ -630,7 +640,8 @@ class TestMaterializedReportsWithRealData:
         headers = {"Authorization": f"Bearer {token}"}
 
         response = await real_lifespan_client.get(
-            "/api/v1/reporting/drivers?start_date=2020-01-01&end_date=2030-01-01", headers=headers
+            f"/api/v1/reporting/drivers?start_date={_RANGE_START}&end_date={_RANGE_END}",
+            headers=headers,
         )
         assert response.status_code == 200, response.text
         body = response.json()
