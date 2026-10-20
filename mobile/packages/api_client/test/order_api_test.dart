@@ -366,5 +366,73 @@ void main() {
       expect(tracking!.driverLocation, isNull);
       expect(tracking.destinationLatitude, isNull);
     });
+
+    test(
+      'getDeliveryCode reads the code, or null when none is pending',
+      () async {
+        final client = ApiClient(baseUrl: 'https://api.test');
+        var pending = true;
+        String? path;
+        client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+          path = options.path;
+          return pending
+              ? jsonResponse({'code': '554210'}, 200)
+              : ResponseBody.fromString(
+                  'null',
+                  200,
+                  headers: {
+                    Headers.contentTypeHeader: [Headers.jsonContentType],
+                  },
+                );
+        });
+        final api = OrderApi(client.dio);
+
+        final code = await api.getDeliveryCode('order-1');
+        expect(path, '/api/v1/orders/order-1/delivery-code');
+        expect(code.when(onSuccess: (c) => c, onFailure: (_) => 'x'), '554210');
+
+        pending = false;
+        final none = await api.getDeliveryCode('order-1');
+        expect(none.when(onSuccess: (c) => c, onFailure: (_) => 'x'), isNull);
+      },
+    );
+
+    test('getPendingCancellation parses the waiting request', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (_) => jsonResponse({
+          'id': 'c1',
+          'order_id': 'order-1',
+          'reason': 'Booked twice',
+          'requested_by': 'u1',
+          'requested_at': '2026-10-20T10:00:00Z',
+        }, 200),
+      );
+
+      final result = await OrderApi(
+        client.dio,
+      ).getPendingCancellation('order-1');
+      final request = result.when(onSuccess: (r) => r, onFailure: (_) => null);
+      expect(request!.reason, 'Booked twice');
+    });
+
+    test('recordFailedDelivery sends the driver note', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      Object? body;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        body = options.data;
+        return jsonResponse(_orderJson(status: 'failed_delivery'), 200);
+      });
+
+      await OrderApi(client.dio).recordFailedDelivery(
+        'order-1',
+        reasonCode: 'customer_unavailable',
+        note: 'Back after 6',
+      );
+      expect(body, {
+        'reason_code': 'customer_unavailable',
+        'note': 'Back after 6',
+      });
+    });
   });
 }

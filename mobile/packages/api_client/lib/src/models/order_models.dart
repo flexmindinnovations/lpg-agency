@@ -395,3 +395,51 @@ class CancelOrderResponse {
   final OrderResponse order;
   final bool pendingApproval;
 }
+
+/// A post-dispatch cancellation request waiting for a manager (D-19), from
+/// `GET /orders/{id}/cancellation-request`.
+class PendingCancellationResponse {
+  const PendingCancellationResponse({
+    required this.id,
+    required this.orderId,
+    required this.reason,
+    required this.requestedAt,
+  });
+
+  factory PendingCancellationResponse.fromJson(Map<String, dynamic> json) =>
+      PendingCancellationResponse(
+        id: json['id'] as String,
+        orderId: json['order_id'] as String,
+        reason: json['reason'] as String,
+        requestedAt: DateTime.parse(json['requested_at'] as String),
+      );
+
+  final String id;
+  final String orderId;
+  final String reason;
+  final DateTime requestedAt;
+}
+
+/// One step of an order's status history (`GET /orders/{id}/history`).
+/// [reason] explains a cancellation or a failed delivery.
+class OrderStatusHistoryEntry {
+  const OrderStatusHistoryEntry({
+    this.fromStatus,
+    required this.toStatus,
+    required this.changedAt,
+    this.reason,
+  });
+
+  factory OrderStatusHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      OrderStatusHistoryEntry(
+        fromStatus: json['from_status'] as String?,
+        toStatus: json['to_status'] as String,
+        changedAt: DateTime.parse(json['changed_at'] as String),
+        reason: json['reason'] as String?,
+      );
+
+  final String? fromStatus;
+  final String toStatus;
+  final DateTime changedAt;
+  final String? reason;
+}
