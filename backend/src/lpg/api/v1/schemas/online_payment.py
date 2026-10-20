@@ -37,3 +37,9 @@ class OnlinePaymentListResponse(BaseModel):
 
 class WebhookAck(BaseModel):
     received: bool
+
+
+class OnlinePaymentAvailabilityResponse(BaseModel):
+    """Whether "Pay Online" can be offered (a gateway is configured)."""
+
+    available: bool
