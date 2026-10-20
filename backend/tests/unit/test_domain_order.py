@@ -389,7 +389,7 @@ class TestOrderDeliver:
     def test_delivering_an_unknown_cylinder_type_is_rejected(self) -> None:
         order = _make_order()
         _advance(order, "out_for_delivery")
-        with pytest.raises(InvariantViolation, match="no line for cylinder type"):
+        with pytest.raises(InvariantViolation, match="no line for this cylinder type"):
             order.deliver(
                 lines=[DeliveredLine(cylinder_type_id=uuid.uuid4(), quantity_delivered=1)],
                 changed_by=uuid.uuid4(),

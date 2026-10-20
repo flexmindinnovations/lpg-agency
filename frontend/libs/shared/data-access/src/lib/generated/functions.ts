@@ -335,6 +335,8 @@ export type { CancelOrderApiV1OrdersOrderIdCancelPost$Params as CancelOrderApiV1
 export { cancelOrderApiV1OrdersOrderIdCancelPost as cancelOrderApiV1OrdersOrderIdCancelPost } from './fn/orders/cancel-order-api-v-1-orders-order-id-cancel-post';
 export type { ApproveOrderCancellationApiV1OrdersOrderIdCancelApprovePost$Params as ApproveOrderCancellationApiV1OrdersOrderIdCancelApprovePost$Params } from './fn/orders/approve-order-cancellation-api-v-1-orders-order-id-cancel-approve-post';
 export { approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost as approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost } from './fn/orders/approve-order-cancellation-api-v-1-orders-order-id-cancel-approve-post';
+export type { GetPendingCancellationApiV1OrdersOrderIdCancellationRequestGet$Params as GetPendingCancellationApiV1OrdersOrderIdCancellationRequestGet$Params } from './fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
+export { getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet as getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet } from './fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 export type { CloseOrderApiV1OrdersOrderIdClosePost$Params as CloseOrderApiV1OrdersOrderIdClosePost$Params } from './fn/orders/close-order-api-v-1-orders-order-id-close-post';
 export { closeOrderApiV1OrdersOrderIdClosePost as closeOrderApiV1OrdersOrderIdClosePost } from './fn/orders/close-order-api-v-1-orders-order-id-close-post';
 export type { ConfirmOrderApiV1OrdersOrderIdConfirmPost$Params as ConfirmOrderApiV1OrdersOrderIdConfirmPost$Params } from './fn/orders/confirm-order-api-v-1-orders-order-id-confirm-post';

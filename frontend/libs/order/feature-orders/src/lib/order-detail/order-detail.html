@@ -128,6 +128,10 @@
   <p-message severity="error">{{ msg }}</p-message>
   } @if (infoMessage(); as msg) {
   <p-message severity="info">{{ msg }}</p-message>
+  } @if (canApproveCancellation() && pendingCancellation(); as pending) {
+  <p-message severity="warn">
+    Cancellation requested: "{{ pending.reason }}". Waiting for Manager approval.
+  </p-message>
   } @if (order(); as o) { @if (progressIndex() !== null) {
   <section class="progress" aria-label="Order progress">
     <ol class="progress__steps">

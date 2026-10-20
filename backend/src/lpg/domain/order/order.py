@@ -558,7 +558,8 @@ class Order(AggregateRoot):
         for line in self._lines:
             if line.cylinder_type_id == cylinder_type_id:
                 return line
-        msg = f"Order {self.id} has no line for cylinder type {cylinder_type_id}."
+        label = f"Order {self._order_number}" if self._order_number else "This order"
+        msg = f"{label} has no line for this cylinder type."
         raise InvariantViolation(msg, order_id=str(self.id), cylinder_type_id=str(cylinder_type_id))
 
     # ------------------------------------------------------------------

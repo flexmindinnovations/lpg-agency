@@ -105,7 +105,7 @@ async def _get_scoped_order(
 ) -> Order:
     order = await order_repository.get_by_id(order_id)
     if order is None or not scope.allows(order):
-        msg = f"No order visible with id {order_id}."
+        msg = "Order not found."
         raise NotFoundError(msg, order_id=str(order_id))
     return order
 

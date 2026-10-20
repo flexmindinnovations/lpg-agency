@@ -39,6 +39,8 @@ from lpg.application.common.errors import (
 from lpg.application.delivery.ports import RouteStopOwner
 from lpg.application.order.ports import CancellationRecordEntry, ProofOfDeliveryEntry
 from lpg.application.order.use_cases import (
+    ApproveOrderCancellationCommand,
+    ApproveOrderCancellationUseCase,
     AssignOrderCommand,
     AssignOrderUseCase,
     BulkCancelOrdersCommand,
@@ -54,6 +56,8 @@ from lpg.application.order.use_cases import (
     DeliverOrderUseCase,
     DepartOrderCommand,
     DepartOrderUseCase,
+    GetOrderQuery,
+    GetPendingCancellationUseCase,
     RecordFailedDeliveryCommand,
     RecordFailedDeliveryUseCase,
     RescheduleOrderCommand,
@@ -1068,6 +1072,7 @@ class TestCancelOrderUseCase:
         mock_order_repo.get_by_id.return_value = order
 
         cancellation_repo = MagicMock()
+        cancellation_repo.get_pending_by_order_id = AsyncMock(return_value=None)
         cancellation_repo.next_id = MagicMock(return_value=uuid.uuid4())
         cancellation_repo.create = AsyncMock(
             return_value=CancellationRecordEntry(
@@ -1097,6 +1102,35 @@ class TestCancelOrderUseCase:
         mock_route_repo.save.assert_not_called()
         mock_uow.commit.assert_called_once()
 
+    async def test_second_post_dispatch_request_is_refused(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4(), reserved=1)
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        mock_order_repo.get_by_id.return_value = order
+
+        cancellation_repo = MagicMock()
+        cancellation_repo.get_pending_by_order_id = AsyncMock(
+            return_value=_pending_cancellation(order)
+        )
+        cancellation_repo.create = AsyncMock()
+        use_case = CancelOrderUseCase(
+            mock_order_repo, mock_route_repo, mock_inventory_repo, cancellation_repo, mock_uow
+        )
+
+        with pytest.raises(ConflictError) as exc_info:
+            await use_case.execute(
+                CancelOrderCommand(order_id=order.id, reason="Again", cancelled_by=uuid.uuid4())
+            )
+        assert str(order.id) not in str(exc_info.value)
+        cancellation_repo.create.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
     async def test_missing_order_raises_not_found(
         self,
         mock_order_repo: MagicMock,
@@ -1113,6 +1147,78 @@ class TestCancelOrderUseCase:
                 CancelOrderCommand(order_id=uuid.uuid4(), reason="n/a", cancelled_by=uuid.uuid4())
             )
         mock_order_repo.save.assert_not_called()
+        mock_uow.commit.assert_not_called()
+
+
+def _pending_cancellation(order: Order) -> CancellationRecordEntry:
+    return CancellationRecordEntry(
+        id=uuid.uuid4(),
+        tenant_id=order.tenant_id,
+        order_id=order.id,
+        cancelled_by=uuid.uuid4(),
+        approved_by=None,
+        cancellation_charge=None,
+        reason="Customer not home",
+        requested_at=datetime.now(UTC),
+        approved_at=None,
+    )
+
+
+class TestPendingCancellation:
+    """The dashboard shows Approve Cancellation only when a request is
+    waiting, and messages name the order by number, never by id."""
+
+    async def test_returns_waiting_request(self, mock_order_repo: MagicMock) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4(), reserved=1)
+        mock_order_repo.get_by_id.return_value = order
+        pending = _pending_cancellation(order)
+        cancellation_repo = MagicMock()
+        cancellation_repo.get_pending_by_order_id = AsyncMock(return_value=pending)
+
+        result = await GetPendingCancellationUseCase(mock_order_repo, cancellation_repo).execute(
+            GetOrderQuery(order_id=order.id)
+        )
+
+        assert result == pending
+
+    async def test_none_when_no_request(self, mock_order_repo: MagicMock) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4(), reserved=1)
+        mock_order_repo.get_by_id.return_value = order
+        cancellation_repo = MagicMock()
+        cancellation_repo.get_pending_by_order_id = AsyncMock(return_value=None)
+
+        result = await GetPendingCancellationUseCase(mock_order_repo, cancellation_repo).execute(
+            GetOrderQuery(order_id=order.id)
+        )
+
+        assert result is None
+
+    async def test_approve_without_request_names_order_not_id(
+        self,
+        mock_order_repo: MagicMock,
+        mock_route_repo: MagicMock,
+        mock_inventory_repo: MagicMock,
+        mock_uow: MagicMock,
+    ) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4(), reserved=1)
+        mock_order_repo.get_by_id.return_value = order
+        cancellation_repo = MagicMock()
+        cancellation_repo.get_pending_by_order_id = AsyncMock(return_value=None)
+        use_case = ApproveOrderCancellationUseCase(
+            mock_order_repo,
+            mock_route_repo,
+            mock_inventory_repo,
+            cancellation_repo,
+            MagicMock(),
+            mock_uow,
+        )
+
+        with pytest.raises(NotFoundError) as exc_info:
+            await use_case.execute(
+                ApproveOrderCancellationCommand(order_id=order.id, approved_by=uuid.uuid4())
+            )
+        assert str(order.id) not in str(exc_info.value)
+        assert "no cancellation request" in str(exc_info.value)
         mock_uow.commit.assert_not_called()
 
 
