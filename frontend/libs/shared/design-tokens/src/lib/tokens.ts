@@ -256,6 +256,7 @@ export const tokenVars = {
   "componentFocusRingWidth": '--component-focus-ring-width',
   "componentFocusRingColor": '--component-focus-ring-color',
   "componentFocusRingOffset": '--component-focus-ring-offset',
+  "componentControlHeight": '--component-control-height',
 } as const;
 
 export type TokenName = keyof typeof tokenVars;

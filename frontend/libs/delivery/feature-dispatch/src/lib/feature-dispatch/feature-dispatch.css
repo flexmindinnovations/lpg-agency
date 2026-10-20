@@ -186,11 +186,14 @@
   gap: var(--spacing-xs);
 }
 
+/* A bordered panel with its own heading: `--spacing-md` inner padding, the
+   same breathing room as the drawer body around it (at `--spacing-sm` the
+   heading and list rows sat almost on the panel border). */
 .load-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-md);
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-md);
   background: var(--color-surface-overlay);

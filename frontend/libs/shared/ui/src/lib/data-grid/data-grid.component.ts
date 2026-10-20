@@ -236,6 +236,18 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         --lpg-link-hover-color: var(--color-highlight-color);
       }
 
+      /* Extra end padding on the last column. Its cells otherwise sit 12px
+         from the grid's edge, and on touch devices (tablets) the vertical
+         scrollbar is an overlay that takes no layout width, so AG Grid lays
+         the last column out underneath it and right-aligned values (the
+         Orders "Total", ₹4500.00) lose their last characters. The header
+         cell gets the same padding so its label stays aligned with the
+         values below it. */
+      ::ng-deep .lpg-data-grid .ag-cell.ag-column-last,
+      ::ng-deep .lpg-data-grid .ag-header-cell.ag-column-last {
+        padding-inline-end: var(--spacing-lg);
+      }
+
       /* Pagination controls matching Fluent Glass design system tokens */
       ::ng-deep .lpg-data-grid .ag-paging-panel {
         color: var(--color-text-secondary);

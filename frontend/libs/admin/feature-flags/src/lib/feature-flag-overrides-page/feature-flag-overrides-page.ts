@@ -120,9 +120,17 @@ function errorMessageFor(error: unknown): string {
         display: block;
       }
 
+      /* Intro line, status/error/warn messages and the form are stacked
+         siblings — without a gap the warn message sat flush against the
+         intro text above it. */
+      .admin-page {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+      }
+
       .admin-form-section {
         max-inline-size: 480px;
-        margin-block-start: var(--spacing-lg);
       }
 
       .admin-form-section form {

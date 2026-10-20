@@ -2,6 +2,14 @@
   display: block;
 }
 
+/* Same page-root pattern as every other list page: a flex column whose
+   `gap` separates the toolbar from the balance list below it. */
+.ledger-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
 .ledger-section {
   display: flex;
   flex-direction: column;
