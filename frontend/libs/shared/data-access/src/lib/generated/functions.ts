@@ -49,6 +49,8 @@ export type { ListPriceListProposalsApiV1AdminPriceListProposalsGet$Params as Li
 export { listPriceListProposalsApiV1AdminPriceListProposalsGet as listPriceListProposalsApiV1AdminPriceListProposalsGet } from './fn/administration/list-price-list-proposals-api-v-1-admin-price-list-proposals-get';
 export type { ReviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch$Params as ReviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch$Params } from './fn/administration/review-price-list-proposal-api-v-1-admin-price-list-proposals-proposal-id-patch';
 export { reviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch as reviewPriceListProposalApiV1AdminPriceListProposalsProposalIdPatch } from './fn/administration/review-price-list-proposal-api-v-1-admin-price-list-proposals-proposal-id-patch';
+export type { GetSetupProgressApiV1AdminSetupProgressGet$Params as GetSetupProgressApiV1AdminSetupProgressGet$Params } from './fn/administration/get-setup-progress-api-v-1-admin-setup-progress-get';
+export { getSetupProgressApiV1AdminSetupProgressGet as getSetupProgressApiV1AdminSetupProgressGet } from './fn/administration/get-setup-progress-api-v-1-admin-setup-progress-get';
 export type { GetTenantApiV1AdminTenantGet$Params as GetTenantApiV1AdminTenantGet$Params } from './fn/administration/get-tenant-api-v-1-admin-tenant-get';
 export { getTenantApiV1AdminTenantGet as getTenantApiV1AdminTenantGet } from './fn/administration/get-tenant-api-v-1-admin-tenant-get';
 export type { ListTenantConfigurationApiV1AdminTenantConfigurationGet$Params as ListTenantConfigurationApiV1AdminTenantConfigurationGet$Params } from './fn/administration/list-tenant-configuration-api-v-1-admin-tenant-configuration-get';
@@ -69,6 +71,8 @@ export type { GetUserPermissionsApiV1AdminUsersUserIdPermissionsGet$Params as Ge
 export { getUserPermissionsApiV1AdminUsersUserIdPermissionsGet as getUserPermissionsApiV1AdminUsersUserIdPermissionsGet } from './fn/administration/get-user-permissions-api-v-1-admin-users-user-id-permissions-get';
 export type { UpdateUserPermissionsApiV1AdminUsersUserIdPermissionsPut$Params as UpdateUserPermissionsApiV1AdminUsersUserIdPermissionsPut$Params } from './fn/administration/update-user-permissions-api-v-1-admin-users-user-id-permissions-put';
 export { updateUserPermissionsApiV1AdminUsersUserIdPermissionsPut as updateUserPermissionsApiV1AdminUsersUserIdPermissionsPut } from './fn/administration/update-user-permissions-api-v-1-admin-users-user-id-permissions-put';
+export type { ReactivateStaffUserApiV1AdminUsersUserIdReactivatePatch$Params as ReactivateStaffUserApiV1AdminUsersUserIdReactivatePatch$Params } from './fn/administration/reactivate-staff-user-api-v-1-admin-users-user-id-reactivate-patch';
+export { reactivateStaffUserApiV1AdminUsersUserIdReactivatePatch as reactivateStaffUserApiV1AdminUsersUserIdReactivatePatch } from './fn/administration/reactivate-staff-user-api-v-1-admin-users-user-id-reactivate-patch';
 export type { ReassignRoleApiV1AdminUsersUserIdRolePatch$Params as ReassignRoleApiV1AdminUsersUserIdRolePatch$Params } from './fn/administration/reassign-role-api-v-1-admin-users-user-id-role-patch';
 export { reassignRoleApiV1AdminUsersUserIdRolePatch as reassignRoleApiV1AdminUsersUserIdRolePatch } from './fn/administration/reassign-role-api-v-1-admin-users-user-id-role-patch';
 export type { ListWarehousesApiV1AdminWarehousesGet$Params as ListWarehousesApiV1AdminWarehousesGet$Params } from './fn/administration/list-warehouses-api-v-1-admin-warehouses-get';
@@ -89,6 +93,12 @@ export type { LogoutApiV1AuthLogoutPost$Params as LogoutApiV1AuthLogoutPost$Para
 export { logoutApiV1AuthLogoutPost as logoutApiV1AuthLogoutPost } from './fn/authentication/logout-api-v-1-auth-logout-post';
 export type { MeApiV1AuthMeGet$Params as MeApiV1AuthMeGet$Params } from './fn/authentication/me-api-v-1-auth-me-get';
 export { meApiV1AuthMeGet as meApiV1AuthMeGet } from './fn/authentication/me-api-v-1-auth-me-get';
+export type { ChangeMyPasswordApiV1AuthMePasswordPost$Params as ChangeMyPasswordApiV1AuthMePasswordPost$Params } from './fn/authentication/change-my-password-api-v-1-auth-me-password-post';
+export { changeMyPasswordApiV1AuthMePasswordPost as changeMyPasswordApiV1AuthMePasswordPost } from './fn/authentication/change-my-password-api-v-1-auth-me-password-post';
+export type { GetMyProfileApiV1AuthMeProfileGet$Params as GetMyProfileApiV1AuthMeProfileGet$Params } from './fn/authentication/get-my-profile-api-v-1-auth-me-profile-get';
+export { getMyProfileApiV1AuthMeProfileGet as getMyProfileApiV1AuthMeProfileGet } from './fn/authentication/get-my-profile-api-v-1-auth-me-profile-get';
+export type { UpdateMyProfileApiV1AuthMeProfilePatch$Params as UpdateMyProfileApiV1AuthMeProfilePatch$Params } from './fn/authentication/update-my-profile-api-v-1-auth-me-profile-patch';
+export { updateMyProfileApiV1AuthMeProfilePatch as updateMyProfileApiV1AuthMeProfilePatch } from './fn/authentication/update-my-profile-api-v-1-auth-me-profile-patch';
 export type { OtpRequestApiV1AuthOtpRequestPost$Params as OtpRequestApiV1AuthOtpRequestPost$Params } from './fn/authentication/otp-request-api-v-1-auth-otp-request-post';
 export { otpRequestApiV1AuthOtpRequestPost as otpRequestApiV1AuthOtpRequestPost } from './fn/authentication/otp-request-api-v-1-auth-otp-request-post';
 export type { OtpVerifyApiV1AuthOtpVerifyPost$Params as OtpVerifyApiV1AuthOtpVerifyPost$Params } from './fn/authentication/otp-verify-api-v-1-auth-otp-verify-post';
@@ -395,6 +405,8 @@ export type { SetLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePa
 export { setLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch as setLicenseDeviceCapApiV1PlatformLicenseTenantIdDeviceCapsAppTypePatch } from './fn/platform-console/set-license-device-cap-api-v-1-platform-license-tenant-id-device-caps-app-type-patch';
 export type { SetLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut$Params as SetLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut$Params } from './fn/platform-console/set-license-feature-override-api-v-1-platform-license-tenant-id-feature-overrides-key-put';
 export { setLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut as setLicenseFeatureOverrideApiV1PlatformLicenseTenantIdFeatureOverridesKeyPut } from './fn/platform-console/set-license-feature-override-api-v-1-platform-license-tenant-id-feature-overrides-key-put';
+export type { ReplaceLicenseKeyApiV1PlatformLicenseTenantIdKeyPost$Params as ReplaceLicenseKeyApiV1PlatformLicenseTenantIdKeyPost$Params } from './fn/platform-console/replace-license-key-api-v-1-platform-license-tenant-id-key-post';
+export { replaceLicenseKeyApiV1PlatformLicenseTenantIdKeyPost as replaceLicenseKeyApiV1PlatformLicenseTenantIdKeyPost } from './fn/platform-console/replace-license-key-api-v-1-platform-license-tenant-id-key-post';
 export type { SetLicensePlanTierApiV1PlatformLicenseTenantIdPlanTierPatch$Params as SetLicensePlanTierApiV1PlatformLicenseTenantIdPlanTierPatch$Params } from './fn/platform-console/set-license-plan-tier-api-v-1-platform-license-tenant-id-plan-tier-patch';
 export { setLicensePlanTierApiV1PlatformLicenseTenantIdPlanTierPatch as setLicensePlanTierApiV1PlatformLicenseTenantIdPlanTierPatch } from './fn/platform-console/set-license-plan-tier-api-v-1-platform-license-tenant-id-plan-tier-patch';
 export type { RevokeLicenseApiV1PlatformLicenseTenantIdRevokePatch$Params as RevokeLicenseApiV1PlatformLicenseTenantIdRevokePatch$Params } from './fn/platform-console/revoke-license-api-v-1-platform-license-tenant-id-revoke-patch';

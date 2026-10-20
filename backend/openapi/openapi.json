@@ -957,6 +957,27 @@
         "title": "ChangeEmployeeStatusRequest",
         "type": "object"
       },
+      "ChangeMyPasswordRequest": {
+        "properties": {
+          "current_password": {
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangeMyPasswordRequest",
+        "type": "object"
+      },
       "ComplaintAssignmentResponse": {
         "properties": {
           "assigned_at": {
@@ -1441,6 +1462,7 @@
       "CreateBranchRequest": {
         "properties": {
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -1448,6 +1470,7 @@
           "region": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -4475,6 +4498,61 @@
         "title": "MoveCylinderCustodyRequest",
         "type": "object"
       },
+      "MyProfileResponse": {
+        "description": "`GET`/`PATCH /auth/me/profile` (DA-30).",
+        "properties": {
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "role",
+          "display_name",
+          "contact_phone"
+        ],
+        "title": "MyProfileResponse",
+        "type": "object"
+      },
       "NextConsumerNumberResponse": {
         "properties": {
           "consumer_number": {
@@ -5634,6 +5712,17 @@
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "anyOf": [
               {
@@ -7413,6 +7502,7 @@
       "RenameBranchRequest": {
         "properties": {
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -8232,6 +8322,7 @@
           "region": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -8490,6 +8581,28 @@
         "title": "SetWarehouseActiveRequest",
         "type": "object"
       },
+      "SetupProgressResponse": {
+        "description": "Which first-time setup steps the agency has done, in the order to do\nthem. Keys: branch, warehouse, cylinder_types, prices, gst, staff, drivers,\nvehicles.",
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "steps": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Steps",
+            "type": "object"
+          }
+        },
+        "required": [
+          "steps",
+          "complete"
+        ],
+        "title": "SetupProgressResponse",
+        "type": "object"
+      },
       "StaffUserResponse": {
         "properties": {
           "branch_id": {
@@ -8502,6 +8615,28 @@
               }
             ],
             "title": "Branch Id"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "email": {
             "anyOf": [
@@ -9191,6 +9326,36 @@
           "role"
         ],
         "title": "UpdateEmployeeRequest",
+        "type": "object"
+      },
+      "UpdateMyProfileRequest": {
+        "properties": {
+          "contact_phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "title": "UpdateMyProfileRequest",
         "type": "object"
       },
       "UpdateRouteStatusRequest": {
@@ -10620,6 +10785,28 @@
         ]
       }
     },
+    "/api/v1/admin/setup-progress": {
+      "get": {
+        "description": "Whether the agency has a branch, warehouse, cylinder types, prices, a GST rate, staff, drivers and vehicles - for the checklist on Home (DA-32).",
+        "operationId": "get_setup_progress_api_v1_admin_setup_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "New-agency setup checklist",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/tenant": {
       "get": {
         "operationId": "get_tenant_api_v1_admin_tenant_get",
@@ -10862,6 +11049,7 @@
     },
     "/api/v1/admin/users/{user_id}/deactivate": {
       "patch": {
+        "description": "Signs the user out everywhere and blocks sign-in until reactivated. 409 for your own account or the agency's last active agency admin.",
         "operationId": "deactivate_staff_user_api_v1_admin_users__user_id__deactivate_patch",
         "parameters": [
           {
@@ -10987,8 +11175,45 @@
         ]
       }
     },
+    "/api/v1/admin/users/{user_id}/reactivate": {
+      "patch": {
+        "operationId": "reactivate_staff_user_api_v1_admin_users__user_id__reactivate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reactivate a deactivated staff user",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/users/{user_id}/role": {
       "patch": {
+        "description": "Also resets the user's permissions to the new role's defaults.",
         "operationId": "reassign_role_api_v1_admin_users__user_id__role_patch",
         "parameters": [
           {
@@ -11367,6 +11592,101 @@
           }
         },
         "summary": "The current authenticated principal",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me/password": {
+      "post": {
+        "description": "Requires the current password. 422 with field errors when it is wrong or the new one breaks the password policy.",
+        "operationId": "change_my_password_api_v1_auth_me_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMyPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change your own password",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me/profile": {
+      "get": {
+        "operationId": "get_my_profile_api_v1_auth_me_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Your own profile",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "patch": {
+        "operationId": "update_my_profile_api_v1_auth_me_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit your own name and phone",
         "tags": [
           "Authentication"
         ]
@@ -17656,6 +17976,49 @@
           }
         },
         "summary": "Set a tenant's license feature override",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
+    "/api/v1/platform/license/{tenant_id}/key": {
+      "post": {
+        "description": "For when the one-time key shown at issue was lost before activation. The old key stops working; the new plaintext key is returned once. 409 if the licence is already activated or revoked.",
+        "operationId": "replace_license_key_api_v1_platform_license__tenant_id__key_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedLicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate a new key for a licence that is not activated yet",
         "tags": [
           "Platform Console"
         ]

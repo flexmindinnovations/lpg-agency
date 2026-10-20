@@ -6,6 +6,7 @@ export interface RouteStopResponse {
   failure_reason?: (string | null);
   id: string;
   order_id: string;
+  order_number?: (string | null);
   proof_of_delivery?: (ProofOfDeliverySchema | null);
   route_id: string;
   sequence_number: number;
