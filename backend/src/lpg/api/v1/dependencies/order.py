@@ -8,26 +8,40 @@ from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 
+from lpg.api.v1.dependencies.accounting import get_invoice_repository
 from lpg.api.v1.dependencies.admin import (
     get_cylinder_type_repository,
     get_price_list_repository,
+    get_tenant_configuration_repository,
 )
+from lpg.api.v1.dependencies.cylinder_ledger import get_cylinder_ledger_repository
 from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work, get_unit_of_work_factory
+from lpg.application.accounting.ports import InvoiceRepository
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
+from lpg.application.cylinder_ledger.ports import CylinderLedgerRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
+from lpg.application.order.booking_policies import (
+    LedgerCylinderCapPolicy,
+    OutstandingBalanceCreditLimitEvaluator,
+)
 from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.ports import (
     BranchStockReader,
     CancellationRecordRepository,
     CreditLimitEvaluator,
+    CustomerOpenOrderReader,
     CylinderCapPolicy,
     OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryRepository,
 )
 from lpg.application.order.use_cases import CancelOrderUseCase
-from lpg.application.tenant.ports import CylinderTypeRepository, PriceListRepository
+from lpg.application.tenant.ports import (
+    CylinderTypeRepository,
+    PriceListRepository,
+    TenantConfigurationRepository,
+)
 from lpg.infrastructure.idempotency.service import IdempotencyService
 
 if TYPE_CHECKING:
@@ -95,16 +109,33 @@ def get_orderable_cylinder_types(
     return OrderableCylinderTypes(cylinder_types, price_lists, stock)
 
 
-def get_cylinder_cap_policy() -> CylinderCapPolicy:
-    from lpg.infrastructure.order.policies import PermissiveCylinderCapPolicy
+def get_customer_open_order_reader(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> CustomerOpenOrderReader:
+    from lpg.infrastructure.persistence.repositories.order import (
+        SqlAlchemyCustomerOpenOrderReader,
+    )
 
-    return PermissiveCylinderCapPolicy()
+    return SqlAlchemyCustomerOpenOrderReader(unit_of_work)  # type: ignore[arg-type]
 
 
-def get_credit_limit_evaluator() -> CreditLimitEvaluator:
-    from lpg.infrastructure.order.policies import PermissiveCreditLimitEvaluator
+def get_cylinder_cap_policy(
+    configuration: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    ledger_repository: Annotated[CylinderLedgerRepository, Depends(get_cylinder_ledger_repository)],
+    open_orders: Annotated[CustomerOpenOrderReader, Depends(get_customer_open_order_reader)],
+) -> CylinderCapPolicy:
+    return LedgerCylinderCapPolicy(configuration, ledger_repository, open_orders)
 
-    return PermissiveCreditLimitEvaluator()
+
+def get_credit_limit_evaluator(
+    configuration: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    invoice_repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
+) -> CreditLimitEvaluator:
+    return OutstandingBalanceCreditLimitEvaluator(configuration, invoice_repository)
 
 
 def _get_app_state_and_settings() -> tuple[AppState, Settings]:

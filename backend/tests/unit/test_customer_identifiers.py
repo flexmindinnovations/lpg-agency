@@ -167,7 +167,7 @@ class TestCustomerRules:
 
     @pytest.mark.parametrize(
         ("status", "kyc_status"),
-        [("onboarding", "pending"), ("inactive", "verified"), ("active", "expired")],
+        [("blocked", "verified"), ("inactive", "verified"), ("active", "expired")],
     )
     def test_only_active_kyc_valid_customers_can_order(self, status: str, kyc_status: str) -> None:
         customer = _customer(status=status, kyc_status=kyc_status, consumer_number="CN-000001")

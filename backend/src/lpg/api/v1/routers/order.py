@@ -182,7 +182,7 @@ from lpg.application.tenant.ports import (
 )
 from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.config.settings import Settings, get_settings
-from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order
+from lpg.domain.order.order import DeliveredLine, Order
 from lpg.infrastructure.idempotency.service import (
     IdempotencyService,
     fingerprint,
@@ -330,11 +330,21 @@ async def create_order(
     orderable_cylinder_types: Annotated[
         OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
     ],
+    cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
 ) -> OrderResponse:
     """Create a booking (`draft -> booked`). Idempotency-Key required.
 
-    409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,
-    has no price for the customer, or is out of stock at the branch.
+    The delivery address is always the customer's saved address
+    `address_id`; `delivery_address` in the body is ignored.
+
+    - 404 when the customer is not visible.
+    - 409 `CUSTOMER_NOT_ELIGIBLE` when the connection is not active or KYC
+      is rejected/expired; `ADDRESS_NOT_FOUND` when `address_id` is not one
+      of the customer's addresses.
+    - 409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,
+      has no price for the customer, or is out of stock at the branch.
+    - 409 `CYLINDER_CAP_EXCEEDED` when the booking takes the customer over
+      the tenant's cylinder holding cap for their connection type.
     """
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
@@ -360,6 +370,7 @@ async def create_order(
         order_number_sequence,
         customer_repository,
         orderable_cylinder_types,
+        cylinder_cap_policy,
     )
 
     async def _operation() -> dict[str, Any]:
@@ -369,11 +380,6 @@ async def create_order(
                 branch_id=body.branch_id,
                 customer_id=customer_id,
                 address_id=body.address_id,
-                delivery_address=DeliveryAddress(
-                    address_line=body.delivery_address.address_line,
-                    latitude=body.delivery_address.latitude,
-                    longitude=body.delivery_address.longitude,
-                ),
                 booking_source=booking_source,
                 requested_date=body.requested_date,
                 lines=[
@@ -671,8 +677,11 @@ async def confirm_order(
         OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
     ],
 ) -> OrderResponse:
-    """`booked -> confirmed`. Resolves and snapshots unit prices; runs the
-    BR-04/BR-19 stub policy checks (see `infrastructure/order/policies.py`).
+    """`booked -> confirmed`. Resolves and snapshots unit prices.
+
+    409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)
+    when the tenant's configured `cylinder_holding_cap` /
+    `credit_limit_default` for the customer's type would be exceeded.
     """
     actor_id = _require_actor(principal)
     use_case = ConfirmOrderUseCase(

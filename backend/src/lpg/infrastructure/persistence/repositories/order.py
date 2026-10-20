@@ -573,3 +573,44 @@ class SqlAlchemyBranchStockReader:
             stmt = stmt.where(OrderModel.id != exclude_order_id)
         result = await self._uow.session.execute(stmt)
         return {cylinder_type_id: int(total or 0) for cylinder_type_id, total in result.all()}
+
+
+#: Orders that will still bring the customer cylinders: everything from
+#: booking up to the van, plus failed deliveries waiting for a retry.
+_CUSTOMER_OPEN_STATUSES = (
+    "booked",
+    "confirmed",
+    "assigned",
+    "ready_for_dispatch",
+    "out_for_delivery",
+    "failed_delivery",
+)
+
+
+class SqlAlchemyCustomerOpenOrderReader:
+    """`CustomerOpenOrderReader` — cylinders per type the customer's open
+    orders will still deliver (ordered minus already delivered)."""
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    async def open_quantities(
+        self, customer_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
+    ) -> dict[uuid.UUID, int]:
+        outstanding = OrderLineModel.quantity_ordered - OrderLineModel.quantity_delivered
+        stmt = (
+            select(OrderLineModel.cylinder_type_id, func.sum(outstanding))
+            .join(OrderModel, OrderModel.id == OrderLineModel.order_id)
+            .where(
+                OrderModel.customer_id == customer_id,
+                OrderModel.is_deleted.is_(False),
+                OrderModel.status.in_(_CUSTOMER_OPEN_STATUSES),
+            )
+            .group_by(OrderLineModel.cylinder_type_id)
+        )
+        if exclude_order_id is not None:
+            stmt = stmt.where(OrderModel.id != exclude_order_id)
+        result = await self._uow.session.execute(stmt)
+        return {
+            cylinder_type_id: max(int(total or 0), 0) for cylinder_type_id, total in result.all()
+        }

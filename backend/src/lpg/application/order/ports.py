@@ -8,12 +8,9 @@ load-and-mutate through `Order` itself — the same reasoning
 ReconciliationRecord, so their repositories are thin insert/get ports
 returning plain read-model dataclasses, not domain objects.
 
-`CylinderCapPolicy`/`CreditLimitEvaluator` are the two BR-04/BR-19 checks
-`ConfirmOrderUseCase` runs before `Order.confirm()` — real ports, but their
-only implementation this phase (`infrastructure/order/policies.py`) is a
-permissive no-op, since both checks genuinely depend on modules that don't
-exist yet (Cylinder Ledger — Phase 12; Accounting — Phase 13). See those
-classes' own docstrings.
+`CylinderCapPolicy`/`CreditLimitEvaluator` are the BR-04/BR-19 checks run
+when an order is booked, edited and confirmed; their implementation is
+`application/order/booking_policies.py`.
 """
 
 from __future__ import annotations
@@ -183,22 +180,38 @@ class CylinderCapPolicy(Protocol):
         customer_id: uuid.UUID,
         customer_type: str,
         requested_lines: Sequence[tuple[uuid.UUID, int]],
+        exclude_order_id: uuid.UUID | None = None,
     ) -> None:
         """Raise `CylinderCapExceededError` if this booking would exceed the
         tenant-configured, customer-type-parameterized cylinder holding cap
-        (BR-04). Depends on Cylinder Ledger (Phase 12, not built) for the
-        customer's current holding count.
+        (BR-04). `exclude_order_id` leaves an existing order's own lines out
+        of the customer's open orders when that order is confirmed or edited.
         """
         ...
 
 
 class CreditLimitEvaluator(Protocol):
     async def evaluate(
-        self, *, tenant_id: uuid.UUID, customer_id: uuid.UUID, order_total: Decimal
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        customer_id: uuid.UUID,
+        customer_type: str,
+        order_total: Decimal,
     ) -> None:
         """Raise `CreditLimitExceededError` if outstanding balance +
-        `order_total` exceeds the tenant-configured credit limit (BR-19).
-        Depends on Accounting (Phase 13, not built) for outstanding balance.
+        `order_total` exceeds the tenant-configured credit limit for the
+        customer's type (BR-19, D-11).
+        """
+        ...
+
+
+class CustomerOpenOrderReader(Protocol):
+    async def open_quantities(
+        self, customer_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
+    ) -> dict[uuid.UUID, int]:
+        """Cylinders per type the customer's open orders (booked up to out for
+        delivery, and failed deliveries awaiting a retry) will still deliver.
         """
         ...
 

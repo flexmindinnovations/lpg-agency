@@ -147,8 +147,12 @@ class CreateOrderLineRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     branch_id: uuid.UUID
     customer_id: uuid.UUID
+    #: One of the customer's saved addresses; the order snapshots it.
     address_id: uuid.UUID
-    delivery_address: DeliveryAddressPayload
+    #: Deprecated and ignored: the delivery address is always taken from the
+    #: customer's saved address `address_id` (free-text addresses are not
+    #: accepted). Still accepted so older app builds keep working.
+    delivery_address: DeliveryAddressPayload | None = Field(default=None, deprecated=True)
     #: Optional: the server decides from who is booking (a customer login is always
     #: `mobile_app`; staff default to `staff`). Staff may record the channel the customer
     #: used (`phone`, `walk_in`, `whatsapp`) or `api`, but never `mobile_app`.

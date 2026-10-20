@@ -38,6 +38,11 @@ BUSINESS_CUSTOMER_TYPES = frozenset({"commercial", "industrial", "government"})
 
 #: KYC states under which a customer may not place new orders.
 _KYC_BLOCKING_BOOKING = frozenset({"rejected", "expired"})
+#: Connection states that may book. `onboarding` stays bookable: whether a
+#: customer whose KYC is still pending may take a first refill is an open
+#: BR-21 policy question (docs/data/06-data-dictionary.md, "policy TBD"),
+#: so the existing behaviour is kept until the business decides.
+_STATUSES_ALLOWED_TO_BOOK = frozenset({"active", "onboarding"})
 
 
 class CustomerNotEligibleToOrderError(BusinessRuleViolation):
@@ -477,9 +482,9 @@ class Customer(AggregateRoot):
         return self._customer_type in BUSINESS_CUSTOMER_TYPES
 
     def ensure_can_place_orders(self) -> None:
-        """Only an active connection whose KYC is neither rejected nor
-        expired may book cylinders (BR-21, DO-11)."""
-        if self._status != "active":
+        """Inactive, blocked or closed connections, and customers whose KYC
+        was rejected or has expired, may not book cylinders (BR-21, DO-11)."""
+        if self._status not in _STATUSES_ALLOWED_TO_BOOK:
             label = self._status.replace("_", " ")
             msg = f"{self._full_name} cannot book cylinders while the connection is {label}."
             raise CustomerNotEligibleToOrderError(

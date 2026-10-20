@@ -65,6 +65,7 @@ if TYPE_CHECKING:
         ProofOfDeliveryRepository,
     )
     from lpg.application.tenant.ports import PriceListRepository, TenantConfigurationRepository
+    from lpg.domain.customer.customer import Customer
 
 
 _CANCELLATION_FEE_CONFIG_KEY = "cancellation_fee_amount"
@@ -95,8 +96,10 @@ class CreateOrderCommand(Command):
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
     customer_id: uuid.UUID
+    #: One of the customer's own saved addresses; the order keeps a snapshot
+    #: of it (`DeliveryAddress`) so later edits to the address don't move a
+    #: past delivery.
     address_id: uuid.UUID
-    delivery_address: DeliveryAddress
     booking_source: str
     requested_date: datetime
     lines: Sequence[CreateOrderLine]
@@ -104,10 +107,26 @@ class CreateOrderCommand(Command):
     payment_method_preference: str | None = None
 
 
+def _delivery_address_snapshot(customer: Customer, address_id: uuid.UUID) -> DeliveryAddress:
+    """The order's delivery address, always taken from the customer's own
+    saved address — never free text from the caller (DO-11)."""
+    address = customer.address(address_id)
+    return DeliveryAddress(
+        address_line=address.one_line,
+        latitude=address.latitude,
+        longitude=address.longitude,
+    )
+
+
 class CreateOrderUseCase:
-    """`draft -> booked`. Refuses a cylinder type that can't be ordered
-    (inactive, unpriced for this customer, or out of stock at the branch)
-    before an order number is drawn — see `OrderableCylinderTypes`.
+    """`draft -> booked`. Refuses, before an order number is drawn:
+
+    - a customer who may not book (inactive, blocked, KYC rejected/expired);
+    - an address that is not one of the customer's own;
+    - a cylinder type that can't be ordered (inactive, unpriced for this
+      customer, or out of stock at the branch — `OrderableCylinderTypes`);
+    - a booking over the customer's cylinder holding cap (BR-04), when a
+      `cylinder_cap_policy` is given.
     """
 
     def __init__(
@@ -117,24 +136,36 @@ class CreateOrderUseCase:
         order_number_sequence: OrderNumberSequence,
         customer_repository: CustomerRepository,
         orderable_cylinder_types: OrderableCylinderTypes,
+        cylinder_cap_policy: CylinderCapPolicy | None = None,
     ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
         self._order_number_sequence = order_number_sequence
         self._customer_repository = customer_repository
         self._orderable = orderable_cylinder_types
+        self._cylinder_cap_policy = cylinder_cap_policy
 
     async def execute(self, command: CreateOrderCommand) -> Order:
         customer = await self._customer_repository.get_by_id(command.customer_id)
         if customer is None:
-            msg = f"No customer visible with id {command.customer_id}."
+            msg = "Customer not found."
             raise NotFoundError(msg, customer_id=str(command.customer_id))
+        customer.ensure_can_place_orders()
+        delivery_address = _delivery_address_snapshot(customer, command.address_id)
+        requested_lines = [(line.cylinder_type_id, line.quantity) for line in command.lines]
         await self._orderable.require(
             tenant_id=command.tenant_id,
             branch_id=command.branch_id,
             customer_type=customer.customer_type,
-            lines=[(line.cylinder_type_id, line.quantity) for line in command.lines],
+            lines=requested_lines,
         )
+        if self._cylinder_cap_policy is not None:
+            await self._cylinder_cap_policy.evaluate(
+                tenant_id=command.tenant_id,
+                customer_id=customer.id,
+                customer_type=customer.customer_type,
+                requested_lines=requested_lines,
+            )
 
         order_number = await self._order_number_sequence.next()
         order = Order(
@@ -144,7 +175,7 @@ class CreateOrderUseCase:
             customer_id=command.customer_id,
             address_id=command.address_id,
             order_number=order_number,
-            delivery_address=command.delivery_address,
+            delivery_address=delivery_address,
             booking_source=command.booking_source,
             requested_date=command.requested_date,
             payment_method_preference=command.payment_method_preference,
@@ -213,6 +244,7 @@ class ConfirmOrderUseCase:
             customer_id=order.customer_id,
             customer_type=customer.customer_type,
             requested_lines=requested_lines,
+            exclude_order_id=order.id,
         )
 
         now = datetime.now(UTC)
@@ -247,6 +279,7 @@ class ConfirmOrderUseCase:
         await self._credit_limit_evaluator.evaluate(
             tenant_id=order.tenant_id,
             customer_id=order.customer_id,
+            customer_type=customer.customer_type,
             order_total=order_total_preview,
         )
 

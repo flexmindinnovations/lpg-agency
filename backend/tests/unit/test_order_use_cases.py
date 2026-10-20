@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 from lpg.application.common.errors import (
     ConflictError,
+    CylinderCapExceededError,
     CylinderNotOrderableError,
     IncompletePodError,
     NotFoundError,
@@ -66,7 +67,11 @@ from lpg.application.order.use_cases import (
     ResendDeliveryOtpUseCase,
     order_delivery_otp_key,
 )
-from lpg.domain.customer.customer import Customer
+from lpg.domain.customer.customer import (
+    AddressNotFoundError,
+    Customer,
+    CustomerNotEligibleToOrderError,
+)
 from lpg.domain.delivery.route import Route, RoutePlanned
 from lpg.domain.inventory.inventory_location import InventoryLocation
 from lpg.domain.order.order import (
@@ -530,16 +535,32 @@ class TestConfirmOrderUseCase:
         mock_order_repo.save.assert_not_called()
 
 
+def _bookable_customer(**kwargs: object) -> tuple[Customer, uuid.UUID]:
+    customer = _make_customer(status="active", kyc_status="verified", **kwargs)
+    address_id = customer.add_address(
+        "12 MG Road",
+        area="Begumpet",
+        city="Hyderabad",
+        pincode="500016",
+        latitude=17.44,
+        longitude=78.46,
+    )
+    return customer, address_id
+
+
 class TestCreateOrderUseCase:
     def _command(
-        self, customer_id: uuid.UUID, cylinder_type_id: uuid.UUID, other_type_id: uuid.UUID
+        self,
+        customer_id: uuid.UUID,
+        address_id: uuid.UUID,
+        cylinder_type_id: uuid.UUID,
+        other_type_id: uuid.UUID,
     ) -> CreateOrderCommand:
         return CreateOrderCommand(
             tenant_id=uuid.uuid4(),
             branch_id=uuid.uuid4(),
             customer_id=customer_id,
-            address_id=uuid.uuid4(),
-            delivery_address=DeliveryAddress(address_line="1 Main St"),
+            address_id=address_id,
             booking_source="staff",
             requested_date=datetime(2026, 10, 20, tzinfo=UTC),
             lines=[
@@ -549,47 +570,147 @@ class TestCreateOrderUseCase:
             created_by=uuid.uuid4(),
         )
 
+    @staticmethod
+    def _customer_repo(customer: Customer | None) -> MagicMock:
+        repo = MagicMock()
+        repo.get_by_id = AsyncMock(return_value=customer)
+        return repo
+
+    @staticmethod
+    def _numbers() -> MagicMock:
+        numbers = MagicMock()
+        numbers.next = AsyncMock(return_value="ORD-1")
+        return numbers
+
     async def test_books_after_checking_every_line_is_orderable(
         self, mock_order_repo: MagicMock, mock_uow: MagicMock
     ) -> None:
-        customer = _make_customer(customer_type="industrial")
-        customer_repo = MagicMock()
-        customer_repo.get_by_id = AsyncMock(return_value=customer)
-        numbers = MagicMock()
-        numbers.next = AsyncMock(return_value="ORD-1")
+        customer, address_id = _bookable_customer(customer_type="industrial")
         mock_order_repo.next_id.side_effect = uuid.uuid4
         orderable = _permissive_orderable()
+        cap_policy = MagicMock()
+        cap_policy.evaluate = AsyncMock()
         cylinder_type_id, other_type_id = uuid.uuid4(), uuid.uuid4()
-        command = self._command(customer.id, cylinder_type_id, other_type_id)
+        command = self._command(customer.id, address_id, cylinder_type_id, other_type_id)
 
         order = await CreateOrderUseCase(
-            mock_order_repo, mock_uow, numbers, customer_repo, orderable
+            mock_order_repo,
+            mock_uow,
+            self._numbers(),
+            self._customer_repo(customer),
+            orderable,
+            cap_policy,
         ).execute(command)
 
         assert order.status == "booked"
+        lines = [(cylinder_type_id, 2), (other_type_id, 1)]
         orderable.require.assert_awaited_once_with(
             tenant_id=command.tenant_id,
             branch_id=command.branch_id,
             customer_type="industrial",
-            lines=[(cylinder_type_id, 2), (other_type_id, 1)],
+            lines=lines,
+        )
+        cap_policy.evaluate.assert_awaited_once_with(
+            tenant_id=command.tenant_id,
+            customer_id=customer.id,
+            customer_type="industrial",
+            requested_lines=lines,
         )
         mock_uow.commit.assert_called_once()
+
+    async def test_the_delivery_address_is_the_customers_saved_address(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        customer, address_id = _bookable_customer()
+        mock_order_repo.next_id.side_effect = uuid.uuid4
+
+        order = await CreateOrderUseCase(
+            mock_order_repo,
+            mock_uow,
+            self._numbers(),
+            self._customer_repo(customer),
+            _permissive_orderable(),
+        ).execute(self._command(customer.id, address_id, uuid.uuid4(), uuid.uuid4()))
+
+        assert order.delivery_address == DeliveryAddress(
+            address_line="12 MG Road, Begumpet, Hyderabad, 500016",
+            latitude=17.44,
+            longitude=78.46,
+        )
+
+    async def test_another_customers_address_is_refused(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        customer, _address_id = _bookable_customer()
+        numbers = self._numbers()
+
+        with pytest.raises(AddressNotFoundError):
+            await CreateOrderUseCase(
+                mock_order_repo,
+                mock_uow,
+                numbers,
+                self._customer_repo(customer),
+                _permissive_orderable(),
+            ).execute(self._command(customer.id, uuid.uuid4(), uuid.uuid4(), uuid.uuid4()))
+
+        numbers.next.assert_not_called()
+        mock_order_repo.save.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("status", "kyc_status"), [("inactive", "verified"), ("active", "expired")]
+    )
+    async def test_an_ineligible_customer_cannot_book(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock, status: str, kyc_status: str
+    ) -> None:
+        customer = _make_customer(status=status, kyc_status=kyc_status)
+        address_id = customer.add_address("12 MG Road", city="Hyderabad", pincode="500016")
+        orderable = _permissive_orderable()
+
+        with pytest.raises(CustomerNotEligibleToOrderError):
+            await CreateOrderUseCase(
+                mock_order_repo,
+                mock_uow,
+                self._numbers(),
+                self._customer_repo(customer),
+                orderable,
+            ).execute(self._command(customer.id, address_id, uuid.uuid4(), uuid.uuid4()))
+
+        orderable.require.assert_not_called()
+        mock_order_repo.save.assert_not_called()
+
+    async def test_over_the_cylinder_cap_books_nothing(
+        self, mock_order_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        customer, address_id = _bookable_customer()
+        numbers = self._numbers()
+        cap_policy = MagicMock()
+        cap_policy.evaluate = AsyncMock(side_effect=CylinderCapExceededError("over cap"))
+
+        with pytest.raises(CylinderCapExceededError):
+            await CreateOrderUseCase(
+                mock_order_repo,
+                mock_uow,
+                numbers,
+                self._customer_repo(customer),
+                _permissive_orderable(),
+                cap_policy,
+            ).execute(self._command(customer.id, address_id, uuid.uuid4(), uuid.uuid4()))
+
+        numbers.next.assert_not_called()
+        mock_uow.commit.assert_not_called()
 
     async def test_not_orderable_books_nothing_and_draws_no_number(
         self, mock_order_repo: MagicMock, mock_uow: MagicMock
     ) -> None:
-        customer = _make_customer()
-        customer_repo = MagicMock()
-        customer_repo.get_by_id = AsyncMock(return_value=customer)
-        numbers = MagicMock()
-        numbers.next = AsyncMock(return_value="ORD-1")
+        customer, address_id = _bookable_customer()
+        numbers = self._numbers()
         orderable = MagicMock()
         orderable.require = AsyncMock(side_effect=CylinderNotOrderableError("no price"))
 
         with pytest.raises(CylinderNotOrderableError):
             await CreateOrderUseCase(
-                mock_order_repo, mock_uow, numbers, customer_repo, orderable
-            ).execute(self._command(customer.id, uuid.uuid4(), uuid.uuid4()))
+                mock_order_repo, mock_uow, numbers, self._customer_repo(customer), orderable
+            ).execute(self._command(customer.id, address_id, uuid.uuid4(), uuid.uuid4()))
 
         numbers.next.assert_not_called()
         mock_order_repo.save.assert_not_called()
@@ -598,13 +719,14 @@ class TestCreateOrderUseCase:
     async def test_unknown_customer_is_not_found(
         self, mock_order_repo: MagicMock, mock_uow: MagicMock
     ) -> None:
-        customer_repo = MagicMock()
-        customer_repo.get_by_id = AsyncMock(return_value=None)
-
         with pytest.raises(NotFoundError):
             await CreateOrderUseCase(
-                mock_order_repo, mock_uow, MagicMock(), customer_repo, _permissive_orderable()
-            ).execute(self._command(uuid.uuid4(), uuid.uuid4(), uuid.uuid4()))
+                mock_order_repo,
+                mock_uow,
+                MagicMock(),
+                self._customer_repo(None),
+                _permissive_orderable(),
+            ).execute(self._command(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()))
 
         mock_order_repo.save.assert_not_called()
 
