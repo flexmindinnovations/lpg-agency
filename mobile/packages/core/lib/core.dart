@@ -4,4 +4,5 @@
 /// belong in `design_system` and `api_client` respectively.
 library;
 
+export 'src/phone_number.dart';
 export 'src/result.dart';
