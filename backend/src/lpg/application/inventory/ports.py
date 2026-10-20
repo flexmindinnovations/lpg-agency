@@ -14,10 +14,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
+from lpg.domain.inventory.reconciliation import reconciliation_state
+
 if TYPE_CHECKING:
     import uuid
     from collections.abc import Sequence
-    from datetime import datetime
+    from datetime import date, datetime
 
     from lpg.domain.inventory.inventory_location import InventoryLocation
 
@@ -57,6 +59,43 @@ class GoodsReceiptNoteEntry:
     received_by: uuid.UUID
     received_at: datetime
     grn_number: str | None = None
+    #: The OMC's delivery challan / tax invoice and the truck that brought
+    #: the load — what the agency checks the receipt against.
+    challan_number: str | None = None
+    invoice_number: str | None = None
+    truck_number: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OmcReturnNoteEntry:
+    """Empties (or segregated defective cylinders) sent back to the OMC's
+    bottling plant — the outward counterpart of a GRN."""
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    return_number: str
+    warehouse_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    status: str
+    quantity: int
+    destination_omc: str
+    challan_number: str | None
+    truck_number: str | None
+    dispatched_by: uuid.UUID
+    dispatched_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerMovement:
+    """One `inventory_transaction` row, reduced to what the stock register
+    needs. `business_date` is the agency's own calendar day (IST)."""
+
+    business_date: date
+    cylinder_type_id: uuid.UUID
+    transaction_type: str
+    from_status: str | None
+    to_status: str
+    quantity: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +151,14 @@ class ReconciliationRecordEntry:
     recorded_by: uuid.UUID
     approved_by: uuid.UUID | None
     approved_at: datetime | None
+    recorded_at: datetime | None = None
+    rejected_by: uuid.UUID | None = None
+    rejected_at: datetime | None = None
+    rejection_reason: str | None = None
+
+    @property
+    def state(self) -> str:
+        return reconciliation_state(approved_at=self.approved_at, rejected_at=self.rejected_at)
 
 
 class InventoryLocationRepository(Protocol):
@@ -140,6 +187,14 @@ class InventoryLocationRepository(Protocol):
         `10-api-design-guidelines.md` §4's cursor-based convention for a
         high-volume append-only history.
         """
+        ...
+
+    async def list_movements_since(
+        self, location_id: uuid.UUID, since: date
+    ) -> Sequence[LedgerMovement]:
+        """Every ledger row for this location on or after `since` (an IST
+        calendar day), oldest first — the stock register walks back from
+        today's balance through these."""
         ...
 
     async def get_balance_summary(self) -> dict[str, int]:
@@ -175,7 +230,36 @@ class GoodsReceiptNoteRepository(Protocol):
         source_omc: str | None,
         received_by: uuid.UUID,
         grn_number: str,
+        challan_number: str | None = None,
+        invoice_number: str | None = None,
+        truck_number: str | None = None,
     ) -> GoodsReceiptNoteEntry: ...
+
+
+class OmcReturnNumberSequence(Protocol):
+    """Tenant-scoped number for an empties return note (`ERN000001`)."""
+
+    async def next(self) -> str: ...
+
+
+class OmcReturnNoteRepository(Protocol):
+    def next_id(self) -> uuid.UUID: ...
+
+    async def create(
+        self,
+        *,
+        note_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        return_number: str,
+        warehouse_id: uuid.UUID,
+        cylinder_type_id: uuid.UUID,
+        status: str,
+        quantity: int,
+        destination_omc: str,
+        challan_number: str | None,
+        truck_number: str | None,
+        dispatched_by: uuid.UUID,
+    ) -> OmcReturnNoteEntry: ...
 
 
 class ReconciliationRecordRepository(Protocol):
@@ -207,8 +291,23 @@ class ReconciliationRecordRepository(Protocol):
         """
         ...
 
-    async def approve(
+    async def get_for_decision(self, record_id: uuid.UUID) -> ReconciliationRecordEntry | None:
+        """Read *and row-lock* the record for the rest of the transaction,
+        so two concurrent approvals of the same count can't both apply it."""
+        ...
+
+    async def list_for_location(
+        self, inventory_location_id: uuid.UUID, *, state: str | None = None, limit: int = 50
+    ) -> Sequence[ReconciliationRecordEntry]:
+        """Newest first; `state` is `pending`/`approved`/`rejected` or all."""
+        ...
+
+    async def mark_approved(
         self, record_id: uuid.UUID, *, approved_by: uuid.UUID
+    ) -> ReconciliationRecordEntry: ...
+
+    async def mark_rejected(
+        self, record_id: uuid.UUID, *, rejected_by: uuid.UUID, reason: str
     ) -> ReconciliationRecordEntry: ...
 
 

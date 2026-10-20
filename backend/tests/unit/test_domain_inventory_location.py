@@ -19,6 +19,9 @@ from lpg.domain.inventory.inventory_location import (
     InvalidStatusTransitionError,
     InventoryAdjusted,
     InventoryLocation,
+    adjustment_targets,
+    signed_balance_changes,
+    status_change_targets,
 )
 
 
@@ -251,6 +254,7 @@ class TestStatusTransitions:
             ("empty", "damaged"),
             ("empty", "leakage"),
             ("filled", "leakage"),
+            ("filled", "damaged"),
             ("damaged", "quarantine"),
             ("leakage", "quarantine"),
             ("quarantine", "repair"),
@@ -332,42 +336,117 @@ class TestAdjust:
             )
 
 
-class TestReconcile:
-    def test_reconcile_sets_balance_and_records_positive_variance(self) -> None:
+class TestAdjustmentCanUndoAStatusChange:
+    def test_adjust_reverts_a_mistaken_leak_report(self) -> None:
+        cylinder_type_id = uuid.uuid4()
+        location = _location_with_balance(cylinder_type_id, "leakage", 2)
+        location.adjust(
+            cylinder_type_id, "leakage", "filled", 2, performed_by=uuid.uuid4(), reason="No leak"
+        )
+        assert location.balance_of(cylinder_type_id, "filled") == 2
+
+    def test_change_status_cannot_undo(self) -> None:
+        cylinder_type_id = uuid.uuid4()
+        location = _location_with_balance(cylinder_type_id, "leakage", 2)
+        with pytest.raises(InvalidStatusTransitionError):
+            _move(location, cylinder_type_id, "leakage", "filled", 2)
+
+    def test_published_targets_match_what_is_enforced(self) -> None:
+        assert status_change_targets()["filled"] == frozenset({"damaged", "leakage"})
+        assert "filled" in adjustment_targets()["leakage"]
+        # empty -> filled is never a status move: only a GRN refills.
+        assert "filled" not in adjustment_targets()["empty"]
+        assert status_change_targets()["scrap"] == frozenset()
+
+
+class TestApplyCountVariance:
+    def test_surplus_credits_and_is_recorded_as_a_pure_credit(self) -> None:
         location = _make_location()
         cylinder_type_id = uuid.uuid4()
         location.receive_goods(cylinder_type_id, 50, performed_by=uuid.uuid4())
 
-        location.reconcile(cylinder_type_id, "filled", 55, performed_by=uuid.uuid4())
+        location.apply_count_variance(cylinder_type_id, "filled", 5, performed_by=uuid.uuid4())
 
         assert location.balance_of(cylinder_type_id, "filled") == 55
         txn = location.pending_transactions[-1]
         assert txn.transaction_type == "reconciliation"
-        assert txn.quantity == 5
+        assert (txn.from_status, txn.quantity) == (None, 5)
 
-    def test_reconcile_sets_balance_and_records_negative_variance(self) -> None:
+    def test_shortage_debits(self) -> None:
         location = _make_location()
         cylinder_type_id = uuid.uuid4()
         location.receive_goods(cylinder_type_id, 50, performed_by=uuid.uuid4())
 
-        location.reconcile(cylinder_type_id, "filled", 42, performed_by=uuid.uuid4())
+        location.apply_count_variance(cylinder_type_id, "filled", -8, performed_by=uuid.uuid4())
 
         assert location.balance_of(cylinder_type_id, "filled") == 42
         txn = location.pending_transactions[-1]
-        assert txn.transaction_type == "reconciliation"
-        assert txn.quantity == 8
+        assert (txn.from_status, txn.to_status, txn.quantity) == ("filled", "filled", 8)
 
-    def test_reconcile_with_no_variance_records_no_transaction(self) -> None:
+    def test_variance_applies_on_top_of_later_movements(self) -> None:
+        """Counted 45 of an expected 50 (variance -5); 10 more arrived before
+        approval — the balance becomes 55, not the stale 45."""
         location = _make_location()
         cylinder_type_id = uuid.uuid4()
-        location.receive_goods(cylinder_type_id, 50, performed_by=uuid.uuid4())
-        location.clear_pending_transactions()
+        location.receive_goods(cylinder_type_id, 60, performed_by=uuid.uuid4())
+        location.apply_count_variance(cylinder_type_id, "filled", -5, performed_by=uuid.uuid4())
+        assert location.balance_of(cylinder_type_id, "filled") == 55
 
-        location.reconcile(cylinder_type_id, "filled", 50, performed_by=uuid.uuid4())
-
+    def test_zero_variance_records_nothing(self) -> None:
+        location = _make_location()
+        location.apply_count_variance(uuid.uuid4(), "filled", 0, performed_by=uuid.uuid4())
         assert location.pending_transactions == ()
 
-    def test_reconcile_rejects_negative_actual_quantity(self) -> None:
+    def test_shortage_beyond_todays_balance_is_refused(self) -> None:
         location = _make_location()
-        with pytest.raises(InvariantViolation, match="negative"):
-            location.reconcile(uuid.uuid4(), "filled", -1, performed_by=uuid.uuid4())
+        with pytest.raises(InsufficientStockError):
+            location.apply_count_variance(uuid.uuid4(), "empty", -1, performed_by=uuid.uuid4())
+
+
+class TestReturnToOmc:
+    def test_debits_empties_with_an_omc_return_row(self) -> None:
+        cylinder_type_id = uuid.uuid4()
+        location = _location_with_balance(cylinder_type_id, "empty", 30)
+        location.return_to_omc(cylinder_type_id, "empty", 25, performed_by=uuid.uuid4())
+        assert location.balance_of(cylinder_type_id, "empty") == 5
+        assert location.pending_transactions[-1].transaction_type == "omc_return"
+
+    def test_filled_stock_cannot_be_returned(self) -> None:
+        cylinder_type_id = uuid.uuid4()
+        location = _location_with_balance(cylinder_type_id, "filled", 3)
+        with pytest.raises(InvariantViolation, match="can't be returned"):
+            location.return_to_omc(cylinder_type_id, "filled", 1, performed_by=uuid.uuid4())
+
+    def test_vehicle_cannot_return_to_omc(self) -> None:
+        location = _make_location("vehicle")
+        with pytest.raises(InvariantViolation, match="warehouse"):
+            location.return_to_omc(uuid.uuid4(), "empty", 1, performed_by=uuid.uuid4())
+
+    def test_cannot_return_more_than_held(self) -> None:
+        cylinder_type_id = uuid.uuid4()
+        location = _location_with_balance(cylinder_type_id, "empty", 3)
+        with pytest.raises(InsufficientStockError):
+            location.return_to_omc(cylinder_type_id, "empty", 4, performed_by=uuid.uuid4())
+
+
+class TestSignedBalanceChanges:
+    @pytest.mark.parametrize(
+        ("transaction_type", "from_status", "to_status", "expected"),
+        [
+            ("grn_receipt", None, "filled", (("filled", 4),)),
+            ("omc_return", "empty", "empty", (("empty", -4),)),
+            ("delivery", "filled", "filled", (("filled", -4),)),
+            ("collection", "empty", "empty", (("empty", 4),)),
+            ("reconciliation", None, "filled", (("filled", 4),)),
+            ("reconciliation", "filled", "filled", (("filled", -4),)),
+            ("status_change", "filled", "leakage", (("filled", -4), ("leakage", 4))),
+        ],
+    )
+    def test_every_ledger_row_has_a_direction(
+        self,
+        transaction_type: str,
+        from_status: str | None,
+        to_status: str,
+        expected: tuple[tuple[str, int], ...],
+    ) -> None:
+        assert signed_balance_changes(transaction_type, from_status, to_status, 4) == expected

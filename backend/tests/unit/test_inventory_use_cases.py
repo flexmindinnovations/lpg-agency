@@ -6,13 +6,16 @@ Uses mocked repositories and UoW — no database required.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lpg.application.common.errors import ValidationError
 from lpg.application.inventory.ports import (
     GoodsReceiptNoteEntry,
     InventoryTransactionPage,
+    LedgerMovement,
     ReconciliationRecordEntry,
 )
 from lpg.application.inventory.use_cases import (
@@ -27,6 +30,8 @@ from lpg.application.inventory.use_cases import (
     GetInventoryBalanceQuery,
     GetInventoryBalanceUseCase,
     GetOrCreateInventoryLocationUseCase,
+    GetStockRegisterQuery,
+    GetStockRegisterUseCase,
     ListInventoryTransactionsQuery,
     ListInventoryTransactionsUseCase,
     LoadTransferCommand,
@@ -34,11 +39,17 @@ from lpg.application.inventory.use_cases import (
     LoadTransferUseCase,
     RecordGoodsReceiptCommand,
     RecordGoodsReceiptUseCase,
+    RejectReconciliationCommand,
+    RejectReconciliationUseCase,
 )
 from lpg.domain.inventory.inventory_location import (
     InsufficientStockError,
     InvalidStatusTransitionError,
     InventoryLocation,
+)
+from lpg.domain.inventory.reconciliation import (
+    ReconciliationAlreadyDecidedError,
+    SelfApprovalNotAllowedError,
 )
 
 
@@ -77,7 +88,9 @@ def mock_reconciliation_repo() -> MagicMock:
     repo.next_id = MagicMock(return_value=uuid.uuid4())
     repo.create = AsyncMock()
     repo.get_by_id = AsyncMock(return_value=None)
-    repo.approve = AsyncMock()
+    repo.get_for_decision = AsyncMock(return_value=None)
+    repo.mark_approved = AsyncMock()
+    repo.mark_rejected = AsyncMock()
     return repo
 
 
@@ -350,7 +363,7 @@ async def test_adjust_inventory_success(mock_location_repo: MagicMock, mock_uow:
 # ==========================================================================
 
 
-async def test_create_reconciliation_record_uses_pre_reconcile_balance_as_expected(
+async def test_create_reconciliation_record_does_not_change_stock(
     mock_location_repo: MagicMock, mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
 ) -> None:
     tenant_id = uuid.uuid4()
@@ -382,23 +395,208 @@ async def test_create_reconciliation_record_uses_pre_reconcile_balance_as_expect
     _, kwargs = mock_reconciliation_repo.create.call_args
     assert kwargs["expected_quantity"] == 50
     assert kwargs["actual_quantity"] == 45
-    assert location.balance_of(cylinder_type_id, "filled") == 45
+    assert location.balance_of(cylinder_type_id, "filled") == 50
+    assert location.pending_transactions == ()
     mock_uow.commit.assert_called_once()
 
 
-async def test_approve_reconciliation_delegates_to_repository(
-    mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
-) -> None:
-    entry = MagicMock(spec=ReconciliationRecordEntry)
-    mock_reconciliation_repo.approve.return_value = entry
-    record_id = uuid.uuid4()
-    approver_id = uuid.uuid4()
-
-    use_case = ApproveReconciliationUseCase(mock_reconciliation_repo, mock_uow)
-    result = await use_case.execute(
-        ApproveReconciliationCommand(record_id=record_id, approved_by=approver_id)
+def _pending_record(
+    *,
+    location_id: uuid.UUID,
+    cylinder_type_id: uuid.UUID,
+    recorded_by: uuid.UUID,
+    expected: int = 50,
+    actual: int = 45,
+    approved_at: datetime | None = None,
+) -> ReconciliationRecordEntry:
+    return ReconciliationRecordEntry(
+        id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        inventory_location_id=location_id,
+        cylinder_type_id=cylinder_type_id,
+        status="filled",
+        expected_quantity=expected,
+        actual_quantity=actual,
+        variance=actual - expected,
+        recorded_by=recorded_by,
+        approved_by=None,
+        approved_at=approved_at,
     )
 
-    assert result is entry
-    mock_reconciliation_repo.approve.assert_called_once_with(record_id, approved_by=approver_id)
+
+def _warehouse(cylinder_type_id: uuid.UUID, filled: int) -> InventoryLocation:
+    return InventoryLocation(
+        inventory_location_id=uuid.uuid4(),
+        tenant_id=uuid.uuid4(),
+        location_type="warehouse",
+        location_ref_id=uuid.uuid4(),
+        balances={(cylinder_type_id, "filled"): filled},
+    )
+
+
+async def test_approve_books_the_variance_once(
+    mock_location_repo: MagicMock, mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    cylinder_type_id = uuid.uuid4()
+    location = _warehouse(cylinder_type_id, 50)
+    record = _pending_record(
+        location_id=location.id, cylinder_type_id=cylinder_type_id, recorded_by=uuid.uuid4()
+    )
+    mock_reconciliation_repo.get_for_decision.return_value = record
+    mock_location_repo.get_by_id.return_value = location
+    approver_id = uuid.uuid4()
+
+    use_case = ApproveReconciliationUseCase(mock_reconciliation_repo, mock_location_repo, mock_uow)
+    await use_case.execute(
+        ApproveReconciliationCommand(record_id=record.id, approved_by=approver_id)
+    )
+
+    assert location.balance_of(cylinder_type_id, "filled") == 45
+    mock_reconciliation_repo.mark_approved.assert_called_once_with(
+        record.id, approved_by=approver_id
+    )
     mock_uow.commit.assert_called_once()
+
+
+async def test_the_counter_cannot_approve_their_own_count(
+    mock_location_repo: MagicMock, mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    counter = uuid.uuid4()
+    cylinder_type_id = uuid.uuid4()
+    location = _warehouse(cylinder_type_id, 50)
+    record = _pending_record(
+        location_id=location.id, cylinder_type_id=cylinder_type_id, recorded_by=counter
+    )
+    mock_reconciliation_repo.get_for_decision.return_value = record
+    mock_location_repo.get_by_id.return_value = location
+
+    use_case = ApproveReconciliationUseCase(mock_reconciliation_repo, mock_location_repo, mock_uow)
+    with pytest.raises(SelfApprovalNotAllowedError):
+        await use_case.execute(
+            ApproveReconciliationCommand(record_id=record.id, approved_by=counter)
+        )
+
+    assert location.balance_of(cylinder_type_id, "filled") == 50
+    mock_uow.commit.assert_not_called()
+
+
+async def test_an_approved_count_cannot_be_approved_again(
+    mock_location_repo: MagicMock, mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    cylinder_type_id = uuid.uuid4()
+    location = _warehouse(cylinder_type_id, 45)
+    record = _pending_record(
+        location_id=location.id,
+        cylinder_type_id=cylinder_type_id,
+        recorded_by=uuid.uuid4(),
+        approved_at=datetime.now(UTC),
+    )
+    mock_reconciliation_repo.get_for_decision.return_value = record
+    mock_location_repo.get_by_id.return_value = location
+
+    use_case = ApproveReconciliationUseCase(mock_reconciliation_repo, mock_location_repo, mock_uow)
+    with pytest.raises(ReconciliationAlreadyDecidedError):
+        await use_case.execute(
+            ApproveReconciliationCommand(record_id=record.id, approved_by=uuid.uuid4())
+        )
+    assert location.balance_of(cylinder_type_id, "filled") == 45
+
+
+async def test_reject_leaves_stock_alone(
+    mock_reconciliation_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    record = _pending_record(
+        location_id=uuid.uuid4(), cylinder_type_id=uuid.uuid4(), recorded_by=uuid.uuid4()
+    )
+    mock_reconciliation_repo.get_for_decision.return_value = record
+    rejecter = uuid.uuid4()
+
+    await RejectReconciliationUseCase(mock_reconciliation_repo, mock_uow).execute(
+        RejectReconciliationCommand(record_id=record.id, rejected_by=rejecter, reason="Recount")
+    )
+
+    mock_reconciliation_repo.mark_rejected.assert_called_once_with(
+        record.id, rejected_by=rejecter, reason="Recount"
+    )
+    mock_uow.commit.assert_called_once()
+
+
+# ==========================================================================
+# Goods receipt: OMC is a validated code
+# ==========================================================================
+
+
+async def test_goods_receipt_normalises_the_omc_and_rejects_unknown_ones(
+    mock_location_repo: MagicMock, mock_grn_repo: MagicMock, mock_uow: MagicMock
+) -> None:
+    sequence = MagicMock()
+    sequence.next = AsyncMock(return_value="GRN000001")
+    use_case = RecordGoodsReceiptUseCase(mock_location_repo, mock_grn_repo, mock_uow, sequence)
+    base = {
+        "tenant_id": uuid.uuid4(),
+        "warehouse_id": uuid.uuid4(),
+        "cylinder_type_id": uuid.uuid4(),
+        "quantity_received": 12,
+        "received_by": uuid.uuid4(),
+    }
+
+    await use_case.execute(
+        RecordGoodsReceiptCommand(**base, source_omc="IOCL", truck_number=" ts09 ua 3320 ")
+    )
+    _, kwargs = mock_grn_repo.create.call_args
+    assert kwargs["source_omc"] == "iocl"
+    assert kwargs["truck_number"] == "TS09 UA 3320"
+
+    with pytest.raises(ValidationError):
+        await use_case.execute(RecordGoodsReceiptCommand(**base, source_omc="Indane"))
+
+
+# ==========================================================================
+# Stock register
+# ==========================================================================
+
+
+async def test_stock_register_walks_back_from_todays_balance(
+    mock_location_repo: MagicMock,
+) -> None:
+    cylinder_type_id = uuid.uuid4()
+    location = _warehouse(cylinder_type_id, 110)
+    mock_location_repo.get_by_location_ref.return_value = location
+    day1, day2 = date(2026, 10, 19), date(2026, 10, 20)
+    mock_location_repo.list_movements_since = AsyncMock(
+        return_value=[
+            LedgerMovement(day1, cylinder_type_id, "grn_receipt", None, "filled", 100),
+            LedgerMovement(day1, cylinder_type_id, "unload", "filled", "filled", 30),
+            LedgerMovement(day2, cylinder_type_id, "unload", "filled", "filled", 20),
+        ]
+    )
+
+    lines = await GetStockRegisterUseCase(mock_location_repo).execute(
+        GetStockRegisterQuery(
+            tenant_id=uuid.uuid4(),
+            location_type="warehouse",
+            location_ref_id=uuid.uuid4(),
+            date_from=day1,
+            date_to=day2,
+            today=day2,
+        )
+    )
+
+    assert [(ln.opening, ln.receipts, ln.issues, ln.closing) for ln in lines] == [
+        (60, 100, 30, 130),
+        (130, 0, 20, 110),
+    ]
+
+
+async def test_stock_register_refuses_a_backwards_range(mock_location_repo: MagicMock) -> None:
+    with pytest.raises(ValidationError):
+        await GetStockRegisterUseCase(mock_location_repo).execute(
+            GetStockRegisterQuery(
+                tenant_id=uuid.uuid4(),
+                location_type="warehouse",
+                location_ref_id=uuid.uuid4(),
+                date_from=date(2026, 10, 20),
+                date_to=date(2026, 10, 19),
+                today=date(2026, 10, 20),
+            )
+        )

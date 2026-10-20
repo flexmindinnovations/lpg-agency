@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for the inventory schema.
 
-Maps the 5 `inventory.*` tables to Python objects.
+Maps the `inventory.*` tables to Python objects.
 
 IMPORTANT — runtime type imports:
 SQLAlchemy's declarative mapper resolves `Mapped[...]` annotations via
@@ -141,6 +141,9 @@ class GoodsReceiptNoteModel(Base):
     )
     quantity_received: Mapped[int] = mapped_column(Integer())
     source_omc: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    challan_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    invoice_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    truck_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     received_by: Mapped[uuid.UUID] = mapped_column(Uuid())
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
@@ -186,6 +189,50 @@ class ReconciliationRecordModel(Base):
     recorded_by: Mapped[uuid.UUID] = mapped_column(Uuid())
     approved_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejected_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean(), server_default=text("false"))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
+
+
+class OmcReturnNoteModel(Base):
+    """Maps `inventory.omc_return_note` — empties (or segregated defective
+    cylinders) dispatched back to the OMC's bottling plant."""
+
+    __tablename__ = "omc_return_note"
+    __table_args__ = {"schema": "inventory"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    return_number: Mapped[str] = mapped_column(String(20))
+    warehouse_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("tenant.warehouse.id"))
+    cylinder_type_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.cylinder_type.id")
+    )
+    status: Mapped[str] = mapped_column(String(20))
+    quantity: Mapped[int] = mapped_column(Integer())
+    destination_omc: Mapped[str] = mapped_column(String(20))
+    challan_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    truck_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    dispatched_by: Mapped[uuid.UUID] = mapped_column(Uuid())
+    dispatched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(
