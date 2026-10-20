@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class TenantHeader(BaseModel):
+    """The supplier block of a tax invoice (CGST Rules, rule 46)."""
+
     model_config = ConfigDict(frozen=True)
     agency_name: str
     address_line_1: str = ""
@@ -14,6 +16,7 @@ class TenantHeader(BaseModel):
     city: str = ""
     state: str = ""
     pincode: str = ""
+    state_code: str = ""
     gstin: str = ""
     phone: str = ""
 
@@ -24,14 +27,21 @@ class CustomerInfo(BaseModel):
     consumer_number: str = ""
     address: str = ""
     phone: str = ""
+    #: Set only for a GST-registered (B2B) customer.
+    gstin: str = ""
 
 
 class PrintLineItem(BaseModel):
     model_config = ConfigDict(frozen=True)
     description: str
+    hsn_code: str = ""
+    gst_rate_percent: Decimal | None = None
     quantity: int
     unit_price: Decimal
     subtotal: Decimal
+    cgst_amount: Decimal = Decimal("0.00")
+    sgst_amount: Decimal = Decimal("0.00")
+    igst_amount: Decimal = Decimal("0.00")
     tax_amount: Decimal
     total_amount: Decimal
 
@@ -50,9 +60,17 @@ class InvoicePrintPayload(BaseModel):
     customer: CustomerInfo
     line_items: list[PrintLineItem]
     subtotal: Decimal
+    cgst_amount: Decimal = Decimal("0.00")
+    sgst_amount: Decimal = Decimal("0.00")
+    igst_amount: Decimal = Decimal("0.00")
     tax_amount: Decimal
     total_amount: Decimal
-    tax_rate_percent: Decimal = Decimal("18.0")
+    total_in_words: str = ""
+    #: "36-Telangana" style, as GST invoices state the place of supply.
+    place_of_supply: str = ""
+    is_inter_state: bool = False
+    amount_paid: Decimal = Decimal("0.00")
+    balance_due: Decimal = Decimal("0.00")
     payment_status: str
     issued_at: datetime
     qr_code_data: str = ""  # The string to encode as QR — typically a URL or reference

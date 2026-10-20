@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from lpg.application.printing.amount_in_words import rupees_in_words
 from lpg.application.printing.models import (
     CustomerInfo,
     InvoicePrintPayload,
@@ -22,6 +23,7 @@ def _make_payload() -> InvoicePrintPayload:
             address_line_1="123, MG Road",
             city="Pune",
             state="Maharashtra",
+            state_code="27",
             pincode="411001",
             gstin="27AAPCS1234D1ZN",
             phone="+91-9876543210",
@@ -35,6 +37,8 @@ def _make_payload() -> InvoicePrintPayload:
         line_items=[
             PrintLineItem(
                 description="14.2 kg Domestic LPG Cylinder",
+                hsn_code="27111900",
+                gst_rate_percent=Decimal("18"),
                 quantity=2,
                 unit_price=Decimal("900.00"),
                 subtotal=Decimal("1800.00"),
@@ -43,6 +47,8 @@ def _make_payload() -> InvoicePrintPayload:
             ),
             PrintLineItem(
                 description="5 kg Commercial LPG Cylinder",
+                hsn_code="27111900",
+                gst_rate_percent=Decimal("18"),
                 quantity=1,
                 unit_price=Decimal("1200.00"),
                 subtotal=Decimal("1200.00"),
@@ -53,7 +59,10 @@ def _make_payload() -> InvoicePrintPayload:
         subtotal=Decimal("3000.00"),
         tax_amount=Decimal("540.00"),
         total_amount=Decimal("3540.00"),
-        tax_rate_percent=Decimal("18.0"),
+        cgst_amount=Decimal("270.00"),
+        sgst_amount=Decimal("270.00"),
+        total_in_words=rupees_in_words(Decimal("3540.00")),
+        place_of_supply="27-Maharashtra",
         payment_status="issued",
         issued_at=datetime(2026, 8, 14, 10, 30, 0, tzinfo=UTC),
         qr_code_data="lpg-invoice:inv-00001234",
@@ -81,6 +90,35 @@ def test_render_invoice_thermal() -> None:
     assert "Rajesh Kumar" in text
     assert "14.2 kg Domestic LPG Cylinde" in text  # Truncated to fit 48-char thermal width
     assert "3540.00" in text
+    assert "TAX INVOICE" in text
+    assert "HSN 27111900  GST 18%" in text
+    assert "CGST:" in text
+    assert "SGST:" in text
+    assert "IGST:" not in text
+    assert "Place of supply: 27-Maharashtra" in text
+
+
+def test_thermal_inter_state_shows_igst_only() -> None:
+    payload = _make_payload().model_copy(
+        update={
+            "is_inter_state": True,
+            "cgst_amount": Decimal("0.00"),
+            "sgst_amount": Decimal("0.00"),
+            "igst_amount": Decimal("540.00"),
+        }
+    )
+    text = Xhtml2pdfPrintingEngine().render_invoice_thermal(payload).decode("utf-8")
+    assert "IGST:" in text
+    assert "CGST:" not in text
+
+
+def test_rupees_in_words_uses_indian_numbering() -> None:
+    assert rupees_in_words(Decimal("3540.00")) == ("Rupees Three Thousand Five Hundred Forty Only")
+    assert rupees_in_words(Decimal("12345678.05")) == (
+        "Rupees One Crore Twenty Three Lakh Forty Five Thousand Six Hundred Seventy Eight"
+        " and Five Paise Only"
+    )
+    assert rupees_in_words(Decimal("0")) == "Rupees Zero Only"
 
 
 def test_render_invoice_thermal_html() -> None:

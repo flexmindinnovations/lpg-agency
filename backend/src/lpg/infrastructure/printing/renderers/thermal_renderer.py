@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import textwrap
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,6 +9,10 @@ if TYPE_CHECKING:
 
 _LINE_WIDTH_58MM = 32
 _LINE_WIDTH_80MM = 48
+
+
+def _wrap(text: str, width: int) -> list[str]:
+    return textwrap.wrap(text, width=width) or [""]
 
 
 def render_invoice_thermal(payload: InvoicePrintPayload, *, width: int = _LINE_WIDTH_80MM) -> bytes:
@@ -20,14 +25,17 @@ def render_invoice_thermal(payload: InvoicePrintPayload, *, width: int = _LINE_W
     sep = "-" * width
 
     # Header
-    lines.append(payload.tenant_header.agency_name.center(width))
+    header = payload.tenant_header
+    lines.append(("TAX INVOICE" if header.gstin else "INVOICE").center(width))
+    lines.append(header.agency_name.center(width))
     if payload.tenant_header.address_line_1:
         lines.append(payload.tenant_header.address_line_1.center(width))
     if payload.tenant_header.city or payload.tenant_header.state:
         city_state = f"{payload.tenant_header.city}, {payload.tenant_header.state}".strip(", ")
         lines.append(city_state.center(width))
-    if payload.tenant_header.gstin:
-        lines.append(f"GSTIN: {payload.tenant_header.gstin}".center(width))
+    lines.append(f"GSTIN: {header.gstin or 'Not registered'}".center(width))
+    if header.state_code:
+        lines.append(f"State code: {header.state_code}".center(width))
     if payload.tenant_header.phone:
         lines.append(f"Ph: {payload.tenant_header.phone}".center(width))
     lines.append(sep)
@@ -42,6 +50,12 @@ def render_invoice_thermal(payload: InvoicePrintPayload, *, width: int = _LINE_W
     lines.append(f"Customer: {payload.customer.name}")
     if payload.customer.consumer_number:
         lines.append(f"Consumer#: {payload.customer.consumer_number}")
+    if payload.customer.address:
+        lines.extend(_wrap(payload.customer.address, width))
+    if payload.customer.gstin:
+        lines.append(f"GSTIN: {payload.customer.gstin}")
+    if payload.place_of_supply:
+        lines.append(f"Place of supply: {payload.place_of_supply}"[:width])
     lines.append(sep)
 
     # Line items
@@ -54,14 +68,25 @@ def render_invoice_thermal(payload: InvoicePrintPayload, *, width: int = _LINE_W
     lines.append(sep)
     for item in payload.line_items:
         desc = item.description[:desc_w]
-        lines.append(f"{desc:<{desc_w}}{item.quantity:>4} {item.total_amount:>{amt_w}.2f}")
+        lines.append(f"{desc:<{desc_w}}{item.quantity:>4} {item.subtotal:>{amt_w}.2f}")
+        rate = f"{item.gst_rate_percent:g}%" if item.gst_rate_percent is not None else "-"
+        lines.append(f"  HSN {item.hsn_code or '-'}  GST {rate}"[:width])
     lines.append(sep)
 
     # Totals
     label_w = width - amt_w
-    lines.append(f"{'Subtotal:':<{label_w}}{payload.subtotal:>{amt_w}.2f}")
-    lines.append(f"{'Tax:':<{label_w}}{payload.tax_amount:>{amt_w}.2f}")
+    lines.append(f"{'Taxable value:':<{label_w}}{payload.subtotal:>{amt_w}.2f}")
+    if payload.is_inter_state:
+        lines.append(f"{'IGST:':<{label_w}}{payload.igst_amount:>{amt_w}.2f}")
+    else:
+        lines.append(f"{'CGST:':<{label_w}}{payload.cgst_amount:>{amt_w}.2f}")
+        lines.append(f"{'SGST:':<{label_w}}{payload.sgst_amount:>{amt_w}.2f}")
     lines.append(f"{'TOTAL:':<{label_w}}{payload.total_amount:>{amt_w}.2f}")
+    if payload.amount_paid > 0:
+        lines.append(f"{'Paid:':<{label_w}}{payload.amount_paid:>{amt_w}.2f}")
+        lines.append(f"{'Balance due:':<{label_w}}{payload.balance_due:>{amt_w}.2f}")
+    if payload.total_in_words:
+        lines.extend(_wrap(payload.total_in_words, width))
     lines.append(sep)
     lines.append("Thank you for your business!".center(width))
     lines.append("")

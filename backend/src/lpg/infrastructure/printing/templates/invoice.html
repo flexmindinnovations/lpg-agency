@@ -194,15 +194,17 @@
                 {% if payload.tenant_header.city or payload.tenant_header.state %}
                 <div class="company-detail">{{ payload.tenant_header.city }}{% if payload.tenant_header.state %}, {{ payload.tenant_header.state }}{% endif %} {{ payload.tenant_header.pincode }}</div>
                 {% endif %}
-                {% if payload.tenant_header.gstin %}
-                <div class="company-detail"><strong>GSTIN:</strong> {{ payload.tenant_header.gstin }}</div>
+                <div class="company-detail"><strong>GSTIN:</strong> {{ payload.tenant_header.gstin or "Not registered" }}</div>
+                {% if payload.tenant_header.state_code %}
+                <div class="company-detail"><strong>State:</strong> {{ payload.tenant_header.state }} (Code {{ payload.tenant_header.state_code }})</div>
                 {% endif %}
                 {% if payload.tenant_header.phone %}
                 <div class="company-detail"><strong>Phone:</strong> {{ payload.tenant_header.phone }}</div>
                 {% endif %}
             </td>
             <td style="width:40%; text-align:right; vertical-align:top; border:none; padding:0;">
-                <div class="invoice-title">INVOICE</div>
+                <div class="invoice-title">{% if payload.tenant_header.gstin %}TAX INVOICE{% else %}INVOICE{% endif %}</div>
+                <div class="company-detail">Original for recipient</div>
             </td>
         </tr>
     </table>
@@ -256,17 +258,30 @@
         {% if payload.customer.phone %}
         <div class="company-detail">Phone: {{ payload.customer.phone }}</div>
         {% endif %}
+        {% if payload.customer.gstin %}
+        <div class="company-detail"><strong>GSTIN:</strong> {{ payload.customer.gstin }}</div>
+        {% endif %}
+        {% if payload.place_of_supply %}
+        <div class="company-detail"><strong>Place of supply:</strong> {{ payload.place_of_supply }}</div>
+        {% endif %}
     </div>
 
     <table width="100%" style="width:100%; border-collapse:collapse;">
         <thead>
             <tr>
-                <th style="width:5%;">#</th>
-                <th style="width:27%;">Description</th>
-                <th class="right" style="width:8%;">Qty</th>
-                <th class="right" style="width:20%;">Unit Price</th>
-                <th class="right" style="width:20%;">Tax</th>
-                <th class="right" style="width:20%;">Amount</th>
+                <th style="width:4%;">#</th>
+                <th style="width:24%;">Description</th>
+                <th style="width:10%;">HSN</th>
+                <th class="right" style="width:6%;">Qty</th>
+                <th class="right" style="width:12%;">Rate</th>
+                <th class="right" style="width:13%;">Taxable value</th>
+                <th class="right" style="width:7%;">GST %</th>
+                {% if payload.is_inter_state %}
+                <th class="right" style="width:11%;">IGST</th>
+                {% else %}
+                <th class="right" style="width:11%;">CGST + SGST</th>
+                {% endif %}
+                <th class="right" style="width:13%;">Amount</th>
             </tr>
         </thead>
         <tbody>
@@ -274,9 +289,16 @@
             <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ item.description }}</td>
+                <td>{{ item.hsn_code or "-" }}</td>
                 <td class="right">{{ item.quantity }}</td>
                 <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.unit_price) }}</td>
-                <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.tax_amount) }}</td>
+                <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.subtotal) }}</td>
+                <td class="right">{% if item.gst_rate_percent is not none %}{{ "{:g}".format(item.gst_rate_percent) }}%{% else %}-{% endif %}</td>
+                {% if payload.is_inter_state %}
+                <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.igst_amount) }}</td>
+                {% else %}
+                <td class="right">{{ "{:,.2f}".format(item.cgst_amount) }} + {{ "{:,.2f}".format(item.sgst_amount) }}</td>
+                {% endif %}
                 <td class="right">{{ currency_symbol }}{{ "{:,.2f}".format(item.total_amount) }}</td>
             </tr>
             {% endfor %}
@@ -286,19 +308,47 @@
     <div class="totals-section">
         <table class="totals-table">
             <tr>
-                <td class="label">Subtotal</td>
+                <td class="label">Taxable value</td>
                 <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.subtotal) }}</td>
             </tr>
+            {% if payload.is_inter_state %}
             <tr>
-                <td class="label">GST ({{ payload.tax_rate_percent }}%)</td>
-                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.tax_amount) }}</td>
+                <td class="label">IGST</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.igst_amount) }}</td>
             </tr>
+            {% else %}
+            <tr>
+                <td class="label">CGST</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.cgst_amount) }}</td>
+            </tr>
+            <tr>
+                <td class="label">SGST</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.sgst_amount) }}</td>
+            </tr>
+            {% endif %}
             <tr class="grand-total">
                 <td class="label">Total</td>
                 <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.total_amount) }}</td>
             </tr>
+            {% if payload.amount_paid > 0 %}
+            <tr>
+                <td class="label">Paid</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.amount_paid) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Balance due</td>
+                <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.balance_due) }}</td>
+            </tr>
+            {% endif %}
         </table>
     </div>
+
+    {% if payload.total_in_words %}
+    <div style="clear:both; padding-top:6px;">
+        <div class="section-label">Total in words</div>
+        <div class="company-detail"><strong>{{ payload.total_in_words }}</strong></div>
+    </div>
+    {% endif %}
 
     {% if qr_code_b64 %}
     <div class="qr-section">
@@ -309,7 +359,7 @@
 
     <div class="footer">
         <div class="company-detail">This is a computer-generated invoice. No signature required.</div>
-        <div class="company-detail">Terms: Payment due upon receipt. All disputes subject to local jurisdiction.</div>
+        <div class="company-detail">Tax is not payable on reverse charge basis.</div>
     </div>
 </body>
 </html>
