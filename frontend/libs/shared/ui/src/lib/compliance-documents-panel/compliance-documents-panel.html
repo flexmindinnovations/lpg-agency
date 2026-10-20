@@ -1,6 +1,8 @@
 <div class="cdp">
   <div class="cdp__header">
-    <h4 class="cdp__title">Compliance Documents</h4>
+    @if (heading()) {
+    <h4 class="cdp__title">{{ heading() }}</h4>
+    }
     @if (mode() === 'list') {
     <button
       *lpgHasPermission="managePermission()"

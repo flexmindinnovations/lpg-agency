@@ -87,7 +87,7 @@ interface SetupLinkView {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Agencies</h1>
-            <p class="page-subtitle">Every agency (tenant) on this platform.</p>
+            <p class="page-subtitle">Every agency on the platform.</p>
           </div>
         </ng-template>
       </div>

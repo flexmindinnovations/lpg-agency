@@ -53,11 +53,11 @@ function errorMessageFor(error: unknown): string {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Feature Flags</h1>
-            <p class="page-subtitle">Enable or disable feature flags for this tenant.</p>
+            <p class="page-subtitle">Turn features on or off for your agency.</p>
           </div>
         </ng-template>
       </div>
-      <p>Override a platform flag for this tenant only.</p>
+      <p>Override a platform setting for your agency only.</p>
 
       @if (checkedStatus(); as status) {
         <p-message severity="info">{{ status }}</p-message>
@@ -97,7 +97,7 @@ function errorMessageFor(error: unknown): string {
                 [disabled]="form.invalid"
                 (click)="setOverride(true)"
               >
-                Enable for this tenant
+                Turn on for your agency
               </button>
               <button
                 pButton
@@ -106,7 +106,7 @@ function errorMessageFor(error: unknown): string {
                 [disabled]="form.invalid"
                 (click)="setOverride(false)"
               >
-                Disable for this tenant
+                Turn off for your agency
               </button>
             </div>
           </form>

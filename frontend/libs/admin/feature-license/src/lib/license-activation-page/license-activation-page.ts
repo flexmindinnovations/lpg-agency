@@ -62,7 +62,7 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">License</h1>
-            <p class="page-subtitle">Manage this tenant's product license.</p>
+            <p class="page-subtitle">Your product licence.</p>
           </div>
         </ng-template>
       </div>

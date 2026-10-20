@@ -1,4 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, input, model, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   Router,
   RouterLink,
@@ -16,7 +29,13 @@ import { PortalModule } from '@angular/cdk/portal';
 import { HeaderPortalService } from './header-portal.service';
 import { BreadcrumbService } from './breadcrumb.service';
 import { filter } from 'rxjs/operators';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+
+/** Below this the sidebar is an off-canvas menu behind a header button. */
+const PHONE_QUERY = '(max-width: 767.98px)';
+/** Below this (tablet) the sidebar starts as the icon rail, so grids get the width. */
+const COMPACT_QUERY = '(max-width: 1199.98px)';
 
 @Component({
   selector: 'lpg-app-shell',
@@ -34,8 +53,28 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   template: `
     <a class="shell__skip-link" href="#shell-main-content">Skip to main content</a>
 
-    <div class="shell" [class.shell--collapsed]="collapsed()">
-      <div class="shell__sidebar-wrapper">
+    <div
+      class="shell"
+      [class.shell--collapsed]="rail()"
+      [class.shell--phone]="isPhone()"
+      [class.shell--nav-open]="isPhone() && navOpen()"
+    >
+      @if (isPhone() && navOpen()) {
+        <!-- Tap-outside target; keyboard users close with Escape or "Close menu". -->
+        <button
+          type="button"
+          class="shell__backdrop"
+          tabindex="-1"
+          aria-label="Close menu"
+          (click)="closeNav()"
+        ></button>
+      }
+      <div
+        id="shell-sidebar"
+        class="shell__sidebar-wrapper"
+        [attr.inert]="isPhone() && !navOpen() ? '' : null"
+        (keydown.escape)="closeNav(true)"
+      >
         <nav class="shell__sidebar" aria-label="Main navigation">
           <!-- Brand -->
           <div class="shell__sidebar-header">
@@ -52,7 +91,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                   fill="var(--primitive-color-flame-orange-500, #ff6f12)"
                 />
               </svg>
-              @if (!collapsed()) {
+              @if (!rail()) {
                 <span class="shell__brand-name">{{ brandName() }}</span>
               }
             </div>
@@ -62,7 +101,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
           <ul class="shell__nav-groups">
             @for (group of navGroups(); track group.label ?? $index) {
               <li>
-                @if (group.label && !collapsed()) {
+                @if (group.label && !rail()) {
                   <p class="shell__nav-group-label">{{ group.label }}</p>
                 }
                 <ul class="shell__nav-list">
@@ -78,15 +117,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                         [routerLinkActiveOptions]="{ exact: !!item.exact }"
                         class="shell__nav-link"
                         [class.is-active]="rla.isActive || isAliasActive(item, router.url)"
-                        pTooltip="{{ collapsed() ? item.label : '' }}"
+                        pTooltip="{{ rail() ? item.label : '' }}"
                         tooltipPosition="right"
-                        [attr.aria-label]="collapsed() ? item.label : null"
+                        [attr.aria-label]="rail() ? item.label : null"
                       >
                         <i class="{{ item.icon }}" aria-hidden="true"></i>
-                        @if (!collapsed()) {
+                        @if (!rail()) {
                           <span class="shell__nav-label">{{ item.label }}</span>
                         }
-                        @if (item.badge && !collapsed()) {
+                        @if (item.badge && !rail()) {
                           <p-badge [value]="item.badge" severity="danger" />
                         }
                       </a>
@@ -103,25 +142,35 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
               class="shell__sidebar-profile"
               [email]="email()"
               [role]="role()"
-              [collapsed]="collapsed()"
+              [collapsed]="rail()"
               (signOut)="signOut.emit()"
             />
           </div>
         </nav>
 
+        @if (isPhone()) {
+          <button
+            type="button"
+            class="shell__nav-close"
+            aria-label="Close menu"
+            (click)="closeNav(true)"
+          >
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        }
         <button
           type="button"
           class="shell__collapse-toggle"
-          [attr.aria-expanded]="!collapsed()"
-          [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
-          pTooltip="{{ collapsed() ? 'Expand' : 'Collapse' }} sidebar"
-          [tooltipPosition]="collapsed() ? 'right' : 'bottom'"
-          (click)="collapsed.set(!collapsed())"
+          [attr.aria-expanded]="!rail()"
+          [attr.aria-label]="rail() ? 'Expand sidebar' : 'Collapse sidebar'"
+          pTooltip="{{ rail() ? 'Expand' : 'Collapse' }} sidebar"
+          [tooltipPosition]="rail() ? 'right' : 'bottom'"
+          (click)="collapsed.set(!rail())"
         >
           <i
             class="pi"
-            [class.pi-chevron-left]="!collapsed()"
-            [class.pi-chevron-right]="collapsed()"
+            [class.pi-chevron-left]="!rail()"
+            [class.pi-chevron-right]="rail()"
             aria-hidden="true"
           ></i>
         </button>
@@ -129,6 +178,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
       <div class="shell__content">
         <header class="shell__header">
+          <button
+            type="button"
+            class="shell__menu-button"
+            aria-controls="shell-sidebar"
+            [attr.aria-expanded]="navOpen()"
+            aria-label="Open menu"
+            (click)="openNav()"
+          >
+            <i class="pi pi-bars" aria-hidden="true"></i>
+          </button>
           <div class="shell__header-spacer">
             <ng-template [cdkPortalOutlet]="headerPortalService.titlePortal()"></ng-template>
           </div>
@@ -145,6 +204,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
             <p-breadcrumb
               [model]="breadcrumbService.items()"
               [home]="breadcrumbService.home()"
+              homeAriaLabel="Home"
               styleClass="shell__breadcrumb"
             />
           </div>
@@ -224,6 +284,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         padding-block-end: var(--spacing-md);
         flex-shrink: 0;
         block-size: 64px;
+        /* The nav list scrolls beneath this header; a divider makes the
+           boundary explicit so a half-scrolled item never reads as sitting
+           under the logo (QA UR-02). */
+        border-block-end: var(--border-width) solid var(--surface-mica-border);
       }
 
       .shell--collapsed .shell__sidebar-header {
@@ -328,10 +392,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         min-block-size: 0;
         overflow-y: auto;
         overflow-x: hidden;
+        padding-block-start: var(--spacing-md);
+        scroll-padding-block: var(--spacing-md);
+        overscroll-behavior: contain;
       }
 
       .shell--collapsed .shell__nav-groups {
-        padding: 0 var(--spacing-xs) var(--spacing-xs);
+        padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-xs);
         align-items: center;
       }
 
@@ -343,7 +410,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         color: var(--color-text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        opacity: 0.7;
+        /* Full secondary colour, no opacity: at 0.7 the labels were 2.66:1
+           (light) and 3.16:1 (dark) — QA DA-23/DO-35. */
       }
 
       .shell__nav-list {
@@ -380,6 +448,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         text-align: center;
         opacity: 0.7;
         transition: opacity var(--motion-duration-small) var(--motion-easing-standard);
+      }
+
+      .shell__nav-link:focus-visible,
+      .shell__collapse-toggle:focus-visible,
+      .shell__menu-button:focus-visible,
+      .shell__nav-close:focus-visible {
+        outline: var(--component-focus-ring-width) solid var(--component-focus-ring-color);
+        outline-offset: calc(-1 * var(--component-focus-ring-width));
       }
 
       .shell__nav-link:hover {
@@ -443,7 +519,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         border-block-end: var(--border-width) solid var(--surface-mica-border);
         background: var(--surface-mica);
         flex-shrink: 0;
-        flex-wrap: wrap;
+        gap: var(--spacing-md);
       }
 
       /* Transparent — the breadcrumb belongs to the content column, not the
@@ -475,8 +551,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         border-radius: var(--radius-sm);
       }
 
+      /* Holds the portalled page title; min-inline-size:0 lets its one-line
+         title/subtitle shrink to an ellipsis instead of wrapping into the
+         header actions. */
       .shell__header-spacer {
         flex: 1;
+        min-inline-size: 0;
+      }
+
+      .shell__header-actions {
+        flex-shrink: 0;
       }
 
       .shell__header-actions {
@@ -501,29 +585,107 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
         outline: none;
       }
 
-      /* ---- Responsive ---- */
+      /* ---- Phone: off-canvas sidebar (QA DA-20, DO-36) ---- */
 
-      @media (max-width: 768px) {
-        .shell__sidebar-wrapper {
-          inline-size: var(--component-app-shell-sidebar-collapsed-width);
-        }
+      /* The menu button only exists in the phone layout. */
+      .shell__menu-button,
+      .shell__nav-close {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        inline-size: var(--spacing-xl);
+        block-size: var(--spacing-xl);
+        padding: 0;
+        border: var(--border-width) solid transparent;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--color-text-primary);
+        cursor: pointer;
+      }
 
-        .shell__sidebar-header {
-          justify-content: center;
-        }
+      .shell__menu-button:hover,
+      .shell__nav-close:hover {
+        background: var(--color-surface-overlay);
+      }
 
-        .shell__nav-groups {
-          padding: 0 var(--spacing-xs) var(--spacing-xs);
-          align-items: center;
-        }
+      .shell__menu-button i,
+      .shell__nav-close i {
+        font-size: var(--icon-size-md);
+      }
 
-        .shell__nav-link {
-          justify-content: center;
-          padding: 10px;
+      .shell--phone .shell__menu-button {
+        display: inline-flex;
+        flex-shrink: 0;
+        margin-inline-end: var(--spacing-sm);
+      }
+
+      .shell--phone .shell__nav-close {
+        display: inline-flex;
+        position: absolute;
+        inset-block-start: var(--spacing-md);
+        inset-inline-end: var(--spacing-sm);
+      }
+
+      .shell--phone .shell__collapse-toggle {
+        display: none;
+      }
+
+      /* Closed by default: off screen, hidden from the tab order (and
+         \`inert\` from the template) until the menu button opens it. The
+         content column gets the full width. */
+      .shell--phone .shell__sidebar-wrapper {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-start: 0;
+        inline-size: min(var(--component-app-shell-sidebar-width), 85vw);
+        z-index: var(--z-index-drawer);
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition:
+          transform var(--motion-duration-medium) var(--motion-easing-emphasized),
+          visibility 0s linear var(--motion-duration-medium);
+      }
+
+      .shell--phone.shell--nav-open .shell__sidebar-wrapper {
+        transform: none;
+        visibility: visible;
+        box-shadow: var(--elevation-4);
+        transition: transform var(--motion-duration-medium) var(--motion-easing-emphasized);
+      }
+
+      .shell__backdrop {
+        position: fixed;
+        inset: 0;
+        padding: 0;
+        border: 0;
+        cursor: default;
+        z-index: calc(var(--z-index-drawer) - 1);
+        background: color-mix(in srgb, var(--color-surface-base), black 55%);
+        opacity: 0.6;
+      }
+
+      .shell--phone .shell__header {
+        flex-wrap: nowrap;
+        padding: var(--spacing-sm) var(--spacing-md);
+      }
+
+      .shell--phone .shell__breadcrumb-wrapper {
+        padding-inline: var(--spacing-md);
+      }
+
+      .shell--phone .shell__main {
+        padding: var(--spacing-md);
+      }
+
+      /* Tablet: tighter gutters so grids keep their key columns (DA-21). */
+      @media (max-width: 1199.98px) {
+        .shell__header,
+        .shell__breadcrumb-wrapper {
+          padding-inline: var(--spacing-lg);
         }
 
         .shell__main {
-          padding: var(--spacing-md);
+          padding-inline: var(--spacing-lg);
         }
       }
     `,
@@ -534,6 +696,8 @@ export class AppShellComponent {
   protected readonly headerPortalService = inject(HeaderPortalService);
   protected readonly breadcrumbService = inject(BreadcrumbService);
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly breakpoints = inject(BreakpointObserver);
 
   readonly brandName = input('');
   /** Overrides the default brand mark with a PrimeIcon class or literal glyph. */
@@ -544,10 +708,35 @@ export class AppShellComponent {
 
   readonly collapsed = model(false);
 
+  /** Phone width: the sidebar is an off-canvas menu (closed by default). */
+  protected readonly isPhone = toSignal(
+    this.breakpoints.observe(PHONE_QUERY).pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
+  private readonly isCompact = toSignal(
+    this.breakpoints.observe(COMPACT_QUERY).pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
+  /** Whether the phone menu is open. Ignored at tablet/desktop widths. */
+  readonly navOpen = signal(false);
+  /** The icon-only rail: collapsed, and never in the phone menu (which shows labels). */
+  protected readonly rail = computed(() => !this.isPhone() && this.collapsed());
+
   readonly signOut = output<void>();
   readonly notificationToggle = output<void>();
 
   constructor() {
+    // Tablet and narrower start on the icon rail and desktop on the full
+    // sidebar; crossing the breakpoint resets it. The user's toggle still
+    // wins until the next crossing.
+    effect(() => {
+      const compact = this.isCompact();
+      untracked(() => this.collapsed.set(compact));
+    });
+    effect(() => {
+      if (!this.isPhone()) untracked(() => this.navOpen.set(false));
+    });
+
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
@@ -565,12 +754,43 @@ export class AppShellComponent {
           }
         }
 
+        this.navOpen.set(false);
+        this.revealActiveLink();
+
         if (breadcrumbs.length > 0) {
           this.breadcrumbService.setItems(breadcrumbs);
         } else {
           this.breadcrumbService.clear();
         }
       });
+  }
+
+  protected openNav(): void {
+    this.navOpen.set(true);
+    // Focus the first link once the menu is visible.
+    requestAnimationFrame(() =>
+      this.host.nativeElement.querySelector<HTMLElement>('.shell__nav-link')?.focus(),
+    );
+  }
+
+  /** Close the phone menu; `returnFocus` puts focus back on the menu button. */
+  protected closeNav(returnFocus = false): void {
+    if (!this.navOpen()) return;
+    this.navOpen.set(false);
+    if (returnFocus) {
+      this.host.nativeElement.querySelector<HTMLElement>('.shell__menu-button')?.focus();
+    }
+  }
+
+  /** Keep the current page's nav item scrolled into view in a long sidebar. */
+  private revealActiveLink(): void {
+    if (typeof requestAnimationFrame !== 'function') return;
+    requestAnimationFrame(() => {
+      const active = this.host.nativeElement.querySelector<HTMLElement>(
+        '.shell__nav-link.is-active',
+      );
+      active?.scrollIntoView?.({ block: 'nearest' });
+    });
   }
 
   protected isAliasActive(item: NavItem, currentUrl: string): boolean {

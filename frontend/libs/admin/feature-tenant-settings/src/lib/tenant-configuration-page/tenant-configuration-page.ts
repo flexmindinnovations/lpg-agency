@@ -211,9 +211,7 @@ class ConfigKeyCell {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Tenant Configuration</h1>
-            <p class="page-subtitle">
-              Manage tenant-wide settings like GST rates and credit limits.
-            </p>
+            <p class="page-subtitle">GST rates, credit limits and other settings.</p>
           </div>
         </ng-template>
       </div>

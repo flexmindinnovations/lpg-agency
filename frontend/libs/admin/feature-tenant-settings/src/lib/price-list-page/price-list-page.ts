@@ -74,9 +74,7 @@ type PriceRow = PriceListEntryResponse & {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Pricing</h1>
-            <p class="page-subtitle">
-              Set and track cylinder prices by type, customer category, and branch.
-            </p>
+            <p class="page-subtitle">Cylinder prices by branch and customer type.</p>
           </div>
         </ng-template>
       </div>

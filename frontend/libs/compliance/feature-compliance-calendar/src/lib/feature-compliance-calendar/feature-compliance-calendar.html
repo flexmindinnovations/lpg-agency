@@ -3,10 +3,7 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Compliance Calendar</h1>
-        <p class="page-subtitle">
-          PESO Form F (per warehouse) and the tenant's insurance policy — statutory licences tracked
-          for expiry, the same way driver and vehicle documents already are.
-        </p>
+        <p class="page-subtitle">Track PESO licence and insurance expiry.</p>
       </div>
     </ng-template>
   </div>
@@ -39,6 +36,7 @@
       [loading]="warehouseDocumentsLoading()"
       [docTypeOptions]="warehouseDocTypeOptions"
       managePermission="compliance:manage"
+      heading=""
       [uploader]="uploader"
       [addDocument]="addWarehouseDocument(warehouseId)"
       [replaceDocument]="replaceComplianceDocument"
@@ -50,13 +48,14 @@
 
   <section class="calendar-section">
     <div class="calendar-section__header">
-      <h2 class="calendar-section__title">Tenant — Insurance Policy</h2>
+      <h2 class="calendar-section__title">Agency insurance</h2>
     </div>
     <lpg-compliance-documents-panel
       [documents]="tenantDocuments()"
       [loading]="tenantDocumentsLoading()"
       [docTypeOptions]="tenantDocTypeOptions"
       managePermission="compliance:manage"
+      heading=""
       [uploader]="uploader"
       [addDocument]="addTenantDocument"
       [replaceDocument]="replaceComplianceDocument"

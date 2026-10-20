@@ -100,7 +100,7 @@ function statusLabel(status: string): string {
       <ng-template lpgHeaderTitlePortal>
         <lpg-page-header
           title="Agency Overview"
-          subtitle="Live summary of your agency's operational data across every module."
+          subtitle="Today at your agency."
         />
       </ng-template>
 

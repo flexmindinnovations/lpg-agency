@@ -29,9 +29,9 @@ import { RouterLink } from '@angular/router';
             <span>{{ backLabel() }}</span>
           </a>
         }
-        <h1 class="page-header__title">{{ title() }}</h1>
+        <h1 class="page-header__title" [attr.title]="title()">{{ title() }}</h1>
         @if (subtitle()) {
-          <p class="page-header__subtitle">{{ subtitle() }}</p>
+          <p class="page-header__subtitle" [attr.title]="subtitle()">{{ subtitle() }}</p>
         }
       </div>
       <div class="page-header__actions">
@@ -54,7 +54,17 @@ import { RouterLink } from '@angular/router';
       }
 
       .page-header__text {
+        flex: 1 1 auto;
         min-inline-size: 0;
+      }
+
+      /* One line each, ellipsis when narrow — never wraps into the header
+         search beside it (QA UR-03). */
+      .page-header__title,
+      .page-header__subtitle {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .page-header__back {

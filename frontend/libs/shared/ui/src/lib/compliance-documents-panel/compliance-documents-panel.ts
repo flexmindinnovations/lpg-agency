@@ -116,6 +116,9 @@ export class ComplianceDocumentsPanel {
    * `vehicles:manage` depending on the owner. Verify/Reject are always
    * gated by `compliance:verify` regardless of owner. */
   readonly managePermission = input('drivers:manage');
+  /** Panel heading. Empty hides it — for a page whose own section heading
+   * already names the documents (Compliance Calendar). */
+  readonly heading = input('Compliance Documents');
 
   readonly uploader = input.required<(file: File) => Observable<{ blobRef: string }>>();
   readonly addDocument = input.required<(cmd: AddComplianceDocumentCmd) => Observable<unknown>>();
