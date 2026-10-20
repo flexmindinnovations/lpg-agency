@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:api_client/api_client.dart';
@@ -106,20 +107,37 @@ Map<String, dynamic> _orderJson() => {
 };
 
 class _FakeGeolocator extends DriverGeolocator {
-  const _FakeGeolocator();
+  const _FakeGeolocator({
+    this.permission = LocationPermission.whileInUse,
+    this.hangs = false,
+  });
+
+  final LocationPermission permission;
+
+  /// Never answers — a phone that can't see the sky.
+  final bool hangs;
+
   @override
-  Future<Position> currentPosition() async => Position(
-    latitude: 17.44,
-    longitude: 78.35,
-    timestamp: DateTime(2026, 9, 1),
-    accuracy: 5,
-    altitude: 0,
-    altitudeAccuracy: 0,
-    heading: 0,
-    headingAccuracy: 0,
-    speed: 0,
-    speedAccuracy: 0,
-  );
+  Future<bool> serviceEnabled() async => true;
+
+  @override
+  Future<LocationPermission> ensurePermission() async => permission;
+
+  @override
+  Future<Position> currentPosition() async => hangs
+      ? Completer<Position>().future
+      : Position(
+          latitude: 17.44,
+          longitude: 78.35,
+          timestamp: DateTime(2026, 9, 1),
+          accuracy: 5,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
 }
 
 // A valid 1x1 transparent PNG so `Image.memory` can decode it in the tester.
@@ -186,6 +204,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
   RouteSummary? route,
   Map<String, int> queuedEmpties = const {},
   String? devCode,
+  DriverGeolocator geolocator = const _FakeGeolocator(),
 }) {
   final harness = OfflineHarness(
     ApiClient(baseUrl: 'https://api.test')..dio.httpClientAdapter = adapter,
@@ -196,7 +215,7 @@ RouteSummary _route({List<RouteLoadLine> loadedLines = const []}) =>
       ...harness.overrides,
       stopOrderProvider.overrideWith((ref, id) async => _order()),
       imagePickerProvider.overrideWithValue(_FakePicker()),
-      driverGeolocatorProvider.overrideWithValue(const _FakeGeolocator()),
+      driverGeolocatorProvider.overrideWithValue(geolocator),
       activeRouteProvider.overrideWith((ref) async => route),
       // A plain stream — the screen watches this live drift-backed provider,
       // and `pumpAndSettle` would hang on the coordinator's queue watch.
@@ -339,6 +358,83 @@ void main() {
       expect(ops.single.type, 'order_deliver');
 
       expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('a missing code is shown beside Confirm, not at the top', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(adapter);
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.tap(find.text('Confirm delivery'));
+      await tester.pumpAndSettle();
+
+      expect(adapter.paths, isEmpty);
+      final banner = find.widgetWithText(
+        LpgBanner,
+        'Enter the delivery code the customer received.',
+      );
+      expect(banner, findsOneWidget);
+      // The banner sits directly above the button, below the photo section.
+      final bannerTop = tester.getTopLeft(banner).dy;
+      expect(
+        bannerTop,
+        greaterThan(tester.getTopLeft(find.text('Take a photo')).dy),
+      );
+      expect(
+        bannerTop,
+        lessThan(tester.getTopLeft(find.text('Confirm delivery')).dy),
+      );
+    });
+
+    testWidgets('denied location permission blocks with a clear message', (
+      tester,
+    ) async {
+      final adapter = _RecordingAdapter();
+      final (:container, :harness) = _container(
+        adapter,
+        geolocator: const _FakeGeolocator(
+          permission: LocationPermission.denied,
+        ),
+      );
+      addTearDown(harness.dispose);
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Code from the customer'),
+        '123456',
+      );
+      await tester.tap(find.text('Confirm delivery'));
+      await tester.pumpAndSettle();
+
+      expect(adapter.paths, isEmpty);
+      expect(
+        find.widgetWithText(
+          LpgBanner,
+          'Allow location access — a delivery needs a GPS stamp.',
+        ),
+        findsOneWidget,
+      );
+      // Still on the form so the driver can retry.
+      expect(find.text('Confirm delivery'), findsOneWidget);
+    });
+
+    test('deliveryFix gives up with a retryable message on timeout', () async {
+      const geolocator = _FakeGeolocator(hangs: true);
+      await expectLater(
+        geolocator.deliveryFix(timeLimit: const Duration(milliseconds: 10)),
+        throwsA(
+          isA<GpsFixException>().having(
+            (e) => e.message,
+            'message',
+            contains("Couldn't get a GPS fix"),
+          ),
+        ),
+      );
     });
 
     testWidgets('"Send a new code" asks the server to resend the code', (

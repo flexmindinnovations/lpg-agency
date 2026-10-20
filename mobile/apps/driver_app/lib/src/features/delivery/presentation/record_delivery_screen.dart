@@ -1,9 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:api_client/api_client.dart';
 import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -56,6 +55,13 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
   String? _error;
   bool _prefilled = false;
 
+  /// True while a finger is on the signature pad — the page stops scrolling
+  /// so a downward stroke draws instead of dragging the form.
+  bool _signing = false;
+
+  /// The error banner beside "Confirm delivery", scrolled into view on error.
+  final _errorKey = GlobalKey();
+
   /// Testing only: the delivery code read back from the dev inbox.
   String? _devCode;
 
@@ -82,7 +88,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     setState(() => _resending = false);
     switch (result) {
       case FailureResult(:final failure):
-        setState(() => _error = failure.message);
+        _showError(failure.message);
       case Success():
         _otpController.clear();
         LpgFeedback.showToast(
@@ -115,6 +121,30 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
     }
   }
 
+  /// Puts [message] in the banner beside "Confirm delivery", scrolls it into
+  /// view and buzzes — the driver is often looking at the customer, not the
+  /// top of a long form.
+  void _showError(String message) {
+    if (!mounted) return;
+    setState(() => _error = message);
+    HapticFeedback.heavyImpact();
+    LpgFeedback.showToast(context, message, tone: LpgTone.danger);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _errorKey.currentContext;
+      if (target != null && target.mounted) {
+        Scrollable.ensureVisible(
+          target,
+          alignment: 0.5,
+          duration: LpgMotion.resolve(
+            context,
+            normal: LpgTokens.motionDurationMedium,
+            reduced: LpgTokens.motionReducedMotionDurationMedium,
+          ),
+        );
+      }
+    });
+  }
+
   Future<void> _pickPhoto() async {
     final file = await ref
         .read(imagePickerProvider)
@@ -142,9 +172,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
         throw Exception('Enter a valid amount collected.');
       }
 
-      final position = await ref
-          .read(driverGeolocatorProvider)
-          .currentPosition();
+      final position = await ref.read(driverGeolocatorProvider).deliveryFix();
 
       final outcome = await ref
           .read(deliveryMutationsProvider)
@@ -173,7 +201,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
 
       switch (outcome) {
         case DeliverFailed(:final message):
-          setState(() => _error = message);
+          _showError(message);
         case DeliverSynced() || DeliverQueued():
           ref.invalidate(activeRouteProvider);
           ref.invalidate(routeHistoryProvider);
@@ -191,7 +219,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
           context.go('/');
       }
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -226,11 +254,8 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               ref.watch(queuedEmptiesByTypeProvider).value ?? const {};
           return ListView(
             padding: LpgSpacing.page,
+            physics: _signing ? const NeverScrollableScrollPhysics() : null,
             children: [
-              if (_error != null) ...[
-                LpgBanner(tone: LpgTone.danger, message: _error!),
-                const SizedBox(height: LpgSpacing.sm),
-              ],
               const _Section(icon: LpgIcons.cylinder, title: 'Cylinders'),
               for (final line in order.lines)
                 Padding(
@@ -275,7 +300,7 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               ),
               const _Section(icon: LpgIcons.lock, title: 'Delivery code'),
               LpgTextField(
-                label: '',
+                label: "Customer's code",
                 hintText: 'Code from the customer',
                 prefixIcon: LpgIcons.number,
                 controller: _otpController,
@@ -303,8 +328,8 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
               // Optional: coverage is ~90%, not 100%, and it never gates
               // delivery.
               LpgTextField(
-                label: '',
-                hintText: 'OMC delivery code (DAC) — optional',
+                label: 'OMC delivery code (DAC)',
+                hintText: 'Optional',
                 prefixIcon: LpgIcons.verified,
                 controller: _dacController,
                 keyboardType: TextInputType.number,
@@ -319,14 +344,19 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(LpgRadius.xl),
-                      ),
-                      child: Signature(
-                        controller: _signature,
-                        height: _padHeight,
-                        backgroundColor: colors.card,
+                    Listener(
+                      onPointerDown: (_) => setState(() => _signing = true),
+                      onPointerUp: (_) => setState(() => _signing = false),
+                      onPointerCancel: (_) => setState(() => _signing = false),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(LpgRadius.xl),
+                        ),
+                        child: Signature(
+                          controller: _signature,
+                          height: _padHeight,
+                          backgroundColor: colors.card,
+                        ),
                       ),
                     ),
                     const Divider(height: 1),
@@ -368,6 +398,15 @@ class _RecordDeliveryScreenState extends ConsumerState<RecordDeliveryScreen> {
                 onPressed: _pickPhoto,
               ),
               const SizedBox(height: LpgSpacing.xl),
+              if (_error case final error?) ...[
+                LpgBanner(
+                  key: _errorKey,
+                  tone: LpgTone.danger,
+                  title: "Delivery wasn't recorded",
+                  message: error,
+                ),
+                const SizedBox(height: LpgSpacing.smd),
+              ],
               LpgButton(
                 label: 'Confirm delivery',
                 icon: LpgIcons.check,
