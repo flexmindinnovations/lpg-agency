@@ -14,6 +14,7 @@ the narrowly-scoped permissions defined in
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -67,6 +68,7 @@ from lpg.application.delivery.compliance_use_cases import (
 )
 from lpg.application.delivery.ports import (
     ComplianceDocumentRepository,
+    DriverContact,
     DriverRepository,
     RouteRepository,
     VehicleRepository,
@@ -98,15 +100,13 @@ from lpg.application.delivery.use_cases import (
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.domain.common.base import DomainError
+from lpg.domain.delivery.driver import Driver
 
 router = APIRouter(tags=["Delivery"])
 
 
-def _driver_to_response(driver: object) -> DriverResponse:
-    """Map Driver domain object to DriverResponse schema."""
-    from lpg.domain.delivery.driver import Driver
-
-    assert isinstance(driver, Driver)
+def _driver_to_response(driver: Driver, contact: DriverContact | None = None) -> DriverResponse:
+    """Map Driver domain object (plus its employee's contact) to DriverResponse."""
     return DriverResponse(
         id=driver.id,
         tenant_id=driver.tenant_id,
@@ -117,7 +117,20 @@ def _driver_to_response(driver: object) -> DriverResponse:
         license_expiry_date=driver.license_expiry_date,
         status=driver.status,
         version=driver.version,
+        name=contact.name if contact else None,
+        phone_number=contact.phone_number if contact else None,
     )
+
+
+async def _driver_responses(
+    repository: DriverRepository, drivers: Sequence[Driver]
+) -> list[DriverResponse]:
+    contacts = await repository.contacts_for_employees({d.employee_id for d in drivers})
+    return [_driver_to_response(d, contacts.get(d.employee_id)) for d in drivers]
+
+
+async def _driver_response(repository: DriverRepository, driver: Driver) -> DriverResponse:
+    return (await _driver_responses(repository, [driver]))[0]
 
 
 def _vehicle_to_response(vehicle: object) -> VehicleResponse:
@@ -232,7 +245,7 @@ async def register_driver(
         )
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
-    return _driver_to_response(driver)
+    return await _driver_response(repository, driver)
 
 
 @router.get(
@@ -261,7 +274,7 @@ async def list_drivers(
     )
     page = (skip // limit) + 1 if limit else 1
     return DriverPageResponse(
-        items=[_driver_to_response(d) for d in drivers],
+        items=await _driver_responses(repository, drivers),
         total=total,
         page=page,
         page_size=limit,
@@ -283,7 +296,7 @@ async def get_driver(
         driver = await use_case.execute(GetDriverQuery(driver_id=driver_id))
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=exc.message) from exc
-    return _driver_to_response(driver)
+    return await _driver_response(repository, driver)
 
 
 @router.patch(
@@ -310,7 +323,7 @@ async def update_driver_status(
         raise HTTPException(status_code=404, detail=exc.message) from exc
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
-    return _driver_to_response(driver)
+    return await _driver_response(repository, driver)
 
 
 @router.patch(
@@ -338,7 +351,7 @@ async def update_driver_license(
         raise HTTPException(status_code=404, detail=exc.message) from exc
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
-    return _driver_to_response(driver)
+    return await _driver_response(repository, driver)
 
 
 @router.patch(
@@ -366,7 +379,7 @@ async def update_driver_assignment(
         raise HTTPException(status_code=404, detail=exc.message) from exc
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=exc.message) from exc
-    return _driver_to_response(driver)
+    return await _driver_response(repository, driver)
 
 
 # ==========================================================================

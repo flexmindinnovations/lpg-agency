@@ -16,10 +16,14 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
+from lpg.application.delivery.ports import DriverContact
 from lpg.domain.delivery.driver import Driver
 from lpg.infrastructure.persistence.models.delivery import DriverModel
+from lpg.infrastructure.persistence.models.tenant import EmployeeModel
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -162,3 +166,23 @@ class SqlAlchemyDriverRepository:
 
         result = await self._uow.session.execute(stmt)
         return result.scalar_one()
+
+    async def contacts_for_employees(
+        self, employee_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, DriverContact]:
+        if not employee_ids:
+            return {}
+        stmt = select(
+            EmployeeModel.id,
+            EmployeeModel.first_name,
+            EmployeeModel.last_name,
+            EmployeeModel.phone_number,
+        ).where(EmployeeModel.id.in_(set(employee_ids)))
+        rows = (await self._uow.session.execute(stmt)).all()
+        return {
+            row.id: DriverContact(
+                name=f"{row.first_name} {row.last_name}".strip(),
+                phone_number=row.phone_number,
+            )
+            for row in rows
+        }
