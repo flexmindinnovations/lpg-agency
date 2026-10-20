@@ -4,4 +4,5 @@
 export interface RecordPaymentRequest {
   amount: (number | string);
   method: string;
+  reference?: (string | null);
 }

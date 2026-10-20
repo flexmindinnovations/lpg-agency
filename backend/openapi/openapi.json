@@ -290,6 +290,80 @@
         "title": "AdjustLedgerBalanceRequest",
         "type": "object"
       },
+      "AgencyBusinessProfileResponse": {
+        "properties": {
+          "address_line_1": {
+            "title": "Address Line 1",
+            "type": "string"
+          },
+          "address_line_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line 2"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "pincode": {
+            "title": "Pincode",
+            "type": "string"
+          },
+          "state_code": {
+            "title": "State Code",
+            "type": "string"
+          },
+          "state_name": {
+            "title": "State Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "gstin",
+          "address_line_1",
+          "address_line_2",
+          "city",
+          "state_code",
+          "state_name",
+          "pincode",
+          "phone"
+        ],
+        "title": "AgencyBusinessProfileResponse",
+        "type": "object"
+      },
       "AgencyUserSetupResponse": {
         "description": "A user plus the one-time link to set their password. The raw token is\nreturned once and never stored (only its hash is).",
         "properties": {
@@ -821,6 +895,118 @@
         "title": "CancelOrderResponse",
         "type": "object"
       },
+      "CashHandoverRegisterEntryResponse": {
+        "description": "One row of the accountant's cash-handover register (DA-33).",
+        "properties": {
+          "actual_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Actual Amount",
+            "type": "string"
+          },
+          "cash_stop_count": {
+            "title": "Cash Stop Count",
+            "type": "integer"
+          },
+          "declared_at": {
+            "format": "date-time",
+            "title": "Declared At",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "driver_name": {
+            "title": "Driver Name",
+            "type": "string"
+          },
+          "excess": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Excess",
+            "type": "string"
+          },
+          "expected_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Expected Amount",
+            "type": "string"
+          },
+          "handover_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handover Number"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CashHandoverReviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "route_date": {
+            "format": "date-time",
+            "title": "Route Date",
+            "type": "string"
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          },
+          "shortfall": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shortfall",
+            "type": "string"
+          },
+          "vehicle_registration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Registration"
+          }
+        },
+        "required": [
+          "id",
+          "handover_number",
+          "driver_id",
+          "driver_name",
+          "route_id",
+          "route_date",
+          "vehicle_registration",
+          "cash_stop_count",
+          "expected_amount",
+          "actual_amount",
+          "shortfall",
+          "excess",
+          "declared_at",
+          "review_status"
+        ],
+        "title": "CashHandoverRegisterEntryResponse",
+        "type": "object"
+      },
       "CashHandoverResponse": {
         "properties": {
           "actual_amount": {
@@ -886,6 +1072,79 @@
           "declared_at"
         ],
         "title": "CashHandoverResponse",
+        "type": "object"
+      },
+      "CashHandoverReviewResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "format": "uuid",
+            "title": "Reviewed By",
+            "type": "string"
+          },
+          "reviewed_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By Name"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "note",
+          "reviewed_by",
+          "reviewed_at"
+        ],
+        "title": "CashHandoverReviewResponse",
+        "type": "object"
+      },
+      "CashSnapshotResponse": {
+        "properties": {
+          "awaiting_handover": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Awaiting Handover",
+            "type": "string"
+          },
+          "handovers_awaiting_review": {
+            "title": "Handovers Awaiting Review",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "awaiting_handover",
+          "handovers_awaiting_review"
+        ],
+        "title": "CashSnapshotResponse",
         "type": "object"
       },
       "ChangeCylinderConditionStatusRequest": {
@@ -955,6 +1214,35 @@
           "status"
         ],
         "title": "ChangeEmployeeStatusRequest",
+        "type": "object"
+      },
+      "ClassifyCylinderTypeForGstRequest": {
+        "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "maximum": 28.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "pattern": "^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$",
+            "title": "Hsn Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hsn_code",
+          "gst_rate_percent"
+        ],
+        "title": "ClassifyCylinderTypeForGstRequest",
         "type": "object"
       },
       "ComplaintAssignmentResponse": {
@@ -1465,6 +1753,35 @@
       },
       "CreateCylinderTypeRequest": {
         "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "maximum": 28.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
           "name": {
             "minLength": 1,
             "title": "Name",
@@ -2144,6 +2461,29 @@
       },
       "CylinderTypeResponse": {
         "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -2320,9 +2660,26 @@
             ],
             "title": "Branch Id"
           },
+          "branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Name"
+          },
           "sale_date": {
             "format": "date",
             "title": "Sale Date",
+            "type": "string"
+          },
+          "taxable_value": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Taxable Value",
             "type": "string"
           },
           "total_invoices": {
@@ -2899,9 +3256,45 @@
       },
       "DriverPerformanceResponse": {
         "properties": {
+          "branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Name"
+          },
           "cash_accuracy": {
-            "title": "Cash Accuracy",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Accuracy"
+          },
+          "cash_expected": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cash Expected",
+            "type": "string"
+          },
+          "cash_handed_over": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Handed Over"
           },
           "date": {
             "format": "date",
@@ -2917,6 +3310,26 @@
             "title": "Driver Id",
             "type": "string"
           },
+          "driver_name": {
+            "title": "Driver Name",
+            "type": "string"
+          },
+          "employee_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Code"
+          },
+          "failed_stops": {
+            "default": 0,
+            "title": "Failed Stops",
+            "type": "integer"
+          },
           "total_stops": {
             "title": "Total Stops",
             "type": "integer"
@@ -2924,10 +3337,10 @@
         },
         "required": [
           "driver_id",
+          "driver_name",
           "date",
           "total_stops",
-          "delivered_stops",
-          "cash_accuracy"
+          "delivered_stops"
         ],
         "title": "DriverPerformanceResponse",
         "type": "object"
@@ -3366,6 +3779,250 @@
         "title": "GstFilingResponse",
         "type": "object"
       },
+      "GstStateResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "GstStateResponse",
+        "type": "object"
+      },
+      "GstTaxTotalsResponse": {
+        "properties": {
+          "cgst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cgst",
+            "type": "string"
+          },
+          "igst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Igst",
+            "type": "string"
+          },
+          "sgst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Sgst",
+            "type": "string"
+          },
+          "taxable_value": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Taxable Value",
+            "type": "string"
+          },
+          "total_tax": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Tax",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "total_tax"
+        ],
+        "title": "GstTaxTotalsResponse",
+        "type": "object"
+      },
+      "Gstr1B2csRowResponse": {
+        "properties": {
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "rate_percent": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate Percent",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "rate_percent",
+          "totals"
+        ],
+        "title": "Gstr1B2csRowResponse",
+        "type": "object"
+      },
+      "Gstr1HsnRowResponse": {
+        "properties": {
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "rate_percent": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate Percent",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          },
+          "uqc": {
+            "default": "NOS",
+            "title": "Uqc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hsn_code",
+          "rate_percent",
+          "quantity",
+          "totals"
+        ],
+        "title": "Gstr1HsnRowResponse",
+        "type": "object"
+      },
+      "Gstr1InvoiceRowResponse": {
+        "properties": {
+          "customer_gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Gstin"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "invoice_date": {
+            "format": "date-time",
+            "title": "Invoice Date",
+            "type": "string"
+          },
+          "invoice_id": {
+            "format": "uuid",
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "invoice_value": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Invoice Value",
+            "type": "string"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "rate_percent": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate Percent",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          }
+        },
+        "required": [
+          "invoice_id",
+          "invoice_number",
+          "invoice_date",
+          "customer_name",
+          "customer_gstin",
+          "invoice_value",
+          "place_of_supply",
+          "rate_percent",
+          "totals"
+        ],
+        "title": "Gstr1InvoiceRowResponse",
+        "type": "object"
+      },
+      "Gstr1ReportResponse": {
+        "description": "Outward supplies for a period, laid out like GSTR-1 (DA-12).",
+        "properties": {
+          "b2b": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1InvoiceRowResponse"
+            },
+            "title": "B2B",
+            "type": "array"
+          },
+          "b2cl": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1InvoiceRowResponse"
+            },
+            "title": "B2Cl",
+            "type": "array"
+          },
+          "b2cs": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1B2csRowResponse"
+            },
+            "title": "B2Cs",
+            "type": "array"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "hsn": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1HsnRowResponse"
+            },
+            "title": "Hsn",
+            "type": "array"
+          },
+          "invoice_count": {
+            "title": "Invoice Count",
+            "type": "integer"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date",
+          "invoice_count",
+          "b2b",
+          "b2cl",
+          "b2cs",
+          "hsn",
+          "totals"
+        ],
+        "title": "Gstr1ReportResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3596,9 +4253,60 @@
       },
       "InvoiceLineResponse": {
         "properties": {
+          "cgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cgst Amount",
+            "type": "string"
+          },
           "cylinder_type_id": {
             "format": "uuid",
             "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
+          "igst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Igst Amount",
+            "type": "string"
+          },
+          "kind": {
+            "default": "supply",
+            "title": "Kind",
             "type": "string"
           },
           "line_id": {
@@ -3609,6 +4317,12 @@
           "quantity": {
             "title": "Quantity",
             "type": "integer"
+          },
+          "sgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Sgst Amount",
+            "type": "string"
           },
           "subtotal": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -3682,6 +4396,18 @@
             "title": "Amount Paid",
             "type": "string"
           },
+          "balance_due": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Balance Due",
+            "type": "string"
+          },
+          "cgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cgst Amount",
+            "type": "string"
+          },
           "customer_consumer_number": {
             "anyOf": [
               {
@@ -3693,9 +4419,37 @@
             ],
             "title": "Customer Consumer Number"
           },
+          "customer_gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Gstin"
+          },
           "customer_id": {
             "format": "uuid",
             "title": "Customer Id",
+            "type": "string"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "igst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Igst Amount",
             "type": "string"
           },
           "invoice_id": {
@@ -3713,6 +4467,11 @@
               }
             ],
             "title": "Invoice Number"
+          },
+          "is_inter_state": {
+            "default": false,
+            "title": "Is Inter State",
+            "type": "boolean"
           },
           "issued_at": {
             "format": "date-time",
@@ -3749,6 +4508,23 @@
             "title": "Payments",
             "type": "array"
           },
+          "place_of_supply_state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Of Supply State Code"
+          },
+          "sgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Sgst Amount",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -3757,6 +4533,17 @@
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
+          },
+          "supplier_state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier State Code"
           },
           "tax_amount": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -3792,6 +4579,55 @@
           "version"
         ],
         "title": "InvoiceResponse",
+        "type": "object"
+      },
+      "InvoiceSnapshotResponse": {
+        "properties": {
+          "on_hold_count": {
+            "title": "On Hold Count",
+            "type": "integer"
+          },
+          "outstanding_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Outstanding Amount",
+            "type": "string"
+          },
+          "outstanding_count": {
+            "title": "Outstanding Count",
+            "type": "integer"
+          },
+          "overdue_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Overdue Amount",
+            "type": "string"
+          },
+          "overdue_count": {
+            "title": "Overdue Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "outstanding_count",
+          "outstanding_amount",
+          "overdue_count",
+          "overdue_amount",
+          "on_hold_count"
+        ],
+        "title": "InvoiceSnapshotResponse",
+        "type": "object"
+      },
+      "IssueInvoiceRequest": {
+        "properties": {
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ],
+        "title": "IssueInvoiceRequest",
         "type": "object"
       },
       "IssueLicenseRequest": {
@@ -4792,6 +5628,56 @@
         "title": "OnlinePaymentResponse",
         "type": "object"
       },
+      "OperationsSnapshotResponse": {
+        "description": "The Home page's operations KPIs (DO-28). `invoices`/`cash` are\n`null` for a caller without access to those modules.",
+        "properties": {
+          "cash": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CashSnapshotResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoices": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceSnapshotResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_stock_count": {
+            "title": "Low Stock Count",
+            "type": "integer"
+          },
+          "open_complaints": {
+            "title": "Open Complaints",
+            "type": "integer"
+          },
+          "orders": {
+            "$ref": "#/components/schemas/OrderPipelineResponse"
+          },
+          "payment_terms_days": {
+            "title": "Payment Terms Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "orders",
+          "open_complaints",
+          "low_stock_count",
+          "invoices",
+          "cash",
+          "payment_terms_days"
+        ],
+        "title": "OperationsSnapshotResponse",
+        "type": "object"
+      },
       "OptimizeRouteResponse": {
         "description": "AI Operational Intelligence, Horizon 1 Stage 5 — the result of\n`POST /routes/{id}/optimize`. `km_saved` is a heuristic straight-line\n(haversine) estimate, not a routed-road distance; `route` is the\nalready-resequenced route (the reorder is applied immediately, not\nproposed for a separate accept step — fully reversible, since only\nsequence numbers moved).",
         "properties": {
@@ -4897,6 +5783,42 @@
           "total"
         ],
         "title": "OrderPageResponse",
+        "type": "object"
+      },
+      "OrderPipelineResponse": {
+        "properties": {
+          "bookings_today": {
+            "title": "Bookings Today",
+            "type": "integer"
+          },
+          "delivered_today": {
+            "title": "Delivered Today",
+            "type": "integer"
+          },
+          "failed_today": {
+            "title": "Failed Today",
+            "type": "integer"
+          },
+          "open_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Open By Status",
+            "type": "object"
+          },
+          "pending_cancellations": {
+            "title": "Pending Cancellations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bookings_today",
+          "open_by_status",
+          "delivered_today",
+          "failed_today",
+          "pending_cancellations"
+        ],
+        "title": "OrderPipelineResponse",
         "type": "object"
       },
       "OrderResponse": {
@@ -5378,6 +6300,17 @@
             "format": "uuid",
             "title": "Payment Id",
             "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
           }
         },
         "required": [
@@ -6670,7 +7603,7 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)",
                 "type": "string"
               }
             ],
@@ -6679,6 +7612,18 @@
           "method": {
             "title": "Method",
             "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
           }
         },
         "required": [
@@ -7759,6 +8704,35 @@
         "title": "ResolveComplaintRequest",
         "type": "object"
       },
+      "ReviewCashHandoverRequest": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "disputed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "ReviewCashHandoverRequest",
+        "type": "object"
+      },
       "ReviewPriceListProposalRequest": {
         "properties": {
           "action": {
@@ -8709,6 +9683,16 @@
       },
       "TenantResponse": {
         "properties": {
+          "business_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgencyBusinessProfileResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "country": {
             "title": "Country",
             "type": "string"
@@ -8826,6 +9810,81 @@
         "title": "TrackingDriverInfo",
         "type": "object"
       },
+      "UninvoicedOrderResponse": {
+        "description": "An order that should have an invoice but does not yet — usually\nbecause GST was not configured when it was delivered or cancelled.",
+        "properties": {
+          "cancellation_charge": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Charge"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
+          },
+          "order_total": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Total"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "order_number",
+          "customer_id",
+          "customer_name",
+          "status",
+          "occurred_at",
+          "order_total",
+          "cancellation_charge"
+        ],
+        "title": "UninvoicedOrderResponse",
+        "type": "object"
+      },
       "UnreadCountResponse": {
         "properties": {
           "count": {
@@ -8853,6 +9912,83 @@
           "token"
         ],
         "title": "UnregisterDeviceRequest",
+        "type": "object"
+      },
+      "UpdateAgencyBusinessProfileRequest": {
+        "properties": {
+          "address_line_1": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Address Line 1",
+            "type": "string"
+          },
+          "address_line_2": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line 2"
+          },
+          "city": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "maxLength": 15,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "legal_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "pincode": {
+            "pattern": "^[1-9][0-9]{5}$",
+            "title": "Pincode",
+            "type": "string"
+          },
+          "state_code": {
+            "pattern": "^[0-9]{2}$",
+            "title": "State Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "address_line_1",
+          "city",
+          "state_code",
+          "pincode"
+        ],
+        "title": "UpdateAgencyBusinessProfileRequest",
         "type": "object"
       },
       "UpdateCustomerAddressRequest": {
@@ -10045,6 +11181,60 @@
         ]
       }
     },
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}/gst": {
+      "patch": {
+        "description": "BR-16/BR-31: the rate is the tenant's own configuration (typically\n5% for domestic LPG, 18% for commercial). Applies to invoices issued\nfrom now on; issued invoices keep their rate.",
+        "operationId": "classify_cylinder_type_for_gst_api_v1_admin_cylinder_types__cylinder_type_id__gst_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassifyCylinderTypeForGstRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a cylinder type's HSN code and GST rate",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/cylinder-types/{cylinder_type_id}/rename": {
       "patch": {
         "operationId": "rename_cylinder_type_api_v1_admin_cylinder_types__cylinder_type_id__rename_patch",
@@ -10253,6 +11443,31 @@
           }
         },
         "summary": "Whether a flag is enabled for the current tenant",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/gst-states": {
+      "get": {
+        "operationId": "list_gst_states_api_v1_admin_gst_states_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GstStateResponse"
+                  },
+                  "title": "Response List Gst States Api V1 Admin Gst States Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "GST state and union-territory codes",
         "tags": [
           "Administration"
         ]
@@ -10750,6 +11965,48 @@
           }
         },
         "summary": "The effective value for a config key",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/tenant/business-profile": {
+      "put": {
+        "description": "What every tax invoice prints as the supplier (CGST Rules, rule 46).\n`state_code` also decides CGST+SGST versus IGST. The GSTIN is validated\n(format, state code, check digit) and must belong to the same state.",
+        "operationId": "update_business_profile_api_v1_admin_tenant_business_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgencyBusinessProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set the agency's GST business profile (legal name, address, GSTIN)",
         "tags": [
           "Administration"
         ]
@@ -11557,6 +12814,115 @@
       }
     },
     "/api/v1/cash-handovers": {
+      "get": {
+        "description": "The accountant's cash-handover register (DA-33): every driver's\ndeclared cash against what their deliveries say they collected, with\nshortfalls and the office's review.",
+        "operationId": "list_cash_handover_register_api_v1_cash_handovers_get",
+        "parameters": [
+          {
+            "description": "First day, inclusive (IST)",
+            "in": "query",
+            "name": "declared_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day, inclusive (IST)",
+              "title": "Declared From"
+            }
+          },
+          {
+            "description": "Last day, inclusive (IST)",
+            "in": "query",
+            "name": "declared_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day, inclusive (IST)",
+              "title": "Declared To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "driver_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Driver Id"
+            }
+          },
+          {
+            "description": "pending, accepted or disputed",
+            "in": "query",
+            "name": "review_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "pending, accepted or disputed",
+              "title": "Review Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CashHandoverRegisterEntryResponse"
+                  },
+                  "title": "Response List Cash Handover Register Api V1 Cash Handovers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cash Handover Register",
+        "tags": [
+          "Cash Handovers"
+        ]
+      },
       "post": {
         "description": "A driver (or dispatcher/manager on their behalf) declares the cash\nhanded over at the end of a route. `expected_amount` is computed\nserver-side from real cash-payment proof-of-delivery records — never\ntrusted from the request.\n\n`Idempotency-Key` is optional (the offline Driver App sends one so a\nqueued retry replays rather than hitting the `uq_cash_handover_route`\n409) — see `run_idempotent`.",
         "operationId": "declare_cash_handover_api_v1_cash_handovers_post",
@@ -11637,6 +13003,60 @@
           }
         },
         "summary": "Get Route Cash Handover",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/{cash_handover_id}/review": {
+      "post": {
+        "description": "Accept the counted cash, or dispute it with a note. One review per\nhandover; the person who declared it cannot review it. A short handover\ncan only be accepted with a note on how the shortfall was settled.",
+        "operationId": "review_cash_handover_api_v1_cash_handovers__cash_handover_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cash_handover_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cash Handover Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCashHandoverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashHandoverReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Cash Handover",
         "tags": [
           "Cash Handovers"
         ]
@@ -13761,6 +15181,28 @@
         ]
       }
     },
+    "/api/v1/dashboard/operations": {
+      "get": {
+        "description": "Bookings today, the open order pipeline, deliveries done and failed\ntoday, cancellations awaiting approval, open complaints, low stock,\nunpaid and overdue invoices, and cash still with drivers (DO-28).",
+        "operationId": "get_operations_snapshot_api_v1_dashboard_operations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsSnapshotResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Today's operations KPIs for the Home page",
+        "tags": [
+          "Dashboard"
+        ]
+      }
+    },
     "/api/v1/dashboard/summary": {
       "get": {
         "operationId": "get_dashboard_summary_api_v1_dashboard_summary_get",
@@ -15242,7 +16684,7 @@
     },
     "/api/v1/invoices": {
       "get": {
-        "description": "List invoices with optional filters.",
+        "description": "List invoices, newest first. `search` matches the invoice, order and\nconsumer numbers and the customer's name.",
         "operationId": "list_invoices_api_v1_invoices_get",
         "parameters": [
           {
@@ -15317,6 +16759,61 @@
               ],
               "title": "Status"
             }
+          },
+          {
+            "description": "First day, inclusive (IST)",
+            "in": "query",
+            "name": "issued_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day, inclusive (IST)",
+              "title": "Issued From"
+            }
+          },
+          {
+            "description": "Last day, inclusive (IST)",
+            "in": "query",
+            "name": "issued_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day, inclusive (IST)",
+              "title": "Issued To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
           }
         ],
         "responses": {
@@ -15342,6 +16839,72 @@
           }
         },
         "summary": "List Invoices",
+        "tags": [
+          "Invoices"
+        ]
+      },
+      "post": {
+        "description": "Issue a held invoice for a delivered order or a billed cancellation.\nFails with `GST_NOT_CONFIGURED` (422) while a cylinder type on the\norder still has no GST rate.",
+        "operationId": "issue_invoice_api_v1_invoices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue Invoice",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
+    "/api/v1/invoices/uninvoiced-orders": {
+      "get": {
+        "description": "Invoices on hold: delivered orders with no invoice, and approved\ncancellations whose charge was never billed — almost always because GST\nwas not configured at the time (DA-06, DO-14).",
+        "operationId": "list_uninvoiced_orders_api_v1_invoices_uninvoiced_orders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UninvoicedOrderResponse"
+                  },
+                  "title": "Response List Uninvoiced Orders Api V1 Invoices Uninvoiced Orders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Uninvoiced Orders",
         "tags": [
           "Invoices"
         ]
@@ -15391,9 +16954,57 @@
         ]
       }
     },
+    "/api/v1/invoices/{invoice_id}/credit-notes": {
+      "get": {
+        "description": "Refunds requested and approved against this invoice (BR-20).",
+        "operationId": "list_credit_notes_api_v1_invoices__invoice_id__credit_notes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CreditNoteResponse"
+                  },
+                  "title": "Response List Credit Notes Api V1 Invoices  Invoice Id  Credit Notes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credit Notes",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
     "/api/v1/invoices/{invoice_id}/payments": {
       "post": {
-        "description": "Record a payment against an invoice (R10, `PaymentCollected`,\nBR-18/D-11). Supports partial payments — `status` only reaches `paid`\nonce cumulative payments equal `total_amount`.",
+        "description": "Record a payment received at the office against an invoice (R10,\n`PaymentCollected`, BR-18/D-11): cash, UPI, card, cheque or bank\ntransfer, with its reference. Supports partial payments — `status` only\nreaches `paid` once cumulative payments equal `total_amount`; more than\nthe balance due is refused.",
         "operationId": "record_payment_api_v1_invoices__invoice_id__payments_post",
         "parameters": [
           {
@@ -17876,6 +19487,7 @@
     },
     "/api/v1/reporting/drivers": {
       "get": {
+        "description": "One row per driver per business day (IST): stops, deliveries,\nfailures, and cash handed over against cash collected.",
         "operationId": "get_driver_performance_api_v1_reporting_drivers_get",
         "parameters": [
           {
@@ -17896,6 +19508,23 @@
               "format": "date",
               "title": "End Date",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
             }
           }
         ],
@@ -17956,8 +19585,63 @@
         ]
       }
     },
+    "/api/v1/reporting/gst/gstr1": {
+      "get": {
+        "description": "Outward supplies for `[start_date, end_date]` (IST) laid out like\nGSTR-1: B2B, B2C large, B2C small and the HSN summary, with taxable\nvalue and CGST/SGST/IGST.",
+        "operationId": "get_gstr1_report_api_v1_reporting_gst_gstr1_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Gstr1ReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Gstr1 Report",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/api/v1/reporting/sales": {
       "get": {
+        "description": "Invoiced sales per branch per business day (IST), inclusive dates.",
         "operationId": "get_daily_sales_api_v1_reporting_sales_get",
         "parameters": [
           {
@@ -17978,6 +19662,23 @@
               "format": "date",
               "title": "End Date",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
             }
           }
         ],

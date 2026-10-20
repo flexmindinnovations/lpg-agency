@@ -8,6 +8,7 @@ export type { AddCustomerAddressRequest } from './models/add-customer-address-re
 export type { AdjustCylinderTypeWeightRequest } from './models/adjust-cylinder-type-weight-request';
 export type { AdjustInventoryRequest } from './models/adjust-inventory-request';
 export type { AdjustLedgerBalanceRequest } from './models/adjust-ledger-balance-request';
+export type { AgencyBusinessProfileResponse } from './models/agency-business-profile-response';
 export type { AgencyUserSetupResponse } from './models/agency-user-setup-response';
 export type { ApproveCustomerRequest } from './models/approve-customer-request';
 export type { AskAiAssistantRequest } from './models/ask-ai-assistant-request';
@@ -26,10 +27,14 @@ export type { BulkCancelOrdersRequest } from './models/bulk-cancel-orders-reques
 export type { BulkCancelOrdersResponse } from './models/bulk-cancel-orders-response';
 export type { CancelOrderRequest } from './models/cancel-order-request';
 export type { CancelOrderResponse } from './models/cancel-order-response';
+export type { CashHandoverRegisterEntryResponse } from './models/cash-handover-register-entry-response';
 export type { CashHandoverResponse } from './models/cash-handover-response';
+export type { CashHandoverReviewResponse } from './models/cash-handover-review-response';
+export type { CashSnapshotResponse } from './models/cash-snapshot-response';
 export type { ChangeCylinderConditionStatusRequest } from './models/change-cylinder-condition-status-request';
 export type { ChangeCylinderStatusRequest } from './models/change-cylinder-status-request';
 export type { ChangeEmployeeStatusRequest } from './models/change-employee-status-request';
+export type { ClassifyCylinderTypeForGstRequest } from './models/classify-cylinder-type-for-gst-request';
 export type { ComplaintAssignmentResponse } from './models/complaint-assignment-response';
 export type { ComplaintCategory } from './models/complaint-category';
 export type { ComplaintListResponse } from './models/complaint-list-response';
@@ -85,6 +90,12 @@ export type { FeatureFlagSummaryResponse } from './models/feature-flag-summary-r
 export type { GoodsReceiptRequest } from './models/goods-receipt-request';
 export type { GoodsReceiptResponse } from './models/goods-receipt-response';
 export type { GstFilingResponse } from './models/gst-filing-response';
+export type { Gstr1B2CsRowResponse } from './models/gstr-1-b-2-cs-row-response';
+export type { Gstr1HsnRowResponse } from './models/gstr-1-hsn-row-response';
+export type { Gstr1InvoiceRowResponse } from './models/gstr-1-invoice-row-response';
+export type { Gstr1ReportResponse } from './models/gstr-1-report-response';
+export type { GstStateResponse } from './models/gst-state-response';
+export type { GstTaxTotalsResponse } from './models/gst-tax-totals-response';
 export type { HttpValidationError } from './models/http-validation-error';
 export type { InventoryBalanceLine } from './models/inventory-balance-line';
 export type { InventoryBalanceResponse } from './models/inventory-balance-response';
@@ -94,7 +105,9 @@ export type { InviteStaffUserRequest } from './models/invite-staff-user-request'
 export type { InvoiceLineResponse } from './models/invoice-line-response';
 export type { InvoicePageResponse } from './models/invoice-page-response';
 export type { InvoiceResponse } from './models/invoice-response';
+export type { InvoiceSnapshotResponse } from './models/invoice-snapshot-response';
 export type { IssuedLicenseResponse } from './models/issued-license-response';
+export type { IssueInvoiceRequest } from './models/issue-invoice-request';
 export type { IssueLicenseRequest } from './models/issue-license-request';
 export type { KycAttachmentResponse } from './models/kyc-attachment-response';
 export type { KycDocumentListResponse } from './models/kyc-document-list-response';
@@ -120,10 +133,12 @@ export type { OnboardingDraftListResponse } from './models/onboarding-draft-list
 export type { OnboardingDraftResponse } from './models/onboarding-draft-response';
 export type { OnlinePaymentListResponse } from './models/online-payment-list-response';
 export type { OnlinePaymentResponse } from './models/online-payment-response';
+export type { OperationsSnapshotResponse } from './models/operations-snapshot-response';
 export type { OptimizeRouteResponse } from './models/optimize-route-response';
 export type { OrderableCylinderTypeResponse } from './models/orderable-cylinder-type-response';
 export type { OrderLineResponse } from './models/order-line-response';
 export type { OrderPageResponse } from './models/order-page-response';
+export type { OrderPipelineResponse } from './models/order-pipeline-response';
 export type { OrderResponse } from './models/order-response';
 export type { OrderStatusHistoryEntryResponse } from './models/order-status-history-entry-response';
 export type { OrderTrackingResponse } from './models/order-tracking-response';
@@ -185,6 +200,7 @@ export type { ReplaceScaleCertificateRequest } from './models/replace-scale-cert
 export type { RequestRefundRequest } from './models/request-refund-request';
 export type { ResolutionOutcome } from './models/resolution-outcome';
 export type { ResolveComplaintRequest } from './models/resolve-complaint-request';
+export type { ReviewCashHandoverRequest } from './models/review-cash-handover-request';
 export type { ReviewPriceListProposalRequest } from './models/review-price-list-proposal-request';
 export type { RouteCashHandoverResponse } from './models/route-cash-handover-response';
 export type { RouteLoadLineResponse } from './models/route-load-line-response';
@@ -218,8 +234,10 @@ export type { TenantConfigurationResponse } from './models/tenant-configuration-
 export type { TenantResponse } from './models/tenant-response';
 export type { TokenResponse } from './models/token-response';
 export type { TrackingDriverInfo } from './models/tracking-driver-info';
+export type { UninvoicedOrderResponse } from './models/uninvoiced-order-response';
 export type { UnreadCountResponse } from './models/unread-count-response';
 export type { UnregisterDeviceRequest } from './models/unregister-device-request';
+export type { UpdateAgencyBusinessProfileRequest } from './models/update-agency-business-profile-request';
 export type { UpdateCustomerAddressRequest } from './models/update-customer-address-request';
 export type { UpdateCustomerProfileRequest } from './models/update-customer-profile-request';
 export type { UpdateDriverAssignmentRequest } from './models/update-driver-assignment-request';

@@ -12,6 +12,7 @@ import { DailySalesResponse } from '../../models/daily-sales-response';
 export interface GetDailySalesApiV1ReportingSalesGet$Params {
   start_date: string;
   end_date: string;
+  branch_id?: (string | null);
 }
 
 export function getDailySalesApiV1ReportingSalesGet(http: HttpClient, rootUrl: string, params: GetDailySalesApiV1ReportingSalesGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<DailySalesResponse>>> {
@@ -19,6 +20,7 @@ export function getDailySalesApiV1ReportingSalesGet(http: HttpClient, rootUrl: s
   if (params) {
     rb.query('start_date', params.start_date, {});
     rb.query('end_date', params.end_date, {});
+    rb.query('branch_id', params.branch_id, {});
   }
 
   return http.request(

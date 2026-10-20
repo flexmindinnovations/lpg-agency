@@ -15,6 +15,17 @@ export interface ListInvoicesApiV1InvoicesGet$Params {
   customer_id?: (string | null);
   order_id?: (string | null);
   status?: (string | null);
+
+/**
+ * First day, inclusive (IST)
+ */
+  issued_from?: (string | null);
+
+/**
+ * Last day, inclusive (IST)
+ */
+  issued_to?: (string | null);
+  search?: (string | null);
 }
 
 export function listInvoicesApiV1InvoicesGet(http: HttpClient, rootUrl: string, params?: ListInvoicesApiV1InvoicesGet$Params, context?: HttpContext): Observable<StrictHttpResponse<InvoicePageResponse>> {
@@ -25,6 +36,9 @@ export function listInvoicesApiV1InvoicesGet(http: HttpClient, rootUrl: string, 
     rb.query('customer_id', params.customer_id, {});
     rb.query('order_id', params.order_id, {});
     rb.query('status', params.status, {});
+    rb.query('issued_from', params.issued_from, {});
+    rb.query('issued_to', params.issued_to, {});
+    rb.query('search', params.search, {});
   }
 
   return http.request(
