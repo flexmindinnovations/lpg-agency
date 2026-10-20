@@ -1021,6 +1021,8 @@ async def list_staff_users(
             role=u.role,
             branch_id=str(u.branch_id) if u.branch_id else None,
             is_active=u.is_active,
+            display_name=u.display_name,
+            contact_phone=u.contact_phone,
         )
         for u in users
     ]
@@ -1062,6 +1064,8 @@ async def invite_staff_user(
         role=user.role,
         branch_id=str(user.branch_id) if user.branch_id else None,
         is_active=user.is_active,
+        display_name=user.display_name,
+        contact_phone=user.contact_phone,
     )
 
 

@@ -331,6 +331,8 @@ async def list_agency_users(
             role=user.role,
             branch_id=str(user.branch_id) if user.branch_id else None,
             is_active=user.is_active,
+            display_name=user.display_name,
+            contact_phone=user.contact_phone,
         )
         for user in users
     ]

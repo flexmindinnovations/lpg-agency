@@ -289,6 +289,9 @@ class StaffUserResponse(BaseModel):
     role: str
     branch_id: str | None
     is_active: bool
+    #: The name and contact number the person set in My Profile, if any.
+    display_name: str | None = None
+    contact_phone: str | None = None
 
 
 class InviteStaffUserRequest(BaseModel):
