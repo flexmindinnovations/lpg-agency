@@ -61,6 +61,8 @@ async def test_register_customer_success(mock_repo, mock_uow):
         customer_type="commercial",
         contact_person="Manager",
         line_1="123 Road",
+        city="Hyderabad",
+        pincode="500016",
     )
 
     customer = await use_case.execute(command)
@@ -104,6 +106,8 @@ async def test_add_address(mock_repo, mock_uow):
     command = AddCustomerAddressCommand(
         customer_id=customer.id,
         line_1="New Address St",
+        city="Hyderabad",
+        pincode="500016",
     )
 
     await use_case.execute(command)
@@ -129,7 +133,7 @@ async def test_submit_kyc(mock_repo, mock_uow):
     command = SubmitKycDocumentCommand(
         customer_id=customer.id,
         doc_type="voter_id",
-        document_number="VOTER-REF",
+        document_number="ABC1234567",
     )
 
     doc_id = await use_case.execute(command)
@@ -151,7 +155,7 @@ async def test_verify_kyc_auto_approves_the_account_when_fully_verified(
         # status defaults to "onboarding" — no consumer_number yet, matching
         # a real just-registered customer whose only document is pending.
     )
-    doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
+    doc_id = customer.submit_kyc("pan", document_number="ABCPE1234F")
     mock_repo.get_by_id.return_value = customer
     verifier_id = uuid.uuid4()
     use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
@@ -183,7 +187,7 @@ async def test_verify_kyc_does_not_auto_approve_on_rejection(mock_repo, mock_uow
         full_name="Jane Doe",
         phone_number="+1234567890",
     )
-    doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
+    doc_id = customer.submit_kyc("pan", document_number="ABCPE1234F")
     mock_repo.get_by_id.return_value = customer
     use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
 
@@ -212,8 +216,8 @@ async def test_verify_kyc_does_not_auto_approve_while_another_document_is_still_
         full_name="Jane Doe",
         phone_number="+1234567890",
     )
-    aadhaar_id = customer.submit_kyc("aadhaar", document_number="AADHAAR-REF")
-    customer.submit_kyc("pan", document_number="PAN-REF")  # still pending
+    aadhaar_id = customer.submit_kyc("aadhaar", document_number="234123412346")
+    customer.submit_kyc("pan", document_number="ABCPE1234F")  # still pending
     mock_repo.get_by_id.return_value = customer
     use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
 
@@ -243,7 +247,7 @@ async def test_verify_kyc_does_not_re_approve_an_already_active_customer(
         phone_number="+1234567890",
         status="active",
     )
-    doc_id = customer.submit_kyc("pan", document_number="PAN-REF")
+    doc_id = customer.submit_kyc("pan", document_number="ABCPE1234F")
     mock_repo.get_by_id.return_value = customer
     use_case = VerifyKycDocumentUseCase(mock_repo, mock_uow, mock_sequence)
 

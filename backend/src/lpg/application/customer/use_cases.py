@@ -10,6 +10,7 @@ from lpg.application.common.errors import (
     DuplicatePhoneError,
     NotFoundError,
 )
+from lpg.domain.common.base import BusinessRuleViolation
 from lpg.domain.customer.customer import Customer
 from lpg.domain.customer.kyc_document_parser import parse_kyc_document
 from lpg.domain.customer.onboarding_draft import OnboardingDraftEntry
@@ -42,6 +43,7 @@ class RegisterCustomerCommand(Command):
     date_of_birth: datetime.date | None = None
     customer_type: str = "domestic"
     lpg_subsidy_id: str | None = None
+    gstin: str | None = None
 
     line_1: str | None = None
     line_2: str | None = None
@@ -95,6 +97,7 @@ class RegisterCustomerUseCase:
             date_of_birth=command.date_of_birth,
             customer_type=command.customer_type,
             lpg_subsidy_id=command.lpg_subsidy_id,
+            gstin=command.gstin,
         )
 
         if command.line_1:
@@ -130,6 +133,7 @@ class UpdateCustomerProfileCommand(Command):
     email: str | None = None
     date_of_birth: datetime.date | None = None
     lpg_subsidy_id: str | None = None
+    gstin: str | None = None
 
 
 class UpdateCustomerProfileUseCase:
@@ -157,6 +161,8 @@ class UpdateCustomerProfileUseCase:
                 msg = f"Customer with LPG ID {command.lpg_subsidy_id} already exists."
                 raise DuplicateLpgSubsidyIdError(msg, lpg_subsidy_id=command.lpg_subsidy_id)
 
+        _ensure_status_change_allowed(customer.status, command.status)
+
         # Re-initialize to enforce business invariants
         updated = Customer(
             customer_id=customer.id,
@@ -171,17 +177,39 @@ class UpdateCustomerProfileUseCase:
             date_of_birth=command.date_of_birth,
             customer_type=command.customer_type,
             kyc_status=customer.kyc_status,
-            status=command.status,
+            status=customer.status,
             lpg_subsidy_id=command.lpg_subsidy_id,
+            gstin=command.gstin,
             addresses=customer.addresses,
             kyc_documents=customer.kyc_documents,
             identity_user_id=customer.identity_user_id,
             version=customer.version,
         )
+        if command.status != customer.status:
+            updated.change_status(command.status)
 
         await self._repository.save(updated)
         await self._unit_of_work.commit()
         return updated
+
+
+#: Statuses staff may switch between from the profile editor. Onboarding
+#: ends through KYC approval and a connection ends through Close
+#: connection (BR-34) — both have their own rules and events, so a plain
+#: profile save must not jump into or out of them.
+_EDITABLE_STATUSES = frozenset({"active", "inactive", "blocked"})
+
+
+def _ensure_status_change_allowed(current: str, requested: str) -> None:
+    if requested == current:
+        return
+    if current not in _EDITABLE_STATUSES or requested not in _EDITABLE_STATUSES:
+        msg = (
+            f"A customer cannot be moved from {current.replace('_', ' ')} to "
+            f"{requested.replace('_', ' ')} by editing the profile. Use KYC approval "
+            "to activate a new connection, or Close connection to end one."
+        )
+        raise BusinessRuleViolation(msg, from_status=current, to_status=requested)
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,6 +300,29 @@ class UpdateCustomerAddressUseCase:
             latitude=command.latitude,
             longitude=command.longitude,
         )
+
+        await self._repository.save(customer)
+        await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class RemoveCustomerAddressCommand(Command):
+    customer_id: uuid.UUID
+    address_id: uuid.UUID
+
+
+class RemoveCustomerAddressUseCase:
+    def __init__(self, repository: CustomerRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RemoveCustomerAddressCommand) -> None:
+        customer = await self._repository.get_by_id(command.customer_id)
+        if customer is None:
+            msg = f"No customer visible with id {command.customer_id}."
+            raise NotFoundError(msg, customer_id=str(command.customer_id))
+
+        customer.remove_address(command.address_id)
 
         await self._repository.save(customer)
         await self._unit_of_work.commit()

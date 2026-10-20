@@ -34,7 +34,6 @@ import pytest
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 
@@ -78,16 +77,10 @@ async def real_lifespan_client(
 
 
 @pytest.fixture
-async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[AsyncEngine]:
-    if not postgres_available:
-        pytest.skip("PostgreSQL is not reachable")
-    engine = create_async_engine(
-        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_test"
-    )
-    try:
-        yield engine
-    finally:
-        await engine.dispose()
+def admin_engine_lpg_test(admin_engine: AsyncEngine) -> AsyncEngine:
+    """The superuser engine for the test database the app under test uses
+    (`LPG_TEST_ADMIN_DATABASE_URL`), so seeded rows are visible to it."""
+    return admin_engine
 
 
 async def _seed_staff_user(

@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.api.v1.dependencies.identity import require_live_permission, require_permission
 from lpg.application.common.errors import PermissionDeniedError
@@ -48,20 +47,10 @@ async def database(
 
 
 @pytest.fixture
-async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[AsyncEngine]:
-    """A superuser-privileged connection, for seeding a *real* backing user.
-
-    Same reasoning as `test_inventory_rbac.py`'s copy of this fixture.
-    """
-    if not postgres_available:
-        pytest.skip("PostgreSQL is not reachable — start it with ./scripts/dev-up.sh")
-    engine = create_async_engine(
-        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_test"
-    )
-    try:
-        yield engine
-    finally:
-        await engine.dispose()
+def admin_engine_lpg_test(admin_engine: AsyncEngine) -> AsyncEngine:
+    """The superuser engine for the test database the app under test uses
+    (`LPG_TEST_ADMIN_DATABASE_URL`), so seeded rows are visible to it."""
+    return admin_engine
 
 
 def _principal(role: str, permission_code: str) -> JwtAuthenticatedPrincipal:
