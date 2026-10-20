@@ -252,7 +252,11 @@ body {
   font-size: var(--typography-body-small-font-size);
   color: var(--color-text-secondary);
   margin: var(--spacing-xs) 0 0 0;
-  max-inline-size: 60ch;
+  /* Shown in the shell's top bar, which has room for one line: at 60ch a
+     one-sentence subtitle (Dispatch, Scales) wrapped to two and made that
+     page's header 20px taller than every other page's. 90ch is still a
+     comfortable measure and the header itself caps it on narrow screens. */
+  max-inline-size: 90ch;
   line-height: var(--typography-body-line-height);
 }
 
@@ -305,18 +309,34 @@ body {
    DATA TOOLBAR — consistent toolbar above data grids
    ======================================================================== */
 
+/* Bottom-aligned (`flex-end`), not centred: a filter is often a label
+   stacked over its control, and centring the actions against that whole
+   label+control box left them visibly higher than the control they sit
+   beside (Orders' "New Booking" vs its Status select). The actions group is
+   given exactly one control's height, so its buttons centre on the
+   control's own row — and an unlabelled search input lands where `center`
+   always put it.
+
+   No margin of its own: page roots are flex columns with their own `gap`,
+   which already separates the toolbar from the grid — a margin here stacked
+   on top of it (32px under the toolbar on most list pages, 16px on the rest).
+   The gap-less `.admin-page` root is the one exception, handled below. */
 .data-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--spacing-md);
-  margin-block-end: var(--spacing-md);
+  gap: var(--spacing-sm) var(--spacing-md);
   flex-wrap: wrap;
+}
+
+.admin-page > .data-toolbar {
+  margin-block-end: var(--spacing-md);
 }
 
 .data-toolbar__filters {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
   flex: 1;
 }
@@ -324,7 +344,9 @@ body {
 .data-toolbar__actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
+  min-block-size: var(--component-control-height);
 }
 
 /* ========================================================================
@@ -504,6 +526,18 @@ body {
   gap: var(--spacing-md);
 }
 
+/* Children of the scrolling region must keep their natural height. They are
+   flex items in a column whose height is capped, so by default they shrink
+   to fit it instead of letting it scroll — and a child that has its own
+   `overflow` (a scrolling list, a horizontally scrolling table wrapper) has
+   no content-based minimum, so it collapses to a sliver. That is how the
+   Dispatch "New trip" drawer ended up showing a third of one order under
+   "Orders on this trip" and cutting off the last row of the load sheet. */
+.dialog-form__fields > *,
+.detail-view__fields > * {
+  flex-shrink: 0;
+}
+
 /* A `.dialog-form` that's really just an inline sub-section within a larger
    scrolling body (e.g. a nested "Save X" mini-form partway down a detail
    drawer, or one of dispatch's Route Detail conditional forms) rather than
@@ -606,6 +640,21 @@ textarea {
    PRIMENG GLOBAL OVERRIDES — polish default appearance
    ======================================================================== */
 
+/* Overlay host elements take no space in the page. PrimeNG renders the
+   visible panel (and its mask) `position: fixed`, so the `<p-drawer>` /
+   `<p-dialog>` host itself never needs a box — but as a block it was still a
+   zero-height flex item in the page's flex column, and that column's `gap`
+   was added once per closed overlay: every list page with two drawers had
+   its grid end 32px short of the bottom, one drawer 16px, none flush — grid
+   heights differed page to page for no visible reason. */
+p-drawer,
+p-dialog,
+p-confirmdialog,
+p-confirmpopup,
+p-toast {
+  display: contents;
+}
+
 /* Dialog panel — solid elevated surface. */
 .p-dialog {
   border-radius: var(--radius-dialog) !important;
@@ -656,6 +705,26 @@ textarea {
   font-size: var(--typography-heading2-font-size) !important;
   font-weight: var(--typography-heading2-font-weight) !important;
   letter-spacing: -0.01em;
+}
+
+/* Drawers with a custom `<ng-template #header>` (an `<h2>` title, often with
+   a one-line `<p>` under it). Tailwind's preflight strips `h2`/`p` back to
+   unstyled body text, so a page that didn't restyle them itself (Orders'
+   "Create Booking") showed a 14px title next to every other drawer's
+   heading-sized one. `:where()` keeps this at the same weight as a page's
+   own `.drawer-title`-style rule, which still wins where one exists. */
+.p-drawer .p-drawer-header :where(h2) {
+  margin: 0;
+  font-size: var(--typography-heading2-font-size);
+  font-weight: var(--typography-heading2-font-weight);
+  line-height: var(--typography-heading2-line-height);
+  letter-spacing: -0.01em;
+}
+
+.p-drawer .p-drawer-header :where(h2 + p) {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
 }
 
 .p-drawer .p-drawer-content {

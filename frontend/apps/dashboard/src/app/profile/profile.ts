@@ -46,9 +46,11 @@ import { AuthService } from '@lpg/shared/data-access';
   `,
   styles: [
     `
+      /* No top margin: the title lives in the shell's top bar, so the card
+         is the first thing in the Settings content column and must line up
+         with the Settings nav beside it (Agency's card already does). */
       .detail-view {
         max-inline-size: 480px;
-        margin-block-start: var(--spacing-lg);
       }
     `,
   ],

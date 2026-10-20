@@ -200,6 +200,15 @@ have always been hand-edited directly. Edit them here.
   --component-profile-menu-item-radius: 4px;
   --component-focus-ring-width: 2px;
   --component-focus-ring-offset: 4px;
+  /* Rendered height of a text input / select (doc §19's ~40px control):
+     its 0.625rem block padding (styles.css `.p-inputtext`/`.p-select-label`)
+     either side of one body-small line, plus the two borders. Lets a row
+     that mixes controls and smaller buttons (`.data-toolbar__actions`)
+     centre the buttons on the control's own row. */
+  --component-control-height: calc(
+    2 * 0.625rem + var(--typography-body-small-font-size) * var(--typography-body-line-height) +
+      2 * var(--border-width, 1px)
+  );
 
   /* ---- Extended radius scale (Fluent Glass) ----
      Additive, named by use rather than by tier — the existing --radius-sm/

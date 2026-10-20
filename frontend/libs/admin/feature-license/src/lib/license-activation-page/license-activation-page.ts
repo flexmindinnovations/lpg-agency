@@ -128,7 +128,6 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
 
       .admin-form-section {
         max-inline-size: 480px;
-        margin-block-start: var(--spacing-lg);
       }
 
       .admin-form-section form {
@@ -143,9 +142,10 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
         margin-block-start: var(--spacing-sm);
       }
 
+      /* No top margin — first block in the Settings content column, level
+         with the Settings nav (see profile.ts). */
       .detail-view {
         max-inline-size: 480px;
-        margin-block-start: var(--spacing-lg);
       }
     `,
   ],
