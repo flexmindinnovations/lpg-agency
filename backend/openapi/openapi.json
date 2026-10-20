@@ -2624,6 +2624,20 @@
         "title": "DeliveryAddressPayload",
         "type": "object"
       },
+      "DeliveryCodeResponse": {
+        "description": "The code the customer reads out to the driver to confirm delivery.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "DeliveryCodeResponse",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -16420,6 +16434,58 @@
           }
         },
         "summary": "Deliver Order",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/delivery-code": {
+      "get": {
+        "description": "The delivery code the customer gives the driver at the door, for the\ncustomer's own order while it is out for delivery; `null` when no code is\npending. Customers only: the code is the proof that the cylinder reached\nthe customer, so neither the driver nor office staff may read it. Another\ncustomer's order is a 404, the same as an order that does not exist.",
+        "operationId": "get_delivery_code_api_v1_orders__order_id__delivery_code_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DeliveryCodeResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Delivery Code Api V1 Orders  Order Id  Delivery Code Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Delivery Code",
         "tags": [
           "Orders"
         ]

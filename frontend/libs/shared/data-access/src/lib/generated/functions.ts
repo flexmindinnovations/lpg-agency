@@ -343,6 +343,8 @@ export type { ConfirmOrderApiV1OrdersOrderIdConfirmPost$Params as ConfirmOrderAp
 export { confirmOrderApiV1OrdersOrderIdConfirmPost as confirmOrderApiV1OrdersOrderIdConfirmPost } from './fn/orders/confirm-order-api-v-1-orders-order-id-confirm-post';
 export type { DeliverOrderApiV1OrdersOrderIdDeliverPost$Params as DeliverOrderApiV1OrdersOrderIdDeliverPost$Params } from './fn/orders/deliver-order-api-v-1-orders-order-id-deliver-post';
 export { deliverOrderApiV1OrdersOrderIdDeliverPost as deliverOrderApiV1OrdersOrderIdDeliverPost } from './fn/orders/deliver-order-api-v-1-orders-order-id-deliver-post';
+export type { GetDeliveryCodeApiV1OrdersOrderIdDeliveryCodeGet$Params as GetDeliveryCodeApiV1OrdersOrderIdDeliveryCodeGet$Params } from './fn/orders/get-delivery-code-api-v-1-orders-order-id-delivery-code-get';
+export { getDeliveryCodeApiV1OrdersOrderIdDeliveryCodeGet as getDeliveryCodeApiV1OrdersOrderIdDeliveryCodeGet } from './fn/orders/get-delivery-code-api-v-1-orders-order-id-delivery-code-get';
 export type { ResendDeliveryOtpApiV1OrdersOrderIdDeliveryOtpPost$Params as ResendDeliveryOtpApiV1OrdersOrderIdDeliveryOtpPost$Params } from './fn/orders/resend-delivery-otp-api-v-1-orders-order-id-delivery-otp-post';
 export { resendDeliveryOtpApiV1OrdersOrderIdDeliveryOtpPost as resendDeliveryOtpApiV1OrdersOrderIdDeliveryOtpPost } from './fn/orders/resend-delivery-otp-api-v-1-orders-order-id-delivery-otp-post';
 export type { DepartOrderApiV1OrdersOrderIdDepartPost$Params as DepartOrderApiV1OrdersOrderIdDepartPost$Params } from './fn/orders/depart-order-api-v-1-orders-order-id-depart-post';

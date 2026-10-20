@@ -66,6 +66,7 @@ export type { DeliveredLineRequest } from './models/delivered-line-request';
 export type { DeliverOrderRequest } from './models/deliver-order-request';
 export type { DeliverOrderResponse } from './models/deliver-order-response';
 export type { DeliveryAddressPayload } from './models/delivery-address-payload';
+export type { DeliveryCodeResponse } from './models/delivery-code-response';
 export type { DependencyStatus } from './models/dependency-status';
 export type { DocumentAttachmentResponse } from './models/document-attachment-response';
 export type { DriverLocationPingRequest } from './models/driver-location-ping-request';
