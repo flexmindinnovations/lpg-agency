@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from lpg.application.delivery.ports import RouteStopOwner
 from lpg.domain.delivery.route import LoadedLine, ProofOfDelivery, Route, RouteStop
@@ -147,11 +147,20 @@ class SqlAlchemyRouteRepository:
         return self._to_domain(model, list(stops_models), order_numbers)
 
     async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None:
+        # A route already on the road outranks a newer one still being
+        # planned or loaded: the driver must finish (and hand over the cash
+        # for) the trip in hand before the next one, so it must never be
+        # hidden behind it. Ties go to the newest.
+        on_road_first = case(
+            (RouteModel.status == "in_progress", 0),
+            (RouteModel.status == "loaded", 1),
+            else_=2,
+        )
         stmt = (
             select(RouteModel)
             .where(RouteModel.driver_id == driver_id)
             .where(RouteModel.status.in_(["planned", "loaded", "in_progress"]))
-            .order_by(RouteModel.created_at.desc())
+            .order_by(on_road_first, RouteModel.created_at.desc())
             .limit(1)
         )
         model = await self._uow.session.scalar(stmt)
