@@ -25,6 +25,14 @@ extension OrderPresentation on OrderResponse {
   /// Whether the driver is on the way, so the order can be tracked live.
   bool get isTrackable => status == 'out_for_delivery';
 
+  /// The amount as a list shows it: the confirmed total, "Not charged" for
+  /// an order cancelled before it was priced, otherwise "To be confirmed"
+  /// (the agency prices an order when confirming it).
+  String get amountLabel {
+    if (totalAmount case final total?) return LpgFormat.currency(total);
+    return status == 'cancelled' ? 'Not charged' : 'To be confirmed';
+  }
+
   int get cylinderCount =>
       lines.fold<int>(0, (sum, line) => sum + line.quantityOrdered);
 }
@@ -34,4 +42,14 @@ LpgStatusSeverity orderStatusSeverity(String status) => switch (status) {
   'cancelled' || 'failed_delivery' => LpgStatusSeverity.danger,
   'out_for_delivery' || 'ready_for_dispatch' => LpgStatusSeverity.warning,
   _ => LpgStatusSeverity.info,
+};
+
+/// How a payment method reads to a customer.
+String paymentMethodLabel(String method) => switch (method) {
+  'cash' => 'Cash on delivery',
+  'upi' => 'UPI',
+  'card' => 'Card',
+  'online_gateway' => 'Online payment',
+  'credit' => 'Credit account',
+  _ => LpgFormat.sentence(method),
 };

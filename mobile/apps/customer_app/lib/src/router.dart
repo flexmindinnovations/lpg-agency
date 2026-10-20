@@ -121,7 +121,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'new',
                     name: 'order_new',
-                    builder: (context, state) => const OrderPlacementScreen(),
+                    builder: (context, state) => OrderPlacementScreen(
+                      draft: state.extra as ReorderDraft?,
+                    ),
                   ),
                   GoRoute(
                     path: ':orderId',

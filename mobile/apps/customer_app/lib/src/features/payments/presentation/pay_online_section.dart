@@ -41,6 +41,11 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
   bool _busy = false;
   String? _pendingPaymentId;
 
+  /// Why the last attempt to start a payment failed, shown under the
+  /// button until the next attempt — a toast alone was gone before most
+  /// customers read it (CA-17).
+  String? _startError;
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +66,10 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
   }
 
   Future<void> _pay() async {
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _startError = null;
+    });
     final result = await ref
         .read(paymentApiProvider)
         .createPaymentLink(widget.orderId);
@@ -75,16 +83,24 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
           mode: LaunchMode.externalApplication,
         );
         if (!opened && mounted) {
-          _showMessage(
-            'Could not open the payment page.',
-            tone: LpgTone.danger,
+          setState(
+            () => _startError =
+                'Could not open the payment page. Please try again, or pay '
+                'the driver on delivery.',
           );
         }
       },
-      onFailure: (failure) async => _showMessage(
-        'Could not start payment: ${failure.message}',
-        tone: LpgTone.danger,
-      ),
+      onFailure: (failure) async {
+        if (failure.errorCode == 'SERVICE_UNAVAILABLE') {
+          // No gateway after all: stop offering it on this screen.
+          ref.invalidate(onlinePaymentAvailableProvider);
+        }
+        setState(
+          () => _startError =
+              "Online payment isn't available right now (${failure.message}). "
+              'You can pay the driver on delivery.',
+        );
+      },
     );
     if (mounted) setState(() => _busy = false);
   }
@@ -136,7 +152,9 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
         ref.watch(orderPaymentsProvider(widget.orderId)).asData?.value ??
         const <OnlinePaymentResponse>[];
     final paid = payments.where((p) => p.isPaid).toList();
-    final showPayButton = widget.canPay && paid.isEmpty;
+    final available =
+        ref.watch(onlinePaymentAvailableProvider).asData?.value ?? false;
+    final showPayButton = widget.canPay && available && paid.isEmpty;
 
     if (paid.isEmpty && !showPayButton) return const SizedBox.shrink();
 
@@ -170,6 +188,10 @@ class _PayOnlineSectionState extends ConsumerState<PayOnlineSection>
             isLoading: _busy && _pendingPaymentId == null,
             onPressed: _busy ? null : _pay,
           ),
+          if (_startError case final error?) ...[
+            const SizedBox(height: LpgSpacing.smd),
+            LpgBanner(tone: LpgTone.danger, message: error),
+          ],
           if (_pendingPaymentId != null) ...[
             const SizedBox(height: LpgSpacing.smd),
             LpgButton(
