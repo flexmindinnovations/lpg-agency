@@ -19,11 +19,18 @@ class _FakeOwnership:
     def __init__(self, *, owned_orders: set[str] | None = None) -> None:
         self._owned = owned_orders or set()
 
-    async def driver_id_for(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> uuid.UUID | None:
+    async def driver_id_for(
+        self,
+        tenant_id: uuid.UUID,  # noqa: ARG002
+        user_id: uuid.UUID,
+    ) -> uuid.UUID | None:
         return _DRIVER if str(user_id) == _USER else None
 
     async def customer_owns_order(
-        self, tenant_id: uuid.UUID, user_id: uuid.UUID, order_id: uuid.UUID
+        self,
+        tenant_id: uuid.UUID,  # noqa: ARG002
+        user_id: uuid.UUID,  # noqa: ARG002
+        order_id: uuid.UUID,
     ) -> bool:
         return str(order_id) in self._owned
 
