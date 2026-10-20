@@ -151,6 +151,14 @@ class _FakeGateway:
         raise NotImplementedError
 
 
+def _cylinder_type_repo(rate: Decimal | None = Decimal("0")) -> MagicMock:
+    cylinder_type = MagicMock(hsn_code="27111900", gst_rate_percent=rate)
+    cylinder_type.name = "Domestic 14.2 kg"
+    repo = MagicMock()
+    repo.get = AsyncMock(return_value=cylinder_type)
+    return repo
+
+
 def _repos(
     order: MagicMock, *, invoice: Invoice | None = None, existing: list[OnlinePayment] | None = None
 ) -> dict[str, MagicMock]:
@@ -177,6 +185,7 @@ def _repos(
         "online_payment_repository": online_repo,
         "customer_repository": customer_repo,
         "tenant_config_repository": config_repo,
+        "cylinder_type_repository": _cylinder_type_repo(),
         "unit_of_work": uow,
     }
 
@@ -299,6 +308,8 @@ class TestApplyOnlinePaymentsToInvoice:
             tenant_config_repository=config_repo,
             invoice_number_sequence=sequence,
             online_payment_repository=online_repo,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=MagicMock(get=AsyncMock(return_value=None)),
         ).execute(tenant_id=TENANT_ID, order_id=order.id, delivered_at=NOW)
 
         invoice: Invoice = invoice_repo.add.call_args.args[0]
@@ -320,11 +331,12 @@ class TestCreateOrderPaymentLink:
         config.effective_from = NOW - timedelta(days=1)
         config.config_key = "gst_rate_percent"
         repos["tenant_config_repository"].list_for_tenant_and_key = AsyncMock(return_value=[config])
+        repos["cylinder_type_repository"] = _cylinder_type_repo(None)
         gateway = _FakeGateway()
 
         payment = await _create_use_case(repos, gateway).execute(_command(order))
 
-        # 2 x 450 = 900, + 5% GST = 945.00
+        # 2 x 450 = 900, + 5% GST (tenant-wide fallback rate) = 945.00
         assert payment.amount == Decimal("945.00")
         assert payment.invoice_id is None
         request = gateway.requests[0]

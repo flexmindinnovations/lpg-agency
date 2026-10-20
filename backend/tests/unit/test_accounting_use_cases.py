@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lpg.application.accounting.gst import GstNotConfiguredError
 from lpg.application.accounting.use_cases import (
     ApproveRefundCommand,
     ApproveRefundUseCase,
@@ -62,6 +63,22 @@ def _make_order(lines: list[OrderLine] | None = None) -> MagicMock:
     order.customer_id = uuid.uuid4()
     order.lines = lines if lines is not None else [_make_order_line()]
     return order
+
+
+def _cylinder_type_repo(rate: Decimal | None = Decimal("18")) -> MagicMock:
+    cylinder_type = MagicMock()
+    cylinder_type.name = "Commercial 19 kg"
+    cylinder_type.hsn_code = "27111900"
+    cylinder_type.gst_rate_percent = rate
+    repo = MagicMock()
+    repo.get = AsyncMock(return_value=cylinder_type)
+    return repo
+
+
+def _tenant_repo() -> MagicMock:
+    repo = MagicMock()
+    repo.get = AsyncMock(return_value=None)
+    return repo
 
 
 def _make_tenant_config_entry(value: str) -> MagicMock:
@@ -157,6 +174,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=_tenant_repo(),
         )
         await use_case.execute(
             tenant_id=tenant_id,
@@ -182,7 +201,7 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_customer_repo: MagicMock,
         mock_invoice_number_sequence: MagicMock,
     ) -> None:
-        """GST from tenant configuration is applied to the invoice totals."""
+        """The legacy tenant-wide GST rate applies to a cylinder type with no rate of its own."""
         tenant_id = uuid.uuid4()
         delivered_at = datetime.now(UTC)
 
@@ -206,6 +225,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(None),
+            tenant_repository=_tenant_repo(),
         )
         await use_case.execute(
             tenant_id=tenant_id,
@@ -243,6 +264,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=_tenant_repo(),
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -272,6 +295,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=_tenant_repo(),
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -298,6 +323,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=_tenant_repo(),
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -327,6 +354,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=_tenant_repo(),
         )
         # Should not raise; logs an error and returns.
         await use_case.execute(
@@ -337,7 +366,7 @@ class TestGenerateInvoiceForOrderUseCase:
 
         mock_invoice_repo.add.assert_not_called()
 
-    async def test_uses_zero_gst_when_no_config_set(
+    async def test_refuses_to_invoice_when_gst_is_not_configured(
         self,
         mock_invoice_repo: MagicMock,
         mock_order_repo: MagicMock,
@@ -345,7 +374,7 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_customer_repo: MagicMock,
         mock_invoice_number_sequence: MagicMock,
     ) -> None:
-        """When no GST rate is configured, tax_amount is 0 and total equals subtotal."""
+        """No cylinder-type rate and no tenant fallback: the invoice is held, never 0% (DA-06)."""
         order = _make_order(
             lines=[_make_order_line(quantity_delivered=1, unit_price=Decimal("200.00"))]
         )
@@ -358,16 +387,18 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(None),
+            tenant_repository=_tenant_repo(),
         )
-        await use_case.execute(
-            tenant_id=uuid.uuid4(),
-            order_id=order.id,
-            delivered_at=datetime.now(UTC),
-        )
+        with pytest.raises(GstNotConfiguredError) as raised:
+            await use_case.execute(
+                tenant_id=uuid.uuid4(),
+                order_id=order.id,
+                delivered_at=datetime.now(UTC),
+            )
 
-        invoice: Invoice = mock_invoice_repo.add.call_args[0][0]
-        assert invoice.lines[0].tax_amount == Decimal("0.0")
-        assert invoice.lines[0].total_amount == Decimal("200.00")
+        assert raised.value.error_code == "GST_NOT_CONFIGURED"
+        mock_invoice_repo.add.assert_not_called()
 
     async def test_handles_line_with_no_unit_price_as_zero(
         self,
@@ -387,6 +418,8 @@ class TestGenerateInvoiceForOrderUseCase:
             tenant_config_repository=mock_tenant_config_repo,
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(),
+            tenant_repository=_tenant_repo(),
         )
         await use_case.execute(
             tenant_id=uuid.uuid4(),
@@ -430,7 +463,7 @@ class TestDoorstepCollectionOnInvoice:
         mock_customer_repo: MagicMock,
         mock_invoice_number_sequence: MagicMock,
     ) -> Invoice:
-        # 2 x Rs.150 = Rs.300, no GST configured.
+        # 2 x Rs.150 = Rs.300, cylinder type explicitly classified at 0% GST.
         order = _make_order(
             lines=[_make_order_line(quantity_delivered=2, unit_price=Decimal("150.00"))]
         )
@@ -444,6 +477,8 @@ class TestDoorstepCollectionOnInvoice:
             customer_repository=mock_customer_repo,
             invoice_number_sequence=mock_invoice_number_sequence,
             proof_of_delivery_reader=pod_reader,
+            cylinder_type_repository=_cylinder_type_repo(Decimal("0")),
+            tenant_repository=_tenant_repo(),
         ).execute(tenant_id=uuid.uuid4(), order_id=order.id, delivered_at=datetime.now(UTC))
         invoice: Invoice = mock_invoice_repo.add.call_args[0][0]
         return invoice
@@ -664,6 +699,9 @@ class TestListInvoicesUseCase:
             customer_id=customer_id,
             order_id=None,
             status="issued",
+            issued_from=None,
+            issued_to=None,
+            search=None,
         )
 
 
