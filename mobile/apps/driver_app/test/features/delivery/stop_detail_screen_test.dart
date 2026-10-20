@@ -9,6 +9,7 @@ import 'package:driver_app/src/features/delivery/data/driver_position_provider.d
 import 'package:driver_app/src/features/delivery/data/stop_customer_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_destination_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
+import 'package:driver_app/src/features/delivery/presentation/failed_delivery_sheet.dart';
 import 'package:driver_app/src/features/delivery/presentation/stop_detail_screen.dart';
 import 'package:driver_app/src/features/delivery/presentation/widgets/stop_map_card.dart';
 import 'package:flutter/material.dart';
@@ -344,6 +345,13 @@ void main() {
 
       await tester.tap(find.text('Customer unavailable'));
       await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(FailedDeliverySheet),
+          matching: find.byType(TextField),
+        ),
+        'Gate locked',
+      );
       await tester.tap(find.text('Confirm failed delivery'));
       await tester.pumpAndSettle();
 
@@ -351,6 +359,7 @@ void main() {
       expect(ops.single.type, 'order_failed_delivery');
       final body = jsonDecode(ops.single.payload)['body'] as Map;
       expect(body['reason_code'], 'customer_unavailable');
+      expect(body['note'], 'Gate locked');
     });
   });
 }

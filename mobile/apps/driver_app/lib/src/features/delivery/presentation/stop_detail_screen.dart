@@ -158,7 +158,9 @@ class StopDetailScreen extends ConsumerWidget {
     String id,
   ) async {
     final choice =
-        await showModalBottomSheet<({String reason, String? action})>(
+        await showModalBottomSheet<
+          ({String reason, String? action, String? note})
+        >(
           context: context,
           showDragHandle: true,
           isScrollControlled: true,
@@ -174,6 +176,7 @@ class StopDetailScreen extends ConsumerWidget {
             id,
             reasonCode: choice.reason,
             resolutionAction: choice.action,
+            note: choice.note,
           ),
       doneMessage: 'Marked as failed.',
     );

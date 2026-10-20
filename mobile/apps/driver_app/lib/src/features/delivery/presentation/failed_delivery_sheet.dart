@@ -18,8 +18,12 @@ const _actions = <(String?, String)>[
   ('return_stock', 'Return the stock'),
 ];
 
-/// Collects a reason + optional resolution for a failed delivery. Pops
-/// `({reason, action})` on confirm.
+/// Longest note the backend accepts (`FAILED_DELIVERY_NOTE_MAX_LENGTH`).
+const failedDeliveryNoteMaxLength = 500;
+
+/// Collects a reason, an optional resolution and an optional note for a
+/// failed delivery. Pops `({reason, action, note})` on confirm. The five
+/// reasons are fixed (D-12); anything they don't cover goes in the note.
 class FailedDeliverySheet extends StatefulWidget {
   const FailedDeliverySheet({super.key});
 
@@ -30,6 +34,13 @@ class FailedDeliverySheet extends StatefulWidget {
 class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
   String? _reason;
   String? _action;
+  final _note = TextEditingController();
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +103,16 @@ class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
                   ),
               ],
             ),
-            const SizedBox(height: LpgSpacing.lg),
+            const SizedBox(height: LpgSpacing.md),
+            LpgTextField(
+              label: 'Note (optional)',
+              hintText: 'e.g. Gate locked, customer asked for Saturday',
+              controller: _note,
+              maxLines: 3,
+              maxLength: failedDeliveryNoteMaxLength,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: LpgSpacing.md),
             LpgButton(
               label: 'Confirm failed delivery',
               expand: true,
@@ -100,9 +120,13 @@ class _FailedDeliverySheetState extends State<FailedDeliverySheet> {
               icon: LpgIcons.cancel,
               onPressed: _reason == null
                   ? null
-                  : () => Navigator.of(
-                      context,
-                    ).pop((reason: _reason!, action: _action)),
+                  : () => Navigator.of(context).pop((
+                      reason: _reason!,
+                      action: _action,
+                      note: _note.text.trim().isEmpty
+                          ? null
+                          : _note.text.trim(),
+                    )),
             ),
           ],
         ),
