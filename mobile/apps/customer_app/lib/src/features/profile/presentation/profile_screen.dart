@@ -179,15 +179,7 @@ class ProfileScreen extends ConsumerWidget {
                 LpgButton(
                   label: 'Log Out',
                   icon: LpgIcons.logout,
-                  onPressed: () async {
-                    // Drop the FCM token first, while the session is still
-                    // valid — a shared device shouldn't keep getting this
-                    // user's notifications.
-                    await ref
-                        .read(pushNotificationServiceProvider)
-                        .unregister();
-                    await ref.read(authControllerProvider).logout();
-                  },
+                  onPressed: () => _logOut(context, ref),
                   variant: LpgButtonVariant.secondary,
                   expand: true,
                 ),
@@ -197,6 +189,27 @@ class ProfileScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Confirms, then signs out. Dropping the FCM token comes first, while the
+/// session is still valid, so a shared device stops getting this user's
+/// notifications — but it is best effort: a push failure must never keep
+/// the customer signed in (CA-01).
+Future<void> _logOut(BuildContext context, WidgetRef ref) async {
+  final confirmed = await LpgFeedback.confirm(
+    context,
+    title: 'Log out?',
+    message: "You'll need your mobile number and a new code to sign in again.",
+    confirmLabel: 'Log Out',
+  );
+  if (!confirmed) return;
+  try {
+    await ref.read(pushNotificationServiceProvider).unregister();
+  } catch (e) {
+    debugPrint('logout: could not unregister push token ($e)');
+  } finally {
+    await ref.read(authControllerProvider).logout();
   }
 }
 

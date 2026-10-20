@@ -101,18 +101,30 @@ class PushNotificationService {
   }
 
   /// Register the current device token with the backend. Call once the user
-  /// is authenticated (the endpoint needs a bearer token).
+  /// is authenticated (the endpoint needs a bearer token). A no-op if FCM
+  /// isn't available on this device (init was skipped).
   Future<void> registerWithBackend() async {
-    final token = await FirebaseMessaging.instance.getToken();
+    final token = await _tokenOrNull();
     if (token != null) await _sendToken(token);
   }
 
   /// Drop this device's token — call just before logout so a shared device
-  /// stops getting the previous user's notifications.
+  /// stops getting the previous user's notifications. Safe to call even if
+  /// FCM never initialised (no google-services.json, no Play Services):
+  /// logout must never depend on push (CA-01).
   Future<void> unregister() async {
-    final token = await FirebaseMessaging.instance.getToken();
+    final token = await _tokenOrNull();
     if (token == null) return;
     await _notificationApi.unregisterDevice(token);
+  }
+
+  Future<String?> _tokenOrNull() async {
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      debugPrint('push: could not read FCM token ($e)');
+      return null;
+    }
   }
 
   Future<void> _sendToken(String token) async {
