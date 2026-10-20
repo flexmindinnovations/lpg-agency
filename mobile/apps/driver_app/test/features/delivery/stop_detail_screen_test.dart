@@ -6,6 +6,7 @@ import 'package:design_system/design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
 import 'package:driver_app/src/features/delivery/data/driver_position_provider.dart';
+import 'package:driver_app/src/features/delivery/data/stop_customer_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_destination_provider.dart';
 import 'package:driver_app/src/features/delivery/data/stop_order_provider.dart';
 import 'package:driver_app/src/features/delivery/presentation/stop_detail_screen.dart';
@@ -99,6 +100,18 @@ final _mapOverrides = [
   ),
   driverPositionProvider.overrideWith((ref) async => null),
   mapTileProviderProvider.overrideWithValue(FakeTileProvider()),
+  stopCustomerProvider.overrideWith(
+    (ref, id) async => CustomerResponse.fromJson(const {
+      'id': 'c1',
+      'tenant_id': 't1',
+      'branch_id': 'b1',
+      'full_name': 'Asha Rao',
+      'phone_number': '+919876543210',
+      'customer_type': 'domestic',
+      'kyc_status': 'verified',
+      'status': 'active',
+    }),
+  ),
 ];
 
 Widget _host(ProviderContainer container) => UncontrolledProviderScope(
@@ -140,6 +153,75 @@ void main() {
       expect(find.widgetWithText(LpgButton, 'Navigate'), findsOneWidget);
       expect(find.text('Record delivery'), findsOneWidget);
       expect(find.text('Delivery failed'), findsOneWidget);
+    });
+
+    testWidgets('names the customer with a call button (DR-06)', (
+      tester,
+    ) async {
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          stopOrderProvider.overrideWith((ref, id) async => _order()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(find.text('Asha Rao'), findsOneWidget);
+      expect(find.text('+919876543210'), findsOneWidget);
+      expect(find.byTooltip('Call Asha Rao'), findsOneWidget);
+    });
+
+    testWidgets('a failed stop no longer asks to collect money (DR-09)', (
+      tester,
+    ) async {
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          stopOrderProvider.overrideWith(
+            (ref, id) async => _order(status: 'failed_delivery'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+
+      expect(find.textContaining('Collect'), findsNothing);
+    });
+
+    testWidgets('"Check again" after loading shows Start in one tap (DR-03)', (
+      tester,
+    ) async {
+      var routeStatus = 'planned';
+      var orderStatus = 'assigned';
+      final container = ProviderContainer(
+        overrides: [
+          ..._mapOverrides,
+          activeRouteProvider.overrideWith((ref) async => null),
+          stopRouteStatusProvider.overrideWith((ref, id) {
+            ref.watch(activeRouteProvider);
+            return routeStatus;
+          }),
+          stopOrderProvider.overrideWith(
+            (ref, id) async => _order(status: orderStatus),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container);
+      expect(find.text('Van not loaded yet'), findsOneWidget);
+
+      // The office loads and dispatches the van.
+      routeStatus = 'loaded';
+      orderStatus = 'ready_for_dispatch';
+      await tester.tap(find.text('Check again'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Waiting for dispatch'), findsNothing);
+      expect(find.text('Start this delivery'), findsOneWidget);
     });
 
     testWidgets('"Start this delivery" queues an order_depart op', (

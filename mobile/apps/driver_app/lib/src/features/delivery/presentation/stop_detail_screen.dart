@@ -3,10 +3,12 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../offline/delivery_mutations.dart';
 import '../../../offline/pending_sync.dart';
 import '../data/active_route_provider.dart';
+import '../data/stop_customer_provider.dart';
 import '../data/stop_order_provider.dart';
 import 'failed_delivery_sheet.dart';
 import 'widgets/stop_map_card.dart';
@@ -59,6 +61,13 @@ class StopDetailScreen extends ConsumerWidget {
     );
   }
 
+  /// "Check again": re-reads both the route (van loaded?) and this order
+  /// (now ready for dispatch?) so one tap is enough.
+  void _refresh(WidgetRef ref) {
+    ref.invalidate(activeRouteProvider);
+    ref.invalidate(stopOrderProvider(orderId));
+  }
+
   List<Widget> _actions(
     BuildContext context,
     WidgetRef ref,
@@ -80,7 +89,7 @@ class StopDetailScreen extends ConsumerWidget {
                 'The office hasn\'t finished loading your van for this route. '
                 'You can start this delivery once loading is complete.',
             actionLabel: 'Check again',
-            onAction: () => ref.invalidate(activeRouteProvider),
+            onAction: () => _refresh(ref),
           ),
         ];
       case 'assigned':
@@ -93,7 +102,7 @@ class StopDetailScreen extends ConsumerWidget {
                 'The office hasn\'t marked this order ready for dispatch yet. '
                 'You can start it once they do.',
             actionLabel: 'Check again',
-            onAction: () => ref.invalidate(stopOrderProvider(orderId)),
+            onAction: () => _refresh(ref),
           ),
         ];
       case 'ready_for_dispatch':
@@ -205,7 +214,11 @@ class StopDetailScreen extends ConsumerWidget {
   };
 }
 
-/// Order number, status, address, cylinders and the amount to collect.
+/// Statuses at which the driver still has money to collect at this stop.
+const _collectStatuses = {'assigned', 'ready_for_dispatch', 'out_for_delivery'};
+
+/// Order number, status, customer, address, cylinders and the amount to
+/// collect.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.order, required this.pendingSync});
 
@@ -245,6 +258,7 @@ class _SummaryCard extends StatelessWidget {
             ],
           ),
           const Divider(height: LpgSpacing.xl),
+          _CustomerRow(customerId: order.customerId),
           _DetailRow(
             icon: LpgIcons.location,
             text: order.deliveryAddress.addressLine,
@@ -254,7 +268,8 @@ class _SummaryCard extends StatelessWidget {
             icon: LpgIcons.cylinder,
             text: '$cylinders cylinder${cylinders == 1 ? '' : 's'}',
           ),
-          if (order.totalAmount != null) ...[
+          if (order.totalAmount != null &&
+              _collectStatuses.contains(order.status)) ...[
             const SizedBox(height: LpgSpacing.smd),
             _DetailRow(
               icon: LpgIcons.cash,
@@ -262,6 +277,61 @@ class _SummaryCard extends StatelessWidget {
               text: 'Collect ${LpgFormat.currency(order.totalAmount!)}',
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The customer's name with a call button — drivers phone ahead when the
+/// gate is locked or the flat number is missing. Quietly absent while it
+/// loads or when the customer can't be read (offline and never cached).
+class _CustomerRow extends ConsumerWidget {
+  const _CustomerRow({required this.customerId});
+
+  final String customerId;
+
+  Future<void> _call(BuildContext context, String phone) async {
+    final ok = await launchUrl(Uri(scheme: 'tel', path: phone));
+    if (!ok && context.mounted) {
+      LpgFeedback.showToast(
+        context,
+        "Couldn't start a call. The number is $phone.",
+        tone: LpgTone.warning,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customer = ref.watch(stopCustomerProvider(customerId)).value;
+    if (customer == null) return const SizedBox.shrink();
+    final phone = customer.phoneNumber;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: LpgSpacing.smd),
+      child: Row(
+        children: [
+          const LpgIconBox(icon: LpgIcons.user, size: LpgSizes.avatarSm),
+          const SizedBox(width: LpgSpacing.smd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(customer.fullName, style: context.lpgText.bodyLarge),
+                Text(
+                  phone,
+                  style: context.lpgText.bodySmall?.copyWith(
+                    color: context.lpgColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Call ${customer.fullName}',
+            onPressed: () => _call(context, phone),
+            icon: const Icon(LpgIcons.call),
+          ),
         ],
       ),
     );

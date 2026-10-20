@@ -68,7 +68,7 @@ void main() {
       expect(find.textContaining('Approximate location'), findsOneWidget);
     });
 
-    testWidgets('shows "not pinned" and no Navigate button when unlocated', (
+    testWidgets('shows "not pinned" and navigates by address when unlocated', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -82,9 +82,16 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Delivery location not pinned.'), findsOneWidget);
+      expect(
+        find.textContaining('Delivery location not pinned.'),
+        findsOneWidget,
+      );
       expect(find.byType(LocationMap), findsNothing);
-      expect(find.widgetWithText(LpgButton, 'Navigate'), findsNothing);
+      // DR-06: an unpinned stop can still be navigated by its address text.
+      expect(
+        find.widgetWithText(LpgButton, 'Navigate by address'),
+        findsOneWidget,
+      );
     });
   });
 }
