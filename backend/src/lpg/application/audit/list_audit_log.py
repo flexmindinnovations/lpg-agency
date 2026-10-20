@@ -19,6 +19,7 @@ class ListAuditLogQuery:
     tenant_id: uuid.UUID
     entity_name: str | None = None
     actor_id: uuid.UUID | None = None
+    action: str | None = None
     date_from: datetime | None = None
     date_to: datetime | None = None
     cursor: str | None = None
@@ -34,6 +35,7 @@ class ListAuditLogUseCase:
             query.tenant_id,
             entity_name=query.entity_name,
             actor_id=query.actor_id,
+            action=query.action,
             date_from=query.date_from,
             date_to=query.date_to,
             cursor=query.cursor,

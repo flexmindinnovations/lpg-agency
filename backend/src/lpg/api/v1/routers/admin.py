@@ -31,7 +31,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lpg.api.v1.dependencies.admin import (
     get_audit_log_repository,
@@ -1128,14 +1128,38 @@ async def list_permissions(
 # -- Audit Log ----------------------------------------------------------------------
 
 
+@router.get(
+    "/audit-log/entity-types",
+    response_model=list[str],
+    summary="Record types that appear in the audit log",
+)
+async def list_audit_log_entity_types(
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("audit:read"))],
+    repository: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> list[str]:
+    """Distinct `entity_name` values for this tenant — feeds the Audit Log's
+    "Record type" filter."""
+    return await repository.list_entity_names(principal.tenant_id)
+
+
 @router.get("/audit-log", response_model=AuditLogPageResponse, summary="View the audit log")
 async def list_audit_log(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("audit:read"))],
     repository: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    entity_name: str | None = None,
+    entity_name: Annotated[str | None, Query(max_length=100)] = None,
     actor_id: uuid.UUID | None = None,
+    action: Annotated[
+        str | None,
+        Query(pattern="^(create|update|delete)$", description="create, update or delete"),
+    ] = None,
+    date_from: Annotated[
+        datetime | None, Query(description="Only entries at or after this instant")
+    ] = None,
+    date_to: Annotated[
+        datetime | None, Query(description="Only entries before this instant")
+    ] = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> AuditLogPageResponse:
     use_case = ListAuditLogUseCase(repository)
     page = await use_case.execute(
@@ -1143,6 +1167,9 @@ async def list_audit_log(
             tenant_id=principal.tenant_id,
             entity_name=entity_name,
             actor_id=actor_id,
+            action=action,
+            date_from=date_from,
+            date_to=date_to,
             cursor=cursor,
             limit=limit,
         )

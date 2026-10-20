@@ -54,6 +54,7 @@ class AuditLogRepository(Protocol):
         *,
         entity_name: str | None = None,
         actor_id: uuid.UUID | None = None,
+        action: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         cursor: str | None = None,
@@ -64,4 +65,8 @@ class AuditLogRepository(Protocol):
         high-volume append-only history, avoiding deep-offset's performance
         cliff.
         """
+        ...
+
+    async def list_entity_names(self, tenant_id: uuid.UUID) -> list[str]:
+        """Distinct record types (table names) in this tenant's audit log."""
         ...
