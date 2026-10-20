@@ -148,7 +148,6 @@ def _vehicle_to_response(vehicle: object) -> VehicleResponse:
     "/drivers/me",
     response_model=DriverMeResponse,
     summary="The calling driver's own profile",
-    dependencies=[Depends(require_permission("drivers:read"))],
 )
 async def get_my_driver_profile(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
