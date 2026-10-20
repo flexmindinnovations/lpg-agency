@@ -51,7 +51,7 @@ interface SuggestedPrompt {
 
 const DISABLED_REASON_MESSAGES: Record<string, string> = {
   gateway_disabled:
-    "The AI Assistant isn't enabled for your organization yet — an admin can turn it on under Tenant Configuration (ai_gateway_enabled).",
+    "The AI Assistant isn't enabled for your organization yet — an agency admin can turn it on in Settings › Agency configuration.",
   budget_exceeded: "Today's AI usage limit has been reached. Try again tomorrow.",
   provider_error: 'Something went wrong reaching the AI provider. Please try again.',
 };

@@ -15,19 +15,22 @@ import { AuthService } from './auth.service';
  * docstring for why a bare `restoreSession()` call here isn't safe). Only
  * a failure there (no valid cookie either) redirects to `/login`.
  *
- * Deliberately does *not* preserve the attempted URL as a `redirectTo`
- * query param — this guard cannot tell "session just expired mid-use"
- * apart from "never authenticated, deep link" (both look identical after
- * a fresh navigation/reload; no in-memory flag survives either case), so
- * every forced re-login now lands on the role-based smart default
- * (`login-page.ts`'s `submit()`) instead of bouncing back to whatever
- * page triggered this guard.
+ * The attempted URL is passed to `/login` as `returnUrl`, so a deep link
+ * or an expired session comes back to the same page after signing in;
+ * `login-page.ts`'s `postLoginUrl` decides whether it is safe to follow.
  */
-export const authGuard: CanActivateFn = () => {
+function loginRedirect(router: Router, attemptedUrl: string) {
+  const isWorthReturningTo = attemptedUrl !== '/' && attemptedUrl !== '';
+  return router.createUrlTree(['/login'], {
+    queryParams: isWorthReturningTo ? { returnUrl: attemptedUrl } : {},
+  });
+}
+
+export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
   return authService
     .ensureSessionRestored()
-    .pipe(map((restored) => (restored ? true : router.createUrlTree(['/login']))));
+    .pipe(map((restored) => (restored ? true : loginRedirect(router, state.url))));
 };
