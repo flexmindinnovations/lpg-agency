@@ -255,6 +255,12 @@ class RecordFailedDeliveryRequest(BaseModel):
     resolution_action: FailedDeliveryResolutionAction | None = None
 
 
+class DeliveryCodeResponse(BaseModel):
+    """The code the customer reads out to the driver to confirm delivery."""
+
+    code: str
+
+
 # ==========================================================================
 # Cancellation
 # ==========================================================================

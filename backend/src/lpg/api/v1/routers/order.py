@@ -79,6 +79,7 @@ from lpg.api.v1.dependencies.order import (
     get_cancellation_record_repository,
     get_credit_limit_evaluator,
     get_cylinder_cap_policy,
+    get_delivery_code_store,
     get_file_storage,
     get_idempotency_service,
     get_job_queue,
@@ -100,6 +101,7 @@ from lpg.api.v1.schemas.order import (
     DeliverOrderRequest,
     DeliverOrderResponse,
     DeliveryAddressPayload,
+    DeliveryCodeResponse,
     DriverLocationSnapshot,
     OrderableCylinderTypeResponse,
     OrderLineResponse,
@@ -115,7 +117,7 @@ from lpg.api.v1.schemas.order import (
     RecordFailedDeliveryRequest,
     TrackingDriverInfo,
 )
-from lpg.application.common.errors import NotFoundError
+from lpg.application.common.errors import NotFoundError, PermissionDeniedError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.delivery.ports import (
@@ -135,6 +137,7 @@ from lpg.application.order.ports import (
     CancellationRecordRepository,
     CreditLimitEvaluator,
     CylinderCapPolicy,
+    DeliveryCodeStore,
     OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryEntry,
@@ -162,6 +165,8 @@ from lpg.application.order.use_cases import (
     DepartOrderUseCase,
     DispatchOrderCommand,
     DispatchOrderUseCase,
+    GetDeliveryCodeQuery,
+    GetDeliveryCodeUseCase,
     GetOrderQuery,
     GetOrderUseCase,
     GetPendingCancellationUseCase,
@@ -810,6 +815,7 @@ async def depart_order(
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    delivery_code_store: Annotated[DeliveryCodeStore, Depends(get_delivery_code_store)],
     idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> OrderResponse:
@@ -831,6 +837,7 @@ async def depart_order(
         otp_store,
         otp_delivery,
         unit_of_work,
+        delivery_code_store,
         delivery_otp_ttl_seconds=settings.delivery_otp_ttl_seconds,
     )
 
@@ -862,6 +869,7 @@ async def resend_delivery_otp(
     customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     otp_store: Annotated[OtpStore, Depends(get_otp_store)],
     otp_delivery: Annotated[OtpDeliveryPort, Depends(get_otp_delivery)],
+    delivery_code_store: Annotated[DeliveryCodeStore, Depends(get_delivery_code_store)],
     settings: Annotated[Settings, Depends(get_settings)],
     _rate_limit: Annotated[
         None,
@@ -884,10 +892,41 @@ async def resend_delivery_otp(
         customer_repository,
         otp_store,
         otp_delivery,
+        delivery_code_store,
         delivery_otp_ttl_seconds=settings.delivery_otp_ttl_seconds,
     )
     await use_case.execute(ResendDeliveryOtpCommand(order_id=order_id))
     return Response(status_code=204)
+
+
+@router.get(
+    "/orders/{order_id}/delivery-code",
+    response_model=DeliveryCodeResponse | None,
+    dependencies=[Depends(require_permission("orders:read"))],
+)
+async def get_delivery_code(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    delivery_code_store: Annotated[DeliveryCodeStore, Depends(get_delivery_code_store)],
+) -> DeliveryCodeResponse | None:
+    """The delivery code the customer gives the driver at the door, for the
+    customer's own order while it is out for delivery; `null` when no code is
+    pending. Customers only: the code is the proof that the cylinder reached
+    the customer, so neither the driver nor office staff may read it. Another
+    customer's order is a 404, the same as an order that does not exist.
+    """
+    if principal.role != "customer":
+        msg = "Only the customer can view an order's delivery code."
+        raise PermissionDeniedError(msg)
+    customer = await customer_repository.get_by_identity_user_id(_require_actor(principal))
+    if customer is None:
+        raise NotFoundError("Order not found.", order_id=str(order_id))
+    code = await GetDeliveryCodeUseCase(order_repository, delivery_code_store).execute(
+        GetDeliveryCodeQuery(order_id=order_id, customer_id=customer.id)
+    )
+    return DeliveryCodeResponse(code=code) if code is not None else None
 
 
 @router.post(

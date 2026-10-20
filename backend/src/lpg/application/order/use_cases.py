@@ -58,6 +58,7 @@ if TYPE_CHECKING:
         CancellationRecordRepository,
         CreditLimitEvaluator,
         CylinderCapPolicy,
+        DeliveryCodeStore,
         OrderNumberSequence,
         OrderRepository,
         OrderStatusHistoryEntry,
@@ -400,6 +401,7 @@ class DepartOrderUseCase:
         otp_store: OtpStore,
         otp_delivery: OtpDeliveryPort,
         unit_of_work: UnitOfWork,
+        delivery_code_store: DeliveryCodeStore,
         *,
         delivery_otp_ttl_seconds: int,
     ) -> None:
@@ -409,6 +411,7 @@ class DepartOrderUseCase:
         self._otp_store = otp_store
         self._otp_delivery = otp_delivery
         self._unit_of_work = unit_of_work
+        self._delivery_code_store = delivery_code_store
         self._delivery_otp_ttl_seconds = delivery_otp_ttl_seconds
 
     async def execute(self, command: DepartOrderCommand) -> Order:
@@ -448,6 +451,11 @@ class DepartOrderUseCase:
         if customer is not None:
             key = order_delivery_otp_key(order.tenant_id, order.id)
             code = await self._otp_store.issue(key, ttl_seconds=self._delivery_otp_ttl_seconds)
+            # Also shown in the customer's app, so a late or lost SMS never
+            # leaves the driver waiting at the door.
+            await self._delivery_code_store.remember(
+                order.tenant_id, order.id, code, ttl_seconds=self._delivery_otp_ttl_seconds
+            )
             # The SMS adapter has already logged the failure; the order is
             # out for delivery either way, so the driver must not see an error.
             with contextlib.suppress(ServiceUnavailableError):
@@ -475,6 +483,7 @@ class ResendDeliveryOtpUseCase:
         customer_repository: CustomerRepository,
         otp_store: OtpStore,
         otp_delivery: OtpDeliveryPort,
+        delivery_code_store: DeliveryCodeStore,
         *,
         delivery_otp_ttl_seconds: int,
     ) -> None:
@@ -482,6 +491,7 @@ class ResendDeliveryOtpUseCase:
         self._customer_repository = customer_repository
         self._otp_store = otp_store
         self._otp_delivery = otp_delivery
+        self._delivery_code_store = delivery_code_store
         self._delivery_otp_ttl_seconds = delivery_otp_ttl_seconds
 
     async def execute(self, command: ResendDeliveryOtpCommand) -> None:
@@ -500,7 +510,41 @@ class ResendDeliveryOtpUseCase:
 
         key = order_delivery_otp_key(order.tenant_id, order.id)
         code = await self._otp_store.issue(key, ttl_seconds=self._delivery_otp_ttl_seconds)
+        await self._delivery_code_store.remember(
+            order.tenant_id, order.id, code, ttl_seconds=self._delivery_otp_ttl_seconds
+        )
         await self._otp_delivery.send(customer.phone_number, code, purpose="delivery")
+
+
+@dataclass(frozen=True, slots=True)
+class GetDeliveryCodeQuery(Query):
+    order_id: uuid.UUID
+    #: The signed-in customer. Only the order's own customer may read its
+    #: code — anyone else gets the same 404 as for an order that does not
+    #: exist (OWASP API1).
+    customer_id: uuid.UUID
+
+
+class GetDeliveryCodeUseCase:
+    """The delivery code the customer reads out to the driver, shown in the
+    customer's app while their order is out for delivery. `None` when the
+    order is not out for delivery or no code is pending (expired, or the
+    order was delivered with it).
+    """
+
+    def __init__(
+        self, order_repository: OrderRepository, delivery_code_store: DeliveryCodeStore
+    ) -> None:
+        self._get_order = GetOrderUseCase(order_repository)
+        self._delivery_code_store = delivery_code_store
+
+    async def execute(self, query: GetDeliveryCodeQuery) -> str | None:
+        order = await self._get_order.execute(
+            GetOrderQuery(order_id=query.order_id, scoped_customer_id=query.customer_id)
+        )
+        if order.status != "out_for_delivery":
+            return None
+        return await self._delivery_code_store.recall(order.tenant_id, order.id)
 
 
 @dataclass(frozen=True, slots=True)
