@@ -89,6 +89,25 @@ CYLINDER_TYPES = [
     ("Commercial 47.5kg", Decimal("47.5")),
 ]
 
+#: Demo GST classification (DA-06): LPG is HSN 27111900; domestic cylinders
+#: at 5%, commercial at 18% (`docs/research/feature-gap-analysis.md` R16).
+#: Applied only where a cylinder type has no rate yet, so a rate an agency
+#: set by hand is never overwritten.
+LPG_HSN_CODE = "27111900"
+GST_RATE_BY_CYLINDER_PREFIX = {"Domestic": Decimal("5"), "Commercial": Decimal("18")}
+
+#: Demo agency business profile printed on tax invoices (DA-13). The GSTIN
+#: is made up but checksum-valid, with Telangana's state code (36).
+AGENCY_PROFILE = {
+    "legal_name": "Sai Krishna Gas Agencies Pvt Ltd",
+    "gstin": "36AAFCS4821K1Z6",
+    "address_line_1": "Plot 22, Road No. 3, Banjara Hills",
+    "city": "Hyderabad",
+    "state_code": "36",
+    "pincode": "500034",
+    "phone": "+914023350000",
+}
+
 # (cylinder, customer_type, price)
 PRICES = [
     ("Domestic 5kg", "domestic", Decimal("389.00")),
@@ -425,6 +444,36 @@ async def main() -> None:
                 new_id=sid("cylinder", name),
                 params={**p, "name": name, "w": weight},
             )
+            await conn.execute(
+                text(
+                    "UPDATE tenant.cylinder_type SET hsn_code = COALESCE(hsn_code, :hsn), "
+                    "gst_rate_percent = :rate WHERE id = :id AND gst_rate_percent IS NULL"
+                ),
+                {
+                    "id": cylinder_ids[name],
+                    "hsn": LPG_HSN_CODE,
+                    "rate": GST_RATE_BY_CYLINDER_PREFIX[name.split()[0]],
+                },
+            )
+        gst_rate_by_cylinder = {
+            name: (
+                await conn.execute(
+                    text("SELECT gst_rate_percent FROM tenant.cylinder_type WHERE id = :id"),
+                    {"id": cylinder_id},
+                )
+            ).scalar_one()
+            for name, cylinder_id in cylinder_ids.items()
+        }
+
+        # --- Agency GST business profile (DA-13) -------------------------
+        await conn.execute(
+            text(
+                "UPDATE tenant.tenant SET legal_name = :legal_name, gstin = :gstin, "
+                "address_line_1 = :address_line_1, city = :city, state_code = :state_code, "
+                "pincode = :pincode, phone = :phone WHERE id = :t AND legal_name IS NULL"
+            ),
+            {**p, **AGENCY_PROFILE},
+        )
 
         # This row's deterministic id (`sid("price", ...)`) is keyed only on
         # `(cyl, ctype)` — `effective_from` was never part of that key, so it
@@ -783,11 +832,22 @@ async def main() -> None:
                     "price": unit_price if priced else None,
                 },
             )
+            # Every order starts with a `booked` row a day before its current
+            # status (DA-37): TDT and the order timeline measure from it.
+            booked_at = now + timedelta(days=offset - 1)
+            await ensure(
+                "orders.order_status_history",
+                match="order_id = :o AND to_status = 'booked'",
+                columns="order_id, from_status, to_status, changed_by, changed_at",
+                values=":o, NULL, 'booked', :by, :at",
+                new_id=sid("order_history_booked", f"{phone}:{idx}"),
+                params={"o": order_id, "by": admin_id, "at": booked_at},
+            )
             await ensure(
                 "orders.order_status_history",
                 match="order_id = :o AND to_status = :st",
                 columns="order_id, from_status, to_status, changed_by, changed_at",
-                values=":o, NULL, :st, :by, :at",
+                values=":o, 'booked', :st, :by, :at",
                 new_id=sid("order_history", f"{phone}:{idx}"),
                 params={
                     "o": order_id,
@@ -802,7 +862,6 @@ async def main() -> None:
         # closed subset of ORDERS is what `GenerateInvoiceForOrderUseCase`
         # would have produced. Backs `rpt.vw_daily_sales` (live view) and
         # `rpt.mv_gst_filing_period` (materialized, refreshed below).
-        gst_rate_by_customer_type = {"domestic": Decimal("0.05")}  # else 18%
         invoice_ids: dict[str, uuid.UUID] = {}
         for idx, (phone, cyl, qty, status, offset) in enumerate(ORDERS):
             if status not in {"delivered", "closed"}:
@@ -811,8 +870,8 @@ async def main() -> None:
             ctype = cust[2]
             unit_price = price_by_key.get((cyl, ctype)) or Decimal("905.50")
             subtotal = unit_price * qty
-            gst_rate = gst_rate_by_customer_type.get(ctype, Decimal("0.18"))
-            tax_amount = (subtotal * gst_rate).quantize(Decimal("0.01"))
+            gst_rate = gst_rate_by_cylinder[cyl]
+            tax_amount = (subtotal * gst_rate / 100).quantize(Decimal("0.01"))
             total_amount = subtotal + tax_amount
             order_key = f"{phone}:{idx}"
             invoice_id = await ensure(
@@ -820,9 +879,9 @@ async def main() -> None:
                 match="order_id = :o",
                 columns=(
                     "tenant_id, customer_id, order_id, status, subtotal, tax_amount, "
-                    "total_amount, issued_at"
+                    "total_amount, issued_at, supplier_state_code, place_of_supply_state_code"
                 ),
-                values=":t, :c, :o, :st, :sub, :tax, :total, :at",
+                values=":t, :c, :o, :st, :sub, :tax, :total, :at, '36', '36'",
                 new_id=sid("invoice", order_key),
                 params={
                     **p,
@@ -843,9 +902,9 @@ async def main() -> None:
                 match="invoice_id = :i AND cylinder_type_id = :cyl",
                 columns=(
                     "invoice_id, cylinder_type_id, quantity, unit_price, subtotal, "
-                    "tax_amount, total_amount"
+                    "tax_amount, total_amount, hsn_code, gst_rate_percent"
                 ),
-                values=":i, :cyl, :q, :price, :sub, :tax, :total",
+                values=":i, :cyl, :q, :price, :sub, :tax, :total, :hsn, :rate",
                 new_id=sid("invoice_line", order_key),
                 params={
                     "i": invoice_id,
@@ -855,7 +914,64 @@ async def main() -> None:
                     "sub": subtotal,
                     "tax": tax_amount,
                     "total": total_amount,
+                    "hsn": LPG_HSN_CODE,
+                    "rate": gst_rate,
                 },
+            )
+            # A `paid` invoice has the payment that paid it (DA-07: amount
+            # paid and payment history must add up).
+            if offset <= -5:
+                await ensure(
+                    "accounting.payment",
+                    match="invoice_id = :i",
+                    columns="tenant_id, invoice_id, method, amount, collected_by, collected_at",
+                    values=":t, :i, :m, :amt, :by, :at",
+                    new_id=sid("payment", order_key),
+                    params={
+                        **p,
+                        "i": invoice_id,
+                        "m": "upi" if ctype == "domestic" else "bank_transfer",
+                        "amt": total_amount,
+                        "by": admin_id,
+                        "at": now + timedelta(days=offset),
+                    },
+                )
+
+        # DA-31: number every invoice that has no number yet from the
+        # tenant's own invoice sequence, as `GenerateInvoiceForOrderUseCase`
+        # would have.
+        await conn.execute(
+            text("""
+                INSERT INTO platform.reference_number_sequence (tenant_id, entity_type, next_value)
+                VALUES (:t, 'invoice', 1)
+                ON CONFLICT (tenant_id, entity_type) DO NOTHING
+            """),
+            p,
+        )
+        unnumbered = (
+            await conn.execute(
+                text(
+                    "SELECT id, issued_at FROM accounting.invoice "
+                    "WHERE tenant_id = :t AND invoice_number IS NULL ORDER BY issued_at, id"
+                ),
+                p,
+            )
+        ).all()
+        for invoice_id, issued_at in unnumbered:
+            next_value = (
+                await conn.execute(
+                    text(
+                        "UPDATE platform.reference_number_sequence "
+                        "SET next_value = next_value + 1 "
+                        "WHERE tenant_id = :t AND entity_type = 'invoice' "
+                        "RETURNING next_value - 1"
+                    ),
+                    p,
+                )
+            ).scalar_one()
+            await conn.execute(
+                text("UPDATE accounting.invoice SET invoice_number = :n WHERE id = :i"),
+                {"i": invoice_id, "n": f"INV-{issued_at.year}-{next_value:06d}"},
             )
 
         # --- Driver routes --------------------------------------------------
