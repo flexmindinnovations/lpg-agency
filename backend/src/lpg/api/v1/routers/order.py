@@ -1106,6 +1106,52 @@ async def reschedule_order(
 # ==========================================================================
 
 
+@router.get(
+    "/orders/{order_id}/proof-of-delivery",
+    response_model=ProofOfDeliveryResponse | None,
+    dependencies=[Depends(require_permission("orders:read"))],
+)
+async def get_proof_of_delivery(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    pod_repository: Annotated[ProofOfDeliveryRepository, Depends(get_proof_of_delivery_repository)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ProofOfDeliveryResponse | None:
+    """The delivery record of a delivered order (DO-26): when the OTP was
+    verified, where, how much was collected and how, with short-lived links
+    to the signature and photo when the driver captured them. `null` until
+    the order is delivered. Same row-scoping as `GET /orders/{order_id}`.
+    """
+    scope = await _resolve_scope(
+        principal, customer_repository, driver_repository, route_repository
+    )
+    if scope.blocked:
+        raise NotFoundError("Order not found.", order_id=str(order_id))
+    order = await GetOrderUseCase(order_repository).execute(
+        GetOrderQuery(
+            order_id=order_id,
+            scoped_customer_id=scope.customer_id,
+            scoped_route_stop_ids=scope.route_stop_ids,
+            scoped_branch_id=scope.branch_id,
+        )
+    )
+    entry = await pod_repository.get_by_order_id(order.id)
+    if entry is None:
+        return None
+    response = _pod_to_response(entry)
+    if entry.signature_blob_ref:
+        response.signature_url = await file_storage.url(
+            entry.signature_blob_ref, expires_seconds=600
+        )
+    if entry.photo_blob_ref:
+        response.photo_url = await file_storage.url(entry.photo_blob_ref, expires_seconds=600)
+    return response
+
+
 @router.post(
     "/orders/{order_id}/pod-attachments",
     response_model=PodAttachmentResponse,

@@ -934,6 +934,15 @@ class TestOrderFullLifecycle:
         assert "ledger_transaction_id" not in deliver_body
         assert "invoice_id" not in deliver_body["order"]
 
+        # DO-26: the order page can show the delivery record with a link to
+        # the signature.
+        pod_response = await client.get(
+            f"/api/v1/orders/{order_id}/proof-of-delivery", headers=admin_headers
+        )
+        assert pod_response.status_code == 200, pod_response.text
+        assert pod_response.json()["dac_code"] == "445566"
+        assert pod_response.json()["signature_url"]
+
         # Reserve-then-deliver-in-full must not double-count: balance is
         # unchanged since step 3b's load (99), only the +1 collected empty
         # is new — filled stays 99.

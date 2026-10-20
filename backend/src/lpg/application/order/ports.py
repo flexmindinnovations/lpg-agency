@@ -216,6 +216,8 @@ class ProofOfDeliveryRepository(Protocol):
         dac_code: str | None = None,
     ) -> ProofOfDeliveryEntry: ...
 
+    async def get_by_order_id(self, order_id: uuid.UUID) -> ProofOfDeliveryEntry | None: ...
+
 
 class CylinderCapPolicy(Protocol):
     async def evaluate(

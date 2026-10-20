@@ -253,6 +253,10 @@ class ProofOfDeliveryResponse(BaseModel):
     recorded_by: uuid.UUID
     recorded_at: datetime
     dac_code: str | None = None
+    #: Short-lived links to view the signature / photo, filled by
+    #: `GET /orders/{id}/proof-of-delivery` only.
+    signature_url: str | None = None
+    photo_url: str | None = None
 
 
 class DeliverOrderResponse(BaseModel):
