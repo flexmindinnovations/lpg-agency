@@ -1,6 +1,12 @@
 {$SITE_ADDRESS::80} {
 	encode zstd gzip
 
+	# No `log` directive on purpose: Caddy writes no access log, so no URL
+	# (query string included) is ever recorded here. If access logs are
+	# turned on, filter credentials out of the query, e.g.
+	#   log { format filter { request>uri query { replace token REDACTED } } }
+	# The realtime socket no longer puts a token in its URL (DO-38), but
+	# older app builds still do during the transition.
 	@backend path /api/* /health/*
 	handle @backend {
 		reverse_proxy backend:8000
