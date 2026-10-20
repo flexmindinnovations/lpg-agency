@@ -71,36 +71,22 @@ async def get_unit_of_work(
             async with uow:
                 yield uow
     except Exception as e:
-        from fastapi import HTTPException
-        from fastapi.exceptions import RequestValidationError
-
         from lpg.application.common.errors import ApplicationError
         from lpg.domain.common.base import DomainError
 
-        # DomainError (invariant violations, invalid state transitions) must
-        # reach `domain_error_handler` and come back as 409 with its real
-        # error_code — that handler's whole docstring is "well-formed request,
-        # not-currently-permitted state, and the client branches on that".
-        # This block used to catch it along with everything else and flatten
-        # it into an opaque 500, defeating that contract on every endpoint
-        # that resolves a UnitOfWork through this dependency — found via three
-        # integration tests expecting 409 ("Cannot transition order from
-        # 'closed' to 'closed'", and the inventory/route equivalents) that all
-        # got 500 instead. `RequestValidationError` (a malformed request body,
-        # resolved after this generator dep is already entered) must likewise
-        # pass through to its 422 handler, not become a 500.
+        # Every exception is re-raised untouched so the app-level handlers
+        # (`api/middleware/problem_details.py`) answer it: DomainError -> 409
+        # with its real error_code, ApplicationError -> its declared status,
+        # RequestValidationError -> 422, a known database constraint failure ->
+        # a plain-language 409/422, anything else -> a generic 500 with a
+        # trace_id. This block used to flatten everything that was not one of
+        # the first three into `HTTPException(500, detail=str(e))`, which sent
+        # raw SQL, table names, the tenant id and bound parameters to the
+        # browser in every environment (QA finding DA-03). The one thing done
+        # here is naming the cylinder type in a business error's message.
         if isinstance(e, (ApplicationError, DomainError)):
             await _name_cylinder_type(e, database, tenant_context)
-        if isinstance(e, (HTTPException, RequestValidationError, ApplicationError, DomainError)):
-            raise
-
-        from lpg.config.logging import get_logger
-
-        logger = get_logger(__name__)
-        logger.error("unhandled_unit_of_work_exception", error=str(e))
-        raise HTTPException(
-            status_code=500, detail=f"An unexpected error occurred: {e!s}"
-        ) from None
+        raise
 
 
 async def _name_cylinder_type(

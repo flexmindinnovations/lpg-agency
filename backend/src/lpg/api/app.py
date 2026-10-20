@@ -79,6 +79,7 @@ from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.jobs.pool import JobQueue
 from lpg.infrastructure.persistence.database import Database
+from lpg.infrastructure.persistence.errors import DATABASE_ERROR_TYPES, translate_database_error
 from lpg.infrastructure.realtime.connection_manager import ConnectionManager
 from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
 from lpg.infrastructure.realtime.subscriber import RedisSubscriber
@@ -298,7 +299,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=[settings.correlation_id_header],
     )
 
-    register_exception_handlers(app)
+    register_exception_handlers(
+        app,
+        database_error_types=DATABASE_ERROR_TYPES,
+        translate_database_error=translate_database_error,
+    )
 
     # Health endpoints sit outside the versioned prefix: they serve the
     # platform, not API clients, and their contract must not change when the

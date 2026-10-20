@@ -26,7 +26,7 @@ applications is pure ceremony.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from fastapi import status
 from fastapi.exceptions import RequestValidationError
@@ -38,6 +38,8 @@ from lpg.config.logging import get_logger
 from lpg.domain.common.base import DomainError
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from fastapi import FastAPI, Request
 
 _logger = get_logger(__name__)
@@ -199,8 +201,50 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
-def register_exception_handlers(app: FastAPI) -> None:
+class DatabaseErrorTranslator(Protocol):
+    def __call__(self, error: BaseException) -> ApplicationError | None: ...
+
+
+def database_error_handler(
+    translate: DatabaseErrorTranslator,
+) -> Callable[[Request, Exception], Awaitable[JSONResponse]]:
+    """A database driver error -> a safe Problem Details response (DA-03).
+
+    The translator (supplied by the composition root, since only
+    infrastructure may know the driver's exception types) maps the failures a
+    person can act on — a duplicate, a value that is too long, a record still
+    in use — to an `ApplicationError` with a plain-language message. Anything
+    else is a generic 500. Either way the raw driver message (SQL, table
+    names, tenant id, bound parameters) is only logged, with the trace id;
+    it never reaches the client, in any environment.
+    """
+
+    async def _handler(request: Request, exc: Exception) -> JSONResponse:
+        _logger.error(
+            "database_error",
+            exception_type=type(exc).__name__,
+            error=str(exc),
+            path=request.url.path,
+        )
+        translated = translate(exc)
+        if translated is None:
+            return await unhandled_exception_handler(request, exc)
+        return await application_error_handler(request, translated)
+
+    return _handler
+
+
+def register_exception_handlers(
+    app: FastAPI,
+    *,
+    database_error_types: tuple[type[Exception], ...] = (),
+    translate_database_error: DatabaseErrorTranslator | None = None,
+) -> None:
     """Wire every handler onto the application."""
+    if translate_database_error is not None:
+        handler = database_error_handler(translate_database_error)
+        for error_type in database_error_types:
+            app.add_exception_handler(error_type, handler)
     app.add_exception_handler(DomainError, domain_error_handler)
     app.add_exception_handler(ApplicationError, application_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)

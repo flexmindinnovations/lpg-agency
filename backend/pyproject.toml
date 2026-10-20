@@ -267,6 +267,9 @@ forbidden_modules = ["sqlalchemy", "asyncpg"]
 # infrastructure only through application-layer ports.
 ignore_imports = [
     "lpg.api.app -> lpg.infrastructure.persistence.database",
+    # DA-03: the composition root hands the Problem Details handlers the
+    # translator that turns a driver error into a safe, user-facing message.
+    "lpg.api.app -> lpg.infrastructure.persistence.errors",
     # Domain-event handlers are infrastructure adapters (they open their own
     # session and build concrete repositories), so the composition root is
     # what registers them and hands them the Database.
