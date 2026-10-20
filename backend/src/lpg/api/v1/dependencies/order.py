@@ -32,6 +32,7 @@ from lpg.application.order.ports import (
     CreditLimitEvaluator,
     CustomerOpenOrderReader,
     CylinderCapPolicy,
+    OrderCustomerDirectory,
     OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryRepository,
@@ -81,6 +82,16 @@ def get_cancellation_record_repository(
     )
 
     return SqlAlchemyCancellationRecordRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_order_customer_directory(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OrderCustomerDirectory:
+    from lpg.infrastructure.persistence.repositories.order import (
+        SqlAlchemyOrderCustomerDirectory,
+    )
+
+    return SqlAlchemyOrderCustomerDirectory(unit_of_work)  # type: ignore[arg-type]
 
 
 def get_proof_of_delivery_repository(

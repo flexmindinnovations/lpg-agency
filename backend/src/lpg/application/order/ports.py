@@ -38,6 +38,29 @@ class CancellationRecordEntry:
     reason: str
     requested_at: datetime
     approved_at: datetime | None
+    rejected_by: uuid.UUID | None = None
+    rejected_at: datetime | None = None
+    rejection_reason: str | None = None
+
+    @property
+    def status(self) -> str:
+        """`pending` until a Manager approves or rejects it (DO-14)."""
+        if self.approved_by is not None:
+            return "approved"
+        if self.rejected_by is not None:
+            return "rejected"
+        return "pending"
+
+
+@dataclass(frozen=True, slots=True)
+class OrderCustomerSummary:
+    """Who an order is for, as the order screens show it (DO-12)."""
+
+    customer_id: uuid.UUID
+    full_name: str
+    phone_number: str
+    consumer_number: str | None
+    customer_type: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +123,7 @@ class OrderRepository(Protocol):
         driver_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        search: str | None = None,
     ) -> list[Order]: ...
 
     async def count_orders(
@@ -110,6 +134,7 @@ class OrderRepository(Protocol):
         driver_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        search: str | None = None,
     ) -> int: ...
 
     async def list_status_history(self, order_id: uuid.UUID) -> list[OrderStatusHistoryEntry]: ...
@@ -141,14 +166,34 @@ class CancellationRecordRepository(Protocol):
     ) -> CancellationRecordEntry: ...
 
     async def get_pending_by_order_id(self, order_id: uuid.UUID) -> CancellationRecordEntry | None:
-        """The at-most-one row with `approved_by IS NULL` for this order
-        (enforced by a DB partial unique index — see the migration).
+        """The at-most-one row neither approved nor rejected for this order
+        (enforced by a DB partial unique index — see the migrations).
         """
+        ...
+
+    async def get_latest_by_order_id(self, order_id: uuid.UUID) -> CancellationRecordEntry | None:
+        """The most recent request for this order, whatever its outcome."""
+        ...
+
+    async def pending_order_ids(self, order_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        """Which of `order_ids` have a request waiting for a decision."""
         ...
 
     async def approve(
         self, record_id: uuid.UUID, *, approved_by: uuid.UUID, cancellation_charge: Decimal
     ) -> CancellationRecordEntry: ...
+
+    async def reject(
+        self, record_id: uuid.UUID, *, rejected_by: uuid.UUID, reason: str
+    ) -> CancellationRecordEntry: ...
+
+
+class OrderCustomerDirectory(Protocol):
+    async def summaries(
+        self, customer_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, OrderCustomerSummary]:
+        """Name, phone and consumer number for each visible customer."""
+        ...
 
 
 class ProofOfDeliveryRepository(Protocol):

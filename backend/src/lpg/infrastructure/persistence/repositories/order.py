@@ -17,10 +17,12 @@ from sqlalchemy.orm import selectinload
 from lpg.application.common.errors import NotFoundError
 from lpg.application.order.ports import (
     CancellationRecordEntry,
+    OrderCustomerSummary,
     OrderStatusHistoryEntry,
     ProofOfDeliveryEntry,
 )
 from lpg.domain.order.order import DeliveryAddress, Order, OrderLine
+from lpg.infrastructure.persistence.models.customer import CustomerModel
 from lpg.infrastructure.persistence.models.delivery import (
     RouteModel,
     RouteStopModel,
@@ -39,8 +41,15 @@ from lpg.infrastructure.persistence.models.order import (
     ProofOfDeliveryModel,
 )
 from lpg.infrastructure.persistence.models.tenant import WarehouseModel
+from lpg.infrastructure.persistence.repositories.customer import (
+    compact_column,
+    compact_reference,
+    customer_search_clause,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.sql.elements import ColumnElement
 
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
@@ -48,6 +57,23 @@ if TYPE_CHECKING:
 
 def _to_decimal(value: float | None) -> Decimal | None:
     return Decimal(str(value)) if value is not None else None
+
+
+def _order_search_clause(search: str | None) -> ColumnElement[bool] | None:
+    """Order number (separators and case ignored, so "ord 12" finds
+    ORD000012) or anything the customer search matches — name, phone,
+    consumer number (DO-12, DO-39)."""
+    customer_clause = customer_search_clause(search)
+    if customer_clause is None or search is None:
+        return None
+    matching_customers = select(CustomerModel.id).where(
+        CustomerModel.is_deleted.is_(False), customer_clause
+    )
+    clauses: list[ColumnElement[bool]] = [OrderModel.customer_id.in_(matching_customers)]
+    compact = compact_reference(search)
+    if compact:
+        clauses.append(compact_column(OrderModel.order_number).like(f"%{compact}%"))
+    return or_(*clauses)
 
 
 class SqlAlchemyOrderRepository:
@@ -80,11 +106,12 @@ class SqlAlchemyOrderRepository:
         driver_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        search: str | None = None,
     ) -> list[Order]:
         stmt = (
             select(OrderModel)
             .options(selectinload(OrderModel.lines))
-            .where(*self._filters(status, branch_id, customer_id, from_date, to_date))
+            .where(*self._filters(status, branch_id, customer_id, from_date, to_date, search))
         )
         stmt = self._apply_driver_filter(stmt, driver_id)
         # Newest booking first — the operational default for an order queue
@@ -104,9 +131,10 @@ class SqlAlchemyOrderRepository:
         driver_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        search: str | None = None,
     ) -> int:
         stmt = select(func.count(OrderModel.id)).where(
-            *self._filters(status, branch_id, customer_id, from_date, to_date)
+            *self._filters(status, branch_id, customer_id, from_date, to_date, search)
         )
         stmt = self._apply_driver_filter(stmt, driver_id)
         return int((await self._uow.session.execute(stmt)).scalar_one())
@@ -185,6 +213,7 @@ class SqlAlchemyOrderRepository:
         customer_id: uuid.UUID | None,
         from_date: datetime | None,
         to_date: datetime | None,
+        search: str | None = None,
     ) -> list[ColumnElement[bool]]:
         clauses: list[ColumnElement[bool]] = [OrderModel.is_deleted.is_(False)]
         if status is not None:
@@ -197,6 +226,9 @@ class SqlAlchemyOrderRepository:
             clauses.append(OrderModel.requested_date >= from_date)
         if to_date is not None:
             clauses.append(OrderModel.requested_date <= to_date)
+        search_clause = _order_search_clause(search)
+        if search_clause is not None:
+            clauses.append(search_clause)
         return clauses
 
     def _to_domain(self, row: OrderModel) -> Order:
@@ -344,6 +376,14 @@ class SqlAlchemyOrderRepository:
         self._uow.register_aggregate(order)
 
 
+#: A request still waiting for a Manager's decision.
+_PENDING_CANCELLATION = (
+    CancellationRecordModel.approved_by.is_(None),
+    CancellationRecordModel.rejected_by.is_(None),
+    CancellationRecordModel.is_deleted.is_(False),
+)
+
+
 class SqlAlchemyCancellationRecordRepository:
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
         self._uow = unit_of_work
@@ -374,24 +414,61 @@ class SqlAlchemyCancellationRecordRepository:
     async def get_pending_by_order_id(self, order_id: uuid.UUID) -> CancellationRecordEntry | None:
         stmt = select(CancellationRecordModel).where(
             CancellationRecordModel.order_id == order_id,
-            CancellationRecordModel.approved_by.is_(None),
-            CancellationRecordModel.is_deleted.is_(False),
+            *_PENDING_CANCELLATION,
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()
         return self._to_entry(row) if row is not None else None
 
-    async def approve(
-        self, record_id: uuid.UUID, *, approved_by: uuid.UUID, cancellation_charge: Decimal
+    async def get_latest_by_order_id(self, order_id: uuid.UUID) -> CancellationRecordEntry | None:
+        stmt = (
+            select(CancellationRecordModel)
+            .where(
+                CancellationRecordModel.order_id == order_id,
+                CancellationRecordModel.is_deleted.is_(False),
+            )
+            .order_by(CancellationRecordModel.requested_at.desc(), CancellationRecordModel.id)
+            .limit(1)
+        )
+        row = (await self._uow.session.execute(stmt)).scalars().first()
+        return self._to_entry(row) if row is not None else None
+
+    async def pending_order_ids(self, order_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        if not order_ids:
+            return set()
+        stmt = select(CancellationRecordModel.order_id).where(
+            CancellationRecordModel.order_id.in_(list(order_ids)),
+            *_PENDING_CANCELLATION,
+        )
+        return set((await self._uow.session.execute(stmt)).scalars().all())
+
+    async def reject(
+        self, record_id: uuid.UUID, *, rejected_by: uuid.UUID, reason: str
     ) -> CancellationRecordEntry:
+        row = await self._get_row(record_id)
+        now = datetime.now(UTC)
+        row.rejected_by = rejected_by
+        row.rejected_at = now
+        row.rejection_reason = reason
+        row.updated_at = now
+        row.version += 1
+        await self._uow.session.flush()
+        return self._to_entry(row)
+
+    async def _get_row(self, record_id: uuid.UUID) -> CancellationRecordModel:
         stmt = select(CancellationRecordModel).where(
             CancellationRecordModel.id == record_id,
             CancellationRecordModel.is_deleted.is_(False),
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()
         if row is None:
-            msg = f"Cancellation record {record_id} not found."
-            raise NotFoundError(msg)
+            msg = "Cancellation request not found."
+            raise NotFoundError(msg, cancellation_record_id=str(record_id))
+        return row
 
+    async def approve(
+        self, record_id: uuid.UUID, *, approved_by: uuid.UUID, cancellation_charge: Decimal
+    ) -> CancellationRecordEntry:
+        row = await self._get_row(record_id)
         row.approved_by = approved_by
         row.cancellation_charge = cancellation_charge
         row.approved_at = datetime.now(UTC)
@@ -412,6 +489,9 @@ class SqlAlchemyCancellationRecordRepository:
             reason=row.reason,
             requested_at=row.requested_at,
             approved_at=row.approved_at,
+            rejected_by=row.rejected_by,
+            rejected_at=row.rejected_at,
+            rejection_reason=row.rejection_reason,
         )
 
 
@@ -613,4 +693,36 @@ class SqlAlchemyCustomerOpenOrderReader:
         result = await self._uow.session.execute(stmt)
         return {
             cylinder_type_id: max(int(total or 0), 0) for cylinder_type_id, total in result.all()
+        }
+
+
+class SqlAlchemyOrderCustomerDirectory:
+    """`OrderCustomerDirectory` — one query for a page of orders' customers.
+    RLS keeps it to the session's tenant."""
+
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    async def summaries(
+        self, customer_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, OrderCustomerSummary]:
+        if not customer_ids:
+            return {}
+        stmt = select(
+            CustomerModel.id,
+            CustomerModel.full_name,
+            CustomerModel.phone_number,
+            CustomerModel.consumer_number,
+            CustomerModel.customer_type,
+        ).where(CustomerModel.id.in_(set(customer_ids)))
+        rows = (await self._uow.session.execute(stmt)).all()
+        return {
+            row.id: OrderCustomerSummary(
+                customer_id=row.id,
+                full_name=row.full_name,
+                phone_number=row.phone_number,
+                consumer_number=row.consumer_number,
+                customer_type=row.customer_type,
+            )
+            for row in rows
         }

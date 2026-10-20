@@ -36,7 +36,8 @@ def compact_reference(value: str) -> str:
     return re.sub(_NON_ALNUM, "", value).upper()
 
 
-def _compact(column: InstrumentedAttribute[str | None]) -> ColumnElement[str]:
+def compact_column(column: InstrumentedAttribute[str | None]) -> ColumnElement[str]:
+    """SQL counterpart of `compact_reference`."""
     return func.upper(func.regexp_replace(column, _NON_ALNUM, "", "g"))
 
 
@@ -74,8 +75,8 @@ def customer_search_clause(search: str | None) -> ColumnElement[bool] | None:
         )
     compact = compact_reference(text_query)
     if compact:
-        clauses.append(_compact(CustomerModel.consumer_number).like(f"%{compact}%"))
-        clauses.append(_compact(CustomerModel.gstin) == compact)
+        clauses.append(compact_column(CustomerModel.consumer_number).like(f"%{compact}%"))
+        clauses.append(compact_column(CustomerModel.gstin) == compact)
     return or_(*clauses)
 
 
@@ -187,7 +188,7 @@ class SqlAlchemyCustomerRepository:
                 selectinload(CustomerModel.kyc_documents),
             )
             .where(
-                _compact(CustomerModel.consumer_number) == compact_reference(consumer_number),
+                compact_column(CustomerModel.consumer_number) == compact_reference(consumer_number),
                 CustomerModel.is_deleted.is_(False),
             )
         )

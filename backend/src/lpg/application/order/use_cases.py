@@ -32,6 +32,7 @@ from lpg.application.common.errors import (
     OtpMismatchError,
     RouteNotLoadedError,
     ServiceUnavailableError,
+    ValidationError,
 )
 from lpg.application.delivery.use_cases import AssignOrderToRouteCommand, AssignOrderToRouteUseCase
 from lpg.application.inventory.use_cases import GetOrCreateInventoryLocationUseCase
@@ -913,23 +914,103 @@ def _order_label(order: Order) -> str:
     return f"Order {order.order_number}" if order.order_number else "This order"
 
 
-class GetPendingCancellationUseCase:
-    """The cancellation request on an order still waiting for Manager
-    approval (D-19), or `None` — the dashboard shows Approve Cancellation
-    only when there is one.
+async def _cancellation_fee(configuration: TenantConfigurationRepository, order: Order) -> Decimal:
+    """The tenant's post-dispatch cancellation charge for this order."""
+    entries = await configuration.list_for_tenant_and_key(
+        order.tenant_id, _CANCELLATION_FEE_CONFIG_KEY
+    )
+    resolved_config = TenantConfigurationResolver.resolve(
+        entries, _CANCELLATION_FEE_CONFIG_KEY, datetime.now(UTC)
+    )
+    config_value = resolved_config.config_value if resolved_config is not None else None
+    return CancellationFeeCalculator.calculate(
+        config_value=config_value, order_total=order.total_amount or Decimal("0")
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CancellationRequestView:
+    record: CancellationRecordEntry
+    #: What approving a waiting request would charge (`None` once decided;
+    #: the charged amount is then `record.cancellation_charge`).
+    estimated_charge: Decimal | None
+
+
+class GetCancellationRequestUseCase:
+    """The cancellation request waiting for Manager approval on an order
+    (D-19), or — with `include_decided` — the latest request whatever its
+    outcome, so the apps can say it was declined (CA-07). `None` when there
+    is none. The dashboard shows Approve/Reject only for a waiting request.
     """
 
     def __init__(
         self,
         order_repository: OrderRepository,
         cancellation_repository: CancellationRecordRepository,
+        tenant_configuration_repository: TenantConfigurationRepository,
     ) -> None:
         self._get_order = GetOrderUseCase(order_repository)
         self._cancellation_repository = cancellation_repository
+        self._configuration = tenant_configuration_repository
 
-    async def execute(self, query: GetOrderQuery) -> CancellationRecordEntry | None:
+    async def execute(
+        self, query: GetOrderQuery, *, include_decided: bool = False
+    ) -> CancellationRequestView | None:
         order = await self._get_order.execute(query)
-        return await self._cancellation_repository.get_pending_by_order_id(order.id)
+        record = (
+            await self._cancellation_repository.get_latest_by_order_id(order.id)
+            if include_decided
+            else await self._cancellation_repository.get_pending_by_order_id(order.id)
+        )
+        if record is None:
+            return None
+        estimated = (
+            await _cancellation_fee(self._configuration, order)
+            if record.status == "pending"
+            else None
+        )
+        return CancellationRequestView(record=record, estimated_charge=estimated)
+
+
+@dataclass(frozen=True, slots=True)
+class RejectOrderCancellationCommand(Command):
+    order_id: uuid.UUID
+    rejected_by: uuid.UUID
+    reason: str
+
+
+class RejectOrderCancellationUseCase:
+    """A Manager declines a post-dispatch cancellation request (DO-14). The
+    order carries on with its delivery; the customer may ask again."""
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        cancellation_repository: CancellationRecordRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._order_repository = order_repository
+        self._cancellation_repository = cancellation_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RejectOrderCancellationCommand) -> CancellationRecordEntry:
+        reason = " ".join(command.reason.split())
+        if not reason:
+            msg = "Give a reason for rejecting the cancellation request."
+            raise ValidationError(msg, field="reason")
+        order = await self._order_repository.get_by_id(command.order_id)
+        if order is None:
+            msg = "Order not found."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+        pending = await self._cancellation_repository.get_pending_by_order_id(order.id)
+        if pending is None:
+            msg = f"{_order_label(order)} has no cancellation request waiting for approval."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+        record = await self._cancellation_repository.reject(
+            pending.id, rejected_by=command.rejected_by, reason=reason
+        )
+        await self._unit_of_work.commit()
+        return record
 
 
 @dataclass(frozen=True, slots=True)
@@ -968,16 +1049,7 @@ class ApproveOrderCancellationUseCase:
             msg = f"{_order_label(order)} has no cancellation request waiting for approval."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
-        entries = await self._tenant_configuration_repository.list_for_tenant_and_key(
-            order.tenant_id, _CANCELLATION_FEE_CONFIG_KEY
-        )
-        resolved_config = TenantConfigurationResolver.resolve(
-            entries, _CANCELLATION_FEE_CONFIG_KEY, datetime.now(UTC)
-        )
-        config_value = resolved_config.config_value if resolved_config is not None else None
-        fee = CancellationFeeCalculator.calculate(
-            config_value=config_value, order_total=order.total_amount or Decimal("0")
-        )
+        fee = await _cancellation_fee(self._tenant_configuration_repository, order)
 
         vehicle_location = None
         route = None
@@ -1202,6 +1274,8 @@ class ListOrdersQuery(Query):
     driver_id: uuid.UUID | None = None
     from_date: datetime | None = None
     to_date: datetime | None = None
+    #: Order number, or the customer's name, phone or consumer number.
+    search: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1224,6 +1298,7 @@ class ListOrdersUseCase:
             driver_id=query.driver_id,
             from_date=query.from_date,
             to_date=query.to_date,
+            search=query.search,
         )
         total = await self._repository.count_orders(
             status=query.status,
@@ -1232,6 +1307,7 @@ class ListOrdersUseCase:
             driver_id=query.driver_id,
             from_date=query.from_date,
             to_date=query.to_date,
+            search=query.search,
         )
         return OrderPage(items=items, total=total)
 

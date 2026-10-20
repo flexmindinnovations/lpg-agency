@@ -101,6 +101,16 @@ class OrderTrackingResponse(BaseModel):
     driver: TrackingDriverInfo | None = None
 
 
+class OrderCustomerResponse(BaseModel):
+    """Who the order is for (DO-12)."""
+
+    id: uuid.UUID
+    full_name: str
+    phone_number: str
+    consumer_number: str | None
+    customer_type: str
+
+
 class OrderResponse(BaseModel):
     id: uuid.UUID
     order_number: str | None = None
@@ -117,6 +127,11 @@ class OrderResponse(BaseModel):
     route_stop_id: uuid.UUID | None
     total_amount: Decimal | None
     lines: list[OrderLineResponse]
+    #: Filled on the order list and order detail reads; `null` elsewhere.
+    customer: OrderCustomerResponse | None = None
+    #: A post-dispatch cancellation request is waiting for a Manager (CA-07).
+    #: Filled on the order list and order detail reads; `false` elsewhere.
+    cancellation_pending: bool = False
 
 
 class OrderPageResponse(BaseModel):
@@ -274,13 +289,27 @@ class CancelOrderResponse(BaseModel):
 
 
 class PendingCancellationResponse(BaseModel):
-    """A post-dispatch cancellation request waiting for Manager approval (D-19)."""
+    """A post-dispatch cancellation request (D-19): waiting for a Manager,
+    or — when asked for with `include_decided` — approved or rejected."""
 
     id: uuid.UUID
     order_id: uuid.UUID
     reason: str
     requested_by: uuid.UUID
     requested_at: datetime
+    status: Literal["pending", "approved", "rejected"] = "pending"
+    #: What approving a waiting request would charge, per the tenant's
+    #: cancellation fee setting. `null` once decided.
+    estimated_charge: Decimal | None = None
+    #: The charge recorded when the request was approved (billed to the
+    #: customer).
+    cancellation_charge: Decimal | None = None
+    decided_at: datetime | None = None
+    rejection_reason: str | None = None
+
+
+class RejectCancellationRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=1000)
 
 
 class BulkCancelOrdersRequest(BaseModel):

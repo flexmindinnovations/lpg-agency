@@ -166,7 +166,8 @@ class FailedDeliveryRecordModel(Base):
 
 class CancellationRecordModel(Base):
     """Mutated exactly once (`approve()` fills `approved_by`/
-    `cancellation_charge`/`approved_at`) — unlike the other order entities,
+    `cancellation_charge`/`approved_at`, or `reject()` fills `rejected_by`/
+    `rejected_at`/`rejection_reason`) — unlike the other order entities,
     this one keeps normal audit columns and normal grants.
     """
 
@@ -188,6 +189,9 @@ class CancellationRecordModel(Base):
         DateTime(timezone=True), server_default=text("now()")
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejected_by: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(
