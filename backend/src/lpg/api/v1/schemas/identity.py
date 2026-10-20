@@ -73,3 +73,6 @@ class PrincipalResponse(BaseModel):
     role: str
     permissions: list[str]
     email: str | None = None
+    # The staff member's home branch (null for tenant-wide roles) — the
+    # dashboard's default wherever a form asks for a branch.
+    branch_id: str | None = None

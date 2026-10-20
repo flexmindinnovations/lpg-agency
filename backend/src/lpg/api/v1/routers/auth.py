@@ -345,4 +345,5 @@ async def me(
         role=principal.role,
         permissions=sorted(principal.permission_codes),
         email=email,
+        branch_id=str(principal.branch_id) if principal.branch_id else None,
     )
