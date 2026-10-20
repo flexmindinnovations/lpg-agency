@@ -36,11 +36,12 @@ class TodayScreen extends ConsumerWidget {
             ],
           ),
           data: (route) {
-            final pendingCash = ref.watch(pendingCashHandoverProvider).value;
+            final pendingCash =
+                ref.watch(pendingCashHandoversProvider).value ?? const [];
             final pendingLoad = ref.watch(pendingLoadProvider).value;
             final sections = <Widget>[
               if (pendingLoad != null) _PendingLoadCard(route: pendingLoad),
-              if (pendingCash != null) _PendingCashCard(view: pendingCash),
+              for (final view in pendingCash) _PendingCashCard(view: view),
               if (route == null)
                 const Padding(
                   padding: EdgeInsets.only(top: LpgSpacing.xxl),

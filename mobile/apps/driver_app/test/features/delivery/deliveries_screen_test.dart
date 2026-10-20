@@ -45,7 +45,7 @@ Widget _screen({
   overrides: [
     activeRouteProvider.overrideWith((ref) async => active),
     routeHistoryProvider.overrideWith((ref) async => history),
-    pendingCashHandoverProvider.overrideWith((ref) async => pendingCash),
+    pendingCashHandoversProvider.overrideWith((ref) async => [?pendingCash]),
   ],
   child: MaterialApp(theme: LpgTheme.light, home: const DeliveriesScreen()),
 );

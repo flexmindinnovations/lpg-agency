@@ -69,7 +69,7 @@ class SyncStatusScreen extends ConsumerWidget {
     ref.invalidate(routeHistoryProvider);
     ref.invalidate(stopOrderProvider);
     ref.invalidate(routeCashHandoverProvider);
-    ref.invalidate(pendingCashHandoverProvider);
+    ref.invalidate(pendingCashHandoversProvider);
   }
 }
 

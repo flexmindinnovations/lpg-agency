@@ -64,7 +64,7 @@ Widget _screen({
 }) => ProviderScope(
   overrides: [
     activeRouteProvider.overrideWith((ref) async => route),
-    pendingCashHandoverProvider.overrideWith((ref) async => pendingCash),
+    pendingCashHandoversProvider.overrideWith((ref) async => [?pendingCash]),
     pendingLoadProvider.overrideWith((ref) async => pendingLoad),
     locationSharingControllerProvider.overrideWithValue(_FakeController()),
     locationSharingStateProvider.overrideWith(
