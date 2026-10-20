@@ -161,7 +161,8 @@ class SqlAlchemyComplianceDocumentRepository:
             # The compliance calendar: everything already overdue plus
             # everything falling due within the planning horizon.
             stmt = stmt.where(
-                ComplianceDocumentModel.expiry_date <= today + timedelta(days=UPCOMING_HORIZON_DAYS),
+                ComplianceDocumentModel.expiry_date
+                <= today + timedelta(days=UPCOMING_HORIZON_DAYS),
             )
         return stmt
 
