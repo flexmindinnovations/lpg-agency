@@ -1,7 +1,24 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { FormFieldComponent } from './form-field.component';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormFieldComponent, validateForSubmit } from './form-field.component';
+
+@Component({
+  standalone: true,
+  imports: [FormFieldComponent, ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form" (ngSubmit)="submitted = true">
+      <lpg-form-field label="Code" for="code" [control]="form.controls.code">
+        <input id="code" formControlName="code" />
+      </lpg-form-field>
+      <button type="submit">Save</button>
+    </form>
+  `,
+})
+class FormHostComponent {
+  form = new FormGroup({ code: new FormControl('', { validators: [Validators.required] }) });
+  submitted = false;
+}
 
 @Component({
   standalone: true,
@@ -64,5 +81,29 @@ describe('FormFieldComponent', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('.lpg-field__error')?.textContent,
     ).toContain('too short');
+  });
+
+  it('shows every message once the form is submitted, and marks the control invalid', () => {
+    const fixture = TestBed.createComponent(FormHostComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.lpg-field__error')).toBeNull();
+
+    (el.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    TestBed.tick();
+
+    expect(el.querySelector('.lpg-field__error')?.textContent).toContain('required');
+    const input = el.querySelector('#code') as HTMLInputElement;
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('code-error');
+  });
+
+  it('validateForSubmit marks an invalid form touched and reports it', () => {
+    const form = new FormGroup({ a: new FormControl('', { validators: [Validators.required] }) });
+    expect(validateForSubmit(form)).toBe(false);
+    expect(form.controls.a.touched).toBe(true);
+    form.controls.a.setValue('x');
+    expect(validateForSubmit(form)).toBe(true);
   });
 });

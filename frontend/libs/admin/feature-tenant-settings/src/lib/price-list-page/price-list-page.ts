@@ -283,7 +283,7 @@ type PriceRow = PriceListEntryResponse & {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }

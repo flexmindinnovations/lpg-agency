@@ -211,7 +211,7 @@
 
     <div class="cdp__form-actions">
       <button pButton type="button" severity="secondary" (click)="cancelForm()">Cancel</button>
-      <button pButton type="submit" [disabled]="docForm.invalid || submitting()">
+      <button pButton type="submit" [disabled]="submitting()">
         {{ formPurpose() === 'add' ? 'Add document' : 'Save replacement' }}
       </button>
     </div>

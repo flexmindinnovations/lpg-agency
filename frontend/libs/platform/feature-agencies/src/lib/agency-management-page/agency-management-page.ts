@@ -220,7 +220,7 @@ interface SetupLinkView {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -377,7 +377,7 @@ interface SetupLinkView {
                     >
                       Cancel
                     </button>
-                    <button pButton type="submit" [disabled]="acting() || adminForm.invalid">
+                    <button pButton type="submit" [disabled]="acting()">
                       @if (acting()) {
                         <i class="pi pi-spin pi-spinner"></i>
                       }

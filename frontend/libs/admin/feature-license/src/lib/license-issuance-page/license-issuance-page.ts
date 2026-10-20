@@ -191,7 +191,7 @@ const VALIDITY_OPTIONS = [
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || issueForm.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }

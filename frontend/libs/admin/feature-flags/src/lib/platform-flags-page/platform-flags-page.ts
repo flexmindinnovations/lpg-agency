@@ -180,7 +180,7 @@ class FlagDefaultCell {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -310,7 +310,7 @@ class FlagDefaultCell {
                 <button pButton type="button" severity="secondary" (click)="cancelEdit()">
                   Cancel
                 </button>
-                <button pButton type="submit" [disabled]="editForm.invalid || saving()">
+                <button pButton type="submit" [disabled]="saving()">
                   Save Changes
                 </button>
               </div>

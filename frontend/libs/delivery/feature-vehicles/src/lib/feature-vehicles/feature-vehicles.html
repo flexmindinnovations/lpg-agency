@@ -215,7 +215,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
+        <button pButton type="submit" [disabled]="loading()">
           Register
         </button>
       </div>
@@ -356,7 +356,7 @@
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-        <button pButton type="submit" [disabled]="editForm.invalid || saving()">
+        <button pButton type="submit" [disabled]="saving()">
           Save Changes
         </button>
       </div>
