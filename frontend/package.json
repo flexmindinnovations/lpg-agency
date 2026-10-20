@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "generate:api-client": "ng-openapi-gen --config ng-openapi-gen.json"
+    "generate:api-client": "ng-openapi-gen --config ng-openapi-gen.json",
+    "postinstall": "node scripts/ensure-prime-license.mjs"
   },
   "private": true,
   "devDependencies": {
