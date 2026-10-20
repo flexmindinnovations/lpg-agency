@@ -9,6 +9,7 @@
  * point regardless).
  */
 export interface PrincipalResponse {
+  branch_id?: (string | null);
   email?: (string | null);
   permissions: Array<string>;
   role: string;

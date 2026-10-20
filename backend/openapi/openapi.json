@@ -5926,6 +5926,17 @@
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
           "email": {
             "anyOf": [
               {
