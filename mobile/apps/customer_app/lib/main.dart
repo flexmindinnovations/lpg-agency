@@ -51,6 +51,7 @@ void main() async {
   final tokenStorage = SecureTokenStorage();
   late final AuthRepository authRepository;
   late final AuthController authController;
+  late final RealtimeClient realtimeClient;
 
   final apiClient = ApiClient(
     baseUrl: _apiBaseUrl,
@@ -58,7 +59,11 @@ void main() async {
     refreshAccessToken: () async {
       final result = await authRepository.restoreSession();
       return result.when(
-        onSuccess: (_) => authRepository.accessToken,
+        onSuccess: (_) {
+          // Keep the live socket authorised past the old token's expiry.
+          realtimeClient.updateAccessToken();
+          return authRepository.accessToken;
+        },
         onFailure: (_) => null,
       );
     },
@@ -76,10 +81,17 @@ void main() async {
   );
   syncCoordinator.start();
 
-  final realtimeClient = RealtimeClient(
+  realtimeClient = RealtimeClient(
     wsBaseUrl: _wsBaseUrl(_apiBaseUrl),
     getAccessToken: () => authRepository.accessToken,
+    // The socket's token was rejected (expired): any authenticated call
+    // runs the API client's single 401 -> refresh path, and the socket's
+    // own reconnect then picks up the new token.
+    onTokenRejected: () async {
+      await NotificationApi(apiClient.dio).getUnreadCount();
+    },
   );
+  _wireRealtimeToAuth(authController, realtimeClient);
 
   // Push notifications. Isolated in try/catch: a missing/invalid
   // google-services.json (or GoogleService-Info.plist) must not take the
@@ -178,4 +190,22 @@ class _CustomerAppState extends ConsumerState<CustomerApp> {
       debugShowCheckedModeBanner: false,
     );
   }
+}
+
+/// Hold the live socket closed while signed out and reopen it on sign-in,
+/// so it never retries with a missing token or outlives the session.
+void _wireRealtimeToAuth(
+  AuthController authController,
+  RealtimeClient realtimeClient,
+) {
+  void sync() {
+    if (authController.state.isAuthenticated) {
+      realtimeClient.resume();
+    } else {
+      unawaited(realtimeClient.pause());
+    }
+  }
+
+  sync();
+  authController.addListener(sync);
 }
