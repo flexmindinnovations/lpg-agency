@@ -26,7 +26,9 @@ import {
   SkeletonComponent,
   StatCardComponent,
   type StatTone,
+  toSentenceCase,
 } from '@lpg/shared/ui';
+import { formatDisplayDate } from '@lpg/shared/util';
 import {
   CustomerService,
   DashboardService,
@@ -54,6 +56,12 @@ const ACTION_ICON: Record<string, string> = {
   delete: 'pi pi-trash',
 };
 
+const ACTION_LABEL: Record<string, string> = {
+  create: 'Created',
+  update: 'Changed',
+  delete: 'Deleted',
+};
+
 const ACTION_TONE: Record<string, ActivityStatusTone> = {
   create: 'success',
   update: 'info',
@@ -77,7 +85,19 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status;
+  return STATUS_LABELS[status] ?? toSentenceCase(status);
+}
+
+/** "Fleet status: 4 available, 1 in maintenance." — a chart's numbers as text. */
+function chartSummary(
+  title: string,
+  counts: Readonly<Record<string, number>> | undefined,
+  noun: string,
+): string {
+  const entries = Object.entries(counts ?? {});
+  if (entries.length === 0) return `${title}: no ${noun} yet.`;
+  const parts = entries.map(([status, count]) => `${count} ${statusLabel(status).toLowerCase()}`);
+  return `${title}: ${parts.join(', ')}.`;
 }
 
 @Component({
@@ -98,10 +118,7 @@ function statusLabel(status: string): string {
   template: `
     <div class="dashboard">
       <ng-template lpgHeaderTitlePortal>
-        <lpg-page-header
-          title="Agency Overview"
-          subtitle="Today at your agency."
-        />
+        <lpg-page-header title="Agency Overview" subtitle="Today at your agency." />
       </ng-template>
 
       <!-- KPI Section — each card links to the module it summarises. -->
@@ -128,6 +145,7 @@ function statusLabel(status: string): string {
                 type="bar"
                 [data]="vehicleStatusChartData()"
                 [options]="barChartOptions()"
+                [ariaLabel]="vehicleChartSummary()"
               ></p-chart>
             }
           </div>
@@ -142,6 +160,7 @@ function statusLabel(status: string): string {
                 type="doughnut"
                 [data]="inventoryChartData()"
                 [options]="doughnutChartOptions()"
+                [ariaLabel]="inventoryChartSummary()"
               ></p-chart>
             }
           </div>
@@ -328,7 +347,7 @@ export class Home implements OnDestroy {
           icon: 'pi pi-bell',
           title: customer.full_name,
           description: customer.phone_number,
-          status: overdue ? 'Overdue' : `Due ${customer.refill_due_date}`,
+          status: overdue ? 'Overdue' : `Due ${formatDisplayDate(customer.refill_due_date)}`,
           statusTone: overdue ? 'danger' : 'warning',
         };
       }),
@@ -343,14 +362,20 @@ export class Home implements OnDestroy {
         time: formatTimestamp(entry.performed_at),
         icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
         title: formatEntityName(entry.entity_name),
-        description: entry.entity_id
-          ? String(entry.entity_id).slice(0, 8).toUpperCase()
-          : undefined,
+        description: entry.entity_display_name ?? undefined,
         status: entry.action
-          ? entry.action.charAt(0).toUpperCase() + entry.action.slice(1)
+          ? (ACTION_LABEL[entry.action] ?? toSentenceCase(entry.action))
           : undefined,
         statusTone: ACTION_TONE[entry.action] ?? 'neutral',
       })),
+  );
+
+  /** Text alternatives for the two charts (WCAG 1.1.1): the same numbers in words. */
+  protected readonly vehicleChartSummary = computed(() =>
+    chartSummary('Fleet status', this.summary()?.vehicles_by_status, 'vehicles'),
+  );
+  protected readonly inventoryChartSummary = computed(() =>
+    chartSummary('Cylinder inventory', this.summary()?.inventory_by_status, 'cylinders'),
   );
 
   // PrimeNG's ChartData<...> generic is impractical to satisfy exactly.
@@ -529,7 +554,7 @@ export class Home implements OnDestroy {
     const vehicleStatuses = this.summary()?.vehicles_by_status ?? {};
     const vehicleLabels = Object.keys(vehicleStatuses);
     this.vehicleStatusChartData.set({
-      labels: vehicleLabels.length > 0 ? vehicleLabels : ['No vehicles yet'],
+      labels: vehicleLabels.length > 0 ? vehicleLabels.map(statusLabel) : ['No vehicles yet'],
       datasets: [
         {
           label: 'Vehicles',
@@ -577,7 +602,7 @@ export class Home implements OnDestroy {
       scrap: surfaceBorder,
     };
     this.inventoryChartData.set({
-      labels: inventoryLabels.length > 0 ? inventoryLabels : ['No inventory yet'],
+      labels: inventoryLabels.length > 0 ? inventoryLabels.map(statusLabel) : ['No inventory yet'],
       datasets: [
         {
           data: inventoryLabels.length > 0 ? inventoryLabels.map((s) => inventoryStatuses[s]) : [1],
