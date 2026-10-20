@@ -55,6 +55,7 @@ import {
   type RecordFailedDeliveryRequest,
   type OrderResponse,
   type OrderStatusHistoryEntryResponse,
+  type PendingCancellationResponse,
   type ProofOfDeliverySubmission,
   type RouteResponse,
   type VehicleResponse,
@@ -194,6 +195,8 @@ export class OrderDetail implements OnInit {
 
   protected readonly order = signal<OrderResponse | null>(null);
   protected readonly history = signal<OrderStatusHistoryEntryResponse[]>([]);
+  /** The cancellation request waiting for Manager approval, if any (D-19). */
+  protected readonly pendingCancellation = signal<PendingCancellationResponse | null>(null);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly drivers = signal<DriverResponse[]>([]);
   protected readonly vehicles = signal<VehicleResponse[]>([]);
@@ -406,15 +409,17 @@ export class OrderDetail implements OnInit {
     return !!status && FREE_CANCEL_STATUSES.has(status);
   });
 
+  /** A dispatched order with no request yet: cancelling asks a Manager to approve. */
   protected readonly requiresCancelApproval = computed(() => {
     const status = this.order()?.status;
-    return !!status && APPROVAL_CANCEL_STATUSES.has(status);
+    return !!status && APPROVAL_CANCEL_STATUSES.has(status) && !this.pendingCancellation();
   });
 
+  /** Only when a cancellation request is actually waiting; the button also needs
+   * the orders:cancel_approve permission. */
   protected readonly canApproveCancellation = computed(() => {
     const status = this.order()?.status;
-    // Approving cancellation is typically done by managers for orders in these statuses
-    return !!status && APPROVAL_CANCEL_STATUSES.has(status);
+    return !!status && APPROVAL_CANCEL_STATUSES.has(status) && !!this.pendingCancellation();
   });
 
   protected readonly canConfirm = computed(() => this.order()?.status === 'booked');
@@ -514,6 +519,10 @@ export class OrderDetail implements OnInit {
     this.orderService.listOrderStatusHistory(orderId).subscribe({
       next: (entries) => this.history.set(entries),
       error: () => this.history.set([]),
+    });
+    this.orderService.getPendingCancellation(orderId).subscribe({
+      next: (pending) => this.pendingCancellation.set(pending),
+      error: () => this.pendingCancellation.set(null),
     });
   }
 
@@ -947,7 +956,8 @@ export class OrderDetail implements OnInit {
         const message = result.pending_approval
           ? 'Cancellation requested — awaiting Manager approval.'
           : 'Order cancelled.';
-        this.infoMessage.set(message);
+        // A pending request shows its own banner once the page reloads.
+        this.infoMessage.set(result.pending_approval ? null : message);
         this.notify.success(message);
         this.order.set(result.order);
         this.loading.set(false);

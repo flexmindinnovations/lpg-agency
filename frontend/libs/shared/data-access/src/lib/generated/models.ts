@@ -133,6 +133,7 @@ export type { PaginatedNotificationResponse } from './models/paginated-notificat
 export type { PasswordForgotRequest } from './models/password-forgot-request';
 export type { PasswordResetRequest } from './models/password-reset-request';
 export type { PaymentResponse } from './models/payment-response';
+export type { PendingCancellationResponse } from './models/pending-cancellation-response';
 export type { PlanRouteRequest } from './models/plan-route-request';
 export type { PodAttachmentResponse } from './models/pod-attachment-response';
 export type { PriceListEntryResponse } from './models/price-list-entry-response';

@@ -14,6 +14,7 @@ import { departOrderApiV1OrdersOrderIdDepartPost } from './generated/fn/orders/d
 import { deliverOrderApiV1OrdersOrderIdDeliverPost } from './generated/fn/orders/deliver-order-api-v-1-orders-order-id-deliver-post';
 import { dispatchOrderApiV1OrdersOrderIdDispatchPost } from './generated/fn/orders/dispatch-order-api-v-1-orders-order-id-dispatch-post';
 import { getOrderApiV1OrdersOrderIdGet } from './generated/fn/orders/get-order-api-v-1-orders-order-id-get';
+import { getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet } from './generated/fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 import { listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet } from './generated/fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';
 import { listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet } from './generated/fn/orders/list-orderable-cylinder-types-api-v-1-orders-orderable-cylinder-types-get';
 import { listOrdersApiV1OrdersGet } from './generated/fn/orders/list-orders-api-v-1-orders-get';
@@ -33,6 +34,7 @@ import type { OrderPageResponse } from './generated/models/order-page-response';
 import type { OrderableCylinderTypeResponse } from './generated/models/orderable-cylinder-type-response';
 import type { OrderResponse } from './generated/models/order-response';
 import type { OrderStatusHistoryEntryResponse } from './generated/models/order-status-history-entry-response';
+import type { PendingCancellationResponse } from './generated/models/pending-cancellation-response';
 import type { PodAttachmentResponse } from './generated/models/pod-attachment-response';
 import type { RecordFailedDeliveryRequest } from './generated/models/record-failed-delivery-request';
 import { randomUuid } from './random-uuid';
@@ -180,6 +182,15 @@ export class OrderService {
       order_id: orderId,
       body: request,
     }).pipe(map((res) => res.body));
+  }
+
+  /** The cancellation request waiting for Manager approval, or `null`. */
+  getPendingCancellation(orderId: string): Observable<PendingCancellationResponse | null> {
+    return getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet(
+      this.http,
+      this.config.rootUrl,
+      { order_id: orderId },
+    ).pipe(map((res) => res.body ?? null));
   }
 
   approveOrderCancellation(orderId: string): Observable<OrderResponse> {

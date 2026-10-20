@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from lpg.application.inventory.ports import InventoryLocationRepository
     from lpg.application.order.orderable import OrderableCylinderTypes
     from lpg.application.order.ports import (
+        CancellationRecordEntry,
         CancellationRecordRepository,
         CreditLimitEvaluator,
         CylinderCapPolicy,
@@ -190,7 +191,7 @@ class ConfirmOrderUseCase:
     async def execute(self, command: ConfirmOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
         customer = await self._customer_repository.get_by_id(order.customer_id)
         if customer is None:
@@ -297,7 +298,7 @@ class AssignOrderUseCase:
     async def execute(self, command: AssignOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         route_date = order.requested_date.date()
@@ -366,7 +367,7 @@ class DispatchOrderUseCase:
     async def execute(self, command: DispatchOrderCommand) -> Order:
         order = await self._repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
         order.dispatch(changed_by=command.changed_by)
         await self._repository.save(order)
@@ -413,7 +414,7 @@ class DepartOrderUseCase:
     async def execute(self, command: DepartOrderCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         # Read the customer *before* committing, not after: `Database.
@@ -486,7 +487,7 @@ class ResendDeliveryOtpUseCase:
     async def execute(self, command: ResendDeliveryOtpCommand) -> None:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
         if order.status != "out_for_delivery":
             msg = "A delivery code can only be sent while the order is out for delivery."
@@ -530,7 +531,7 @@ class RescheduleOrderUseCase:
     async def execute(self, command: RescheduleOrderCommand) -> Order:
         order = await self._repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         route = None
@@ -606,7 +607,7 @@ class DeliverOrderUseCase:
     async def execute(self, command: DeliverOrderCommand) -> DeliverOrderResult:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         vehicle_location = None
@@ -743,7 +744,7 @@ class RecordFailedDeliveryUseCase:
     async def execute(self, command: RecordFailedDeliveryCommand) -> Order:
         order = await self._repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         route = None
@@ -809,11 +810,17 @@ class CancelOrderUseCase:
     async def execute(self, command: CancelOrderCommand) -> CancelOrderResult:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         if order.requires_cancellation_approval:
             order.request_cancellation_approval(reason=command.reason)
+            if await self._cancellation_repository.get_pending_by_order_id(order.id) is not None:
+                msg = (
+                    f"{_order_label(order)} already has a cancellation request "
+                    "waiting for approval."
+                )
+                raise ConflictError(msg, order_id=str(order.id))
             await self._cancellation_repository.create(
                 record_id=self._cancellation_repository.next_id(),
                 tenant_id=order.tenant_id,
@@ -868,6 +875,30 @@ class CancelOrderUseCase:
         return CancelOrderResult(order=order, pending_approval=False)
 
 
+def _order_label(order: Order) -> str:
+    """How messages name an order: its number, never its id."""
+    return f"Order {order.order_number}" if order.order_number else "This order"
+
+
+class GetPendingCancellationUseCase:
+    """The cancellation request on an order still waiting for Manager
+    approval (D-19), or `None` — the dashboard shows Approve Cancellation
+    only when there is one.
+    """
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        cancellation_repository: CancellationRecordRepository,
+    ) -> None:
+        self._get_order = GetOrderUseCase(order_repository)
+        self._cancellation_repository = cancellation_repository
+
+    async def execute(self, query: GetOrderQuery) -> CancellationRecordEntry | None:
+        order = await self._get_order.execute(query)
+        return await self._cancellation_repository.get_pending_by_order_id(order.id)
+
+
 @dataclass(frozen=True, slots=True)
 class ApproveOrderCancellationCommand(Command):
     order_id: uuid.UUID
@@ -897,11 +928,11 @@ class ApproveOrderCancellationUseCase:
     async def execute(self, command: ApproveOrderCancellationCommand) -> Order:
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
         pending = await self._cancellation_repository.get_pending_by_order_id(order.id)
         if pending is None:
-            msg = f"No pending cancellation approval for order {command.order_id}."
+            msg = f"{_order_label(order)} has no cancellation request waiting for approval."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         entries = await self._tenant_configuration_repository.list_for_tenant_and_key(
@@ -1062,7 +1093,7 @@ class CloseOrderUseCase:
     async def execute(self, command: CloseOrderCommand) -> Order:
         order = await self._repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
         order.close(closed_by=command.closed_by)
         await self._repository.save(order)
@@ -1123,7 +1154,7 @@ class GetOrderUseCase:
             scoped_branch_id=query.scoped_branch_id,
         )
         if not in_scope:
-            msg = f"No order visible with id {query.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(query.order_id))
         return order  # type: ignore[return-value]
 
@@ -1247,6 +1278,6 @@ class ListOrderStatusHistoryUseCase:
             scoped_branch_id=query.scoped_branch_id,
         )
         if not in_scope:
-            msg = f"No order visible with id {query.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(query.order_id))
         return await self._repository.list_status_history(query.order_id)

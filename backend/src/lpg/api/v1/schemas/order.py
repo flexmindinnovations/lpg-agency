@@ -269,6 +269,16 @@ class CancelOrderResponse(BaseModel):
     pending_approval: bool
 
 
+class PendingCancellationResponse(BaseModel):
+    """A post-dispatch cancellation request waiting for Manager approval (D-19)."""
+
+    id: uuid.UUID
+    order_id: uuid.UUID
+    reason: str
+    requested_by: uuid.UUID
+    requested_at: datetime
+
+
 class BulkCancelOrdersRequest(BaseModel):
     order_ids: list[uuid.UUID] = Field(min_length=1)
     reason: str = Field(min_length=1, max_length=1000)

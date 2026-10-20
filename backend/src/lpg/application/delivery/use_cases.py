@@ -602,7 +602,7 @@ class AssignOrderToRouteUseCase:
             raise NotFoundError(msg, route_id=str(command.route_id))
         order = await self._order_repository.get_by_id(command.order_id)
         if order is None:
-            msg = f"No order visible with id {command.order_id}."
+            msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
         active_routes = await self._route_repository.count_active_routes_for_order(order.id)
@@ -965,7 +965,7 @@ class LoadAndDispatchRouteUseCase:
                 continue
             order = await self._order_repository.get_by_id(order_id)
             if order is None:
-                msg = f"No order visible with id {order_id}."
+                msg = "Order not found."
                 raise NotFoundError(msg, order_id=str(order_id))
             if await self._route_repository.count_active_routes_for_order(order.id) > 0:
                 msg = f"Order {order.order_number or order.id} is already on another active trip."

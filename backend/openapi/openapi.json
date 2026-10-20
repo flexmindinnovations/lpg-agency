@@ -5390,6 +5390,44 @@
         "title": "PaymentResponse",
         "type": "object"
       },
+      "PendingCancellationResponse": {
+        "description": "A post-dispatch cancellation request waiting for Manager approval (D-19).",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "requested_by": {
+            "format": "uuid",
+            "title": "Requested By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "order_id",
+          "reason",
+          "requested_by",
+          "requested_at"
+        ],
+        "title": "PendingCancellationResponse",
+        "type": "object"
+      },
       "PlanRouteRequest": {
         "properties": {
           "branch_id": {
@@ -16188,6 +16226,58 @@
           }
         },
         "summary": "Approve Order Cancellation",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/cancellation-request": {
+      "get": {
+        "description": "The cancellation request waiting for Manager approval on this order,\nor `null` when there is none (D-19).",
+        "operationId": "get_pending_cancellation_api_v1_orders__order_id__cancellation_request_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PendingCancellationResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Pending Cancellation Api V1 Orders  Order Id  Cancellation Request Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Pending Cancellation",
         "tags": [
           "Orders"
         ]

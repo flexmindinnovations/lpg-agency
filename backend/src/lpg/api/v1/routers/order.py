@@ -109,6 +109,7 @@ from lpg.api.v1.schemas.order import (
     OrderStatusHistoryEntryResponse,
     OrderTrackingResponse,
     PaymentMethod,
+    PendingCancellationResponse,
     PodAttachmentResponse,
     ProofOfDeliveryResponse,
     RecordFailedDeliveryRequest,
@@ -163,6 +164,7 @@ from lpg.application.order.use_cases import (
     DispatchOrderUseCase,
     GetOrderQuery,
     GetOrderUseCase,
+    GetPendingCancellationUseCase,
     ListOrdersQuery,
     ListOrderStatusHistoryQuery,
     ListOrderStatusHistoryUseCase,
@@ -502,7 +504,7 @@ async def get_order(
         principal, customer_repository, driver_repository, route_repository
     )
     if scope.blocked:
-        msg = f"No order visible with id {order_id}."
+        msg = "Order not found."
         raise NotFoundError(msg, order_id=str(order_id))
 
     use_case = GetOrderUseCase(order_repository)
@@ -542,7 +544,7 @@ async def get_order_tracking(
         principal, customer_repository, driver_repository, route_repository
     )
     if scope.blocked:
-        msg = f"No order visible with id {order_id}."
+        msg = "Order not found."
         raise NotFoundError(msg, order_id=str(order_id))
 
     order = await GetOrderUseCase(order_repository).execute(
@@ -625,7 +627,7 @@ async def list_order_status_history(
         principal, customer_repository, driver_repository, route_repository
     )
     if scope.blocked:
-        msg = f"No order visible with id {order_id}."
+        msg = "Order not found."
         raise NotFoundError(msg, order_id=str(order_id))
 
     use_case = ListOrderStatusHistoryUseCase(order_repository)
@@ -768,7 +770,7 @@ async def _require_own_driver_order(
         else None
     )
     if driver is None or order is None or owner is None or owner.driver_id != driver.id:
-        msg = f"No order visible with id {order_id}."
+        msg = "Order not found."
         raise NotFoundError(msg, order_id=str(order_id))
 
 
@@ -1132,6 +1134,49 @@ async def cancel_order(
         response.status_code = 202
     return CancelOrderResponse(
         order=_order_to_response(result.order), pending_approval=result.pending_approval
+    )
+
+
+@router.get(
+    "/orders/{order_id}/cancellation-request",
+    response_model=PendingCancellationResponse | None,
+    dependencies=[Depends(require_permission("orders:read"))],
+)
+async def get_pending_cancellation(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    cancellation_repository: Annotated[
+        CancellationRecordRepository, Depends(get_cancellation_record_repository)
+    ],
+) -> PendingCancellationResponse | None:
+    """The cancellation request waiting for Manager approval on this order,
+    or `null` when there is none (D-19).
+    """
+    scope = await _resolve_scope(
+        principal, customer_repository, driver_repository, route_repository
+    )
+    if scope.blocked:
+        raise NotFoundError("Order not found.", order_id=str(order_id))
+    entry = await GetPendingCancellationUseCase(order_repository, cancellation_repository).execute(
+        GetOrderQuery(
+            order_id=order_id,
+            scoped_customer_id=scope.customer_id,
+            scoped_route_stop_ids=scope.route_stop_ids,
+            scoped_branch_id=scope.branch_id,
+        )
+    )
+    if entry is None:
+        return None
+    return PendingCancellationResponse(
+        id=entry.id,
+        order_id=entry.order_id,
+        reason=entry.reason,
+        requested_by=entry.cancelled_by,
+        requested_at=entry.requested_at,
     )
 
 

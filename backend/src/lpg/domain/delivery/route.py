@@ -502,7 +502,7 @@ class Route(AggregateRoot):
         """
         stop = next((s for s in self._stops if s.id == stop_id), None)
         if not stop:
-            msg = f"Stop {stop_id} not found on route {self.id}."
+            msg = "That stop was not found on this route."
             raise InvariantViolation(msg)
         stop.change_status("cancelled")
         self._auto_complete_if_all_stops_terminal()
@@ -529,7 +529,7 @@ class Route(AggregateRoot):
         """
         stop = next((s for s in self._stops if s.id == stop_id), None)
         if not stop:
-            msg = f"Stop {stop_id} not found on route {self.id}."
+            msg = "That stop was not found on this route."
             raise InvariantViolation(msg)
         stop.change_status("pending")
         if self._status == "completed":
@@ -553,7 +553,7 @@ class Route(AggregateRoot):
 
         stop = next((s for s in self._stops if s.id == stop_id), None)
         if not stop:
-            msg = f"Stop {stop_id} not found on route {self.id}."
+            msg = "That stop was not found on this route."
             raise InvariantViolation(msg)
 
         stop.change_status("delivered")
@@ -578,7 +578,7 @@ class Route(AggregateRoot):
 
         stop = next((s for s in self._stops if s.id == stop_id), None)
         if not stop:
-            msg = f"Stop {stop_id} not found on route {self.id}."
+            msg = "That stop was not found on this route."
             raise InvariantViolation(msg)
 
         stop.change_status("failed")
