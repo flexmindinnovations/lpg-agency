@@ -88,6 +88,8 @@ const OMC_RETURNABLE_STATUSES = ['empty', 'damaged', 'leakage', 'quarantine'] as
 const STOCK_REGISTER_DEFAULT_DAYS = 7;
 
 type TransitionKind = keyof StatusTransitionsResponse;
+/** A cylinder status as the API types it; form values come from these options. */
+type CylinderStatus = (typeof CYLINDER_STATUSES)[number];
 
 function errorMessageFor(error: unknown): string {
   switch (isAppError(error) ? error.errorCode : null) {
@@ -154,7 +156,7 @@ export class FeatureInventory implements OnInit {
     label: toSentenceCase(s),
     value: s,
   }));
-  protected readonly omcOptions = OMC_OPTIONS;
+  protected readonly omcOptions = [...OMC_OPTIONS];
   protected readonly omcReturnStatusOptions = OMC_RETURNABLE_STATUSES.map((s) => ({
     label: toSentenceCase(s),
     value: s,
@@ -687,7 +689,11 @@ export class FeatureInventory implements OnInit {
         warehouse_id: val.warehouse_id,
         vehicle_id: val.vehicle_id,
         lines: [
-          { cylinder_type_id: val.cylinder_type_id, status: val.status, quantity: val.quantity },
+          {
+            cylinder_type_id: val.cylinder_type_id,
+            status: val.status as CylinderStatus,
+            quantity: val.quantity,
+          },
         ],
       })
       .subscribe({
@@ -751,8 +757,8 @@ export class FeatureInventory implements OnInit {
     this.inventoryService
       .changeCylinderStatus(this.locationType(), refId, {
         cylinder_type_id: val.cylinder_type_id,
-        from_status: val.from_status,
-        to_status: val.to_status,
+        from_status: val.from_status as CylinderStatus,
+        to_status: val.to_status as CylinderStatus,
         quantity: val.quantity,
       })
       .subscribe({
@@ -784,8 +790,8 @@ export class FeatureInventory implements OnInit {
     this.inventoryService
       .adjustInventory(this.locationType(), refId, {
         cylinder_type_id: val.cylinder_type_id,
-        from_status: val.from_status,
-        to_status: val.to_status,
+        from_status: val.from_status as CylinderStatus,
+        to_status: val.to_status as CylinderStatus,
         quantity: val.quantity,
         reason: val.reason,
       })
@@ -818,7 +824,7 @@ export class FeatureInventory implements OnInit {
     this.inventoryService
       .createReconciliationRecord(this.locationType(), refId, {
         cylinder_type_id: val.cylinder_type_id,
-        status: val.status,
+        status: val.status as CylinderStatus,
         actual_quantity: val.actual_quantity,
       })
       .subscribe({
