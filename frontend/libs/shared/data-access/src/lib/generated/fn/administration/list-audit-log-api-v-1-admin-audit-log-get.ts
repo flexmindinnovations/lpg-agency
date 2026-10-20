@@ -12,6 +12,21 @@ import { AuditLogPageResponse } from '../../models/audit-log-page-response';
 export interface ListAuditLogApiV1AdminAuditLogGet$Params {
   entity_name?: (string | null);
   actor_id?: (string | null);
+
+/**
+ * create, update or delete
+ */
+  action?: (string | null);
+
+/**
+ * Only entries at or after this instant
+ */
+  date_from?: (string | null);
+
+/**
+ * Only entries before this instant
+ */
+  date_to?: (string | null);
   cursor?: (string | null);
   limit?: number;
 }
@@ -21,6 +36,9 @@ export function listAuditLogApiV1AdminAuditLogGet(http: HttpClient, rootUrl: str
   if (params) {
     rb.query('entity_name', params.entity_name, {});
     rb.query('actor_id', params.actor_id, {});
+    rb.query('action', params.action, {});
+    rb.query('date_from', params.date_from, {});
+    rb.query('date_to', params.date_to, {});
     rb.query('cursor', params.cursor, {});
     rb.query('limit', params.limit, {});
   }

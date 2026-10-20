@@ -3,6 +3,8 @@
 
 export type { ListAuditLogApiV1AdminAuditLogGet$Params as ListAuditLogApiV1AdminAuditLogGet$Params } from './fn/administration/list-audit-log-api-v-1-admin-audit-log-get';
 export { listAuditLogApiV1AdminAuditLogGet as listAuditLogApiV1AdminAuditLogGet } from './fn/administration/list-audit-log-api-v-1-admin-audit-log-get';
+export type { ListAuditLogEntityTypesApiV1AdminAuditLogEntityTypesGet$Params as ListAuditLogEntityTypesApiV1AdminAuditLogEntityTypesGet$Params } from './fn/administration/list-audit-log-entity-types-api-v-1-admin-audit-log-entity-types-get';
+export { listAuditLogEntityTypesApiV1AdminAuditLogEntityTypesGet as listAuditLogEntityTypesApiV1AdminAuditLogEntityTypesGet } from './fn/administration/list-audit-log-entity-types-api-v-1-admin-audit-log-entity-types-get';
 export type { ListBranchesApiV1AdminBranchesGet$Params as ListBranchesApiV1AdminBranchesGet$Params } from './fn/administration/list-branches-api-v-1-admin-branches-get';
 export { listBranchesApiV1AdminBranchesGet as listBranchesApiV1AdminBranchesGet } from './fn/administration/list-branches-api-v-1-admin-branches-get';
 export type { CreateBranchApiV1AdminBranchesPost$Params as CreateBranchApiV1AdminBranchesPost$Params } from './fn/administration/create-branch-api-v-1-admin-branches-post';

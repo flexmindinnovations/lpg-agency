@@ -9652,6 +9652,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 100,
                   "type": "string"
                 },
                 {
@@ -9679,6 +9680,63 @@
             }
           },
           {
+            "description": "create, update or delete",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(create|update|delete)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "create, update or delete",
+              "title": "Action"
+            }
+          },
+          {
+            "description": "Only entries at or after this instant",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries at or after this instant",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "Only entries before this instant",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries before this instant",
+              "title": "Date To"
+            }
+          },
+          {
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -9700,6 +9758,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -9728,6 +9788,32 @@
           }
         },
         "summary": "View the audit log",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/audit-log/entity-types": {
+      "get": {
+        "description": "Distinct `entity_name` values for this tenant — feeds the Audit Log's\n\"Record type\" filter.",
+        "operationId": "list_audit_log_entity_types_api_v1_admin_audit_log_entity_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Audit Log Entity Types Api V1 Admin Audit Log Entity Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Record types that appear in the audit log",
         "tags": [
           "Administration"
         ]
