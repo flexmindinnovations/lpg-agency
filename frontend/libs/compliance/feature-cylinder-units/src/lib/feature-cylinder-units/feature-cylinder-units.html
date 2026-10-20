@@ -674,9 +674,7 @@
         </div>
         <div class="summary-field">
           <span class="summary-label">Current Test Due</span>
-          <span class="summary-value">
-            {{ unit.test_due_date ? formatReportDate(unit.test_due_date) : 'Never tested' }}
-          </span>
+          <span class="summary-value"> {{ testDueLabel(unit.test_due_date, unit) }} </span>
         </div>
       </div>
 

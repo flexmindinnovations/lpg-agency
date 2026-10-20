@@ -91,6 +91,25 @@ const CUSTODY_TYPES = ['warehouse', 'vehicle', 'customer', 'bottling_plant'] as 
 
 type ActiveAction = 'none' | 'test' | 'custody' | 'condition' | 'receive';
 
+function todayIso(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Due date plus where it came from: a recorded test, or the statutory first
+ * test 10 years after manufacture when the cylinder was never tested (DO-32). */
+export function testDueLabel(
+  due: string | null | undefined,
+  unit: Pick<CylinderUnitResponse, 'test_due_basis'> | undefined,
+): string {
+  if (!due) return 'Unknown — add manufacture date';
+  const text = formatReportDate(due);
+  const overdue = due < todayIso() ? ' · overdue' : '';
+  const basis = unit?.test_due_basis === 'manufacture' ? ' (from manufacture date)' : '';
+  return `${text}${basis}${overdue}`;
+}
+
 @Component({
   selector: 'lpg-feature-cylinder-units',
   standalone: true,
@@ -245,6 +264,8 @@ export class FeatureCylinderUnits implements OnInit {
   protected readonly registerTrigger =
     viewChild<ElementRef<HTMLButtonElement>>('registerTriggerEl');
 
+  protected readonly testDueLabel = testDueLabel;
+
   protected readonly columns: DataGridColumn<CylinderUnitResponse>[] = [
     {
       field: 'serial_number',
@@ -284,7 +305,8 @@ export class FeatureCylinderUnits implements OnInit {
       field: 'test_due_date',
       header: 'Test Due',
       sortable: true,
-      valueFormatter: (value) => (value ? formatReportDate(value) : 'Never tested'),
+      valueFormatter: (value, row) => testDueLabel(value as string | null, row),
+      cellClass: (value) => (value && (value as string) < todayIso() ? 'test-due--overdue' : ''),
     },
   ];
 
