@@ -35,6 +35,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from lpg.api.v1.dependencies.admin import (
     get_audit_log_repository,
+    get_audit_trail,
     get_branch_repository,
     get_cylinder_type_repository,
     get_feature_flag_override_repository,
@@ -104,7 +105,7 @@ from lpg.api.v1.schemas.license import (
     LinkedDeviceResponse,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
-from lpg.application.audit.ports import AuditLogRepository
+from lpg.application.audit.ports import AuditLogRepository, AuditTrail
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.identity.ports import (
@@ -127,6 +128,8 @@ from lpg.application.identity.staff_user import (
     ListPermissionsUseCase,
     ListStaffUsersQuery,
     ListStaffUsersUseCase,
+    ReactivateStaffUserCommand,
+    ReactivateStaffUserUseCase,
     ReassignRoleCommand,
     ReassignRoleUseCase,
     UpdateStaffUserPermissionsCommand,
@@ -994,6 +997,13 @@ async def revoke_linked_device(
 # -- Staff Users ------------------------------------------------------------------
 
 
+def _actor_id(principal: AuthenticatedPrincipal) -> uuid.UUID:
+    """The acting admin's id - every staff-management rule needs it."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    return principal.user_id
+
+
 @router.get("/users", response_model=list[StaffUserResponse], summary="List staff users")
 async def list_staff_users(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
@@ -1033,6 +1043,7 @@ async def invite_staff_user(
         token_hasher,
         email_sender,
         reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+        link_base=settings.dashboard_url,
     )
     user = await use_case.execute(
         InviteStaffUserCommand(
@@ -1051,28 +1062,65 @@ async def invite_staff_user(
     )
 
 
-@router.patch("/users/{user_id}/deactivate", status_code=204, summary="Deactivate a staff user")
+@router.patch(
+    "/users/{user_id}/deactivate",
+    status_code=204,
+    summary="Deactivate a staff user",
+    description=(
+        "Signs the user out everywhere and blocks sign-in until reactivated. "
+        "409 for your own account or the agency's last active agency admin."
+    ),
+)
 async def deactivate_staff_user(
     user_id: uuid.UUID,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     refresh_token_repository: Annotated[
         RefreshTokenRepository, Depends(get_refresh_token_repository)
     ],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = DeactivateStaffUserUseCase(repository, refresh_token_repository)
-    await use_case.execute(DeactivateStaffUserCommand(user_id=user_id))
+    use_case = DeactivateStaffUserUseCase(repository, refresh_token_repository, audit)
+    await use_case.execute(
+        DeactivateStaffUserCommand(user_id=user_id, actor_id=_actor_id(principal))
+    )
 
 
-@router.patch("/users/{user_id}/role", status_code=204, summary="Reassign a staff user's role")
+@router.patch(
+    "/users/{user_id}/reactivate",
+    status_code=204,
+    summary="Reactivate a deactivated staff user",
+)
+async def reactivate_staff_user(
+    user_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+) -> None:
+    use_case = ReactivateStaffUserUseCase(repository, audit)
+    await use_case.execute(
+        ReactivateStaffUserCommand(user_id=user_id, actor_id=_actor_id(principal))
+    )
+
+
+@router.patch(
+    "/users/{user_id}/role",
+    status_code=204,
+    summary="Reassign a staff user's role",
+    description="Also resets the user's permissions to the new role's defaults.",
+)
 async def reassign_role(
     user_id: uuid.UUID,
     body: ReassignRoleRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = ReassignRoleUseCase(repository)
-    await use_case.execute(ReassignRoleCommand(user_id=user_id, new_role=body.new_role))
+    use_case = ReassignRoleUseCase(repository, permission_repository, audit)
+    await use_case.execute(
+        ReassignRoleCommand(user_id=user_id, new_role=body.new_role, actor_id=_actor_id(principal))
+    )
 
 
 @router.get(
@@ -1099,14 +1147,17 @@ async def get_user_permissions(
 async def update_user_permissions(
     user_id: uuid.UUID,
     body: UpdateStaffUserPermissionsRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     staff_repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository)
+    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository, audit)
     await use_case.execute(
         UpdateStaffUserPermissionsCommand(
-            user_id=user_id, permission_codes=set(body.permission_codes)
+            user_id=user_id,
+            permission_codes=set(body.permission_codes),
+            actor_id=_actor_id(principal),
         )
     )
 

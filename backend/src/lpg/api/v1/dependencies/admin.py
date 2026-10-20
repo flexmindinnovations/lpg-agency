@@ -18,7 +18,7 @@ from fastapi import Depends
 
 from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
-from lpg.application.audit.ports import AuditLogRepository
+from lpg.application.audit.ports import AuditLogRepository, AuditTrail
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.identity.ports import AuthenticatedPrincipal, StaffUserRepository
 from lpg.application.platform.ports import FeatureFlagOverrideRepository, FeatureFlagRepository
@@ -141,6 +141,16 @@ def get_staff_user_repository(
     )
 
     return SqlAlchemyStaffUserRepository(_get_database(), principal.tenant_id)
+
+
+def get_audit_trail(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> AuditTrail:
+    """Explicit audit entries for identity changes (DA-24), written in the
+    request's Unit of Work so they commit with the request."""
+    from lpg.infrastructure.persistence.audit_trail import SqlAlchemyAuditTrail
+
+    return SqlAlchemyAuditTrail(unit_of_work)  # type: ignore[arg-type]
 
 
 def get_audit_log_repository() -> AuditLogRepository:

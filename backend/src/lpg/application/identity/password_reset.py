@@ -37,6 +37,11 @@ class RequestPasswordResetCommand(Command):
     email: str
 
 
+#: Dashboard route that opens the reset form (a top-level alias of
+#: `/login/reset-password`, so emailed links keep working - DA-08).
+RESET_PASSWORD_PATH = "/reset-password"  # noqa: S105 - a URL path, not a secret
+
+
 class RequestPasswordResetUseCase:
     def __init__(
         self,
@@ -46,12 +51,14 @@ class RequestPasswordResetUseCase:
         email_sender: EmailSender,
         *,
         reset_token_ttl: timedelta,
+        link_base: str = "",
     ) -> None:
         self._user_repository = user_repository
         self._reset_token_repository = reset_token_repository
         self._token_hasher = token_hasher
         self._email_sender = email_sender
         self._reset_token_ttl = reset_token_ttl
+        self._link_base = link_base.rstrip("/")
 
     async def execute(self, command: RequestPasswordResetCommand) -> None:
         user = await self._user_repository.get_by_email(command.email)
@@ -70,7 +77,8 @@ class RequestPasswordResetUseCase:
         )
         await self._reset_token_repository.save(reset_token)
 
-        body = f"Use this link to reset your password: /reset-password?token={raw_token}"
+        link = f"{self._link_base}{RESET_PASSWORD_PATH}?token={raw_token}"
+        body = f"Use this link to reset your password: {link}"
         await self._email_sender.send(command.email, "Reset your password", body)
 
 

@@ -213,6 +213,10 @@ class StaffUserRepository(Protocol):
 
     async def save(self, user: IdentityUser) -> None: ...
 
+    async def count_active_with_role(self, role: str) -> int:
+        """Active, non-deleted accounts with `role` in the repository's tenant."""
+        ...
+
 
 @runtime_checkable
 class RefreshTokenRepository(Protocol):
@@ -259,6 +263,10 @@ class PermissionRepository(Protocol):
 
     async def get_all_permission_codes(self) -> frozenset[str]:
         """All available permission codes in the system."""
+        ...
+
+    async def get_permission_codes_for_role(self, role: str) -> frozenset[str]:
+        """The default permission set of `role` (`identity.role_permission`)."""
         ...
 
     async def set_permissions_for_user(

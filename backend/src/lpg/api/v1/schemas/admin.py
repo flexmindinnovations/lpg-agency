@@ -69,7 +69,7 @@ class AgencyUserSetupResponse(BaseModel):
     user_id: str
     email: str | None
     role: str
-    #: `/reset-password?token=...` - prefix it with the site's origin.
+    #: `/set-password?token=...` - prefix it with the site's origin.
     setup_path: str
     setup_token_expires_at: datetime
 

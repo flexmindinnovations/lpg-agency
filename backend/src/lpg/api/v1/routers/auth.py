@@ -305,6 +305,7 @@ async def password_forgot(
         token_hasher,
         email_sender,
         reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+        link_base=settings.dashboard_url,
     )
     # Always 204, regardless of whether the email matched an account — the
     # use case itself already guarantees no user-enumeration; the router

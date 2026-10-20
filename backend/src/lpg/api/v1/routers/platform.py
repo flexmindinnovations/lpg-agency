@@ -71,7 +71,7 @@ from lpg.application.identity.ports import (
     PasswordResetTokenRepository,
     TokenHasher,
 )
-from lpg.application.identity.staff_user import InviteStaffUserUseCase
+from lpg.application.identity.staff_user import InviteStaffUserUseCase, setup_password_path
 from lpg.application.license.activate_license import (
     ActivateLicenseCommand,
     ActivateLicenseUseCase,
@@ -256,6 +256,7 @@ async def create_agency(
             token_hasher,
             email_sender,
             reset_token_ttl=timedelta(seconds=settings.setup_link_ttl_seconds),
+            link_base=settings.dashboard_url,
         )
 
     async def _close_half_created(tenant_id: uuid.UUID) -> None:
@@ -289,7 +290,7 @@ async def create_agency(
         tenant=_tenant_response(result.tenant),
         admin_user_id=str(result.admin.id),
         admin_email=body.admin_email.strip().lower(),
-        setup_path=f"/reset-password?token={result.setup_token}",
+        setup_path=setup_password_path(result.setup_token),
         setup_token_expires_at=result.setup_token_expires_at,
     )
 
@@ -299,7 +300,7 @@ def _setup_response(issued: IssuedSetupLink) -> AgencyUserSetupResponse:
         user_id=str(issued.user.id),
         email=issued.user.email,
         role=issued.user.role,
-        setup_path=f"/reset-password?token={issued.setup_token}",
+        setup_path=setup_password_path(issued.setup_token),
         setup_token_expires_at=issued.setup_token_expires_at,
     )
 
@@ -361,6 +362,7 @@ async def add_agency_admin(
             token_hasher,
             email_sender,
             reset_token_ttl=timedelta(seconds=settings.setup_link_ttl_seconds),
+            link_base=settings.dashboard_url,
         )
         issued = await AddAgencyAdminUseCase(
             SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
