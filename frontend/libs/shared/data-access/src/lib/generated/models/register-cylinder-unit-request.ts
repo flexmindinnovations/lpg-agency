@@ -6,8 +6,10 @@ export interface RegisterCylinderUnitRequest {
   custody_ref_id?: (string | null);
   custody_type: string;
   cylinder_type_id: string;
+  last_tested_at?: (string | null);
   manufacture_date?: (string | null);
   owner_omc?: (string | null);
   qr_code?: (string | null);
   serial_number: string;
+  test_due_date?: (string | null);
 }

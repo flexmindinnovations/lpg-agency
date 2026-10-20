@@ -116,6 +116,8 @@ export type { LpgApiV1SchemasRouteAssignOrderRequest } from './models/lpg-api-v-
 export type { MoveCylinderCustodyRequest } from './models/move-cylinder-custody-request';
 export type { NextConsumerNumberResponse } from './models/next-consumer-number-response';
 export type { NotificationResponse } from './models/notification-response';
+export type { OmcReturnRequest } from './models/omc-return-request';
+export type { OmcReturnResponse } from './models/omc-return-response';
 export type { OnboardingDraftListResponse } from './models/onboarding-draft-list-response';
 export type { OnboardingDraftResponse } from './models/onboarding-draft-response';
 export type { OnlinePaymentListResponse } from './models/online-payment-list-response';
@@ -154,7 +156,9 @@ export type { RecognizeComplianceDocumentResponse } from './models/recognize-com
 export type { RecognizeKycDocumentRequest } from './models/recognize-kyc-document-request';
 export type { RecognizeKycDocumentResponse } from './models/recognize-kyc-document-response';
 export type { ReconciliationRecordCreateRequest } from './models/reconciliation-record-create-request';
+export type { ReconciliationRecordListResponse } from './models/reconciliation-record-list-response';
 export type { ReconciliationRecordResponse } from './models/reconciliation-record-response';
+export type { ReconciliationRejectRequest } from './models/reconciliation-reject-request';
 export type { RecordCollectionRequest } from './models/record-collection-request';
 export type { RecordCylinderStatutoryTestRequest } from './models/record-cylinder-statutory-test-request';
 export type { RecordDeliveryRequest } from './models/record-delivery-request';
@@ -210,6 +214,9 @@ export type { SetScaleStatusRequest } from './models/set-scale-status-request';
 export type { SetTenantConfigurationRequest } from './models/set-tenant-configuration-request';
 export type { SetWarehouseActiveRequest } from './models/set-warehouse-active-request';
 export type { StaffUserResponse } from './models/staff-user-response';
+export type { StatusTransitionsResponse } from './models/status-transitions-response';
+export type { StockRegisterLineResponse } from './models/stock-register-line-response';
+export type { StockRegisterResponse } from './models/stock-register-response';
 export type { SubmitKycDocumentRequest } from './models/submit-kyc-document-request';
 export type { SuggestCylinderTestDueDateResponse } from './models/suggest-cylinder-test-due-date-response';
 export type { TdtBandDistributionResponse } from './models/tdt-band-distribution-response';

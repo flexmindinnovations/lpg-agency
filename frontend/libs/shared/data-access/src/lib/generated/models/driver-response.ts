@@ -8,6 +8,8 @@ export interface DriverResponse {
   identity_user_id: (string | null);
   license_expiry_date: (string | null);
   license_number: string;
+  name?: (string | null);
+  phone_number?: (string | null);
   status: string;
   tenant_id: string;
   version: number;

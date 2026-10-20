@@ -3,8 +3,8 @@
 
 export interface AdjustInventoryRequest {
   cylinder_type_id: string;
-  from_status: string;
+  from_status: 'filled' | 'empty' | 'damaged' | 'leakage' | 'quarantine' | 'repair' | 'scrap';
   quantity: number;
   reason: string;
-  to_status: string;
+  to_status: 'filled' | 'empty' | 'damaged' | 'leakage' | 'quarantine' | 'repair' | 'scrap';
 }

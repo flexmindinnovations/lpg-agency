@@ -9,7 +9,12 @@ export interface ReconciliationRecordResponse {
   expected_quantity: number;
   id: string;
   inventory_location_id: string;
+  recorded_at?: (string | null);
   recorded_by: string;
+  rejected_at?: (string | null);
+  rejected_by?: (string | null);
+  rejection_reason?: (string | null);
+  state?: 'pending' | 'approved' | 'rejected';
   status: string;
   tenant_id: string;
   variance: number;

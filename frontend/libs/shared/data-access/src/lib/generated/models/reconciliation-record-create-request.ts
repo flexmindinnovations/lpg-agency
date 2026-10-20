@@ -4,5 +4,5 @@
 export interface ReconciliationRecordCreateRequest {
   actual_quantity: number;
   cylinder_type_id: string;
-  status: string;
+  status: 'filled' | 'empty' | 'damaged' | 'leakage' | 'quarantine' | 'repair' | 'scrap';
 }

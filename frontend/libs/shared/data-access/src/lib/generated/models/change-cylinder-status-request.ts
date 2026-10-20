@@ -3,7 +3,7 @@
 
 export interface ChangeCylinderStatusRequest {
   cylinder_type_id: string;
-  from_status: string;
+  from_status: 'filled' | 'empty' | 'damaged' | 'leakage' | 'quarantine' | 'repair' | 'scrap';
   quantity: number;
-  to_status: string;
+  to_status: 'filled' | 'empty' | 'damaged' | 'leakage' | 'quarantine' | 'repair' | 'scrap';
 }
