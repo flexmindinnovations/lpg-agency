@@ -21,6 +21,18 @@ const _maxBackoff = Duration(seconds: 30);
 /// (RFC 6455 1008, "policy violation").
 const tokenRejectedCloseCode = 1008;
 
+/// Synthetic message type the client puts on its change streams when the
+/// connection becomes ready again after a drop: anything may have changed
+/// while offline, so listeners should refetch.
+const reconnectedMessageType = 'realtime.reconnected';
+
+const _notificationChangeTypes = {
+  'notification.new',
+  'notification.read',
+  'notification.read_all',
+  reconnectedMessageType,
+};
+
 /// Wraps the backend's single multiplexed `/api/v1/ws` WebSocket
 /// (`backend/src/lpg/api/v1/routers/ws.py`) behind typed per-topic streams.
 /// One physical connection carries every subscription: each `subscribeTo…`
@@ -158,13 +170,35 @@ final class RealtimeClient {
     );
   }
 
+  /// Everything that changes the signed-in user's inbox or unread count:
+  /// new notifications, reads on any device, and [reconnectedMessageType]
+  /// after a drop. The single stream an app shell needs to keep its badge
+  /// and inbox current.
+  Stream<Map<String, dynamic>> subscribeToNotificationChanges() {
+    _addIntent('notifications');
+    return _messages.stream.where(
+      (m) => _notificationChangeTypes.contains(m['type']),
+    );
+  }
+
+  /// [subscribeToNotificationChanges] plus the signed-in driver's route
+  /// changes (`delivery.route_updated`) — what the Driver App shell refreshes
+  /// its badge, inbox and active route on.
+  Stream<Map<String, dynamic>> subscribeToDriverUpdates() {
+    _addIntent('driver');
+    _addIntent('notifications');
+    return _messages.stream.where(
+      (m) =>
+          _notificationChangeTypes.contains(m['type']) ||
+          m['type'] == 'delivery.route_updated',
+    );
+  }
+
   /// Route changes for the signed-in driver — the backend's
   /// `delivery.route_updated` messages on the driver's own channel.
   Stream<Map<String, dynamic>> subscribeToDriverRoutes() {
     _addIntent('driver');
-    return _messages.stream.where(
-      (m) => m['type'] == 'delivery.route_updated',
-    );
+    return _messages.stream.where((m) => m['type'] == 'delivery.route_updated');
   }
 
   /// The delivery driver's live position for one order — the backend's
@@ -220,7 +254,10 @@ final class RealtimeClient {
     _backoff = _initialBackoff;
     if (wasReady) return; // in-band token refresh acknowledgement
     if (_activeIntents.isNotEmpty) _sendSubscribe(_activeIntents);
-    if (_everReady) _reconnected.add(null);
+    if (_everReady) {
+      _reconnected.add(null);
+      _messages.add({'type': reconnectedMessageType});
+    }
     _everReady = true;
   }
 

@@ -305,42 +305,89 @@ void main() {
       },
     );
 
+    test('subscribeToDriverRoutes subscribes to the driver channel', () async {
+      final sockets = <_FakeSocket>[];
+      final client = RealtimeClient(
+        wsBaseUrl: 'wss://api.test',
+        getAccessToken: () => 'the-token',
+        connect: (uri) {
+          final socket = _FakeSocket();
+          sockets.add(socket);
+          return socket;
+        },
+      );
+
+      final events = <Map<String, dynamic>>[];
+      final sub = client.subscribeToDriverRoutes().listen(events.add);
+      await Future<void>.delayed(Duration.zero);
+      sockets.single.ready();
+      await Future<void>.delayed(Duration.zero);
+      expect(sockets.single.sentAfterAuth, [
+        jsonEncode({
+          'subscribe': ['driver'],
+        }),
+      ]);
+
+      sockets.single.emit({
+        'type': 'delivery.route_updated',
+        'route_id': 'r-1',
+      });
+      sockets.single.emit({'type': 'order.status_changed'});
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events, hasLength(1));
+      expect(events.single['route_id'], 'r-1');
+      await sub.cancel();
+      await client.disconnect();
+    });
+
     test(
-      'subscribeToDriverRoutes subscribes to the driver channel',
-      () async {
-        final sockets = <_FakeSocket>[];
-        final client = RealtimeClient(
-          wsBaseUrl: 'wss://api.test',
-          getAccessToken: () => 'the-token',
-          connect: (uri) {
-            final socket = _FakeSocket();
-            sockets.add(socket);
-            return socket;
-          },
-        );
+      'subscribeToDriverUpdates covers inbox changes, routes and reconnects',
+      () {
+        fakeAsync((async) {
+          final sockets = <_FakeSocket>[];
+          final client = RealtimeClient(
+            wsBaseUrl: 'wss://api.test',
+            getAccessToken: () => 'the-token',
+            connect: (uri) {
+              final socket = _FakeSocket();
+              sockets.add(socket);
+              return socket;
+            },
+          );
 
-        final events = <Map<String, dynamic>>[];
-        final sub = client.subscribeToDriverRoutes().listen(events.add);
-        await Future<void>.delayed(Duration.zero);
-        sockets.single.ready();
-        await Future<void>.delayed(Duration.zero);
-        expect(sockets.single.sentAfterAuth, [
-          jsonEncode({
-            'subscribe': ['driver'],
-          }),
-        ]);
+          final types = <Object?>[];
+          client.subscribeToDriverUpdates().listen((m) => types.add(m['type']));
+          async.flushMicrotasks();
+          sockets.single.ready();
+          async.flushMicrotasks();
+          expect(sockets.single.sentAfterAuth, [
+            jsonEncode({
+              'subscribe': ['driver', 'notifications'],
+            }),
+          ]);
 
-        sockets.single.emit({
-          'type': 'delivery.route_updated',
-          'route_id': 'r-1',
+          sockets.single.emit({'type': 'notification.new'});
+          sockets.single.emit({'type': 'notification.read_all'});
+          sockets.single.emit({'type': 'delivery.route_updated'});
+          sockets.single.emit({'type': 'order.status_changed'});
+          async.flushMicrotasks();
+
+          unawaited(sockets.single.dropConnection());
+          async.flushMicrotasks();
+          async.elapse(const Duration(seconds: 1));
+          sockets.last.ready();
+          async.flushMicrotasks();
+
+          expect(types, [
+            'notification.new',
+            'notification.read_all',
+            'delivery.route_updated',
+            reconnectedMessageType,
+          ]);
+          unawaited(client.disconnect());
+          async.flushMicrotasks();
         });
-        sockets.single.emit({'type': 'order.status_changed'});
-        await Future<void>.delayed(Duration.zero);
-
-        expect(events, hasLength(1));
-        expect(events.single['route_id'], 'r-1');
-        await sub.cancel();
-        await client.disconnect();
       },
     );
 
