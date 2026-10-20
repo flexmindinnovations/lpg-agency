@@ -126,6 +126,47 @@ async def _seed_staff_user(
     return uuid.UUID(str(tenant_id))
 
 
+async def _seed_customer(engine: AsyncEngine, *, tenant_id: uuid.UUID) -> uuid.UUID:
+    async with engine.begin() as conn:
+        branch_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.branch (id, tenant_id, name) "
+                    "VALUES (gen_random_uuid(), :tenant_id, 'Main Branch') RETURNING id"
+                ),
+                {"tenant_id": str(tenant_id)},
+            )
+        ).scalar_one()
+        customer_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO customer.customer "
+                    "(id, tenant_id, branch_id, customer_type, full_name, phone_number, "
+                    "consumer_number) VALUES (gen_random_uuid(), :tenant_id, :branch_id, "
+                    "'domestic', 'Meena Iyer', :phone, :consumer_number) RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "branch_id": str(branch_id),
+                    "phone": f"+91{uuid.uuid4().int % 10**9:09d}",
+                    "consumer_number": f"CN{uuid.uuid4().hex[:10]}",
+                },
+            )
+        ).scalar_one()
+    return uuid.UUID(str(customer_id))
+
+
+async def _user_id(engine: AsyncEngine, email: str) -> uuid.UUID:
+    async with engine.begin() as conn:
+        user_id = (
+            await conn.execute(
+                text("SELECT id FROM identity.identity_user WHERE email = :email"),
+                {"email": email},
+            )
+        ).scalar_one()
+    return uuid.UUID(str(user_id))
+
+
 async def _login(client: AsyncClient, *, email: str, password: str) -> str:
     response = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
@@ -143,22 +184,40 @@ class TestComplaintLifecycleThroughTheRealStack:
         hasher = Argon2PasswordHasher(integration_settings)
         email = f"{uuid.uuid4().hex}@complaint-smoke.example"
         password = "correct horse battery staple 42"
-        await _seed_staff_user(
+        tenant_id = await _seed_staff_user(
             admin_engine_lpg_test,
             email=email,
             password_hash=hasher.hash(password),
             role="manager",
             tenant_name="Complaint Smoke Tenant (lifecycle)",
         )
+        customer_id = await _seed_customer(admin_engine_lpg_test, tenant_id=tenant_id)
+        manager_id = await _user_id(admin_engine_lpg_test, email)
         token = await _login(real_lifespan_client, email=email, password=password)
         headers = {"Authorization": f"Bearer {token}"}
         client = real_lifespan_client
+
+        unknown_customer = await client.post(
+            "/api/v1/complaints",
+            headers=headers,
+            json={
+                "customer_id": str(uuid.uuid4()),
+                "category": "Other",
+                "priority": "Low",
+                "description": "Nobody",
+            },
+        )
+        assert unknown_customer.status_code == 422, unknown_customer.text
+
+        assignees = await client.get("/api/v1/complaints/assignees", headers=headers)
+        assert assignees.status_code == 200, assignees.text
+        assert manager_id in [uuid.UUID(a["user_id"]) for a in assignees.json()]
 
         raise_response = await client.post(
             "/api/v1/complaints",
             headers=headers,
             json={
-                "customer_id": str(uuid.uuid4()),
+                "customer_id": str(customer_id),
                 "category": "LateDelivery",
                 "priority": "High",
                 "description": "Cylinder arrived a day late.",
@@ -167,10 +226,16 @@ class TestComplaintLifecycleThroughTheRealStack:
         assert raise_response.status_code == 201, raise_response.text
         complaint_id = raise_response.json()["id"]
 
-        assign_response = await client.post(
+        stranger = await client.post(
             f"/api/v1/complaints/{complaint_id}/assign",
             headers=headers,
             json={"assigned_to": str(uuid.uuid4())},
+        )
+        assert stranger.status_code == 422, stranger.text
+        assign_response = await client.post(
+            f"/api/v1/complaints/{complaint_id}/assign",
+            headers=headers,
+            json={"assigned_to": str(manager_id)},
         )
         assert assign_response.status_code == 204, assign_response.text
 
@@ -188,6 +253,8 @@ class TestComplaintLifecycleThroughTheRealStack:
         assert len(body["assignments"]) == 1
         assert body["resolution"]["outcome"] == "Resolved"
         assert body["resolution"]["resolution_notes"] == "Replacement dispatched."
+        assert body["customer_name"] == "Meena Iyer"
+        assert body["assignee_name"] == email
 
     async def test_list_complaints_is_tenant_scoped(
         self,
@@ -199,13 +266,14 @@ class TestComplaintLifecycleThroughTheRealStack:
         password = "correct horse battery staple 42"
 
         email = f"{uuid.uuid4().hex}@complaint-smoke.example"
-        await _seed_staff_user(
+        own_tenant = await _seed_staff_user(
             admin_engine_lpg_test,
             email=email,
             password_hash=hasher.hash(password),
             role="manager",
             tenant_name="Complaint Smoke Tenant (list, own)",
         )
+        own_customer = await _seed_customer(admin_engine_lpg_test, tenant_id=own_tenant)
         token = await _login(real_lifespan_client, email=email, password=password)
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -213,7 +281,7 @@ class TestComplaintLifecycleThroughTheRealStack:
             "/api/v1/complaints",
             headers=headers,
             json={
-                "customer_id": str(uuid.uuid4()),
+                "customer_id": str(own_customer),
                 "category": "Other",
                 "priority": "Low",
                 "description": "own tenant's complaint",
@@ -222,20 +290,21 @@ class TestComplaintLifecycleThroughTheRealStack:
         assert raise_response.status_code == 201, raise_response.text
 
         other_email = f"{uuid.uuid4().hex}@complaint-smoke.example"
-        await _seed_staff_user(
+        other_tenant = await _seed_staff_user(
             admin_engine_lpg_test,
             email=other_email,
             password_hash=hasher.hash(password),
             role="manager",
             tenant_name="Complaint Smoke Tenant (list, other)",
         )
+        other_customer = await _seed_customer(admin_engine_lpg_test, tenant_id=other_tenant)
         other_token = await _login(real_lifespan_client, email=other_email, password=password)
         other_headers = {"Authorization": f"Bearer {other_token}"}
         other_raise_response = await real_lifespan_client.post(
             "/api/v1/complaints",
             headers=other_headers,
             json={
-                "customer_id": str(uuid.uuid4()),
+                "customer_id": str(other_customer),
                 "category": "Other",
                 "priority": "Low",
                 "description": "other tenant's complaint",

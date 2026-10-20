@@ -2,8 +2,9 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from lpg.domain.common.base import AggregateRoot, DomainEvent, Entity
+from lpg.domain.common.base import AggregateRoot, DomainEvent, Entity, InvariantViolation
 from lpg.domain.complaint.value_objects import (
+    SAFETY_CATEGORIES,
     ComplaintCategory,
     ComplaintPriority,
     ComplaintStatus,
@@ -135,6 +136,11 @@ class Complaint(AggregateRoot):
         complaint_number: str,
         order_id: uuid.UUID | None = None,
     ) -> "Complaint":
+        if category in SAFETY_CATEGORIES:
+            priority = ComplaintPriority.CRITICAL
+        description = description.strip()
+        if not description:
+            raise InvariantViolation("Describe the complaint.")
         # Calculate SLA Due At based on priority
         sla_due_at = cls._calculate_sla(priority)
 

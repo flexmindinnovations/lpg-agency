@@ -21,6 +21,8 @@ class ComplaintAssignmentResponse(BaseModel):
     assigned_at: datetime
     created_at: datetime
     created_by: uuid.UUID | None
+    #: The assignee's name (DO-20); `null` if the account no longer exists.
+    assigned_to_name: str | None = None
 
 
 class ComplaintResolutionResponse(BaseModel):
@@ -52,6 +54,22 @@ class ComplaintResponse(BaseModel):
     updated_by: uuid.UUID | None = None
     assignments: list[ComplaintAssignmentResponse] = Field(default_factory=list)
     resolution: ComplaintResolutionResponse | None = None
+    # Human-readable references (DO-20), filled on every read.
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    consumer_number: str | None = None
+    order_number: str | None = None
+    #: Name of the person the complaint is currently assigned to.
+    assignee_name: str | None = None
+
+
+class ComplaintAssigneeResponse(BaseModel):
+    """A staff member a complaint can be assigned to (DO-18)."""
+
+    user_id: uuid.UUID
+    name: str
+    role: str
+    email: str | None = None
 
 
 class ComplaintListResponse(BaseModel):

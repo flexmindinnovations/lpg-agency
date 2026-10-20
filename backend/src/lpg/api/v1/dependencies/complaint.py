@@ -7,7 +7,11 @@ from fastapi import Depends
 from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.application.common.ports import UnitOfWork
-from lpg.application.complaint.ports import ComplaintNumberSequence, ComplaintUnitOfWork
+from lpg.application.complaint.ports import (
+    ComplaintDirectory,
+    ComplaintNumberSequence,
+    ComplaintUnitOfWork,
+)
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.infrastructure.persistence.repositories.complaint import SqlAlchemyComplaintRepository
 
@@ -57,3 +61,13 @@ def get_complaint_number_sequence(
         entity_type="complaint",
         prefix="CMP",
     )
+
+
+def get_complaint_directory(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> ComplaintDirectory:
+    from lpg.infrastructure.persistence.repositories.complaint import (
+        SqlAlchemyComplaintDirectory,
+    )
+
+    return SqlAlchemyComplaintDirectory(unit_of_work)  # type: ignore[arg-type]
