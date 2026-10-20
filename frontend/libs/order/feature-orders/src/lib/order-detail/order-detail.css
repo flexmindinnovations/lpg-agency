@@ -89,7 +89,7 @@
   flex-direction: column;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm);
-  border-left: 3px solid var(--color-action-primary);
+  border-left: 3px solid var(--component-button-primary-background);
   background: var(--color-surface-overlay);
 }
 
@@ -161,4 +161,93 @@
 
 .pod-status--ok {
   color: var(--color-status-success);
+}
+
+/* Order progress — Booked → Confirmed → On a trip → Out for delivery → Delivered. */
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.progress__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress__step {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--typography-body-small-font-size);
+}
+
+.progress__step:not(:last-child)::after {
+  content: '';
+  inline-size: var(--spacing-lg);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+.progress__marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-border-default);
+  font-size: var(--typography-caption-font-size);
+}
+
+.progress__step--done .progress__marker,
+.progress__step--current .progress__marker {
+  border-color: var(--component-button-primary-background);
+  background: var(--component-button-primary-background);
+  color: var(--component-button-primary-text);
+}
+
+.progress__step--current {
+  color: var(--color-text-primary);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.progress__note,
+.send-out__hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--typography-body-small-font-size);
+}
+
+.load-sheet {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--typography-body-small-font-size);
+}
+
+.load-sheet th,
+.load-sheet td {
+  text-align: start;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-block-end: var(--border-width) solid var(--color-border-default);
+}
+
+.load-sheet thead th {
+  color: var(--color-text-secondary);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.load-sheet__row--short td,
+.load-sheet__row--short th,
+.load-sheet__short {
+  color: var(--color-status-danger);
+}
+
+.load-sheet__short {
+  display: block;
+  font-weight: var(--typography-label-font-weight);
 }

@@ -1087,3 +1087,113 @@ class TestRouteOptimization:
         response = await client.post(f"/api/v1/routes/{route_id}/optimize", headers=admin_headers)
         assert response.status_code == 409, response.text
         assert response.json()["error_code"] == "ROUTE_OPTIMIZATION_DISABLED"
+
+
+class TestLoadAndDispatchThroughRealStack:
+    async def test_trip_sheet_loads_releases_and_lets_the_driver_deliver(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+        cylinder = str(fixtures.cylinder_type_id)
+
+        plan_response = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        assert plan_response.status_code == 201, plan_response.text
+        route_id = plan_response.json()["id"]
+
+        # An order put on the trip before the van was loaded reserves nothing.
+        early = await _create_and_confirm_order(client, fixtures, admin_headers, quantity=2)
+        assign_response = await client.post(
+            f"/api/v1/routes/{route_id}/assign-order",
+            json={"order_id": early["id"]},
+            headers=admin_headers,
+        )
+        assert assign_response.status_code == 200, assign_response.text
+        early_lines = (
+            await client.get(f"/api/v1/orders/{early['id']}", headers=admin_headers)
+        ).json()["lines"]
+        assert early_lines[0]["quantity_pending"] == 2
+
+        # A godown that can't cover the trip (here, too many spares) moves nothing.
+        later = await _create_and_confirm_order(client, fixtures, admin_headers, quantity=3)
+        short_response = await client.post(
+            f"/api/v1/routes/{route_id}/load-and-dispatch",
+            json={
+                "warehouse_id": str(fixtures.warehouse_id),
+                "order_ids": [later["id"]],
+                "extra_lines": [{"cylinder_type_id": cylinder, "quantity": 500}],
+            },
+            headers=admin_headers,
+        )
+        assert short_response.status_code == 409, short_response.text
+        assert short_response.json()["error_code"] == "INSUFFICIENT_STOCK"
+        still_planned = (
+            await client.get(f"/api/v1/routes/{route_id}", headers=admin_headers)
+        ).json()
+        assert still_planned["status"] == "planned"
+        assert len(still_planned["stops"]) == 1
+
+        # The trip sheet: one more order plus one spare, in one call.
+        dispatch_response = await client.post(
+            f"/api/v1/routes/{route_id}/load-and-dispatch",
+            json={
+                "warehouse_id": str(fixtures.warehouse_id),
+                "order_ids": [later["id"]],
+                "extra_lines": [{"cylinder_type_id": cylinder, "quantity": 1}],
+            },
+            headers=admin_headers,
+        )
+        assert dispatch_response.status_code == 200, dispatch_response.text
+        trip = dispatch_response.json()
+        assert trip["status"] == "loaded"
+        assert trip["loaded_lines"] == [{"cylinder_type_id": cylinder, "quantity": 6}]
+        assert [stop["order_id"] for stop in trip["stops"]] == [early["id"], later["id"]]
+        for order in (early, later):
+            body = (await client.get(f"/api/v1/orders/{order['id']}", headers=admin_headers)).json()
+            assert body["status"] == "ready_for_dispatch"
+            assert body["lines"][0]["quantity_pending"] == 0
+        warehouse = (
+            await client.get(
+                f"/api/v1/inventory-locations/warehouse/{fixtures.warehouse_id}/balance",
+                headers=admin_headers,
+            )
+        ).json()
+        filled = [b for b in warehouse["balances"] if b["status"] == "filled"]
+        assert filled[0]["quantity"] == 94
+
+        # The driver can now start and finish the order that was stuck.
+        depart_response = await client.post(
+            f"/api/v1/orders/{early['id']}/depart", headers=driver_headers
+        )
+        assert depart_response.status_code == 200, depart_response.text
+        deliver_response = await client.post(
+            f"/api/v1/orders/{early['id']}/deliver",
+            json={
+                "lines": [
+                    {
+                        "cylinder_type_id": cylinder,
+                        "quantity_delivered": 2,
+                        "quantity_collected_empty": 2,
+                    }
+                ],
+                "otp_code": stack.otp_delivery.sent[-1][1],
+                "proof_of_delivery": {
+                    "gps_lat": "12.9716",
+                    "gps_lng": "77.5946",
+                    "payment_method": "cash",
+                    "amount_collected": "1900.00",
+                },
+            },
+            headers={**driver_headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert deliver_response.status_code == 200, deliver_response.text

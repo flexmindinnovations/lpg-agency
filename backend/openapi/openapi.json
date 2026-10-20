@@ -4268,6 +4268,38 @@
         "title": "LivenessResponse",
         "type": "object"
       },
+      "LoadAndDispatchRequest": {
+        "description": "`POST /routes/{id}/load-and-dispatch` — the trip sheet in one step.",
+        "properties": {
+          "extra_lines": {
+            "items": {
+              "$ref": "#/components/schemas/LoadVehicleLineRequest"
+            },
+            "maxItems": 50,
+            "title": "Extra Lines",
+            "type": "array"
+          },
+          "order_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Order Ids",
+            "type": "array"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "warehouse_id"
+        ],
+        "title": "LoadAndDispatchRequest",
+        "type": "object"
+      },
       "LoadTransferLineRequest": {
         "properties": {
           "cylinder_type_id": {
@@ -18297,6 +18329,60 @@
           }
         },
         "summary": "Load the vehicle and mark the route loaded",
+        "tags": [
+          "Routes"
+        ]
+      }
+    },
+    "/api/v1/routes/{route_id}/load-and-dispatch": {
+      "post": {
+        "description": "The Dispatch Board's trip sheet: on a `planned` or `loaded` route, adds\n`order_ids`, moves the cylinders the orders need beyond the van's free\nstock (plus `extra_lines`) from the warehouse onto the van, and marks\nevery order on the trip `ready_for_dispatch` — atomically. `409\nINSUFFICIENT_STOCK` when the warehouse is short; see\n`LoadAndDispatchRouteUseCase`.",
+        "operationId": "load_and_dispatch_route_api_v1_routes__route_id__load_and_dispatch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "route_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Route Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadAndDispatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add orders, load the van for them and release the trip to the driver",
         "tags": [
           "Routes"
         ]

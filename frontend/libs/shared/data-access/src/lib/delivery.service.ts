@@ -20,6 +20,7 @@ import { getRouteApiV1RoutesRouteIdGet } from './generated/fn/routes/get-route-a
 import { updateRouteStatusApiV1RoutesRouteIdStatusPatch } from './generated/fn/routes/update-route-status-api-v-1-routes-route-id-status-patch';
 import { assignOrderApiV1RoutesRouteIdAssignOrderPost } from './generated/fn/routes/assign-order-api-v-1-routes-route-id-assign-order-post';
 import { loadVehicleForRouteApiV1RoutesRouteIdLoadPost } from './generated/fn/routes/load-vehicle-for-route-api-v-1-routes-route-id-load-post';
+import { loadAndDispatchRouteApiV1RoutesRouteIdLoadAndDispatchPost } from './generated/fn/routes/load-and-dispatch-route-api-v-1-routes-route-id-load-and-dispatch-post';
 import { completeRouteReconciliationApiV1RoutesRouteIdReconcilePost } from './generated/fn/routes/complete-route-reconciliation-api-v-1-routes-route-id-reconcile-post';
 import { optimizeRouteSequenceApiV1RoutesRouteIdOptimizePost } from './generated/fn/routes/optimize-route-sequence-api-v-1-routes-route-id-optimize-post';
 import { declareCashHandoverApiV1CashHandoversPost } from './generated/fn/cash-handovers/declare-cash-handover-api-v-1-cash-handovers-post';
@@ -39,6 +40,7 @@ import type { RegisterVehicleRequest } from './generated/models/register-vehicle
 import type { UpdateVehicleDetailsRequest } from './generated/models/update-vehicle-details-request';
 import type { UpdateRouteStatusRequest } from './generated/models/update-route-status-request';
 import type { LoadVehicleRequest } from './generated/models/load-vehicle-request';
+import type { LoadAndDispatchRequest } from './generated/models/load-and-dispatch-request';
 import type { DeclareCashHandoverRequest } from './generated/models/declare-cash-handover-request';
 import type { CashHandoverResponse } from './generated/models/cash-handover-response';
 
@@ -214,6 +216,22 @@ export class DeliveryService {
       route_id: routeId,
       body: request,
     }).pipe(map((res) => res.body));
+  }
+
+  /** The trip sheet in one step: adds the orders, loads the van for them
+   * from the godown and releases every order on the trip to the driver. */
+  loadAndDispatchRoute(
+    routeId: string,
+    request: LoadAndDispatchRequest,
+  ): Observable<RouteResponse> {
+    return loadAndDispatchRouteApiV1RoutesRouteIdLoadAndDispatchPost(
+      this.http,
+      this.config.rootUrl,
+      {
+        route_id: routeId,
+        body: request,
+      },
+    ).pipe(map((res) => res.body));
   }
 
   completeRouteReconciliation(routeId: string): Observable<RouteResponse> {

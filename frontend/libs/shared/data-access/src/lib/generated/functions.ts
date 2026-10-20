@@ -425,6 +425,8 @@ export type { ConfirmRouteLoadApiV1RoutesRouteIdConfirmLoadPost$Params as Confir
 export { confirmRouteLoadApiV1RoutesRouteIdConfirmLoadPost as confirmRouteLoadApiV1RoutesRouteIdConfirmLoadPost } from './fn/routes/confirm-route-load-api-v-1-routes-route-id-confirm-load-post';
 export type { LoadVehicleForRouteApiV1RoutesRouteIdLoadPost$Params as LoadVehicleForRouteApiV1RoutesRouteIdLoadPost$Params } from './fn/routes/load-vehicle-for-route-api-v-1-routes-route-id-load-post';
 export { loadVehicleForRouteApiV1RoutesRouteIdLoadPost as loadVehicleForRouteApiV1RoutesRouteIdLoadPost } from './fn/routes/load-vehicle-for-route-api-v-1-routes-route-id-load-post';
+export type { LoadAndDispatchRouteApiV1RoutesRouteIdLoadAndDispatchPost$Params as LoadAndDispatchRouteApiV1RoutesRouteIdLoadAndDispatchPost$Params } from './fn/routes/load-and-dispatch-route-api-v-1-routes-route-id-load-and-dispatch-post';
+export { loadAndDispatchRouteApiV1RoutesRouteIdLoadAndDispatchPost as loadAndDispatchRouteApiV1RoutesRouteIdLoadAndDispatchPost } from './fn/routes/load-and-dispatch-route-api-v-1-routes-route-id-load-and-dispatch-post';
 export type { ReportDriverLocationApiV1RoutesRouteIdLocationPost$Params as ReportDriverLocationApiV1RoutesRouteIdLocationPost$Params } from './fn/routes/report-driver-location-api-v-1-routes-route-id-location-post';
 export { reportDriverLocationApiV1RoutesRouteIdLocationPost as reportDriverLocationApiV1RoutesRouteIdLocationPost } from './fn/routes/report-driver-location-api-v-1-routes-route-id-location-post';
 export type { OptimizeRouteSequenceApiV1RoutesRouteIdOptimizePost$Params as OptimizeRouteSequenceApiV1RoutesRouteIdOptimizePost$Params } from './fn/routes/optimize-route-sequence-api-v-1-routes-route-id-optimize-post';

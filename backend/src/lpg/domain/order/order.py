@@ -644,6 +644,22 @@ class Order(AggregateRoot):
             )
         )
 
+    def reserve_backorder(self, reservations: dict[uuid.UUID, int]) -> None:
+        """Moves backordered quantity to reserved once the van has the stock
+        — an order put on a route before its van was loaded reserved nothing
+        (D-08). Only before the driver departs; the use case debits the
+        vehicle's `InventoryLocation` for the same quantities.
+        """
+        if self._status not in ("assigned", "ready_for_dispatch"):
+            msg = f"Backorders can only be reserved before departure, not at {self._status}."
+            raise InvariantViolation(msg)
+        for line in self._lines:
+            extra = reservations.get(line.cylinder_type_id, 0)
+            if extra == 0:
+                continue
+            reserved = line.quantity_ordered - line.quantity_pending
+            line.allocate(reserved + extra, line.quantity_pending - extra)
+
     def dispatch(self, *, changed_by: uuid.UUID) -> None:
         """`assigned -> ready_for_dispatch` ("vehicle loaded")."""
         self._transition("ready_for_dispatch", changed_by=changed_by)

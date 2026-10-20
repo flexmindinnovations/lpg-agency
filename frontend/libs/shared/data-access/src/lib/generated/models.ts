@@ -103,6 +103,7 @@ export type { LicenseResponse } from './models/license-response';
 export type { LicenseStatusResponse } from './models/license-status-response';
 export type { LinkedDeviceResponse } from './models/linked-device-response';
 export type { LivenessResponse } from './models/liveness-response';
+export type { LoadAndDispatchRequest } from './models/load-and-dispatch-request';
 export type { LoadTransferLineRequest } from './models/load-transfer-line-request';
 export type { LoadTransferRequest } from './models/load-transfer-request';
 export type { LoadTransferResponse } from './models/load-transfer-response';

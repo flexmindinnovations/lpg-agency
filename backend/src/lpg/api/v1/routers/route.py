@@ -30,6 +30,7 @@ from lpg.api.v1.dependencies.delivery import (
     get_complete_route_reconciliation_use_case,
     get_confirm_route_load_use_case,
     get_driver_repository,
+    get_load_and_dispatch_route_use_case,
     get_load_vehicle_for_route_use_case,
     get_optimize_route_sequence_use_case,
     get_route_repository,
@@ -40,6 +41,7 @@ from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.route import (
     AssignOrderRequest,
     DriverLocationPingRequest,
+    LoadAndDispatchRequest,
     LoadVehicleRequest,
     OptimizeRouteResponse,
     PlanRouteRequest,
@@ -67,6 +69,8 @@ from lpg.application.delivery.use_cases import (
     GetRouteUseCase,
     ListRoutesQuery,
     ListRoutesUseCase,
+    LoadAndDispatchRouteCommand,
+    LoadAndDispatchRouteUseCase,
     LoadVehicleForRouteCommand,
     LoadVehicleForRouteUseCase,
     LoadVehicleLine,
@@ -329,6 +333,41 @@ async def load_vehicle_for_route(
             lines=[
                 LoadVehicleLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
                 for line in request.lines
+            ],
+            performed_by=actor_id,
+        )
+    )
+    return RouteResponse.model_validate(route)
+
+
+@router.post(
+    "/{route_id}/load-and-dispatch",
+    response_model=RouteResponse,
+    summary="Add orders, load the van for them and release the trip to the driver",
+    dependencies=[Depends(require_permission("routes:manage"))],
+)
+async def load_and_dispatch_route(
+    route_id: uuid.UUID,
+    request: LoadAndDispatchRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    use_case: Annotated[LoadAndDispatchRouteUseCase, Depends(get_load_and_dispatch_route_use_case)],
+) -> RouteResponse:
+    """The Dispatch Board's trip sheet: on a `planned` or `loaded` route, adds
+    `order_ids`, moves the cylinders the orders need beyond the van's free
+    stock (plus `extra_lines`) from the warehouse onto the van, and marks
+    every order on the trip `ready_for_dispatch` — atomically. `409
+    INSUFFICIENT_STOCK` when the warehouse is short; see
+    `LoadAndDispatchRouteUseCase`.
+    """
+    actor_id = _require_actor(principal)
+    route = await use_case.execute(
+        LoadAndDispatchRouteCommand(
+            route_id=route_id,
+            warehouse_id=request.warehouse_id,
+            order_ids=request.order_ids,
+            extra_lines=[
+                LoadVehicleLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
+                for line in request.extra_lines
             ],
             performed_by=actor_id,
         )

@@ -1389,6 +1389,27 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - **A BSP (Gupshup, Twilio, Interakt)** — rejected as the default: adds a vendor and per-message markup; the Cloud API is free to integrate and the sender is one adapter class to swap.
 - **Letting the model book directly, guarded by the prompt** — rejected: an order is a commitment the model alone should not make.
 - **A separate WhatsApp token budget** — deferred: one budget is simpler until real traffic says otherwise.
+## ADR-056: One-Step Trip Sheet — Load and Dispatch a Route in One Transaction
+
+**Status:** Accepted
+
+**Context:** Dispatch took up to seven actions on two screens (2026-10-19 report: "this process is confusing"). The office planned a route, assigned orders one drawer at a time, typed the load lines by hand with no stock shown, then opened each order on the Orders page to click Dispatch. The order of steps was a trap: an order assigned before the van was loaded reserved nothing (D-08 backorder), so the driver could never record its delivery. Indian distributors work from a trip sheet instead: pick the delivery man and van, list the cash memos going out, issue the cylinders they need from the godown, send the van.
+
+**Decision:**
+- New `LoadAndDispatchRouteUseCase` behind `POST /routes/{id}/load-and-dispatch` (`routes:manage`), on a `planned` or `loaded` route, in one transaction: adds the given confirmed orders, loads from the chosen warehouse whatever the trip's orders need beyond the van's free filled stock plus any spares, reserves every order's cylinders (including the backorder of orders added before loading), and moves `assigned` orders to `ready_for_dispatch`.
+- On `planned` it is the `-> loaded` transition (so the driver's `route_ready` push still fires) and the loaded quantities become the manifest. On `loaded` it is a top-up: the manifest grows and the driver's load confirmation is cleared.
+- Domain additions: `Order.reserve_backorder()` (before departure only) and `Route.add_to_load_manifest()`. The weighment gate is shared with `LoadVehicleForRouteUseCase` through `LoadOutWeighmentGate`.
+- The order page gets **Send out** in place of Assign and Dispatch, for a confirmed order (or one on a trip that isn't loaded yet): pick a new trip's driver and van or an open trip, and a godown; the drawer shows the order's cylinders against the van and godown, then calls the same endpoint (after `POST /routes` for a new trip). A progress line (Booked, Confirmed, On a trip, Out for delivery, Delivered) shows where the order is and which trip it is on. The Dispatch page stays for planning several orders at once.
+- The Dispatch page becomes a trip sheet: one drawer with driver, van, date, orders, and a load sheet showing need, free van stock, spares and godown stock per cylinder type (a shortage blocks the button). Board columns are renamed for what happens next (Not loaded, Ready to leave, On the road, Back to settle, Settled). The manual Load Vehicle form, per-order Assign/Add Stop drawers and Start Route button are removed from the page.
+
+**Consequences:**
+- The older endpoints (`/routes/{id}/load`, `/assign-order`, `/orders/{id}/dispatch`) stay for the Orders page, the Driver App and integrations; nothing on the server was removed.
+- Godown stock on the sheet is a guide; the server still refuses a short load with 409 `INSUFFICIENT_STOCK` and moves nothing.
+- Availability at booking (orderable cylinders, feature 44) counts warehouses and vans together, so moving stock to the van and reserving it does not change it.
+
+**Alternatives Considered:**
+- **Keep the separate steps and only add hints** — rejected: the order of steps itself was the trap.
+- **Make the frontend chain the existing calls** — rejected: a failure halfway would leave a half-loaded van or orders released with nothing reserved.
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1444,6 +1465,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 053 | Online payments through Razorpay payment links behind a provider-agnostic gateway port | Accepted |
 | 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
 | 055 | WhatsApp customer assistant on Meta's Cloud API, model gateway with customer-scoped tools, two-step booking | Accepted |
+| 056 | One-step trip sheet: load and dispatch a route in one transaction | Accepted |
 
 ## Deferred Decisions
 
