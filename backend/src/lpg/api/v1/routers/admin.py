@@ -47,6 +47,7 @@ from lpg.api.v1.dependencies.admin import (
     get_tenant_repository,
     get_warehouse_repository,
 )
+from lpg.api.v1.dependencies.delivery import get_driver_repository, get_vehicle_repository
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_email_sender,
@@ -91,6 +92,7 @@ from lpg.api.v1.schemas.admin import (
     SetFeatureFlagOverrideRequest,
     SetPriceRequest,
     SetTenantConfigurationRequest,
+    SetupProgressResponse,
     SetWarehouseActiveRequest,
     StaffUserResponse,
     TenantConfigurationResponse,
@@ -108,6 +110,7 @@ from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLog
 from lpg.application.audit.ports import AuditLogRepository, AuditTrail
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.delivery.ports import DriverRepository, VehicleRepository
 from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
     EmailSender,
@@ -213,6 +216,7 @@ from lpg.application.tenant.price_list_proposal import (
     RejectPriceListProposalUseCase,
 )
 from lpg.application.tenant.rename_tenant import RenameTenantCommand, RenameTenantUseCase
+from lpg.application.tenant.setup_progress import GetSetupProgressQuery, GetSetupProgressUseCase
 from lpg.application.tenant.tenant_configuration import (
     GetEffectiveTenantConfigurationQuery,
     GetEffectiveTenantConfigurationUseCase,
@@ -284,6 +288,42 @@ async def rename_tenant(
         primary_contact_email=tenant.primary_contact_email,
         country=tenant.country,
     )
+
+
+# -- Setup checklist ----------------------------------------------------------------
+
+
+@router.get(
+    "/setup-progress",
+    response_model=SetupProgressResponse,
+    summary="New-agency setup checklist",
+    description="Whether the agency has a branch, warehouse, cylinder types, prices, a GST "
+    "rate, staff, drivers and vehicles - for the checklist on Home (DA-32).",
+)
+async def get_setup_progress(
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    branches: Annotated[BranchRepository, Depends(get_branch_repository)],
+    warehouses: Annotated[WarehouseRepository, Depends(get_warehouse_repository)],
+    cylinder_types: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    prices: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    configuration: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    staff: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    drivers: Annotated[DriverRepository, Depends(get_driver_repository)],
+    vehicles: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
+) -> SetupProgressResponse:
+    progress = await GetSetupProgressUseCase(
+        branches=branches,
+        warehouses=warehouses,
+        cylinder_types=cylinder_types,
+        prices=prices,
+        configuration=configuration,
+        staff=staff,
+        drivers=drivers,
+        vehicles=vehicles,
+    ).execute(GetSetupProgressQuery(tenant_id=principal.tenant_id))
+    return SetupProgressResponse(steps=progress.done, complete=progress.complete)
 
 
 # -- Branches -------------------------------------------------------------------

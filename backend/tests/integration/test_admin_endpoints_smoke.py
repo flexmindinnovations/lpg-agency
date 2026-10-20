@@ -220,3 +220,123 @@ class TestAdminEndpointsThroughTheRealStack:
         )
 
         assert response.status_code == 403
+
+
+class TestQaFixesThroughTheRealStack:
+    """QA fixes DA-01, DA-19, DA-30, DA-32 wired end to end."""
+
+    async def _admin(
+        self, client: AsyncClient, engine: AsyncEngine, settings: Settings
+    ) -> tuple[uuid.UUID, uuid.UUID, dict[str, str]]:
+        email = f"{uuid.uuid4().hex}@admin-smoke.example"
+        password = "correct horse battery staple 42"
+        tenant_id, user_id = await _seed_staff_user(
+            engine,
+            email=email,
+            password_hash=Argon2PasswordHasher(settings).hash(password),
+            role="agency_admin",
+        )
+        token = await _login(client, email=email, password=password)
+        return tenant_id, user_id, {"Authorization": f"Bearer {token}"}
+
+    async def test_setup_progress_and_branch_name_rules(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        _tenant, _me, headers = await self._admin(
+            real_lifespan_client, admin_engine_lpg_test, integration_settings
+        )
+        progress = await real_lifespan_client.get("/api/v1/admin/setup-progress", headers=headers)
+        assert progress.status_code == 200, progress.text
+        assert progress.json()["steps"]["branch"] is False
+        assert progress.json()["complete"] is False
+
+        created = await real_lifespan_client.post(
+            "/api/v1/admin/branches", json={"name": "  Kukatpally  "}, headers=headers
+        )
+        assert created.status_code == 201, created.text
+        assert created.json()["name"] == "Kukatpally"
+        duplicate = await real_lifespan_client.post(
+            "/api/v1/admin/branches", json={"name": "kukatpally"}, headers=headers
+        )
+        assert duplicate.status_code == 409, duplicate.text
+        blank = await real_lifespan_client.post(
+            "/api/v1/admin/branches", json={"name": "   "}, headers=headers
+        )
+        assert blank.status_code == 422, blank.text
+        too_long = await real_lifespan_client.post(
+            "/api/v1/admin/branches", json={"name": "x" * 300}, headers=headers
+        )
+        assert too_long.status_code == 422, too_long.text
+
+        progress = await real_lifespan_client.get("/api/v1/admin/setup-progress", headers=headers)
+        assert progress.json()["steps"]["branch"] is True
+
+    async def test_self_deactivation_is_refused_and_a_user_can_be_reactivated(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        _tenant, me, headers = await self._admin(
+            real_lifespan_client, admin_engine_lpg_test, integration_settings
+        )
+        own = await real_lifespan_client.patch(
+            f"/api/v1/admin/users/{me}/deactivate", headers=headers
+        )
+        assert own.status_code == 409, own.text
+
+        invited = await real_lifespan_client.post(
+            "/api/v1/admin/users",
+            json={"email": f"{uuid.uuid4().hex}@staff.example", "role": "dispatcher"},
+            headers=headers,
+        )
+        assert invited.status_code == 201, invited.text
+        user_id = invited.json()["id"]
+        for action, active in (("deactivate", False), ("reactivate", True)):
+            response = await real_lifespan_client.patch(
+                f"/api/v1/admin/users/{user_id}/{action}", headers=headers
+            )
+            assert response.status_code == 204, response.text
+            users = (await real_lifespan_client.get("/api/v1/admin/users", headers=headers)).json()
+            assert next(u for u in users if u["id"] == user_id)["is_active"] is active
+
+        audit = (await real_lifespan_client.get("/api/v1/admin/audit-log", headers=headers)).json()
+        actions = {item["action"] for item in audit["items"] if item["entity_id"] == str(user_id)}
+        assert {"deactivate", "reactivate"} <= actions
+
+    async def test_my_profile_round_trip(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        _tenant, _me, headers = await self._admin(
+            real_lifespan_client, admin_engine_lpg_test, integration_settings
+        )
+        updated = await real_lifespan_client.patch(
+            "/api/v1/auth/me/profile",
+            json={"display_name": "Ravi Kumar", "contact_phone": "+91 98490 12345"},
+            headers=headers,
+        )
+        assert updated.status_code == 200, updated.text
+        assert updated.json()["display_name"] == "Ravi Kumar"
+
+        wrong = await real_lifespan_client.post(
+            "/api/v1/auth/me/password",
+            json={"current_password": "not it", "new_password": "a brand new passphrase"},
+            headers=headers,
+        )
+        assert wrong.status_code == 422, wrong.text
+        assert "current_password" in wrong.json()["errors"]
+        changed = await real_lifespan_client.post(
+            "/api/v1/auth/me/password",
+            json={
+                "current_password": "correct horse battery staple 42",
+                "new_password": "a brand new passphrase",
+            },
+            headers=headers,
+        )
+        assert changed.status_code == 204, changed.text
