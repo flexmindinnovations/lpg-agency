@@ -117,39 +117,49 @@ class LpgTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (label.isNotEmpty) LpgFieldLabel(label, isRequired: isRequired),
-        TextFormField(
-          controller: controller,
-          initialValue: controller == null ? initialValue : null,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          textCapitalization: textCapitalization,
-          inputFormatters: inputFormatters,
-          obscureText: obscureText,
-          maxLines: obscureText ? 1 : maxLines,
-          maxLength: maxLength,
-          enabled: enabled,
-          readOnly: readOnly,
-          validator: validator,
-          onChanged: onChanged,
-          onFieldSubmitted: onSubmitted,
-          onTap: onTap,
-          autofocus: autofocus,
-          focusNode: focusNode,
-          autofillHints: autofillHints,
-          style: context.lpgText.bodyLarge?.copyWith(
-            color: enabled ? colors.textPrimary : colors.textSecondary,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            errorText: errorText,
-            helperText: helperText,
-            prefixText: prefixText,
-            prefixIcon: prefixIcon == null
-                ? null
-                : Icon(prefixIcon, size: LpgSizes.iconMd),
-            suffixIcon: suffixIcon,
-            fillColor: enabled ? colors.card : colors.surfaceOverlay,
+        // The visible label is a sibling of the input, so screen readers
+        // would announce an unnamed text field. The input carries the label
+        // itself (CA-12) and the sibling is hidden from semantics so it is
+        // not read twice.
+        if (label.isNotEmpty)
+          ExcludeSemantics(child: LpgFieldLabel(label, isRequired: isRequired)),
+        Semantics(
+          label: label.isEmpty
+              ? null
+              : (isRequired ? '$label, required' : label),
+          child: TextFormField(
+            controller: controller,
+            initialValue: controller == null ? initialValue : null,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            textCapitalization: textCapitalization,
+            inputFormatters: inputFormatters,
+            obscureText: obscureText,
+            maxLines: obscureText ? 1 : maxLines,
+            maxLength: maxLength,
+            enabled: enabled,
+            readOnly: readOnly,
+            validator: validator,
+            onChanged: onChanged,
+            onFieldSubmitted: onSubmitted,
+            onTap: onTap,
+            autofocus: autofocus,
+            focusNode: focusNode,
+            autofillHints: autofillHints,
+            style: context.lpgText.bodyLarge?.copyWith(
+              color: enabled ? colors.textPrimary : colors.textSecondary,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              errorText: errorText,
+              helperText: helperText,
+              prefixText: prefixText,
+              prefixIcon: prefixIcon == null
+                  ? null
+                  : Icon(prefixIcon, size: LpgSizes.iconMd),
+              suffixIcon: suffixIcon,
+              fillColor: enabled ? colors.card : colors.surfaceOverlay,
+            ),
           ),
         ),
       ],
