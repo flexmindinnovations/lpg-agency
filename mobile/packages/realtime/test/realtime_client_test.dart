@@ -11,6 +11,9 @@ class _FakeSocket implements RealtimeSocket {
   bool closed = false;
 
   @override
+  int? closeCode;
+
+  @override
   Stream<dynamic> get stream => _controller.stream;
 
   @override
@@ -25,8 +28,17 @@ class _FakeSocket implements RealtimeSocket {
   void emit(Map<String, dynamic> message) =>
       _controller.add(jsonEncode(message));
 
+  /// The server accepting the auth frame.
+  void ready() => emit({'type': 'ready'});
+
+  /// Frames sent after the initial auth frame.
+  List<String> get sentAfterAuth => sent.skip(1).toList();
+
   /// Simulates the connection dropping (server restart, network loss).
-  Future<void> dropConnection() => _controller.close();
+  Future<void> dropConnection({int? code}) {
+    closeCode = code;
+    return _controller.close();
+  }
 }
 
 void main() {
@@ -50,7 +62,11 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         expect(sockets, hasLength(1));
-        expect(sockets.single.sent, [
+        // Nothing but the auth frame until the server says ready.
+        expect(sockets.single.sentAfterAuth, isEmpty);
+        sockets.single.ready();
+        await Future<void>.delayed(Duration.zero);
+        expect(sockets.single.sentAfterAuth, [
           jsonEncode({
             'subscribe': ['order:order-1'],
           }),
@@ -98,9 +114,11 @@ void main() {
             .subscribeToDriverLocation('order-1')
             .listen(events.add);
         await Future<void>.delayed(Duration.zero);
+        sockets.single.ready();
+        await Future<void>.delayed(Duration.zero);
 
         // Same intent as subscribeToOrder — no separate subscription.
-        expect(sockets.single.sent, [
+        expect(sockets.single.sentAfterAuth, [
           jsonEncode({
             'subscribe': ['order:order-1'],
           }),
@@ -169,28 +187,236 @@ void main() {
     );
 
     test(
-      'the access token is passed as a query parameter on connect',
+      'the access token goes in the first frame, never in the URL',
       () async {
         Uri? capturedUri;
+        final sockets = <_FakeSocket>[];
         final client = RealtimeClient(
           wsBaseUrl: 'wss://api.test',
           getAccessToken: () => 'jwt-123',
           connect: (uri) {
             capturedUri = uri;
-            return _FakeSocket();
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
           },
         );
 
         client.subscribeToNotifications();
         await Future<void>.delayed(Duration.zero);
 
+        expect(capturedUri!.toString(), 'wss://api.test/api/v1/ws');
+        expect(capturedUri!.queryParameters, isEmpty);
         expect(
-          capturedUri!.toString(),
-          'wss://api.test/api/v1/ws?token=jwt-123',
+          sockets.single.sent.first,
+          jsonEncode({'type': 'auth', 'token': 'jwt-123'}),
         );
         await client.disconnect();
       },
     );
+
+    test('updateAccessToken re-authenticates in-band once ready', () async {
+      var token = 'jwt-1';
+      final sockets = <_FakeSocket>[];
+      final client = RealtimeClient(
+        wsBaseUrl: 'wss://api.test',
+        getAccessToken: () => token,
+        connect: (uri) {
+          final socket = _FakeSocket();
+          sockets.add(socket);
+          return socket;
+        },
+      );
+
+      client.subscribeToNotifications();
+      await Future<void>.delayed(Duration.zero);
+      sockets.single.ready();
+      await Future<void>.delayed(Duration.zero);
+
+      token = 'jwt-2';
+      client.updateAccessToken();
+      expect(
+        sockets.single.sent.last,
+        jsonEncode({'type': 'auth', 'token': 'jwt-2'}),
+      );
+      expect(sockets, hasLength(1));
+      await client.disconnect();
+    });
+
+    test('does not connect without a token and retries later', () {
+      fakeAsync((async) {
+        String? token;
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => token,
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        client.subscribeToNotifications();
+        async.flushMicrotasks();
+        expect(sockets, isEmpty);
+
+        token = 'jwt-1';
+        async.elapse(const Duration(seconds: 1));
+        expect(sockets, hasLength(1));
+
+        unawaited(client.disconnect());
+        async.flushMicrotasks();
+      });
+    });
+
+    test(
+      'subscribeToNotificationReads forwards read and read_all events',
+      () async {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'the-token',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        final events = <Map<String, dynamic>>[];
+        final sub = client.subscribeToNotificationReads().listen(events.add);
+        await Future<void>.delayed(Duration.zero);
+        sockets.single.ready();
+        sockets.single.emit({
+          'type': 'notification.read',
+          'notification_id': 'n-1',
+        });
+        sockets.single.emit({'type': 'notification.read_all'});
+        sockets.single.emit({'type': 'notification.new'});
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events.map((e) => e['type']), [
+          'notification.read',
+          'notification.read_all',
+        ]);
+        await sub.cancel();
+        await client.disconnect();
+      },
+    );
+
+    test(
+      'subscribeToDriverRoutes subscribes to the driver channel',
+      () async {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'the-token',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        final events = <Map<String, dynamic>>[];
+        final sub = client.subscribeToDriverRoutes().listen(events.add);
+        await Future<void>.delayed(Duration.zero);
+        sockets.single.ready();
+        await Future<void>.delayed(Duration.zero);
+        expect(sockets.single.sentAfterAuth, [
+          jsonEncode({
+            'subscribe': ['driver'],
+          }),
+        ]);
+
+        sockets.single.emit({
+          'type': 'delivery.route_updated',
+          'route_id': 'r-1',
+        });
+        sockets.single.emit({'type': 'order.status_changed'});
+        await Future<void>.delayed(Duration.zero);
+
+        expect(events, hasLength(1));
+        expect(events.single['route_id'], 'r-1');
+        await sub.cancel();
+        await client.disconnect();
+      },
+    );
+
+    test('a rejected token (1008) calls onTokenRejected and reconnects', () {
+      fakeAsync((async) {
+        var rejections = 0;
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'the-token',
+          onTokenRejected: () async => rejections++,
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        client.subscribeToNotifications();
+        async.flushMicrotasks();
+        unawaited(sockets.single.dropConnection(code: 1008));
+        async.flushMicrotasks();
+        expect(rejections, 1);
+
+        async.elapse(const Duration(seconds: 1));
+        expect(sockets, hasLength(2));
+
+        // An ordinary drop is not a token rejection.
+        unawaited(sockets.last.dropConnection());
+        async.flushMicrotasks();
+        expect(rejections, 1);
+
+        unawaited(client.disconnect());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('pause closes the socket and resume reconnects and resubscribes', () {
+      fakeAsync((async) {
+        final sockets = <_FakeSocket>[];
+        final client = RealtimeClient(
+          wsBaseUrl: 'wss://api.test',
+          getAccessToken: () => 'the-token',
+          connect: (uri) {
+            final socket = _FakeSocket();
+            sockets.add(socket);
+            return socket;
+          },
+        );
+
+        client.subscribeToNotifications();
+        async.flushMicrotasks();
+        sockets.single.ready();
+        async.flushMicrotasks();
+
+        unawaited(client.pause());
+        async.flushMicrotasks();
+        expect(sockets.single.closed, isTrue);
+        async.elapse(const Duration(seconds: 60));
+        expect(sockets, hasLength(1), reason: 'a paused client stays closed');
+
+        client.resume();
+        async.flushMicrotasks();
+        expect(sockets, hasLength(2));
+        sockets.last.ready();
+        async.flushMicrotasks();
+        expect(sockets.last.sentAfterAuth, [
+          jsonEncode({
+            'subscribe': ['notifications'],
+          }),
+        ]);
+
+        unawaited(client.disconnect());
+        async.flushMicrotasks();
+      });
+    });
 
     test(
       'replies to a server ping with a pong, without forwarding it',
@@ -235,9 +461,15 @@ void main() {
             },
           );
 
+          var reconnects = 0;
+          client.reconnected.listen((_) => reconnects++);
+
           client.subscribeToOrder('order-1');
           async.flushMicrotasks();
           expect(sockets, hasLength(1));
+          sockets.first.ready();
+          async.flushMicrotasks();
+          expect(reconnects, 0, reason: 'the first connect is not a reconnect');
 
           unawaited(sockets.first.dropConnection());
           async.flushMicrotasks();
@@ -246,20 +478,32 @@ void main() {
 
           async.elapse(const Duration(seconds: 1));
           expect(sockets, hasLength(2));
-          // The new connection replays the still-active subscription.
-          expect(sockets.last.sent, [
+          sockets.last.ready();
+          async.flushMicrotasks();
+          // The new connection replays the still-active subscription and
+          // tells listeners to refetch what they missed.
+          expect(sockets.last.sentAfterAuth, [
             jsonEncode({
               'subscribe': ['order:order-1'],
             }),
           ]);
+          expect(reconnects, 1);
 
+          // A ready connection reset the backoff, so the next drop retries
+          // after 1s again.
           unawaited(sockets.last.dropConnection());
           async.flushMicrotasks();
           async.elapse(const Duration(seconds: 1));
-          // Backoff doubled to 2s — still not reconnected at the old 1s mark.
-          expect(sockets, hasLength(2));
+          expect(sockets, hasLength(3));
+
+          // That socket never became ready (the server is struggling), so
+          // the backoff doubles to 2s — not reconnected at the 1s mark.
+          unawaited(sockets.last.dropConnection());
+          async.flushMicrotasks();
           async.elapse(const Duration(seconds: 1));
           expect(sockets, hasLength(3));
+          async.elapse(const Duration(seconds: 1));
+          expect(sockets, hasLength(4));
 
           unawaited(client.disconnect());
           async.flushMicrotasks();
