@@ -34,6 +34,21 @@ export const appRoutes: Route[] = [
     path: 'login',
     loadChildren: () => import('@lpg/auth/feature-login').then((m) => m.authFeatureLoginRoutes),
   },
+  // The links the backend emails: `/reset-password?token=…` (forgot password)
+  // and `/set-password?token=…` (invitation / new agency). The page is loaded
+  // directly rather than redirected so the `token` query param is never lost.
+  {
+    path: 'reset-password',
+    loadComponent: () => import('@lpg/auth/feature-login').then((m) => m.ResetPasswordPage),
+    title: 'Choose a new password',
+    data: { mode: 'reset' },
+  },
+  {
+    path: 'set-password',
+    loadComponent: () => import('@lpg/auth/feature-login').then((m) => m.ResetPasswordPage),
+    title: 'Set your password',
+    data: { mode: 'setup' },
+  },
   {
     path: 'license-required',
     loadComponent: () =>

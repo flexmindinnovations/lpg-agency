@@ -12,6 +12,7 @@ exercises a representative slice through the real stack, not every endpoint.
 
 from __future__ import annotations
 
+import re
 import uuid
 from typing import TYPE_CHECKING
 
@@ -340,3 +341,55 @@ class TestQaFixesThroughTheRealStack:
             headers=headers,
         )
         assert changed.status_code == 204, changed.text
+
+    async def test_an_invited_user_sets_a_password_from_the_link_and_signs_in(
+        self,
+        real_lifespan_client: AsyncClient,
+        admin_engine_lpg_test: AsyncEngine,
+        integration_settings: Settings,
+    ) -> None:
+        """DA-08: invite -> `/set-password?token=...` -> set password -> login."""
+        from lpg.api.v1.dependencies.identity import get_email_sender
+
+        sent: list[str] = []
+
+        class _CapturingEmailSender:
+            async def send(self, to: str, subject: str, body: str) -> None:
+                sent.append(f"{to}|{subject}|{body}")
+
+        transport = real_lifespan_client._transport
+        assert isinstance(transport, ASGITransport)
+        app: FastAPI = transport.app  # type: ignore[assignment]
+        app.dependency_overrides[get_email_sender] = _CapturingEmailSender
+        try:
+            _tenant, _me, headers = await self._admin(
+                real_lifespan_client, admin_engine_lpg_test, integration_settings
+            )
+            email = f"{uuid.uuid4().hex}@staff.example"
+            invited = await real_lifespan_client.post(
+                "/api/v1/admin/users",
+                json={"email": email, "role": "dispatcher"},
+                headers=headers,
+            )
+            assert invited.status_code == 201, invited.text
+        finally:
+            app.dependency_overrides.pop(get_email_sender, None)
+
+        (body,) = sent
+        match = re.search(r"/set-password\?token=([A-Za-z0-9_\-]+)", body)
+        assert match is not None, body
+        assert f"{integration_settings.dashboard_url}/set-password?token=" in body
+
+        new_password = "my own first passphrase 7"
+        confirmed = await real_lifespan_client.post(
+            "/api/v1/auth/password/reset",
+            json={"reset_token": match.group(1), "new_password": new_password},
+        )
+        assert confirmed.status_code == 204, confirmed.text
+
+        await _login(real_lifespan_client, email=email, password=new_password)
+        reused = await real_lifespan_client.post(
+            "/api/v1/auth/password/reset",
+            json={"reset_token": match.group(1), "new_password": "another passphrase 99"},
+        )
+        assert reused.status_code >= 400

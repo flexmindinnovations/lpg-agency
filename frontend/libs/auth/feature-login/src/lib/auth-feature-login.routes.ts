@@ -22,5 +22,6 @@ export const authFeatureLoginRoutes: Route[] = [
     loadComponent: () =>
       import('./reset-password-page/reset-password-page').then((m) => m.ResetPasswordPage),
     title: 'Choose a new password',
+    data: { mode: 'reset' },
   },
 ];
