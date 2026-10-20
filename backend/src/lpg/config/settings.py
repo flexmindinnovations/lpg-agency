@@ -264,6 +264,10 @@ class Settings(BaseSettings):
     # doorstep, often hours later — the 5-minute login TTL expired it before
     # most drivers arrived. 24 hours covers a full delivery day.
     delivery_otp_ttl_seconds: int = Field(default=86400, gt=0)
+    # The gas-leak emergency number the customer app shows when a tenant has
+    # not configured its own (`emergency_helpline_number`): 1906, India's
+    # national LPG emergency helpline.
+    emergency_helpline_number: str = "1906"
     otp_request_rate_limit_per_hour: int = Field(default=5, ge=1)
 
     password_reset_token_ttl_seconds: int = Field(default=3600, gt=0)

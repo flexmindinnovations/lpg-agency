@@ -46,6 +46,7 @@ from lpg.api.v1.routers import (
     printing,
     reporting,
     route,
+    support,
     whatsapp,
     ws,
 )
@@ -335,6 +336,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(online_payment.router, prefix=settings.api_v1_prefix)
     app.include_router(cash_handover.router, prefix=settings.api_v1_prefix)
     app.include_router(complaint.router, prefix=settings.api_v1_prefix)
+    app.include_router(support.router, prefix=settings.api_v1_prefix)
     app.include_router(printing.router, prefix=settings.api_v1_prefix)
     app.include_router(reporting.router, prefix=settings.api_v1_prefix)
     app.include_router(ws.router, prefix=settings.api_v1_prefix)

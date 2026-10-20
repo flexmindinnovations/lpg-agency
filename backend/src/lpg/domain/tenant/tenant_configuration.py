@@ -167,6 +167,13 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # current value matches (`tenant.whatsapp_resolve_tenant_id`); a
         # number claimed by two tenants routes to neither.
         "whatsapp_phone_number_id",
+        # Shown in the customer app's Support screen (CA-10): the number
+        # customers call about a gas leak, and the agency's own phone.
+        # `emergency_helpline_number` falls back to
+        # `Settings.emergency_helpline_number` (1906, India's national LPG
+        # emergency helpline) when a tenant has not set one.
+        "emergency_helpline_number",
+        "customer_support_phone",
     }
 )
 
