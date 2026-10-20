@@ -44,6 +44,7 @@ import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { Tag } from 'primeng/tag';
 import {
+  AuthTokenStore,
   AdminBranchService,
   DeliveryService,
   DocumentService,
@@ -93,6 +94,7 @@ function formatDateForApi(value: unknown): string | undefined {
 export class FeatureVehicles implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
+  private readonly authTokenStore = inject(AuthTokenStore);
   private readonly documentService = inject(DocumentService);
   private readonly branchService = inject(AdminBranchService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
@@ -154,6 +156,11 @@ export class FeatureVehicles implements OnInit {
   });
 
   protected readonly branches = signal<BranchResponse[]>([]);
+
+  /** Register's branch default — the user's own branch (DO-25). */
+  private defaultBranchId(): string {
+    return this.authTokenStore.defaultBranchIdAmong(this.branches()) ?? '';
+  }
   protected readonly loading = signal(false);
   protected readonly searchQuery = signal('');
   protected readonly errorMessage = signal<string | null>(null);
@@ -347,7 +354,7 @@ export class FeatureVehicles implements OnInit {
 
   protected openRegisterModal(): void {
     this.registerForm.reset({
-      branch_id: this.branches().length > 0 ? this.branches()[0].id : '',
+      branch_id: this.defaultBranchId(),
       registration_number: '',
       make: '',
       model: '',

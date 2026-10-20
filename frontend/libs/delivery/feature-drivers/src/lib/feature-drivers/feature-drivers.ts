@@ -45,6 +45,7 @@ import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { DatePicker } from 'primeng/datepicker';
 import {
+  AuthTokenStore,
   DeliveryService,
   DocumentService,
   AdminBranchService,
@@ -124,6 +125,7 @@ type DriverRow = DriverResponse & {
 export class FeatureDrivers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
+  private readonly authTokenStore = inject(AuthTokenStore);
   private readonly documentService = inject(DocumentService);
   private readonly branchService = inject(AdminBranchService);
   private readonly employeeService = inject(AdminEmployeeService);
@@ -203,6 +205,11 @@ export class FeatureDrivers implements OnInit {
   });
 
   protected readonly branches = signal<BranchResponse[]>([]);
+
+  /** Register's branch default — the user's own branch (DO-25). */
+  private defaultBranchId(): string {
+    return this.authTokenStore.defaultBranchIdAmong(this.branches()) ?? '';
+  }
   protected readonly employees = signal<(EmployeeResponse & { _displayName?: string })[]>([]);
   // Unscoped (all branches) — feeds the grid's Employee Code lookup, distinct
   // from `employees` above which is branch-scoped for the register modal's
@@ -513,7 +520,7 @@ export class FeatureDrivers implements OnInit {
   }
 
   protected openRegisterModal(): void {
-    const initialBranchId = this.branches().length > 0 ? this.branches()[0].id : '';
+    const initialBranchId = this.defaultBranchId();
     this.registerForm.reset({
       branch_id: initialBranchId,
       employee_id: '',

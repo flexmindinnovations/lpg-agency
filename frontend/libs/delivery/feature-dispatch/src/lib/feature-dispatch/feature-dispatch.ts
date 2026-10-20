@@ -29,6 +29,7 @@ import { Tag } from 'primeng/tag';
 import { DatePicker } from 'primeng/datepicker';
 import { Tooltip } from 'primeng/tooltip';
 import {
+  AuthTokenStore,
   AdminBranchService,
   AdminCylinderTypeService,
   AdminEmployeeService,
@@ -164,6 +165,7 @@ export class FeatureDispatch implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly inventoryService = inject(InventoryService);
   private readonly weighmentService = inject(WeighmentService);
+  private readonly authTokenStore = inject(AuthTokenStore);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
 
@@ -211,6 +213,7 @@ export class FeatureDispatch implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected readonly filterBranchId = signal<string | null>(null);
+
   protected readonly filterDate = signal<Date | null>(null);
 
   protected readonly employeeById = computed(() => {
@@ -220,6 +223,7 @@ export class FeatureDispatch implements OnInit {
   });
 
   private driverDisplayName(driver: DriverResponse): string {
+    if (driver.name) return driver.name;
     const employee = this.employeeById().get(driver.employee_id);
     // Falls back to the raw FK only if the employee record hasn't loaded
     // yet (or was deleted) — should be rare, never the normal case.
@@ -364,11 +368,22 @@ export class FeatureDispatch implements OnInit {
     () => this.allVehicles().find((v) => v.id === this.tripVehicleId()) ?? null,
   );
 
+  /** The trip branch's own godowns; every godown only when that branch has
+   * none (a branch supplied from a shared depot). */
   protected readonly tripWarehouseOptions = computed(() => {
-    const branchId = this.tripBranchId();
-    const inBranch = this.warehouses().filter((w) => w.branch_id === branchId);
+    const inBranch = this.branchWarehouses();
     return inBranch.length > 0 ? inBranch : this.warehouses();
   });
+
+  private readonly branchWarehouses = computed(() => {
+    const branchId = this.tripBranchId();
+    return branchId ? this.warehouses().filter((w) => w.branch_id === branchId) : [];
+  });
+
+  /** Pre-selected godown: the trip branch's own, never another branch's. */
+  private defaultTripWarehouseId(): string | null {
+    return this.branchWarehouses()[0]?.id ?? null;
+  }
 
   /** Confirmed orders not on any trip yet, for this trip's branch. */
   protected readonly tripCandidateOrders = computed(() => {
@@ -455,7 +470,10 @@ export class FeatureDispatch implements OnInit {
   );
 
   protected openNewTrip(preselectOrder?: OrderResponse): void {
-    const branchId = preselectOrder?.branch_id ?? this.filterBranchId() ?? this.branches()[0]?.id;
+    const branchId =
+      preselectOrder?.branch_id ??
+      this.filterBranchId() ??
+      this.authTokenStore.defaultBranchIdAmong(this.branches());
     this.tripRoute.set(null);
     this.tripBranchId.set(branchId ?? null);
     this.tripDriverId.set(null);
@@ -465,7 +483,7 @@ export class FeatureDispatch implements OnInit {
     this.tripSpares.set({});
     this.tripError.set(null);
     this.vanStock.set(new Map());
-    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.onTripWarehouseChange(this.defaultTripWarehouseId());
     this.showTripSheet.set(true);
   }
 
@@ -479,7 +497,7 @@ export class FeatureDispatch implements OnInit {
     this.tripSpares.set({});
     this.tripError.set(null);
     this.loadVanStock(route.vehicle_id);
-    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.onTripWarehouseChange(this.defaultTripWarehouseId());
     this.showRouteDetail.set(false);
     this.showTripSheet.set(true);
   }
@@ -496,7 +514,7 @@ export class FeatureDispatch implements OnInit {
   protected onTripBranchChange(branchId: string | null): void {
     this.tripBranchId.set(branchId);
     this.tripOrderIds.set(new Set());
-    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.onTripWarehouseChange(this.defaultTripWarehouseId());
   }
 
   protected onTripVehicleChange(vehicleId: string | null): void {
@@ -765,6 +783,14 @@ export class FeatureDispatch implements OnInit {
       next: (page) => this.allVehicles.set(page.items),
       error: () => this.errorMessage.set('Failed to load vehicles.'),
     });
+  }
+
+  /** Re-reads the board — trips, the orders waiting for one, and driver/van
+   * availability. Public so a realtime event (DO-24) can trigger it. */
+  reload(): void {
+    this.loadRoutes();
+    this.loadUnassignedOrders();
+    this.loadDriversAndVehicles();
   }
 
   protected loadRoutes(): void {

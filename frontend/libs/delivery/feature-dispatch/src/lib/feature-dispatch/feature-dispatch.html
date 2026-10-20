@@ -211,6 +211,8 @@
             [options]="branches()"
             optionLabel="name"
             optionValue="id"
+            placeholder="Select a branch"
+            ariaLabel="Branch"
             [ngModel]="tripBranchId()"
             (ngModelChange)="onTripBranchChange($event)"
             [fluid]="true"
@@ -257,7 +259,8 @@
         </div>
         } @empty {
         <p class="empty-hint trip-orders__empty">
-          No confirmed orders for this branch are waiting for a trip.
+          @if (tripBranchId()) { No confirmed orders for this branch are waiting for a trip. } @else
+          { Choose a branch to see its orders. }
         </p>
         }
       </div>
@@ -271,6 +274,7 @@
           optionLabel="name"
           optionValue="id"
           placeholder="Select a godown"
+          ariaLabel="Load from godown"
           [ngModel]="tripWarehouseId()"
           (ngModelChange)="onTripWarehouseChange($event)"
           [fluid]="true"
