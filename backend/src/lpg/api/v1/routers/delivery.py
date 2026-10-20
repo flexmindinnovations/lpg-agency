@@ -823,7 +823,8 @@ async def list_compliance_documents(
     limit: int = 50,
 ) -> ComplianceDocumentListResponse:
     """Tenant-wide compliance-document list for the drivers/vehicles pages —
-    `expiry` is `expiring` (<=30 days) or `expired`."""
+    `expiry` is `expiring` (<=30 days), `expired`, or `upcoming` (overdue or
+    due within 90 days — the compliance calendar). Sorted by expiry date."""
     use_case = ListComplianceDocumentsUseCase(repository)
     docs, total = await use_case.execute(
         ListComplianceDocumentsQuery(
