@@ -15,9 +15,35 @@
   <p-message severity="error">{{ msg }}</p-message>
   }
 
-  <section class="calendar-section">
+  <section class="calendar-section" aria-labelledby="upcoming-expiries-title">
     <div class="calendar-section__header">
-      <h2 class="calendar-section__title">Warehouses — PESO Form F</h2>
+      <h2 id="upcoming-expiries-title" class="calendar-section__title">Upcoming expiries</h2>
+      @if (overdueCount() > 0) {
+      <p-message severity="error" size="small">{{ overdueCount() }} overdue</p-message>
+      }
+    </div>
+    <p class="calendar-section__hint">
+      Everything overdue or due in the next 90 days — warehouse licences, agency insurance, driver
+      licences and vehicle papers — earliest first.
+    </p>
+    @if (!upcomingLoading() && upcomingRows().length === 0) {
+    <p-message severity="success">Nothing is overdue or due in the next 90 days.</p-message>
+    } @else {
+    <lpg-data-grid
+      [rows]="upcomingRows()"
+      [columns]="upcomingColumns"
+      [loading]="upcomingLoading()"
+      [autoHeight]="true"
+      ariaLabel="Documents overdue or due within 90 days"
+    />
+    }
+  </section>
+
+  <section class="calendar-section" aria-labelledby="warehouse-licences-title">
+    <div class="calendar-section__header">
+      <h2 id="warehouse-licences-title" class="calendar-section__title">
+        Warehouse licences (PESO Form F)
+      </h2>
       @if (warehouses().length > 0) {
       <p-select
         [options]="warehouses()"
@@ -25,7 +51,7 @@
         optionValue="id"
         [ngModel]="selectedWarehouseId()"
         (ngModelChange)="onWarehouseChange($event)"
-        aria-label="Select warehouse"
+        ariaLabel="Warehouse"
         styleClass="warehouse-select"
       ></p-select>
       }
@@ -35,6 +61,7 @@
     <p-message severity="info">No warehouses registered yet.</p-message>
     } @else if (selectedWarehouseId(); as warehouseId) {
     <lpg-compliance-documents-panel
+      [heading]="null"
       [documents]="warehouseDocuments()"
       [loading]="warehouseDocumentsLoading()"
       [docTypeOptions]="warehouseDocTypeOptions"
@@ -48,11 +75,12 @@
     }
   </section>
 
-  <section class="calendar-section">
+  <section class="calendar-section" aria-labelledby="agency-insurance-title">
     <div class="calendar-section__header">
-      <h2 class="calendar-section__title">Tenant — Insurance Policy</h2>
+      <h2 id="agency-insurance-title" class="calendar-section__title">Agency insurance</h2>
     </div>
     <lpg-compliance-documents-panel
+      [heading]="null"
       [documents]="tenantDocuments()"
       [loading]="tenantDocumentsLoading()"
       [docTypeOptions]="tenantDocTypeOptions"
