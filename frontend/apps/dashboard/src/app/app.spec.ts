@@ -42,7 +42,8 @@ describe('Routing foundation', () => {
     // 'design-system' is an internal component/token reference — it shows
     // no tenant data, so it carries no permission guard by design.
     // 'settings' is the frame only — its children carry their own guards (checked below).
-    const exempt = new Set(['', 'settings', 'notifications', 'design-system', '**']);
+    // 'no-access' is where permissionGuard itself sends a denied user.
+    const exempt = new Set(['', 'settings', 'notifications', 'design-system', 'no-access', '**']);
     const shellRoute = appRoutes.find((route) => route.path === '');
     const children = shellRoute?.children ?? [];
     for (const child of children) {

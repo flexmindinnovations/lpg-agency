@@ -27,6 +27,9 @@ import { AuthTokenStore } from './auth-token.store';
  * that same coarse permission code also happens to gate the full
  * staff-facing "browse everything" list page for that resource. Pass the
  * roles that should be denied this *page* despite holding the permission.
+ *
+ * A denied tenant user is sent to `/no-access` (an explicit "you don't have
+ * access" page), not silently back to Home.
  */
 export function permissionGuard(
   permissionCode: string,
@@ -42,7 +45,15 @@ export function permissionGuard(
         const principal = tokenStore.principal();
         const allowed =
           !!principal?.permissions.has(permissionCode) && !excludeRoles?.includes(principal.role);
-        return allowed ? true : router.createUrlTree(['/']);
+        if (allowed) {
+          return true;
+        }
+        // A tenant user gets the shell's explicit "no access" page (DO-31);
+        // a platform session has no tenant shell, so it goes back to the
+        // Platform Console instead.
+        return router.createUrlTree([
+          principal?.role === 'super_admin' ? '/platform' : '/no-access',
+        ]);
       }),
     );
   };

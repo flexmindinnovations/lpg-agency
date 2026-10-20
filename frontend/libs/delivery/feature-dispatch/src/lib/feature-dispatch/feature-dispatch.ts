@@ -33,6 +33,7 @@ import {
   AdminCylinderTypeService,
   AdminEmployeeService,
   AdminWarehouseService,
+  AuthService,
   DeliveryService,
   InventoryService,
   NotifyService,
@@ -166,6 +167,7 @@ export class FeatureDispatch implements OnInit {
   private readonly weighmentService = inject(WeighmentService);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
   protected readonly routes = signal<RouteResponse[]>([]);
   // Active-only — this backs the trip sheet's driver picker, which must
@@ -736,9 +738,13 @@ export class FeatureDispatch implements OnInit {
       next: (types) => this.cylinderTypes.set(types),
       error: () => this.errorMessage.set('Failed to load cylinder types.'),
     });
-    this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
-      next: (res) => this.scales.set(res.items),
-    });
+    // `/scales` needs `weighment:record`; a role without it (e.g. a
+    // dispatcher) would only get a 403 — skip the call (DO-31).
+    if (this.authService.principal()?.permissions.has('weighment:record')) {
+      this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
+        next: (res) => this.scales.set(res.items),
+      });
+    }
     this.loadDriversAndVehicles();
     this.loadRoutes();
     this.loadUnassignedOrders();

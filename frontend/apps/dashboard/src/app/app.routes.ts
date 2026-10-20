@@ -413,6 +413,15 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        // Where `permissionGuard` sends a signed-in user whose role lacks
+        // the page's permission (DO-31) — an explicit state, not a silent
+        // bounce to Home.
+        path: 'no-access',
+        loadComponent: () => import('./not-found/not-found').then((m) => m.NotFound),
+        data: { variant: 'no-access' },
+        title: 'No access',
+      },
+      {
         path: '**',
         loadComponent: () => import('./not-found/not-found').then((m) => m.NotFound),
         title: 'Page not found',
