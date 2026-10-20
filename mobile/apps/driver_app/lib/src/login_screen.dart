@@ -1,5 +1,7 @@
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_provider.dart';
@@ -27,6 +29,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _codeController = TextEditingController();
 
   bool _codeRequested = false;
+
+  /// The number the code was sent to, in E.164 — what verify must send.
+  String? _requestedPhone;
   String? _devOtp;
   bool _submitting = false;
   String? _errorMessage;
@@ -41,9 +46,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _requestCode() async {
     final tenantId = _tenantIdController.text.trim();
-    final phone = _phoneController.text.trim();
+    final rawPhone = _phoneController.text.trim();
 
-    if (tenantId.isEmpty || phone.isEmpty) {
+    if (tenantId.isEmpty || rawPhone.isEmpty) {
       setState(
         () => _errorMessage = 'Please enter both Agency Code and Phone number.',
       );
@@ -51,8 +56,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     // No format check on the Agency Code beyond non-empty — `tenant.slug` has
     // no server-side format constraint, just uniqueness.
-    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(phone)) {
-      setState(() => _errorMessage = 'Please enter a valid phone number.');
+    // The backend matches accounts on E.164 (`+919876543210`); people type
+    // ten digits, or add 0 / 91 / spaces. Normalise here (CA-02).
+    final phone = PhoneNumbers.normalize(rawPhone);
+    if (phone == null) {
+      setState(
+        () => _errorMessage =
+            'Enter your 10-digit mobile number, for example 98765 43210.',
+      );
       return;
     }
 
@@ -81,7 +92,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _submitting = false;
       _devOtp = devOtp;
       result.when(
-        onSuccess: (_) => _codeRequested = true,
+        onSuccess: (_) {
+          _codeRequested = true;
+          _requestedPhone = phone;
+        },
         onFailure: (failure) => _errorMessage = failure.message,
       );
     });
@@ -112,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         .read(authControllerProvider)
         .verifyOtp(
           tenantId: _tenantIdController.text.trim(),
-          phoneNumber: _phoneController.text.trim(),
+          phoneNumber: _requestedPhone!,
           code: _codeController.text.trim(),
         );
 
@@ -167,7 +181,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: LpgSpacing.sm),
                       Text(
                         _codeRequested
-                            ? 'Enter the code we sent to ${_phoneController.text.trim()}'
+                            ? 'Enter the code we sent to $_requestedPhone'
                             : 'Sign in to your delivery account',
                         style: text.bodyLarge?.copyWith(
                           color: colors.textSecondary,
@@ -198,11 +212,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(height: LpgSpacing.mdl),
                         LpgTextField(
-                          label: 'Phone number',
+                          label: 'Mobile number',
                           prefixIcon: LpgIcons.phone,
+                          // India's code is shown, so a 10-digit number is
+                          // all anyone needs to type (CA-02).
+                          prefixText: '${PhoneNumbers.indiaDialCode} ',
+                          hintText: '10-digit mobile number',
                           controller: _phoneController,
                           enabled: !_codeRequested,
                           keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9+\s\-]'),
+                            ),
+                          ],
                           autofillHints: const [AutofillHints.telephoneNumber],
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _requestCode(),
