@@ -32,6 +32,13 @@ export const ACTION_SEVERITY: Record<string, string> = {
   delete: 'danger',
 };
 
+/** Audit actions as an office user says them ("CREATE" read as a code). */
+const ACTION_CHIP_LABELS: Record<string, string> = {
+  create: 'Created',
+  update: 'Changed',
+  delete: 'Deleted',
+};
+
 /** AG Grid cell renderer: an action name as a coloured `p-tag` chip. */
 @Component({
   selector: 'lpg-action-chip-cell',
@@ -53,7 +60,8 @@ export class ActionChipCell {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AG Grid's ICellRendererParams
   agInit(params: any): void {
-    this.value.set(params.value?.toUpperCase() || '');
+    const raw = typeof params.value === 'string' ? params.value : '';
+    this.value.set(ACTION_CHIP_LABELS[raw] ?? raw);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.severity.set((ACTION_SEVERITY[params.value] as any) || 'secondary');
   }
@@ -75,23 +83,58 @@ export class ActionChipCell {
   standalone: true,
   imports: [ClipboardModule, TooltipModule],
   template: `
-    <div style="display: flex; align-items: center; gap: 0.5rem; height: 100%;">
-      <span class="cell-mono" [pTooltip]="idValue()" tooltipPosition="top">
+    <div class="copyable-id">
+      <span class="copyable-id__text" [pTooltip]="idValue()" tooltipPosition="top">
         {{ displayValue() }}
       </span>
       @if (idValue()) {
-        <i
-          class="pi pi-copy"
-          style="cursor: pointer; opacity: 0.6; font-size: 0.875rem; transition: opacity 0.2s;"
-          onmouseover="this.style.opacity='1'"
-          onmouseout="this.style.opacity='0.6'"
+        <button
+          type="button"
+          class="copyable-id__copy"
           [cdkCopyToClipboard]="idValue()"
+          aria-label="Copy ID"
           pTooltip="Copy ID"
           tooltipPosition="top"
-        ></i>
+        >
+          <i class="pi pi-copy" aria-hidden="true"></i>
+        </button>
       }
     </div>
   `,
+  // The copy button never shrinks, the text ellipsises: the icon was clipped
+  // at the column edge (QA DA-25).
+  styles: [
+    `
+      .copyable-id {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        block-size: 100%;
+        min-inline-size: 0;
+      }
+      .copyable-id__text {
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .copyable-id__copy {
+        flex-shrink: 0;
+        display: inline-flex;
+        padding: var(--spacing-xs);
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+      }
+      .copyable-id__copy:hover,
+      .copyable-id__copy:focus-visible {
+        color: var(--color-text-primary);
+        background: var(--color-surface-overlay);
+      }
+    `,
+  ],
 })
 export class CopyableIdCell {
   displayValue = signal('');
