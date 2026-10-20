@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lpg.application.common.cqrs import Command
-from lpg.application.common.errors import NotFoundError
+from lpg.application.common.errors import ConflictError, NotFoundError
 from lpg.domain.tenant.branch import Branch
 
 if TYPE_CHECKING:
@@ -29,13 +29,31 @@ class CreateBranchCommand(Command):
     region: str | None = None
 
 
+async def _refuse_duplicate_name(
+    repository: BranchRepository,
+    tenant_id: uuid.UUID,
+    name: str,
+    *,
+    except_id: uuid.UUID | None = None,
+) -> None:
+    """Branch names are unique per agency, ignoring case and outer spaces
+    (DA-19: two "QA Branch" rows were indistinguishable in every picker).
+    Inactive branches count too - reactivating one must not create a clash."""
+    wanted = name.strip().casefold()
+    for existing in await repository.list_for_tenant(tenant_id):
+        if existing.id != except_id and existing.name.strip().casefold() == wanted:
+            msg = f"A branch named '{existing.name}' already exists."
+            raise ConflictError(msg, branch_id=str(existing.id))
+
+
 class CreateBranchUseCase:
     def __init__(self, repository: BranchRepository, unit_of_work: UnitOfWork) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: CreateBranchCommand) -> Branch:
-        branch = Branch(uuid.uuid4(), command.tenant_id, command.name, command.region)
+        branch = Branch.create(uuid.uuid4(), command.tenant_id, command.name, command.region)
+        await _refuse_duplicate_name(self._repository, command.tenant_id, branch.name)
         await self._repository.add(branch)
         await self._unit_of_work.commit()
         return branch
@@ -58,6 +76,9 @@ class RenameBranchUseCase:
             msg = f"No branch visible with id {command.branch_id}."
             raise NotFoundError(msg, branch_id=str(command.branch_id))
 
+        await _refuse_duplicate_name(
+            self._repository, branch.tenant_id, command.new_name, except_id=branch.id
+        )
         branch.rename(command.new_name)
 
         await self._repository.save(branch)

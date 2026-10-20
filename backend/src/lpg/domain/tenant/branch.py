@@ -44,6 +44,21 @@ class Branch(AggregateRoot):
         self._region = region
         self._is_active = is_active
 
+    @classmethod
+    def create(
+        cls, branch_id: uuid.UUID, tenant_id: uuid.UUID, name: str, region: str | None = None
+    ) -> Branch:
+        """A new branch with a trimmed, non-blank name (DA-19: a name of only
+        spaces used to be accepted and showed up as a blank picker option).
+        Not enforced in `__init__`, which also rehydrates rows saved before
+        this rule existed."""
+        stripped = name.strip()
+        if not stripped:
+            msg = "Branch name cannot be empty."
+            raise InvariantViolation(msg, branch_id=str(branch_id))
+        cleaned_region = region.strip() if region else None
+        return cls(branch_id, tenant_id, stripped, cleaned_region or None)
+
     @property
     def tenant_id(self) -> uuid.UUID:
         return self._tenant_id

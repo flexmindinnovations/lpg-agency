@@ -89,16 +89,16 @@ class BranchResponse(BaseModel):
 
 
 class CreateBranchRequest(BaseModel):
-    name: str = Field(min_length=1)
-    region: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    region: str | None = Field(default=None, max_length=200)
 
 
 class RenameBranchRequest(BaseModel):
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=200)
 
 
 class SetBranchRegionRequest(BaseModel):
-    region: str | None = None
+    region: str | None = Field(default=None, max_length=200)
 
 
 class SetBranchActiveRequest(BaseModel):
