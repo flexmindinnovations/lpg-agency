@@ -20,9 +20,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 OrderStatus = Literal[
     "draft",
@@ -300,8 +300,17 @@ class RecordFailedDeliveryRequest(BaseModel):
 # ==========================================================================
 
 
+#: A reason someone has to read later: surrounding blanks are dropped, and an
+#: empty or blank reason is refused (CA-11).
+ReasonText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=1000),
+    Field(description="Why — required, cannot be blank."),
+]
+
+
 class CancelOrderRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: ReasonText
 
 
 class CancelOrderResponse(BaseModel):
@@ -330,12 +339,12 @@ class PendingCancellationResponse(BaseModel):
 
 
 class RejectCancellationRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: ReasonText
 
 
 class BulkCancelOrdersRequest(BaseModel):
     order_ids: list[uuid.UUID] = Field(min_length=1)
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: ReasonText
 
 
 class BulkCancelOrderResultItem(BaseModel):

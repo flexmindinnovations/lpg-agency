@@ -481,10 +481,12 @@ async def list_orderable_cylinder_types(
         branch_id = customer.branch_id
     else:
         if customer_id is None:
-            raise HTTPException(status_code=422, detail="customer_id is required.")
+            raise HTTPException(
+                status_code=422, detail="Choose a customer first to see what they can book."
+            )
         found = await customer_repository.get_by_id(customer_id)
         if found is None:
-            msg = f"No customer visible with id {customer_id}."
+            msg = "Customer not found."
             raise NotFoundError(msg, customer_id=str(customer_id))
         customer = found
         branch_id = branch_id or customer.branch_id
