@@ -119,6 +119,7 @@ export type { NextConsumerNumberResponse } from './models/next-consumer-number-r
 export type { NotificationResponse } from './models/notification-response';
 export type { OnboardingDraftListResponse } from './models/onboarding-draft-list-response';
 export type { OnboardingDraftResponse } from './models/onboarding-draft-response';
+export type { OnlinePaymentAvailabilityResponse } from './models/online-payment-availability-response';
 export type { OnlinePaymentListResponse } from './models/online-payment-list-response';
 export type { OnlinePaymentResponse } from './models/online-payment-response';
 export type { OptimizeRouteResponse } from './models/optimize-route-response';

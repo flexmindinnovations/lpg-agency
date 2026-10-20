@@ -4675,6 +4675,20 @@
         "title": "OnboardingDraftResponse",
         "type": "object"
       },
+      "OnlinePaymentAvailabilityResponse": {
+        "description": "Whether \"Pay Online\" can be offered (a gateway is configured).",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "OnlinePaymentAvailabilityResponse",
+        "type": "object"
+      },
       "OnlinePaymentListResponse": {
         "properties": {
           "items": {
@@ -15792,6 +15806,28 @@
         "summary": "Mark Read",
         "tags": [
           "Notifications"
+        ]
+      }
+    },
+    "/api/v1/online-payments/availability": {
+      "get": {
+        "description": "`available` is false when no payment gateway is configured; creating a\npayment link would then fail with 503, so the apps don't offer it.",
+        "operationId": "get_online_payment_availability_api_v1_online_payments_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentAvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Whether online payment can be offered in this environment",
+        "tags": [
+          "Online Payments"
         ]
       }
     },
