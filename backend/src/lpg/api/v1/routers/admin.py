@@ -953,8 +953,11 @@ async def activate_license(
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    tenant_repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
 ) -> LicenseResponse:
-    use_case = ActivateLicenseUseCase(repository, token_hasher, status_checker, unit_of_work)
+    use_case = ActivateLicenseUseCase(
+        repository, token_hasher, status_checker, unit_of_work, tenant_repository
+    )
     license_ = await use_case.execute(
         ActivateLicenseCommand(tenant_id=principal.tenant_id, presented_key=body.key)
     )

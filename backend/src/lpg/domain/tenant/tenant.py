@@ -213,6 +213,19 @@ class Tenant(AggregateRoot):
         """`trial` → `active` — the tenant's first real activation."""
         self._transition_to("active", allowed_from={"trial"})
 
+    def apply_license(self, plan_tier: str) -> None:
+        """A licence was activated, or its plan tier changed (DA-28).
+
+        The licence is the source of truth for an agency's commercial state:
+        once one is active the agency is no longer on trial, and its plan is
+        the licence's plan tier. Suspended and closed agencies keep their
+        status - those are deliberate platform decisions a licence change
+        must not undo.
+        """
+        if self._status == "trial":
+            self.activate()
+        self._subscription_plan = plan_tier
+
     def suspend(self) -> None:
         """`active` → `suspended`."""
         self._transition_to("suspended", allowed_from={"active"})

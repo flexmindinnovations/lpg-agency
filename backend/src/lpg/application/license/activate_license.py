@@ -16,7 +16,21 @@ if TYPE_CHECKING:
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.identity.ports import TokenHasher
     from lpg.application.license.ports import LicenseRepository, LicenseStatusChecker
+    from lpg.application.tenant.ports import TenantRepository
     from lpg.domain.license.license import License
+
+
+async def sync_tenant_with_license(tenants: TenantRepository | None, license_: License) -> None:
+    """Keep the agency's status/plan in step with its licence (DA-28): the
+    Agencies list and Settings > Agency used to say "Trial / Standard" while
+    the licence said "Active / Premium"."""
+    if tenants is None:
+        return
+    tenant = await tenants.get(license_.tenant_id)
+    if tenant is None:
+        return
+    tenant.apply_license(license_.plan_tier)
+    await tenants.save(tenant)
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +46,9 @@ class ActivateLicenseUseCase:
         token_hasher: TokenHasher,
         status_checker: LicenseStatusChecker,
         unit_of_work: UnitOfWork,
+        tenant_repository: TenantRepository | None = None,
     ) -> None:
+        self._tenant_repository = tenant_repository
         self._repository = repository
         self._token_hasher = token_hasher
         self._status_checker = status_checker
@@ -55,6 +71,7 @@ class ActivateLicenseUseCase:
             raise LicenseActivationFailedError(msg, tenant_id=str(command.tenant_id)) from exc
 
         await self._repository.save(license_)
+        await sync_tenant_with_license(self._tenant_repository, license_)
         await self._unit_of_work.commit()
         await self._status_checker.invalidate(command.tenant_id)
         return license_

@@ -307,6 +307,9 @@ ignore_imports = [
     # the admin surface's own seams.
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.audit",
+    # DA-24: explicit audit entries for staff-user changes, which go through
+    # repositories the generic audit hook cannot see.
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.audit_trail",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.identity",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.tenant",

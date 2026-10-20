@@ -85,6 +85,8 @@ from lpg.application.license.issue_license import (
     IssueLicenseUseCase,
     ListLicensesQuery,
     ListLicensesUseCase,
+    ReplaceLicenseKeyCommand,
+    ReplaceLicenseKeyUseCase,
     RevokeLicenseCommand,
     RevokeLicenseUseCase,
     SetLicenseDeviceCapCommand,
@@ -523,11 +525,50 @@ async def activate_license(
     target_tenant_id = uuid.UUID(tenant_id)
     async with uow_factory(target_tenant_id) as uow:
         repository = SqlAlchemyLicenseRepository(uow)  # type: ignore[arg-type]
-        use_case = ActivateLicenseUseCase(repository, token_hasher, status_checker, uow)
+        use_case = ActivateLicenseUseCase(
+            repository,
+            token_hasher,
+            status_checker,
+            uow,
+            SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+        )
         license_ = await use_case.execute(
             ActivateLicenseCommand(tenant_id=target_tenant_id, presented_key=body.key)
         )
     return _license_response(license_)
+
+
+@router.post(
+    "/license/{tenant_id}/key",
+    response_model=IssuedLicenseResponse,
+    summary="Generate a new key for a licence that is not activated yet",
+    description=(
+        "For when the one-time key shown at issue was lost before activation. "
+        "The old key stops working; the new plaintext key is returned once. "
+        "409 if the licence is already activated or revoked."
+    ),
+)
+async def replace_license_key(
+    tenant_id: str,
+    _principal: Annotated[
+        PlatformPrincipal, Depends(require_live_platform_permission("license:manage_platform"))
+    ],
+    uow_factory: Annotated[_UowFactory, Depends(get_platform_unit_of_work_factory)],
+    token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
+) -> IssuedLicenseResponse:
+    target_tenant_id = uuid.UUID(tenant_id)
+    async with uow_factory(target_tenant_id) as uow:
+        repository = SqlAlchemyLicenseRepository(uow)  # type: ignore[arg-type]
+        license_, plaintext_key = await ReplaceLicenseKeyUseCase(
+            repository, token_hasher, uow
+        ).execute(ReplaceLicenseKeyCommand(tenant_id=target_tenant_id))
+    return IssuedLicenseResponse(
+        tenant_id=str(license_.tenant_id),
+        plaintext_key=plaintext_key,
+        key_prefix=license_.key_prefix,
+        plan_tier=license_.plan_tier,
+        issued_at=license_.issued_at,
+    )
 
 
 @router.get("/license", response_model=list[LicenseResponse], summary="List every tenant's license")
@@ -577,7 +618,11 @@ async def set_license_plan_tier(
     target_tenant_id = uuid.UUID(tenant_id)
     async with uow_factory(target_tenant_id) as uow:
         repository = SqlAlchemyLicenseRepository(uow)  # type: ignore[arg-type]
-        use_case = SetLicensePlanTierUseCase(repository, uow)
+        use_case = SetLicensePlanTierUseCase(
+            repository,
+            uow,
+            SqlAlchemyTenantRepository(uow),  # type: ignore[arg-type]
+        )
         await use_case.execute(
             SetLicensePlanTierCommand(tenant_id=target_tenant_id, plan_tier=body.plan_tier)
         )
