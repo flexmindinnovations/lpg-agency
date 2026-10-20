@@ -28,8 +28,17 @@ if TYPE_CHECKING:
 #: this catalog updated.
 RECOGNIZED_CONFIG_KEYS = frozenset(
     {
+        # Tenant-wide GST fallback — only for cylinder types with no GST
+        # rate of their own (`CylinderType.gst_rate_percent` is the
+        # primary source since DA-06). Unset on both means invoices are
+        # held, never issued at 0%.
         "gst_rate_percent",
         "cancellation_fee_amount",
+        # Days a customer has to pay an invoice before the Home dashboard
+        # counts it as overdue. Falls back to
+        # `application.dashboard.get_operations_snapshot.
+        # DEFAULT_PAYMENT_TERMS_DAYS` (30) when unset.
+        "invoice_payment_terms_days",
         "credit_limit_default",
         # Nightly `check_compliance_expiry` cron's lead time (days) — how far
         # ahead of a driver/vehicle compliance document's expiry to notify

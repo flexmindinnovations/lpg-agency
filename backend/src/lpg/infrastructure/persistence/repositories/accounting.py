@@ -6,29 +6,35 @@ import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
+from sqlalchemy import Select, func, or_, select, text
 from sqlalchemy.orm import selectinload
 
 from lpg.application.accounting.ports import (
+    CashHandoverRegisterEntry,
     CashHandoverRepository,
     CreditNoteRepository,
     InvoiceRepository,
     OnlinePaymentRepository,
+    UninvoicedOrder,
 )
-from lpg.domain.accounting.cash_handover import CashHandover
+from lpg.domain.accounting.cash_handover import CashHandover, CashHandoverReview
 from lpg.domain.accounting.credit_note import CreditNote
-from lpg.domain.accounting.invoice import Invoice, InvoiceLine, Payment
+from lpg.domain.accounting.invoice import Invoice, InvoiceLine, Payment, PlaceOfSupply
 from lpg.domain.accounting.online_payment import OnlinePayment
 from lpg.infrastructure.persistence.models.accounting import (
     CashHandoverModel,
+    CashHandoverReviewModel,
     CreditNoteModel,
     InvoiceLineModel,
     InvoiceModel,
     OnlinePaymentModel,
     PaymentModel,
 )
+from lpg.infrastructure.persistence.models.customer import CustomerModel
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -59,6 +65,10 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                     subtotal=line.subtotal,
                     tax_amount=line.tax_amount,
                     total_amount=line.total_amount,
+                    hsn_code=line.hsn_code,
+                    gst_rate_percent=line.gst_rate_percent,
+                    kind=line.line_kind,
+                    description=line.description,
                 )
                 for line in model.lines
             ],
@@ -69,12 +79,18 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                     amount=payment.amount,
                     collected_by=payment.collected_by,
                     collected_at=payment.collected_at,
+                    reference=payment.reference,
                 )
                 for payment in model.payments
             ],
             subtotal=model.subtotal,
             tax_amount=model.tax_amount,
             total_amount=model.total_amount,
+            supply=PlaceOfSupply(
+                supplier_state_code=model.supplier_state_code,
+                place_of_supply_state_code=model.place_of_supply_state_code,
+                customer_gstin=model.customer_gstin,
+            ),
         )
         # Register for event dispatch
         self._uow.register_aggregate(invoice)
@@ -94,6 +110,9 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             subtotal=invoice.subtotal,
             tax_amount=invoice.tax_amount,
             total_amount=invoice.total_amount,
+            supplier_state_code=invoice.supplier_state_code,
+            place_of_supply_state_code=invoice.place_of_supply_state_code,
+            customer_gstin=invoice.customer_gstin,
             lines=[
                 InvoiceLineModel(
                     id=line.id,
@@ -103,6 +122,10 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                     subtotal=line.subtotal,
                     tax_amount=line.tax_amount,
                     total_amount=line.total_amount,
+                    hsn_code=line.hsn_code,
+                    gst_rate_percent=line.gst_rate_percent,
+                    line_kind=line.kind,
+                    description=line.description,
                 )
                 for line in invoice.lines
             ],
@@ -117,6 +140,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                     amount=payment.amount,
                     collected_by=payment.collected_by,
                     collected_at=payment.collected_at,
+                    reference=payment.reference,
                 )
                 for payment in invoice.payments
             ],
@@ -161,6 +185,7 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
                     amount=domain_payment.amount,
                     collected_by=domain_payment.collected_by,
                     collected_at=domain_payment.collected_at,
+                    reference=domain_payment.reference,
                 )
             )
 
@@ -176,6 +201,42 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
             return None
         return self._to_domain(model)
 
+    def _filtered(
+        self,
+        stmt: Select[Any],
+        *,
+        customer_id: uuid.UUID | None,
+        order_id: uuid.UUID | None,
+        status: str | None,
+        issued_from: datetime | None,
+        issued_to: datetime | None,
+        search: str | None,
+    ) -> Select[Any]:
+        stmt = stmt.where(InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id)
+        if customer_id:
+            stmt = stmt.where(InvoiceModel.customer_id == customer_id)
+        if order_id:
+            stmt = stmt.where(InvoiceModel.order_id == order_id)
+        if status:
+            stmt = stmt.where(InvoiceModel.status == status)
+        if issued_from is not None:
+            stmt = stmt.where(InvoiceModel.issued_at >= issued_from)
+        if issued_to is not None:
+            stmt = stmt.where(InvoiceModel.issued_at < issued_to)
+        if search and search.strip():
+            # Collapse runs of whitespace so "Meena  Iyer" still matches.
+            pattern = "%" + " ".join(search.split()) + "%"
+            customer_ids = select(CustomerModel.id).where(CustomerModel.full_name.ilike(pattern))
+            stmt = stmt.where(
+                or_(
+                    InvoiceModel.invoice_number.ilike(pattern),
+                    InvoiceModel.order_number.ilike(pattern),
+                    InvoiceModel.customer_consumer_number.ilike(pattern),
+                    InvoiceModel.customer_id.in_(customer_ids),
+                )
+            )
+        return stmt
+
     async def list_invoices(
         self,
         skip: int = 0,
@@ -183,19 +244,21 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         customer_id: uuid.UUID | None = None,
         order_id: uuid.UUID | None = None,
         status: str | None = None,
+        issued_from: datetime | None = None,
+        issued_to: datetime | None = None,
+        search: str | None = None,
     ) -> list[Invoice]:
-        stmt = select(InvoiceModel).where(
-            InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id
+        stmt = self._filtered(
+            select(InvoiceModel),
+            customer_id=customer_id,
+            order_id=order_id,
+            status=status,
+            issued_from=issued_from,
+            issued_to=issued_to,
+            search=search,
         )
-        if customer_id:
-            stmt = stmt.where(InvoiceModel.customer_id == customer_id)
-        if order_id:
-            stmt = stmt.where(InvoiceModel.order_id == order_id)
-        if status:
-            stmt = stmt.where(InvoiceModel.status == status)
-
         stmt = (
-            stmt.order_by(InvoiceModel.issued_at.desc())
+            stmt.order_by(InvoiceModel.issued_at.desc(), InvoiceModel.id)
             .offset(skip)
             .limit(limit)
             .options(selectinload(InvoiceModel.lines), selectinload(InvoiceModel.payments))
@@ -209,21 +272,31 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         customer_id: uuid.UUID | None = None,
         order_id: uuid.UUID | None = None,
         status: str | None = None,
+        issued_from: datetime | None = None,
+        issued_to: datetime | None = None,
+        search: str | None = None,
     ) -> int:
-        from sqlalchemy import func
-
-        stmt = select(func.count(InvoiceModel.id)).where(
-            InvoiceModel.tenant_id == self._uow._tenant_context.tenant_id
+        stmt = self._filtered(
+            select(func.count(InvoiceModel.id)),
+            customer_id=customer_id,
+            order_id=order_id,
+            status=status,
+            issued_from=issued_from,
+            issued_to=issued_to,
+            search=search,
         )
-        if customer_id:
-            stmt = stmt.where(InvoiceModel.customer_id == customer_id)
-        if order_id:
-            stmt = stmt.where(InvoiceModel.order_id == order_id)
-        if status:
-            stmt = stmt.where(InvoiceModel.status == status)
-
         result = await self._session.execute(stmt)
         return result.scalar_one() or 0
+
+    async def customer_names(self, customer_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+        if not customer_ids:
+            return {}
+        result = await self._session.execute(
+            select(CustomerModel.id, CustomerModel.full_name).where(
+                CustomerModel.id.in_(customer_ids)
+            )
+        )
+        return {row.id: row.full_name for row in result}
 
     async def get_by_order_id(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> Invoice | None:
         stmt = (
@@ -241,13 +314,19 @@ class SqlAlchemyInvoiceRepository(InvoiceRepository):
         return self._to_domain(model)
 
     async def get_outstanding_balance(self, customer_id: uuid.UUID) -> Decimal:
-        from sqlalchemy import func
-
-        stmt = select(func.coalesce(func.sum(InvoiceModel.total_amount), 0)).where(
-            InvoiceModel.customer_id == customer_id,
-            InvoiceModel.status == "issued",
+        # Partially paid invoices count for what is still owed on them.
+        result = await self._session.scalar(
+            text("""
+                SELECT COALESCE(SUM(i.total_amount - COALESCE(p.paid, 0)), 0)
+                FROM accounting.invoice i
+                LEFT JOIN LATERAL (
+                    SELECT SUM(amount) AS paid FROM accounting.payment WHERE invoice_id = i.id
+                ) p ON true
+                WHERE i.customer_id = :customer_id
+                  AND i.status IN ('issued', 'partially_paid')
+            """),
+            {"customer_id": customer_id},
         )
-        result = await self._session.scalar(stmt)
         return Decimal(result) if result is not None else Decimal("0")
 
 
@@ -326,6 +405,143 @@ class SqlAlchemyCashHandoverRepository(CashHandoverRepository):
         )
         return self._to_domain(model) if model is not None else None
 
+    async def get_by_id(self, cash_handover_id: uuid.UUID) -> CashHandover | None:
+        model = await self._session.get(CashHandoverModel, cash_handover_id)
+        return self._to_domain(model) if model is not None else None
+
+    async def list_register(
+        self,
+        *,
+        declared_from: datetime | None = None,
+        declared_to: datetime | None = None,
+        driver_id: uuid.UUID | None = None,
+        review_status: str | None = None,
+        limit: int = 200,
+    ) -> list[CashHandoverRegisterEntry]:
+        # Raw SQL across `delivery`/`tenant`/`identity`, same reasoning as
+        # `get_expected_cash_for_route`; every table is under RLS.
+        result = await self._session.execute(
+            text("""
+                SELECT h.id, r.route_date,
+                       TRIM(e.first_name || ' ' || e.last_name) AS driver_name,
+                       v.registration_number,
+                       (SELECT COUNT(*) FROM delivery.route_stop rs
+                          JOIN orders.proof_of_delivery pod ON pod.order_id = rs.order_id
+                         WHERE rs.route_id = h.route_id AND pod.payment_method = 'cash'
+                       ) AS cash_stop_count,
+                       COALESCE(
+                           NULLIF(TRIM(re.first_name || ' ' || re.last_name), ''), ru.email
+                       ) AS reviewer_name
+                FROM accounting.cash_handover h
+                JOIN delivery.route r ON r.id = h.route_id
+                JOIN delivery.driver d ON d.id = h.driver_id
+                JOIN tenant.employee e ON e.id = d.employee_id
+                LEFT JOIN delivery.vehicle v ON v.id = r.vehicle_id
+                LEFT JOIN accounting.cash_handover_review rv ON rv.cash_handover_id = h.id
+                LEFT JOIN identity.identity_user ru ON ru.id = rv.reviewed_by
+                LEFT JOIN tenant.employee re
+                       ON ru.email IS NOT NULL AND LOWER(re.email) = LOWER(ru.email)
+                      AND re.is_deleted = false
+                WHERE (CAST(:declared_from AS timestamptz) IS NULL
+                       OR h.declared_at >= :declared_from)
+                  AND (CAST(:declared_to AS timestamptz) IS NULL OR h.declared_at < :declared_to)
+                  AND (CAST(:driver_id AS uuid) IS NULL OR h.driver_id = :driver_id)
+                  AND (CAST(:review_status AS text) IS NULL
+                       OR (:review_status = 'pending' AND rv.id IS NULL)
+                       OR rv.outcome = :review_status)
+                ORDER BY h.declared_at DESC
+                LIMIT :limit
+            """),
+            {
+                "declared_from": declared_from,
+                "declared_to": declared_to,
+                "driver_id": driver_id,
+                "review_status": review_status,
+                "limit": limit,
+            },
+        )
+        rows = result.all()
+        if not rows:
+            return []
+        ids = [row.id for row in rows]
+        handovers = {
+            model.id: self._to_domain(model)
+            for model in (
+                await self._session.scalars(
+                    select(CashHandoverModel).where(CashHandoverModel.id.in_(ids))
+                )
+            )
+        }
+        reviews = {
+            model.cash_handover_id: self._review_to_domain(model)
+            for model in (
+                await self._session.scalars(
+                    select(CashHandoverReviewModel).where(
+                        CashHandoverReviewModel.cash_handover_id.in_(ids)
+                    )
+                )
+            )
+        }
+        return [
+            CashHandoverRegisterEntry(
+                handover=handovers[row.id],
+                driver_name=row.driver_name,
+                vehicle_registration=row.registration_number,
+                route_date=row.route_date,
+                cash_stop_count=int(row.cash_stop_count),
+                review=reviews.get(row.id),
+                reviewer_name=row.reviewer_name,
+            )
+            for row in rows
+        ]
+
+    @staticmethod
+    def _review_to_domain(model: CashHandoverReviewModel) -> CashHandoverReview:
+        return CashHandoverReview(
+            id=model.id,
+            tenant_id=model.tenant_id,
+            cash_handover_id=model.cash_handover_id,
+            outcome=model.outcome,
+            note=model.note,
+            reviewed_by=model.reviewed_by,
+            reviewed_at=model.reviewed_at,
+        )
+
+    async def add_review(self, review: CashHandoverReview) -> None:
+        self._session.add(
+            CashHandoverReviewModel(
+                id=review.id,
+                tenant_id=review.tenant_id,
+                cash_handover_id=review.cash_handover_id,
+                outcome=review.outcome,
+                note=review.note,
+                reviewed_by=review.reviewed_by,
+                reviewed_at=review.reviewed_at,
+            )
+        )
+
+    async def get_review(self, cash_handover_id: uuid.UUID) -> CashHandoverReview | None:
+        model = await self._session.scalar(
+            select(CashHandoverReviewModel).where(
+                CashHandoverReviewModel.cash_handover_id == cash_handover_id
+            )
+        )
+        return self._review_to_domain(model) if model is not None else None
+
+    async def cash_awaiting_handover(self) -> Decimal:
+        result = await self._session.scalar(
+            text("""
+                SELECT COALESCE(SUM(pod.amount_collected), 0)
+                FROM orders.proof_of_delivery pod
+                JOIN delivery.route_stop rs ON rs.order_id = pod.order_id
+                WHERE pod.payment_method = 'cash'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM accounting.cash_handover h WHERE h.route_id = rs.route_id
+                  )
+            """)
+        )
+        return Decimal(result) if result is not None else Decimal("0")
+
 
 class SqlAlchemyCreditNoteRepository(CreditNoteRepository):
     """SQLAlchemy implementation of ``CreditNoteRepository``."""
@@ -390,6 +606,77 @@ class SqlAlchemyCreditNoteRepository(CreditNoteRepository):
         if model is None:
             return None
         return self._to_domain(model)
+
+    async def list_for_invoice(self, invoice_id: uuid.UUID) -> list[CreditNote]:
+        result = await self._session.scalars(
+            select(CreditNoteModel)
+            .where(CreditNoteModel.invoice_id == invoice_id)
+            .order_by(CreditNoteModel.requested_at)
+        )
+        return [self._to_domain(model) for model in result]
+
+
+_UNINVOICED_SQL = """
+    SELECT o.id AS order_id, o.order_number, o.customer_id, c.full_name AS customer_name,
+           o.status, o.total_amount AS order_total, cr.cancellation_charge,
+           COALESCE(cr.approved_at, h.changed_at, o.updated_at) AS occurred_at
+    FROM orders.order o
+    JOIN customer.customer c ON c.id = o.customer_id
+    LEFT JOIN LATERAL (
+        SELECT changed_at FROM orders.order_status_history
+        WHERE order_id = o.id AND to_status = 'delivered'
+        ORDER BY changed_at DESC LIMIT 1
+    ) h ON true
+    LEFT JOIN LATERAL (
+        SELECT cancellation_charge, approved_at FROM orders.cancellation_record
+        WHERE order_id = o.id AND approved_by IS NOT NULL AND is_deleted = false
+        ORDER BY approved_at DESC LIMIT 1
+    ) cr ON true
+    WHERE o.is_deleted = false
+      AND NOT EXISTS (SELECT 1 FROM accounting.invoice i WHERE i.order_id = o.id)
+      AND (
+          (o.status IN ('delivered', 'closed') AND EXISTS (
+              SELECT 1 FROM orders.order_line ol
+              WHERE ol.order_id = o.id AND ol.quantity_delivered > 0
+          ))
+          OR (o.status = 'cancelled' AND cr.cancellation_charge > 0)
+      )
+"""
+
+
+class SqlAlchemyUninvoicedOrderReader:
+    """Implements `UninvoicedOrderReader` with one query over `orders`,
+    `customer` and `accounting` (all under RLS).
+    """
+
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._session = uow.session
+
+    @staticmethod
+    def _to_entry(row: Any) -> UninvoicedOrder:
+        return UninvoicedOrder(
+            order_id=row.order_id,
+            order_number=row.order_number,
+            customer_id=row.customer_id,
+            customer_name=row.customer_name,
+            status=row.status,
+            occurred_at=row.occurred_at,
+            order_total=row.order_total,
+            cancellation_charge=row.cancellation_charge,
+        )
+
+    async def list_uninvoiced(self, *, limit: int = 100) -> list[UninvoicedOrder]:
+        result = await self._session.execute(
+            text(_UNINVOICED_SQL + " ORDER BY occurred_at DESC LIMIT :limit"), {"limit": limit}
+        )
+        return [self._to_entry(row) for row in result]
+
+    async def get_uninvoiced(self, order_id: uuid.UUID) -> UninvoicedOrder | None:
+        result = await self._session.execute(
+            text(_UNINVOICED_SQL + " AND o.id = :order_id"), {"order_id": order_id}
+        )
+        row = result.first()
+        return self._to_entry(row) if row is not None else None
 
 
 class SqlAlchemyOnlinePaymentRepository(OnlinePaymentRepository):

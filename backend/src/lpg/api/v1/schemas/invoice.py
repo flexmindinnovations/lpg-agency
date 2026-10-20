@@ -22,6 +22,16 @@ class InvoiceLineResponse(BaseModel):
     subtotal: Decimal
     tax_amount: Decimal
     total_amount: Decimal
+    #: GST snapshot at issue (BR-16). `None` only on invoices issued before
+    #: GST was configured per cylinder type.
+    hsn_code: str | None = None
+    gst_rate_percent: Decimal | None = None
+    #: `supply` (cylinders delivered) or `cancellation_charge` (DO-14).
+    kind: str = "supply"
+    description: str | None = None
+    cgst_amount: Decimal = Decimal("0")
+    sgst_amount: Decimal = Decimal("0")
+    igst_amount: Decimal = Decimal("0")
 
 
 class PaymentResponse(BaseModel):
@@ -32,6 +42,7 @@ class PaymentResponse(BaseModel):
     amount: Decimal
     collected_by: uuid.UUID
     collected_at: datetime
+    reference: str | None = None
 
 
 class InvoiceResponse(BaseModel):
@@ -55,6 +66,16 @@ class InvoiceResponse(BaseModel):
     # before payments existed simply ignores these two fields.
     payments: list[PaymentResponse] = Field(default_factory=list)
     amount_paid: Decimal = Decimal("0")
+    balance_due: Decimal = Decimal("0")
+    customer_name: str | None = None
+    customer_gstin: str | None = None
+    #: GST state codes; CGST+SGST when they match, IGST when they differ.
+    supplier_state_code: str | None = None
+    place_of_supply_state_code: str | None = None
+    is_inter_state: bool = False
+    cgst_amount: Decimal = Decimal("0")
+    sgst_amount: Decimal = Decimal("0")
+    igst_amount: Decimal = Decimal("0")
 
 
 class InvoicePageResponse(BaseModel):
@@ -65,8 +86,13 @@ class InvoicePageResponse(BaseModel):
 
 
 class RecordPaymentRequest(BaseModel):
+    #: `cash`, `upi`, `card`, `cheque` or `bank_transfer` when recorded by
+    #: staff; the server rejects anything else.
     method: str
-    amount: Decimal = Field(gt=0)
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    #: UPI transaction id, cheque number or bank UTR. Required for cheque
+    #: and bank transfer.
+    reference: str | None = Field(default=None, max_length=100)
 
 
 class RequestRefundRequest(BaseModel):
@@ -87,3 +113,22 @@ class CreditNoteResponse(BaseModel):
     approved_by: uuid.UUID | None
     approved_at: datetime | None
     is_approved: bool
+
+
+class UninvoicedOrderResponse(BaseModel):
+    """An order that should have an invoice but does not yet — usually
+    because GST was not configured when it was delivered or cancelled.
+    """
+
+    order_id: uuid.UUID
+    order_number: str | None
+    customer_id: uuid.UUID
+    customer_name: str
+    status: str
+    occurred_at: datetime
+    order_total: Decimal | None
+    cancellation_charge: Decimal | None
+
+
+class IssueInvoiceRequest(BaseModel):
+    order_id: uuid.UUID

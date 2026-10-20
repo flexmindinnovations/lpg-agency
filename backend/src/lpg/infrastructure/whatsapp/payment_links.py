@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lpg.application.accounting.gst import GstNotConfiguredError
 from lpg.application.accounting.online_payments import (
     CreateOrderPaymentLinkCommand,
     CreateOrderPaymentLinkUseCase,
@@ -23,6 +24,7 @@ from lpg.infrastructure.persistence.repositories.accounting import (
     SqlAlchemyInvoiceRepository,
     SqlAlchemyOnlinePaymentRepository,
 )
+from lpg.infrastructure.persistence.repositories.tenant import SqlAlchemyCylinderTypeRepository
 
 if TYPE_CHECKING:
     import uuid
@@ -66,6 +68,7 @@ class GatewayPaymentLinks:
                 online_payment_repository=SqlAlchemyOnlinePaymentRepository(uow),
                 customer_repository=scope.customers,
                 tenant_config_repository=scope.tenant_configuration,
+                cylinder_type_repository=SqlAlchemyCylinderTypeRepository(uow),
                 gateway=self._gateway,
                 unit_of_work=uow,
                 link_ttl=self._link_ttl,
@@ -79,7 +82,7 @@ class GatewayPaymentLinks:
                         scope=OrderPaymentScope(customer_id=request.customer_id),
                     )
                 )
-            except ServiceUnavailableError as exc:
+            except (ServiceUnavailableError, GstNotConfiguredError) as exc:
                 _logger.warning(
                     "whatsapp_payment_link_unavailable",
                     order_id=str(request.order_id),

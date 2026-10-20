@@ -6,7 +6,7 @@ so the amount rule lives in exactly one place:
 
 - the order already has an invoice -> the invoice's outstanding balance;
 - otherwise (a prepayment, `payment-flow.md` Path A) -> the confirmed
-  order's total plus GST at the tenant's current rate, computed exactly the
+  order's total plus GST at each cylinder type's current rate, computed exactly the
   way `GenerateInvoiceForOrderUseCase` will compute the invoice, minus
   anything already paid online for the order.
 
@@ -23,15 +23,13 @@ from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
+from lpg.application.accounting.gst import GstClass, resolve_gst_classes
 from lpg.application.accounting.payment_gateway import (
     PaymentGatewayError,
     PaymentLinkRequest,
     PaymentLinkStatus,
 )
-from lpg.application.accounting.use_cases import (
-    apply_online_payments_to_invoice,
-    resolve_gst_rate_percent,
-)
+from lpg.application.accounting.use_cases import apply_online_payments_to_invoice
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import (
     ConflictError,
@@ -40,6 +38,7 @@ from lpg.application.common.errors import (
 )
 from lpg.config.logging import get_logger
 from lpg.domain.accounting.online_payment import OnlinePayment
+from lpg.domain.common.gst import compute_line_tax, to_cents
 
 if TYPE_CHECKING:
     import uuid
@@ -49,7 +48,10 @@ if TYPE_CHECKING:
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.order.ports import OrderRepository
-    from lpg.application.tenant.ports import TenantConfigurationRepository
+    from lpg.application.tenant.ports import (
+        CylinderTypeRepository,
+        TenantConfigurationRepository,
+    )
     from lpg.domain.order.order import Order
 
 _logger = get_logger(__name__)
@@ -110,14 +112,17 @@ async def _get_scoped_order(
     return order
 
 
-def _prepayment_total(order: Order, gst_rate_percent: Decimal) -> Decimal:
-    """Mirror of `GenerateInvoiceForOrderUseCase`'s line arithmetic, on the
-    ordered (not yet delivered) quantities.
+def _prepayment_total(order: Order, gst_classes: dict[uuid.UUID, GstClass]) -> Decimal:
+    """Mirror of `GenerateInvoiceForOrderUseCase`'s line arithmetic (each
+    line at its own cylinder type's rate), on the ordered (not yet
+    delivered) quantities.
     """
     total = Decimal("0")
     for line in order.lines:
-        subtotal = (line.unit_price or Decimal("0")) * line.quantity_ordered
-        total += subtotal + (subtotal * gst_rate_percent) / Decimal("100")
+        subtotal = to_cents((line.unit_price or Decimal("0")) * line.quantity_ordered)
+        total += subtotal + compute_line_tax(
+            subtotal, gst_classes[line.cylinder_type_id].rate_percent
+        )
     return total.quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
@@ -164,6 +169,7 @@ class CreateOrderPaymentLinkUseCase:
         online_payment_repository: OnlinePaymentRepository,
         customer_repository: CustomerRepository,
         tenant_config_repository: TenantConfigurationRepository,
+        cylinder_type_repository: CylinderTypeRepository,
         gateway: PaymentGateway,
         unit_of_work: UnitOfWork,
         link_ttl: timedelta,
@@ -174,6 +180,7 @@ class CreateOrderPaymentLinkUseCase:
         self._online_payment_repository = online_payment_repository
         self._customer_repository = customer_repository
         self._tenant_config_repository = tenant_config_repository
+        self._cylinder_type_repository = cylinder_type_repository
         self._gateway = gateway
         self._unit_of_work = unit_of_work
         self._link_ttl = link_ttl
@@ -272,11 +279,17 @@ class CreateOrderPaymentLinkUseCase:
             if order.status not in _PREPAYABLE_STATUSES:
                 msg = f"An order in status '{order.status}' cannot be paid online yet."
                 raise ConflictError(msg, order_id=str(order.id), status=order.status)
-            gst_rate = await resolve_gst_rate_percent(
-                self._tenant_config_repository, tenant_id, now
+            # Raises `GstNotConfiguredError` rather than asking for a
+            # GST-less amount the invoice will later disagree with.
+            gst_classes = await resolve_gst_classes(
+                cylinder_type_repository=self._cylinder_type_repository,
+                tenant_config_repository=self._tenant_config_repository,
+                tenant_id=tenant_id,
+                cylinder_type_ids=[line.cylinder_type_id for line in order.lines],
+                at=now,
             )
             paid = sum((p.amount for p in existing if p.status == "paid"), Decimal("0"))
-            due = _prepayment_total(order, gst_rate) - paid
+            due = _prepayment_total(order, gst_classes) - paid
             invoice_id = None
 
         if due <= Decimal("0"):

@@ -20,7 +20,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
-from lpg.api.v1.dependencies.admin import get_tenant_configuration_repository
+from lpg.api.v1.dependencies.admin import (
+    get_cylinder_type_repository,
+    get_tenant_configuration_repository,
+)
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_order_repository
@@ -55,7 +58,7 @@ from lpg.application.common.ports import UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.order.ports import OrderRepository
-from lpg.application.tenant.ports import TenantConfigurationRepository
+from lpg.application.tenant.ports import CylinderTypeRepository, TenantConfigurationRepository
 from lpg.config.logging import get_logger
 from lpg.config.settings import get_settings
 from lpg.domain.accounting.online_payment import OnlinePayment
@@ -128,6 +131,9 @@ async def create_payment_link(
     tenant_config_repository: Annotated[
         TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
     ],
+    cylinder_type_repository: Annotated[
+        CylinderTypeRepository, Depends(get_cylinder_type_repository)
+    ],
     gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> OnlinePaymentResponse:
@@ -143,6 +149,7 @@ async def create_payment_link(
         online_payment_repository=online_payment_repository,
         customer_repository=customer_repository,
         tenant_config_repository=tenant_config_repository,
+        cylinder_type_repository=cylinder_type_repository,
         gateway=gateway,
         unit_of_work=unit_of_work,
         link_ttl=timedelta(minutes=get_settings().payment_link_ttl_minutes),
