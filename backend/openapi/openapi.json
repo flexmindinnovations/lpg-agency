@@ -6641,6 +6641,18 @@
       },
       "RecordFailedDeliveryRequest": {
         "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "reason_code": {
             "enum": [
               "customer_unavailable",
