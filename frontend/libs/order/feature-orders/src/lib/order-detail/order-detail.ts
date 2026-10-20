@@ -191,6 +191,11 @@ export class OrderDetail implements OnInit {
           this.notify.info(`${ref} is now ${statusLabel(message.status)}.`, 'Order updated');
         }
       });
+    // Back after a dropped connection: catch up on anything missed.
+    this.wsService.reconnected$.pipe(takeUntilDestroyed()).subscribe(() => {
+      const id = this.order()?.id;
+      if (id) this.load(id, { silent: true });
+    });
   }
 
   protected readonly order = signal<OrderResponse | null>(null);
