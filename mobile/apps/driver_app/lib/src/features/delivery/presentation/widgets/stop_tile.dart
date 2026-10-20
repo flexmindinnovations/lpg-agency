@@ -39,7 +39,8 @@ class StopTile extends ConsumerWidget {
         leadingIcon: icon,
         leadingTone: tone,
         title: 'Stop ${stop.sequenceNumber}',
-        subtitle: 'Order ${stop.orderId.substring(0, 8).toUpperCase()}',
+        subtitle:
+            'Order ${LpgFormat.orderNumber(stop.orderNumber, stop.orderId)}',
         trailing: pending
             ? const LpgStatusBadge(
                 label: 'PENDING SYNC',

@@ -30,6 +30,7 @@ RouteSummary _route({
     RouteStopSummary(
       id: 's2',
       orderId: 'cccc2222dddd',
+      orderNumber: 'ORD000027',
       sequenceNumber: 2,
       status: 'pending',
     ),
@@ -88,6 +89,7 @@ void main() {
 
       expect(find.text('1 of 2 delivered'), findsOneWidget);
       expect(find.textContaining('Next stop · Stop 2'), findsOneWidget);
+      expect(find.text('Order ORD000027'), findsOneWidget);
       // The live-location card sits below the fold on a phone-sized screen.
       await tester.scrollUntilVisible(find.text('Share live location'), 200);
       expect(find.text('Share live location'), findsOneWidget);

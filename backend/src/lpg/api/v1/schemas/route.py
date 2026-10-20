@@ -25,6 +25,8 @@ class RouteStopResponse(BaseModel):
     id: uuid.UUID
     route_id: uuid.UUID
     order_id: uuid.UUID
+    #: The order's number (ORD000027), as the dashboard shows it.
+    order_number: str | None = None
     sequence_number: int
     status: str
     failure_reason: str | None = None

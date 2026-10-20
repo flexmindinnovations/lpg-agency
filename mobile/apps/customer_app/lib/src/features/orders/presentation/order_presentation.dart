@@ -6,8 +6,9 @@ import 'package:flutter/widgets.dart';
 /// order list, order detail, tracking and the dashboard all read from here,
 /// so a status can never be green on one screen and amber on the next.
 extension OrderPresentation on OrderResponse {
-  /// `Order #ABCDEF01`: the short reference customers quote to support.
-  String get reference => 'Order #${id.substring(0, 8).toUpperCase()}';
+  /// `Order ORD000027`: the number customers quote to support, the same
+  /// one the agency sees on the dashboard.
+  String get reference => 'Order ${LpgFormat.orderNumber(orderNumber, id)}';
 
   String get statusLabel => LpgFormat.statusLabel(status);
 

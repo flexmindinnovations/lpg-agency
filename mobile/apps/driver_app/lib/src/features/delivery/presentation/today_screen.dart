@@ -231,7 +231,8 @@ class _NextStopCard extends StatelessWidget {
       child: LpgListTile(
         leadingIcon: LpgIcons.navigate,
         title: 'Next stop · Stop ${next.sequenceNumber}',
-        subtitle: 'Order ${next.orderId.substring(0, 8).toUpperCase()}',
+        subtitle:
+            'Order ${LpgFormat.orderNumber(next.orderNumber, next.orderId)}',
         showChevron: true,
       ),
     );

@@ -22,6 +22,7 @@ Map<String, dynamic> _routeJson({
       'id': 'stop-1',
       'route_id': 'route-1',
       'order_id': 'order-1',
+      'order_number': 'ORD000027',
       'sequence_number': 0,
       'status': 'pending',
     },
@@ -44,6 +45,7 @@ void main() {
       final route = result.when(onSuccess: (r) => r, onFailure: (_) => null);
       expect(route!.isInProgress, isTrue);
       expect(route.stops.single.orderId, 'order-1');
+      expect(route.stops.single.orderNumber, 'ORD000027');
     });
 
     test('getMyActiveRoute parses the van-load manifest', () async {

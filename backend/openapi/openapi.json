@@ -7934,6 +7934,17 @@
             "title": "Order Id",
             "type": "string"
           },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
+          },
           "proof_of_delivery": {
             "anyOf": [
               {

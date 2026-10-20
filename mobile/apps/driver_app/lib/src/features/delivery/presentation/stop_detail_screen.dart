@@ -226,8 +226,7 @@ class _SummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  order.orderNumber ??
-                      '#${order.id.substring(0, 8).toUpperCase()}',
+                  LpgFormat.orderNumber(order.orderNumber, order.id),
                   style: context.lpgText.titleLarge,
                 ),
               ),

@@ -79,7 +79,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
                     [
                       'Issued ${LpgFormat.date(invoice.issuedAt)}',
                       if (invoice.orderNumber != null)
-                        'Order #${invoice.orderNumber}',
+                        'Order ${invoice.orderNumber}',
                     ].join('  ·  '),
                     style: text.bodySmall?.copyWith(
                       color: colors.onHero.withValues(alpha: 0.8),
