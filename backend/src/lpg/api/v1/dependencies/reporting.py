@@ -12,6 +12,7 @@ from lpg.application.reporting.queries.get_customer_consumption import GetCustom
 from lpg.application.reporting.queries.get_daily_sales import GetDailySalesUseCase
 from lpg.application.reporting.queries.get_driver_performance import GetDriverPerformanceUseCase
 from lpg.application.reporting.queries.get_gst_report import GetGstReportUseCase
+from lpg.application.reporting.queries.get_gstr1_report import GetGstr1ReportUseCase
 from lpg.infrastructure.persistence.repositories.reporting import SqlAlchemyReportingRepository
 
 
@@ -52,3 +53,9 @@ def get_customer_consumption_use_case(
     reporting_repository: Annotated[ReportingRepository, Depends(get_reporting_repository)],
 ) -> GetCustomerConsumptionUseCase:
     return GetCustomerConsumptionUseCase(reporting_repository=reporting_repository)
+
+
+def get_gstr1_report_use_case(
+    reporting_repository: Annotated[ReportingRepository, Depends(get_reporting_repository)],
+) -> GetGstr1ReportUseCase:
+    return GetGstr1ReportUseCase(reporting_repository=reporting_repository)
