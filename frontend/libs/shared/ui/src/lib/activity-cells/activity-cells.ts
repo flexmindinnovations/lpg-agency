@@ -2,21 +2,12 @@ import { Component, signal } from '@angular/core';
 import { ClipboardModule } from '@angular/cdk/clipboard';
 import { Tag } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import { formatDisplayDateTime } from '@lpg/shared/util';
 
-/** Formats an ISO-8601 timestamp to a readable "11 Aug 2026, 17:23:18" form. */
+/** Formats an ISO-8601 timestamp as the app-wide "11 Aug 2026, 17:23" (IST). */
 export function formatTimestamp(value: unknown): string {
   if (!value || typeof value !== 'string') return '—';
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return String(value);
-  return d.toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  return formatDisplayDateTime(value);
 }
 
 /** Truncates a UUID to its first segment for display (e.g. "6139110e…"). */
