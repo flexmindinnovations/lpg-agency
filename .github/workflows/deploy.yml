@@ -261,6 +261,9 @@ jobs:
   promote:
     name: Mark images as deployed
     needs: deploy
+    # `always()`: with a skipped gate upstream (unchanged service) the implicit
+    # success() check would skip this job even though the deploy succeeded.
+    if: ${{ always() && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
