@@ -437,10 +437,15 @@
         </li>
         }
       </ul>
-      <span class="empty-hint">
-        @if (route.load_confirmed_at) { Driver checked the van {{ route.load_confirmed_at | date:
-        'shortTime' }}. } @else { The driver hasn't checked the van yet. }
-      </span>
+      @if (route.load_confirmed_at) {
+      <p-message severity="success" icon="pi pi-check-circle">
+        Driver checked the van at {{ route.load_confirmed_at | date: 'shortTime' }}.
+      </p-message>
+      } @else {
+      <p-message severity="info" icon="pi pi-info-circle">
+        The driver hasn't checked the van yet.
+      </p-message>
+      }
     </div>
     } @if (route.status === 'completed') {
     <p-message severity="info">
