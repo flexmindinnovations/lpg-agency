@@ -14,7 +14,7 @@ import { DOCUMENT } from '@angular/common';
 import { Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import type { NavItem } from '@lpg/shared/ui/app-shell';
-import { CustomerService } from '@lpg/shared/data-access';
+import { CustomerService, OrderService } from '@lpg/shared/data-access';
 import { CommandPaletteService } from './command-palette.service';
 
 interface PaletteItem {
@@ -22,6 +22,8 @@ interface PaletteItem {
   readonly label: string;
   readonly icon: string;
   readonly sublabel?: string;
+  /** Other words people type for this item, e.g. "new order" for New booking. */
+  readonly keywords?: readonly string[];
   readonly run: () => void;
 }
 
@@ -283,6 +285,7 @@ export class CommandPaletteComponent {
   protected readonly palette = inject(CommandPaletteService);
   private readonly router = inject(Router);
   private readonly customerService = inject(CustomerService);
+  private readonly orderService = inject(OrderService);
   private readonly document = inject(DOCUMENT);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -296,13 +299,16 @@ export class CommandPaletteComponent {
   private readonly actions: readonly PaletteItem[] = [
     {
       id: 'act-new-order',
-      label: 'New order',
+      // Same words as the Orders page button (DO-37).
+      label: 'New booking',
+      keywords: ['new order', 'book cylinder', 'refill'],
       icon: 'pi pi-plus',
       run: () => void this.router.navigate(['/orders'], { queryParams: { create: true } }),
     },
     {
       id: 'act-new-customer',
       label: 'New customer',
+      keywords: ['register customer', 'new connection', 'onboard'],
       icon: 'pi pi-user-plus',
       run: () => void this.router.navigateByUrl('/customers/new'),
     },
@@ -322,7 +328,7 @@ export class CommandPaletteComponent {
                 page.items.map<PaletteItem>((c) => ({
                   id: `cust-${c.id}`,
                   label: c.full_name,
-                  sublabel: c.phone_number,
+                  sublabel: [c.phone_number, c.consumer_number].filter(Boolean).join(' · '),
                   icon: 'pi pi-user',
                   run: () =>
                     void this.router.navigate(['/customers'], { queryParams: { id: c.id } }),
@@ -335,11 +341,40 @@ export class CommandPaletteComponent {
     { initialValue: [] as PaletteItem[] },
   );
 
+  /** Order lookup by number, phone or customer (DO-37); empty for roles
+   * without orders:read (the request is refused and swallowed). */
+  private readonly orderHits = toSignal(
+    toObservable(this.query).pipe(
+      map((q) => q.trim()),
+      debounceTime(200),
+      distinctUntilChanged(),
+      switchMap((q) =>
+        q.length < 3
+          ? of<PaletteItem[]>([])
+          : this.orderService.listOrders({ search: q, limit: 5 }).pipe(
+              map((page) =>
+                page.items.map<PaletteItem>((o) => ({
+                  id: `order-${o.id}`,
+                  label: o.order_number ?? 'Order',
+                  sublabel: o.customer?.full_name,
+                  icon: 'pi pi-shopping-cart',
+                  run: () => void this.router.navigate(['/orders', o.id]),
+                })),
+              ),
+              catchError(() => of<PaletteItem[]>([])),
+            ),
+      ),
+    ),
+    { initialValue: [] as PaletteItem[] },
+  );
+
   protected readonly groups = computed<readonly PaletteGroup[]>(() => {
     const q = this.query().trim();
+    const score = (it: PaletteItem) =>
+      Math.max(fuzzyScore(it.label, q), ...(it.keywords ?? []).map((k) => fuzzyScore(k, q)));
     const rank = (items: readonly PaletteItem[]) =>
       items
-        .map((it) => ({ it, s: fuzzyScore(it.label, q) }))
+        .map((it) => ({ it, s: score(it) }))
         .filter((x) => x.s > 0)
         .sort((a, b) => b.s - a.s)
         .map((x) => x.it);
@@ -351,10 +386,11 @@ export class CommandPaletteComponent {
         icon: n.icon,
         run: () => void this.router.navigateByUrl(n.route),
       })),
-    ).slice(0, 7);
+    ).slice(0, q ? undefined : 7);
 
     const out: PaletteGroup[] = [];
     if (nav.length) out.push({ label: 'Navigation', items: nav });
+    if (this.orderHits().length) out.push({ label: 'Orders', items: this.orderHits() });
     if (this.customerHits().length) out.push({ label: 'Customers', items: this.customerHits() });
     const acts = rank(this.actions);
     if (acts.length) out.push({ label: 'Actions', items: acts });

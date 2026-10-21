@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
-import { CustomerService } from '@lpg/shared/data-access';
+import { CustomerService, OrderService } from '@lpg/shared/data-access';
 import { CommandPaletteComponent, fuzzyScore } from './command-palette.component';
 import { CommandPaletteService } from './command-palette.service';
 
@@ -62,6 +62,18 @@ describe('CommandPaletteComponent', () => {
       providers: [
         provideRouter([]),
         { provide: CustomerService, useValue: { list: () => of({ items: [], total: 0 }) } },
+        {
+          provide: OrderService,
+          useValue: {
+            listOrders: () =>
+              of({
+                items: [
+                  { id: 'o1', order_number: 'ORD000001', customer: { full_name: 'Asha Rao' } },
+                ],
+                total: 1,
+              }),
+          },
+        },
       ],
     });
     const fixture = TestBed.createComponent(CommandPaletteComponent);
@@ -113,5 +125,34 @@ describe('CommandPaletteComponent', () => {
     ) as HTMLElement;
     panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(svc.isOpen()).toBe(false);
+  });
+
+  it('finds New booking when people type "new order" (DO-37)', () => {
+    const { fixture } = setup();
+    const proto = fixture.componentInstance as unknown as {
+      query: { set: (v: string) => void };
+      flat: () => { label: string }[];
+    };
+    proto.query.set('new order');
+    fixture.detectChanges();
+    expect(proto.flat().map((i) => i.label)).toContain('New booking');
+  });
+
+  it('looks orders up by number (DO-37)', async () => {
+    jest.useFakeTimers();
+    const { fixture } = setup();
+    const proto = fixture.componentInstance as unknown as {
+      query: { set: (v: string) => void };
+      groups: () => { label: string; items: { label: string; sublabel?: string }[] }[];
+    };
+    proto.query.set('ORD000001');
+    fixture.detectChanges();
+    jest.advanceTimersByTime(250);
+    fixture.detectChanges();
+    const orders = proto.groups().find((g) => g.label === 'Orders');
+    expect(orders?.items[0]).toEqual(
+      expect.objectContaining({ label: 'ORD000001', sublabel: 'Asha Rao' }),
+    );
+    jest.useRealTimers();
   });
 });
