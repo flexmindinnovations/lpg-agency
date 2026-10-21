@@ -219,6 +219,59 @@
     }
   </div>
 
+  @if (canSeeInvoices() && invoiceExpected()) {
+  <section class="invoice-card" aria-labelledby="order-invoice-title">
+    <h2 id="order-invoice-title" class="section-title">Invoice</h2>
+    @for (invoice of invoices(); track invoice.invoice_id) {
+    <div class="invoice-card__row">
+      <div class="invoice-card__heading">
+        <button
+          type="button"
+          class="order-link invoice-card__number"
+          (click)="openInvoice(invoice)"
+        >
+          {{ invoice.invoice_number ?? 'Draft invoice' }}
+        </button>
+        <p-tag
+          [value]="invoiceStatusLabel(invoice.status)"
+          [severity]="invoiceStatusSeverity(invoice.status)"
+        />
+      </div>
+      <div class="invoice-card__summary">
+        <div class="detail-field">
+          <span class="detail-field__label">Issued</span>
+          <span>{{ invoice.issued_at | lpgDate }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Total (incl. GST)</span>
+          <span>{{ formatCurrencyInr(invoice.total_amount) }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Paid</span>
+          <span>{{ formatCurrencyInr(invoice.amount_paid ?? 0) }}</span>
+        </div>
+        <div class="detail-field">
+          <span class="detail-field__label">Balance due</span>
+          <span [class.invoice-card__due]="hasBalance(invoice)"
+            >{{ formatCurrencyInr(invoice.balance_due ?? 0) }}</span
+          >
+        </div>
+      </div>
+    </div>
+    } @empty {
+    <div class="invoice-card__row">
+      <p class="invoice-card__empty">No invoice has been issued for this order yet.</p>
+      <div class="invoice-card__actions" *lpgHasPermission="'invoices:issue'">
+        <button pButton type="button" [disabled]="invoiceBusy()" (click)="issueInvoice()">
+          <i [class]="invoiceBusy() ? 'pi pi-spin pi-spinner' : 'pi pi-file'"></i>
+          <span>Issue invoice</span>
+        </button>
+      </div>
+    </div>
+    }
+  </section>
+  }
+
   <h2 class="section-title">Lines</h2>
   <table class="lines-table">
     <thead>
@@ -273,32 +326,39 @@
         >{{ pod.gps_lat }}, {{ pod.gps_lng }}</a
       >
     </div>
+    @if (podMedia().length > 0) {
+    <div class="detail-field">
+      <span class="detail-field__label">Photos</span>
+      <button type="button" class="order-link" (click)="openPhotoViewer(0)">
+        <i class="pi pi-images" aria-hidden="true"></i>
+        {{ podMedia().length === 1 ? 'View photo' : 'View photos (' + podMedia().length + ')' }}
+      </button>
+    </div>
+    }
   </div>
-  @if (pod.signature_url || pod.photo_url) {
+  @if (podMedia().length > 0) {
   <div class="pod-media">
-    @if (pod.signature_url) {
+    @for (media of podMedia(); track media.url; let i = $index) {
     <figure class="pod-media__item">
-      <img [src]="pod.signature_url" alt="Customer signature" />
-      <figcaption>Signature</figcaption>
-    </figure>
-    } @if (pod.photo_url) {
-    <figure class="pod-media__item">
-      <img [src]="pod.photo_url" alt="Delivery photo" />
-      <figcaption>Photo</figcaption>
+      <button
+        type="button"
+        class="pod-media__thumb"
+        [attr.aria-label]="'View ' + media.label.toLowerCase()"
+        (click)="openPhotoViewer(i)"
+      >
+        @if (brokenMedia().has(media.url)) {
+        <span class="pod-media__missing"
+          ><i class="pi pi-image" aria-hidden="true"></i>Not available</span
+        >
+        } @else {
+        <img [src]="media.url" [alt]="media.alt" (error)="markMediaBroken(media.url)" />
+        }
+      </button>
+      <figcaption>{{ media.label }}</figcaption>
     </figure>
     }
   </div>
-  } } @if (invoices().length > 0) {
-  <h2 class="section-title">Invoices</h2>
-  <ul class="invoice-list">
-    @for (invoice of invoices(); track invoice.invoice_id) {
-    <li>
-      <a routerLink="/invoices">{{ invoice.invoice_number ?? 'Draft invoice' }}</a>
-      · {{ formatCurrencyInr(invoice.total_amount) }} · {{ statusLabel(invoice.status) }}
-    </li>
-    }
-  </ul>
-  }
+  } }
 
   <h2 class="section-title">Timeline</h2>
   <ol class="timeline">
@@ -953,4 +1013,74 @@
       </div>
     </form>
   </p-drawer>
+
+  <lpg-invoice-detail-drawer
+    [(invoice)]="openedInvoice"
+    (invoiceUpdated)="onInvoiceUpdated($event)"
+  />
+
+  <!-- Proof of delivery photo viewer -->
+  <p-dialog
+    [visible]="photoViewerIndex() !== null"
+    (visibleChange)="!$event && photoViewerIndex.set(null)"
+    header="Proof of delivery"
+    [modal]="true"
+    [dismissableMask]="true"
+    [style]="{ width: '48rem', maxWidth: '95vw' }"
+  >
+    @if (viewerMedia(); as media) {
+    <figure class="photo-viewer">
+      @if (brokenMedia().has(media.url)) {
+      <div class="photo-viewer__missing">
+        <i class="pi pi-image" aria-hidden="true"></i>
+        <p>
+          This {{ media.label.toLowerCase() }} could not be loaded. It may not have been uploaded,
+          or file storage may not be set up yet.
+        </p>
+      </div>
+      } @else {
+      <img [src]="media.url" [alt]="media.alt" (error)="markMediaBroken(media.url)" />
+      }
+      <figcaption>
+        {{ media.label }} @if (podMedia().length > 1) { · {{ (photoViewerIndex() ?? 0) + 1 }} of {{
+        podMedia().length }} }
+      </figcaption>
+    </figure>
+    <div class="photo-viewer__actions">
+      @if (podMedia().length > 1) {
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="(photoViewerIndex() ?? 0) === 0"
+        (click)="stepPhoto(-1)"
+      >
+        <i class="pi pi-chevron-left"></i><span>Previous</span>
+      </button>
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="(photoViewerIndex() ?? 0) === podMedia().length - 1"
+        (click)="stepPhoto(1)"
+      >
+        <span>Next</span><i class="pi pi-chevron-right"></i>
+      </button>
+      } @if (!brokenMedia().has(media.url)) {
+      <a
+        pButton
+        severity="secondary"
+        [text]="true"
+        [href]="media.url"
+        target="_blank"
+        rel="noopener"
+      >
+        <i class="pi pi-external-link"></i><span>Open in new tab</span>
+      </a>
+      }
+    </div>
+    }
+  </p-dialog>
 </div>

@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import { ApiConfiguration } from '@lpg/shared/data-access';
+import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { OrderDetail } from './order-detail';
 
 describe('OrderDetail', () => {
@@ -16,6 +18,7 @@ describe('OrderDetail', () => {
         provideHttpClientTesting(),
         MessageService,
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },
+        { provide: PERMISSION_CHECKER, useValue: signal({ permissions: new Set<string>() }) },
         {
           provide: ActivatedRoute,
           useValue: { paramMap: of(convertToParamMap({ id: 'order-1' })) },

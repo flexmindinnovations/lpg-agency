@@ -65,15 +65,4 @@ describe('FeatureInvoices', () => {
     http.expectOne((req) => req.url.endsWith('/api/v1/invoices/uninvoiced-orders')).flush([]);
     expect(component.invoices()).toEqual([INVOICE]);
   });
-
-  it('requires a reference for a cheque payment', () => {
-    component.onInvoiceSelected(INVOICE);
-    component.openPaymentDrawer();
-    const form = component.paymentForm;
-    expect(form.controls.amount.value).toBe('945.00');
-    form.controls.method.setValue('cheque');
-    expect(form.controls.reference.hasError('required')).toBe(true);
-    form.controls.reference.setValue('000451');
-    expect(form.valid).toBe(true);
-  });
 });

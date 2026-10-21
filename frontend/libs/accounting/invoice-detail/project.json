@@ -1,0 +1,21 @@
+{
+  "name": "accounting-invoice-detail",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/accounting/invoice-detail/src",
+  "prefix": "lpg",
+  "projectType": "library",
+  "tags": ["type:shared-feature", "scope:accounting"],
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/accounting/invoice-detail/jest.config.cts",
+        "tsConfig": "libs/accounting/invoice-detail/tsconfig.spec.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

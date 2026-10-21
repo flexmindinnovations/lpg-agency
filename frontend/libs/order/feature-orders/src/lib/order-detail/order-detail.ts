@@ -17,6 +17,11 @@ import {
   viewChild,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import {
+  InvoiceDetailDrawer,
+  invoiceStatusLabel,
+  invoiceStatusSeverity,
+} from '@lpg/accounting/invoice-detail';
 import { LpgDatePipe, LpgDateTimePipe } from '@lpg/shared/util';
 import {
   FormsModule,
@@ -29,6 +34,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, filter, forkJoin } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { DatePicker } from 'primeng/datepicker';
+import { Dialog } from 'primeng/dialog';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputGroup } from 'primeng/inputgroup';
@@ -48,7 +54,6 @@ import {
   CustomerService,
   DeliveryService,
   InvoiceService,
-  PrintingService,
   InventoryService,
   NotifyService,
   OrderService,
@@ -164,8 +169,10 @@ const PAYMENT_METHODS = [
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
+    Dialog,
     Drawer,
     DrawerA11yDirective,
+    InvoiceDetailDrawer,
     InputGroup,
     InputGroupAddon,
     InputNumber,
@@ -191,7 +198,6 @@ export class OrderDetail implements OnInit {
   private readonly inventoryService = inject(InventoryService);
   private readonly customerService = inject(CustomerService);
   private readonly invoiceService = inject(InvoiceService);
-  private readonly printingService = inject(PrintingService);
   private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
@@ -243,6 +249,39 @@ export class OrderDetail implements OnInit {
   /** Delivery record of a delivered order (DO-26). */
   protected readonly proofOfDelivery = signal<ProofOfDeliveryResponse | null>(null);
   protected readonly invoices = signal<InvoiceResponse[]>([]);
+
+  /** Signature and delivery photo, in the order the viewer pages through them. */
+  protected readonly podMedia = computed(() => {
+    const pod = this.proofOfDelivery();
+    const media: { url: string; label: string; alt: string }[] = [];
+    if (pod?.photo_url) {
+      media.push({ url: pod.photo_url, label: 'Photo', alt: 'Delivery photo' });
+    }
+    if (pod?.signature_url) {
+      media.push({ url: pod.signature_url, label: 'Signature', alt: 'Customer signature' });
+    }
+    return media;
+  });
+  /** Image URLs that failed to load (storage not set up, link expired). */
+  protected readonly brokenMedia = signal<ReadonlySet<string>>(new Set());
+  protected readonly photoViewerIndex = signal<number | null>(null);
+  protected readonly viewerMedia = computed(() => {
+    const index = this.photoViewerIndex();
+    return index === null ? null : (this.podMedia()[index] ?? null);
+  });
+
+  protected openPhotoViewer(index: number): void {
+    this.photoViewerIndex.set(index);
+  }
+
+  protected stepPhoto(step: number): void {
+    const index = (this.photoViewerIndex() ?? 0) + step;
+    if (index >= 0 && index < this.podMedia().length) this.photoViewerIndex.set(index);
+  }
+
+  protected markMediaBroken(url: string): void {
+    this.brokenMedia.update((urls) => new Set(urls).add(url));
+  }
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -1192,11 +1231,9 @@ export class OrderDetail implements OnInit {
     });
   }
 
-  // ---- Invoice card: issue / view / print / send -----------------------
+  // ---- Invoice card: issue, then open in the invoice details drawer ------
 
   protected readonly invoiceBusy = signal(false);
-  /** Print has its own state so it never spins together with Issue or Send. */
-  protected readonly invoicePrinting = signal(false);
   protected readonly canSeeInvoices = computed(
     () => this.auth.principal()?.permissions.has('invoices:read') ?? false,
   );
@@ -1227,35 +1264,20 @@ export class OrderDetail implements OnInit {
     });
   }
 
-  protected printInvoice(invoice: InvoiceResponse): void {
-    if (this.invoicePrinting()) return;
-    // Open the tab inside the click so pop-up blockers allow it.
-    const tab = this.printingService.openPendingTab();
-    this.invoicePrinting.set(true);
-    this.printingService.renderInvoice(invoice.invoice_id, 'pdf').subscribe({
-      next: (blob) => {
-        this.invoicePrinting.set(false);
-        this.printingService.showInTab(blob, tab, `${invoice.invoice_number ?? 'invoice'}.pdf`);
-      },
-      // The failed POST already toasts the server's message.
-      error: () => {
-        this.invoicePrinting.set(false);
-        tab?.close();
-      },
-    });
+  /** The invoice shown in the shared invoice details drawer. */
+  protected readonly openedInvoice = signal<InvoiceResponse | null>(null);
+  protected readonly invoiceStatusLabel = invoiceStatusLabel;
+  protected readonly invoiceStatusSeverity = invoiceStatusSeverity;
+
+  protected openInvoice(invoice: InvoiceResponse): void {
+    this.openedInvoice.set(invoice);
   }
 
-  protected sendInvoice(invoice: InvoiceResponse): void {
-    this.invoiceBusy.set(true);
-    this.invoiceService.sendToCustomer(invoice.invoice_id).subscribe({
-      next: () => {
-        this.invoiceBusy.set(false);
-        this.notify.success(
-          `${invoice.invoice_number ?? 'The invoice'} was sent to ${this.order()?.customer?.full_name ?? 'the customer'}.`,
-        );
-      },
-      error: () => this.invoiceBusy.set(false),
-    });
+  /** A payment or refund in the drawer changed the invoice. */
+  protected onInvoiceUpdated(updated: InvoiceResponse): void {
+    this.invoices.update((list) =>
+      list.map((invoice) => (invoice.invoice_id === updated.invoice_id ? updated : invoice)),
+    );
   }
 }
 

@@ -1,12 +1,47 @@
 :host {
   display: block;
-  block-size: 100%;
 }
 
+/* The page grows with its content (no fixed height), so the scrolling shell
+   keeps its bottom padding below the timeline; the extra block-end padding
+   leaves clear space under the last entry. */
 .order-detail {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  padding-block-end: var(--spacing-xl);
+}
+
+/* Links on this page (customer profile, ledger, map, invoice number, photos)
+   read as links: Tailwind's preflight otherwise leaves them as plain text. */
+.order-detail a:not(.p-button),
+.order-link {
+  color: var(--color-action-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.order-detail a:not(.p-button):hover,
+.order-link:hover {
+  color: var(--color-action-primary-hover);
+}
+
+.order-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  inline-size: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.order-link:focus-visible {
+  outline: var(--component-focus-ring-width) solid var(--color-action-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .order-title-row {
@@ -262,13 +297,84 @@
   color: var(--color-text-secondary);
 }
 
-.pod-media__item img {
-  max-width: 16rem;
-  max-height: 12rem;
-  object-fit: contain;
+.pod-media__thumb {
+  display: block;
+  padding: 0;
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-md);
   background: var(--color-surface-base);
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.pod-media__thumb:focus-visible {
+  outline: var(--component-focus-ring-width) solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+.pod-media__thumb img {
+  display: block;
+  max-width: 16rem;
+  max-height: 12rem;
+  min-width: 6rem;
+  min-height: 4.5rem;
+  object-fit: contain;
+}
+
+.pod-media__missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  inline-size: 8rem;
+  block-size: 6rem;
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.photo-viewer {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
+
+.photo-viewer img {
+  max-inline-size: 100%;
+  max-block-size: 65vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-base);
+}
+
+.photo-viewer__missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  text-align: center;
+}
+
+.photo-viewer__missing .pi {
+  font-size: 2rem;
+}
+
+.photo-viewer__missing p {
+  margin: 0;
+  max-inline-size: 28rem;
+}
+
+.photo-viewer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding-block-start: var(--spacing-md);
 }
 
 .invoice-card {
@@ -279,6 +385,28 @@
   border: var(--border-width) solid var(--color-border-default);
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
+}
+
+.invoice-card__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.invoice-card__row + .invoice-card__row {
+  padding-block-start: var(--spacing-md);
+  border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+.invoice-card__heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.invoice-card__number {
+  font-weight: var(--typography-label-font-weight);
 }
 
 .invoice-card__summary {

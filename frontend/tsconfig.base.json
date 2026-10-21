@@ -43,6 +43,7 @@
       "@lpg/ledger/feature-ledger": ["./libs/ledger/feature-ledger/src/index.ts"],
       "@lpg/tenant-admin/feature-employees": ["./libs/tenant-admin/feature-employees/src/index.ts"],
       "@lpg/accounting/feature-invoices": ["./libs/accounting/feature-invoices/src/index.ts"],
+      "@lpg/accounting/invoice-detail": ["./libs/accounting/invoice-detail/src/index.ts"],
       "@lpg/notification/feature-notifications": [
         "./libs/notification/feature-notifications/src/index.ts"
       ],
