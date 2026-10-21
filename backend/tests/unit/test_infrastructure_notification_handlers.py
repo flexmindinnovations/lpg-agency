@@ -55,7 +55,7 @@ def _booking_created(source: str) -> BookingCreated:
 async def test_customer_placed_order_enqueues_a_staff_alert() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = _booking_created("mobile_app")
     await dispatcher.dispatch([event])
@@ -74,7 +74,7 @@ async def test_customer_placed_order_enqueues_a_staff_alert() -> None:
 async def test_customer_placed_order_acknowledges_the_customer() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = _booking_created("mobile_app")
     await dispatcher.dispatch([event])
@@ -93,7 +93,7 @@ async def test_customer_placed_order_acknowledges_the_customer() -> None:
 async def test_staff_placed_order_notifies_no_one_on_creation() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     await dispatcher.dispatch([_booking_created("staff")])
 
@@ -108,7 +108,7 @@ async def test_staff_placed_order_notifies_no_one_on_creation() -> None:
 async def test_every_non_staff_source_alerts_staff(source: str) -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     await dispatcher.dispatch([_booking_created(source)])
 
@@ -121,7 +121,7 @@ async def test_every_non_staff_source_alerts_staff(source: str) -> None:
 async def test_cash_shortfall_enqueues_a_staff_alert() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = CashShortfallDeclared(
         cash_handover_id=uuid.uuid4(),
@@ -152,7 +152,7 @@ async def test_cash_shortfall_enqueues_a_staff_alert() -> None:
 async def test_route_load_confirmed_enqueues_a_staff_alert() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = RouteLoadConfirmed(
         route_id=uuid.uuid4(),
@@ -177,7 +177,7 @@ async def test_route_load_confirmed_enqueues_a_staff_alert() -> None:
 async def test_route_loaded_enqueues_a_route_ready_push_for_the_driver() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = RouteStatusChanged(
         route_id=uuid.uuid4(),
@@ -204,7 +204,7 @@ async def test_route_loaded_enqueues_a_route_ready_push_for_the_driver() -> None
 async def test_route_status_other_than_loaded_enqueues_nothing(new_status: str) -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     await dispatcher.dispatch(
         [
@@ -225,7 +225,7 @@ async def test_route_status_other_than_loaded_enqueues_nothing(new_status: str) 
 async def test_booking_cancelled_enqueues_a_stop_cancelled_job() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = BookingCancelled(
         order_id=uuid.uuid4(),
@@ -251,7 +251,7 @@ async def test_booking_cancelled_enqueues_a_stop_cancelled_job() -> None:
 async def test_booking_confirmed_still_notifies_the_customer() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = BookingConfirmed(
         order_id=uuid.uuid4(),
@@ -282,7 +282,7 @@ def _status_changed(to_status: str) -> OrderStatusChanged:
 async def test_out_for_delivery_notifies_the_customer() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = _status_changed("out_for_delivery")
     await dispatcher.dispatch([event])
@@ -304,7 +304,7 @@ async def test_out_for_delivery_notifies_the_customer() -> None:
 async def test_other_status_changes_enqueue_no_out_for_delivery(to_status: str) -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     await dispatcher.dispatch([_status_changed(to_status)])
 
@@ -315,7 +315,7 @@ async def test_other_status_changes_enqueue_no_out_for_delivery(to_status: str) 
 async def test_route_started_alerts_staff() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = RouteStatusChanged(
         route_id=uuid.uuid4(),
@@ -343,7 +343,7 @@ async def test_route_started_alerts_staff() -> None:
 async def test_delivery_notifies_the_customer_and_staff() -> None:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
 
     event = CylinderDelivered(
         order_id=uuid.uuid4(),
@@ -369,7 +369,7 @@ def _types(queue: _FakeJobQueue) -> list[str]:
 async def _dispatch(event: Any) -> _FakeJobQueue:
     queue = _FakeJobQueue()
     dispatcher = DomainEventDispatcher()
-    register_notification_handlers(dispatcher, queue)  # type: ignore[arg-type]
+    register_notification_handlers(dispatcher, queue)
     await dispatcher.dispatch([event])
     return queue
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, date, datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -532,7 +533,7 @@ async def test_goods_receipt_normalises_the_omc_and_rejects_unknown_ones(
     sequence = MagicMock()
     sequence.next = AsyncMock(return_value="GRN000001")
     use_case = RecordGoodsReceiptUseCase(mock_location_repo, mock_grn_repo, mock_uow, sequence)
-    base = {
+    base: dict[str, Any] = {
         "tenant_id": uuid.uuid4(),
         "warehouse_id": uuid.uuid4(),
         "cylinder_type_id": uuid.uuid4(),

@@ -101,6 +101,9 @@ class _FakeRouteRepository:
     async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None:
         raise NotImplementedError
 
+    async def lock_crew(self, driver_id: uuid.UUID, vehicle_id: uuid.UUID) -> None:
+        raise NotImplementedError
+
     async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
         raise NotImplementedError
 
