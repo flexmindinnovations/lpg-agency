@@ -30,7 +30,7 @@ QA findings DA-06/DO-15/CA-15, DA-13, DA-07/DO-16, DA-31 and DA-33.
   the tenant's `invoice` reference sequence, oldest first.
 
 Revision ID: e7b3c9d1f4a6
-Revises: c8d4e2f6a1b3
+Revises: a9d2197ebb9b
 Create Date: 2026-10-20
 """
 
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 revision: str = "e7b3c9d1f4a6"
-down_revision: str | None = "c8d4e2f6a1b3"
+down_revision: str | None = "a9d2197ebb9b"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
