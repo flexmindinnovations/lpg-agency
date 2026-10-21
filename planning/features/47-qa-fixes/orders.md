@@ -1,0 +1,64 @@
+# QA fixes: customers, onboarding, KYC, orders, cancellations, complaints, ledger
+
+Branch `qa-fix/orders`. QA report: `qa-report-2026-10-20.md`.
+Migration: `7bc2ddcd8ed9` (revises `c8d4e2f6a1b3`).
+
+## Findings fixed
+
+| ID | Change (files) | Verification |
+|----|----------------|--------------|
+| DO-01 | The onboarding wizard makes one register call that carries every field: DOB, alternate mobile, contact person, business name and address. The "commercial entity" checkbox is gone; the category decides it. Files: `libs/customer/feature-customers/.../onboarding-wizard/*` | tsc; `customer-feature-customers` lint and test |
+| DO-02 | Added a Government category. Non-domestic customers get business name and GSTIN fields. GSTIN is checked on the client and the server, and stored in the new column `customer.customer.gstin`. Files: `domain/customer/identifiers.py`, `domain/customer/customer.py`, `schemas/customer.py`, migration `7bc2ddcd8ed9`, wizard, profile drawer | `tests/unit/test_customer_identifiers.py`, `test_customer_endpoints_smoke.py`, `identifier-validators.spec.ts` |
+| DO-03 | KYC numbers are validated and normalised on submit: Aadhaar (12 digits plus Verhoeff), PAN, Voter ID, Passport and DL. Expired documents are refused. The same rules run client-side through `kycNumberValidator`. Files: `domain/customer/identifiers.py`, `application/customer/use_cases.py`, `validators/identifier-validators.ts`, wizard, profile KYC drawer | Unit tests for identifiers; validator spec |
+| DO-04 | "Submit & Approve" now submits the KYC document and marks it verified. If the verify call fails, the customer stays pending. The wizard then re-reads the customer, and the toast shows the real consumer number and status. Files: onboarding wizard | tsc; manual flow review |
+| DO-05 | Consumer numbers continue the agency's `CN-000000` series from the highest number already issued, and are never reused. Lookups ignore separators. Files: `infrastructure/persistence/repositories/customer.py` | `test_customer_repository.py` |
+| DO-06 | The customer profile drawer gained: Edit profile (full `UpdateCustomerProfileRequest`); address edit and two-step remove; two-step Close connection; a Recent orders tab (`listOrders({customerId})`); a Book shortcut that opens New Booking with the customer picked (`?create=true&customer=`). Server: address update and remove endpoints; profile saves can no longer jump into or out of onboarding or closed. Files: `feature-customers.{ts,html,css}`, `customer.service.ts`, `order-queue.ts`, `routers/customer.py` | `customer-feature-customers` test; customer smoke tests |
+| DO-07 | Addresses are structured: line 1 and 2, landmark, area, city, district, state, PIN and an optional map pin. City and a valid PIN are required on the client and the server. A map pin needs both coordinates. Files: as DO-06, `domain/customer/customer.py` | Customer repository and smoke tests |
+| DO-08 | Wizard DOB and booking or reschedule dates use `dd/mm/yy` with a `dd/mm/yyyy` placeholder and accept typed dates. A future DOB is blocked. DOB is required only for domestic customers. Files: wizard, `order-status.util.ts`, order queue, order detail | tsc, lint |
+| DO-09 | The New Booking customer field is an autocomplete with a 300 ms delay and a 2-character minimum (`minQueryLength`). Stale answers are dropped. The field emits only a picked customer, so typing sends no 422 and shows no false errors. The primary address is preselected. Files: `customer-autocomplete.ts`, `order-queue.*` | Order specs (12 pass) |
+| DO-10 | The cylinder cap (BR-04) and credit limit (BR-19) are enforced at booking. `LedgerCylinderCapPolicy` counts held cylinders plus open orders against the tenant config `cylinder_holding_cap`. `OutstandingBalanceCreditLimitEvaluator` checks against `credit_limit_default`. Each config value is a number or a per-customer-type map; unset means no limit. Files: `domain/order/booking_limits.py`, `application/order/booking_policies.py`, `dependencies/order.py`; deleted the stub `infrastructure/order/policies.py` | `tests/unit/test_order_booking_policies.py`, `TestBookingRules` |
+| DO-11 | `CreateOrderUseCase` calls `ensure_can_place_orders()` (active or onboarding customers only; see deferred BR-21). It snapshots the delivery address from the customer's own `address_id`, and the client-sent `delivery_address` is ignored. Files: `application/order/use_cases.py`, `schemas/order.py`, WhatsApp booking tool | `TestCreateOrderUseCase`, `TestBookingRules` |
+| DO-12 | The order list and detail carry `customer` (name, phone, consumer number). The list adds `search` (order number, name, phone, consumer number), `from_date`/`to_date` (an inverted range returns 422) and `customer_id`. The dashboard adds Customer, Phone and Consumer no. columns, a search box, a date range, clear filters and empty states. Files: `routers/order.py`, `SqlAlchemyOrderCustomerDirectory`, `order-queue.*`, `order.service.ts` | `TestOrderListShowsAndFindsCustomers` |
+| DO-13 | New `PATCH /orders/{id}` (`Order.amend`) for booked or confirmed orders; a confirmed order is repriced. Reschedule takes an optional `requested_date`, adds a `failed_delivery → confirmed` edge, releases the vehicle reservation and clears `route_stop_id`. The order page has Edit booking and Reschedule drawers with date pickers. Files: `domain/order/order.py`, `AmendOrderUseCase`, `RescheduleOrderUseCase`, order repository save, migration grant, `order-detail.*` | `tests/unit/test_order_amend.py`, `TestEditAndRescheduleBooking` |
+| DO-14 | New `POST /orders/{id}/cancel/reject` with a reason (`orders:cancel_approve`). `GET cancellation-request` returns status, `estimated_charge`, `cancellation_charge`, the decision and `include_decided`. The order page shows the fee preview and a Reject request drawer. Files: `domain/order/cancellation`, `RejectOrderCancellationUseCase`, `GetCancellationRequestUseCase`, migration, `order-detail.*` | `TestCancellationRequestRejection` |
+| DO-17 | Complaints validate that the customer exists and the order belongs to that customer. The dashboard picks the customer by name, phone or consumer number, then picks from that customer's recent orders. Files: `application/complaint/*`, `SqlAlchemyComplaintDirectory`, `feature-complaints.*` | Complaint unit, smoke and RBAC tests; `feature-complaints` test |
+| DO-18 | New `GET /complaints/assignees` lists active staff holding `complaints.manage`. Assigning to an unknown or ineligible user returns 422. The dashboard uses a filterable staff picker. | As DO-17 |
+| DO-19 | Unknown customers, unknown orders and another customer's order are refused (422/404) instead of hitting a ValueError. | As DO-17 |
+| DO-20 | Responses carry customer name, phone, consumer number, order number, assignee name and assignment names. Labels are readable. New category `GasLeak` ("Gas leak / safety") is always Critical, with safety advice shown. Assign and Resolve are hidden once a complaint is finished, and customers get 403 on assign and resolve. Toasts go through `NotifyService`: the page used to provide its own MessageService with no `<p-toast>`, so its toasts never showed. | As DO-17 |
+| DO-22 | The ledger API returns 404 for unknown customers, plus `customer_name` and `consumer_number`. The route guard is now `ledger:read` (what the endpoint checks). The page shows the customer, an error empty state, and Adjust only with `customers:update`; delta must be non-zero. Files: `routers/cylinder_ledger.py`, `feature-ledger.*`, `app.routes.ts` | `TestCustomerLedger`; `feature-ledger` test |
+| DO-26 | New `GET /orders/{id}/proof-of-delivery` with signed `signature_url`/`photo_url` (600 s). The order page shows the POD (time, amount, method, OTP time, map link, images), linked invoices, rupee formatting and the failed-delivery reason. Labels come from `STATUS_LABELS`. | Order smoke tests; build |
+| DO-37 | The command palette looks up orders by number, phone or name. The action is renamed "New booking" (keyword "new order"). Customer hits show the consumer number. Typed queries list every matching page. Files: `command-palette.component.ts` | Two new palette specs |
+| DO-39 | Customer and order search collapse whitespace, match phone numbers digits-only, and match consumer numbers without separators. Files: customer repository `customer_search_clause`/`compact_column`, order list | Repository tests |
+| CA-07 | `OrderResponse.cancellation_pending` tells apps a request is waiting, so they can hide Cancel and Pay Online. The backend is done; the mobile UI is deferred (see below). | Order smoke tests |
+| CA-11 | Cancel, bulk-cancel and reject reasons are `ReasonText` (trimmed, 1–1000 characters), so a blank reason returns a clear 422. The orderable message now reads "Choose a customer first to see what they can book." | Order smoke tests |
+
+## Deferred, with reasons
+
+- **DO-27 notifications.** Out of scope for this thread (notifications owner).
+- **Cancellation charge invoicing.** `BookingCancelled.cancellation_charge` is recorded and shown, but billing does not yet invoice it. Billing engineer's scope.
+- **Credit limit vs `partially_paid` invoices.** The outstanding-balance evaluator ignores `partially_paid` invoices. Needs the billing read model; flagged for the billing thread.
+- **WhatsApp bookings.** The cylinder cap is not checked at WhatsApp booking time, only when the order is confirmed. The WhatsApp tool has no tenant-config resolver wiring yet.
+- **Complaint list filters by priority and category.** Not in the findings. The status filter is now typed.
+- **Mobile apps.** They need: `cancellation_pending` (CA-07 UI), the `GasLeak` category, and the now-required address `city` and `pincode`. Mobile was not touched (owned by the app thread).
+- **Admin UI for the `cylinder_holding_cap` config key.** The key is recognised by `RECOGNIZED_CONFIG_KEYS` and can be set through the config API, but there is no settings screen yet.
+- **BR-21, booking for onboarding customers.** Still allowed, because the policy is TBD; seeded flows depend on it. `ensure_can_place_orders` is the one place to change.
+- **Approving cancellation of a `failed_delivery` order.** This calls `cancel_stop` on an already-failed stop. It is an existing bug in the delivery scope; noted, not changed.
+- **DO-08 outside this scope.** Cylinder manufacture date and other date inputs are left to the ui thread's shared helpers.
+- **Phone sign-in normalisation.** Not touched; handled by the +91 thread.
+
+## Merge notes
+
+- The ui branch provides `@lpg/shared/util` date helpers. After merging it, replace the local copies with the shared ones: `DATE_INPUT_FORMAT`, `DATE_INPUT_PLACEHOLDER` and `toIsoDate` in `libs/order/feature-orders/src/lib/order-status.util.ts` and `libs/customer/feature-customers/src/lib/validators/identifier-validators.ts`. The names are identical. Also adopt `validateForSubmit` and `overlayAppendTo` there.
+- `openapi.json` and the generated client were regenerated once (`2005eb1`). Regenerate again after merging, because `route-stop-response` drift came from another branch.
+- `nx build dashboard` passes, with the initial-bundle budget warning (717 kB vs 700 kB). The warning is unchanged by this branch's last commits.
+
+## ADR draft
+
+**Title:** Order booking rules, editing and cancellation decisions (QA fixes).
+
+- **Context.** QA found that bookings ignored the per-connection cap and the credit limit, could not be edited, and could only be rescheduled without a date. Cancellation requests could only be approved.
+- **Decision 1: config semantics.** `cylinder_holding_cap` and `credit_limit_default` are tenant configuration keys. Each value is a number or a map keyed by customer type. Unset means no limit. The cap counts cylinders held (ledger) plus open-order quantities. The credit check uses outstanding finalised invoices.
+- **Decision 2: new status edge.** `failed_delivery → confirmed` (reschedule) is added to the order state machine. Rescheduling releases the vehicle reservation and detaches the route stop. The failed stop keeps its failed status for the record.
+- **Decision 3: editing orders.** Booked and confirmed orders can be amended through `PATCH /orders/{id}` under `orders:confirm`; `orders:update` does not exist. A confirmed order is repriced. This needs `DELETE` on `orders.order_line` for the app role, granted by migration `7bc2ddcd8ed9` and revoked on downgrade.
+- **Decision 4: rejecting cancellations.** A cancellation request can be rejected with a reason. Pending means neither approved nor rejected. The one-pending-per-order partial unique index excludes rejected rows, so the customer can ask again.
+- **Consequences.** Mobile apps must read `cancellation_pending`. Billing must invoice the cancellation charge. Admins need a UI for the cap key.
