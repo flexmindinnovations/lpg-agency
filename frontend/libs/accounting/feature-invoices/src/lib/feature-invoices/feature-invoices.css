@@ -188,10 +188,18 @@
 
 .print-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
-  padding-block-start: var(--spacing-lg);
+  padding-block-start: var(--spacing-md);
   border-block-start: var(--border-width) solid var(--color-border-default);
   margin-block-start: var(--spacing-md);
+}
+
+/* Stacked action rows read as one group: one divider above the first. */
+.print-actions + .print-actions {
+  padding-block-start: 0;
+  border-block-start: 0;
+  margin-block-start: var(--spacing-sm);
 }
 
 /* Thermal receipt preview dialog */

@@ -537,9 +537,14 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
         align-items: center;
         flex-wrap: wrap;
         gap: var(--spacing-sm) var(--spacing-md);
-        min-block-size: calc(var(--component-control-height) + 2 * var(--spacing-sm));
-        padding: var(--spacing-sm) var(--spacing-xl);
+        min-block-size: calc(var(--component-action-height) + 2 * var(--spacing-xs));
+        padding: var(--spacing-xs) var(--spacing-xl);
         background: transparent;
+      }
+
+      /* The content starts close under the breadcrumb row. */
+      .shell__breadcrumb-wrapper + .shell__main {
+        padding-block-start: var(--spacing-sm);
       }
 
       .shell__page-actions {

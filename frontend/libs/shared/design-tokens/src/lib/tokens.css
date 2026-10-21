@@ -210,6 +210,11 @@ have always been hand-edited directly. Edit them here.
       2 * var(--border-width, 1px)
   );
 
+  /* Height of an action button: page actions in the breadcrumb row and buttons
+     in drawers and dialogs. Smaller than a control, so actions do not tower
+     over the inputs next to them (ADR-064). */
+  --component-action-height: 2rem;
+
   /* ---- Extended radius scale (Fluent Glass) ----
      Additive, named by use rather than by tier — the existing --radius-sm/
      md/lg/full stay exactly as they were (still consumed by PrimeNG's

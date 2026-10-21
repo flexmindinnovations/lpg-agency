@@ -1509,6 +1509,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - Filters sit in one `.data-toolbar` row of unlabelled controls (name in placeholder and `aria-label`), all `--component-control-height` tall: search first, then selects and `lpg-date-range-filter`, a text "Clear filters" button, and `lpg-export-button` (icon with tooltip) at the far end.
 - Server-paged lists pass `totalRecords`, `page`, `serverPageSize` and `(pageChange)` to `lpg-data-grid`, which renders the pager inside its own card footer. A separate `p-paginator` under a grid is not used.
 - Alerts that scale with data (invoices waiting to be issued) show one slim banner with a "View all" dialog, never a list.
+- Action buttons are compact (`--component-action-height`, 2rem): page actions in the breadcrumb row and every button inside a drawer or dialog are sized by one global rule, with no per-button `size`. The breadcrumb row is `--component-action-height` plus 4px either side, and the page content starts `--spacing-sm` below it. A secondary link inside a banner or sentence ("View all") is `.lpg-link-button`, a button drawn as an underlined link.
 - An order page shows its invoice: issue (when delivered and none exists), view, print PDF, and send to the customer (`POST /invoices/{id}/send`, event `InvoiceSentToCustomer`, notification `invoice_sent`).
 
 **Consequences:** Filter and button heights match across pages; every list page migrated in one change. New pages follow the same pattern.
