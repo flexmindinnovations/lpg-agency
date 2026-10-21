@@ -172,7 +172,7 @@
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Total Amount</span>
-      <span>{{ o.total_amount ? ('₹' + o.total_amount) : 'Not confirmed yet' }}</span>
+      <span>{{ o.total_amount ? ('₹' + o.total_amount + ' + GST') : 'Not confirmed yet' }}</span>
     </div>
     @if (o.payment_method_preference) {
     <div class="detail-field">

@@ -137,7 +137,8 @@ export class OrderQueue implements OnInit {
   protected readonly cylinderTypeOptions = computed(() =>
     this.cylinderTypes().map((type) => ({
       value: type.cylinder_type_id,
-      label: `${type.name} · ₹${type.unit_price} · ${type.available_quantity} in stock`,
+      // Prices are before GST unless the agency set `prices_include_gst`.
+      label: `${type.name} · ₹${type.unit_price} + GST · ${type.available_quantity} in stock`,
     })),
   );
 
@@ -192,7 +193,7 @@ export class OrderQueue implements OnInit {
     },
     {
       field: 'total_amount',
-      header: 'Total',
+      header: 'Total (excl. GST)',
       numeric: true,
       valueFormatter: (value) => (value ? `₹${value}` : '—'),
     },

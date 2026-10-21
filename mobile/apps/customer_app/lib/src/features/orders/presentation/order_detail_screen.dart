@@ -117,7 +117,7 @@ class OrderDetailScreen extends ConsumerWidget {
               child: LpgKeyValueRow(
                 label: 'Total Amount',
                 value: order.totalAmount != null
-                    ? LpgFormat.currency(order.totalAmount!)
+                    ? '${LpgFormat.currency(order.totalAmount!)} + GST'
                     : 'Pending',
                 emphasize: true,
               ),
