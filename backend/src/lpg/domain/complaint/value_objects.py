@@ -7,6 +7,9 @@ class ComplaintCategory(StrEnum):
     BILLING_DISPUTE = "BillingDispute"
     DRIVER_CONDUCT = "DriverConduct"
     LATE_DELIVERY = "LateDelivery"
+    #: Gas leak, smell of gas, a hissing valve, a fire risk. Always raised at
+    #: Critical priority (the shortest SLA) whatever the customer chose.
+    GAS_LEAK_SAFETY = "GasLeakSafety"
     OTHER = "Other"
 
 

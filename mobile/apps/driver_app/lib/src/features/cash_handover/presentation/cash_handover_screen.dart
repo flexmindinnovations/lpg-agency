@@ -79,7 +79,7 @@ class _CashHandoverScreenState extends ConsumerState<CashHandoverScreen> {
     // The declaration is now a queued op; the screen flips to the "queued"
     // notice via `pendingSyncAggregatesProvider`. Once it syncs the provider
     // re-fetches and shows the real receipt.
-    ref.invalidate(pendingCashHandoverProvider);
+    ref.invalidate(pendingCashHandoversProvider);
     ref.invalidate(routeHistoryProvider);
     LpgFeedback.showToast(
       context,

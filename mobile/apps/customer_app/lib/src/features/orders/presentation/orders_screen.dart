@@ -100,7 +100,9 @@ class _OrderCard extends StatelessWidget {
                     Text(order.reference, style: text.titleSmall),
                     const SizedBox(height: LpgSpacing.xs / 2),
                     Text(
-                      LpgFormat.dateTime(order.requestedDate),
+                      '${order.cylinderCount} '
+                      '${order.cylinderCount == 1 ? 'cylinder' : 'cylinders'}'
+                      ' · for ${LpgFormat.date(order.requestedDate)}',
                       style: text.bodySmall,
                     ),
                   ],
@@ -123,12 +125,7 @@ class _OrderCard extends StatelessWidget {
                   children: [
                     Text('Amount', style: text.labelMedium),
                     const SizedBox(height: LpgSpacing.xs / 2),
-                    Text(
-                      order.totalAmount != null
-                          ? LpgFormat.currency(order.totalAmount!)
-                          : 'Pending',
-                      style: text.titleMedium,
-                    ),
+                    Text(order.amountLabel, style: text.titleMedium),
                   ],
                 ),
               ),

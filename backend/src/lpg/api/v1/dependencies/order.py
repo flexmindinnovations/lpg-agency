@@ -22,6 +22,7 @@ from lpg.application.order.ports import (
     CancellationRecordRepository,
     CreditLimitEvaluator,
     CylinderCapPolicy,
+    DeliveryCodeStore,
     OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryRepository,
@@ -138,6 +139,17 @@ def get_idempotency_service() -> IdempotencyService:
         msg = "RedisClient is not configured — the application lifespan has not run."
         raise RuntimeError(msg)
     return IdempotencyService(state.redis)
+
+
+def get_delivery_code_store() -> DeliveryCodeStore:
+    """The customer-readable copy of each pending delivery code, in Redis."""
+    from lpg.infrastructure.order.delivery_code_store import RedisDeliveryCodeStore
+
+    state, _settings = _get_app_state_and_settings()
+    if state.redis is None:
+        msg = "RedisClient is not configured — the application lifespan has not run."
+        raise RuntimeError(msg)
+    return RedisDeliveryCodeStore(state.redis)
 
 
 def get_file_storage() -> FileStorage:

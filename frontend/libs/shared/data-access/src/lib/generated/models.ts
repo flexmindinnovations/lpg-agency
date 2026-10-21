@@ -71,6 +71,7 @@ export type { DeliveredLineRequest } from './models/delivered-line-request';
 export type { DeliverOrderRequest } from './models/deliver-order-request';
 export type { DeliverOrderResponse } from './models/deliver-order-response';
 export type { DeliveryAddressPayload } from './models/delivery-address-payload';
+export type { DeliveryCodeResponse } from './models/delivery-code-response';
 export type { DependencyStatus } from './models/dependency-status';
 export type { DocumentAttachmentResponse } from './models/document-attachment-response';
 export type { DriverLocationPingRequest } from './models/driver-location-ping-request';
@@ -131,6 +132,7 @@ export type { NextConsumerNumberResponse } from './models/next-consumer-number-r
 export type { NotificationResponse } from './models/notification-response';
 export type { OnboardingDraftListResponse } from './models/onboarding-draft-list-response';
 export type { OnboardingDraftResponse } from './models/onboarding-draft-response';
+export type { OnlinePaymentAvailabilityResponse } from './models/online-payment-availability-response';
 export type { OnlinePaymentListResponse } from './models/online-payment-list-response';
 export type { OnlinePaymentResponse } from './models/online-payment-response';
 export type { OperationsSnapshotResponse } from './models/operations-snapshot-response';
@@ -228,6 +230,7 @@ export type { SetWarehouseActiveRequest } from './models/set-warehouse-active-re
 export type { StaffUserResponse } from './models/staff-user-response';
 export type { SubmitKycDocumentRequest } from './models/submit-kyc-document-request';
 export type { SuggestCylinderTestDueDateResponse } from './models/suggest-cylinder-test-due-date-response';
+export type { SupportContactsResponse } from './models/support-contacts-response';
 export type { TdtBandDistributionResponse } from './models/tdt-band-distribution-response';
 export type { TdtQuarterlyRatingResponse } from './models/tdt-quarterly-rating-response';
 export type { TenantConfigurationResponse } from './models/tenant-configuration-response';

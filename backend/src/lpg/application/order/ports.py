@@ -226,3 +226,26 @@ class BranchStockReader(Protocol):
         with no stock may be missing from the result or be zero or less.
         """
         ...
+
+
+class DeliveryCodeStore(Protocol):
+    """Keeps the plaintext delivery code of an out-for-delivery order so the
+    customer who owns it can read it in their app (the "share this code with
+    the driver" card), alongside the hashed copy `OtpStore` verifies against.
+
+    The SMS alone is not reliable enough to be the only way the customer
+    learns the code: when it is late or never arrives the driver is stuck at
+    the door. Codes are scoped by tenant and order, expire with the same TTL
+    as the verification hash, and are replaced on every resend.
+    """
+
+    async def remember(
+        self, tenant_id: uuid.UUID, order_id: uuid.UUID, code: str, *, ttl_seconds: int
+    ) -> None:
+        """Store `code` as this order's current delivery code for `ttl_seconds`."""
+        ...
+
+    async def recall(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> str | None:
+        """The order's current delivery code, or `None` once it has expired
+        or was never issued."""
+        ...

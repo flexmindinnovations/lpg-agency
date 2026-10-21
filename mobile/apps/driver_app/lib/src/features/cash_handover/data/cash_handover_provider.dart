@@ -30,27 +30,36 @@ final routeCashHandoverProvider = FutureProvider.autoDispose
       return RouteCashHandover.fromJson(map);
     });
 
-/// The driver's most recent finished route whose cash still needs declaring,
-/// or `null`. Drives the "reconcile your cash" nudge on the Today tab — a
-/// nudge that can't load is simply no nudge.
-final pendingCashHandoverProvider =
-    FutureProvider.autoDispose<RouteCashHandover?>((ref) async {
+/// Every finished route whose collected cash is still undeclared, newest
+/// first. Drives the "reconcile your cash" nudges on Today and the CASH
+/// PENDING badges in Deliveries.
+///
+/// All completed routes are checked, not just the latest: a later cash-free
+/// route used to hide an earlier route's undeclared money (DR-01). A route
+/// that collected no cash is never nudged — there is nothing to hand over
+/// (DR-10). A route whose check fails is skipped; a nudge that can't load is
+/// simply no nudge.
+final pendingCashHandoversProvider =
+    FutureProvider.autoDispose<List<RouteCashHandover>>((ref) async {
       final history = await ref.watch(routeHistoryProvider.future);
-      // `routeHistoryProvider` is already newest-first.
-      RouteSummary? latestCompleted;
-      for (final route in history) {
-        if (route.status == 'completed') {
-          latestCompleted = route;
-          break;
-        }
-      }
-      if (latestCompleted == null) return null;
-
-      final result = await ref
-          .watch(cashHandoverApiProvider)
-          .getForRoute(latestCompleted.id);
-      return result.when(
-        onSuccess: (view) => view.isPending ? view : null,
-        onFailure: (_) => null,
+      final api = ref.watch(cashHandoverApiProvider);
+      final completed = [
+        for (final route in history)
+          if (route.status == 'completed') route,
+      ];
+      final views = await Future.wait(
+        completed.map((route) async {
+          final result = await api.getForRoute(route.id);
+          return result.when(onSuccess: (view) => view, onFailure: (_) => null);
+        }),
       );
+      return [
+        for (final view in views)
+          if (view != null && view.needsDeclaring) view,
+      ];
     });
+
+extension on RouteCashHandover {
+  bool get needsDeclaring =>
+      isPending && (expectedAmount > 0 || cashStopCount > 0);
+}

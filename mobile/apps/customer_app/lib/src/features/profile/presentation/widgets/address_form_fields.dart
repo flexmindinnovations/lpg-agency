@@ -9,6 +9,10 @@ import 'location_picker_field.dart';
 /// The address form shared by the add and edit address screens, so both
 /// stay field-for-field identical. The screens own the controllers and the
 /// save call; this only lays the fields out.
+/// A validator that rejects an empty or blank field with [message].
+FormFieldValidator<String> _required(String message) =>
+    (value) => (value == null || value.trim().isEmpty) ? message : null;
+
 class AddressFormFields extends ConsumerWidget {
   const AddressFormFields({
     super.key,
@@ -107,7 +111,9 @@ class AddressFormFields extends ConsumerWidget {
             Expanded(
               child: LpgTextField(
                 label: 'City',
+                isRequired: true,
                 controller: city,
+                validator: _required('Enter the city.'),
                 textInputAction: TextInputAction.next,
                 textCapitalization: TextCapitalization.words,
                 autofillHints: const [AutofillHints.addressCity],
@@ -117,7 +123,9 @@ class AddressFormFields extends ConsumerWidget {
             Expanded(
               child: LpgTextField(
                 label: 'State',
+                isRequired: true,
                 controller: state,
+                validator: _required('Enter the state.'),
                 textInputAction: TextInputAction.next,
                 textCapitalization: TextCapitalization.words,
                 autofillHints: const [AutofillHints.addressState],
@@ -128,7 +136,11 @@ class AddressFormFields extends ConsumerWidget {
         _gap,
         LpgTextField(
           label: 'Pincode',
+          isRequired: true,
           controller: pincode,
+          validator: (value) => RegExp(r'^[1-9]\d{5}$').hasMatch(value ?? '')
+              ? null
+              : 'Enter the 6-digit pincode.',
           keyboardType: TextInputType.number,
           maxLength: 6,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],

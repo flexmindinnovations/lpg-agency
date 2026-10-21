@@ -98,6 +98,13 @@ Widget _appWith(AuthController authController) => ProviderScope(
   child: const DriverApp(),
 );
 
+/// Phone-sized window: the shell shows the bottom bar below 600px wide.
+void _usePhoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   testWidgets('holds on the splash screen while the session restores', (
     tester,
@@ -115,6 +122,7 @@ void main() {
   testWidgets('an authenticated session lands on the Today tab in the shell', (
     tester,
   ) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
@@ -124,6 +132,7 @@ void main() {
   });
 
   testWidgets('the shell exposes the four tabs', (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 

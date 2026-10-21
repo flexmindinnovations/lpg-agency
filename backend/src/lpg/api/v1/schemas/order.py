@@ -253,6 +253,16 @@ class PodAttachmentResponse(BaseModel):
 class RecordFailedDeliveryRequest(BaseModel):
     reason_code: FailedDeliveryReasonCode
     resolution_action: FailedDeliveryResolutionAction | None = None
+    #: What the reason code can't say ("gate locked, back after 6 pm",
+    #: "customer asked for Thursday"). Shown with the reason in the order's
+    #: status history.
+    note: str | None = Field(default=None, max_length=500)
+
+
+class DeliveryCodeResponse(BaseModel):
+    """The code the customer reads out to the driver to confirm delivery."""
+
+    code: str
 
 
 # ==========================================================================

@@ -5,6 +5,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth_provider.dart';
 import '../../../providers.dart';
 
+/// The national LPG emergency helpline — shown even when the contacts
+/// can't be loaded (offline, server down): a leak can't wait for a retry.
+const lpgEmergencyHelpline = '1906';
+
+/// Who the customer can phone from Support: the emergency helpline and the
+/// agency. Falls back to [lpgEmergencyHelpline] alone on any failure.
+final supportContactsProvider = FutureProvider<SupportContacts>((ref) async {
+  final result = await ref.watch(complaintApiProvider).getSupportContacts();
+  return result.when(
+    onSuccess: (contacts) => contacts,
+    onFailure: (_) =>
+        const SupportContacts(emergencyHelpline: lpgEmergencyHelpline),
+  );
+});
+
 /// Provides the current customer's complaints.
 final complaintsProvider = FutureProvider<List<ComplaintResponse>>((ref) async {
   final api = ref.watch(complaintApiProvider);

@@ -1,4 +1,8 @@
 import 'package:api_client/api_client.dart';
+import 'package:auth/auth.dart';
+import 'package:customer_app/src/auth_provider.dart';
+import 'package:customer_app/src/providers.dart';
+import 'package:customer_app/src/push/push_notification_service.dart';
 import 'package:customer_app/src/features/profile/data/profile_provider.dart';
 import 'package:customer_app/src/features/profile/presentation/profile_screen.dart';
 import 'package:design_system/design_system.dart';
@@ -6,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/fake_auth.dart';
 import '../../support/pump_screen.dart';
 
 CustomerResponse _profile({
@@ -48,8 +53,18 @@ Widget _screen({
   CustomerResponse? profile,
   bool nullProfile = false,
   Object? error,
+  AuthController? auth,
 }) => ProviderScope(
   overrides: [
+    if (auth != null) authControllerProvider.overrideWithValue(auth),
+    // Never `init()`ed, as on a device where Firebase did not start (no
+    // google-services.json, no Play Services): reading the FCM token
+    // throws, exactly the CA-01 case.
+    pushNotificationServiceProvider.overrideWithValue(
+      PushNotificationService(
+        NotificationApi(ApiClient(baseUrl: 'https://api.test').dio),
+      ),
+    ),
     profileProvider.overrideWith((ref) async {
       if (error != null) throw error;
       if (nullProfile) return null;
@@ -104,5 +119,27 @@ void main() {
       expect(find.textContaining('Failed to load profile'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
     });
+
+    testWidgets(
+      'Log Out asks first, then signs out even without push (CA-01)',
+      (tester) async {
+        final repo = RecordingAuthRepository();
+        final auth = AuthController(repo);
+        await pumpScreen(tester, _screen(profile: _profile(), auth: auth));
+
+        await tester.tap(find.text('Log Out'));
+        await tester.pumpAndSettle();
+        expect(find.text('Log out?'), findsOneWidget);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(repo.loggedOut, isFalse);
+
+        await tester.tap(find.text('Log Out'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Log Out').last);
+        await tester.pumpAndSettle();
+        expect(repo.loggedOut, isTrue);
+      },
+    );
   });
 }

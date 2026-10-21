@@ -90,13 +90,27 @@ class ProfileScreen extends ConsumerWidget {
             variant: LpgButtonVariant.secondary,
             expand: true,
             onPressed: () async {
+              final confirmed = await LpgFeedback.confirm(
+                context,
+                title: 'Log out?',
+                message:
+                    "You'll need the agency code, your mobile number and a "
+                    'new code to sign in again.',
+                confirmLabel: 'Log Out',
+              );
+              if (!confirmed) return;
               // Drop this device's FCM token first so a shared handset stops
               // getting the previous driver's delivery alerts, and clear the
               // offline read cache so the next driver never sees this one's
-              // route/stop data.
-              await ref.read(pushNotificationServiceProvider).unregister();
-              await ref.read(resourceCacheProvider)?.clear();
-              await ref.read(authControllerProvider).logout();
+              // route/stop data. Neither may block the sign-out itself.
+              try {
+                await ref.read(pushNotificationServiceProvider).unregister();
+                await ref.read(resourceCacheProvider)?.clear();
+              } catch (e) {
+                debugPrint('logout: cleanup failed ($e)');
+              } finally {
+                await ref.read(authControllerProvider).logout();
+              }
             },
           ),
           const SizedBox(height: LpgSpacing.lg),

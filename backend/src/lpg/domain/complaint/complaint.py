@@ -146,6 +146,10 @@ class Complaint(AggregateRoot):
         complaint_number: str,
         order_id: uuid.UUID | None = None,
     ) -> "Complaint":
+        # A gas-leak / safety report is never queued behind routine
+        # tickets, whatever priority the reporter picked.
+        if category == ComplaintCategory.GAS_LEAK_SAFETY:
+            priority = ComplaintPriority.CRITICAL
         # Calculate SLA Due At based on priority
         sla_due_at = cls._calculate_sla(priority)
 

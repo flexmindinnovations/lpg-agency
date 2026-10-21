@@ -81,5 +81,14 @@ void main() {
         isTrue,
       );
     });
+
+    test('isAvailable reads the availability flag', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      client.dio.httpClientAdapter = FakeHttpClientAdapter(
+        (_) => jsonResponse({'available': false}, 200),
+      );
+      final result = await PaymentApi(client.dio).isAvailable();
+      expect(result.when(onSuccess: (v) => v, onFailure: (_) => null), isFalse);
+    });
   });
 }

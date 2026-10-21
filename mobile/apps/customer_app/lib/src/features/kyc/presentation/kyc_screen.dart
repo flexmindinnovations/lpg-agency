@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../profile/data/profile_provider.dart';
 import '../data/kyc_provider.dart';
 
 /// Human-readable label for a `doc_type` value ("aadhaar" -> "Aadhaar
@@ -60,6 +61,10 @@ class KycScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final docsAsync = ref.watch(kycDocumentsProvider);
+    // The account's KYC status, which the agency can set after checking
+    // papers at the counter — so "verified" with no uploaded documents is
+    // normal and must not read as "nothing submitted" (CA-08).
+    final accountKyc = ref.watch(profileProvider).value?.kycStatus;
 
     return Scaffold(
       appBar: AppBar(title: const Text('KYC Documents')),
@@ -70,6 +75,15 @@ class KycScreen extends ConsumerWidget {
           onRetry: () => ref.refresh(kycDocumentsProvider),
         ),
         data: (docs) {
+          if (docs.isEmpty && accountKyc?.toLowerCase() == 'verified') {
+            return const LpgEmptyState(
+              title: 'KYC verified',
+              message:
+                  'Your agency has verified your identity, so there is '
+                  'nothing more to upload.',
+              icon: LpgIcons.verified,
+            );
+          }
           if (docs.isEmpty) {
             return LpgEmptyState(
               title: 'Verify your identity',

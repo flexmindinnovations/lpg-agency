@@ -1297,6 +1297,7 @@
           "BillingDispute",
           "DriverConduct",
           "LateDelivery",
+          "GasLeakSafety",
           "Other"
         ],
         "title": "ComplaintCategory",
@@ -2979,6 +2980,20 @@
           "address_line"
         ],
         "title": "DeliveryAddressPayload",
+        "type": "object"
+      },
+      "DeliveryCodeResponse": {
+        "description": "The code the customer reads out to the driver to confirm delivery.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "DeliveryCodeResponse",
         "type": "object"
       },
       "DependencyStatus": {
@@ -5497,6 +5512,20 @@
         "title": "OnboardingDraftResponse",
         "type": "object"
       },
+      "OnlinePaymentAvailabilityResponse": {
+        "description": "Whether \"Pay Online\" can be offered (a gateway is configured).",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "OnlinePaymentAvailabilityResponse",
+        "type": "object"
+      },
       "OnlinePaymentListResponse": {
         "properties": {
           "items": {
@@ -7560,6 +7589,18 @@
       },
       "RecordFailedDeliveryRequest": {
         "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "reason_code": {
             "enum": [
               "customer_unavailable",
@@ -9587,6 +9628,31 @@
           "suggested_due_date"
         ],
         "title": "SuggestCylinderTestDueDateResponse",
+        "type": "object"
+      },
+      "SupportContactsResponse": {
+        "properties": {
+          "agency_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agency Phone"
+          },
+          "emergency_helpline": {
+            "title": "Emergency Helpline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emergency_helpline",
+          "agency_phone"
+        ],
+        "title": "SupportContactsResponse",
         "type": "object"
       },
       "TdtBandDistributionResponse": {
@@ -17380,6 +17446,28 @@
         ]
       }
     },
+    "/api/v1/online-payments/availability": {
+      "get": {
+        "description": "`available` is false when no payment gateway is configured; creating a\npayment link would then fail with 503, so the apps don't offer it.",
+        "operationId": "get_online_payment_availability_api_v1_online_payments_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentAvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Whether online payment can be offered in this environment",
+        "tags": [
+          "Online Payments"
+        ]
+      }
+    },
     "/api/v1/online-payments/{online_payment_id}/refresh": {
       "post": {
         "operationId": "refresh_online_payment_api_v1_online_payments__online_payment_id__refresh_post",
@@ -18031,6 +18119,58 @@
           }
         },
         "summary": "Deliver Order",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/delivery-code": {
+      "get": {
+        "description": "The delivery code the customer gives the driver at the door, for the\ncustomer's own order while it is out for delivery; `null` when no code is\npending. Customers only: the code is the proof that the cylinder reached\nthe customer, so neither the driver nor office staff may read it. Another\ncustomer's order is a 404, the same as an order that does not exist.",
+        "operationId": "get_delivery_code_api_v1_orders__order_id__delivery_code_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DeliveryCodeResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Delivery Code Api V1 Orders  Order Id  Delivery Code Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Delivery Code",
         "tags": [
           "Orders"
         ]
@@ -20703,6 +20843,27 @@
         "summary": "Set Scale Status",
         "tags": [
           "Compliance — Weighment"
+        ]
+      }
+    },
+    "/api/v1/support/contacts": {
+      "get": {
+        "operationId": "get_support_contacts_api_v1_support_contacts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportContactsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The emergency helpline and the agency's support phone",
+        "tags": [
+          "Support"
         ]
       }
     },

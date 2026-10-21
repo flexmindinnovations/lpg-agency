@@ -8,21 +8,15 @@ import '../../orders/data/orders_provider.dart';
 import '../../orders/presentation/order_presentation.dart';
 import '../../profile/data/profile_provider.dart';
 import '../data/complaints_provider.dart';
+import 'complaint_presentation.dart';
+import 'emergency_contacts_card.dart';
 
-const _categories = <String, String>{
-  ComplaintCategory.shortDelivery: 'Short Delivery',
-  ComplaintCategory.damagedCylinder: 'Damaged Cylinder',
-  ComplaintCategory.billingDispute: 'Billing Dispute',
-  ComplaintCategory.driverConduct: 'Driver Conduct',
-  ComplaintCategory.lateDelivery: 'Late Delivery',
-  ComplaintCategory.other: 'Other',
-};
-
+/// Customers pick Low to High; Critical is reserved for safety reports,
+/// which the backend files as Critical on its own.
 const _priorities = <String, String>{
   ComplaintPriority.low: 'Low',
   ComplaintPriority.medium: 'Medium',
   ComplaintPriority.high: 'High',
-  ComplaintPriority.critical: 'Critical',
 };
 
 /// Form to raise a new complaint (`ComplaintApi.raiseComplaint`) — category,
@@ -71,7 +65,7 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
           RaiseComplaintRequest(
             customerId: profile.id,
             category: _category,
-            priority: _priority,
+            priority: _isSafety ? ComplaintPriority.critical : _priority,
             description: _descriptionController.text.trim(),
             orderId: _orderId,
           ),
@@ -100,6 +94,8 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
     );
   }
 
+  bool get _isSafety => _category == ComplaintCategory.gasLeakSafety;
+
   @override
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(ordersProvider);
@@ -113,16 +109,21 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
         label: 'Category',
         prefixIcon: LpgIcons.flag,
         value: _category,
-        items: _categories,
+        items: complaintCategoryLabels,
         onChanged: (v) => setState(() => _category = v!),
       ),
       const SizedBox(height: LpgSpacing.mdl),
-      const LpgFieldLabel('Priority'),
-      LpgChoiceChips<String>(
-        options: _priorities,
-        selected: _priority,
-        onSelected: (v) => setState(() => _priority = v ?? _priority),
-      ),
+      if (_isSafety)
+        // A leak needs a phone call now, not a ticket — say so first.
+        const EmergencyContactsCard()
+      else ...[
+        const LpgFieldLabel('Priority'),
+        LpgChoiceChips<String>(
+          options: _priorities,
+          selected: _priority,
+          onSelected: (v) => setState(() => _priority = v ?? _priority),
+        ),
+      ],
       const SizedBox(height: LpgSpacing.mdl),
       ordersAsync.when(
         loading: () => const LinearProgressIndicator(),

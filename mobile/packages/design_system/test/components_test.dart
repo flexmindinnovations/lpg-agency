@@ -526,4 +526,71 @@ void main() {
     await tester.tap(find.text('Alerts'));
     expect(selected, 1);
   });
+
+  testWidgets('LpgTextField gives the input its label as an accessible name', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _wrap(const LpgTextField(label: 'Address line 1', isRequired: true)),
+    );
+    expect(
+      tester.getSemantics(find.byType(EditableText)),
+      isSemantics(label: 'Address line 1, required', isTextField: true),
+    );
+    // The visible label is not announced a second time.
+    expect(find.bySemanticsLabel('Address line 1'), findsNothing);
+    handle.dispose();
+  });
+
+  group('LpgAdaptiveShell', () {
+    const destinations = [
+      LpgNavDestination(
+        icon: LpgIcons.home,
+        selectedIcon: LpgIcons.homeFilled,
+        label: 'Home',
+      ),
+      LpgNavDestination(
+        icon: LpgIcons.orders,
+        selectedIcon: LpgIcons.ordersFilled,
+        label: 'Orders',
+      ),
+    ];
+
+    Future<void> pumpAt(WidgetTester tester, Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: LpgTheme.light,
+          home: LpgAdaptiveShell(
+            destinations: destinations,
+            selectedIndex: 0,
+            onDestinationSelected: (_) {},
+            body: const SizedBox.expand(key: Key('body')),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('uses a bottom bar on a phone', (tester) async {
+      await pumpAt(tester, const Size(390, 844));
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(tester.getSize(find.byKey(const Key('body'))).width, 390);
+    });
+
+    testWidgets('uses a rail and caps content width on a tablet', (
+      tester,
+    ) async {
+      await pumpAt(tester, const Size(820, 1180));
+      expect(find.byType(NavigationRail), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(
+        tester.getSize(find.byKey(const Key('body'))).width,
+        lessThanOrEqualTo(LpgBreakpoints.contentMaxWidth),
+      );
+    });
+  });
 }

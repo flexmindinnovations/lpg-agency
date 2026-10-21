@@ -83,7 +83,7 @@ void main() {
     await tester.pumpWidget(_appWith(AuthController(_FakeAuthRepository())));
     await tester.pumpAndSettle();
 
-    expect(find.text('LPG Flow'), findsOneWidget);
+    expect(find.text('LPG Agency'), findsOneWidget);
     // Not asserting on the balance card's own text: it's driven by
     // `ledgerAsync` (a real, unmocked network call in this test), so
     // whether it's showing loading/data/error copy at the moment

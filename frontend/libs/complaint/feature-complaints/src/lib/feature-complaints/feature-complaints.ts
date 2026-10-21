@@ -294,6 +294,7 @@ export class FeatureComplaints implements OnInit {
     { label: 'Billing Dispute', value: 'BillingDispute' },
     { label: 'Driver Conduct', value: 'DriverConduct' },
     { label: 'Late Delivery', value: 'LateDelivery' },
+    { label: 'Gas leak / safety', value: 'GasLeakSafety' },
     { label: 'Other', value: 'Other' },
   ];
 

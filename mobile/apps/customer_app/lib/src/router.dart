@@ -1,4 +1,5 @@
 import 'package:auth/auth.dart';
+import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -68,7 +69,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => const LpgContentWidth(
+          maxWidth: LpgBreakpoints.formMaxWidth,
+          paintCanvas: true,
+          child: LoginScreen(),
+        ),
       ),
       // Stateful shell route for bottom navigation bar
       StatefulShellRoute.indexedStack(
@@ -116,7 +121,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'new',
                     name: 'order_new',
-                    builder: (context, state) => const OrderPlacementScreen(),
+                    builder: (context, state) => OrderPlacementScreen(
+                      draft: state.extra as ReorderDraft?,
+                    ),
                   ),
                   GoRoute(
                     path: ':orderId',

@@ -63,5 +63,24 @@ void main() {
         );
       },
     );
+
+    test('getSupportContacts parses the helpline and agency phone', () async {
+      final client = ApiClient(baseUrl: 'https://api.test');
+      String? path;
+      client.dio.httpClientAdapter = FakeHttpClientAdapter((options) {
+        path = options.path;
+        return jsonResponse({
+          'emergency_helpline': '1906',
+          'agency_phone': '+914012345678',
+        }, 200);
+      });
+
+      final result = await ComplaintApi(client.dio).getSupportContacts();
+
+      final contacts = result.when(onSuccess: (c) => c, onFailure: (_) => null);
+      expect(path, '/api/v1/support/contacts');
+      expect(contacts!.emergencyHelpline, '1906');
+      expect(contacts.agencyPhone, '+914012345678');
+    });
   });
 }

@@ -993,6 +993,54 @@ async def _create_and_confirm_order_at(
     return result
 
 
+class TestActiveRoutePrefersTheOneOnTheRoad:
+    async def test_newer_planned_route_does_not_hide_in_progress_one(
+        self, stack: _AppAndClient, admin_engine: AsyncEngine
+    ) -> None:
+        """DR-05: a second route planned for a driver mid-trip must not hide
+        the route they are still out on."""
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+
+        first = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        assert first.status_code == 201, first.text
+        first_id = first.json()["id"]
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text("UPDATE delivery.route SET status = 'in_progress' WHERE id = :id"),
+                {"id": first_id},
+            )
+
+        other_vehicle = await _seed_vehicle(
+            admin_engine, tenant_id=fixtures.tenant_id, branch_id=fixtures.branch_id
+        )
+        second = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(other_vehicle),
+            },
+            headers=admin_headers,
+        )
+        assert second.status_code == 201, second.text
+
+        active = await client.get("/api/v1/routes/active", headers=driver_headers)
+        assert active.status_code == 200, active.text
+        assert active.json()["id"] == first_id
+        assert active.json()["status"] == "in_progress"
+
+
 class TestRouteOptimization:
     """AI Operational Intelligence, Horizon 1 Stage 5."""
 

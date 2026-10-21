@@ -41,13 +41,16 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
     );
   }
 
-  Future<void> _navigate(LatLng point) async {
-    final lat = point.latitude;
-    final lng = point.longitude;
+  /// Opens turn-by-turn to [point], or — for an address nobody pinned and
+  /// the geocoder couldn't place — lets the maps app search the address text.
+  Future<void> _navigate(LatLng? point, String address) async {
+    final q = point != null
+        ? '${point.latitude},${point.longitude}'
+        : Uri.encodeComponent(address);
     final candidates = [
-      Uri.parse('google.navigation:q=$lat,$lng'),
-      Uri.parse('https://maps.apple.com/?daddr=$lat,$lng'),
-      Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng'),
+      Uri.parse('google.navigation:q=$q'),
+      Uri.parse('https://maps.apple.com/?daddr=$q'),
+      Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$q'),
     ];
     for (final uri in candidates) {
       if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
@@ -89,11 +92,28 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
       data: (destination) {
         final point = destination.point;
         if (point == null) {
-          return const LpgCard(
+          return LpgCard(
             padding: EdgeInsets.zero,
-            child: SizedBox(
-              height: _mapHeight,
-              child: MapUnavailable(message: 'Delivery location not pinned.'),
+            child: Column(
+              children: [
+                const SizedBox(
+                  height: _mapHeight,
+                  child: MapUnavailable(
+                    message:
+                        'Delivery location not pinned. Navigate by the '
+                        'address instead.',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(LpgSpacing.smd),
+                  child: LpgButton(
+                    label: 'Navigate by address',
+                    icon: LpgIcons.navigate,
+                    expand: true,
+                    onPressed: () => _navigate(null, destination.label),
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -154,7 +174,7 @@ class _StopMapCardState extends ConsumerState<StopMapCard> {
                   label: 'Navigate',
                   icon: LpgIcons.navigate,
                   expand: true,
-                  onPressed: () => _navigate(point),
+                  onPressed: () => _navigate(point, destination.label),
                 ),
               ),
             ],

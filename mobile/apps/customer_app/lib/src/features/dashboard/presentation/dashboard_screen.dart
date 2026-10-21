@@ -19,7 +19,7 @@ import '../data/notifications_provider.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  static const appName = 'LPG Flow';
+  static const appName = 'LPG Agency';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -191,7 +191,8 @@ class _BalanceHero extends ConsumerWidget {
                   const SizedBox(height: LpgSpacing.xs),
                   caption(
                     balances.isNotEmpty
-                        ? 'Across ${balances.length} cylinder types'
+                        ? 'Across ${balances.length} cylinder '
+                              '${balances.length == 1 ? 'type' : 'types'}'
                         : 'No outstanding cylinders',
                   ),
                 ],

@@ -46,34 +46,34 @@ class AppShell extends ConsumerWidget {
       });
     });
 
-    return Scaffold(
+    // Bottom bar on phones; a rail and a width-capped column on tablets
+    // (CA-13).
+    return LpgAdaptiveShell(
       body: navigationShell,
-      bottomNavigationBar: LpgNavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => _onTap(context, index),
-        destinations: const [
-          LpgNavDestination(
-            icon: LpgIcons.home,
-            selectedIcon: LpgIcons.homeFilled,
-            label: 'Home',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.orders,
-            selectedIcon: LpgIcons.ordersFilled,
-            label: 'Orders',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.support,
-            selectedIcon: LpgIcons.supportFilled,
-            label: 'Support',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.profile,
-            selectedIcon: LpgIcons.profileFilled,
-            label: 'Profile',
-          ),
-        ],
-      ),
+      selectedIndex: navigationShell.currentIndex,
+      onDestinationSelected: (index) => _onTap(context, index),
+      destinations: const [
+        LpgNavDestination(
+          icon: LpgIcons.home,
+          selectedIcon: LpgIcons.homeFilled,
+          label: 'Home',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.orders,
+          selectedIcon: LpgIcons.ordersFilled,
+          label: 'Orders',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.support,
+          selectedIcon: LpgIcons.supportFilled,
+          label: 'Support',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.profile,
+          selectedIcon: LpgIcons.profileFilled,
+          label: 'Profile',
+        ),
+      ],
     );
   }
 

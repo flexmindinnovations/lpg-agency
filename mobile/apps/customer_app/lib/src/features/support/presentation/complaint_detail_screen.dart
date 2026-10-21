@@ -5,13 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/complaints_provider.dart';
 import 'complaint_presentation.dart';
 
-/// Splits a PascalCase category/status value from the backend (e.g.
-/// `"LateDelivery"`, mirroring `ComplaintCategory`/`ComplaintStatus` in
-/// `api_client`) into readable words ("Late Delivery").
-String _humanize(String pascalCase) => pascalCase
-    .replaceAllMapped(RegExp('(?<=[a-z])(?=[A-Z])'), (m) => ' ')
-    .trim();
-
 class ComplaintDetailScreen extends ConsumerWidget {
   const ComplaintDetailScreen({super.key, required this.complaintId});
 
@@ -53,7 +46,7 @@ class ComplaintDetailScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _humanize(complaint.category),
+                              complaintCategoryLabel(complaint.category),
                               style: text.titleLarge,
                             ),
                             if (complaint.complaintNumber != null)
@@ -68,7 +61,7 @@ class ComplaintDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: LpgSpacing.md),
                   LpgStatusBadge(
-                    label: _humanize(complaint.status).toUpperCase(),
+                    label: humanizePascalCase(complaint.status).toUpperCase(),
                     severity: severity,
                   ),
                   const SizedBox(height: LpgSpacing.sm),
@@ -105,7 +98,9 @@ class ComplaintDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     LpgStatusBadge(
-                      label: _humanize(resolution.outcome).toUpperCase(),
+                      label: humanizePascalCase(
+                        resolution.outcome,
+                      ).toUpperCase(),
                       severity: resolution.outcome == 'Rejected'
                           ? LpgStatusSeverity.danger
                           : LpgStatusSeverity.success,

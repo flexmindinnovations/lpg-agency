@@ -269,6 +269,27 @@ def _webhook(event: str, *, link_id: str, tenant_id: uuid.UUID) -> tuple[bytes, 
     return body, {"X-Razorpay-Signature": signature, "Content-Type": "application/json"}
 
 
+class TestOnlinePaymentAvailability:
+    async def test_reports_whether_a_gateway_is_configured(
+        self,
+        client: AsyncClient,
+        admin_engine: AsyncEngine,
+        integration_settings: Settings,
+        gateway: _StubbedRazorpay,
+    ) -> None:
+        """CA-17: the customer app hides Pay Online when it cannot work."""
+        _tenant_id, email = await _seed_tenant_with_staff(admin_engine, integration_settings)
+        headers = await _headers(client, email)
+
+        configured = await client.get("/api/v1/online-payments/availability", headers=headers)
+        assert configured.status_code == 200, configured.text
+        assert configured.json() == {"available": gateway.is_configured}
+        assert gateway.is_configured is True
+
+        anonymous = await client.get("/api/v1/online-payments/availability")
+        assert anonymous.status_code == 401
+
+
 class TestOnlinePaymentFlow:
     async def test_prepay_link_then_webhook_marks_paid(
         self,

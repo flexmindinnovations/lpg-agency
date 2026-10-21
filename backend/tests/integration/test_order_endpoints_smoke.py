@@ -1064,6 +1064,80 @@ class TestDepartBeforeVanLoaded:
         assert deliver_response.json()["order"]["status"] == "delivered"
 
 
+class TestCustomerDeliveryCode:
+    async def test_only_the_orders_customer_sees_the_code_while_out_for_delivery(
+        self, stack: _AppAndClient, admin_engine: AsyncEngine
+    ) -> None:
+        """CA-04: the customer's app shows the delivery code, so a late or
+        lost SMS does not strand the driver. Nobody else may read it: not
+        another customer of the agency, not the driver, not office staff."""
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+        customer_headers = {"Authorization": f"Bearer {fixtures.customer_token}"}
+
+        order = await _create_order(client, fixtures, admin_headers, quantity=1)
+        order_id = order["id"]
+        code_url = f"/api/v1/orders/{order_id}/delivery-code"
+
+        before = await client.get(code_url, headers=customer_headers)
+        assert before.status_code == 200, before.text
+        assert before.json() is None
+
+        await client.post(f"/api/v1/orders/{order_id}/confirm", headers=admin_headers)
+        await client.post(
+            f"/api/v1/orders/{order_id}/assign",
+            json={"driver_id": str(fixtures.driver_id), "vehicle_id": str(fixtures.vehicle_id)},
+            headers=admin_headers,
+        )
+        await client.post(f"/api/v1/orders/{order_id}/dispatch", headers=admin_headers)
+        route_id = await _route_id_for_driver(admin_engine, driver_id=fixtures.driver_id)
+        await _load_route(
+            client,
+            route_id=route_id,
+            warehouse_id=fixtures.warehouse_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+            quantity=1,
+            headers=admin_headers,
+        )
+        depart = await client.post(f"/api/v1/orders/{order_id}/depart", headers=driver_headers)
+        assert depart.status_code == 200, depart.text
+        sms_code = stack.otp_delivery.sent[-1][1]
+
+        own = await client.get(code_url, headers=customer_headers)
+        assert own.status_code == 200, own.text
+        assert own.json() == {"code": sms_code}
+
+        resend = await client.post(
+            f"/api/v1/orders/{order_id}/delivery-otp", headers=driver_headers
+        )
+        assert resend.status_code == 204, resend.text
+        fresh_code = stack.otp_delivery.sent[-1][1]
+        after_resend = await client.get(code_url, headers=customer_headers)
+        assert after_resend.json() == {"code": fresh_code}
+
+        for staff_headers in (driver_headers, admin_headers):
+            denied = await client.get(code_url, headers=staff_headers)
+            assert denied.status_code == 403, denied.text
+            assert fresh_code not in denied.text
+
+        hasher = Argon2PasswordHasher(_settings_for_hasher())
+        other_email = f"{uuid.uuid4().hex}@order-smoke.example"
+        other_password = "correct horse battery staple 48"
+        await _seed_customer(
+            admin_engine,
+            tenant_id=fixtures.tenant_id,
+            branch_id=fixtures.branch_id,
+            email=other_email,
+            password_hash=hasher.hash(other_password),
+        )
+        other_token = await _login(client, email=other_email, password=other_password)
+        other = await client.get(code_url, headers={"Authorization": f"Bearer {other_token}"})
+        assert other.status_code == 404, other.text
+        assert fresh_code not in other.text
+
+
 # ==========================================================================
 # Only orderable cylinders can be listed or booked
 # ==========================================================================
@@ -1247,6 +1321,7 @@ class TestFailedDeliveryAndReschedule:
         failed_body = {
             "reason_code": "customer_unavailable",
             "resolution_action": "reschedule",
+            "note": "Gate locked, asked for Thursday",
         }
         failed_response = await client.post(
             f"/api/v1/orders/{order_id}/failed-delivery",
@@ -1255,6 +1330,10 @@ class TestFailedDeliveryAndReschedule:
         )
         assert failed_response.status_code == 200, failed_response.text
         assert failed_response.json()["status"] == "failed_delivery"
+        history = await client.get(f"/api/v1/orders/{order_id}/history", headers=admin_headers)
+        assert history.json()[-1]["reason"] == (
+            "Customer unavailable — Gate locked, asked for Thursday"
+        )
 
         # Replay (same key, same body) -> stored result, no re-transition.
         failed_replay = await client.post(

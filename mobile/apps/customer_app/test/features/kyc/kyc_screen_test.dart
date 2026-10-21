@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:customer_app/src/features/kyc/data/kyc_provider.dart';
 import 'package:customer_app/src/features/kyc/presentation/kyc_screen.dart';
+import 'package:customer_app/src/features/profile/data/profile_provider.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,16 +21,31 @@ KycDocumentResponse _doc({
   verifiedAt: status == 'verified' ? DateTime(2026, 8, 26) : null,
 );
 
-Widget _screen({List<KycDocumentResponse>? docs, Object? error}) =>
-    ProviderScope(
-      overrides: [
-        kycDocumentsProvider.overrideWith((ref) async {
-          if (error != null) throw error;
-          return docs ?? const [];
-        }),
-      ],
-      child: MaterialApp(theme: LpgTheme.light, home: const KycScreen()),
-    );
+Widget _screen({
+  List<KycDocumentResponse>? docs,
+  Object? error,
+  String accountKyc = 'pending',
+}) => ProviderScope(
+  overrides: [
+    profileProvider.overrideWith(
+      (ref) async => CustomerResponse.fromJson({
+        'id': 'c1',
+        'tenant_id': 't1',
+        'branch_id': 'b1',
+        'full_name': 'Asha Rao',
+        'phone_number': '+919876543210',
+        'customer_type': 'domestic',
+        'kyc_status': accountKyc,
+        'status': 'active',
+      }),
+    ),
+    kycDocumentsProvider.overrideWith((ref) async {
+      if (error != null) throw error;
+      return docs ?? const [];
+    }),
+  ],
+  child: MaterialApp(theme: LpgTheme.light, home: const KycScreen()),
+);
 
 void main() {
   group('KycScreen', () {
@@ -41,6 +57,16 @@ void main() {
 
       expect(find.textContaining("haven't submitted any KYC"), findsOneWidget);
       expect(find.text('Add Document'), findsOneWidget);
+    });
+
+    testWidgets('an agency-verified account with no uploads says verified', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_screen(docs: const [], accountKyc: 'verified'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('KYC verified'), findsOneWidget);
+      expect(find.textContaining("haven't submitted"), findsNothing);
     });
 
     testWidgets('renders a document with a masked number and status', (

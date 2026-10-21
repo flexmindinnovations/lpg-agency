@@ -31,7 +31,9 @@ class LpgSectionHeader extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        // Centred, so a trailing "See all" lines up with the title rather
+        // than sitting on the subtitle's baseline (CA-14).
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(

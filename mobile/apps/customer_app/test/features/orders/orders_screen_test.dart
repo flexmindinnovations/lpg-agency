@@ -75,7 +75,7 @@ void main() {
     ) async {
       await pumpScreen(tester, _screen(orders: [_order(totalAmount: null)]));
 
-      expect(find.text('Pending'), findsOneWidget);
+      expect(find.text('To be confirmed'), findsOneWidget);
     });
 
     testWidgets('shows an error state with retry when the load fails', (

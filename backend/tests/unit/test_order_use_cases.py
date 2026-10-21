@@ -56,6 +56,8 @@ from lpg.application.order.use_cases import (
     DeliverOrderUseCase,
     DepartOrderCommand,
     DepartOrderUseCase,
+    GetDeliveryCodeQuery,
+    GetDeliveryCodeUseCase,
     GetOrderQuery,
     GetPendingCancellationUseCase,
     RecordFailedDeliveryCommand,
@@ -1254,6 +1256,8 @@ class TestDepartOrderUseCase:
         otp_store.issue = AsyncMock(return_value="482913")
 
         self.otp_store = otp_store
+        self.delivery_code_store = MagicMock()
+        self.delivery_code_store.remember = AsyncMock()
 
         use_case = DepartOrderUseCase(
             mock_order_repo,
@@ -1262,6 +1266,7 @@ class TestDepartOrderUseCase:
             otp_store,
             otp_delivery,
             mock_uow,
+            self.delivery_code_store,
             delivery_otp_ttl_seconds=86400,
         )
         return await use_case.execute(
@@ -1285,6 +1290,17 @@ class TestDepartOrderUseCase:
         await self._depart(mock_order_repo, mock_route_repo, mock_uow, AsyncMock())
 
         assert self.otp_store.issue.await_args.kwargs == {"ttl_seconds": 86400}
+
+    async def test_keeps_the_code_for_the_customer_to_see_in_their_app(
+        self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
+    ) -> None:
+        """CA-04: a late or lost SMS must not leave the driver stuck at the
+        door — the customer's app shows the same code."""
+        order = await self._depart(mock_order_repo, mock_route_repo, mock_uow, AsyncMock())
+
+        self.delivery_code_store.remember.assert_awaited_once_with(
+            order.tenant_id, order.id, "482913", ttl_seconds=86400
+        )
 
     async def test_departing_moves_the_loaded_route_to_in_progress(
         self, mock_order_repo: MagicMock, mock_route_repo: MagicMock, mock_uow: MagicMock
@@ -1353,11 +1369,14 @@ class TestResendDeliveryOtpUseCase:
         customer_repo.get_by_id = AsyncMock(return_value=_make_customer())
         otp_store = MagicMock()
         otp_store.issue = AsyncMock(return_value="190274")
+        self.delivery_code_store = MagicMock()
+        self.delivery_code_store.remember = AsyncMock()
         use_case = ResendDeliveryOtpUseCase(
             mock_order_repo,
             customer_repo,
             otp_store,
             otp_delivery,
+            self.delivery_code_store,
             delivery_otp_ttl_seconds=86400,
         )
         return use_case, otp_store
@@ -1377,6 +1396,9 @@ class TestResendDeliveryOtpUseCase:
             order_delivery_otp_key(order.tenant_id, order.id), ttl_seconds=86400
         )
         otp_delivery.send.assert_awaited_once_with("+919876543210", "190274", purpose="delivery")
+        self.delivery_code_store.remember.assert_awaited_once_with(
+            order.tenant_id, order.id, "190274", ttl_seconds=86400
+        )
 
     async def test_refuses_an_order_that_is_not_out_for_delivery(
         self, mock_order_repo: MagicMock
@@ -1563,3 +1585,56 @@ class TestBulkCancelOrdersUseCase:
         assert all(r.succeeded for r in result.results)
         for opened_use_case in opened:
             opened_use_case.execute.assert_awaited_once()
+
+
+class TestGetDeliveryCodeUseCase:
+    def _use_case(
+        self, mock_order_repo: MagicMock, order: Order, code: str | None = "554210"
+    ) -> tuple[GetDeliveryCodeUseCase, MagicMock]:
+        mock_order_repo.get_by_id.return_value = order
+        store = MagicMock()
+        store.recall = AsyncMock(return_value=code)
+        return GetDeliveryCodeUseCase(mock_order_repo, store), store
+
+    @staticmethod
+    def _out_for_delivery() -> Order:
+        order, _route = _assigned_order_with_route(uuid.uuid4())
+        order.dispatch(changed_by=uuid.uuid4())
+        order.depart(changed_by=uuid.uuid4())
+        return order
+
+    async def test_the_orders_own_customer_reads_the_pending_code(
+        self, mock_order_repo: MagicMock
+    ) -> None:
+        order = self._out_for_delivery()
+        use_case, store = self._use_case(mock_order_repo, order)
+
+        code = await use_case.execute(
+            GetDeliveryCodeQuery(order_id=order.id, customer_id=order.customer_id)
+        )
+
+        assert code == "554210"
+        store.recall.assert_awaited_once_with(order.tenant_id, order.id)
+
+    async def test_another_customer_gets_not_found(self, mock_order_repo: MagicMock) -> None:
+        order = self._out_for_delivery()
+        use_case, store = self._use_case(mock_order_repo, order)
+
+        with pytest.raises(NotFoundError):
+            await use_case.execute(
+                GetDeliveryCodeQuery(order_id=order.id, customer_id=uuid.uuid4())
+            )
+        store.recall.assert_not_called()
+
+    async def test_no_code_unless_the_order_is_out_for_delivery(
+        self, mock_order_repo: MagicMock
+    ) -> None:
+        order, _route = _assigned_order_with_route(uuid.uuid4())
+        use_case, store = self._use_case(mock_order_repo, order)
+
+        code = await use_case.execute(
+            GetDeliveryCodeQuery(order_id=order.id, customer_id=order.customer_id)
+        )
+
+        assert code is None
+        store.recall.assert_not_called()

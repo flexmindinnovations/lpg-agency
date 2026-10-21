@@ -7,6 +7,8 @@
 - `POST /online-payments/{id}/refresh` — ask Razorpay for the link's status
   now (the app calls this when the customer returns from the payment page,
   so a missed or not-yet-delivered webhook never leaves an order unpaid).
+- `GET /online-payments/availability` — whether online payment can be
+  offered at all, so the apps hide "Pay Online" instead of failing with 503.
 - `POST /payments/razorpay/webhook` — Razorpay's server-to-server callback.
   Unauthenticated by design; trusted only after its HMAC signature verifies.
 """
@@ -35,6 +37,7 @@ from lpg.api.v1.dependencies.payments import (
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.online_payment import (
+    OnlinePaymentAvailabilityResponse,
     OnlinePaymentListResponse,
     OnlinePaymentResponse,
     WebhookAck,
@@ -163,6 +166,21 @@ async def create_payment_link(
         )
     )
     return _to_response(payment)
+
+
+@router.get(
+    "/online-payments/availability",
+    response_model=OnlinePaymentAvailabilityResponse,
+    dependencies=[Depends(require_permission("orders:read"))],
+    summary="Whether online payment can be offered in this environment",
+)
+async def get_online_payment_availability(
+    gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
+) -> OnlinePaymentAvailabilityResponse:
+    """`available` is false when no payment gateway is configured; creating a
+    payment link would then fail with 503, so the apps don't offer it.
+    """
+    return OnlinePaymentAvailabilityResponse(available=gateway.is_configured)
 
 
 @router.get(

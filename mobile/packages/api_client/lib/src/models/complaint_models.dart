@@ -9,7 +9,28 @@ abstract final class ComplaintCategory {
   static const billingDispute = 'BillingDispute';
   static const driverConduct = 'DriverConduct';
   static const lateDelivery = 'LateDelivery';
+
+  /// A gas leak or other safety hazard. The backend always files it as
+  /// [ComplaintPriority.critical], whatever priority is sent.
+  static const gasLeakSafety = 'GasLeakSafety';
   static const other = 'Other';
+}
+
+/// Who a customer can phone — mirrors the backend's `SupportContactsResponse`
+/// (`GET /support/contacts`). [emergencyHelpline] is the national LPG
+/// emergency number (1906 unless the agency configured another);
+/// [agencyPhone] is null when the agency hasn't set one.
+class SupportContacts {
+  const SupportContacts({required this.emergencyHelpline, this.agencyPhone});
+
+  factory SupportContacts.fromJson(Map<String, dynamic> json) =>
+      SupportContacts(
+        emergencyHelpline: json['emergency_helpline'] as String,
+        agencyPhone: json['agency_phone'] as String?,
+      );
+
+  final String emergencyHelpline;
+  final String? agencyPhone;
 }
 
 /// Values for [ComplaintResponse.priority] — mirrors `ComplaintPriority`.

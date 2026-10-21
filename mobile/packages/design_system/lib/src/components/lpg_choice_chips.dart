@@ -39,6 +39,9 @@ class LpgChoiceChips<T> extends StatelessWidget {
             label: Text(entry.value),
             selected: entry.key == selected,
             showCheckmark: icons?[entry.key] == null,
+            // Every chip keeps a 48px touch target, whichever row it
+            // wraps onto (CA-14).
+            materialTapTargetSize: MaterialTapTargetSize.padded,
             avatar: icons?[entry.key] == null
                 ? null
                 : Icon(
