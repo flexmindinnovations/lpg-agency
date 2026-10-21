@@ -284,7 +284,8 @@ class TestOnlinePaymentFlow:
         created = await client.post(f"/api/v1/orders/{order_id}/payment-links", headers=headers)
         assert created.status_code == 201, created.text
         body = created.json()
-        assert Decimal(body["amount"]) == Decimal("945.00")
+        # 2 x 450 at 5%: prices include GST by default, so the link is 900.00.
+        assert Decimal(body["amount"]) == Decimal("900.00")
         assert body["status"] == "created"
         assert body["payment_url"].startswith("https://rzp.io/i/plink_")
         assert gateway.requests[0].notes["tenant_id"] == str(tenant_id)
