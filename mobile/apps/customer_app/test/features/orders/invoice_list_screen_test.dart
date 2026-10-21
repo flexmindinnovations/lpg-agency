@@ -5,6 +5,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../support/pump_screen.dart';
 
@@ -56,6 +57,43 @@ void main() {
       expect(find.textContaining('000042'), findsOneWidget);
       expect(find.text('ISSUED'), findsOneWidget);
       expect(find.textContaining('1,180.00'), findsOneWidget);
+    });
+
+    testWidgets('tapping anywhere on the card opens the invoice (CA-15)', (
+      tester,
+    ) async {
+      String? opened;
+      await pumpScreen(
+        tester,
+        ProviderScope(
+          overrides: [
+            invoicesProvider.overrideWith((ref) async => [_invoice()]),
+          ],
+          child: MaterialApp.router(
+            theme: LpgTheme.light,
+            routerConfig: GoRouter(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (_, _) => const InvoiceListScreen(),
+                ),
+                GoRoute(
+                  path: '/orders/invoices/:id',
+                  builder: (_, state) {
+                    opened = state.pathParameters['id'];
+                    return const Text('detail');
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // The middle of the card, not the "View" label.
+      await tester.tap(find.text('ISSUED'));
+      await tester.pumpAndSettle();
+      expect(opened, 'inv-abcd1234');
     });
 
     testWidgets(

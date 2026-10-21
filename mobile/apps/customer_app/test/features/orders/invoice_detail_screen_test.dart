@@ -63,6 +63,9 @@ void main() {
 
       expect(find.text('Invoice Details'), findsOneWidget);
       expect(find.textContaining('PARTIALLY'), findsWidgets);
+      // CA-15: GST is named and shown per line as the invoice returns it.
+      expect(find.text('GST'), findsOneWidget);
+      expect(find.textContaining('GST ₹180'), findsOneWidget);
     });
 
     testWidgets(
