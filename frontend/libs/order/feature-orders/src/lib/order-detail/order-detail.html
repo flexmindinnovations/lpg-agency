@@ -295,10 +295,10 @@
   } } @if (invoices().length > 0) {
   <h2 class="section-title">Invoices</h2>
   <ul class="invoice-list">
-    @for (invoice of invoices(); track invoice.id) {
+    @for (invoice of invoices(); track invoice.invoice_id) {
     <li>
       <a routerLink="/invoices">{{ invoice.invoice_number ?? 'Draft invoice' }}</a>
-      · {{ statusLabel(invoice.status) }}
+      · {{ formatCurrencyInr(invoice.total_amount) }} · {{ statusLabel(invoice.status) }}
     </li>
     }
   </ul>
