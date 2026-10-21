@@ -938,7 +938,12 @@ p-toast {
 .p-drawer .p-button.p-button-icon-only:not(.p-button-sm):not(.p-button-lg),
 .p-dialog .p-button.p-button-icon-only:not(.p-button-sm):not(.p-button-lg) {
   inline-size: var(--component-action-height);
+  block-size: var(--component-action-height);
   padding: 0;
+  /* PrimeNG gives an icon-only button an invisible `::after` (to hold the
+     line height). With the action gap above, that hidden item pushed the
+     icon about 3px left of centre: the drawer and dialog close buttons. */
+  gap: 0;
 }
 
 /* Inside a drawer or dialog a grid, date picker or number input keeps its own

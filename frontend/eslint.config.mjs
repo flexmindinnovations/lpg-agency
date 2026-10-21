@@ -28,6 +28,7 @@ export default [
               sourceTag: 'type:app',
               onlyDependOnLibsWithTags: [
                 'type:feature',
+                'type:shared-feature',
                 'type:ui',
                 'type:util',
                 'type:data-access',
@@ -36,6 +37,18 @@ export default [
             },
             {
               sourceTag: 'type:feature',
+              onlyDependOnLibsWithTags: [
+                'type:shared-feature',
+                'type:ui',
+                'type:util',
+                'type:data-access',
+                'type:design-tokens',
+              ],
+            },
+            // A self-contained piece of one feature (with its own data calls)
+            // that other features embed, e.g. the invoice details drawer.
+            {
+              sourceTag: 'type:shared-feature',
               onlyDependOnLibsWithTags: [
                 'type:ui',
                 'type:util',
