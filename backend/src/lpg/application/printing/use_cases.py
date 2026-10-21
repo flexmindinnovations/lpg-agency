@@ -48,6 +48,28 @@ class PrintJobResult:
     content_type: str
 
 
+@dataclass(frozen=True)
+class RenderedDocument:
+    """A rendered document, ready to stream to the caller."""
+
+    content: bytes
+    content_type: str
+    filename: str
+    key: str
+
+
+class DocumentNotFoundError(Exception):
+    """The document to print does not exist (or is not visible to the caller)."""
+
+
+class UnsupportedDocumentError(Exception):
+    """The requested document type or format cannot be printed."""
+
+
+class StorageNotConfiguredError(Exception):
+    """A stored print job was requested but no file storage is configured."""
+
+
 class GeneratePrintJobUseCase:
     def __init__(
         self,
@@ -57,7 +79,7 @@ class GeneratePrintJobUseCase:
         customer_repository: CustomerRepository,
         cylinder_type_repository: CylinderTypeRepository,
         tenant_repository: TenantRepository,
-        storage: FileStorage,
+        storage: FileStorage | None,
     ) -> None:
         self._engine = printing_engine
         self._invoice_repo = invoice_repository
@@ -67,16 +89,39 @@ class GeneratePrintJobUseCase:
         self._storage = storage
 
     async def execute(self, command: PrintJobCommand) -> PrintJobResult:
+        """Render, store in file storage and return a short-lived download URL."""
+        if self._storage is None:
+            msg = "File storage is not configured on this server."
+            raise StorageNotConfiguredError(msg)
+        rendered = await self.render(command)
+        await self._storage.upload(
+            rendered.key, rendered.content, content_type=rendered.content_type
+        )
+        download_url = await self._storage.url(rendered.key, expires_seconds=300)
+        _logger.info(
+            "print_job_completed",
+            document_type=command.document_type,
+            document_id=str(command.document_id),
+            format=command.output_format,
+        )
+        return PrintJobResult(
+            download_url=download_url,
+            output_format=command.output_format.value,
+            content_type=rendered.content_type,
+        )
+
+    async def render(self, command: PrintJobCommand) -> RenderedDocument:
+        """Render the document in memory. Needs no file storage."""
         if command.document_type == "invoice":
             return await self._render_invoice(command)
         msg = f"Unsupported document type: {command.document_type}"
-        raise ValueError(msg)
+        raise UnsupportedDocumentError(msg)
 
-    async def _render_invoice(self, command: PrintJobCommand) -> PrintJobResult:
+    async def _render_invoice(self, command: PrintJobCommand) -> RenderedDocument:
         invoice = await self._invoice_repo.get_by_id(command.document_id)
         if invoice is None:
-            msg = f"Invoice {command.document_id} not found"
-            raise ValueError(msg)
+            msg = "Invoice not found"
+            raise DocumentNotFoundError(msg)
 
         customer = await self._customer_repo.get_by_id(invoice.customer_id)
         customer_info = self._build_customer_info(
@@ -104,40 +149,29 @@ class GeneratePrintJobUseCase:
             issued_at=invoice.issued_at,
             qr_code_data=f"lpg-invoice:{invoice.id}",
         )
+        stem = invoice.invoice_number or str(invoice.id)
 
         if command.output_format == PrintFormat.PDF:
-            pdf_bytes = self._engine.render_invoice_pdf(payload)
-            key = f"print-jobs/{invoice.id}.pdf"
-            content_type = "application/pdf"
-            await self._storage.upload(key, pdf_bytes, content_type=content_type)
-        elif command.output_format == PrintFormat.THERMAL:
+            return RenderedDocument(
+                content=self._engine.render_invoice_pdf(payload),
+                content_type="application/pdf",
+                filename=f"{stem}.pdf",
+                key=f"print-jobs/{invoice.id}.pdf",
+            )
+        if command.output_format == PrintFormat.THERMAL:
             # Wrapped as a print-ready HTML page (Print/Close controls,
-            # receipt-styled `<pre>`) rather than raw `text/plain` — see
+            # receipt-styled `<pre>`) rather than raw `text/plain` - see
             # `render_invoice_thermal_html`. The underlying plain-text
             # layout (`render_invoice_thermal`) stays the source of truth
             # for a future raw ESC/POS byte-stream path to a real printer.
-            thermal_bytes = self._engine.render_invoice_thermal_html(payload)
-            key = f"print-jobs/{invoice.id}.html"
-            content_type = "text/html"
-            await self._storage.upload(key, thermal_bytes, content_type=content_type)
-        else:
-            msg = f"Unsupported format: {command.output_format}"  # type: ignore[unreachable]
-            raise ValueError(msg)
-
-        download_url = await self._storage.url(key, expires_seconds=300)
-
-        _logger.info(
-            "print_job_completed",
-            document_type=command.document_type,
-            document_id=str(command.document_id),
-            format=command.output_format,
-        )
-
-        return PrintJobResult(
-            download_url=download_url,
-            output_format=command.output_format.value,
-            content_type=content_type,
-        )
+            return RenderedDocument(
+                content=self._engine.render_invoice_thermal_html(payload),
+                content_type="text/html; charset=utf-8",
+                filename=f"{stem}.html",
+                key=f"print-jobs/{invoice.id}.html",
+            )
+        msg = f"Unsupported format: {command.output_format}"  # type: ignore[unreachable]
+        raise UnsupportedDocumentError(msg)
 
     async def _build_line_items(self, invoice: Invoice) -> list[PrintLineItem]:
         # Resolve each distinct cylinder type once, even if it appears on

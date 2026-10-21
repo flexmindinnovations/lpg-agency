@@ -21542,7 +21542,8 @@
     },
     "/api/v1/print-jobs": {
       "post": {
-        "description": "Generate a printable document and return a download URL.",
+        "deprecated": true,
+        "description": "Render, store in file storage and return a download URL.\n\nDeprecated: use ``POST /print-jobs/document``, which needs no file storage.",
         "operationId": "create_print_job_api_v1_print_jobs_post",
         "requestBody": {
           "content": {
@@ -21577,6 +21578,45 @@
           }
         },
         "summary": "Create Print Job",
+        "tags": [
+          "Printing"
+        ]
+      }
+    },
+    "/api/v1/print-jobs/document": {
+      "post": {
+        "description": "Render a printable document and return it directly. Needs no file storage.",
+        "operationId": "render_print_document_api_v1_print_jobs_document_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrintJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {},
+              "text/html": {}
+            },
+            "description": "The rendered document itself (PDF, or an HTML receipt for thermal)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Render Print Document",
         "tags": [
           "Printing"
         ]

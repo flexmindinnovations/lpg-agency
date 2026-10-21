@@ -1195,6 +1195,8 @@ export class OrderDetail implements OnInit {
   // ---- Invoice card: issue / view / print / send -----------------------
 
   protected readonly invoiceBusy = signal(false);
+  /** Print has its own state so it never spins together with Issue or Send. */
+  protected readonly invoicePrinting = signal(false);
   protected readonly canSeeInvoices = computed(
     () => this.auth.principal()?.permissions.has('invoices:read') ?? false,
   );
@@ -1226,10 +1228,20 @@ export class OrderDetail implements OnInit {
   }
 
   protected printInvoice(invoice: InvoiceResponse): void {
-    this.invoiceBusy.set(true);
-    this.printingService.printInvoicePdf(invoice.invoice_id).subscribe({
-      next: () => this.invoiceBusy.set(false),
-      error: () => this.invoiceBusy.set(false),
+    if (this.invoicePrinting()) return;
+    // Open the tab inside the click so pop-up blockers allow it.
+    const tab = this.printingService.openPendingTab();
+    this.invoicePrinting.set(true);
+    this.printingService.renderInvoice(invoice.invoice_id, 'pdf').subscribe({
+      next: (blob) => {
+        this.invoicePrinting.set(false);
+        this.printingService.showInTab(blob, tab, `${invoice.invoice_number ?? 'invoice'}.pdf`);
+      },
+      // The failed POST already toasts the server's message.
+      error: () => {
+        this.invoicePrinting.set(false);
+        tab?.close();
+      },
     });
   }
 

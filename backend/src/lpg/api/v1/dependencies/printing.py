@@ -29,8 +29,8 @@ async def get_printing_use_case(
 
     state = get_app_state()
     engine = Xhtml2pdfPrintingEngine()
-    if state.storage is None:
-        raise RuntimeError("Storage is not configured")
+    # Storage is only needed by the stored-job endpoint; rendering a document
+    # for direct download works without it.
     return GeneratePrintJobUseCase(
         printing_engine=engine,
         invoice_repository=invoice_repo,

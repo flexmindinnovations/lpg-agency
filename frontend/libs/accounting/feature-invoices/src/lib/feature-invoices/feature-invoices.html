@@ -371,20 +371,20 @@
         pButton
         type="button"
         severity="secondary"
-        [disabled]="isPrinting()"
+        [disabled]="printingFormat() !== null"
         (click)="printPdf()"
       >
-        <i [class]="isPrinting() ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
+        <i [class]="printingFormat() === 'pdf' ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
         <span>Print PDF</span>
       </button>
       <button
         pButton
         type="button"
         severity="secondary"
-        [disabled]="isPrinting()"
+        [disabled]="printingFormat() !== null"
         (click)="printThermal()"
       >
-        <i [class]="isPrinting() ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
+        <i [class]="printingFormat() === 'thermal' ? 'pi pi-spin pi-spinner' : 'pi pi-print'"></i>
         <span>Print Thermal</span>
       </button>
     </div>
