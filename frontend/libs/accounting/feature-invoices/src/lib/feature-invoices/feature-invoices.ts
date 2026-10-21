@@ -37,7 +37,7 @@ import {
   formatCurrencyInr,
   FormFieldComponent,
 } from '@lpg/shared/ui';
-import { LpgDatePipe, PERMISSION_CHECKER, formatDisplayDate } from '@lpg/shared/util';
+import { LpgDatePipe, LpgDateTimePipe, PERMISSION_CHECKER, formatDisplayDate } from '@lpg/shared/util';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminCylinderTypeService,
@@ -75,6 +75,7 @@ const REFERENCE_REQUIRED: ReadonlySet<StaffPaymentMethod> = new Set(['cheque', '
     DataGridComponent,
     PreviewDialog,
     LpgDatePipe,
+    LpgDateTimePipe,
     CurrencyPipe,
     FormsModule,
     ReactiveFormsModule,

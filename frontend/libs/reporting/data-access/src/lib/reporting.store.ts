@@ -178,7 +178,7 @@ export const ReportingStore = signalStore(
               tapResponse({
                 next: (gstr1) => patchState(store, { gstr1, loading: false }),
                 error: (error: unknown) =>
-                  patchState(store, { error: messageOf(error), loading: false }),
+                  patchState(store, { error: loadErrorMessage(error), loading: false }),
               }),
             ),
         ),

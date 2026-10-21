@@ -258,7 +258,7 @@
           <div class="line-info">
             <span class="line-name">{{ paymentMethodLabel(payment.method) }}</span>
             <span class="line-qty"
-              >{{ payment.collected_at | date:'d MMM y, h:mm a' }}{{ payment.reference ? ' · Ref ' +
+              >{{ payment.collected_at | lpgDateTime }}{{ payment.reference ? ' · Ref ' +
               payment.reference : '' }}</span
             >
           </div>
@@ -416,7 +416,7 @@
     <div class="preview-grid">
       <div class="info-item">
         <span class="info-label">Requested Date</span>
-        <span class="info-value">{{ o.requested_date | date:'mediumDate' }}</span>
+        <span class="info-value">{{ o.requested_date | lpgDate }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">Booking Source</span>
