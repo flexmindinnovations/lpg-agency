@@ -273,7 +273,7 @@
                 <th style="width:24%;">Description</th>
                 <th style="width:10%;">HSN</th>
                 <th class="right" style="width:6%;">Qty</th>
-                <th class="right" style="width:12%;">Rate</th>
+                <th class="right" style="width:12%;">{% if payload.prices_include_gst %}Rate (incl. GST){% else %}Rate{% endif %}</th>
                 <th class="right" style="width:13%;">Taxable value</th>
                 <th class="right" style="width:7%;">GST %</th>
                 {% if payload.is_inter_state %}
@@ -330,6 +330,11 @@
                 <td class="label">Total</td>
                 <td class="value">{{ currency_symbol }}{{ "{:,.2f}".format(payload.total_amount) }}</td>
             </tr>
+            {% if payload.prices_include_gst %}
+            <tr>
+                <td class="label" colspan="2">Prices include GST</td>
+            </tr>
+            {% endif %}
             {% if payload.amount_paid > 0 %}
             <tr>
                 <td class="label">Paid</td>

@@ -74,3 +74,14 @@ class InvoicePrintPayload(BaseModel):
     payment_status: str
     issued_at: datetime
     qr_code_data: str = ""  # The string to encode as QR — typically a URL or reference
+
+    @property
+    def prices_include_gst(self) -> bool:
+        """True when the line rates are GST-inclusive (`prices_include_gst`):
+        every taxed line's total is exactly rate x quantity. Read from the
+        stored amounts, so a reprint states what was actually invoiced.
+        """
+        taxed = [item for item in self.line_items if item.tax_amount > 0]
+        return bool(taxed) and all(
+            item.unit_price * item.quantity == item.total_amount for item in taxed
+        )

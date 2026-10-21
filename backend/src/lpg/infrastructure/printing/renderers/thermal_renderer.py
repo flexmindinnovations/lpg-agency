@@ -82,6 +82,8 @@ def render_invoice_thermal(payload: InvoicePrintPayload, *, width: int = _LINE_W
         lines.append(f"{'CGST:':<{label_w}}{payload.cgst_amount:>{amt_w}.2f}")
         lines.append(f"{'SGST:':<{label_w}}{payload.sgst_amount:>{amt_w}.2f}")
     lines.append(f"{'TOTAL:':<{label_w}}{payload.total_amount:>{amt_w}.2f}")
+    if payload.prices_include_gst:
+        lines.append("(Prices include GST)")
     if payload.amount_paid > 0:
         lines.append(f"{'Paid:':<{label_w}}{payload.amount_paid:>{amt_w}.2f}")
         lines.append(f"{'Balance due:':<{label_w}}{payload.balance_due:>{amt_w}.2f}")

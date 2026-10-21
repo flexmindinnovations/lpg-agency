@@ -177,3 +177,41 @@ def test_render_cylinder_label_pdf() -> None:
     assert isinstance(label_pdf, bytes)
     assert len(label_pdf) > 500
     assert label_pdf[:5] == b"%PDF-"
+
+
+def _inclusive_payload() -> InvoicePrintPayload:
+    """2 x Rs.900 at 18% with GST-inclusive prices: total is exactly Rs.1800."""
+    base = _make_payload()
+    line = base.line_items[0].model_copy(
+        update={
+            "subtotal": Decimal("1525.42"),
+            "tax_amount": Decimal("274.58"),
+            "total_amount": Decimal("1800.00"),
+        }
+    )
+    return base.model_copy(
+        update={
+            "line_items": [line],
+            "subtotal": Decimal("1525.42"),
+            "tax_amount": Decimal("274.58"),
+            "cgst_amount": Decimal("137.29"),
+            "sgst_amount": Decimal("137.29"),
+            "total_amount": Decimal("1800.00"),
+        }
+    )
+
+
+def test_print_states_when_prices_include_gst() -> None:
+    engine = Xhtml2pdfPrintingEngine()
+    inclusive = _inclusive_payload()
+    assert inclusive.prices_include_gst is True
+    assert _make_payload().prices_include_gst is False
+
+    text = engine.render_invoice_thermal(inclusive).decode("utf-8")
+    assert "1800.00" in text
+    assert "1525.42" in text
+    assert "(Prices include GST)" in text
+    assert "Prices include GST" not in engine.render_invoice_thermal(_make_payload()).decode(
+        "utf-8"
+    )
+    assert engine.render_invoice_pdf(inclusive)[:5] == b"%PDF-"
