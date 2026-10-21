@@ -200,6 +200,16 @@ SPECS: dict[str, NotificationSpec] = {
         email=True,
         push=True,
     ),
+    "invoice_sent": NotificationSpec(
+        title="Your invoice",
+        body=lambda f: (
+            f"Invoice{(' ' + f['invoice_ref']) if f.get('invoice_ref') else ''} "
+            f"for {_order(f)} was sent to you."
+        ),
+        audience=Audience.CUSTOMER,
+        email=True,
+        push=True,
+    ),
     "payment_received_customer": NotificationSpec(
         title="Payment received",
         body=lambda f: (

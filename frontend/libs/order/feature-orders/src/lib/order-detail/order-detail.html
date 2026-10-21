@@ -13,138 +13,131 @@
         }
       </div>
     </ng-template>
-    @if (order(); as o) {
-    <div class="page-header__actions">
-      <button pButton type="button" text severity="secondary" (click)="backToQueue()">
-        <i class="pi pi-arrow-left"></i>
-        <span>Back</span>
-      </button>
-      <div class="page-header__actions-buttons">
-        @if (canConfirm()) {
-        <button
-          *lpgHasPermission="'orders:confirm'"
-          pButton
-          type="button"
-          [disabled]="loading()"
-          (click)="onConfirm()"
-        >
-          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i>
-          <span>Confirm</span>
-        </button>
-        } @if (canSendOut()) {
-        <button
-          *lpgHasPermission="'routes:manage'"
-          #sendOutTriggerEl
-          pButton
-          type="button"
-          (click)="openSendOutDrawer()"
-        >
-          <i class="pi pi-truck"></i>
-          <span>Send out</span>
-        </button>
-        } @if (canDepart()) {
-        <button
-          *lpgHasPermission="'orders:deliver'"
-          pButton
-          type="button"
-          [disabled]="loading()"
-          (click)="onDepart()"
-        >
-          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-send'"></i>
-          <span>Depart</span>
-        </button>
-        } @if (canDeliverOrFail()) {
-        <button
-          *lpgHasPermission="'orders:deliver'"
-          #deliverTriggerEl
-          pButton
-          type="button"
-          (click)="openDeliverDrawer()"
-        >
-          <i class="pi pi-verified"></i>
-          <span>Deliver</span>
-        </button>
-        <button
-          *lpgHasPermission="'orders:deliver'"
-          #failedDeliveryTriggerEl
-          pButton
-          type="button"
-          severity="warn"
-          (click)="openFailedDeliveryDrawer()"
-        >
-          <i class="pi pi-exclamation-triangle"></i>
-          <span>Failed Delivery</span>
-        </button>
-        } @if (canAmend()) {
-        <button
-          *lpgHasPermission="'orders:confirm'"
-          pButton
-          type="button"
-          severity="secondary"
-          (click)="openAmendDrawer()"
-        >
-          <i class="pi pi-pencil"></i>
-          <span>Edit booking</span>
-        </button>
-        } @if (canReschedule()) {
-        <button
-          *lpgHasPermission="'orders:dispatch'"
-          pButton
-          type="button"
-          [disabled]="loading()"
-          (click)="openRescheduleDrawer()"
-        >
-          <i class="pi pi-calendar"></i>
-          <span>Reschedule</span>
-        </button>
-        } @if (canClose()) {
-        <button
-          *lpgHasPermission="'orders:close'"
-          pButton
-          type="button"
-          [disabled]="loading()"
-          (click)="onClose()"
-        >
-          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-lock'"></i>
-          <span>Close Order</span>
-        </button>
-        } @if (canCancelFree() || requiresCancelApproval()) {
-        <button
-          *lpgHasPermission="'orders:cancel'"
-          pButton
-          type="button"
-          severity="danger"
-          (click)="openCancelDialog()"
-        >
-          <i class="pi pi-times"></i>
-          <span>Cancel Order</span>
-        </button>
-        } @if (canApproveCancellation()) {
-        <button
-          *lpgHasPermission="'orders:cancel_approve'"
-          pButton
-          type="button"
-          (click)="onApproveCancellation()"
-        >
-          <i class="pi pi-check"></i>
-          <span>Approve Cancellation</span>
-        </button>
-        <button
-          *lpgHasPermission="'orders:cancel_approve'"
-          pButton
-          type="button"
-          severity="danger"
-          [outlined]="true"
-          (click)="openRejectCancelDrawer()"
-        >
-          <i class="pi pi-ban"></i>
-          <span>Reject request</span>
-        </button>
-        }
-      </div>
-    </div>
-    }
   </div>
+
+  <ng-template lpgPageActions>
+    @if (order()) { @if (canConfirm()) {
+    <button
+      *lpgHasPermission="'orders:confirm'"
+      pButton
+      type="button"
+      [disabled]="loading()"
+      (click)="onConfirm()"
+    >
+      <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-check'"></i>
+      <span>Confirm</span>
+    </button>
+    } @if (canSendOut()) {
+    <button
+      *lpgHasPermission="'routes:manage'"
+      #sendOutTriggerEl
+      pButton
+      type="button"
+      (click)="openSendOutDrawer()"
+    >
+      <i class="pi pi-truck"></i>
+      <span>Send out</span>
+    </button>
+    } @if (canDepart()) {
+    <button
+      *lpgHasPermission="'orders:deliver'"
+      pButton
+      type="button"
+      [disabled]="loading()"
+      (click)="onDepart()"
+    >
+      <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-send'"></i>
+      <span>Depart</span>
+    </button>
+    } @if (canDeliverOrFail()) {
+    <button
+      *lpgHasPermission="'orders:deliver'"
+      #deliverTriggerEl
+      pButton
+      type="button"
+      (click)="openDeliverDrawer()"
+    >
+      <i class="pi pi-verified"></i>
+      <span>Deliver</span>
+    </button>
+    <button
+      *lpgHasPermission="'orders:deliver'"
+      #failedDeliveryTriggerEl
+      pButton
+      type="button"
+      severity="warn"
+      (click)="openFailedDeliveryDrawer()"
+    >
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>Failed Delivery</span>
+    </button>
+    } @if (canAmend()) {
+    <button
+      *lpgHasPermission="'orders:confirm'"
+      pButton
+      type="button"
+      severity="secondary"
+      (click)="openAmendDrawer()"
+    >
+      <i class="pi pi-pencil"></i>
+      <span>Edit booking</span>
+    </button>
+    } @if (canReschedule()) {
+    <button
+      *lpgHasPermission="'orders:dispatch'"
+      pButton
+      type="button"
+      [disabled]="loading()"
+      (click)="openRescheduleDrawer()"
+    >
+      <i class="pi pi-calendar"></i>
+      <span>Reschedule</span>
+    </button>
+    } @if (canClose()) {
+    <button
+      *lpgHasPermission="'orders:close'"
+      pButton
+      type="button"
+      [disabled]="loading()"
+      (click)="onClose()"
+    >
+      <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-lock'"></i>
+      <span>Close Order</span>
+    </button>
+    } @if (canCancelFree() || requiresCancelApproval()) {
+    <button
+      *lpgHasPermission="'orders:cancel'"
+      pButton
+      type="button"
+      severity="danger"
+      (click)="openCancelDialog()"
+    >
+      <i class="pi pi-times"></i>
+      <span>Cancel Order</span>
+    </button>
+    } @if (canApproveCancellation()) {
+    <button
+      *lpgHasPermission="'orders:cancel_approve'"
+      pButton
+      type="button"
+      (click)="onApproveCancellation()"
+    >
+      <i class="pi pi-check"></i>
+      <span>Approve Cancellation</span>
+    </button>
+    <button
+      *lpgHasPermission="'orders:cancel_approve'"
+      pButton
+      type="button"
+      severity="danger"
+      [outlined]="true"
+      (click)="openRejectCancelDrawer()"
+    >
+      <i class="pi pi-ban"></i>
+      <span>Reject request</span>
+    </button>
+    } }
+  </ng-template>
 
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
@@ -205,7 +198,7 @@
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Requested Date</span>
-      <span>{{ o.requested_date | date: 'dd/MM/yyyy' }}</span>
+      <span>{{ o.requested_date | lpgDate }}</span>
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Delivery Address</span>
@@ -259,7 +252,7 @@
   <div class="detail-grid">
     <div class="detail-field">
       <span class="detail-field__label">Delivered</span>
-      <span>{{ pod.recorded_at | date: 'dd/MM/yyyy, h:mm a' }}</span>
+      <span>{{ pod.recorded_at | lpgDateTime }}</span>
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Collected</span>
@@ -269,7 +262,7 @@
     </div>
     <div class="detail-field">
       <span class="detail-field__label">OTP checked</span>
-      <span>{{ pod.otp_verified_at | date: 'dd/MM/yyyy, h:mm a' }}</span>
+      <span>{{ pod.otp_verified_at | lpgDateTime }}</span>
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Location</span>
@@ -316,7 +309,7 @@
         <i class="pi pi-arrow-right"></i>
         {{ statusLabel(entry.to_status) }}
       </span>
-      <span class="timeline__when">{{ entry.changed_at | date: 'medium' }}</span>
+      <span class="timeline__when">{{ entry.changed_at | lpgDateTime }}</span>
       @if (entry.reason) {
       <span class="timeline__reason">{{ entry.reason }}</span>
       }

@@ -26,7 +26,7 @@ import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminStaffUserService,
   CustomerService,
@@ -94,6 +94,7 @@ function lowerKeys(record: Record<string, string>): Record<string, string> {
 @Component({
   selector: 'lib-feature-complaints',
   imports: [
+    PageActionsDirective,
     DatePipe,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,

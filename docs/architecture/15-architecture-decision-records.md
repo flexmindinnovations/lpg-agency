@@ -1498,6 +1498,21 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 - Status chips colour only from `--component-chip-*` tokens.
 - List pages show failures through `lpg-data-grid`'s `[error]`/`(retry)`, never an empty grid.
 
+## ADR-064: Standard Dashboard Page Layout (Amends ADR-063)
+
+**Status:** Accepted
+
+**Context:** Pages placed their buttons, filters and pagers differently. Back buttons duplicated the breadcrumb, the invoices pager overlapped the table, filter controls had different heights, and one banner per held invoice pushed the table off screen.
+
+**Decision:**
+- Page actions (New, Register, Send out, Cancel, ...) go in `<ng-template lpgPageActions>`; the shell renders them right-aligned in the breadcrumb row. There is no Back button: the breadcrumb is the way back.
+- Filters sit in one `.data-toolbar` row of unlabelled controls (name in placeholder and `aria-label`), all `--component-control-height` tall: search first, then selects and `lpg-date-range-filter`, a text "Clear filters" button, and `lpg-export-button` (icon with tooltip) at the far end.
+- Server-paged lists pass `totalRecords`, `page`, `serverPageSize` and `(pageChange)` to `lpg-data-grid`, which renders the pager inside its own card footer. A separate `p-paginator` under a grid is not used.
+- Alerts that scale with data (invoices waiting to be issued) show one slim banner with a "View all" dialog, never a list.
+- An order page shows its invoice: issue (when delivered and none exists), view, print PDF, and send to the customer (`POST /invoices/{id}/send`, event `InvoiceSentToCustomer`, notification `invoice_sent`).
+
+**Consequences:** Filter and button heights match across pages; every list page migrated in one change. New pages follow the same pattern.
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1561,6 +1576,7 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 061 | In-app notifications written after commit; WebSocket first-frame auth | Accepted |
 | 062 | Customer-readable delivery code, support contacts, payment availability for apps | Accepted |
 | 063 | Dashboard-wide UI conventions (amends 028) | Accepted |
+| 064 | Standard dashboard page layout (amends 063) | Accepted |
 
 ## Deferred Decisions
 

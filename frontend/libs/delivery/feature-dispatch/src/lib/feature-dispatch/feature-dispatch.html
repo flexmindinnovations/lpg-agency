@@ -14,41 +14,37 @@
   <p-message severity="success">{{ msg }}</p-message>
   }
 
+  <ng-template lpgPageActions>
+    <button #newTripTriggerEl pButton type="button" (click)="openNewTrip()">
+      <i class="pi pi-plus"></i>
+      <span>New trip</span>
+    </button>
+  </ng-template>
   <div class="data-toolbar">
     <div class="filters-row data-toolbar__filters">
-      <lpg-form-field class="filters-row__field" label="Branch" for="filter_branch">
-        <p-select
-          inputId="filter_branch"
-          [options]="branches()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="All branches"
-          [showClear]="true"
-          [ngModel]="filterBranchId()"
-          (ngModelChange)="onFilterBranchChange($event)"
-          [fluid]="true"
-        />
-      </lpg-form-field>
-      <lpg-form-field class="filters-row__field" label="Date" for="filter_date">
-        <p-datepicker
-          inputId="filter_date"
-          iconDisplay="input"
-          [showIcon]="true"
-          [showOnFocus]="false"
-          [showButtonBar]="true"
-          placeholder="All dates"
-          appendTo="body"
-          [ngModel]="filterDate()"
-          (ngModelChange)="onFilterDateChange($event)"
-          [fluid]="true"
-        />
-      </lpg-form-field>
-    </div>
-    <div class="data-toolbar__actions">
-      <button #newTripTriggerEl pButton type="button" (click)="openNewTrip()">
-        <i class="pi pi-plus"></i>
-        <span>New trip</span>
-      </button>
+      <p-select
+        ariaLabel="Branch"
+        inputId="filter_branch"
+        [options]="branches()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="All branches"
+        [showClear]="true"
+        [ngModel]="filterBranchId()"
+        (ngModelChange)="onFilterBranchChange($event)"
+      />
+      <p-datepicker
+        ariaLabel="Date"
+        inputId="filter_date"
+        iconDisplay="input"
+        [showIcon]="true"
+        [showOnFocus]="false"
+        [showButtonBar]="true"
+        placeholder="All dates"
+        appendTo="body"
+        [ngModel]="filterDate()"
+        (ngModelChange)="onFilterDateChange($event)"
+      />
     </div>
   </div>
 
@@ -154,68 +150,64 @@
       </div>
       } @else {
       <div class="trip-grid">
-        <lpg-form-field label="Driver" for="trip_driver">
-          <p-select
-            inputId="trip_driver"
-            name="trip_driver"
-            optionDisabled="disabled"
-            [options]="driverOptions()"
-            optionLabel="label"
-            optionValue="id"
-            placeholder="Select a driver"
-            [filter]="true"
-            [ngModel]="tripDriverId()"
-            (ngModelChange)="onTripDriverChange($event)"
-            [fluid]="true"
-            [appendTo]="'body'"
-          />
-        </lpg-form-field>
-        <lpg-form-field label="Vehicle" for="trip_vehicle">
-          <p-select
-            inputId="trip_vehicle"
-            name="trip_vehicle"
-            optionDisabled="disabled"
-            [options]="vehicleOptions()"
-            optionLabel="label"
-            optionValue="id"
-            placeholder="Select a vehicle"
-            [filter]="true"
-            [ngModel]="tripVehicleId()"
-            (ngModelChange)="onTripVehicleChange($event)"
-            [fluid]="true"
-            [appendTo]="'body'"
-          />
-        </lpg-form-field>
-        <lpg-form-field label="Date" for="trip_date">
-          <p-datepicker
-            inputId="trip_date"
-            name="trip_date"
-            iconDisplay="input"
-            [showIcon]="true"
-            [showOnFocus]="false"
-            appendTo="body"
-            [ngModel]="tripDate()"
-            (ngModelChange)="tripDate.set($event ?? tripDate())"
-            [fluid]="true"
-          />
-        </lpg-form-field>
+        <p-select
+          ariaLabel="Driver"
+          inputId="trip_driver"
+          name="trip_driver"
+          optionDisabled="disabled"
+          [options]="driverOptions()"
+          optionLabel="label"
+          optionValue="id"
+          placeholder="Select a driver"
+          [filter]="true"
+          [ngModel]="tripDriverId()"
+          (ngModelChange)="onTripDriverChange($event)"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+        <p-select
+          ariaLabel="Vehicle"
+          inputId="trip_vehicle"
+          name="trip_vehicle"
+          optionDisabled="disabled"
+          [options]="vehicleOptions()"
+          optionLabel="label"
+          optionValue="id"
+          placeholder="Select a vehicle"
+          [filter]="true"
+          [ngModel]="tripVehicleId()"
+          (ngModelChange)="onTripVehicleChange($event)"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
+        <p-datepicker
+          ariaLabel="Date"
+          inputId="trip_date"
+          name="trip_date"
+          iconDisplay="input"
+          [showIcon]="true"
+          [showOnFocus]="false"
+          appendTo="body"
+          [ngModel]="tripDate()"
+          (ngModelChange)="tripDate.set($event ?? tripDate())"
+          [fluid]="true"
+        />
         @if (branches().length > 1) {
-        <lpg-form-field label="Branch" for="trip_branch">
-          <p-select
-            inputId="trip_branch"
-            name="trip_branch"
-            ariaLabel="Branch"
-            [options]="branches()"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Select a branch"
-            ariaLabel="Branch"
-            [ngModel]="tripBranchId()"
-            (ngModelChange)="onTripBranchChange($event)"
-            [fluid]="true"
-            [appendTo]="'body'"
-          />
-        </lpg-form-field>
+        <p-select
+          ariaLabel="Branch"
+          inputId="trip_branch"
+          name="trip_branch"
+          ariaLabel="Branch"
+          [options]="branches()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select a branch"
+          ariaLabel="Branch"
+          [ngModel]="tripBranchId()"
+          (ngModelChange)="onTripBranchChange($event)"
+          [fluid]="true"
+          [appendTo]="'body'"
+        />
         }
       </div>
       }
@@ -263,21 +255,20 @@
       </div>
 
       <h3 class="section-title">3. Load the van</h3>
-      <lpg-form-field label="Load from godown" for="trip_warehouse">
-        <p-select
-          inputId="trip_warehouse"
-          name="trip_warehouse"
-          [options]="tripWarehouseOptions()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Select a godown"
-          ariaLabel="Load from godown"
-          [ngModel]="tripWarehouseId()"
-          (ngModelChange)="onTripWarehouseChange($event)"
-          [fluid]="true"
-          [appendTo]="'body'"
-        />
-      </lpg-form-field>
+      <p-select
+        ariaLabel="Load from godown"
+        inputId="trip_warehouse"
+        name="trip_warehouse"
+        [options]="tripWarehouseOptions()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select a godown"
+        ariaLabel="Load from godown"
+        [ngModel]="tripWarehouseId()"
+        (ngModelChange)="onTripWarehouseChange($event)"
+        [fluid]="true"
+        [appendTo]="'body'"
+      />
       <div class="load-sheet-wrap">
         <table class="load-sheet">
           <thead>
@@ -488,67 +479,39 @@
         class="dialog-form dialog-form--inline"
       >
         <div class="dialog-form__fields">
-          <lpg-form-field
-            label="Cylinder type"
-            for="wt_cylinder_type"
-            [control]="loadOutWeighmentForm.controls.cylinder_type_id"
-            [messages]="fieldMessages.cylinder_type_id"
-          >
-            <p-select
-              inputId="wt_cylinder_type"
-              formControlName="cylinder_type_id"
-              [options]="cylinderTypes()"
-              optionLabel="name"
-              optionValue="id"
-              [fluid]="true"
-              [appendTo]="'body'"
-            />
-          </lpg-form-field>
-          <lpg-form-field
-            label="Scale used"
-            for="wt_scale"
-            [control]="loadOutWeighmentForm.controls.scale_id"
-            [messages]="fieldMessages.scale_id"
-            [hint]="activeScaleOptions().length === 0 ? 'No active certified scale registered yet.' : ''"
-          >
-            <p-select
-              inputId="wt_scale"
-              formControlName="scale_id"
-              [options]="activeScaleOptions()"
-              optionLabel="label"
-              optionValue="id"
-              placeholder="Select a scale"
-              [fluid]="true"
-              [appendTo]="'body'"
-            />
-          </lpg-form-field>
-          <lpg-form-field
-            label="Cylinders checked (100% of this type)"
-            for="wt_total"
-            [control]="loadOutWeighmentForm.controls.total_cylinders"
-            [messages]="fieldMessages.total_cylinders"
-          >
-            <p-inputnumber
-              inputId="wt_total"
-              formControlName="total_cylinders"
-              [min]="1"
-              [fluid]="true"
-            />
-          </lpg-form-field>
-          <lpg-form-field
-            label="Underweight cylinders found"
-            for="wt_underweight"
-            [control]="loadOutWeighmentForm.controls.underweight_cylinder_count"
-            [messages]="fieldMessages.underweight_cylinder_count"
-            hint="Any underweight cylinder is segregated and returned in the same truck."
-          >
-            <p-inputnumber
-              inputId="wt_underweight"
-              formControlName="underweight_cylinder_count"
-              [min]="0"
-              [fluid]="true"
-            />
-          </lpg-form-field>
+          <p-select
+            ariaLabel="Cylinder type"
+            inputId="wt_cylinder_type"
+            formControlName="cylinder_type_id"
+            [options]="cylinderTypes()"
+            optionLabel="name"
+            optionValue="id"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+          <p-select
+            ariaLabel="Scale used"
+            inputId="wt_scale"
+            formControlName="scale_id"
+            [options]="activeScaleOptions()"
+            optionLabel="label"
+            optionValue="id"
+            placeholder="Select a scale"
+            [fluid]="true"
+            [appendTo]="'body'"
+          />
+          <p-inputnumber
+            inputId="wt_total"
+            formControlName="total_cylinders"
+            [min]="1"
+            [fluid]="true"
+          />
+          <p-inputnumber
+            inputId="wt_underweight"
+            formControlName="underweight_cylinder_count"
+            [min]="0"
+            [fluid]="true"
+          />
         </div>
         <div class="modal-actions">
           <button
@@ -580,22 +543,15 @@
         class="dialog-form dialog-form--inline"
       >
         <div class="dialog-form__fields">
-          <lpg-form-field
-            label="Cash amount handed over"
-            for="cash_handover_amount"
-            [control]="cashHandoverForm.controls.actual_amount"
-            [messages]="fieldMessages.actual_amount"
-          >
-            <p-inputnumber
-              inputId="cash_handover_amount"
-              formControlName="actual_amount"
-              mode="currency"
-              currency="INR"
-              locale="en-IN"
-              [min]="0"
-              [fluid]="true"
-            />
-          </lpg-form-field>
+          <p-inputnumber
+            inputId="cash_handover_amount"
+            formControlName="actual_amount"
+            mode="currency"
+            currency="INR"
+            locale="en-IN"
+            [min]="0"
+            [fluid]="true"
+          />
         </div>
 
         <div class="modal-actions">

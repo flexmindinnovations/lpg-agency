@@ -53,6 +53,8 @@ from lpg.application.accounting.use_cases import (
     RecordPaymentUseCase,
     RequestRefundCommand,
     RequestRefundUseCase,
+    SendInvoiceToCustomerCommand,
+    SendInvoiceToCustomerUseCase,
 )
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
@@ -340,6 +342,30 @@ async def record_payment(
             collected_at=datetime.now(UTC),
             reference=request.reference,
         )
+    )
+    return await _with_customer_name(invoice, repository)
+
+
+@router.post(
+    "/{invoice_id}/send",
+    response_model=InvoiceResponse,
+    summary="Send an invoice to the customer",
+    dependencies=[Depends(require_permission("invoices:issue"))],
+)
+async def send_invoice(
+    invoice_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[InvoiceRepository, Depends(get_invoice_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> InvoiceResponse:
+    """Send an issued invoice to the customer by e-mail and push. Can be
+    repeated (a reminder); a cancelled invoice is refused.
+    """
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    use_case = SendInvoiceToCustomerUseCase(repository, unit_of_work)
+    invoice = await use_case.execute(
+        SendInvoiceToCustomerCommand(invoice_id=invoice_id, sent_by=principal.user_id)
     )
     return await _with_customer_name(invoice, repository)
 

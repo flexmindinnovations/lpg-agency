@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, of, type Observable } from 'rxjs';
@@ -70,6 +70,7 @@ class FlagDefaultCell {
   selector: 'lpg-platform-flags-page',
   standalone: true,
   imports: [
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
@@ -95,14 +96,11 @@ class FlagDefaultCell {
         </ng-template>
       </div>
 
-      <div class="data-toolbar">
-        <div class="data-toolbar__filters"></div>
-        <div class="data-toolbar__actions">
-          <button pButton (click)="openCreateDrawer()">
-            <i class="pi pi-plus"></i><span>Create Flag</span>
-          </button>
-        </div>
-      </div>
+      <ng-template lpgPageActions>
+        <button pButton (click)="openCreateDrawer()">
+          <i class="pi pi-plus"></i><span>Create Flag</span>
+        </button>
+      </ng-template>
 
       <section class="grid-section">
         <lpg-data-grid

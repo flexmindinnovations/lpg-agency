@@ -10,11 +10,6 @@
   block-size: 100%;
 }
 
-::ng-deep .expiry-filter-select {
-  flex-shrink: 0;
-  min-inline-size: 14rem;
-}
-
 .detail-view {
   display: flex;
   flex-direction: column;

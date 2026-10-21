@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -75,6 +75,7 @@ const STATUS_SEVERITY: Record<string, ChipSeverity> = {
   selector: 'lib-feature-employees',
   standalone: true,
   imports: [
+    PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,

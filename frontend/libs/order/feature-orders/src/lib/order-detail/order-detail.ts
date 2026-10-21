@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   FormFieldComponent,
   HasPermissionDirective,
@@ -16,14 +16,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
+import { LpgDatePipe, LpgDateTimePipe } from '@lpg/shared/util';
 import {
   FormsModule,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, filter, forkJoin } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
@@ -47,6 +48,7 @@ import {
   CustomerService,
   DeliveryService,
   InvoiceService,
+  PrintingService,
   InventoryService,
   NotifyService,
   OrderService,
@@ -152,8 +154,10 @@ const PAYMENT_METHODS = [
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
+    PageActionsDirective,
     HasPermissionDirective,
-    DatePipe,
+    LpgDatePipe,
+    LpgDateTimePipe,
     DecimalPipe,
     DatePicker,
     RouterLink,
@@ -187,9 +191,9 @@ export class OrderDetail implements OnInit {
   private readonly inventoryService = inject(InventoryService);
   private readonly customerService = inject(CustomerService);
   private readonly invoiceService = inject(InvoiceService);
+  private readonly printingService = inject(PrintingService);
   private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
   private readonly wsService = inject(WebSocketService);
 
@@ -1188,8 +1192,58 @@ export class OrderDetail implements OnInit {
     });
   }
 
-  protected backToQueue(): void {
-    void this.router.navigate(['/orders']);
+  // ---- Invoice card: issue / view / print / send -----------------------
+
+  protected readonly invoiceBusy = signal(false);
+  protected readonly canSeeInvoices = computed(
+    () => this.auth.principal()?.permissions.has('invoices:read') ?? false,
+  );
+  /** Delivered and closed orders always have an invoice (or are waiting for
+   *  one); any other order shows the card only once an invoice exists. */
+  protected readonly invoiceExpected = computed(() => {
+    const status = this.order()?.status;
+    return status === 'delivered' || status === 'closed' || this.invoices().length > 0;
+  });
+
+  protected hasBalance(invoice: InvoiceResponse): boolean {
+    return Number(invoice.balance_due ?? 0) > 0;
+  }
+
+  protected issueInvoice(): void {
+    const orderId = this.order()?.id;
+    if (!orderId) return;
+    this.invoiceBusy.set(true);
+    // A GST_NOT_CONFIGURED refusal is toasted by the global error interceptor
+    // with the backend's own instructions.
+    this.invoiceService.issueForOrder(orderId).subscribe({
+      next: (invoice) => {
+        this.invoiceBusy.set(false);
+        this.invoices.set([invoice]);
+        this.notify.success(`${invoice.invoice_number ?? 'Invoice'} issued.`);
+      },
+      error: () => this.invoiceBusy.set(false),
+    });
+  }
+
+  protected printInvoice(invoice: InvoiceResponse): void {
+    this.invoiceBusy.set(true);
+    this.printingService.printInvoicePdf(invoice.invoice_id).subscribe({
+      next: () => this.invoiceBusy.set(false),
+      error: () => this.invoiceBusy.set(false),
+    });
+  }
+
+  protected sendInvoice(invoice: InvoiceResponse): void {
+    this.invoiceBusy.set(true);
+    this.invoiceService.sendToCustomer(invoice.invoice_id).subscribe({
+      next: () => {
+        this.invoiceBusy.set(false);
+        this.notify.success(
+          `${invoice.invoice_number ?? 'The invoice'} was sent to ${this.order()?.customer?.full_name ?? 'the customer'}.`,
+        );
+      },
+      error: () => this.invoiceBusy.set(false),
+    });
   }
 }
 

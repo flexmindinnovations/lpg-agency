@@ -315,21 +315,22 @@ body {
    DATA TOOLBAR — consistent toolbar above data grids
    ======================================================================== */
 
-/* Bottom-aligned (`flex-end`), not centred: a filter is often a label
-   stacked over its control, and centring the actions against that whole
-   label+control box left them visibly higher than the control they sit
-   beside (Orders' "New Booking" vs its Status select). The actions group is
-   given exactly one control's height, so its buttons centre on the
-   control's own row — and an unlabelled search input lands where `center`
-   always put it.
+/* The filter bar standard (ADR-064). One row of unlabelled controls, every
+   one exactly `--component-control-height` tall and centred on that row:
+   search first (it grows), then selects and the date range (fixed widths),
+   then a text "Clear filters" button, then the export icon
+   (`lpg-export-button`) at the far end. A control's name lives in its
+   placeholder and `aria-label`, never in a label stacked over it — stacked
+   labels made every bar a different height and pushed controls out of line
+   with their neighbours. Page actions (New, Register, Issue…) are not here:
+   they render in the shell's breadcrumb row through `lpgPageActions`.
 
    No margin of its own: page roots are flex columns with their own `gap`,
-   which already separates the toolbar from the grid — a margin here stacked
-   on top of it (32px under the toolbar on most list pages, 16px on the rest).
-   The gap-less `.admin-page` root is the one exception, handled below. */
+   which already separates the toolbar from the grid. The gap-less
+   `.admin-page` root is the one exception, handled below. */
 .data-toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--spacing-sm) var(--spacing-md);
   flex-wrap: wrap;
@@ -341,10 +342,42 @@ body {
 
 .data-toolbar__filters {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
   flex: 1;
+  min-inline-size: 0;
+}
+
+/* Search grows to fill the bar, within reason. */
+.data-toolbar__filters > p-iconfield,
+.data-toolbar__filters > .p-iconfield,
+.data-toolbar__filters > .data-toolbar__search {
+  flex: 1 1 16rem;
+  max-inline-size: 26rem;
+  min-inline-size: 12rem;
+}
+
+.data-toolbar__filters > p-iconfield .p-inputtext,
+.data-toolbar__filters > .data-toolbar__search {
+  inline-size: 100%;
+}
+
+/* Selects share one width so a bar of them reads as a set. */
+.data-toolbar__filters > p-select,
+.data-toolbar__filters > .p-select,
+.data-toolbar__filters > p-multiselect,
+.data-toolbar__filters > p-datepicker {
+  inline-size: 12rem;
+}
+
+.data-toolbar__filters > p-datepicker[selectionmode='range'] {
+  inline-size: 15.5rem;
+}
+
+/* Pushes whatever follows (the export icon) to the bar's far end. */
+.data-toolbar__spacer {
+  flex: 1 1 0;
 }
 
 .data-toolbar__actions {
@@ -357,8 +390,18 @@ body {
 
 /* A button label never breaks mid-label ("Chang / Status"); the row wraps
    whole buttons instead (QA DA-21 at 820px and 390px). */
-.data-toolbar__actions .p-button {
+.data-toolbar .p-button {
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .data-toolbar__filters > p-select,
+  .data-toolbar__filters > .p-select,
+  .data-toolbar__filters > p-multiselect,
+  .data-toolbar__filters > lpg-date-range-filter {
+    flex: 1 1 100%;
+    inline-size: auto;
+  }
 }
 
 /* ========================================================================
@@ -866,6 +909,19 @@ p-toast {
     color var(--motion-duration-small) var(--motion-easing-standard) !important;
 }
 
+/* One control height for every button that stands next to inputs: a page
+   action, a toolbar button, a form or dialog footer button. Buttons inside a
+   grid row or a date picker keep their compact size. */
+.p-button:not(.p-button-sm):not(.p-button-lg):not(.p-button-link) {
+  min-block-size: var(--component-control-height);
+}
+
+.ag-root-wrapper .p-button,
+.p-datepicker-panel .p-button,
+.p-inputnumber .p-button {
+  min-block-size: 0;
+}
+
 /* A restrained press feedback — a small opacity dip, no transform. */
 .p-button:not(:disabled):active {
   opacity: 0.9;
@@ -896,7 +952,8 @@ p-toast {
   border-radius: var(--radius-input) !important;
 }
 
-.p-select .p-select-label {
+.p-select .p-select-label,
+.p-multiselect .p-multiselect-label {
   font-size: var(--typography-body-small-font-size) !important;
   padding: 0.625rem 0.75rem !important;
 }

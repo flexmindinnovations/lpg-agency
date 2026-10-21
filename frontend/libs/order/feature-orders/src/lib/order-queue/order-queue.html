@@ -12,66 +12,61 @@
   <p-message severity="error">{{ msg }}</p-message>
   }
 
+  <ng-template lpgPageActions>
+    <button
+      *lpgHasPermission="'orders:create'"
+      #createTriggerEl
+      pButton
+      type="button"
+      (click)="openCreateDrawer()"
+    >
+      <i class="pi pi-plus"></i>
+      <span>New Booking</span>
+    </button>
+  </ng-template>
   <div class="data-toolbar">
     <div class="filters data-toolbar__filters">
-      <div class="filters__field filters__field--search">
-        <label for="order_search">Search</label>
-        <input
-          pInputText
-          id="order_search"
-          type="search"
-          placeholder="Order no., customer, phone or consumer no."
-          [ngModel]="searchText()"
-          (ngModelChange)="onSearchChange($event)"
-        />
-      </div>
-      <div class="filters__field">
-        <label for="date_filter">Delivery date</label>
-        <p-datepicker
-          inputId="date_filter"
-          selectionMode="range"
-          [dateFormat]="dateInputFormat"
-          [placeholder]="dateInputPlaceholder + ' – ' + dateInputPlaceholder"
-          [showIcon]="true"
-          iconDisplay="input"
-          [showButtonBar]="true"
-          [readonlyInput]="true"
-          appendTo="body"
-          [ngModel]="dateRange()"
-          (ngModelChange)="onDateRangeChange($event)"
-        ></p-datepicker>
-      </div>
-      <div class="filters__field">
-        <label for="status_filter">Status</label>
-        <p-select
-          id="status_filter"
-          [options]="statusOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="All statuses"
-          [showClear]="true"
-          [ngModel]="statusFilter()"
-          (ngModelChange)="onStatusFilterChange($event)"
-        ></p-select>
-      </div>
+      <input
+        aria-label="Search"
+        pInputText
+        class="data-toolbar__search"
+        id="order_search"
+        type="search"
+        placeholder="Order no., customer, phone or consumer no."
+        [ngModel]="searchText()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+      <p-datepicker
+        ariaLabel="Delivery date"
+        inputId="date_filter"
+        selectionMode="range"
+        [dateFormat]="dateInputFormat"
+        [placeholder]="dateInputPlaceholder + ' – ' + dateInputPlaceholder"
+        [showIcon]="true"
+        iconDisplay="input"
+        [showButtonBar]="true"
+        [readonlyInput]="true"
+        appendTo="body"
+        [ngModel]="dateRange()"
+        (ngModelChange)="onDateRangeChange($event)"
+      ></p-datepicker>
+      <p-select
+        ariaLabel="Status"
+        id="status_filter"
+        [options]="statusOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All statuses"
+        [showClear]="true"
+        [ngModel]="statusFilter()"
+        (ngModelChange)="onStatusFilterChange($event)"
+      ></p-select>
       @if (hasFilters()) {
       <button pButton type="button" text severity="secondary" (click)="clearFilters()">
         <i class="pi pi-filter-slash"></i>
         <span>Clear filters</span>
       </button>
       }
-    </div>
-    <div class="data-toolbar__actions">
-      <button
-        *lpgHasPermission="'orders:create'"
-        #createTriggerEl
-        pButton
-        type="button"
-        (click)="openCreateDrawer()"
-      >
-        <i class="pi pi-plus"></i>
-        <span>New Booking</span>
-      </button>
     </div>
   </div>
 

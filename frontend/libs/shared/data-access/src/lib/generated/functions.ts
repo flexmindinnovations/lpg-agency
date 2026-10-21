@@ -343,6 +343,8 @@ export type { RequestRefundApiV1InvoicesInvoiceIdRefundsPost$Params as RequestRe
 export { requestRefundApiV1InvoicesInvoiceIdRefundsPost as requestRefundApiV1InvoicesInvoiceIdRefundsPost } from './fn/invoices/request-refund-api-v-1-invoices-invoice-id-refunds-post';
 export type { ApproveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost$Params as ApproveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost$Params } from './fn/invoices/approve-refund-api-v-1-invoices-invoice-id-refunds-credit-note-id-approve-post';
 export { approveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost as approveRefundApiV1InvoicesInvoiceIdRefundsCreditNoteIdApprovePost } from './fn/invoices/approve-refund-api-v-1-invoices-invoice-id-refunds-credit-note-id-approve-post';
+export type { SendInvoiceApiV1InvoicesInvoiceIdSendPost$Params as SendInvoiceApiV1InvoicesInvoiceIdSendPost$Params } from './fn/invoices/send-invoice-api-v-1-invoices-invoice-id-send-post';
+export { sendInvoiceApiV1InvoicesInvoiceIdSendPost as sendInvoiceApiV1InvoicesInvoiceIdSendPost } from './fn/invoices/send-invoice-api-v-1-invoices-invoice-id-send-post';
 export type { ListNotificationsApiV1NotificationsGet$Params as ListNotificationsApiV1NotificationsGet$Params } from './fn/notifications/list-notifications-api-v-1-notifications-get';
 export { listNotificationsApiV1NotificationsGet as listNotificationsApiV1NotificationsGet } from './fn/notifications/list-notifications-api-v-1-notifications-get';
 export type { RegisterDeviceApiV1NotificationsDevicesPost$Params as RegisterDeviceApiV1NotificationsDevicesPost$Params } from './fn/notifications/register-device-api-v-1-notifications-devices-post';

@@ -12,7 +12,7 @@ import { Router } from '@angular/router';
 import { ButtonDirective } from 'primeng/button';
 import { SelectButton } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import { EmptyStateComponent, SkeletonComponent } from '@lpg/shared/ui';
 import {
   NotificationService,
@@ -31,6 +31,7 @@ type InboxFilter = 'all' | 'unread';
 @Component({
   selector: 'lib-notification-feature-notifications',
   imports: [
+    PageActionsDirective,
     DatePipe,
     FormsModule,
     HeaderTitlePortalDirective,

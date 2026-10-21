@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -38,6 +38,7 @@ interface EnrichedBalance {
   selector: 'lpg-feature-ledger',
   standalone: true,
   imports: [
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,

@@ -1,5 +1,5 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { FormFieldComponent, HasPermissionDirective, shortId } from '@lpg/shared/ui';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
+import { HasPermissionDirective, shortId } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -138,6 +138,7 @@ function toDateOnlyString(date: Date): string {
   selector: 'lpg-feature-dispatch',
   standalone: true,
   imports: [
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     DatePipe,
     FormsModule,
@@ -152,7 +153,6 @@ function toDateOnlyString(date: Date): string {
     Tag,
     DatePicker,
     Tooltip,
-    FormFieldComponent,
     HasPermissionDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

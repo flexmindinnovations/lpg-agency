@@ -6,6 +6,7 @@ import { listInvoicesApiV1InvoicesGet } from './generated/fn/invoices/list-invoi
 import { getInvoiceApiV1InvoicesInvoiceIdGet } from './generated/fn/invoices/get-invoice-api-v-1-invoices-invoice-id-get';
 import { recordPaymentApiV1InvoicesInvoiceIdPaymentsPost } from './generated/fn/invoices/record-payment-api-v-1-invoices-invoice-id-payments-post';
 import { listUninvoicedOrdersApiV1InvoicesUninvoicedOrdersGet } from './generated/fn/invoices/list-uninvoiced-orders-api-v-1-invoices-uninvoiced-orders-get';
+import { sendInvoiceApiV1InvoicesInvoiceIdSendPost } from './generated/fn/invoices/send-invoice-api-v-1-invoices-invoice-id-send-post';
 import { issueInvoiceApiV1InvoicesPost } from './generated/fn/invoices/issue-invoice-api-v-1-invoices-post';
 import { listCreditNotesApiV1InvoicesInvoiceIdCreditNotesGet } from './generated/fn/invoices/list-credit-notes-api-v-1-invoices-invoice-id-credit-notes-get';
 import { requestRefundApiV1InvoicesInvoiceIdRefundsPost } from './generated/fn/invoices/request-refund-api-v-1-invoices-invoice-id-refunds-post';
@@ -86,6 +87,13 @@ export class InvoiceService {
   issueForOrder(orderId: string): Observable<InvoiceResponse> {
     return issueInvoiceApiV1InvoicesPost(this.http, this.config.rootUrl, {
       body: { order_id: orderId },
+    }).pipe(map((res) => res.body));
+  }
+
+  /** E-mails the invoice to the customer and pushes it to their app. */
+  sendToCustomer(invoiceId: string): Observable<InvoiceResponse> {
+    return sendInvoiceApiV1InvoicesInvoiceIdSendPost(this.http, this.config.rootUrl, {
+      invoice_id: invoiceId,
     }).pipe(map((res) => res.body));
   }
 

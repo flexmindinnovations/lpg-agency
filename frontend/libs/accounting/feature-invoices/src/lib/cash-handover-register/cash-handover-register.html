@@ -6,39 +6,28 @@
 </ng-template>
 
 <div class="register">
-  <div class="register__filters" role="group" aria-label="Filters">
-    <label class="register__field">
-      <span>From</span>
-      <input
-        pInputText
-        type="date"
-        [value]="from()"
-        (change)="setRange('from', $any($event.target).value)"
+  <div class="data-toolbar">
+    <div class="data-toolbar__filters">
+      <lpg-date-range-filter
+        ariaLabel="Handover dates"
+        [from]="from()"
+        [to]="to()"
+        [clearable]="false"
+        (rangeChange)="setRange($event)"
       />
-    </label>
-    <label class="register__field">
-      <span>To</span>
-      <input
-        pInputText
-        type="date"
-        [value]="to()"
-        (change)="setRange('to', $any($event.target).value)"
+      <p-select
+        [options]="statusOptions"
+        [ngModel]="status()"
+        (ngModelChange)="setStatus($event)"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="All review states"
+        [showClear]="true"
+        ariaLabel="Review status"
       />
-    </label>
-    <p-select
-      [options]="statusOptions"
-      [ngModel]="status()"
-      (ngModelChange)="setStatus($event)"
-      optionLabel="label"
-      optionValue="value"
-      placeholder="All"
-      [showClear]="true"
-      ariaLabel="Review status"
-    />
-    <span class="register__spacer"></span>
-    <button pButton type="button" severity="secondary" (click)="exportCsv()">
-      <i class="pi pi-file-excel"></i><span>Export CSV</span>
-    </button>
+      <span class="data-toolbar__spacer"></span>
+      <lpg-export-button (export)="exportCsv()" />
+    </div>
   </div>
 
   @if (error()) {

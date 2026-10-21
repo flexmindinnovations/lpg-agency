@@ -9,9 +9,13 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
-import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { AdminBranchService } from '@lpg/shared/data-access';
+import {
+  DateRangeFilterComponent,
+  ExportButtonComponent,
+  type DateRangeValue,
+} from '@lpg/shared/ui';
 import { ReportingStore, istDate, type ReportFilter } from '@lpg/reporting/data-access';
 
 interface BranchOption {
@@ -27,30 +31,17 @@ interface BranchOption {
 @Component({
   selector: 'lib-report-filters',
   standalone: true,
-  imports: [FormsModule, ButtonDirective, InputText, Select],
+  imports: [DateRangeFilterComponent, ExportButtonComponent, FormsModule, ButtonDirective, Select],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="report-filters" role="group" aria-label="Report filters">
-      <label class="report-filters__field">
-        <span>From</span>
-        <input
-          pInputText
-          type="date"
-          [max]="store.filter().endDate"
-          [value]="store.filter().startDate"
-          (change)="update({ startDate: $any($event.target).value })"
-        />
-      </label>
-      <label class="report-filters__field">
-        <span>To</span>
-        <input
-          pInputText
-          type="date"
-          [min]="store.filter().startDate"
-          [value]="store.filter().endDate"
-          (change)="update({ endDate: $any($event.target).value })"
-        />
-      </label>
+      <lpg-date-range-filter
+        ariaLabel="Report dates"
+        [from]="store.filter().startDate"
+        [to]="store.filter().endDate"
+        [clearable]="false"
+        (rangeChange)="onRange($event)"
+      />
       <div class="report-filters__presets">
         <button
           pButton
@@ -96,9 +87,7 @@ interface BranchOption {
         />
       }
       <span class="report-filters__spacer"></span>
-      <button pButton type="button" severity="secondary" (click)="exportCsv.emit()">
-        <i class="pi pi-file-excel"></i><span>Export CSV</span>
-      </button>
+      <lpg-export-button (export)="exportCsv.emit()" />
     </div>
   `,
   styles: [
@@ -109,13 +98,6 @@ interface BranchOption {
         align-items: center;
         gap: var(--spacing-sm);
         margin-block-end: var(--spacing-md);
-      }
-      .report-filters__field {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--spacing-xs);
-        color: var(--color-text-secondary);
-        font-size: var(--typography-caption-font-size);
       }
       .report-filters__presets {
         display: inline-flex;
@@ -150,6 +132,10 @@ export class ReportFilters implements OnInit {
   protected update(change: Partial<ReportFilter>): void {
     this.store.setFilter(change);
     this.apply.emit(this.store.filter());
+  }
+
+  protected onRange(range: DateRangeValue): void {
+    if (range.from && range.to) this.update({ startDate: range.from, endDate: range.to });
   }
 
   protected preset(days: number): void {

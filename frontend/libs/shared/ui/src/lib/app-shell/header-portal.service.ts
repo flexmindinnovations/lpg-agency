@@ -9,4 +9,6 @@ import { TemplatePortal } from '@angular/cdk/portal';
 export class HeaderPortalService {
   readonly portal = signal<TemplatePortal | null>(null);
   readonly titlePortal = signal<TemplatePortal | null>(null);
+  /** The page's actions, shown on the right of the breadcrumb row. */
+  readonly actionsPortal = signal<TemplatePortal | null>(null);
 }

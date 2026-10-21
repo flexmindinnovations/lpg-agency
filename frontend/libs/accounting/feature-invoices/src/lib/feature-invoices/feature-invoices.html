@@ -9,98 +9,72 @@
 
 <div class="invoice-container">
   @if (heldOrders().length > 0) {
-  <section class="held-panel" aria-labelledby="held-heading">
-    <div class="held-panel__header">
-      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-      <div>
-        <h2 id="held-heading" class="held-panel__title">
-          {{ heldOrders().length }} {{ heldOrders().length === 1 ? 'order is' : 'orders are' }}
-          waiting for an invoice
-        </h2>
-        <p class="held-panel__hint">
-          Usually because GST was not set for the cylinder type when it was delivered. Set the HSN
-          code and GST rate in Admin › Cylinder Types, then issue the invoice here.
-        </p>
-      </div>
-    </div>
-    <ul class="held-list">
-      @for (order of heldOrders(); track order.order_id) {
-      <li class="held-list__item">
-        <span class="held-list__order">{{ order.order_number ?? 'Order' }}</span>
-        <span>{{ order.customer_name }}</span>
-        <span class="held-list__meta"
-          >{{ order.status === 'cancelled' ? 'Cancellation charge ' + (order.cancellation_charge |
-          currency:'INR') : 'Delivered' }} · {{ order.occurred_at | lpgDate }}</span
-        >
-        <button
-          pButton
-          type="button"
-          size="small"
-          [disabled]="issuingOrderId() === order.order_id"
-          (click)="issueHeldInvoice(order)"
-        >
-          <i
-            [class]="issuingOrderId() === order.order_id ? 'pi pi-spin pi-spinner' : 'pi pi-file'"
-          ></i>
-          <span>Issue invoice</span>
-        </button>
-      </li>
-      }
-    </ul>
-  </section>
+  <div class="held-banner" role="status">
+    <i class="pi pi-exclamation-triangle held-banner__icon" aria-hidden="true"></i>
+    <p class="held-banner__text">
+      <strong
+        >{{ heldOrders().length }} {{ heldOrders().length === 1 ? 'order is' : 'orders are' }}
+        waiting for an invoice.</strong
+      >
+      <span class="held-banner__hint">Usually GST was not set for the cylinder type.</span>
+    </p>
+    <button
+      pButton
+      type="button"
+      size="small"
+      severity="warn"
+      [outlined]="true"
+      (click)="heldDialogVisible.set(true)"
+    >
+      <span>View all</span>
+    </button>
+  </div>
   }
 
   <section class="invoice-list-section">
-    <div class="search-bar" role="search">
-      <p-iconfield class="search-input">
-        <p-inputicon class="pi pi-search"></p-inputicon>
-        <input
-          pInputText
-          type="search"
-          class="w-full"
-          aria-label="Search invoices"
-          placeholder="Invoice, order or consumer no., or customer name"
-          [value]="searchQuery()"
-          (input)="onSearch($any($event.target).value)"
+    <div class="data-toolbar" role="search">
+      <div class="data-toolbar__filters">
+        <p-iconfield>
+          <p-inputicon class="pi pi-search"></p-inputicon>
+          <input
+            pInputText
+            type="search"
+            aria-label="Search invoices"
+            placeholder="Invoice, order or consumer no., or customer name"
+            [value]="searchQuery()"
+            (input)="onSearch($any($event.target).value)"
+          />
+        </p-iconfield>
+        <p-select
+          [options]="statusOptions"
+          [ngModel]="statusFilter()"
+          (ngModelChange)="onStatusChange($event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="All statuses"
+          [showClear]="true"
+          ariaLabel="Filter by status"
         />
-      </p-iconfield>
-      <p-select
-        [options]="statusOptions"
-        [ngModel]="statusFilter()"
-        (ngModelChange)="onStatusChange($event)"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="All statuses"
-        [showClear]="true"
-        ariaLabel="Filter by status"
-        styleClass="filter-select"
-      />
-      <label class="date-filter">
-        <span>From</span>
-        <input
-          pInputText
-          type="date"
-          [value]="issuedFrom()"
-          (change)="onDateChange('from', $any($event.target).value)"
+        <lpg-date-range-filter
+          ariaLabel="Issue dates"
+          placeholder="Issued between"
+          [from]="issuedFrom() || null"
+          [to]="issuedTo() || null"
+          (rangeChange)="onDateRangeChange($event)"
         />
-      </label>
-      <label class="date-filter">
-        <span>To</span>
-        <input
-          pInputText
-          type="date"
-          [value]="issuedTo()"
-          (change)="onDateChange('to', $any($event.target).value)"
+        @if (statusFilter() || issuedFrom() || issuedTo() || searchQuery()) {
+        <button pButton type="button" severity="secondary" [text]="true" (click)="clearFilters()">
+          <i class="pi pi-filter-slash"></i>
+          <span>Clear filters</span>
+        </button>
+        }
+        <span class="data-toolbar__spacer"></span>
+        <lpg-export-button
+          label="Export this page as CSV"
+          [disabled]="invoices().length === 0"
+          (export)="exportCsv()"
         />
-      </label>
-      @if (statusFilter() || issuedFrom() || issuedTo() || searchQuery()) {
-      <button pButton type="button" severity="secondary" [text]="true" (click)="clearFilters()">
-        Clear
-      </button>
-      }
-      <button pButton type="button" severity="secondary" (click)="exportCsv()">
-        <i class="pi pi-file-excel"></i><span>Export CSV</span>
-      </button>
+      </div>
     </div>
 
     <section class="grid-section">
@@ -110,21 +84,62 @@
         [loading]="isLoading()"
         [error]="loadError()"
         (retry)="loadInvoices()"
-        [pageSize]="0"
+        [totalRecords]="total()"
+        [page]="page()"
+        [serverPageSize]="pageSize()"
+        recordLabel="invoices"
+        (pageChange)="onPageChange($event)"
         ariaLabel="Invoices list"
       ></lpg-data-grid>
     </section>
-    <p-paginator
-      [first]="(page() - 1) * pageSize()"
-      [rows]="pageSize()"
-      [totalRecords]="total()"
-      [rowsPerPageOptions]="[25, 50, 100]"
-      [showCurrentPageReport]="true"
-      currentPageReportTemplate="{first}–{last} of {totalRecords} invoices"
-      (onPageChange)="onPageChange($event)"
-    />
   </section>
 </div>
+
+<p-dialog
+  header="Orders waiting for an invoice"
+  [visible]="heldDialogVisible()"
+  (visibleChange)="heldDialogVisible.set($event)"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '40rem', maxWidth: '95vw' }"
+>
+  <p class="held-dialog__hint">
+    Set the HSN code and GST rate in Admin › Cylinder Types, then issue each invoice here.
+  </p>
+  <ul class="held-list">
+    @for (order of heldOrders(); track order.order_id) {
+    <li class="held-list__item">
+      <div class="held-list__main">
+        <a
+          class="held-list__order"
+          [routerLink]="['/orders', order.order_id]"
+          (click)="heldDialogVisible.set(false)"
+          >{{ order.order_number ?? 'Order' }}</a
+        >
+        <span>{{ order.customer_name }}</span>
+        <span class="held-list__meta"
+          >{{ order.status === 'cancelled' ? 'Cancellation charge ' + (order.cancellation_charge |
+          currency:'INR') : 'Delivered' }} · {{ order.occurred_at | lpgDate }}</span
+        >
+      </div>
+      <button
+        pButton
+        type="button"
+        size="small"
+        [disabled]="issuingOrderId() === order.order_id"
+        (click)="issueHeldInvoice(order)"
+      >
+        <i
+          [class]="issuingOrderId() === order.order_id ? 'pi pi-spin pi-spinner' : 'pi pi-file'"
+        ></i>
+        <span>Issue invoice</span>
+      </button>
+    </li>
+    } @empty {
+    <li class="held-list__empty">Every order has its invoice.</li>
+    }
+  </ul>
+</p-dialog>
 
 <p-drawer
   [visible]="!!selectedInvoice()"
@@ -346,7 +361,19 @@
     }
 
     <div class="print-actions">
-      <button pButton type="button" [disabled]="isPrinting()" (click)="printPdf()">
+      @if (canIssue() && selectedInvoice()?.status !== 'cancelled') {
+      <button pButton type="button" [disabled]="isSending()" (click)="sendToCustomer()">
+        <i [class]="isSending() ? 'pi pi-spin pi-spinner' : 'pi pi-send'"></i>
+        <span>Send to customer</span>
+      </button>
+      }
+      <button
+        pButton
+        type="button"
+        severity="secondary"
+        [disabled]="isPrinting()"
+        (click)="printPdf()"
+      >
         <i [class]="isPrinting() ? 'pi pi-spin pi-spinner' : 'pi pi-file-pdf'"></i>
         <span>Print PDF</span>
       </button>

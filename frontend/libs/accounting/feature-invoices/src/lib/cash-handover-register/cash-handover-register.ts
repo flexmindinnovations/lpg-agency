@@ -10,7 +10,6 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
-import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Textarea } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
@@ -23,6 +22,9 @@ import {
   formatCurrencyInr,
   formatReportDate,
   formatTimestamp,
+  ExportButtonComponent,
+  DateRangeFilterComponent,
+  type DateRangeValue,
 } from '@lpg/shared/ui';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
@@ -50,10 +52,11 @@ function istDate(offsetDays = 0): string {
   selector: 'lpg-cash-handover-register',
   standalone: true,
   imports: [
+    DateRangeFilterComponent,
+    ExportButtonComponent,
     FormsModule,
     ButtonDirective,
     Drawer,
-    InputText,
     Select,
     Textarea,
     DataGridComponent,
@@ -166,8 +169,10 @@ export class CashHandoverRegister implements OnInit {
       });
   }
 
-  protected setRange(which: 'from' | 'to', value: string): void {
-    (which === 'from' ? this.from : this.to).set(value);
+  protected setRange(range: DateRangeValue): void {
+    if (!range.from || !range.to) return;
+    this.from.set(range.from);
+    this.to.set(range.to);
     this.load();
   }
 

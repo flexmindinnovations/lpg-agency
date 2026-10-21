@@ -7,10 +7,22 @@
   <p-message severity="error">{{ msg }}</p-message>
   }
 
+  <ng-template lpgPageActions>
+    <button
+      *lpgHasPermission="'users:manage'"
+      #registerTriggerEl
+      pButton
+      type="button"
+      (click)="openRegisterModal()"
+    >
+      <i class="pi pi-plus"></i>
+      <span>Register Employee</span>
+    </button>
+  </ng-template>
   <div class="data-toolbar">
     <div class="search-bar data-toolbar__filters">
       @if (employees().length > 0 || searchQuery().length > 0) {
-      <p-iconfield styleClass="w-full">
+      <p-iconfield>
         <p-inputicon class="pi pi-search" />
         <input
           id="employee-search-input"
@@ -23,18 +35,6 @@
         />
       </p-iconfield>
       }
-    </div>
-    <div class="data-toolbar__actions">
-      <button
-        *lpgHasPermission="'users:manage'"
-        #registerTriggerEl
-        pButton
-        type="button"
-        (click)="openRegisterModal()"
-      >
-        <i class="pi pi-plus"></i>
-        <span>Register Employee</span>
-      </button>
     </div>
   </div>
 

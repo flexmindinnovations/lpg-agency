@@ -200,14 +200,21 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
           </div>
         </header>
 
-        @if (breadcrumbService.items().length > 0) {
+        @if (breadcrumbService.items().length > 0 || headerPortalService.actionsPortal()) {
           <div class="shell__breadcrumb-wrapper">
-            <p-breadcrumb
-              [model]="breadcrumbService.items()"
-              [home]="breadcrumbService.home()"
-              homeAriaLabel="Home"
-              styleClass="shell__breadcrumb"
-            />
+            @if (breadcrumbService.items().length > 0) {
+              <p-breadcrumb
+                [model]="breadcrumbService.items()"
+                [home]="breadcrumbService.home()"
+                homeAriaLabel="Home"
+                styleClass="shell__breadcrumb"
+              />
+            }
+            <!-- The page's own actions, right-aligned on the breadcrumb row
+                 (lpgPageActions) — the same place on every page. -->
+            <div class="shell__page-actions">
+              <ng-template [cdkPortalOutlet]="headerPortalService.actionsPortal()"></ng-template>
+            </div>
           </div>
         }
 
@@ -526,12 +533,35 @@ const COMPACT_QUERY = '(max-width: 1199.98px)';
       /* Transparent — the breadcrumb belongs to the content column, not the
          header chrome. */
       .shell__breadcrumb-wrapper {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm) var(--spacing-md);
+        min-block-size: calc(var(--component-control-height) + 2 * var(--spacing-sm));
         padding: var(--spacing-sm) var(--spacing-xl);
         background: transparent;
       }
 
+      .shell__page-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        margin-inline-start: auto;
+      }
+
+      .shell__page-actions:empty {
+        display: none;
+      }
+
+      :host ::ng-deep .shell__page-actions .p-button {
+        white-space: nowrap;
+      }
+
       :host ::ng-deep .shell__breadcrumb {
-        width: 100%;
+        flex: 1 1 auto;
+        min-inline-size: 0;
         padding: 0;
         background: transparent;
         border: none;

@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -47,6 +47,7 @@ const VALIDITY_OPTIONS = [
   selector: 'lpg-license-issuance-page',
   standalone: true,
   imports: [
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     ButtonDirective,
@@ -83,14 +84,11 @@ const VALIDITY_OPTIONS = [
           </button>
         </div>
       } @else {
-        <div class="data-toolbar">
-          <div class="data-toolbar__filters"></div>
-          <div class="data-toolbar__actions">
-            <button pButton (click)="openIssueDrawer()">
-              <i class="pi pi-plus"></i><span>Issue License</span>
-            </button>
-          </div>
-        </div>
+        <ng-template lpgPageActions>
+          <button pButton (click)="openIssueDrawer()">
+            <i class="pi pi-plus"></i><span>Issue License</span>
+          </button>
+        </ng-template>
         <section class="grid-section">
           <lpg-data-grid
             [rows]="licenses()"

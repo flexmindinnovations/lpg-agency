@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -74,6 +74,7 @@ import { TitleCasePipe } from '@angular/common';
   selector: 'lpg-feature-customers',
   standalone: true,
   imports: [
+    PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,

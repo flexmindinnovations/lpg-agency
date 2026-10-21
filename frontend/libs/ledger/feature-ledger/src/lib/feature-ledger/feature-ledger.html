@@ -11,33 +11,30 @@
     </ng-template>
   </div>
 
-  <div class="data-toolbar">
-    <div class="data-toolbar__filters"></div>
-    <div class="data-toolbar__actions">
-      <a
-        pButton
-        severity="secondary"
-        [text]="true"
-        routerLink="/customers"
-        [queryParams]="{ id: customerId() }"
-      >
-        <i class="pi pi-user"></i>
-        <span>Customer profile</span>
-      </a>
-      @if (!loadError()) {
-      <button
-        *lpgHasPermission="'customers:update'"
-        id="adjust-balance-btn"
-        pButton
-        type="button"
-        (click)="openAdjustModal()"
-      >
-        <i class="pi pi-sliders-h"></i>
-        <span>Adjust balance</span>
-      </button>
-      }
-    </div>
-  </div>
+  <ng-template lpgPageActions>
+    <a
+      pButton
+      severity="secondary"
+      [text]="true"
+      routerLink="/customers"
+      [queryParams]="{ id: customerId() }"
+    >
+      <i class="pi pi-user"></i>
+      <span>Customer profile</span>
+    </a>
+    @if (!loadError()) {
+    <button
+      *lpgHasPermission="'customers:update'"
+      id="adjust-balance-btn"
+      pButton
+      type="button"
+      (click)="openAdjustModal()"
+    >
+      <i class="pi pi-sliders-h"></i>
+      <span>Adjust balance</span>
+    </button>
+    }
+  </ng-template>
 
   @if (loading()) {
   <p class="empty-hint">Loading ledger...</p>

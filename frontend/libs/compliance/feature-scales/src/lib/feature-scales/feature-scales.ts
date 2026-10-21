@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -78,6 +78,7 @@ const MAX_LEAST_COUNT_GRAMS = 10;
   selector: 'lpg-feature-scales',
   standalone: true,
   imports: [
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     ReactiveFormsModule,
     FormsModule,
