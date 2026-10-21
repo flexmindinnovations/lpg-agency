@@ -24,7 +24,7 @@ own orders in the router), `routes:read`, `routes:deliver`,
 `cash_handovers:declare`.
 
 Revision ID: c48cbf996d8c
-Revises: c8d4e2f6a1b3
+Revises: 9aee17794c55
 Create Date: 2026-10-20 12:00:00.000000
 
 """
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 revision: str = "c48cbf996d8c"
-down_revision: str | None = "c8d4e2f6a1b3"
+down_revision: str | None = "9aee17794c55"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
