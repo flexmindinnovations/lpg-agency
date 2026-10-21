@@ -155,10 +155,11 @@ def _taxed_line(
     kind: str = "supply",
     description: str | None = None,
 ) -> InvoiceLine:
-    """One invoice line. `unit_price` is the price-list amount. When prices
-    include GST (the default) the line total is exactly `unit_price *
+    """One invoice line. `unit_price` is the price-list amount. By default
+    (exclusive) GST is added on top of `unit_price * quantity`. When the
+    tenant set `prices_include_gst`, the line total is exactly `unit_price *
     quantity` and the taxable value and tax are derived inside it, rounded
-    per line so they add back to the paisa; otherwise GST is added on top.
+    per line so they add back to the paisa.
     """
     if prices_include_gst:
         subtotal, tax_amount = split_inclusive(unit_price * quantity, gst.rate_percent)
@@ -287,9 +288,9 @@ class GenerateInvoiceForOrderUseCase:
 
         Contract with Order Management: `BookingCancelled.cancellation_charge`
         the amount configured in `cancellation_fee_amount`, read on the
-        same basis as the price list: GST-inclusive (what the customer
-        pays) unless the tenant set `prices_include_gst` to false, in which
-        case GST is added on top. Under GST a cancellation charge is
+        same basis as the price list: before GST, with GST added on top
+        (the default), or GST-inclusive when the tenant set
+        `prices_include_gst` to true. Under GST a cancellation charge is
         consideration for the supply it relates to, so it is taxed at that
         supply's rate and HSN; with lines at different rates the highest
         applies.

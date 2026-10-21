@@ -205,8 +205,8 @@ class TestGenerateInvoiceForOrderUseCase:
         tenant_id = uuid.uuid4()
         delivered_at = datetime.now(UTC)
 
-        # One line: 4 units x Rs.100.00 = Rs.400, GST-inclusive (the default):
-        # taxable 400 / 1.18 = Rs.338.98, tax Rs.61.02, total exactly Rs.400.
+        # One line: 4 units x Rs.100.00 = Rs.400 subtotal; prices exclude GST
+        # by default, so 18% GST = Rs.72 tax on top; total Rs.472.
         order = _make_order(
             lines=[_make_order_line(quantity_delivered=4, unit_price=Decimal("100.00"))]
         )
@@ -239,15 +239,15 @@ class TestGenerateInvoiceForOrderUseCase:
         invoice: Invoice = mock_invoice_repo.add.call_args[0][0]
         line = invoice.lines[0]
         assert line.unit_price == Decimal("100.00")
-        assert line.subtotal == Decimal("338.98")
-        assert line.tax_amount == Decimal("61.02")
-        assert line.total_amount == Decimal("400.00")
-        assert invoice.total_amount == Decimal("400.00")
+        assert line.subtotal == Decimal("400.00")
+        assert line.tax_amount == Decimal("72.00")
+        assert line.total_amount == Decimal("472.00")
+        assert invoice.total_amount == Decimal("472.00")
 
     @pytest.mark.parametrize(
         ("flag", "subtotal", "tax", "total"),
         [
-            (None, "338.98", "61.02", "400.00"),
+            (None, "400.00", "72.00", "472.00"),
             (True, "338.98", "61.02", "400.00"),
             ("true", "338.98", "61.02", "400.00"),
             (False, "400.00", "72.00", "472.00"),
@@ -265,7 +265,7 @@ class TestGenerateInvoiceForOrderUseCase:
         tax: str,
         total: str,
     ) -> None:
-        """`prices_include_gst` (default true) decides whether GST sits inside
+        """`prices_include_gst` (default false) decides whether GST sits inside
         the price or is added on top of it.
         """
         order = _make_order(
