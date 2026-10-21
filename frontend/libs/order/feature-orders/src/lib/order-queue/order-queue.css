@@ -24,6 +24,10 @@
   min-inline-size: 12rem;
 }
 
+.filters__field--search {
+  min-inline-size: min(20rem, 100%);
+}
+
 .filters__field label {
   font-size: var(--typography-caption-font-size);
   color: var(--color-text-secondary);

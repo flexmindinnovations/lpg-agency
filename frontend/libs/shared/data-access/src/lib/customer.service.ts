@@ -3,6 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { addAddressApiV1CustomersCustomerIdAddressesPost } from './generated/fn/customers/add-address-api-v-1-customers-customer-id-addresses-post';
+import { approveCustomerApiV1CustomersCustomerIdApprovePost } from './generated/fn/customers/approve-customer-api-v-1-customers-customer-id-approve-post';
+import { closeCustomerConnectionApiV1CustomersCustomerIdClosePost } from './generated/fn/customers/close-customer-connection-api-v-1-customers-customer-id-close-post';
+import { removeAddressApiV1CustomersCustomerIdAddressesAddressIdDelete } from './generated/fn/customers/remove-address-api-v-1-customers-customer-id-addresses-address-id-delete';
+import { updateAddressApiV1CustomersCustomerIdAddressesAddressIdPut } from './generated/fn/customers/update-address-api-v-1-customers-customer-id-addresses-address-id-put';
+import type { UpdateCustomerAddressRequest } from './generated/models/update-customer-address-request';
+import type { SubmitKycDocumentRequest } from './generated/models/submit-kyc-document-request';
 import { getCustomerApiV1CustomersCustomerIdGet } from './generated/fn/customers/get-customer-api-v-1-customers-customer-id-get';
 import { listCustomersApiV1CustomersGet } from './generated/fn/customers/list-customers-api-v-1-customers-get';
 import { listKycDocumentsApiV1CustomersCustomerIdKycGet } from './generated/fn/customers/list-kyc-documents-api-v-1-customers-customer-id-kyc-get';
@@ -89,6 +95,44 @@ export class CustomerService {
     }).pipe(map((res) => res.body));
   }
 
+  updateAddress(
+    customerId: string,
+    addressId: string,
+    address: UpdateCustomerAddressRequest,
+  ): Observable<void> {
+    return updateAddressApiV1CustomersCustomerIdAddressesAddressIdPut(
+      this.http,
+      this.config.rootUrl,
+      { customer_id: customerId, address_id: addressId, body: address },
+    ).pipe(map(() => undefined));
+  }
+
+  /** The customer's last address cannot be removed; the server says so. */
+  removeAddress(customerId: string, addressId: string): Observable<void> {
+    return removeAddressApiV1CustomersCustomerIdAddressesAddressIdDelete(
+      this.http,
+      this.config.rootUrl,
+      { customer_id: customerId, address_id: addressId },
+    ).pipe(map(() => undefined));
+  }
+
+  /** Activate an onboarded customer, optionally with a specific consumer number. */
+  approve(customerId: string, consumerNumber?: string | null): Observable<void> {
+    return approveCustomerApiV1CustomersCustomerIdApprovePost(this.http, this.config.rootUrl, {
+      customer_id: customerId,
+      body: { consumer_number: consumerNumber ?? null },
+    }).pipe(map(() => undefined));
+  }
+
+  /** Close the customer's connection (they stop booking). */
+  closeConnection(customerId: string): Observable<void> {
+    return closeCustomerConnectionApiV1CustomersCustomerIdClosePost(
+      this.http,
+      this.config.rootUrl,
+      { customer_id: customerId },
+    ).pipe(map(() => undefined));
+  }
+
   setPrimaryAddress(customerId: string, addressId: string): Observable<void> {
     return setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut(
       this.http,
@@ -108,7 +152,7 @@ export class CustomerService {
 
   submitKyc(
     customerId: string,
-    docType: string,
+    docType: SubmitKycDocumentRequest['doc_type'],
     docReference: string,
     fileUrl?: string | null,
   ): Observable<string> {

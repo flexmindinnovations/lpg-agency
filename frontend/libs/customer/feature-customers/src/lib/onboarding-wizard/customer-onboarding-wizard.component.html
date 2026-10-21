@@ -95,13 +95,13 @@
                         <span>Date of Birth</span>
                         {{
                           registrationForm.value.date_of_birth
-                            ? (registrationForm.value.date_of_birth | date: 'mediumDate')
+                            ? (registrationForm.value.date_of_birth | date: 'dd/MM/yyyy')
                             : 'Not extracted — please fill in manually'
                         }}
                       </div>
                       <div class="review-item">
                         <span>Document Type</span>
-                        {{ kycForm.value.doc_type === 'aadhaar' ? 'Aadhaar Card' : 'PAN Card' }}
+                        {{ docTypeLabel(kycForm.value.doc_type) }}
                       </div>
                       <div class="review-item">
                         <span>Document Number</span>
@@ -214,6 +214,7 @@
                   <lpg-form-field
                     label="Date of birth"
                     for="date_of_birth"
+                    [optional]="isBusiness()"
                     [control]="registrationForm.controls.date_of_birth"
                     [messages]="fieldMessages.date_of_birth"
                   >
@@ -222,6 +223,10 @@
                       formControlName="date_of_birth"
                       [showIcon]="true"
                       iconDisplay="input"
+                      [dateFormat]="dateInputFormat"
+                      [placeholder]="dateInputPlaceholder"
+                      [maxDate]="today"
+                      appendTo="body"
                       [fluid]="true"
                     ></p-datepicker>
                   </lpg-form-field>
@@ -260,28 +265,36 @@
                   </lpg-form-field>
                 </div>
 
-                <div class="form-group checkbox-group">
-                  <p-checkbox
-                    formControlName="is_commercial"
-                    [binary]="true"
-                    inputId="is_commercial"
-                  ></p-checkbox>
-                  <label for="is_commercial">Is this a commercial entity?</label>
-                </div>
-
-                @if (registrationForm.get('is_commercial')?.value) {
+                @if (isBusiness()) {
                   <div class="form-row">
                     <lpg-form-field
-                      label="Contact person"
-                      for="contact_person"
-                      [control]="registrationForm.controls.contact_person"
-                      [messages]="fieldMessages.contact_person"
+                      label="Business or institution name"
+                      for="business_name"
+                      hint="Printed on invoices. The name above is recorded as the contact person."
+                      [control]="registrationForm.controls.business_name"
+                      [messages]="fieldMessages.business_name"
                     >
                       <input
                         pInputText
-                        id="contact_person"
-                        formControlName="contact_person"
-                        placeholder="Name of contact person"
+                        id="business_name"
+                        formControlName="business_name"
+                        [fluid]="true"
+                      />
+                    </lpg-form-field>
+                    <lpg-form-field
+                      label="GSTIN"
+                      for="gstin"
+                      [optional]="true"
+                      hint="Needed for a GST (B2B) tax invoice."
+                      [control]="registrationForm.controls.gstin"
+                      [messages]="fieldMessages.gstin"
+                    >
+                      <input
+                        pInputText
+                        id="gstin"
+                        formControlName="gstin"
+                        placeholder="27AAPFU0939F1ZV"
+                        maxlength="15"
                         [fluid]="true"
                       />
                     </lpg-form-field>
@@ -541,6 +554,8 @@
                     >
                       <p-datepicker
                         inputId="issue_date"
+                        [dateFormat]="dateInputFormat"
+                        [placeholder]="dateInputPlaceholder"
                         formControlName="issue_date"
                         [showIcon]="true"
                         iconDisplay="input"
@@ -555,6 +570,8 @@
                     >
                       <p-datepicker
                         inputId="expiry_date"
+                        [dateFormat]="dateInputFormat"
+                        [placeholder]="dateInputPlaceholder"
                         formControlName="expiry_date"
                         [showIcon]="true"
                         iconDisplay="input"
@@ -616,14 +633,21 @@
                 <h3>Personal Information</h3>
                 <div class="review-grid">
                   <div class="review-item">
-                    <span>Name:</span> {{ registrationForm.value.first_name }}
-                    {{ registrationForm.value.last_name }}
+                    <span>{{ isBusiness() ? 'Contact person:' : 'Name:' }}</span>
+                    {{ registrationForm.value.first_name }} {{ registrationForm.value.last_name }}
+                    @if (isBusiness()) {
+                      <br /><span>Business:</span> {{ registrationForm.value.business_name }}
+                      @if (registrationForm.value.gstin) {
+                        · GSTIN {{ registrationForm.value.gstin }}
+                      }
+                    }
                   </div>
                   <div class="review-item">
                     <span>Phone:</span> {{ registrationForm.value.phone_number }}
                   </div>
                   <div class="review-item">
-                    <span>Category:</span> {{ registrationForm.value.consumer_category }}
+                    <span>Category:</span>
+                    {{ categoryLabel(registrationForm.value.consumer_category) }}
                   </div>
                 </div>
 
@@ -638,7 +662,9 @@
 
                 <h3>KYC Details</h3>
                 <div class="review-grid">
-                  <div class="review-item"><span>Document:</span> {{ kycForm.value.doc_type }}</div>
+                  <div class="review-item">
+                    <span>Document:</span> {{ docTypeLabel(kycForm.value.doc_type) }}
+                  </div>
                   <div class="review-item">
                     <span>ID Number:</span> {{ kycForm.value.document_number }}
                   </div>

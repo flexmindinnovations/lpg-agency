@@ -102,5 +102,61 @@ describe('OrderQueue', () => {
       component.createForm.controls.customer.setValue(null);
       expect(component.cylinderTypeOptions()).toEqual([]);
     });
+
+    it('asks for nothing while a customer is still being typed', () => {
+      const fixture = TestBed.createComponent(OrderQueue);
+      const component = fixture.componentInstance as unknown as Internals;
+      const http = TestBed.inject(HttpTestingController);
+
+      component.createForm.controls.customer.setValue('Meen');
+
+      http.expectNone((req) => req.url.endsWith('/orders/orderable-cylinder-types'));
+    });
+
+    it('picks the primary address so a booking needs no extra step', () => {
+      const fixture = TestBed.createComponent(OrderQueue);
+      const component = fixture.componentInstance as unknown as Internals & {
+        createForm: { controls: { address_id: import('@angular/forms').FormControl<string> } };
+      };
+
+      component.createForm.controls.customer.setValue({
+        id: 'cust-2',
+        addresses: [
+          { id: 'a-1', is_primary: false, line_1: 'Office' },
+          { id: 'a-2', is_primary: true, line_1: 'Home' },
+        ],
+      });
+
+      expect(component.createForm.controls.address_id.value).toBe('a-2');
+    });
+  });
+
+  describe('order list', () => {
+    it('searches by order number, customer or phone, with whitespace collapsed', () => {
+      const fixture = TestBed.createComponent(OrderQueue);
+      const component = fixture.componentInstance as unknown as {
+        loadOrders: () => void;
+        searchText: { set: (v: string) => void };
+      };
+      const http = TestBed.inject(HttpTestingController);
+
+      component.searchText.set('  meena   iyer ');
+      component.loadOrders();
+
+      const request = http.expectOne(
+        (req) =>
+          req.url === 'http://test/api/v1/orders' && req.params.get('search') === 'meena iyer',
+      );
+      request.flush({ items: [], total: 0 });
+    });
+
+    it('shows the customer on every row', () => {
+      const component = TestBed.createComponent(OrderQueue).componentInstance as unknown as {
+        orderColumns: { header: string }[];
+      };
+      expect(component.orderColumns.map((c) => c.header)).toEqual(
+        expect.arrayContaining(['Customer', 'Phone', 'Consumer no.']),
+      );
+    });
   });
 });

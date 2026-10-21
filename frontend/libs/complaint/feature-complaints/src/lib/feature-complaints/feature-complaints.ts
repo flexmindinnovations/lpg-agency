@@ -13,29 +13,36 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { Observable, forkJoin, of } from 'rxjs';
+import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+import { AutoComplete } from 'primeng/autocomplete';
+import type { AutoCompleteCompleteEvent } from 'primeng/types/autocomplete';
 import { ButtonDirective } from 'primeng/button';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
-import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { Textarea } from 'primeng/textarea';
-import { MessageService } from 'primeng/api';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   AdminStaffUserService,
   CustomerService,
+  NotifyService,
   OrderService,
   type CustomerResponse,
+  type OrderResponse,
   type StaffUserResponse,
 } from '@lpg/shared/data-access';
 import {
   ComplaintService,
   type Complaint,
+  type ComplaintAssignee,
+  type ComplaintCategory,
+  type ComplaintPriority,
+  type ResolutionOutcome,
   type RaiseComplaintRequest,
   type AssignComplaintRequest,
   type ResolveComplaintRequest,
@@ -54,9 +61,34 @@ import {
   toSentenceCase,
 } from '@lpg/shared/ui';
 
-function errorMessageFor(_error: unknown): string {
-  // Add specific error handling if backend returns AppError structures
-  return 'Something went wrong. Please try again.';
+/** Labels for the server's enum values (DO-19). */
+const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
+  GasLeakSafety: 'Gas leak / safety',
+  ShortDelivery: 'Short delivery',
+  DamagedCylinder: 'Damaged cylinder',
+  BillingDispute: 'Billing dispute',
+  DriverConduct: 'Driver conduct',
+  LateDelivery: 'Late delivery',
+  Other: 'Other',
+};
+
+/** A gas leak is always handled as Critical; the server enforces it too. */
+const SAFETY_CATEGORIES = new Set<ComplaintCategory>(['GasLeakSafety']);
+
+const STATUS_LABELS: Record<string, string> = {
+  Open: 'Open',
+  Assigned: 'Assigned',
+  InProgress: 'In progress',
+  Resolved: 'Resolved',
+  Rejected: 'Rejected',
+  Closed: 'Closed',
+};
+
+/** Statuses after which nothing more can be done to a complaint (DO-20). */
+const FINISHED_STATUSES = new Set(['Resolved', 'Rejected', 'Closed']);
+
+function lowerKeys(record: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(record).map(([k, v]) => [k.toLowerCase(), v]));
 }
 
 @Component({
@@ -68,7 +100,7 @@ function errorMessageFor(_error: unknown): string {
     ButtonDirective,
     Drawer,
     DrawerA11yDirective,
-    InputText,
+    AutoComplete,
     Select,
     Tag,
     Textarea,
@@ -88,7 +120,7 @@ export class FeatureComplaints implements OnInit {
   private readonly customerService = inject(CustomerService);
   private readonly orderService = inject(OrderService);
   private readonly adminStaffUserService = inject(AdminStaffUserService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissionChecker = inject(PERMISSION_CHECKER);
@@ -202,6 +234,10 @@ export class FeatureComplaints implements OnInit {
       flex: 1,
       sortable: true,
       cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        labelMap: lowerKeys(CATEGORY_LABELS),
+        severityMap: { gasleak: 'danger' },
+      },
     },
     {
       field: 'priority',
@@ -222,6 +258,7 @@ export class FeatureComplaints implements OnInit {
       cellRendererParams: {
         // Real values are PascalCase with no separator ("InProgress") — the
         // lookup key is `raw.toLowerCase()`, hence "inprogress" below.
+        labelMap: lowerKeys(STATUS_LABELS),
         severityMap: {
           open: 'warn',
           assigned: 'info',
@@ -236,24 +273,32 @@ export class FeatureComplaints implements OnInit {
       field: 'customer_id',
       header: 'Customer',
       width: 190,
-      tooltipValueGetter: (val) => String(val),
-      valueFormatter: (val) => this.customerById().get(String(val))?.full_name ?? shortId(val),
+      tooltipValueGetter: (_val, row) =>
+        [row.customer_phone, row.consumer_number].filter(Boolean).join(' · '),
+      valueFormatter: (val, row) =>
+        row.customer_name ?? this.customerById().get(String(val))?.full_name ?? shortId(val),
       onLinkClick: (row) => this.openCustomerPreview(row.customer_id),
+    },
+    {
+      field: 'assignee_name',
+      header: 'Assigned to',
+      width: 170,
+      valueFormatter: (val) => (val as string | null | undefined) ?? 'Not assigned',
     },
     {
       field: 'created_at',
       header: 'Raised On',
       width: 160,
       sortable: true,
-      valueFormatter: (val) => new Date(String(val)).toLocaleDateString(),
+      valueFormatter: (val) => new Date(String(val)).toLocaleDateString('en-GB'),
     },
   ];
 
   // Forms
   readonly raiseForm = this.fb.group({
-    customer_id: ['', Validators.required],
-    category: ['', Validators.required],
-    priority: ['Medium', Validators.required],
+    customer: [null as CustomerResponse | null, Validators.required],
+    category: ['' as ComplaintCategory | '', Validators.required],
+    priority: ['Medium' as ComplaintPriority, Validators.required],
     description: ['', [Validators.required, Validators.minLength(10)]],
     order_id: [''],
   });
@@ -268,14 +313,14 @@ export class FeatureComplaints implements OnInit {
   });
 
   protected readonly fieldMessages = {
-    customer_id: { required: 'A customer ID is required.' },
+    customer: { required: 'Pick the customer by name, phone or consumer number.' },
     category: { required: 'Select a category.' },
     priority: { required: 'Select a priority.' },
     description: {
       required: 'A description is required.',
       minlength: 'Give a little more detail (at least 10 characters).',
     },
-    assigned_to: { required: 'Enter who to assign this to.' },
+    assigned_to: { required: 'Pick who takes this complaint.' },
     outcome: { required: 'Select an outcome.' },
     resolution_notes: {
       required: 'Resolution notes are required.',
@@ -288,15 +333,44 @@ export class FeatureComplaints implements OnInit {
   // human-readable labels as the raw value (e.g. `'Delivery Delay'`), none
   // of which matched the real enum, so raising a complaint with any
   // category but "Other" failed backend validation.
-  readonly categoryOptions = [
-    { label: 'Short Delivery', value: 'ShortDelivery' },
-    { label: 'Damaged Cylinder', value: 'DamagedCylinder' },
-    { label: 'Billing Dispute', value: 'BillingDispute' },
-    { label: 'Driver Conduct', value: 'DriverConduct' },
-    { label: 'Late Delivery', value: 'LateDelivery' },
-    { label: 'Gas leak / safety', value: 'GasLeakSafety' },
-    { label: 'Other', value: 'Other' },
-  ];
+  readonly categoryOptions = (Object.keys(CATEGORY_LABELS) as ComplaintCategory[]).map((value) => ({
+    label: CATEGORY_LABELS[value],
+    value,
+  }));
+
+  protected categoryLabel(category: string): string {
+    return CATEGORY_LABELS[category as ComplaintCategory] ?? category;
+  }
+
+  protected statusText(status: string): string {
+    return STATUS_LABELS[status] ?? status;
+  }
+
+  protected isFinished(complaint: Complaint): boolean {
+    return FINISHED_STATUSES.has(complaint.status);
+  }
+
+  /** The picked customer's recent orders, for linking the complaint (DO-17). */
+  protected readonly customerSuggestions = signal<CustomerResponse[]>([]);
+  protected readonly customerOrders = signal<{ label: string; value: string }[]>([]);
+  protected readonly assignees = signal<ComplaintAssignee[]>([]);
+  protected readonly isSafetyCategory = signal(false);
+  private latestCustomerQuery = '';
+
+  protected searchCustomers(event: AutoCompleteCompleteEvent): void {
+    const query = event.query?.replace(/\s+/g, ' ').trim() ?? '';
+    this.latestCustomerQuery = query;
+    if (query.length < 2) {
+      this.customerSuggestions.set([]);
+      return;
+    }
+    this.customerService.list(0, 20, query).subscribe({
+      next: (page) => {
+        if (query === this.latestCustomerQuery) this.customerSuggestions.set(page.items);
+      },
+      error: () => this.customerSuggestions.set([]),
+    });
+  }
 
   readonly priorityOptions = [
     { label: 'Critical', value: 'Critical' },
@@ -312,6 +386,30 @@ export class FeatureComplaints implements OnInit {
   ];
 
   constructor() {
+    this.raiseForm.controls.customer.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+      this.raiseForm.controls.order_id.setValue('');
+      this.customerOrders.set([]);
+      const customer = value && typeof value === 'object' ? value : null;
+      if (!customer || !this.canReadOrders()) return;
+      this.orderService.listOrders({ customerId: customer.id, limit: 20 }).subscribe({
+        next: (page) => this.customerOrders.set(page.items.map(orderOption)),
+        error: () => this.customerOrders.set([]),
+      });
+    });
+    this.raiseForm.controls.category.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((category) => {
+        const safety = !!category && SAFETY_CATEGORIES.has(category);
+        this.isSafetyCategory.set(safety);
+        const priority = this.raiseForm.controls.priority;
+        if (safety) {
+          priority.setValue('Critical');
+          priority.disable({ emitEvent: false });
+        } else {
+          priority.enable({ emitEvent: false });
+        }
+      });
+
     // Fetches the staff directory once permission is confirmed, so
     // Assigned To/Resolved By already show a name on first render instead
     // of only resolving after the user clicks through. Never attempted for
@@ -335,49 +433,17 @@ export class FeatureComplaints implements OnInit {
     this.loading.set(true);
     const sub = this.complaintService.listComplaints().subscribe({
       next: (res) => {
-        // Resolve every complaint's customer before the grid first renders
-        // rather than after — a `valueFormatter` re-run on signal change
-        // isn't guaranteed the moment `customerById` fills in later, so
-        // fetching first avoids ever showing the raw UUID and then
-        // replacing it.
-        this.resolveCustomers(res.items.map((c) => c.customer_id)).subscribe(() => {
-          this.complaints.set(res.items);
-          this.loading.set(false);
-          this.openLinkedComplaint(res.items);
-        });
+        // Names, phone and consumer number come with each complaint now.
+        this.complaints.set(res.items);
+        this.loading.set(false);
+        this.openLinkedComplaint(res.items);
       },
-      error: (_err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to load complaints',
-        });
+      error: () => {
+        this.notify.error('Failed to load complaints');
         this.loading.set(false);
       },
     });
     this.destroyRef.onDestroy(() => sub.unsubscribe());
-  }
-
-  /** Fetches any customer IDs not already cached in `customerById` and
-   * merges them in. Never errors the caller — a customer lookup failing
-   * (deleted customer, transient error) falls back to the raw ID via
-   * `shortId` rather than blocking the complaints list from loading. */
-  private resolveCustomers(customerIds: string[]): Observable<void> {
-    const known = this.customerById();
-    const missing = [...new Set(customerIds)].filter((id) => !known.has(id));
-    if (missing.length === 0) return of(undefined);
-
-    return forkJoin(
-      missing.map((id) => this.customerService.get(id).pipe(catchError(() => of(null)))),
-    ).pipe(
-      map((results) => {
-        const next = new Map(this.customerById());
-        for (const customer of results) {
-          if (customer) next.set(customer.id, customer);
-        }
-        this.customerById.set(next);
-      }),
-    );
   }
 
   /** `/complaints?complaint=<id>` — a notification's deep link — opens
@@ -444,11 +510,7 @@ export class FeatureComplaints implements OnInit {
       },
       error: () => {
         dialog.close();
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'That customer could not be found.',
-        });
+        this.notify.error('That customer could not be found.');
       },
     });
   }
@@ -489,11 +551,7 @@ export class FeatureComplaints implements OnInit {
       },
       error: () => {
         dialog.close();
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Could not load the staff directory.',
-        });
+        this.notify.error('Could not load the staff directory.');
       },
     });
   }
@@ -506,11 +564,7 @@ export class FeatureComplaints implements OnInit {
     const user = users.find((u) => u.id === userId);
     if (!user) {
       dialog.close();
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'That staff member could not be found.',
-      });
+      this.notify.error('That staff member could not be found.');
       return;
     }
     const data: PreviewData = {
@@ -529,6 +583,7 @@ export class FeatureComplaints implements OnInit {
 
   openRaiseModal() {
     this.raiseForm.reset({ priority: 'Medium' });
+    this.customerOrders.set([]);
     this.registerModalVisible.set(true);
   }
 
@@ -538,35 +593,31 @@ export class FeatureComplaints implements OnInit {
   }
 
   submitRaise() {
-    if (this.raiseForm.invalid) return;
-    this.registerLoading.set(true);
     const val = this.raiseForm.getRawValue();
+    const customer = val.customer && typeof val.customer === 'object' ? val.customer : null;
+    if (this.raiseForm.invalid || !customer || !val.category) {
+      this.raiseForm.markAllAsTouched();
+      return;
+    }
+    this.registerLoading.set(true);
 
     const request: RaiseComplaintRequest = {
-      customer_id: val.customer_id,
+      customer_id: customer.id,
       category: val.category,
       priority: val.priority,
-      description: val.description,
-      order_id: val.order_id || undefined,
+      description: val.description.trim(),
+      order_id: val.order_id || null,
     };
 
     const sub = this.complaintService.raiseComplaint(request).subscribe({
       next: () => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Complaint raised',
-        });
+        this.notify.success('Complaint raised');
         this.closeRaiseModal();
         this.loadComplaints();
         this.registerLoading.set(false);
       },
-      error: (_err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: errorMessageFor(_err),
-        });
+      error: () => {
+        // The app-wide error toast already explains the failure.
         this.registerLoading.set(false);
       },
     });
@@ -574,7 +625,15 @@ export class FeatureComplaints implements OnInit {
   }
 
   openAssignModal() {
-    this.assignForm.reset();
+    this.assignForm.reset({
+      assigned_to: this.selectedComplaint()?.assignments?.at(-1)?.assigned_to ?? '',
+    });
+    if (this.assignees().length === 0) {
+      this.complaintService.listAssignees().subscribe({
+        next: (staff) => this.assignees.set(staff),
+        error: () => this.assignees.set([]),
+      });
+    }
     this.assignModalVisible.set(true);
   }
 
@@ -593,23 +652,15 @@ export class FeatureComplaints implements OnInit {
 
     const sub = this.complaintService.assignComplaint(complaint.id, request).subscribe({
       next: () => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Complaint assigned',
-        });
+        this.notify.success('Complaint assigned');
         this.closeAssignModal();
         this.loadComplaints();
         // Refresh detail
         this.refreshDetail(complaint.id);
         this.assignLoading.set(false);
       },
-      error: (_err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: errorMessageFor(_err),
-        });
+      error: () => {
+        // The app-wide error toast already explains the failure.
         this.assignLoading.set(false);
       },
     });
@@ -632,29 +683,21 @@ export class FeatureComplaints implements OnInit {
     this.resolveLoading.set(true);
     const val = this.resolveForm.getRawValue();
     const request: ResolveComplaintRequest = {
-      outcome: val.outcome as 'Resolved' | 'Compensated' | 'Rejected',
-      resolution_notes: val.resolution_notes,
+      outcome: val.outcome as ResolutionOutcome,
+      resolution_notes: val.resolution_notes.trim(),
     };
 
     const sub = this.complaintService.resolveComplaint(complaint.id, request).subscribe({
       next: () => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Complaint resolved',
-        });
+        this.notify.success('Complaint resolved');
         this.closeResolveModal();
         this.loadComplaints();
         // Refresh detail
         this.refreshDetail(complaint.id);
         this.resolveLoading.set(false);
       },
-      error: (_err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: errorMessageFor(_err),
-        });
+      error: () => {
+        // The app-wide error toast already explains the failure.
         this.resolveLoading.set(false);
       },
     });
@@ -686,4 +729,9 @@ export class FeatureComplaints implements OnInit {
         return 'info';
     }
   }
+}
+
+function orderOption(order: OrderResponse): { label: string; value: string } {
+  const day = new Date(order.requested_date).toLocaleDateString('en-GB');
+  return { label: `${order.order_number ?? shortId(order.id)} · ${day}`, value: order.id };
 }

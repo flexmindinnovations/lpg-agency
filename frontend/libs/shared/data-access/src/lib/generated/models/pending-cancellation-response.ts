@@ -3,12 +3,18 @@
 
 
 /**
- * A post-dispatch cancellation request waiting for Manager approval (D-19).
+ * A post-dispatch cancellation request (D-19): waiting for a Manager,
+ * or — when asked for with `include_decided` — approved or rejected.
  */
 export interface PendingCancellationResponse {
+  cancellation_charge?: (string | null);
+  decided_at?: (string | null);
+  estimated_charge?: (string | null);
   id: string;
   order_id: string;
   reason: string;
+  rejection_reason?: (string | null);
   requested_at: string;
   requested_by: string;
+  status?: 'pending' | 'approved' | 'rejected';
 }

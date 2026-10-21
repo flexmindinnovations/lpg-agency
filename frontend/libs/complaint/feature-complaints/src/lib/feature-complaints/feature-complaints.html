@@ -49,7 +49,7 @@
     <div class="drawer-header">
       <h2 class="drawer-title">Complaint Details</h2>
       @if (selectedComplaint(); as complaint) {
-      <p-tag [value]="complaint.status" [severity]="getSeverity(complaint.status)" />
+      <p-tag [value]="statusText(complaint.status)" [severity]="getSeverity(complaint.status)" />
       }
     </div>
   </ng-template>
@@ -69,13 +69,19 @@
             class="info-value info-link"
             (click)="openCustomerPreview(complaint.customer_id)"
           >
-            {{ customerById().get(complaint.customer_id)?.full_name ??
+            {{ complaint.customer_name ?? customerById().get(complaint.customer_id)?.full_name ??
             shortId(complaint.customer_id) }}
           </button>
+          @if (complaint.customer_phone || complaint.consumer_number) {
+          <span class="info-sub"
+            >{{ complaint.customer_phone }}@if (complaint.consumer_number) { · {{
+            complaint.consumer_number }} }</span
+          >
+          }
         </div>
         <div class="info-item">
           <span class="info-label">Category</span>
-          <span class="info-value">{{ complaint.category }}</span>
+          <span class="info-value">{{ categoryLabel(complaint.category) }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Priority</span>
@@ -83,19 +89,21 @@
         </div>
         <div class="info-item">
           <span class="info-label">Raised On</span>
-          <span class="info-value">{{ complaint.created_at | date:'medium' }}</span>
+          <span class="info-value">{{ complaint.created_at | date: 'dd/MM/yyyy, h:mm a' }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">SLA Due By</span>
           <span class="info-value"
-            >{{ complaint.sla_due_at ? (complaint.sla_due_at | date:'medium') : 'N/A' }}</span
+            >{{ complaint.sla_due_at ? (complaint.sla_due_at | date: 'dd/MM/yyyy, h:mm a') : 'Not
+            set' }}</span
           >
         </div>
         @if (complaint.order_id) {
         <div class="info-item col-span-2">
           <span class="info-label">Order</span>
           <span class="info-value font-mono"
-            >{{ selectedOrderNumber() ?? shortId(complaint.order_id) }}</span
+            >{{ complaint.order_number ?? selectedOrderNumber() ?? shortId(complaint.order_id)
+            }}</span
           >
         </div>
         }
@@ -122,11 +130,14 @@
                 class="info-link"
                 (click)="openStaffPreview(assignment.assigned_to)"
               >
-                {{ staffNameById().get(assignment.assigned_to) ?? shortId(assignment.assigned_to) }}
+                {{ assignment.assigned_to_name ?? staffNameById().get(assignment.assigned_to) ??
+                shortId(assignment.assigned_to) }}
               </button>
-              } @else { {{ shortId(assignment.assigned_to) }} }
+              } @else { {{ assignment.assigned_to_name ?? shortId(assignment.assigned_to) }} }
             </span>
-            <span class="history-sub">{{ assignment.assigned_at | date:'short' }}</span>
+            <span class="history-sub"
+              >{{ assignment.assigned_at | date: 'dd/MM/yyyy, h:mm a' }}</span
+            >
           </div>
         </div>
         }
@@ -144,7 +155,7 @@
         <div class="resolution-header">
           <span class="font-medium">{{ complaint.resolution.outcome }}</span>
           <span class="text-sm text-surface-500"
-            >{{ complaint.resolution.resolved_at | date:'short' }}</span
+            >{{ complaint.resolution.resolved_at | date: 'dd/MM/yyyy, h:mm a' }}</span
           >
         </div>
         <p class="mt-2 text-sm">{{ complaint.resolution.resolution_notes }}</p>
@@ -169,29 +180,23 @@
   }
 
   <ng-template #footer>
-    @if (selectedComplaint(); as complaint) {
+    @if (selectedComplaint(); as complaint) { @if (!isFinished(complaint)) {
     <div class="drawer-actions">
       <button
         *lpgHasPermission="'complaints.manage'"
         pButton
         class="p-button-outlined"
-        [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
         (click)="openAssignModal()"
       >
         <i class="pi pi-user-plus"></i>
-        <span>Assign</span>
+        <span>{{ complaint.assignee_name ? 'Reassign' : 'Assign' }}</span>
       </button>
-      <button
-        *lpgHasPermission="'complaints.manage'"
-        pButton
-        [disabled]="complaint.status === 'Resolved' || complaint.status === 'Closed' || complaint.status === 'Rejected'"
-        (click)="openResolveModal()"
-      >
+      <button *lpgHasPermission="'complaints.manage'" pButton (click)="openResolveModal()">
         <i class="pi pi-check"></i>
         <span>Resolve</span>
       </button>
     </div>
-    }
+    } }
   </ng-template>
 </p-drawer>
 
@@ -211,31 +216,50 @@
   <form [formGroup]="raiseForm" (ngSubmit)="submitRaise()" class="dialog-form">
     <div class="dialog-form__fields">
       <lpg-form-field
-        label="Customer ID"
-        for="customer_id"
-        [control]="raiseForm.controls.customer_id"
-        [messages]="fieldMessages.customer_id"
+        label="Customer"
+        for="complaint_customer"
+        [control]="raiseForm.controls.customer"
+        [messages]="fieldMessages.customer"
       >
-        <input
-          pInputText
-          id="customer_id"
-          formControlName="customer_id"
-          placeholder="e.g. CUST-123"
+        <p-autocomplete
+          inputId="complaint_customer"
+          formControlName="customer"
+          [suggestions]="customerSuggestions()"
+          (completeMethod)="searchCustomers($event)"
+          optionLabel="full_name"
+          [delay]="300"
+          [minQueryLength]="2"
+          placeholder="Name, phone or consumer no."
+          appendTo="body"
           [fluid]="true"
-        />
+        >
+          <ng-template let-customer #item>
+            <div>
+              <strong>{{ customer.full_name }}</strong>
+              <span class="info-sub">
+                · {{ customer.phone_number }} @if (customer.consumer_number) { · {{
+                customer.consumer_number }} }
+              </span>
+            </div>
+          </ng-template>
+        </p-autocomplete>
       </lpg-form-field>
 
       <lpg-form-field
-        label="Order ID"
+        label="Order"
         for="order_id"
         [control]="raiseForm.controls.order_id"
         [optional]="true"
       >
-        <input
-          pInputText
-          id="order_id"
+        <p-select
+          inputId="order_id"
           formControlName="order_id"
-          placeholder="e.g. ORD-456"
+          [options]="customerOrders()"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="customerOrders().length ? 'Pick the order this is about' : 'No recent orders'"
+          [showClear]="true"
+          appendTo="body"
           [fluid]="true"
         />
       </lpg-form-field>
@@ -273,6 +297,12 @@
           [fluid]="true"
         />
       </lpg-form-field>
+      @if (isSafetyCategory()) {
+      <p class="info-sub">
+        Gas leaks are always Critical. Tell the customer to shut the regulator, open windows and
+        avoid switches until someone arrives.
+      </p>
+      }
 
       <lpg-form-field
         label="Description"
@@ -336,13 +366,25 @@
         [control]="assignForm.controls.assigned_to"
         [messages]="fieldMessages.assigned_to"
       >
-        <input
-          pInputText
-          id="assigned_to"
+        <p-select
+          inputId="assigned_to"
           formControlName="assigned_to"
-          placeholder="e.g. Manager ID or Name"
+          [options]="assignees()"
+          optionLabel="name"
+          optionValue="user_id"
+          [filter]="true"
+          filterBy="name,email,role"
+          placeholder="Pick a staff member"
+          appendTo="body"
           [fluid]="true"
-        />
+        >
+          <ng-template let-staff #item>
+            <div>
+              <strong>{{ staff.name }}</strong>
+              <span class="info-sub"> · {{ toSentenceCase(staff.role) }}</span>
+            </div>
+          </ng-template>
+        </p-select>
       </lpg-form-field>
     </div>
   </form>

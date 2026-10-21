@@ -20,7 +20,6 @@ import pytest
 from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.api.v1.dependencies.identity import get_otp_delivery
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
@@ -106,16 +105,10 @@ async def stack(
 
 
 @pytest.fixture
-async def admin_engine_lpg_test(postgres_available: bool) -> AsyncIterator[AsyncEngine]:
-    if not postgres_available:
-        pytest.skip("PostgreSQL is not reachable")
-    engine = create_async_engine(
-        "postgresql+asyncpg://lpg_admin:dev_only_not_a_real_secret@localhost:5433/lpg_test"
-    )
-    try:
-        yield engine
-    finally:
-        await engine.dispose()
+def admin_engine_lpg_test(admin_engine: AsyncEngine) -> AsyncEngine:
+    """The superuser engine for the test database the app under test uses
+    (`LPG_TEST_ADMIN_DATABASE_URL`), so seeded rows are visible to it."""
+    return admin_engine
 
 
 # ==========================================================================
@@ -941,6 +934,15 @@ class TestOrderFullLifecycle:
         assert "ledger_transaction_id" not in deliver_body
         assert "invoice_id" not in deliver_body["order"]
 
+        # DO-26: the order page can show the delivery record with a link to
+        # the signature.
+        pod_response = await client.get(
+            f"/api/v1/orders/{order_id}/proof-of-delivery", headers=admin_headers
+        )
+        assert pod_response.status_code == 200, pod_response.text
+        assert pod_response.json()["dac_code"] == "445566"
+        assert pod_response.json()["signature_url"]
+
         # Reserve-then-deliver-in-full must not double-count: balance is
         # unchanged since step 3b's load (99), only the +1 collected empty
         # is new — filled stays 99.
@@ -1520,6 +1522,349 @@ class TestPostDispatchCancellationApproval:
         )
         # The reservation is released; the 2 loaded onto the van stay on it.
         assert balance_after_approve == 102
+
+
+async def _seed_config(engine: AsyncEngine, *, tenant_id: uuid.UUID, key: str, value: str) -> None:
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO tenant.tenant_configuration "
+                "(id, tenant_id, config_key, config_value, effective_from) "
+                "VALUES (gen_random_uuid(), :tenant_id, :key, CAST(:value AS jsonb), "
+                ":effective_from)"
+            ),
+            {
+                "tenant_id": str(tenant_id),
+                "key": key,
+                "value": value,
+                "effective_from": datetime.now(UTC) - timedelta(days=1),
+            },
+        )
+
+
+async def _order_out_for_delivery(
+    client: AsyncClient, engine: AsyncEngine, fixtures: _Fixtures, headers: dict[str, str]
+) -> str:
+    order = await _create_order(client, fixtures, headers, quantity=2)
+    order_id: str = order["id"]
+    await client.post(f"/api/v1/orders/{order_id}/confirm", headers=headers)
+    await client.post(
+        f"/api/v1/orders/{order_id}/assign",
+        json={"driver_id": str(fixtures.driver_id), "vehicle_id": str(fixtures.vehicle_id)},
+        headers=headers,
+    )
+    route_id = await _route_id_for_driver(engine, driver_id=fixtures.driver_id)
+    await _load_route(
+        client,
+        route_id=route_id,
+        warehouse_id=fixtures.warehouse_id,
+        cylinder_type_id=fixtures.cylinder_type_id,
+        quantity=2,
+        headers=headers,
+    )
+    await client.post(f"/api/v1/orders/{order_id}/dispatch", headers=headers)
+    depart = await client.post(f"/api/v1/orders/{order_id}/depart", headers=headers)
+    assert depart.status_code == 200, depart.text
+    return order_id
+
+
+class TestCancellationRequestRejection:
+    """DO-14 / CA-07: a Manager can reject a post-dispatch cancellation
+    request with a reason; the apps see the pending flag and the outcome."""
+
+    async def test_reject_keeps_the_delivery_and_allows_a_new_request(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        await _seed_cancellation_fee(
+            admin_engine_lpg_test, tenant_id=fixtures.tenant_id, policy_type="flat", amount="150.00"
+        )
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order_id = await _order_out_for_delivery(client, admin_engine_lpg_test, fixtures, headers)
+
+        cancel = await client.post(
+            f"/api/v1/orders/{order_id}/cancel", json={"reason": "Not home"}, headers=headers
+        )
+        assert cancel.status_code == 202, cancel.text
+
+        detail = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+        assert detail["cancellation_pending"] is True
+        request = (
+            await client.get(f"/api/v1/orders/{order_id}/cancellation-request", headers=headers)
+        ).json()
+        assert request["status"] == "pending"
+        assert Decimal(request["estimated_charge"]) == Decimal("150.00")
+
+        missing_reason = await client.post(
+            f"/api/v1/orders/{order_id}/cancel/reject", json={"reason": ""}, headers=headers
+        )
+        assert missing_reason.status_code == 422
+        rejected = await client.post(
+            f"/api/v1/orders/{order_id}/cancel/reject",
+            json={"reason": "Driver is already at the gate"},
+            headers=headers,
+        )
+        assert rejected.status_code == 200, rejected.text
+        assert rejected.json()["status"] == "rejected"
+        assert rejected.json()["rejection_reason"] == "Driver is already at the gate"
+
+        detail = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+        assert detail["status"] == "out_for_delivery"
+        assert detail["cancellation_pending"] is False
+        waiting = await client.get(
+            f"/api/v1/orders/{order_id}/cancellation-request", headers=headers
+        )
+        assert waiting.json() is None
+        latest = await client.get(
+            f"/api/v1/orders/{order_id}/cancellation-request",
+            params={"include_decided": "true"},
+            headers=headers,
+        )
+        assert latest.json()["status"] == "rejected"
+        assert latest.json()["estimated_charge"] is None
+
+        again = await client.post(
+            f"/api/v1/orders/{order_id}/cancel", json={"reason": "Still not home"}, headers=headers
+        )
+        assert again.status_code == 202, again.text
+        approved_after_retry = await client.post(
+            f"/api/v1/orders/{order_id}/cancel/approve", headers=headers
+        )
+        assert approved_after_retry.status_code == 200, approved_after_retry.text
+
+
+class TestOrderListShowsAndFindsCustomers:
+    """DO-12 / DO-39: the order list names the customer and is searchable by
+    order number, customer name, phone or consumer number."""
+
+    async def test_search_and_customer_summary(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order = await _create_order(client, fixtures, headers, quantity=1)
+
+        listed = (await client.get("/api/v1/orders", headers=headers)).json()
+        item = next(i for i in listed["items"] if i["id"] == order["id"])
+        assert item["customer"]["full_name"] == "Order Smoke Customer"
+        phone = item["customer"]["phone_number"]
+        consumer_number = item["customer"]["consumer_number"]
+
+        number = order["order_number"]
+        spaced_number = f"{number[:3].lower()} {number[3:]}"
+        for search in (spaced_number, "  order   smoke ", phone[-6:], consumer_number.lower()):
+            found = await client.get("/api/v1/orders", params={"search": search}, headers=headers)
+            assert found.status_code == 200, found.text
+            assert order["id"] in [i["id"] for i in found.json()["items"]], search
+
+        nothing = await client.get(
+            "/api/v1/orders", params={"search": "no such customer zz"}, headers=headers
+        )
+        assert nothing.json()["total"] == 0
+
+        backwards = await client.get(
+            "/api/v1/orders",
+            params={"from_date": "2026-10-20T00:00:00Z", "to_date": "2026-10-01T00:00:00Z"},
+            headers=headers,
+        )
+        assert backwards.status_code == 422
+
+
+class TestEditAndRescheduleBooking:
+    """DO-13: edit a booking before it is on a trip; reschedule a failed
+    delivery to another day."""
+
+    async def test_edit_quantity_and_date_reprices_a_confirmed_order(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order = await _create_order(client, fixtures, headers, quantity=1)
+        await client.post(f"/api/v1/orders/{order['id']}/confirm", headers=headers)
+        tomorrow = (datetime.now(UTC) + timedelta(days=1)).replace(microsecond=0)
+
+        edited = await client.patch(
+            f"/api/v1/orders/{order['id']}",
+            json={
+                "lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 3}],
+                "requested_date": tomorrow.isoformat(),
+            },
+            headers=headers,
+        )
+        assert edited.status_code == 200, edited.text
+        body = edited.json()
+        assert body["status"] == "confirmed"
+        assert body["lines"][0]["quantity_ordered"] == 3
+        assert Decimal(body["total_amount"]) == Decimal("2850.00")
+        reloaded = (await client.get(f"/api/v1/orders/{order['id']}", headers=headers)).json()
+        assert reloaded["lines"][0]["quantity_ordered"] == 3
+        assert reloaded["requested_date"].startswith(tomorrow.date().isoformat())
+
+        past = await client.patch(
+            f"/api/v1/orders/{order['id']}",
+            json={"requested_date": "2020-01-01T00:00:00Z"},
+            headers=headers,
+        )
+        assert past.status_code == 409, past.text
+
+    async def test_an_order_on_a_trip_cannot_be_edited_and_reschedules_to_a_date(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order_id = await _order_out_for_delivery(client, admin_engine_lpg_test, fixtures, headers)
+
+        locked = await client.patch(
+            f"/api/v1/orders/{order_id}",
+            json={"lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 1}]},
+            headers=headers,
+        )
+        assert locked.status_code == 409, locked.text
+
+        failed = await client.post(
+            f"/api/v1/orders/{order_id}/failed-delivery",
+            json={"reason_code": "customer_unavailable"},
+            headers={"Authorization": f"Bearer {fixtures.driver_token}"},
+        )
+        assert failed.status_code == 200, failed.text
+        history = (await client.get(f"/api/v1/orders/{order_id}/history", headers=headers)).json()
+        assert any(h["reason"] == "customer_unavailable" for h in history)
+
+        filled_before = await _vehicle_filled_balance(
+            admin_engine_lpg_test,
+            vehicle_id=fixtures.vehicle_id,
+            cylinder_type_id=fixtures.cylinder_type_id,
+        )
+        tomorrow = (datetime.now(UTC) + timedelta(days=1)).replace(microsecond=0)
+        rescheduled = await client.post(
+            f"/api/v1/orders/{order_id}/reschedule",
+            json={"requested_date": tomorrow.isoformat()},
+            headers=headers,
+        )
+        assert rescheduled.status_code == 200, rescheduled.text
+        assert rescheduled.json()["status"] == "confirmed"
+        assert rescheduled.json()["route_stop_id"] is None
+        assert rescheduled.json()["requested_date"].startswith(tomorrow.date().isoformat())
+        assert (
+            await _vehicle_filled_balance(
+                admin_engine_lpg_test,
+                vehicle_id=fixtures.vehicle_id,
+                cylinder_type_id=fixtures.cylinder_type_id,
+            )
+            == filled_before + 2
+        ), "the van's reservation for the order is released"
+
+
+class TestCustomerLedger:
+    """DO-22: the ledger names the customer and 404s for an unknown one."""
+
+    async def test_ledger_names_the_customer_and_404s_for_unknown(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+
+        ledger = await client.get(
+            f"/api/v1/customers/{fixtures.customer_id}/ledger", headers=headers
+        )
+        assert ledger.status_code == 200, ledger.text
+        assert ledger.json()["customer_name"] == "Order Smoke Customer"
+
+        unknown = await client.get(f"/api/v1/customers/{uuid.uuid4()}/ledger", headers=headers)
+        assert unknown.status_code == 404, unknown.text
+
+
+class TestBookingRules:
+    """DO-10 / DO-11."""
+
+    async def test_the_configured_cylinder_cap_is_enforced(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        await _seed_config(
+            admin_engine_lpg_test,
+            tenant_id=fixtures.tenant_id,
+            key="cylinder_holding_cap",
+            value='{"domestic": 2}',
+        )
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        await _create_order(client, fixtures, headers, quantity=2)
+
+        over = await client.post(
+            "/api/v1/orders",
+            json=_create_order_payload(fixtures, quantity=1),
+            headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert over.status_code == 409, over.text
+        assert over.json()["error_code"] == "CYLINDER_CAP_EXCEEDED"
+
+    async def test_the_credit_limit_is_enforced_at_confirmation(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        await _seed_config(
+            admin_engine_lpg_test,
+            tenant_id=fixtures.tenant_id,
+            key="credit_limit_default",
+            value="1000",
+        )
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        order = await _create_order(client, fixtures, headers, quantity=2)
+
+        confirm = await client.post(f"/api/v1/orders/{order['id']}/confirm", headers=headers)
+        assert confirm.status_code == 409, confirm.text
+        assert confirm.json()["error_code"] == "CREDIT_LIMIT_EXCEEDED"
+
+    async def test_free_text_and_foreign_addresses_are_not_used(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        payload = _create_order_payload(fixtures)
+        payload["delivery_address"] = {"address_line": "x"}
+        created = await client.post(
+            "/api/v1/orders",
+            json=payload,
+            headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert created.status_code == 201, created.text
+        assert created.json()["delivery_address"]["address_line"] == "123 Test St"
+
+        payload["address_id"] = str(uuid.uuid4())
+        foreign = await client.post(
+            "/api/v1/orders",
+            json=payload,
+            headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert foreign.status_code == 409, foreign.text
+        assert foreign.json()["error_code"] == "ADDRESS_NOT_FOUND"
+
+    async def test_an_inactive_customer_cannot_book(
+        self, stack: _AppAndClient, admin_engine_lpg_test: AsyncEngine
+    ) -> None:
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine_lpg_test)
+        async with admin_engine_lpg_test.begin() as conn:
+            await conn.execute(
+                text("UPDATE customer.customer SET status = 'inactive' WHERE id = :id"),
+                {"id": str(fixtures.customer_id)},
+            )
+        headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        refused = await client.post(
+            "/api/v1/orders",
+            json=_create_order_payload(fixtures),
+            headers={**headers, "Idempotency-Key": str(uuid.uuid4())},
+        )
+        assert refused.status_code == 409, refused.text
+        assert refused.json()["error_code"] == "CUSTOMER_NOT_ELIGIBLE"
 
 
 # ==========================================================================

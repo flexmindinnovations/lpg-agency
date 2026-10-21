@@ -47,7 +47,13 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # `application.dashboard.get_operations_snapshot.
         # DEFAULT_PAYMENT_TERMS_DAYS` (30) when unset.
         "invoice_payment_terms_days",
+        # BR-19: the largest unpaid amount a customer may owe once a booking
+        # is billed — one number, or per customer type
+        # (`{"domestic": 5000, "commercial": 50000}`). Unset = no limit.
         "credit_limit_default",
+        # BR-04: how many cylinders a customer may hold — one number, or per
+        # customer type (`{"domestic": 2, "commercial": 10}`). Unset = no cap.
+        "cylinder_holding_cap",
         # Nightly `check_compliance_expiry` cron's lead time (days) — how far
         # ahead of a driver/vehicle compliance document's expiry to notify
         # staff. Falls back to `compliance_jobs.DEFAULT_LEAD_DAYS` (30) when

@@ -82,12 +82,18 @@
         "properties": {
           "address_type": {
             "default": "delivery",
+            "enum": [
+              "delivery",
+              "billing",
+              "both"
+            ],
             "title": "Address Type",
             "type": "string"
           },
           "area": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -97,19 +103,15 @@
             "title": "Area"
           },
           "city": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City"
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
           },
           "district": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -121,6 +123,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -132,6 +135,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -145,6 +150,7 @@
             "title": "Latitude"
           },
           "line_1": {
+            "maxLength": 500,
             "minLength": 1,
             "title": "Line 1",
             "type": "string"
@@ -152,6 +158,7 @@
           "line_2": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -163,6 +170,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -176,19 +185,14 @@
             "title": "Longitude"
           },
           "pincode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pincode"
+            "pattern": "^\\s*[1-9]\\d{5}\\s*$",
+            "title": "Pincode",
+            "type": "string"
           },
           "state": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -199,7 +203,9 @@
           }
         },
         "required": [
-          "line_1"
+          "line_1",
+          "city",
+          "pincode"
         ],
         "title": "AddCustomerAddressRequest",
         "type": "object"
@@ -422,6 +428,70 @@
           "setup_token_expires_at"
         ],
         "title": "AgencyUserSetupResponse",
+        "type": "object"
+      },
+      "AmendOrderRequest": {
+        "description": "Edit a booking before it is put on a trip (DO-13). Omitted fields\nkeep their current value; `lines` replaces every line.",
+        "properties": {
+          "address_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CreateOrderLineRequest"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "payment_method_preference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cash",
+                  "upi",
+                  "card",
+                  "online_gateway",
+                  "credit"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Preference"
+          },
+          "requested_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Date"
+          }
+        },
+        "title": "AmendOrderRequest",
         "type": "object"
       },
       "ApproveCustomerRequest": {
@@ -833,6 +903,7 @@
             "type": "array"
           },
           "reason": {
+            "description": "Why — required, cannot be blank.",
             "maxLength": 1000,
             "minLength": 1,
             "title": "Reason",
@@ -884,6 +955,7 @@
       "CancelOrderRequest": {
         "properties": {
           "reason": {
+            "description": "Why — required, cannot be blank.",
             "maxLength": 1000,
             "minLength": 1,
             "title": "Reason",
@@ -1302,6 +1374,42 @@
         "title": "ClassifyCylinderTypeForGstRequest",
         "type": "object"
       },
+      "ComplaintAssigneeResponse": {
+        "description": "A staff member a complaint can be assigned to (DO-18).",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role"
+        ],
+        "title": "ComplaintAssigneeResponse",
+        "type": "object"
+      },
       "ComplaintAssignmentResponse": {
         "properties": {
           "assigned_at": {
@@ -1313,6 +1421,17 @@
             "format": "uuid",
             "title": "Assigned To",
             "type": "string"
+          },
+          "assigned_to_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Name"
           },
           "created_at": {
             "format": "date-time",
@@ -1444,6 +1563,17 @@
       },
       "ComplaintResponse": {
         "properties": {
+          "assignee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Name"
+          },
           "assignments": {
             "items": {
               "$ref": "#/components/schemas/ComplaintAssignmentResponse"
@@ -1464,6 +1594,17 @@
               }
             ],
             "title": "Complaint Number"
+          },
+          "consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
           },
           "created_at": {
             "format": "date-time",
@@ -1487,6 +1628,28 @@
             "title": "Customer Id",
             "type": "string"
           },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "customer_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Phone"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -1507,6 +1670,17 @@
               }
             ],
             "title": "Order Id"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
           },
           "priority": {
             "$ref": "#/components/schemas/ComplaintPriority"
@@ -1963,7 +2137,15 @@
             "type": "string"
           },
           "delivery_address": {
-            "$ref": "#/components/schemas/DeliveryAddressPayload"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryAddressPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true
           },
           "lines": {
             "items": {
@@ -2001,7 +2183,6 @@
           "branch_id",
           "customer_id",
           "address_id",
-          "delivery_address",
           "requested_date",
           "lines"
         ],
@@ -2381,6 +2562,17 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2463,10 +2655,32 @@
             "title": "Balances",
             "type": "array"
           },
+          "consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          },
           "customer_id": {
             "format": "uuid",
             "title": "Customer Id",
             "type": "string"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
           }
         },
         "required": [
@@ -6105,6 +6319,48 @@
         "title": "OptimizeRouteResponse",
         "type": "object"
       },
+      "OrderCustomerResponse": {
+        "description": "Who the order is for (DO-12).",
+        "properties": {
+          "consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone_number": {
+            "title": "Phone Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "phone_number",
+          "consumer_number",
+          "customer_type"
+        ],
+        "title": "OrderCustomerResponse",
+        "type": "object"
+      },
       "OrderLineResponse": {
         "properties": {
           "cylinder_type_id": {
@@ -6243,6 +6499,21 @@
             "format": "uuid",
             "title": "Branch Id",
             "type": "string"
+          },
+          "cancellation_pending": {
+            "default": false,
+            "title": "Cancellation Pending",
+            "type": "boolean"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderCustomerResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "customer_id": {
             "format": "uuid",
@@ -6723,8 +6994,44 @@
         "type": "object"
       },
       "PendingCancellationResponse": {
-        "description": "A post-dispatch cancellation request waiting for Manager approval (D-19).",
+        "description": "A post-dispatch cancellation request (D-19): waiting for a Manager,\nor — when asked for with `include_decided` — approved or rejected.",
         "properties": {
+          "cancellation_charge": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Charge"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "estimated_charge": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Charge"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -6739,6 +7046,17 @@
             "title": "Reason",
             "type": "string"
           },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
           "requested_at": {
             "format": "date-time",
             "title": "Requested At",
@@ -6747,6 +7065,16 @@
           "requested_by": {
             "format": "uuid",
             "title": "Requested By",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
             "type": "string"
           }
         },
@@ -7147,6 +7475,17 @@
             ],
             "title": "Photo Blob Ref"
           },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
@@ -7167,6 +7506,17 @@
               }
             ],
             "title": "Signature Blob Ref"
+          },
+          "signature_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Url"
           },
           "tenant_id": {
             "format": "uuid",
@@ -8293,6 +8643,11 @@
           "address_type": {
             "anyOf": [
               {
+                "enum": [
+                  "delivery",
+                  "billing",
+                  "both"
+                ],
                 "type": "string"
               },
               {
@@ -8366,6 +8721,12 @@
           },
           "customer_type": {
             "default": "domestic",
+            "enum": [
+              "domestic",
+              "commercial",
+              "industrial",
+              "government"
+            ],
             "title": "Customer Type",
             "type": "string"
           },
@@ -8410,6 +8771,18 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gstin": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
           "landmark": {
             "anyOf": [
               {
@@ -8424,6 +8797,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -8461,6 +8836,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -8494,6 +8871,7 @@
           "pincode": {
             "anyOf": [
               {
+                "pattern": "^\\s*[1-9]\\d{5}\\s*$",
                 "type": "string"
               },
               {
@@ -8895,6 +9273,22 @@
         "title": "RegisterVehicleRequest",
         "type": "object"
       },
+      "RejectCancellationRequest": {
+        "properties": {
+          "reason": {
+            "description": "Why — required, cannot be blank.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RejectCancellationRequest",
+        "type": "object"
+      },
       "RelocateWarehouseRequest": {
         "properties": {
           "address_line": {
@@ -9229,6 +9623,24 @@
           "reason"
         ],
         "title": "RequestRefundRequest",
+        "type": "object"
+      },
+      "RescheduleOrderRequest": {
+        "properties": {
+          "requested_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Date"
+          }
+        },
+        "title": "RescheduleOrderRequest",
         "type": "object"
       },
       "ResolutionOutcome": {
@@ -10233,12 +10645,18 @@
       "SubmitKycDocumentRequest": {
         "properties": {
           "doc_type": {
-            "maxLength": 50,
-            "minLength": 1,
+            "enum": [
+              "aadhaar",
+              "pan",
+              "voter_id",
+              "driving_license",
+              "passport"
+            ],
             "title": "Doc Type",
             "type": "string"
           },
           "document_number": {
+            "maxLength": 30,
             "minLength": 1,
             "title": "Document Number",
             "type": "string"
@@ -10739,12 +11157,18 @@
         "properties": {
           "address_type": {
             "default": "delivery",
+            "enum": [
+              "delivery",
+              "billing",
+              "both"
+            ],
             "title": "Address Type",
             "type": "string"
           },
           "area": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -10754,19 +11178,15 @@
             "title": "Area"
           },
           "city": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City"
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
           },
           "district": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -10778,6 +11198,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -10789,6 +11210,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -10802,6 +11225,7 @@
             "title": "Latitude"
           },
           "line_1": {
+            "maxLength": 500,
             "minLength": 1,
             "title": "Line 1",
             "type": "string"
@@ -10809,6 +11233,7 @@
           "line_2": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -10820,6 +11245,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -10833,19 +11260,14 @@
             "title": "Longitude"
           },
           "pincode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pincode"
+            "pattern": "^\\s*[1-9]\\d{5}\\s*$",
+            "title": "Pincode",
+            "type": "string"
           },
           "state": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -10856,7 +11278,9 @@
           }
         },
         "required": [
-          "line_1"
+          "line_1",
+          "city",
+          "pincode"
         ],
         "title": "UpdateCustomerAddressRequest",
         "type": "object"
@@ -10893,6 +11317,12 @@
             "title": "Contact Person"
           },
           "customer_type": {
+            "enum": [
+              "domestic",
+              "commercial",
+              "industrial",
+              "government"
+            ],
             "title": "Customer Type",
             "type": "string"
           },
@@ -10926,6 +11356,18 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gstin": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
           "lpg_subsidy_id": {
             "anyOf": [
               {
@@ -10945,6 +11387,14 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "onboarding",
+              "pending_approval",
+              "active",
+              "inactive",
+              "blocked",
+              "closed"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -14111,7 +14561,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ComplaintStatus"
                 },
                 {
                   "type": "null"
@@ -14166,6 +14616,7 @@
         ]
       },
       "post": {
+        "description": "Raise a complaint. 422 when the customer, or the order for that\ncustomer, does not exist. A Gas leak complaint is always Critical.",
         "operationId": "raise_complaint_api_v1_complaints_post",
         "requestBody": {
           "content": {
@@ -14205,6 +14656,32 @@
           }
         },
         "summary": "Raise Complaint",
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/api/v1/complaints/assignees": {
+      "get": {
+        "description": "Active staff of this agency who can take complaints, by name (DO-18).",
+        "operationId": "list_complaint_assignees_api_v1_complaints_assignees_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAssigneeResponse"
+                  },
+                  "title": "Response List Complaint Assignees Api V1 Complaints Assignees Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Complaint Assignees",
         "tags": [
           "Complaints"
         ]
@@ -14255,6 +14732,7 @@
     },
     "/api/v1/complaints/{complaint_id}/assign": {
       "post": {
+        "description": "Assign to a staff member from `GET /complaints/assignees`; 422 for\nanyone else, 404 for an unknown complaint, 409 once resolved.",
         "operationId": "assign_complaint_api_v1_complaints__complaint_id__assign_post",
         "parameters": [
           {
@@ -15126,6 +15604,51 @@
       }
     },
     "/api/v1/customers/{customer_id}/addresses/{address_id}": {
+      "delete": {
+        "description": "Remove one of the customer's addresses. Past orders keep the address\nthey were booked with (a snapshot); the last address cannot be removed.",
+        "operationId": "remove_address_api_v1_customers__customer_id__addresses__address_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "address_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Address Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Address",
+        "tags": [
+          "Customers"
+        ]
+      },
       "put": {
         "operationId": "update_address_api_v1_customers__customer_id__addresses__address_id__put",
         "parameters": [
@@ -15532,6 +16055,7 @@
     },
     "/api/v1/customers/{customer_id}/ledger/adjust": {
       "post": {
+        "description": "Manually correct a customer's cylinder balance. 404 for an unknown\ncustomer.",
         "operationId": "adjust_balance_api_v1_customers__customer_id__ledger_adjust_post",
         "parameters": [
           {
@@ -18649,7 +19173,7 @@
     },
     "/api/v1/orders": {
       "get": {
-        "description": "Order Queue — the dominant query pattern, status/branch/date filterable.",
+        "description": "Order Queue — newest first; filter by status, delivery date range,\ncustomer, or a free-text search (DO-12). Each order carries its\ncustomer's name, phone and consumer number.",
         "operationId": "list_orders_api_v1_orders_get",
         "parameters": [
           {
@@ -18658,6 +19182,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
@@ -18668,6 +19193,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -18679,6 +19206,18 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "draft",
+                    "booked",
+                    "confirmed",
+                    "assigned",
+                    "ready_for_dispatch",
+                    "out_for_delivery",
+                    "delivered",
+                    "failed_delivery",
+                    "cancelled",
+                    "closed"
+                  ],
                   "type": "string"
                 },
                 {
@@ -18686,6 +19225,82 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "description": "Order number, or the customer's name, phone or consumer number.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order number, or the customer's name, phone or consumer number.",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Delivery date on or after (inclusive).",
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Delivery date on or after (inclusive).",
+              "title": "From Date"
+            }
+          },
+          {
+            "description": "Delivery date on or before (inclusive).",
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Delivery date on or before (inclusive).",
+              "title": "To Date"
+            }
+          },
+          {
+            "description": "One customer's orders (staff only).",
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One customer's orders (staff only).",
+              "title": "Customer Id"
             }
           }
         ],
@@ -18717,7 +19332,7 @@
         ]
       },
       "post": {
-        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.\n\n409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,\nhas no price for the customer, or is out of stock at the branch.",
+        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.\n\nThe delivery address is always the customer's saved address\n`address_id`; `delivery_address` in the body is ignored.\n\n- 404 when the customer is not visible.\n- 409 `CUSTOMER_NOT_ELIGIBLE` when the connection is not active or KYC\n  is rejected/expired; `ADDRESS_NOT_FOUND` when `address_id` is not one\n  of the customer's addresses.\n- 409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,\n  has no price for the customer, or is out of stock at the branch.\n- 409 `CYLINDER_CAP_EXCEEDED` when the booking takes the customer over\n  the tenant's cylinder holding cap for their connection type.",
         "operationId": "create_order_api_v1_orders_post",
         "requestBody": {
           "content": {
@@ -18912,6 +19527,58 @@
         "tags": [
           "Orders"
         ]
+      },
+      "patch": {
+        "description": "Edit a booked or confirmed order before it is put on a trip (DO-13):\nquantities, cylinder types, delivery address (one of the customer's\nsaved addresses) or delivery date. A confirmed order is re-priced at\ntoday's prices. Needs `orders:confirm` — the staff who accept bookings\nare the ones who change them.\n\n409 when the order is already on a trip (`CONFLICT`), the date is in the\npast, the address is not the customer's (`ADDRESS_NOT_FOUND`), or a\nbooking rule fails (`CYLINDER_NOT_ORDERABLE`, `CYLINDER_CAP_EXCEEDED`,\n`CREDIT_LIMIT_EXCEEDED`).",
+        "operationId": "amend_order_api_v1_orders__order_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AmendOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Amend Order",
+        "tags": [
+          "Orders"
+        ]
       }
     },
     "/api/v1/orders/{order_id}/assign": {
@@ -19066,9 +19733,63 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/cancel/reject": {
+      "post": {
+        "description": "Reject a pending post-dispatch cancellation request with a reason\n(DO-14). The order keeps its status and delivery goes ahead; the\ncustomer may ask again. Live-checked, like approval (D-19).\n\n404 when the order has no request waiting; 422 without a reason.",
+        "operationId": "reject_order_cancellation_api_v1_orders__order_id__cancel_reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectCancellationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingCancellationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Order Cancellation",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/cancellation-request": {
       "get": {
-        "description": "The cancellation request waiting for Manager approval on this order,\nor `null` when there is none (D-19).",
+        "description": "The cancellation request waiting for Manager approval on this order,\nwith the charge approving it would record, or `null` when there is none\n(D-19). With `include_decided=true`, the latest request whatever its\noutcome, so the apps can show that it was rejected and why (CA-07).",
         "operationId": "get_pending_cancellation_api_v1_orders__order_id__cancellation_request_get",
         "parameters": [
           {
@@ -19079,6 +19800,18 @@
               "format": "uuid",
               "title": "Order Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Return the latest request even once approved or rejected.",
+            "in": "query",
+            "name": "include_decided",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Return the latest request even once approved or rejected.",
+              "title": "Include Decided",
+              "type": "boolean"
             }
           }
         ],
@@ -19164,7 +19897,7 @@
     },
     "/api/v1/orders/{order_id}/confirm": {
       "post": {
-        "description": "`booked -> confirmed`. Resolves and snapshots unit prices; runs the\nBR-04/BR-19 stub policy checks (see `infrastructure/order/policies.py`).",
+        "description": "`booked -> confirmed`. Resolves and snapshots unit prices.\n\n409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)\nwhen the tenant's configured `cylinder_holding_cap` /\n`credit_limit_default` for the customer's type would be exceeded.",
         "operationId": "confirm_order_api_v1_orders__order_id__confirm_post",
         "parameters": [
           {
@@ -19689,9 +20422,61 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/proof-of-delivery": {
+      "get": {
+        "description": "The delivery record of a delivered order (DO-26): when the OTP was\nverified, where, how much was collected and how, with short-lived links\nto the signature and photo when the driver captured them. `null` until\nthe order is delivered. Same row-scoping as `GET /orders/{order_id}`.",
+        "operationId": "get_proof_of_delivery_api_v1_orders__order_id__proof_of_delivery_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ProofOfDeliveryResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Proof Of Delivery Api V1 Orders  Order Id  Proof Of Delivery Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Proof Of Delivery",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/reschedule": {
       "post": {
-        "description": "`failed_delivery -> ready_for_dispatch`. Also resets the paired\n`RouteStop` back to `pending` so the retry can reach `delivered` (see\n`RescheduleOrderUseCase`'s docstring).\n\n`Idempotency-Key` is optional — see `run_idempotent`.",
+        "description": "Without a body: `failed_delivery -> ready_for_dispatch`, retrying on\nthe same trip (the paired `RouteStop` goes back to `pending`).\n\nWith `requested_date` (DO-13): `failed_delivery -> confirmed` — the order\nleaves its trip (the stop stays failed, the van's reservation is\nreleased) and waits to be planned onto a trip on that date. A date in\nthe past is a 409.\n\n`Idempotency-Key` is optional — see `run_idempotent`.",
         "operationId": "reschedule_order_api_v1_orders__order_id__reschedule_post",
         "parameters": [
           {
@@ -19705,6 +20490,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RescheduleOrderRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

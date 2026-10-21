@@ -40,15 +40,18 @@ absent, not null-faked.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import AbstractAsyncContextManager
-from typing import Annotated, Any, cast
+from datetime import datetime
+from decimal import Decimal
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import (
     APIRouter,
     Depends,
     File,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -83,6 +86,7 @@ from lpg.api.v1.dependencies.order import (
     get_file_storage,
     get_idempotency_service,
     get_job_queue,
+    get_order_customer_directory,
     get_order_number_sequence,
     get_order_repository,
     get_orderable_cylinder_types,
@@ -90,6 +94,7 @@ from lpg.api.v1.dependencies.order import (
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.order import (
+    AmendOrderRequest,
     AssignOrderRequest,
     BookingSource,
     BulkCancelOrderResultItem,
@@ -104,6 +109,7 @@ from lpg.api.v1.schemas.order import (
     DeliveryCodeResponse,
     DriverLocationSnapshot,
     OrderableCylinderTypeResponse,
+    OrderCustomerResponse,
     OrderLineResponse,
     OrderPageResponse,
     OrderResponse,
@@ -115,9 +121,11 @@ from lpg.api.v1.schemas.order import (
     PodAttachmentResponse,
     ProofOfDeliveryResponse,
     RecordFailedDeliveryRequest,
+    RejectCancellationRequest,
+    RescheduleOrderRequest,
     TrackingDriverInfo,
 )
-from lpg.application.common.errors import NotFoundError, PermissionDeniedError
+from lpg.application.common.errors import NotFoundError, PermissionDeniedError, ValidationError
 from lpg.application.common.ports import FileStorage, JobQueuePort, UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.delivery.ports import (
@@ -134,16 +142,21 @@ from lpg.application.inventory.ports import InventoryLocationRepository
 from lpg.application.order.booking_source import resolve_booking_source
 from lpg.application.order.orderable import OrderableCylinderTypes
 from lpg.application.order.ports import (
+    CancellationRecordEntry,
     CancellationRecordRepository,
     CreditLimitEvaluator,
     CylinderCapPolicy,
     DeliveryCodeStore,
+    OrderCustomerDirectory,
+    OrderCustomerSummary,
     OrderNumberSequence,
     OrderRepository,
     ProofOfDeliveryEntry,
     ProofOfDeliveryRepository,
 )
 from lpg.application.order.use_cases import (
+    AmendOrderCommand,
+    AmendOrderUseCase,
     ApproveOrderCancellationCommand,
     ApproveOrderCancellationUseCase,
     AssignOrderCommand,
@@ -165,17 +178,19 @@ from lpg.application.order.use_cases import (
     DepartOrderUseCase,
     DispatchOrderCommand,
     DispatchOrderUseCase,
+    GetCancellationRequestUseCase,
     GetDeliveryCodeQuery,
     GetDeliveryCodeUseCase,
     GetOrderQuery,
     GetOrderUseCase,
-    GetPendingCancellationUseCase,
     ListOrdersQuery,
     ListOrderStatusHistoryQuery,
     ListOrderStatusHistoryUseCase,
     ListOrdersUseCase,
     RecordFailedDeliveryCommand,
     RecordFailedDeliveryUseCase,
+    RejectOrderCancellationCommand,
+    RejectOrderCancellationUseCase,
     RescheduleOrderCommand,
     RescheduleOrderUseCase,
     ResendDeliveryOtpCommand,
@@ -187,7 +202,7 @@ from lpg.application.tenant.ports import (
 )
 from lpg.application.tenant_admin.ports import EmployeeRepository
 from lpg.config.settings import Settings, get_settings
-from lpg.domain.order.order import DeliveredLine, DeliveryAddress, Order
+from lpg.domain.order.order import DeliveredLine, Order
 from lpg.infrastructure.idempotency.service import (
     IdempotencyService,
     fingerprint,
@@ -203,7 +218,12 @@ def _require_actor(principal: AuthenticatedPrincipal) -> uuid.UUID:
     return principal.user_id
 
 
-def _order_to_response(order: Order) -> OrderResponse:
+def _order_to_response(
+    order: Order,
+    *,
+    customer: OrderCustomerSummary | None = None,
+    cancellation_pending: bool = False,
+) -> OrderResponse:
     address = order.delivery_address
     return OrderResponse(
         id=order.id,
@@ -237,7 +257,38 @@ def _order_to_response(order: Order) -> OrderResponse:
             )
             for line in order.lines
         ],
+        customer=(
+            OrderCustomerResponse(
+                id=customer.customer_id,
+                full_name=customer.full_name,
+                phone_number=customer.phone_number,
+                consumer_number=customer.consumer_number,
+                customer_type=customer.customer_type,
+            )
+            if customer is not None
+            else None
+        ),
+        cancellation_pending=cancellation_pending,
     )
+
+
+async def _orders_with_customers(
+    orders: Sequence[Order],
+    directory: OrderCustomerDirectory,
+    cancellations: CancellationRecordRepository,
+) -> list[OrderResponse]:
+    """Order responses with who each order is for and whether a
+    cancellation request is waiting — two queries for the whole page."""
+    customers = await directory.summaries([order.customer_id for order in orders])
+    pending = await cancellations.pending_order_ids([order.id for order in orders])
+    return [
+        _order_to_response(
+            order,
+            customer=customers.get(order.customer_id),
+            cancellation_pending=order.id in pending,
+        )
+        for order in orders
+    ]
 
 
 def _pod_to_response(entry: ProofOfDeliveryEntry) -> ProofOfDeliveryResponse:
@@ -335,11 +386,21 @@ async def create_order(
     orderable_cylinder_types: Annotated[
         OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
     ],
+    cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
 ) -> OrderResponse:
     """Create a booking (`draft -> booked`). Idempotency-Key required.
 
-    409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,
-    has no price for the customer, or is out of stock at the branch.
+    The delivery address is always the customer's saved address
+    `address_id`; `delivery_address` in the body is ignored.
+
+    - 404 when the customer is not visible.
+    - 409 `CUSTOMER_NOT_ELIGIBLE` when the connection is not active or KYC
+      is rejected/expired; `ADDRESS_NOT_FOUND` when `address_id` is not one
+      of the customer's addresses.
+    - 409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,
+      has no price for the customer, or is out of stock at the branch.
+    - 409 `CYLINDER_CAP_EXCEEDED` when the booking takes the customer over
+      the tenant's cylinder holding cap for their connection type.
     """
     idempotency_key = request.headers.get("Idempotency-Key")
     if idempotency_key is None:
@@ -365,6 +426,7 @@ async def create_order(
         order_number_sequence,
         customer_repository,
         orderable_cylinder_types,
+        cylinder_cap_policy,
     )
 
     async def _operation() -> dict[str, Any]:
@@ -374,11 +436,6 @@ async def create_order(
                 branch_id=body.branch_id,
                 customer_id=customer_id,
                 address_id=body.address_id,
-                delivery_address=DeliveryAddress(
-                    address_line=body.delivery_address.address_line,
-                    latitude=body.delivery_address.latitude,
-                    longitude=body.delivery_address.longitude,
-                ),
                 booking_source=booking_source,
                 requested_date=body.requested_date,
                 lines=[
@@ -429,10 +486,12 @@ async def list_orderable_cylinder_types(
         branch_id = customer.branch_id
     else:
         if customer_id is None:
-            raise HTTPException(status_code=422, detail="customer_id is required.")
+            raise HTTPException(
+                status_code=422, detail="Choose a customer first to see what they can book."
+            )
         found = await customer_repository.get_by_id(customer_id)
         if found is None:
-            msg = f"No customer visible with id {customer_id}."
+            msg = "Customer not found."
             raise NotFoundError(msg, customer_id=str(customer_id))
         customer = found
         branch_id = branch_id or customer.branch_id
@@ -465,16 +524,41 @@ async def list_orders(
     customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
-    skip: int = 0,
-    limit: int = 50,
-    status: str | None = None,
+    customer_directory: Annotated[OrderCustomerDirectory, Depends(get_order_customer_directory)],
+    cancellation_repository: Annotated[
+        CancellationRecordRepository, Depends(get_cancellation_record_repository)
+    ],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    status: OrderStatus | None = None,
+    search: Annotated[
+        str | None,
+        Query(
+            max_length=100,
+            description="Order number, or the customer's name, phone or consumer number.",
+        ),
+    ] = None,
+    from_date: Annotated[
+        datetime | None, Query(description="Delivery date on or after (inclusive).")
+    ] = None,
+    to_date: Annotated[
+        datetime | None, Query(description="Delivery date on or before (inclusive).")
+    ] = None,
+    customer_id: Annotated[
+        uuid.UUID | None, Query(description="One customer's orders (staff only).")
+    ] = None,
 ) -> OrderPageResponse:
-    """Order Queue — the dominant query pattern, status/branch/date filterable."""
+    """Order Queue — newest first; filter by status, delivery date range,
+    customer, or a free-text search (DO-12). Each order carries its
+    customer's name, phone and consumer number."""
     scope = await _resolve_scope(
         principal, customer_repository, driver_repository, route_repository
     )
     if scope.blocked:
         return OrderPageResponse(items=[], total=0)
+    if from_date is not None and to_date is not None and from_date > to_date:
+        msg = "The 'from' date must be on or before the 'to' date."
+        raise ValidationError(msg, field="from_date")
 
     use_case = ListOrdersUseCase(order_repository)
     page = await use_case.execute(
@@ -483,13 +567,16 @@ async def list_orders(
             limit=limit,
             status=status,
             branch_id=scope.branch_id,
-            customer_id=scope.customer_id,
+            # A customer login is always limited to their own orders.
+            customer_id=scope.customer_id if scope.customer_id is not None else customer_id,
             driver_id=scope.driver_id,
+            from_date=from_date,
+            to_date=to_date,
+            search=search,
         )
     )
-    return OrderPageResponse(
-        items=[_order_to_response(order) for order in page.items], total=page.total
-    )
+    items = await _orders_with_customers(page.items, customer_directory, cancellation_repository)
+    return OrderPageResponse(items=items, total=page.total)
 
 
 @router.get(
@@ -504,6 +591,10 @@ async def get_order(
     customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    customer_directory: Annotated[OrderCustomerDirectory, Depends(get_order_customer_directory)],
+    cancellation_repository: Annotated[
+        CancellationRecordRepository, Depends(get_cancellation_record_repository)
+    ],
 ) -> OrderResponse:
     scope = await _resolve_scope(
         principal, customer_repository, driver_repository, route_repository
@@ -521,7 +612,8 @@ async def get_order(
             scoped_branch_id=scope.branch_id,
         )
     )
-    return _order_to_response(order)
+    [response] = await _orders_with_customers([order], customer_directory, cancellation_repository)
+    return response
 
 
 @router.get(
@@ -676,8 +768,11 @@ async def confirm_order(
         OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
     ],
 ) -> OrderResponse:
-    """`booked -> confirmed`. Resolves and snapshots unit prices; runs the
-    BR-04/BR-19 stub policy checks (see `infrastructure/order/policies.py`).
+    """`booked -> confirmed`. Resolves and snapshots unit prices.
+
+    409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)
+    when the tenant's configured `cylinder_holding_cap` /
+    `credit_limit_default` for the customer's type would be exceeded.
     """
     actor_id = _require_actor(principal)
     use_case = ConfirmOrderUseCase(
@@ -929,6 +1024,65 @@ async def get_delivery_code(
     return DeliveryCodeResponse(code=code) if code is not None else None
 
 
+@router.patch(
+    "/orders/{order_id}",
+    response_model=OrderResponse,
+    dependencies=[Depends(require_permission("orders:confirm"))],
+)
+async def amend_order(
+    order_id: uuid.UUID,
+    body: AmendOrderRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    price_list_repository: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    orderable_cylinder_types: Annotated[
+        OrderableCylinderTypes, Depends(get_orderable_cylinder_types)
+    ],
+    cylinder_cap_policy: Annotated[CylinderCapPolicy, Depends(get_cylinder_cap_policy)],
+    credit_limit_evaluator: Annotated[CreditLimitEvaluator, Depends(get_credit_limit_evaluator)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OrderResponse:
+    """Edit a booked or confirmed order before it is put on a trip (DO-13):
+    quantities, cylinder types, delivery address (one of the customer's
+    saved addresses) or delivery date. A confirmed order is re-priced at
+    today's prices. Needs `orders:confirm` — the staff who accept bookings
+    are the ones who change them.
+
+    409 when the order is already on a trip (`CONFLICT`), the date is in the
+    past, the address is not the customer's (`ADDRESS_NOT_FOUND`), or a
+    booking rule fails (`CYLINDER_NOT_ORDERABLE`, `CYLINDER_CAP_EXCEEDED`,
+    `CREDIT_LIMIT_EXCEEDED`).
+    """
+    actor_id = _require_actor(principal)
+    order = await AmendOrderUseCase(
+        order_repository,
+        customer_repository,
+        price_list_repository,
+        orderable_cylinder_types,
+        cylinder_cap_policy,
+        credit_limit_evaluator,
+        unit_of_work,
+    ).execute(
+        AmendOrderCommand(
+            order_id=order_id,
+            changed_by=actor_id,
+            lines=(
+                [
+                    CreateOrderLine(cylinder_type_id=line.cylinder_type_id, quantity=line.quantity)
+                    for line in body.lines
+                ]
+                if body.lines is not None
+                else None
+            ),
+            requested_date=body.requested_date,
+            address_id=body.address_id,
+            payment_method_preference=body.payment_method_preference,
+        )
+    )
+    return _order_to_response(order)
+
+
 @router.post(
     "/orders/{order_id}/reschedule",
     response_model=OrderResponse,
@@ -941,12 +1095,20 @@ async def reschedule_order(
     order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
     driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    inventory_location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     idempotency_service: Annotated[IdempotencyService, Depends(get_idempotency_service)],
+    body: RescheduleOrderRequest | None = None,
 ) -> OrderResponse:
-    """`failed_delivery -> ready_for_dispatch`. Also resets the paired
-    `RouteStop` back to `pending` so the retry can reach `delivered` (see
-    `RescheduleOrderUseCase`'s docstring).
+    """Without a body: `failed_delivery -> ready_for_dispatch`, retrying on
+    the same trip (the paired `RouteStop` goes back to `pending`).
+
+    With `requested_date` (DO-13): `failed_delivery -> confirmed` — the order
+    leaves its trip (the stop stays failed, the van's reservation is
+    released) and waits to be planned onto a trip on that date. A date in
+    the past is a 409.
 
     `Idempotency-Key` is optional — see `run_idempotent`.
     """
@@ -954,11 +1116,16 @@ async def reschedule_order(
         order_id, principal, order_repository, driver_repository, route_repository
     )
     actor_id = _require_actor(principal)
-    use_case = RescheduleOrderUseCase(order_repository, route_repository, unit_of_work)
+    requested_date = body.requested_date if body is not None else None
+    use_case = RescheduleOrderUseCase(
+        order_repository, route_repository, unit_of_work, inventory_location_repository
+    )
 
     async def _operation() -> dict[str, Any]:
         order = await use_case.execute(
-            RescheduleOrderCommand(order_id=order_id, changed_by=actor_id)
+            RescheduleOrderCommand(
+                order_id=order_id, changed_by=actor_id, requested_date=requested_date
+            )
         )
         return _order_to_response(order).model_dump(mode="json")
 
@@ -966,7 +1133,10 @@ async def reschedule_order(
         idempotency_service,
         tenant_id=principal.tenant_id,
         idempotency_key=request.headers.get("Idempotency-Key"),
-        fingerprint_payload={"order_id": str(order_id)},
+        fingerprint_payload={
+            "order_id": str(order_id),
+            "requested_date": requested_date.isoformat() if requested_date else None,
+        },
         operation=_operation,
     )
     return OrderResponse.model_validate(result)
@@ -975,6 +1145,52 @@ async def reschedule_order(
 # ==========================================================================
 # Proof of Delivery attachments / Deliver / Failed delivery
 # ==========================================================================
+
+
+@router.get(
+    "/orders/{order_id}/proof-of-delivery",
+    response_model=ProofOfDeliveryResponse | None,
+    dependencies=[Depends(require_permission("orders:read"))],
+)
+async def get_proof_of_delivery(
+    order_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    customer_repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    driver_repository: Annotated[DriverRepository, Depends(get_driver_repository)],
+    route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    pod_repository: Annotated[ProofOfDeliveryRepository, Depends(get_proof_of_delivery_repository)],
+    file_storage: Annotated[FileStorage, Depends(get_file_storage)],
+) -> ProofOfDeliveryResponse | None:
+    """The delivery record of a delivered order (DO-26): when the OTP was
+    verified, where, how much was collected and how, with short-lived links
+    to the signature and photo when the driver captured them. `null` until
+    the order is delivered. Same row-scoping as `GET /orders/{order_id}`.
+    """
+    scope = await _resolve_scope(
+        principal, customer_repository, driver_repository, route_repository
+    )
+    if scope.blocked:
+        raise NotFoundError("Order not found.", order_id=str(order_id))
+    order = await GetOrderUseCase(order_repository).execute(
+        GetOrderQuery(
+            order_id=order_id,
+            scoped_customer_id=scope.customer_id,
+            scoped_route_stop_ids=scope.route_stop_ids,
+            scoped_branch_id=scope.branch_id,
+        )
+    )
+    entry = await pod_repository.get_by_order_id(order.id)
+    if entry is None:
+        return None
+    response = _pod_to_response(entry)
+    if entry.signature_blob_ref:
+        response.signature_url = await file_storage.url(
+            entry.signature_blob_ref, expires_seconds=600
+        )
+    if entry.photo_blob_ref:
+        response.photo_url = await file_storage.url(entry.photo_blob_ref, expires_seconds=600)
+    return response
 
 
 @router.post(
@@ -1192,31 +1408,54 @@ async def get_pending_cancellation(
     cancellation_repository: Annotated[
         CancellationRecordRepository, Depends(get_cancellation_record_repository)
     ],
+    tenant_configuration_repository: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    include_decided: Annotated[
+        bool,
+        Query(description="Return the latest request even once approved or rejected."),
+    ] = False,
 ) -> PendingCancellationResponse | None:
     """The cancellation request waiting for Manager approval on this order,
-    or `null` when there is none (D-19).
+    with the charge approving it would record, or `null` when there is none
+    (D-19). With `include_decided=true`, the latest request whatever its
+    outcome, so the apps can show that it was rejected and why (CA-07).
     """
     scope = await _resolve_scope(
         principal, customer_repository, driver_repository, route_repository
     )
     if scope.blocked:
         raise NotFoundError("Order not found.", order_id=str(order_id))
-    entry = await GetPendingCancellationUseCase(order_repository, cancellation_repository).execute(
+    view = await GetCancellationRequestUseCase(
+        order_repository, cancellation_repository, tenant_configuration_repository
+    ).execute(
         GetOrderQuery(
             order_id=order_id,
             scoped_customer_id=scope.customer_id,
             scoped_route_stop_ids=scope.route_stop_ids,
             scoped_branch_id=scope.branch_id,
-        )
+        ),
+        include_decided=include_decided,
     )
-    if entry is None:
+    if view is None:
         return None
+    return _cancellation_request_to_response(view.record, view.estimated_charge)
+
+
+def _cancellation_request_to_response(
+    entry: CancellationRecordEntry, estimated_charge: Decimal | None = None
+) -> PendingCancellationResponse:
     return PendingCancellationResponse(
         id=entry.id,
         order_id=entry.order_id,
         reason=entry.reason,
         requested_by=entry.cancelled_by,
         requested_at=entry.requested_at,
+        status=cast("Literal['pending', 'approved', 'rejected']", entry.status),
+        estimated_charge=estimated_charge,
+        cancellation_charge=entry.cancellation_charge,
+        decided_at=entry.approved_at or entry.rejected_at,
+        rejection_reason=entry.rejection_reason,
     )
 
 
@@ -1255,6 +1494,36 @@ async def approve_order_cancellation(
         ApproveOrderCancellationCommand(order_id=order_id, approved_by=actor_id)
     )
     return _order_to_response(order)
+
+
+@router.post(
+    "/orders/{order_id}/cancel/reject",
+    response_model=PendingCancellationResponse,
+    dependencies=[Depends(require_live_permission("orders:cancel_approve"))],
+)
+async def reject_order_cancellation(
+    order_id: uuid.UUID,
+    body: RejectCancellationRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
+    cancellation_repository: Annotated[
+        CancellationRecordRepository, Depends(get_cancellation_record_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> PendingCancellationResponse:
+    """Reject a pending post-dispatch cancellation request with a reason
+    (DO-14). The order keeps its status and delivery goes ahead; the
+    customer may ask again. Live-checked, like approval (D-19).
+
+    404 when the order has no request waiting; 422 without a reason.
+    """
+    actor_id = _require_actor(principal)
+    record = await RejectOrderCancellationUseCase(
+        order_repository, cancellation_repository, unit_of_work
+    ).execute(
+        RejectOrderCancellationCommand(order_id=order_id, rejected_by=actor_id, reason=body.reason)
+    )
+    return _cancellation_request_to_response(record)
 
 
 @router.post(

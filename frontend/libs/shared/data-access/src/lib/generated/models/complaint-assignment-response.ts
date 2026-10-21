@@ -4,6 +4,7 @@
 export interface ComplaintAssignmentResponse {
   assigned_at: string;
   assigned_to: string;
+  assigned_to_name?: (string | null);
   created_at: string;
   created_by: (string | null);
   id: string;

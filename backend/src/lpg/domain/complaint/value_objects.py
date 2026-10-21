@@ -13,6 +13,11 @@ class ComplaintCategory(StrEnum):
     OTHER = "Other"
 
 
+#: Categories that are safety issues: raised at Critical priority whatever
+#: the caller picked, so they get the shortest SLA.
+SAFETY_CATEGORIES = frozenset({ComplaintCategory.GAS_LEAK_SAFETY})
+
+
 class ComplaintPriority(StrEnum):
     LOW = "Low"
     MEDIUM = "Medium"

@@ -66,6 +66,8 @@ from lpg.application.customer.use_cases import (
     RecognizeKycDocumentUseCase,
     RegisterCustomerCommand,
     RegisterCustomerUseCase,
+    RemoveCustomerAddressCommand,
+    RemoveCustomerAddressUseCase,
     SetPrimaryAddressCommand,
     SetPrimaryAddressUseCase,
     SubmitKycDocumentCommand,
@@ -152,6 +154,7 @@ async def register_customer(
             date_of_birth=request.date_of_birth,
             customer_type=request.customer_type,
             lpg_subsidy_id=request.lpg_subsidy_id,
+            gstin=request.gstin,
             line_1=request.line_1,
             line_2=request.line_2,
             landmark=request.landmark,
@@ -271,20 +274,40 @@ async def update_customer_profile(
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> CustomerResponse:
     await _require_self_or_permission(principal, customer_id, "customers:update", repository)
+    branch_id = request.branch_id
+    customer_type: str = request.customer_type
+    status: str = request.status
+    gstin = request.gstin
+    if "customers:update" not in principal.permission_codes:
+        # A customer editing their own profile may change their contact
+        # details only. Branch, connection type, account status and GSTIN
+        # are agency decisions (pricing, caps and invoicing depend on them),
+        # so the stored values are kept whatever the request says.
+        current = await GetCustomerUseCase(repository).execute(
+            GetCustomerQuery(customer_id=customer_id)
+        )
+        if current is None:
+            msg = f"No customer visible with id {customer_id}."
+            raise NotFoundError(msg, customer_id=str(customer_id))
+        branch_id = current.branch_id
+        customer_type = current.customer_type
+        status = current.status
+        gstin = current.gstin
     use_case = UpdateCustomerProfileUseCase(repository, unit_of_work)
     customer = await use_case.execute(
         UpdateCustomerProfileCommand(
             customer_id=customer_id,
-            branch_id=request.branch_id,
+            branch_id=branch_id,
             full_name=request.full_name,
             phone_number=request.phone_number,
             contact_person=request.contact_person,
             alternate_mobile=request.alternate_mobile,
             email=request.email,
             date_of_birth=request.date_of_birth,
-            customer_type=request.customer_type,
-            status=request.status,
+            customer_type=customer_type,
+            status=status,
             lpg_subsidy_id=request.lpg_subsidy_id,
+            gstin=gstin,
         )
     )
     return CustomerResponse.model_validate(customer)
@@ -348,6 +371,24 @@ async def update_address(
             latitude=float(request.latitude) if request.latitude is not None else None,
             longitude=(float(request.longitude) if request.longitude is not None else None),
         )
+    )
+
+
+@router.delete("/{customer_id}/addresses/{address_id}", status_code=204)
+async def remove_address(
+    customer_id: uuid.UUID,
+    address_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[CustomerRepository, Depends(get_customer_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> None:
+    """Remove one of the customer's addresses. Past orders keep the address
+    they were booked with (a snapshot); the last address cannot be removed.
+    """
+    await _require_self_or_permission(principal, customer_id, "customers:update", repository)
+    use_case = RemoveCustomerAddressUseCase(repository, unit_of_work)
+    await use_case.execute(
+        RemoveCustomerAddressCommand(customer_id=customer_id, address_id=address_id)
     )
 
 

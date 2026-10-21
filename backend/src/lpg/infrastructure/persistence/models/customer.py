@@ -47,6 +47,7 @@ class CustomerModel(Base):
     alternate_mobile: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    gstin: Mapped[str | None] = mapped_column(String(15), nullable=True)
     customer_type: Mapped[str] = mapped_column(String(50), server_default="domestic")
     kyc_status: Mapped[str] = mapped_column(String(50), server_default="pending")
     status: Mapped[str] = mapped_column(String(50), server_default="onboarding")

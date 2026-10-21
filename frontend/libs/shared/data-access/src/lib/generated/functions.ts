@@ -129,6 +129,8 @@ export type { ListComplaintsApiV1ComplaintsGet$Params as ListComplaintsApiV1Comp
 export { listComplaintsApiV1ComplaintsGet as listComplaintsApiV1ComplaintsGet } from './fn/complaints/list-complaints-api-v-1-complaints-get';
 export type { RaiseComplaintApiV1ComplaintsPost$Params as RaiseComplaintApiV1ComplaintsPost$Params } from './fn/complaints/raise-complaint-api-v-1-complaints-post';
 export { raiseComplaintApiV1ComplaintsPost as raiseComplaintApiV1ComplaintsPost } from './fn/complaints/raise-complaint-api-v-1-complaints-post';
+export type { ListComplaintAssigneesApiV1ComplaintsAssigneesGet$Params as ListComplaintAssigneesApiV1ComplaintsAssigneesGet$Params } from './fn/complaints/list-complaint-assignees-api-v-1-complaints-assignees-get';
+export { listComplaintAssigneesApiV1ComplaintsAssigneesGet as listComplaintAssigneesApiV1ComplaintsAssigneesGet } from './fn/complaints/list-complaint-assignees-api-v-1-complaints-assignees-get';
 export type { GetComplaintApiV1ComplaintsComplaintIdGet$Params as GetComplaintApiV1ComplaintsComplaintIdGet$Params } from './fn/complaints/get-complaint-api-v-1-complaints-complaint-id-get';
 export { getComplaintApiV1ComplaintsComplaintIdGet as getComplaintApiV1ComplaintsComplaintIdGet } from './fn/complaints/get-complaint-api-v-1-complaints-complaint-id-get';
 export type { AssignComplaintApiV1ComplaintsComplaintIdAssignPost$Params as AssignComplaintApiV1ComplaintsComplaintIdAssignPost$Params } from './fn/complaints/assign-complaint-api-v-1-complaints-complaint-id-assign-post';
@@ -203,6 +205,8 @@ export type { AddAddressApiV1CustomersCustomerIdAddressesPost$Params as AddAddre
 export { addAddressApiV1CustomersCustomerIdAddressesPost as addAddressApiV1CustomersCustomerIdAddressesPost } from './fn/customers/add-address-api-v-1-customers-customer-id-addresses-post';
 export type { UpdateAddressApiV1CustomersCustomerIdAddressesAddressIdPut$Params as UpdateAddressApiV1CustomersCustomerIdAddressesAddressIdPut$Params } from './fn/customers/update-address-api-v-1-customers-customer-id-addresses-address-id-put';
 export { updateAddressApiV1CustomersCustomerIdAddressesAddressIdPut as updateAddressApiV1CustomersCustomerIdAddressesAddressIdPut } from './fn/customers/update-address-api-v-1-customers-customer-id-addresses-address-id-put';
+export type { RemoveAddressApiV1CustomersCustomerIdAddressesAddressIdDelete$Params as RemoveAddressApiV1CustomersCustomerIdAddressesAddressIdDelete$Params } from './fn/customers/remove-address-api-v-1-customers-customer-id-addresses-address-id-delete';
+export { removeAddressApiV1CustomersCustomerIdAddressesAddressIdDelete as removeAddressApiV1CustomersCustomerIdAddressesAddressIdDelete } from './fn/customers/remove-address-api-v-1-customers-customer-id-addresses-address-id-delete';
 export type { SetPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut$Params as SetPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut$Params } from './fn/customers/set-primary-address-api-v-1-customers-customer-id-addresses-address-id-primary-put';
 export { setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut as setPrimaryAddressApiV1CustomersCustomerIdAddressesAddressIdPrimaryPut } from './fn/customers/set-primary-address-api-v-1-customers-customer-id-addresses-address-id-primary-put';
 export type { ApproveCustomerApiV1CustomersCustomerIdApprovePost$Params as ApproveCustomerApiV1CustomersCustomerIdApprovePost$Params } from './fn/customers/approve-customer-api-v-1-customers-customer-id-approve-post';
@@ -371,12 +375,16 @@ export type { ListOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet$Par
 export { listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet as listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet } from './fn/orders/list-orderable-cylinder-types-api-v-1-orders-orderable-cylinder-types-get';
 export type { GetOrderApiV1OrdersOrderIdGet$Params as GetOrderApiV1OrdersOrderIdGet$Params } from './fn/orders/get-order-api-v-1-orders-order-id-get';
 export { getOrderApiV1OrdersOrderIdGet as getOrderApiV1OrdersOrderIdGet } from './fn/orders/get-order-api-v-1-orders-order-id-get';
+export type { AmendOrderApiV1OrdersOrderIdPatch$Params as AmendOrderApiV1OrdersOrderIdPatch$Params } from './fn/orders/amend-order-api-v-1-orders-order-id-patch';
+export { amendOrderApiV1OrdersOrderIdPatch as amendOrderApiV1OrdersOrderIdPatch } from './fn/orders/amend-order-api-v-1-orders-order-id-patch';
 export type { AssignOrderApiV1OrdersOrderIdAssignPost$Params as AssignOrderApiV1OrdersOrderIdAssignPost$Params } from './fn/orders/assign-order-api-v-1-orders-order-id-assign-post';
 export { assignOrderApiV1OrdersOrderIdAssignPost as assignOrderApiV1OrdersOrderIdAssignPost } from './fn/orders/assign-order-api-v-1-orders-order-id-assign-post';
 export type { CancelOrderApiV1OrdersOrderIdCancelPost$Params as CancelOrderApiV1OrdersOrderIdCancelPost$Params } from './fn/orders/cancel-order-api-v-1-orders-order-id-cancel-post';
 export { cancelOrderApiV1OrdersOrderIdCancelPost as cancelOrderApiV1OrdersOrderIdCancelPost } from './fn/orders/cancel-order-api-v-1-orders-order-id-cancel-post';
 export type { ApproveOrderCancellationApiV1OrdersOrderIdCancelApprovePost$Params as ApproveOrderCancellationApiV1OrdersOrderIdCancelApprovePost$Params } from './fn/orders/approve-order-cancellation-api-v-1-orders-order-id-cancel-approve-post';
 export { approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost as approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost } from './fn/orders/approve-order-cancellation-api-v-1-orders-order-id-cancel-approve-post';
+export type { RejectOrderCancellationApiV1OrdersOrderIdCancelRejectPost$Params as RejectOrderCancellationApiV1OrdersOrderIdCancelRejectPost$Params } from './fn/orders/reject-order-cancellation-api-v-1-orders-order-id-cancel-reject-post';
+export { rejectOrderCancellationApiV1OrdersOrderIdCancelRejectPost as rejectOrderCancellationApiV1OrdersOrderIdCancelRejectPost } from './fn/orders/reject-order-cancellation-api-v-1-orders-order-id-cancel-reject-post';
 export type { GetPendingCancellationApiV1OrdersOrderIdCancellationRequestGet$Params as GetPendingCancellationApiV1OrdersOrderIdCancellationRequestGet$Params } from './fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 export { getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet as getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet } from './fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 export type { CloseOrderApiV1OrdersOrderIdClosePost$Params as CloseOrderApiV1OrdersOrderIdClosePost$Params } from './fn/orders/close-order-api-v-1-orders-order-id-close-post';
@@ -399,6 +407,8 @@ export type { ListOrderStatusHistoryApiV1OrdersOrderIdHistoryGet$Params as ListO
 export { listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet as listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet } from './fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';
 export type { UploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost$Params as UploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost$Params } from './fn/orders/upload-pod-attachment-api-v-1-orders-order-id-pod-attachments-post';
 export { uploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost as uploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost } from './fn/orders/upload-pod-attachment-api-v-1-orders-order-id-pod-attachments-post';
+export type { GetProofOfDeliveryApiV1OrdersOrderIdProofOfDeliveryGet$Params as GetProofOfDeliveryApiV1OrdersOrderIdProofOfDeliveryGet$Params } from './fn/orders/get-proof-of-delivery-api-v-1-orders-order-id-proof-of-delivery-get';
+export { getProofOfDeliveryApiV1OrdersOrderIdProofOfDeliveryGet as getProofOfDeliveryApiV1OrdersOrderIdProofOfDeliveryGet } from './fn/orders/get-proof-of-delivery-api-v-1-orders-order-id-proof-of-delivery-get';
 export type { RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params as RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params } from './fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
 export { rescheduleOrderApiV1OrdersOrderIdReschedulePost as rescheduleOrderApiV1OrdersOrderIdReschedulePost } from './fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
 export type { GetOrderTrackingApiV1OrdersOrderIdTrackingGet$Params as GetOrderTrackingApiV1OrdersOrderIdTrackingGet$Params } from './fn/orders/get-order-tracking-api-v-1-orders-order-id-tracking-get';

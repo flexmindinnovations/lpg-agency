@@ -32,6 +32,7 @@ from lpg.application.common.errors import (
     OtpMismatchError,
     RouteNotLoadedError,
     ServiceUnavailableError,
+    ValidationError,
 )
 from lpg.application.delivery.use_cases import (
     AssignOrderToRouteCommand,
@@ -70,6 +71,7 @@ if TYPE_CHECKING:
         ProofOfDeliveryRepository,
     )
     from lpg.application.tenant.ports import PriceListRepository, TenantConfigurationRepository
+    from lpg.domain.customer.customer import Customer
 
 
 _CANCELLATION_FEE_CONFIG_KEY = "cancellation_fee_amount"
@@ -100,8 +102,10 @@ class CreateOrderCommand(Command):
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
     customer_id: uuid.UUID
+    #: One of the customer's own saved addresses; the order keeps a snapshot
+    #: of it (`DeliveryAddress`) so later edits to the address don't move a
+    #: past delivery.
     address_id: uuid.UUID
-    delivery_address: DeliveryAddress
     booking_source: str
     requested_date: datetime
     lines: Sequence[CreateOrderLine]
@@ -109,10 +113,26 @@ class CreateOrderCommand(Command):
     payment_method_preference: str | None = None
 
 
+def _delivery_address_snapshot(customer: Customer, address_id: uuid.UUID) -> DeliveryAddress:
+    """The order's delivery address, always taken from the customer's own
+    saved address — never free text from the caller (DO-11)."""
+    address = customer.address(address_id)
+    return DeliveryAddress(
+        address_line=address.one_line,
+        latitude=address.latitude,
+        longitude=address.longitude,
+    )
+
+
 class CreateOrderUseCase:
-    """`draft -> booked`. Refuses a cylinder type that can't be ordered
-    (inactive, unpriced for this customer, or out of stock at the branch)
-    before an order number is drawn — see `OrderableCylinderTypes`.
+    """`draft -> booked`. Refuses, before an order number is drawn:
+
+    - a customer who may not book (inactive, blocked, KYC rejected/expired);
+    - an address that is not one of the customer's own;
+    - a cylinder type that can't be ordered (inactive, unpriced for this
+      customer, or out of stock at the branch — `OrderableCylinderTypes`);
+    - a booking over the customer's cylinder holding cap (BR-04), when a
+      `cylinder_cap_policy` is given.
     """
 
     def __init__(
@@ -122,24 +142,36 @@ class CreateOrderUseCase:
         order_number_sequence: OrderNumberSequence,
         customer_repository: CustomerRepository,
         orderable_cylinder_types: OrderableCylinderTypes,
+        cylinder_cap_policy: CylinderCapPolicy | None = None,
     ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
         self._order_number_sequence = order_number_sequence
         self._customer_repository = customer_repository
         self._orderable = orderable_cylinder_types
+        self._cylinder_cap_policy = cylinder_cap_policy
 
     async def execute(self, command: CreateOrderCommand) -> Order:
         customer = await self._customer_repository.get_by_id(command.customer_id)
         if customer is None:
-            msg = f"No customer visible with id {command.customer_id}."
+            msg = "Customer not found."
             raise NotFoundError(msg, customer_id=str(command.customer_id))
+        customer.ensure_can_place_orders()
+        delivery_address = _delivery_address_snapshot(customer, command.address_id)
+        requested_lines = [(line.cylinder_type_id, line.quantity) for line in command.lines]
         await self._orderable.require(
             tenant_id=command.tenant_id,
             branch_id=command.branch_id,
             customer_type=customer.customer_type,
-            lines=[(line.cylinder_type_id, line.quantity) for line in command.lines],
+            lines=requested_lines,
         )
+        if self._cylinder_cap_policy is not None:
+            await self._cylinder_cap_policy.evaluate(
+                tenant_id=command.tenant_id,
+                customer_id=customer.id,
+                customer_type=customer.customer_type,
+                requested_lines=requested_lines,
+            )
 
         order_number = await self._order_number_sequence.next()
         order = Order(
@@ -149,7 +181,7 @@ class CreateOrderUseCase:
             customer_id=command.customer_id,
             address_id=command.address_id,
             order_number=order_number,
-            delivery_address=command.delivery_address,
+            delivery_address=delivery_address,
             booking_source=command.booking_source,
             requested_date=command.requested_date,
             payment_method_preference=command.payment_method_preference,
@@ -166,6 +198,166 @@ class CreateOrderUseCase:
         await self._repository.save(order)
         await self._unit_of_work.commit()
         return order
+
+
+async def _current_unit_prices(
+    price_list_repository: PriceListRepository,
+    order: Order,
+    customer_type: str,
+    lines: Sequence[OrderLine],
+) -> dict[uuid.UUID, Decimal]:
+    """The price in effect now for each line's cylinder type."""
+    now = datetime.now(UTC)
+    unit_prices: dict[uuid.UUID, Decimal] = {}
+    for line in lines:
+        entries = await price_list_repository.list_for_tenant_and_cylinder_type(
+            order.tenant_id, line.cylinder_type_id, customer_type
+        )
+        resolved = EffectivePriceResolver.resolve(
+            entries,
+            cylinder_type_id=line.cylinder_type_id,
+            customer_type=customer_type,
+            branch_id=order.branch_id,
+            at=now,
+        )
+        if resolved is None:
+            msg = (
+                f"No price configured for cylinder type {line.cylinder_type_id} "
+                f"for {customer_type} customers. Add one under Pricing."
+            )
+            raise NotFoundError(
+                msg,
+                cylinder_type_id=str(line.cylinder_type_id),
+                customer_type=customer_type,
+            )
+        unit_prices[line.cylinder_type_id] = resolved.price
+    return unit_prices
+
+
+@dataclass(frozen=True, slots=True)
+class AmendOrderCommand(Command):
+    """Fields left `None` keep their current value."""
+
+    order_id: uuid.UUID
+    changed_by: uuid.UUID
+    lines: Sequence[CreateOrderLine] | None = None
+    requested_date: datetime | None = None
+    address_id: uuid.UUID | None = None
+    payment_method_preference: str | None = None
+
+
+class AmendOrderUseCase:
+    """Edit a booked or confirmed order before it is put on a trip (DO-13):
+    quantities, cylinder types, delivery address or date. Runs the same
+    checks as booking (orderable, cylinder cap) and, for a confirmed order,
+    re-prices it and re-checks the credit limit.
+    """
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        customer_repository: CustomerRepository,
+        price_list_repository: PriceListRepository,
+        orderable_cylinder_types: OrderableCylinderTypes,
+        cylinder_cap_policy: CylinderCapPolicy,
+        credit_limit_evaluator: CreditLimitEvaluator,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._order_repository = order_repository
+        self._customer_repository = customer_repository
+        self._price_list_repository = price_list_repository
+        self._orderable = orderable_cylinder_types
+        self._cylinder_cap_policy = cylinder_cap_policy
+        self._credit_limit_evaluator = credit_limit_evaluator
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: AmendOrderCommand) -> Order:
+        order = await self._order_repository.get_by_id(command.order_id)
+        if order is None:
+            msg = "Order not found."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+        if not order.can_amend:
+            msg = (
+                f"{_order_label(order)} can no longer be edited: it is already on a trip. "
+                "Cancel it and book again instead."
+            )
+            raise ConflictError(msg, order_id=str(order.id), status=order.status)
+        customer = await self._customer_repository.get_by_id(order.customer_id)
+        if customer is None:
+            msg = "Customer not found."
+            raise NotFoundError(msg, customer_id=str(order.customer_id))
+        customer.ensure_can_place_orders()
+
+        address_id = command.address_id or order.address_id
+        delivery_address = (
+            _delivery_address_snapshot(customer, address_id)
+            if command.address_id is not None
+            else order.delivery_address
+        )
+        lines = self._amended_lines(order, command.lines)
+        requested = [(line.cylinder_type_id, line.quantity_ordered) for line in lines]
+        await self._orderable.require(
+            tenant_id=order.tenant_id,
+            branch_id=order.branch_id,
+            customer_type=customer.customer_type,
+            lines=requested,
+            exclude_order_id=order.id,
+        )
+        await self._cylinder_cap_policy.evaluate(
+            tenant_id=order.tenant_id,
+            customer_id=customer.id,
+            customer_type=customer.customer_type,
+            requested_lines=requested,
+            exclude_order_id=order.id,
+        )
+        unit_prices = None
+        if order.status == "confirmed":
+            unit_prices = await _current_unit_prices(
+                self._price_list_repository, order, customer.customer_type, lines
+            )
+            await self._credit_limit_evaluator.evaluate(
+                tenant_id=order.tenant_id,
+                customer_id=customer.id,
+                customer_type=customer.customer_type,
+                order_total=sum(
+                    (unit_prices[line.cylinder_type_id] * line.quantity_ordered for line in lines),
+                    start=Decimal("0"),
+                ),
+            )
+
+        order.amend(
+            lines=lines,
+            requested_date=command.requested_date or order.requested_date,
+            address_id=address_id,
+            delivery_address=delivery_address,
+            payment_method_preference=(
+                command.payment_method_preference or order.payment_method_preference
+            ),
+            changed_by=command.changed_by,
+            unit_prices=unit_prices,
+        )
+        await self._order_repository.save(order)
+        await self._unit_of_work.commit()
+        return order
+
+    def _amended_lines(
+        self, order: Order, requested: Sequence[CreateOrderLine] | None
+    ) -> list[OrderLine]:
+        """Keeps each existing line's id when its cylinder type stays."""
+        if requested is None:
+            return list(order.lines)
+        existing = {line.cylinder_type_id: line for line in order.lines}
+        lines: list[OrderLine] = []
+        for wanted in requested:
+            current = existing.get(wanted.cylinder_type_id)
+            lines.append(
+                OrderLine(
+                    line_id=current.id if current else self._order_repository.next_id(),
+                    cylinder_type_id=wanted.cylinder_type_id,
+                    quantity_ordered=wanted.quantity,
+                )
+            )
+        return lines
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,32 +410,12 @@ class ConfirmOrderUseCase:
             customer_id=order.customer_id,
             customer_type=customer.customer_type,
             requested_lines=requested_lines,
+            exclude_order_id=order.id,
         )
 
-        now = datetime.now(UTC)
-        unit_prices: dict[uuid.UUID, Decimal] = {}
-        for line in order.lines:
-            entries = await self._price_list_repository.list_for_tenant_and_cylinder_type(
-                order.tenant_id, line.cylinder_type_id, customer.customer_type
-            )
-            resolved = EffectivePriceResolver.resolve(
-                entries,
-                cylinder_type_id=line.cylinder_type_id,
-                customer_type=customer.customer_type,
-                branch_id=order.branch_id,
-                at=now,
-            )
-            if resolved is None:
-                msg = (
-                    f"No price configured for cylinder type {line.cylinder_type_id} "
-                    f"for {customer.customer_type} customers. Add one under Pricing."
-                )
-                raise NotFoundError(
-                    msg,
-                    cylinder_type_id=str(line.cylinder_type_id),
-                    customer_type=customer.customer_type,
-                )
-            unit_prices[line.cylinder_type_id] = resolved.price
+        unit_prices = await _current_unit_prices(
+            self._price_list_repository, order, customer.customer_type, order.lines
+        )
 
         order_total_preview = sum(
             (unit_prices[line.cylinder_type_id] * line.quantity_ordered for line in order.lines),
@@ -252,6 +424,7 @@ class ConfirmOrderUseCase:
         await self._credit_limit_evaluator.evaluate(
             tenant_id=order.tenant_id,
             customer_id=order.customer_id,
+            customer_type=customer.customer_type,
             order_total=order_total_preview,
         )
 
@@ -558,6 +731,8 @@ class GetDeliveryCodeUseCase:
 class RescheduleOrderCommand(Command):
     order_id: uuid.UUID
     changed_by: uuid.UUID
+    #: Deliver on another day instead of retrying on the same trip (DO-13).
+    requested_date: datetime | None = None
 
 
 class RescheduleOrderUseCase:
@@ -574,16 +749,20 @@ class RescheduleOrderUseCase:
         repository: OrderRepository,
         route_repository: RouteRepository,
         unit_of_work: UnitOfWork,
+        inventory_location_repository: InventoryLocationRepository | None = None,
     ) -> None:
         self._repository = repository
         self._route_repository = route_repository
         self._unit_of_work = unit_of_work
+        self._inventory_repository = inventory_location_repository
 
     async def execute(self, command: RescheduleOrderCommand) -> Order:
         order = await self._repository.get_by_id(command.order_id)
         if order is None:
             msg = "Order not found."
             raise NotFoundError(msg, order_id=str(command.order_id))
+        if command.requested_date is not None:
+            return await self._reschedule_to_another_day(order, command)
 
         route = None
         if order.route_stop_id is not None:
@@ -598,6 +777,43 @@ class RescheduleOrderUseCase:
         await self._repository.save(order)
         if route is not None:
             await self._route_repository.save(route)
+        await self._unit_of_work.commit()
+        return order
+
+    async def _reschedule_to_another_day(
+        self, order: Order, command: RescheduleOrderCommand
+    ) -> Order:
+        """`failed_delivery -> confirmed` with a new date: the failed stop
+        stays failed on its trip, the van's reservation for this order is
+        released, and the order waits to be planned onto a new trip."""
+        assert command.requested_date is not None
+        if self._inventory_repository is None:
+            msg = "Rescheduling to another day needs the inventory repository."
+            raise RuntimeError(msg)
+        vehicle_location = None
+        if order.route_stop_id is not None:
+            owner = await self._route_repository.get_stop_owner(order.route_stop_id)
+            if owner is not None:
+                vehicle_location = await GetOrCreateInventoryLocationUseCase(
+                    self._inventory_repository
+                ).execute(
+                    tenant_id=order.tenant_id,
+                    location_type="vehicle",
+                    location_ref_id=owner.vehicle_id,
+                )
+                for line in order.lines:
+                    reserved = line.quantity_ordered - line.quantity_pending
+                    if reserved > 0:
+                        vehicle_location.release_reservation(
+                            line.cylinder_type_id,
+                            reserved,
+                            performed_by=command.changed_by,
+                            reference_order_id=order.id,
+                        )
+        order.reschedule_to(requested_date=command.requested_date, changed_by=command.changed_by)
+        await self._repository.save(order)
+        if vehicle_location is not None:
+            await self._inventory_repository.save(vehicle_location)
         await self._unit_of_work.commit()
         return order
 
@@ -938,23 +1154,103 @@ def _order_label(order: Order) -> str:
     return f"Order {order.order_number}" if order.order_number else "This order"
 
 
-class GetPendingCancellationUseCase:
-    """The cancellation request on an order still waiting for Manager
-    approval (D-19), or `None` — the dashboard shows Approve Cancellation
-    only when there is one.
+async def _cancellation_fee(configuration: TenantConfigurationRepository, order: Order) -> Decimal:
+    """The tenant's post-dispatch cancellation charge for this order."""
+    entries = await configuration.list_for_tenant_and_key(
+        order.tenant_id, _CANCELLATION_FEE_CONFIG_KEY
+    )
+    resolved_config = TenantConfigurationResolver.resolve(
+        entries, _CANCELLATION_FEE_CONFIG_KEY, datetime.now(UTC)
+    )
+    config_value = resolved_config.config_value if resolved_config is not None else None
+    return CancellationFeeCalculator.calculate(
+        config_value=config_value, order_total=order.total_amount or Decimal("0")
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CancellationRequestView:
+    record: CancellationRecordEntry
+    #: What approving a waiting request would charge (`None` once decided;
+    #: the charged amount is then `record.cancellation_charge`).
+    estimated_charge: Decimal | None
+
+
+class GetCancellationRequestUseCase:
+    """The cancellation request waiting for Manager approval on an order
+    (D-19), or — with `include_decided` — the latest request whatever its
+    outcome, so the apps can say it was declined (CA-07). `None` when there
+    is none. The dashboard shows Approve/Reject only for a waiting request.
     """
 
     def __init__(
         self,
         order_repository: OrderRepository,
         cancellation_repository: CancellationRecordRepository,
+        tenant_configuration_repository: TenantConfigurationRepository,
     ) -> None:
         self._get_order = GetOrderUseCase(order_repository)
         self._cancellation_repository = cancellation_repository
+        self._configuration = tenant_configuration_repository
 
-    async def execute(self, query: GetOrderQuery) -> CancellationRecordEntry | None:
+    async def execute(
+        self, query: GetOrderQuery, *, include_decided: bool = False
+    ) -> CancellationRequestView | None:
         order = await self._get_order.execute(query)
-        return await self._cancellation_repository.get_pending_by_order_id(order.id)
+        record = (
+            await self._cancellation_repository.get_latest_by_order_id(order.id)
+            if include_decided
+            else await self._cancellation_repository.get_pending_by_order_id(order.id)
+        )
+        if record is None:
+            return None
+        estimated = (
+            await _cancellation_fee(self._configuration, order)
+            if record.status == "pending"
+            else None
+        )
+        return CancellationRequestView(record=record, estimated_charge=estimated)
+
+
+@dataclass(frozen=True, slots=True)
+class RejectOrderCancellationCommand(Command):
+    order_id: uuid.UUID
+    rejected_by: uuid.UUID
+    reason: str
+
+
+class RejectOrderCancellationUseCase:
+    """A Manager declines a post-dispatch cancellation request (DO-14). The
+    order carries on with its delivery; the customer may ask again."""
+
+    def __init__(
+        self,
+        order_repository: OrderRepository,
+        cancellation_repository: CancellationRecordRepository,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._order_repository = order_repository
+        self._cancellation_repository = cancellation_repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: RejectOrderCancellationCommand) -> CancellationRecordEntry:
+        reason = " ".join(command.reason.split())
+        if not reason:
+            msg = "Give a reason for rejecting the cancellation request."
+            raise ValidationError(msg, field="reason")
+        order = await self._order_repository.get_by_id(command.order_id)
+        if order is None:
+            msg = "Order not found."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+        pending = await self._cancellation_repository.get_pending_by_order_id(order.id)
+        if pending is None:
+            msg = f"{_order_label(order)} has no cancellation request waiting for approval."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+        record = await self._cancellation_repository.reject(
+            pending.id, rejected_by=command.rejected_by, reason=reason
+        )
+        await self._unit_of_work.commit()
+        return record
 
 
 @dataclass(frozen=True, slots=True)
@@ -993,16 +1289,7 @@ class ApproveOrderCancellationUseCase:
             msg = f"{_order_label(order)} has no cancellation request waiting for approval."
             raise NotFoundError(msg, order_id=str(command.order_id))
 
-        entries = await self._tenant_configuration_repository.list_for_tenant_and_key(
-            order.tenant_id, _CANCELLATION_FEE_CONFIG_KEY
-        )
-        resolved_config = TenantConfigurationResolver.resolve(
-            entries, _CANCELLATION_FEE_CONFIG_KEY, datetime.now(UTC)
-        )
-        config_value = resolved_config.config_value if resolved_config is not None else None
-        fee = CancellationFeeCalculator.calculate(
-            config_value=config_value, order_total=order.total_amount or Decimal("0")
-        )
+        fee = await _cancellation_fee(self._tenant_configuration_repository, order)
 
         vehicle_location = None
         route = None
@@ -1227,6 +1514,8 @@ class ListOrdersQuery(Query):
     driver_id: uuid.UUID | None = None
     from_date: datetime | None = None
     to_date: datetime | None = None
+    #: Order number, or the customer's name, phone or consumer number.
+    search: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1249,6 +1538,7 @@ class ListOrdersUseCase:
             driver_id=query.driver_id,
             from_date=query.from_date,
             to_date=query.to_date,
+            search=query.search,
         )
         total = await self._repository.count_orders(
             status=query.status,
@@ -1257,6 +1547,7 @@ class ListOrdersUseCase:
             driver_id=query.driver_id,
             from_date=query.from_date,
             to_date=query.to_date,
+            search=query.search,
         )
         return OrderPage(items=items, total=total)
 

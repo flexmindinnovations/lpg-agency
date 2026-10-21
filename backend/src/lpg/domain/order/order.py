@@ -84,6 +84,16 @@ class CancellationRequested(DomainEvent):
     reason: str
 
 
+class BookingAmended(DomainEvent):
+    """Staff changed a booking's quantities, address or date before it was
+    put on a trip (DO-13)."""
+
+    order_id: uuid.UUID
+    tenant_id: uuid.UUID
+    customer_id: uuid.UUID
+    amended_by: uuid.UUID
+
+
 @dataclass(frozen=True, slots=True)
 class InventoryReserved(DomainEvent):
     """Published by Order Management at assignment (`confirmed -> assigned`).
@@ -240,7 +250,9 @@ _TRANSITIONS: dict[str, frozenset[str]] = {
     "assigned": frozenset({"ready_for_dispatch", "cancelled"}),
     "ready_for_dispatch": frozenset({"out_for_delivery", "cancelled"}),
     "out_for_delivery": frozenset({"delivered", "failed_delivery", "cancelled"}),
-    "failed_delivery": frozenset({"ready_for_dispatch", "cancelled"}),
+    # `-> confirmed`: rescheduled to another day (DO-13) — the order leaves
+    # its trip and waits to be planned onto a new one.
+    "failed_delivery": frozenset({"ready_for_dispatch", "confirmed", "cancelled"}),
     "delivered": frozenset({"closed"}),
     "cancelled": frozenset(),
     "closed": frozenset(),
@@ -252,6 +264,8 @@ _FREE_CANCEL_STATES: frozenset[str] = frozenset(
     {"booked", "confirmed", "assigned", "ready_for_dispatch"}
 )
 _APPROVAL_CANCEL_STATES: frozenset[str] = frozenset({"out_for_delivery", "failed_delivery"})
+#: A booking can be edited until it is put on a trip (DO-13).
+_AMENDABLE_STATES: frozenset[str] = frozenset({"booked", "confirmed"})
 
 
 # ---------------------------------------------------------------------------
@@ -762,8 +776,102 @@ class Order(AggregateRoot):
         )
 
     def reschedule(self, *, changed_by: uuid.UUID) -> None:
-        """`failed_delivery -> ready_for_dispatch`."""
+        """`failed_delivery -> ready_for_dispatch`: retry on the same trip."""
         self._transition("ready_for_dispatch", changed_by=changed_by)
+
+    def reschedule_to(self, *, requested_date: datetime, changed_by: uuid.UUID) -> None:
+        """`failed_delivery -> confirmed`: deliver on another day (DO-13).
+        The order leaves its trip — the use case releases the van's
+        reservation for it — and waits to be planned onto a new trip.
+        """
+        self._ensure_transition_allowed("confirmed")
+        self._ensure_not_in_the_past(requested_date)
+        for line in self._lines:
+            line.quantity_pending = 0
+            line.is_backordered = False
+        self._route_stop_id = None
+        self._requested_date = requested_date
+        self._apply_transition(
+            "confirmed",
+            changed_by=changed_by,
+            reason=f"Rescheduled to {requested_date.date().isoformat()}",
+        )
+
+    @property
+    def can_amend(self) -> bool:
+        return self._status in _AMENDABLE_STATES
+
+    def amend(
+        self,
+        *,
+        lines: Sequence[OrderLine],
+        requested_date: datetime,
+        address_id: uuid.UUID,
+        delivery_address: DeliveryAddress,
+        payment_method_preference: str | None,
+        changed_by: uuid.UUID,
+        unit_prices: dict[uuid.UUID, Decimal] | None = None,
+    ) -> None:
+        """Change a booking before it is put on a trip (DO-13). A confirmed
+        order is re-priced with `unit_prices` (the prices in effect now),
+        exactly as `confirm()` prices it.
+        """
+        if not self.can_amend:
+            msg = (
+                "This order can no longer be edited: it is already on a trip. "
+                "Cancel it and book again instead."
+            )
+            raise InvalidOrderStatusTransitionError(
+                msg, order_id=str(self.id), from_status=self._status, to_status=self._status
+            )
+        if not lines:
+            msg = "An order must have at least one line."
+            raise InvariantViolation(msg, order_id=str(self.id))
+        cylinder_type_ids = [line.cylinder_type_id for line in lines]
+        if len(cylinder_type_ids) != len(set(cylinder_type_ids)):
+            msg = "An order cannot have two lines for the same cylinder type."
+            raise InvariantViolation(msg, order_id=str(self.id))
+        if (
+            payment_method_preference is not None
+            and payment_method_preference not in PAYMENT_METHODS
+        ):
+            msg = f"Invalid payment method: {payment_method_preference}"
+            raise InvariantViolation(msg, order_id=str(self.id))
+        if requested_date != self._requested_date:
+            self._ensure_not_in_the_past(requested_date)
+
+        total: Decimal | None = None
+        if self._status == "confirmed":
+            total = Decimal("0")
+            for line in lines:
+                price = (unit_prices or {}).get(line.cylinder_type_id)
+                if price is None:
+                    msg = f"No price configured for cylinder type {line.cylinder_type_id}."
+                    raise InvariantViolation(
+                        msg, order_id=str(self.id), cylinder_type_id=str(line.cylinder_type_id)
+                    )
+                line.set_unit_price(price)
+                total += price * line.quantity_ordered
+
+        self._lines = list(lines)
+        self._total_amount = total
+        self._requested_date = requested_date
+        self._address_id = address_id
+        self._delivery_address = delivery_address
+        self._payment_method_preference = payment_method_preference
+        self.record_event(
+            BookingAmended(
+                order_id=self.id,
+                tenant_id=self._tenant_id,
+                customer_id=self._customer_id,
+                amended_by=changed_by,
+            )
+        )
+
+    def _ensure_not_in_the_past(self, requested_date: datetime) -> None:
+        if requested_date.date() < datetime.now(UTC).date():
+            msg = "The delivery date cannot be in the past."
+            raise InvariantViolation(msg, order_id=str(self.id))
 
     def cancel_free(self, *, cancelled_by: uuid.UUID, reason: str) -> None:
         """Free cancellation — only from `_FREE_CANCEL_STATES` (D-19)."""

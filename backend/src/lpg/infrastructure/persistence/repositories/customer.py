@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import BigInteger, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
 
@@ -18,8 +19,65 @@ from lpg.infrastructure.persistence.models.customer import (
 )
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import InstrumentedAttribute
+    from sqlalchemy.sql.elements import ColumnElement
+
     from lpg.application.customer.ports import FieldEncryptor
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+
+_NON_ALNUM = "[^A-Za-z0-9]"
+_LIKE_ESCAPE = "\\"
+
+
+def compact_reference(value: str) -> str:
+    """A reference number with separators and case removed, so "cn-000001",
+    "CN 000001" and "CN000001" all compare equal (DO-05, DO-39)."""
+    return re.sub(_NON_ALNUM, "", value).upper()
+
+
+def compact_column(column: InstrumentedAttribute[str | None]) -> ColumnElement[str]:
+    """SQL counterpart of `compact_reference`."""
+    return func.upper(func.regexp_replace(column, _NON_ALNUM, "", "g"))
+
+
+def _escape_like(value: str) -> str:
+    return (
+        value.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2)
+        .replace("%", _LIKE_ESCAPE + "%")
+        .replace("_", _LIKE_ESCAPE + "_")
+    )
+
+
+def customer_search_clause(search: str | None) -> ColumnElement[bool] | None:
+    """Matches a free-text staff search against name, contact person, phone,
+    consumer number and GSTIN. Whitespace is collapsed on both sides, phone
+    numbers are compared digits-only (so "+91 98765 43210" finds
+    "+919876543210") and reference numbers ignore separators. `None` when
+    there is nothing to search for.
+    """
+    if search is None:
+        return None
+    text_query = " ".join(search.split())
+    if not text_query:
+        return None
+    pattern = f"%{_escape_like(text_query)}%"
+    clauses: list[ColumnElement[bool]] = [
+        func.regexp_replace(CustomerModel.full_name, r"\s+", " ", "g").ilike(
+            pattern, escape=_LIKE_ESCAPE
+        ),
+        func.coalesce(CustomerModel.contact_person, "").ilike(pattern, escape=_LIKE_ESCAPE),
+    ]
+    digits = re.sub(r"\D", "", text_query)
+    if len(digits) >= 3:
+        clauses.append(
+            func.regexp_replace(CustomerModel.phone_number, r"\D", "", "g").like(f"%{digits}%")
+        )
+    compact = compact_reference(text_query)
+    if compact:
+        clauses.append(compact_column(CustomerModel.consumer_number).like(f"%{compact}%"))
+        clauses.append(compact_column(CustomerModel.gstin) == compact)
+    return or_(*clauses)
 
 
 class SqlAlchemyCustomerRepository:
@@ -86,6 +144,7 @@ class SqlAlchemyCustomerRepository:
             alternate_mobile=row.alternate_mobile,
             email=row.email,
             date_of_birth=row.date_of_birth,
+            gstin=row.gstin,
             version=row.version,
         )
         self._uow.register_aggregate(customer)
@@ -129,7 +188,7 @@ class SqlAlchemyCustomerRepository:
                 selectinload(CustomerModel.kyc_documents),
             )
             .where(
-                CustomerModel.consumer_number == consumer_number,
+                compact_column(CustomerModel.consumer_number) == compact_reference(consumer_number),
                 CustomerModel.is_deleted.is_(False),
             )
         )
@@ -205,6 +264,7 @@ class SqlAlchemyCustomerRepository:
                 alternate_mobile=customer.alternate_mobile,
                 email=customer.email,
                 date_of_birth=customer.date_of_birth,
+                gstin=customer.gstin,
             )
             self._uow.session.add(row)
         else:
@@ -222,6 +282,7 @@ class SqlAlchemyCustomerRepository:
             row.alternate_mobile = customer.alternate_mobile
             row.email = customer.email
             row.date_of_birth = customer.date_of_birth
+            row.gstin = customer.gstin
             row.version = customer.version
 
         # Sync Addresses
@@ -340,15 +401,9 @@ class SqlAlchemyCustomerRepository:
             .where(CustomerModel.is_deleted.is_(False))
         )
 
-        if search:
-            search_pattern = f"%{search}%"
-            stmt = stmt.where(
-                or_(
-                    CustomerModel.full_name.ilike(search_pattern),
-                    CustomerModel.phone_number.ilike(search_pattern),
-                    CustomerModel.consumer_number.ilike(search_pattern),
-                )
-            )
+        clause = customer_search_clause(search)
+        if clause is not None:
+            stmt = stmt.where(clause)
 
         stmt = stmt.order_by(CustomerModel.created_at.desc()).offset(skip).limit(limit)
         result = await self._uow.session.execute(stmt)
@@ -356,15 +411,9 @@ class SqlAlchemyCustomerRepository:
 
     async def count_customers(self, search: str | None = None) -> int:
         stmt = select(func.count(CustomerModel.id)).where(CustomerModel.is_deleted.is_(False))
-        if search:
-            search_pattern = f"%{search}%"
-            stmt = stmt.where(
-                or_(
-                    CustomerModel.full_name.ilike(search_pattern),
-                    CustomerModel.phone_number.ilike(search_pattern),
-                    CustomerModel.consumer_number.ilike(search_pattern),
-                )
-            )
+        clause = customer_search_clause(search)
+        if clause is not None:
+            stmt = stmt.where(clause)
         result = await self._uow.session.execute(stmt)
         return result.scalar() or 0
 
@@ -389,25 +438,39 @@ class SqlAlchemyConsumerNumberSequence:
     suggested number, without any application-level locking.
     """
 
-    # No separator between the prefix and the digits (e.g. "CN000001") —
-    # existing customers issued under the old "CN-000001" format keep
-    # their number as-is; this only changes what newly-assigned numbers
-    # look like.
-    _PREFIX = "CN"
+    # "CN-000013" — the same series the agency's existing (seeded/imported)
+    # numbers use. The counter is floored at the highest number already
+    # issued in that series (with or without the hyphen), so a tenant whose
+    # customers were imported before the counter existed never gets a
+    # number that is already taken (DO-05).
+    _PREFIX = "CN-"
     _PAD_WIDTH = 6
+    _SERIES_PATTERN = "^CN-?([0-9]+)$"
 
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork, tenant_id: uuid.UUID) -> None:
         self._uow = unit_of_work
         self._tenant_id = tenant_id
 
     async def next(self) -> str:
+        issued_number = cast(
+            func.substring(func.upper(CustomerModel.consumer_number), self._SERIES_PATTERN),
+            BigInteger,
+        )
+        highest_issued = (
+            await self._uow.session.execute(
+                select(func.coalesce(func.max(issued_number), 0)).where(
+                    CustomerModel.tenant_id == self._tenant_id
+                )
+            )
+        ).scalar_one()
+        floor = int(highest_issued) + 1
         stmt = (
             pg_insert(CustomerNumberSequenceModel)
-            .values(tenant_id=self._tenant_id, next_value=2)
+            .values(tenant_id=self._tenant_id, next_value=floor + 1)
             .on_conflict_do_update(
                 index_elements=[CustomerNumberSequenceModel.tenant_id],
                 set_={
-                    "next_value": CustomerNumberSequenceModel.next_value + 1,
+                    "next_value": func.greatest(CustomerNumberSequenceModel.next_value, floor) + 1,
                 },
             )
             .returning(CustomerNumberSequenceModel.next_value)

@@ -20,9 +20,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 OrderStatus = Literal[
     "draft",
@@ -101,6 +101,16 @@ class OrderTrackingResponse(BaseModel):
     driver: TrackingDriverInfo | None = None
 
 
+class OrderCustomerResponse(BaseModel):
+    """Who the order is for (DO-12)."""
+
+    id: uuid.UUID
+    full_name: str
+    phone_number: str
+    consumer_number: str | None
+    customer_type: str
+
+
 class OrderResponse(BaseModel):
     id: uuid.UUID
     order_number: str | None = None
@@ -117,6 +127,11 @@ class OrderResponse(BaseModel):
     route_stop_id: uuid.UUID | None
     total_amount: Decimal | None
     lines: list[OrderLineResponse]
+    #: Filled on the order list and order detail reads; `null` elsewhere.
+    customer: OrderCustomerResponse | None = None
+    #: A post-dispatch cancellation request is waiting for a Manager (CA-07).
+    #: Filled on the order list and order detail reads; `false` elsewhere.
+    cancellation_pending: bool = False
 
 
 class OrderPageResponse(BaseModel):
@@ -147,8 +162,12 @@ class CreateOrderLineRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     branch_id: uuid.UUID
     customer_id: uuid.UUID
+    #: One of the customer's saved addresses; the order snapshots it.
     address_id: uuid.UUID
-    delivery_address: DeliveryAddressPayload
+    #: Deprecated and ignored: the delivery address is always taken from the
+    #: customer's saved address `address_id` (free-text addresses are not
+    #: accepted). Still accepted so older app builds keep working.
+    delivery_address: DeliveryAddressPayload | None = Field(default=None, deprecated=True)
     #: Optional: the server decides from who is booking (a customer login is always
     #: `mobile_app`; staff default to `staff`). Staff may record the channel the customer
     #: used (`phone`, `walk_in`, `whatsapp`) or `api`, but never `mobile_app`.
@@ -234,6 +253,10 @@ class ProofOfDeliveryResponse(BaseModel):
     recorded_by: uuid.UUID
     recorded_at: datetime
     dac_code: str | None = None
+    #: Short-lived links to view the signature / photo, filled by
+    #: `GET /orders/{id}/proof-of-delivery` only.
+    signature_url: str | None = None
+    photo_url: str | None = None
 
 
 class DeliverOrderResponse(BaseModel):
@@ -248,6 +271,23 @@ class PodAttachmentResponse(BaseModel):
 # ==========================================================================
 # Failed delivery
 # ==========================================================================
+
+
+class AmendOrderRequest(BaseModel):
+    """Edit a booking before it is put on a trip (DO-13). Omitted fields
+    keep their current value; `lines` replaces every line."""
+
+    lines: list[CreateOrderLineRequest] | None = Field(default=None, min_length=1)
+    requested_date: datetime | None = None
+    #: One of the customer's saved addresses.
+    address_id: uuid.UUID | None = None
+    payment_method_preference: PaymentMethod | None = None
+
+
+class RescheduleOrderRequest(BaseModel):
+    #: Deliver on this date instead of retrying on the same trip: the order
+    #: leaves the trip and goes back to Confirmed, waiting for a new one.
+    requested_date: datetime | None = None
 
 
 class RecordFailedDeliveryRequest(BaseModel):
@@ -270,8 +310,17 @@ class DeliveryCodeResponse(BaseModel):
 # ==========================================================================
 
 
+#: A reason someone has to read later: surrounding blanks are dropped, and an
+#: empty or blank reason is refused (CA-11).
+ReasonText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=1000),
+    Field(description="Why — required, cannot be blank."),
+]
+
+
 class CancelOrderRequest(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: ReasonText
 
 
 class CancelOrderResponse(BaseModel):
@@ -280,18 +329,32 @@ class CancelOrderResponse(BaseModel):
 
 
 class PendingCancellationResponse(BaseModel):
-    """A post-dispatch cancellation request waiting for Manager approval (D-19)."""
+    """A post-dispatch cancellation request (D-19): waiting for a Manager,
+    or — when asked for with `include_decided` — approved or rejected."""
 
     id: uuid.UUID
     order_id: uuid.UUID
     reason: str
     requested_by: uuid.UUID
     requested_at: datetime
+    status: Literal["pending", "approved", "rejected"] = "pending"
+    #: What approving a waiting request would charge, per the tenant's
+    #: cancellation fee setting. `null` once decided.
+    estimated_charge: Decimal | None = None
+    #: The charge recorded when the request was approved (billed to the
+    #: customer).
+    cancellation_charge: Decimal | None = None
+    decided_at: datetime | None = None
+    rejection_reason: str | None = None
+
+
+class RejectCancellationRequest(BaseModel):
+    reason: ReasonText
 
 
 class BulkCancelOrdersRequest(BaseModel):
     order_ids: list[uuid.UUID] = Field(min_length=1)
-    reason: str = Field(min_length=1, max_length=1000)
+    reason: ReasonText
 
 
 class BulkCancelOrderResultItem(BaseModel):

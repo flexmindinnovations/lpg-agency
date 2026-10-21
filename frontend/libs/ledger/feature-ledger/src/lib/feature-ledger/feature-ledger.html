@@ -2,8 +2,11 @@
   <div class="page-header">
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
-        <h1 class="page-title">Cylinder Balances</h1>
-        <p class="page-subtitle">Manage customer cylinder balances and adjustments.</p>
+        <h1 class="page-title">Cylinder balances</h1>
+        <p class="page-subtitle">
+          @if (ledger()?.customer_name; as name) { {{ name }}@if (ledger()?.consumer_number; as
+          consumer) { · {{ consumer }} } } @else { Cylinders the customer holds, by type. }
+        </p>
       </div>
     </ng-template>
   </div>
@@ -11,15 +14,40 @@
   <div class="data-toolbar">
     <div class="data-toolbar__filters"></div>
     <div class="data-toolbar__actions">
-      <button id="adjust-balance-btn" pButton type="button" (click)="openAdjustModal()">
+      <a
+        pButton
+        severity="secondary"
+        [text]="true"
+        routerLink="/customers"
+        [queryParams]="{ id: customerId() }"
+      >
+        <i class="pi pi-user"></i>
+        <span>Customer profile</span>
+      </a>
+      @if (!loadError()) {
+      <button
+        *lpgHasPermission="'customers:update'"
+        id="adjust-balance-btn"
+        pButton
+        type="button"
+        (click)="openAdjustModal()"
+      >
         <i class="pi pi-sliders-h"></i>
-        <span>Adjust Balance</span>
+        <span>Adjust balance</span>
       </button>
+      }
     </div>
   </div>
 
   @if (loading()) {
   <p class="empty-hint">Loading ledger...</p>
+  } @else if (loadError(); as message) {
+  <lpg-empty-state
+    title="No ledger to show"
+    [description]="message"
+    tone="error"
+    icon="pi pi-exclamation-circle"
+  />
   } @else {
   <div class="balance-list">
     @for (balance of enrichedBalances(); track balance.cylinder_type_id) {
@@ -34,7 +62,11 @@
       </div>
     </div>
     } @empty {
-    <p class="empty-hint">No cylinder balances recorded yet.</p>
+    <lpg-empty-state
+      title="No cylinders with this customer"
+      description="Balances appear after the first delivery."
+      icon="pi pi-box"
+    />
     }
   </div>
   }

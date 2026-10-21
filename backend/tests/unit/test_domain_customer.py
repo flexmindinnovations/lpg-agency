@@ -69,13 +69,15 @@ def test_customer_add_address():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    addr_id = customer.add_address("123 Main St", latitude=12.34, longitude=56.78)
+    addr_id = customer.add_address(
+        "123 Main St", city="Hyderabad", pincode="500016", latitude=12.34, longitude=56.78
+    )
     assert len(customer.addresses) == 1
     assert customer.addresses[0].id == addr_id
     assert customer.addresses[0].line_1 == "123 Main St"
     assert customer.addresses[0].is_primary is True  # first address is automatically primary
 
-    addr_id_2 = customer.add_address("456 Oak Ave")
+    addr_id_2 = customer.add_address("456 Oak Ave", city="Hyderabad", pincode="500001")
     addresses = customer.addresses
     assert len(addresses) == 2
     assert addresses[1].is_primary is False
@@ -147,7 +149,7 @@ def test_customer_kyc_flow():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    doc_id = customer.submit_kyc("aadhaar", "REF123456")
+    doc_id = customer.submit_kyc("aadhaar", "234123412346")
     assert customer.kyc_status == "pending"
     assert len(customer.kyc_documents) == 1
     assert customer.kyc_documents[0].verification_status == "pending"
@@ -167,14 +169,14 @@ def test_resubmitting_the_same_doc_type_replaces_the_prior_document():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    first_id = customer.submit_kyc("aadhaar", "111122223333", file_url="blob/first.png")
+    first_id = customer.submit_kyc("aadhaar", "234123412346", file_url="blob/first.png")
 
-    second_id = customer.submit_kyc("aadhaar", "444455556666", file_url="blob/second.png")
+    second_id = customer.submit_kyc("aadhaar", "456745674566", file_url="blob/second.png")
 
     assert len(customer.kyc_documents) == 1
     assert customer.kyc_documents[0].id == second_id
     assert customer.kyc_documents[0].id != first_id
-    assert customer.kyc_documents[0].document_number == "444455556666"
+    assert customer.kyc_documents[0].document_number == "456745674566"
     assert customer.kyc_documents[0].file_url == "blob/second.png"
 
 
@@ -187,9 +189,9 @@ def test_a_different_doc_type_is_added_alongside_not_replacing():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    customer.submit_kyc("aadhaar", "111122223333")
+    customer.submit_kyc("aadhaar", "234123412346")
 
-    customer.submit_kyc("pan", "ABCDE1234F")
+    customer.submit_kyc("pan", "ABCPE1234F")
 
     assert {d.doc_type for d in customer.kyc_documents} == {"aadhaar", "pan"}
 
@@ -203,8 +205,8 @@ def test_verifying_one_document_does_not_verify_the_whole_customer_while_another
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
-    customer.submit_kyc("pan", "ABCDE1234F")  # left pending
+    aadhaar_id = customer.submit_kyc("aadhaar", "234123412346")
+    customer.submit_kyc("pan", "ABCPE1234F")  # left pending
 
     customer.verify_kyc(aadhaar_id, uuid.uuid4(), "verified")
 
@@ -220,8 +222,8 @@ def test_rejecting_one_document_marks_the_customer_rejected_even_if_another_is_v
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
-    pan_id = customer.submit_kyc("pan", "ABCDE1234F")
+    aadhaar_id = customer.submit_kyc("aadhaar", "234123412346")
+    pan_id = customer.submit_kyc("pan", "ABCPE1234F")
     verifier_id = uuid.uuid4()
     customer.verify_kyc(aadhaar_id, verifier_id, "verified")
 
@@ -245,11 +247,11 @@ def test_adding_a_second_doc_type_correctly_requires_it_to_be_verified_too():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
+    aadhaar_id = customer.submit_kyc("aadhaar", "234123412346")
     customer.verify_kyc(aadhaar_id, uuid.uuid4(), "verified")
     assert customer.kyc_status == "verified"
 
-    customer.submit_kyc("pan", "ABCDE1234F")
+    customer.submit_kyc("pan", "ABCPE1234F")
 
     assert customer.kyc_status == "pending"
     assert customer.kyc_documents[0].verification_status == "verified"
@@ -268,11 +270,11 @@ def test_resubmitting_an_already_verified_doc_type_requires_re_verification():
         full_name="John Doe",
         phone_number="+1234567890",
     )
-    aadhaar_id = customer.submit_kyc("aadhaar", "111122223333")
+    aadhaar_id = customer.submit_kyc("aadhaar", "234123412346")
     customer.verify_kyc(aadhaar_id, uuid.uuid4(), "verified")
     assert customer.kyc_status == "verified"
 
-    customer.submit_kyc("aadhaar", "999988887777")
+    customer.submit_kyc("aadhaar", "987698769870")
 
     assert len(customer.kyc_documents) == 1
     assert customer.kyc_status == "pending"

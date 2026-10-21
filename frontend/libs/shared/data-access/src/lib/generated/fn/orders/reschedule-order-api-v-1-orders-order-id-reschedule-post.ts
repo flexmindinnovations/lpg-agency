@@ -8,15 +8,18 @@ import { StrictHttpResponse } from '../../strict-http-response';
 import { RequestBuilder } from '../../request-builder';
 
 import { OrderResponse } from '../../models/order-response';
+import { RescheduleOrderRequest } from '../../models/reschedule-order-request';
 
 export interface RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params {
   order_id: string;
+      body?: (RescheduleOrderRequest | null)
 }
 
 export function rescheduleOrderApiV1OrdersOrderIdReschedulePost(http: HttpClient, rootUrl: string, params: RescheduleOrderApiV1OrdersOrderIdReschedulePost$Params, context?: HttpContext): Observable<StrictHttpResponse<OrderResponse>> {
   const rb = new RequestBuilder(rootUrl, rescheduleOrderApiV1OrdersOrderIdReschedulePost.PATH, 'post');
   if (params) {
     rb.path('order_id', params.order_id, {});
+    rb.body(params.body, 'application/json');
   }
 
   return http.request(

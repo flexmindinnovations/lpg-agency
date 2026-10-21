@@ -6,7 +6,18 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
-from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
+from lpg.domain.common.base import (
+    AggregateRoot,
+    BusinessRuleViolation,
+    DomainEvent,
+    InvariantViolation,
+)
+from lpg.domain.customer.identifiers import (
+    InvalidIdentifierError,
+    normalize_gstin,
+    normalize_kyc_document_number,
+    normalize_pincode,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -19,6 +30,31 @@ _E164_PHONE_REGEX = re.compile(r"^\+[1-9]\d{9,14}$")
 # subsidy/KYC identifier) — distinct from `consumer_number`, which is the
 # shorter, locally-assigned-by-the-agency number used for refill booking.
 _LPG_SUBSIDY_ID_REGEX = re.compile(r"^\d{17}$")
+
+#: Customer types that are businesses or institutions rather than
+#: households. For these `full_name` is the registered business name and
+#: `gstin` may be recorded for B2B GST invoices (D-03).
+BUSINESS_CUSTOMER_TYPES = frozenset({"commercial", "industrial", "government"})
+
+#: KYC states under which a customer may not place new orders.
+_KYC_BLOCKING_BOOKING = frozenset({"rejected", "expired"})
+#: Connection states that may book. `onboarding` stays bookable: whether a
+#: customer whose KYC is still pending may take a first refill is an open
+#: BR-21 policy question (docs/data/06-data-dictionary.md, "policy TBD"),
+#: so the existing behaviour is kept until the business decides.
+_STATUSES_ALLOWED_TO_BOOK = frozenset({"active", "onboarding"})
+
+
+class CustomerNotEligibleToOrderError(BusinessRuleViolation):
+    """The customer's connection or KYC does not allow a new booking."""
+
+    error_code = "CUSTOMER_NOT_ELIGIBLE"
+
+
+class AddressNotFoundError(InvariantViolation):
+    """The address id is not one of this customer's current addresses."""
+
+    error_code = "ADDRESS_NOT_FOUND"
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +88,12 @@ class PrimaryAddressSet(DomainEvent):
 
 @dataclass(frozen=True, slots=True)
 class AddressUpdated(DomainEvent):
+    customer_id: uuid.UUID
+    address_id: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
+class AddressRemoved(DomainEvent):
     customer_id: uuid.UUID
     address_id: uuid.UUID
 
@@ -151,6 +193,54 @@ class CustomerAddress:
     def set_primary(self, is_primary: bool) -> None:
         self.is_primary = is_primary
 
+    @property
+    def one_line(self) -> str:
+        """The address as one line, for delivery labels and order snapshots."""
+        parts = (
+            self.line_1,
+            self.line_2,
+            self.landmark,
+            self.area,
+            self.city,
+            self.district,
+            self.state,
+            self.pincode,
+        )
+        return ", ".join(part for part in parts if part)
+
+
+def _validated_address_fields(
+    *,
+    line_1: str,
+    city: str | None,
+    pincode: str | None,
+    latitude: float | None,
+    longitude: float | None,
+) -> str:
+    """Rules for an address staff or a customer enter now (DO-07). Kept out
+    of `CustomerAddress.__init__` so older rows saved before these rules
+    still load. Returns the normalized PIN code.
+    """
+    if not line_1.strip():
+        msg = "Address line 1 cannot be empty."
+        raise InvariantViolation(msg, field="line_1")
+    if not city or not city.strip():
+        msg = "City is required for a delivery address."
+        raise InvariantViolation(msg, field="city")
+    if not pincode or not pincode.strip():
+        msg = "PIN code is required for a delivery address."
+        raise InvalidIdentifierError(msg, field="pincode")
+    if (latitude is None) != (longitude is None):
+        msg = "A map pin needs both latitude and longitude."
+        raise InvariantViolation(msg, field="latitude")
+    if latitude is not None and not -90 <= latitude <= 90:
+        msg = "Latitude must be between -90 and 90."
+        raise InvariantViolation(msg, field="latitude")
+    if longitude is not None and not -180 <= longitude <= 180:
+        msg = "Longitude must be between -180 and 180."
+        raise InvariantViolation(msg, field="longitude")
+    return normalize_pincode(pincode)
+
 
 class KycDocument:
     __slots__ = (
@@ -227,6 +317,7 @@ class Customer(AggregateRoot):
         "_date_of_birth",
         "_email",
         "_full_name",
+        "_gstin",
         "_identity_user_id",
         "_kyc_documents",
         "_kyc_status",
@@ -255,6 +346,7 @@ class Customer(AggregateRoot):
         alternate_mobile: str | None = None,
         email: str | None = None,
         date_of_birth: date | None = None,
+        gstin: str | None = None,
         *,
         version: int = 1,
     ) -> None:
@@ -297,6 +389,9 @@ class Customer(AggregateRoot):
         if customer_type == "commercial" and not contact_person:
             msg = "Contact person is required for commercial customers."
             raise InvariantViolation(msg, customer_id=str(customer_id))
+        if gstin and customer_type not in BUSINESS_CUSTOMER_TYPES:
+            msg = "GSTIN can only be recorded for commercial, industrial or government customers."
+            raise InvariantViolation(msg, customer_id=str(customer_id), field="gstin")
 
         self._consumer_number = consumer_number.strip() if consumer_number else None
         self._full_name = full_name.strip()
@@ -312,6 +407,7 @@ class Customer(AggregateRoot):
         self._alternate_mobile = alternate_mobile
         self._email = email.strip() if email else None
         self._date_of_birth = date_of_birth
+        self._gstin = normalize_gstin(gstin) if gstin else None
 
     @property
     def tenant_id(self) -> uuid.UUID:
@@ -376,6 +472,40 @@ class Customer(AggregateRoot):
     @property
     def date_of_birth(self) -> date | None:
         return self._date_of_birth
+
+    @property
+    def gstin(self) -> str | None:
+        return self._gstin
+
+    @property
+    def is_business(self) -> bool:
+        return self._customer_type in BUSINESS_CUSTOMER_TYPES
+
+    def ensure_can_place_orders(self) -> None:
+        """Inactive, blocked or closed connections, and customers whose KYC
+        was rejected or has expired, may not book cylinders (BR-21, DO-11)."""
+        if self._status not in _STATUSES_ALLOWED_TO_BOOK:
+            label = self._status.replace("_", " ")
+            msg = f"{self._full_name} cannot book cylinders while the connection is {label}."
+            raise CustomerNotEligibleToOrderError(
+                msg, customer_id=str(self.id), status=self._status
+            )
+        if self._kyc_status in _KYC_BLOCKING_BOOKING:
+            msg = (
+                f"{self._full_name} cannot book cylinders until their KYC is renewed "
+                f"(KYC {self._kyc_status})."
+            )
+            raise CustomerNotEligibleToOrderError(
+                msg, customer_id=str(self.id), kyc_status=self._kyc_status
+            )
+
+    def address(self, address_id: uuid.UUID) -> CustomerAddress:
+        """One of this customer's current addresses, or `AddressNotFoundError`."""
+        found = next((a for a in self._addresses if a.id == address_id), None)
+        if found is None:
+            msg = "That address does not belong to this customer."
+            raise AddressNotFoundError(msg, customer_id=str(self.id), address_id=str(address_id))
+        return found
 
     @property
     def can_get_app_login(self) -> bool:
@@ -461,6 +591,9 @@ class Customer(AggregateRoot):
         latitude: float | None = None,
         longitude: float | None = None,
     ) -> uuid.UUID:
+        pincode = _validated_address_fields(
+            line_1=line_1, city=city, pincode=pincode, latitude=latitude, longitude=longitude
+        )
         address_id = uuid.uuid4()
         is_first = len(self._addresses) == 0
         addr = CustomerAddress(
@@ -501,8 +634,11 @@ class Customer(AggregateRoot):
     ) -> None:
         index = next((i for i, a in enumerate(self._addresses) if a.id == address_id), None)
         if index is None:
-            msg = f"Address {address_id} not found."
-            raise InvariantViolation(msg, customer_id=str(self.id))
+            msg = "That address does not belong to this customer."
+            raise AddressNotFoundError(msg, customer_id=str(self.id))
+        pincode = _validated_address_fields(
+            line_1=line_1, city=city, pincode=pincode, latitude=latitude, longitude=longitude
+        )
 
         # Rebuild via `CustomerAddress.__init__` rather than mutating fields
         # in place, so this reuses the same validation `add_address` gets
@@ -525,6 +661,21 @@ class Customer(AggregateRoot):
         )
         self.record_event(AddressUpdated(customer_id=self.id, address_id=address_id))
 
+    def remove_address(self, address_id: uuid.UUID) -> None:
+        """Removes an address (soft-deleted by the repository, so past orders
+        keep their snapshot). The last address cannot be removed — a
+        connection always needs somewhere to deliver. Removing the primary
+        address promotes the next one.
+        """
+        target = self.address(address_id)
+        if len(self._addresses) == 1:
+            msg = "Add another address before removing the only one on file."
+            raise BusinessRuleViolation(msg, customer_id=str(self.id))
+        self._addresses = [a for a in self._addresses if a.id != address_id]
+        if target.is_primary:
+            self._addresses[0].set_primary(True)
+        self.record_event(AddressRemoved(customer_id=self.id, address_id=address_id))
+
     def set_primary_address(self, address_id: uuid.UUID) -> None:
         target = next((a for a in self._addresses if a.id == address_id), None)
         if not target:
@@ -546,6 +697,13 @@ class Customer(AggregateRoot):
     ) -> uuid.UUID:
         doc_id = uuid.uuid4()
         normalized_doc_type = doc_type.strip().lower()
+        document_number = normalize_kyc_document_number(normalized_doc_type, document_number)
+        if issue_date is not None and expiry_date is not None and expiry_date < issue_date:
+            msg = "The document's expiry date cannot be before its issue date."
+            raise InvariantViolation(msg, customer_id=str(self.id), field="expiry_date")
+        if expiry_date is not None and expiry_date < datetime.now(UTC).date():
+            msg = "This document has already expired. Ask the customer for a current one."
+            raise InvariantViolation(msg, customer_id=str(self.id), field="expiry_date")
         # A resubmission of the same doc_type (a clearer photo, a fix
         # after rejection) supersedes the previous attempt rather than
         # accumulating as a duplicate — a customer only ever has one

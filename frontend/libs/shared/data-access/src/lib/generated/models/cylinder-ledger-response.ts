@@ -4,5 +4,7 @@
 import { CylinderLedgerBalanceItem } from '../models/cylinder-ledger-balance-item';
 export interface CylinderLedgerResponse {
   balances: Array<CylinderLedgerBalanceItem>;
+  consumer_number?: (string | null);
   customer_id: string;
+  customer_name?: (string | null);
 }

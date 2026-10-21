@@ -11,12 +11,18 @@ import { PendingCancellationResponse } from '../../models/pending-cancellation-r
 
 export interface GetPendingCancellationApiV1OrdersOrderIdCancellationRequestGet$Params {
   order_id: string;
+
+/**
+ * Return the latest request even once approved or rejected.
+ */
+  include_decided?: boolean;
 }
 
 export function getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet(http: HttpClient, rootUrl: string, params: GetPendingCancellationApiV1OrdersOrderIdCancellationRequestGet$Params, context?: HttpContext): Observable<StrictHttpResponse<(PendingCancellationResponse | null)>> {
   const rb = new RequestBuilder(rootUrl, getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet.PATH, 'get');
   if (params) {
     rb.path('order_id', params.order_id, {});
+    rb.query('include_decided', params.include_decided, {});
   }
 
   return http.request(

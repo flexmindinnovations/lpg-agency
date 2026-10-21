@@ -228,7 +228,9 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'ledger/:customerId',
-        canActivate: [permissionGuard('customers:read', STAFF_LIST_EXCLUDED_ROLES)],
+        // The ledger endpoint needs ledger:read (DO-22); guarding on
+        // customers:read let some roles open a page that always 403'd.
+        canActivate: [permissionGuard('ledger:read', STAFF_LIST_EXCLUDED_ROLES)],
         data: {
           breadcrumbs: [
             { label: 'Customers', routerLink: '/customers' },

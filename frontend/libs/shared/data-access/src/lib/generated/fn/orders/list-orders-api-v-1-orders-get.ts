@@ -12,7 +12,27 @@ import { OrderPageResponse } from '../../models/order-page-response';
 export interface ListOrdersApiV1OrdersGet$Params {
   skip?: number;
   limit?: number;
-  status?: (string | null);
+  status?: ('draft' | 'booked' | 'confirmed' | 'assigned' | 'ready_for_dispatch' | 'out_for_delivery' | 'delivered' | 'failed_delivery' | 'cancelled' | 'closed' | null);
+
+/**
+ * Order number, or the customer's name, phone or consumer number.
+ */
+  search?: (string | null);
+
+/**
+ * Delivery date on or after (inclusive).
+ */
+  from_date?: (string | null);
+
+/**
+ * Delivery date on or before (inclusive).
+ */
+  to_date?: (string | null);
+
+/**
+ * One customer's orders (staff only).
+ */
+  customer_id?: (string | null);
 }
 
 export function listOrdersApiV1OrdersGet(http: HttpClient, rootUrl: string, params?: ListOrdersApiV1OrdersGet$Params, context?: HttpContext): Observable<StrictHttpResponse<OrderPageResponse>> {
@@ -21,6 +41,10 @@ export function listOrdersApiV1OrdersGet(http: HttpClient, rootUrl: string, para
     rb.query('skip', params.skip, {});
     rb.query('limit', params.limit, {});
     rb.query('status', params.status, {});
+    rb.query('search', params.search, {});
+    rb.query('from_date', params.from_date, {});
+    rb.query('to_date', params.to_date, {});
+    rb.query('customer_id', params.customer_id, {});
   }
 
   return http.request(
