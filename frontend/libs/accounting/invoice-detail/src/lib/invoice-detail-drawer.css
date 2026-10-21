@@ -4,10 +4,10 @@
   gap: var(--spacing-lg);
 }
 
-.detail-card-header {
+.detail-card-title__row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
 }
 
@@ -28,8 +28,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-md);
-  padding-block: var(--spacing-md);
-  border-block-start: var(--border-width) solid var(--color-border-default);
+  /* The drawer header's own rule sits directly above. */
+  padding-block-end: var(--spacing-md);
   border-block-end: var(--border-width) solid var(--color-border-default);
 }
 

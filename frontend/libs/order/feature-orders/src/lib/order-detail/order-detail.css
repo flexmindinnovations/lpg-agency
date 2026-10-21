@@ -235,11 +235,9 @@
   font-weight: var(--typography-label-font-weight);
 }
 
-.progress__note,
-.send-out__hint {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--typography-body-small-font-size);
+.progress__note {
+  margin-block-start: var(--spacing-xs);
+  max-inline-size: 48rem;
 }
 
 .load-sheet {

@@ -7,20 +7,21 @@
 >
   <ng-template #header>
     <div class="detail-card-title">
-      <h2>Invoice Details</h2>
+      <div class="detail-card-title__row">
+        <h2>Invoice Details</h2>
+        @if (invoice(); as inv) {
+        <p-tag
+          [value]="invoiceStatusLabel(inv.status)"
+          [severity]="invoiceStatusSeverity(inv.status)"
+        />
+        }
+      </div>
       <p class="invoice-num">{{ invoice()?.invoice_number ?? 'Not numbered' }}</p>
     </div>
   </ng-template>
 
   @if (invoice(); as inv) {
   <div class="invoice-detail-content">
-    <div class="detail-card-header">
-      <p-tag
-        [value]="invoiceStatusLabel(inv.status)"
-        [severity]="invoiceStatusSeverity(inv.status)"
-      />
-    </div>
-
     <div class="detail-info-grid">
       <div class="info-item">
         <span class="info-label">Date</span>

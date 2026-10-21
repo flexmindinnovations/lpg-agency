@@ -173,7 +173,12 @@
       }
     </ol>
     @if (progressNote(); as note) {
-    <p class="progress__note">{{ note }}</p>
+    <p-message
+      class="progress__note"
+      [severity]="o.status === 'failed_delivery' ? 'warn' : 'info'"
+      [icon]="o.status === 'failed_delivery' ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle'"
+      >{{ note }}</p-message
+    >
     }
   </section>
   }
@@ -548,10 +553,10 @@
           loaded from the same godown.
         </p-message>
         }
-        <p class="send-out__hint">
+        <p-message severity="info" icon="pi pi-info-circle">
           Send out loads the van from the godown and hands the order to the driver, who sees it in
           the Driver App. Plan bigger trips on the Dispatch page.
-        </p>
+        </p-message>
       </div>
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="showSendOutDrawer.set(false)">
