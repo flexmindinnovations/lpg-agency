@@ -82,9 +82,11 @@ async def resolve_prices_include_gst(
 ) -> bool:
     """Whether the tenant's price-list amounts already include GST.
 
-    Defaults to `True`: the amount on the Pricing page is what the customer
-    pays, and an invoice derives the taxable value and the tax inside it.
-    An agency that quotes ex-GST prices sets `prices_include_gst` to false.
+    Defaults to `False` (exclusive, the product owner's choice): the amount
+    on the Pricing page is before GST and the invoice adds GST on top. Only
+    an explicit true / "true" / "yes" / "1" / "inclusive" turns inclusive
+    pricing on, where the price is what the customer pays and the invoice
+    derives the taxable value and the tax inside it.
     """
     configs = await tenant_config_repository.list_for_tenant_and_key(
         tenant_id, _PRICES_INCLUDE_GST_KEY
@@ -93,9 +95,9 @@ async def resolve_prices_include_gst(
     raw = resolved.config_value if resolved else None
     if isinstance(raw, bool):
         return raw
-    if isinstance(raw, str) and raw.strip().lower() in {"false", "no", "0", "exclusive"}:
-        return False
-    return not (isinstance(raw, (int, float)) and raw == 0)
+    if isinstance(raw, str):
+        return raw.strip().lower() in {"true", "yes", "1", "inclusive"}
+    return isinstance(raw, int) and raw == 1
 
 
 async def resolve_gst_classes(

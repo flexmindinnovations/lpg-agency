@@ -145,8 +145,9 @@ def _invoice(*, supplier: str | None, destination: str | None) -> Invoice:
 
 
 class TestInclusivePricing:
-    """`prices_include_gst` (default true): the price is what the customer
-    pays; taxable value and tax are derived inside it to the paisa.
+    """`prices_include_gst` (default false, opt-in): when on, the price is
+    what the customer pays; taxable value and tax are derived inside it to
+    the paisa.
     """
 
     @pytest.mark.parametrize(
@@ -180,18 +181,24 @@ class TestInclusivePricing:
     @pytest.mark.parametrize(
         ("stored", "expected"),
         [
-            (None, True),
-            (True, True),
-            ("true", True),
-            ("", True),
+            (None, False),
+            ("", False),
             (False, False),
             ("false", False),
             ("False", False),
             ("exclusive", False),
+            ("maybe", False),
             (0, False),
+            (True, True),
+            ("true", True),
+            ("TRUE", True),
+            ("yes", True),
+            ("1", True),
+            ("inclusive", True),
+            (1, True),
         ],
     )
-    async def test_flag_defaults_to_inclusive(self, stored: object, expected: bool) -> None:
+    async def test_flag_defaults_to_exclusive(self, stored: object, expected: bool) -> None:
         repo = MagicMock()
         if stored is None:
             repo.list_for_tenant_and_key = AsyncMock(return_value=[])
@@ -310,7 +317,26 @@ class TestResolveGst:
 
 
 class TestCancellationChargeInvoice:
-    async def test_charge_is_taxed_at_the_highest_line_rate(self) -> None:
+    @pytest.mark.parametrize(
+        ("inclusive", "subtotal", "tax", "total"),
+        [
+            # Default: the configured charge is before GST; 18% on top.
+            (None, "50.00", "9.00", "59.00"),
+            # `prices_include_gst` true: the charge is what the customer pays.
+            (True, "42.37", "7.63", "50.00"),
+        ],
+    )
+    async def test_charge_is_taxed_at_the_highest_line_rate(
+        self, inclusive: bool | None, subtotal: str, tax: str, total: str
+    ) -> None:
+        config_repo = _empty_config_repo()
+        if inclusive is not None:
+            entry = MagicMock(config_value=inclusive, config_key="prices_include_gst")
+            entry.effective_from = datetime(2020, 1, 1, tzinfo=UTC)
+            entry.effective_to = None
+            config_repo.list_for_tenant_and_key = AsyncMock(
+                side_effect=lambda _t, key: [entry] if key == "prices_include_gst" else []
+            )
         domestic, commercial = uuid.uuid4(), uuid.uuid4()
         order = MagicMock()
         order.id = uuid.uuid4()
@@ -331,7 +357,7 @@ class TestCancellationChargeInvoice:
         use_case = GenerateInvoiceForOrderUseCase(
             invoice_repository=invoice_repo,
             order_repository=MagicMock(get_by_id=AsyncMock(return_value=order)),
-            tenant_config_repository=_empty_config_repo(),
+            tenant_config_repository=config_repo,
             customer_repository=MagicMock(get_by_id=AsyncMock(return_value=None)),
             invoice_number_sequence=sequence,
             cylinder_type_repository=_cylinder_repo(
@@ -348,10 +374,11 @@ class TestCancellationChargeInvoice:
         (line,) = invoice.lines
         assert line.kind == "cancellation_charge"
         assert line.cylinder_type_id == commercial
-        # The configured charge is GST-inclusive (default): 50 / 1.18.
-        assert line.subtotal == Decimal("42.37")
-        assert line.tax_amount == Decimal("7.63")
-        assert line.total_amount == Decimal("50.00")
+        assert (line.subtotal, line.tax_amount, line.total_amount) == (
+            Decimal(subtotal),
+            Decimal(tax),
+            Decimal(total),
+        )
         invoice_repo.add.assert_awaited_once()
 
     async def test_no_charge_no_invoice(self) -> None:

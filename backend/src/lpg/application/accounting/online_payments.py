@@ -6,8 +6,9 @@ so the amount rule lives in exactly one place:
 
 - the order already has an invoice -> the invoice's outstanding balance;
 - otherwise (a prepayment, `payment-flow.md` Path A) -> the confirmed
-  order's total — price x quantity when prices include GST (the default),
-  else plus GST at each cylinder type's current rate — computed exactly the
+  order's total — price x quantity plus GST at each cylinder type's current
+  rate (the default), or just price x quantity when the tenant's prices
+  include GST — computed exactly the
   way `GenerateInvoiceForOrderUseCase` will compute the invoice, minus
   anything already paid online for the order.
 

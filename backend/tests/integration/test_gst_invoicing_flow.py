@@ -181,25 +181,25 @@ class TestGstInvoicingFlow:
         assert issued.status_code == 201, issued.text
         invoice = issued.json()
         assert invoice["invoice_number"].startswith("INV-")
-        # 900.00 at 5%, GST-inclusive by default: taxable 900 / 1.05.
-        assert invoice["subtotal"] == "857.14"
-        assert invoice["tax_amount"] == "42.86"
-        assert invoice["total_amount"] == "900.00"
+        # 900.00 at 5%; prices exclude GST by default, so GST is on top.
+        assert invoice["subtotal"] == "900.00"
+        assert invoice["tax_amount"] == "45.00"
+        assert invoice["total_amount"] == "945.00"
         assert invoice["is_inter_state"] is False
-        assert invoice["cgst_amount"] == "21.43"
-        assert invoice["sgst_amount"] == "21.43"
+        assert invoice["cgst_amount"] == "22.50"
+        assert invoice["sgst_amount"] == "22.50"
         assert invoice["lines"][0]["hsn_code"] == "27111900"
-        assert invoice["balance_due"] == "900.00"
+        assert invoice["balance_due"] == "945.00"
 
         cheque = await client.post(
             f"/api/v1/invoices/{invoice['invoice_id']}/payments",
-            json={"method": "cheque", "amount": "900.00"},
+            json={"method": "cheque", "amount": "945.00"},
             headers=headers,
         )
         assert cheque.status_code == 422, cheque.text
         paid = await client.post(
             f"/api/v1/invoices/{invoice['invoice_id']}/payments",
-            json={"method": "cheque", "amount": "900.00", "reference": "000451"},
+            json={"method": "cheque", "amount": "945.00", "reference": "000451"},
             headers=headers,
         )
         assert paid.status_code == 201, paid.text

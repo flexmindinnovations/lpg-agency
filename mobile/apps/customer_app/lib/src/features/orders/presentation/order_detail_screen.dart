@@ -404,7 +404,7 @@ class _TotalCard extends ConsumerWidget {
     String? note;
     if (total != null) {
       label = 'Total Amount';
-      value = LpgFormat.currency(total);
+      value = '${LpgFormat.currency(total)} + GST';
     } else if (order.status == 'cancelled') {
       label = 'Total Amount';
       value = 'Not charged';
@@ -415,12 +415,12 @@ class _TotalCard extends ConsumerWidget {
       );
       label = 'Estimated total';
       value = known
-          ? LpgFormat.currency(
+          ? '${LpgFormat.currency(
               order.lines.fold<double>(
                 0,
                 (sum, l) => sum + prices[l.cylinderTypeId]! * l.quantityOrdered,
               ),
-            )
+            )} + GST'
           : 'Set on confirmation';
       note = 'The final amount is fixed when your agency confirms the order.';
     }

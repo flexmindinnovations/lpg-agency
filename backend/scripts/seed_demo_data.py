@@ -42,7 +42,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from lpg.config.settings import get_settings
-from lpg.domain.common.gst import split_inclusive
+from lpg.domain.common.gst import compute_line_tax
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 
 _LOCAL_DEV_FALLBACK = (
@@ -911,11 +911,12 @@ async def main() -> None:
             cust = next(c for c in CUSTOMERS if c[1] == phone)
             ctype = cust[2]
             unit_price = price_by_key.get((cyl, ctype)) or Decimal("905.50")
-            # Prices include GST (the `prices_include_gst` default): the
-            # customer pays price x qty and the tax is derived inside it.
-            total_amount = unit_price * qty
+            # Prices exclude GST (the `prices_include_gst` default): GST is
+            # added on top of price x qty, as the invoice use case does.
+            subtotal = unit_price * qty
             gst_rate = gst_rate_by_cylinder[cyl]
-            subtotal, tax_amount = split_inclusive(total_amount, gst_rate)
+            tax_amount = compute_line_tax(subtotal, gst_rate)
+            total_amount = subtotal + tax_amount
             order_key = f"{phone}:{idx}"
             invoice_id = await ensure(
                 "accounting.invoice",

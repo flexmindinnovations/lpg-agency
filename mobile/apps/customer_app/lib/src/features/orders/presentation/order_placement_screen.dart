@@ -251,7 +251,7 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
                           title: type.name,
                           subtitle:
                               '${type.weightKg} kg · '
-                              '${LpgFormat.currency(type.unitPrice)}',
+                              '${LpgFormat.currency(type.unitPrice)} + GST',
                           selected: type.cylinderTypeId == _cylinderTypeId,
                           onTap: () => setState(
                             () => _cylinderTypeId = type.cylinderTypeId,

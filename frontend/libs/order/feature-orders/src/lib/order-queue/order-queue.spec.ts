@@ -95,7 +95,7 @@ describe('OrderQueue', () => {
       ]);
 
       expect(component.cylinderTypeOptions()).toEqual([
-        { value: 'ct-1', label: 'Domestic 14.2kg · ₹903.00 · 12 in stock' },
+        { value: 'ct-1', label: 'Domestic 14.2kg · ₹903.00 + GST · 12 in stock' },
       ]);
       expect(component.availableFor('ct-1')).toBe(12);
 
