@@ -3,7 +3,9 @@
 # Builds the Nx Angular dashboard and serves it with Caddy, which also
 # reverse-proxies /api and /health to the backend (see Caddyfile).
 
-FROM node:24-slim AS build
+# Pinned by digest so a new upstream push cannot silently invalidate the
+# `npm ci` layer; Dependabot proposes updates weekly.
+FROM node:24-slim@sha256:91acba91b842bec0bf7ea6f5e09c644c7ccad72c4996ed9616d861d1c7cd60d4 AS build
 WORKDIR /app
 
 ENV NX_DAEMON=false \
@@ -45,6 +47,6 @@ RUN [ -f apps/dashboard/src/app/prime-license.ts ] \
 
 RUN npx nx build dashboard
 
-FROM caddy:2-alpine
+FROM caddy:2-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
 COPY --from=build /app/dist/apps/dashboard/browser /srv
 COPY Caddyfile /etc/caddy/Caddyfile

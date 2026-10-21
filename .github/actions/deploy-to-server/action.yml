@@ -30,6 +30,14 @@ inputs:
     required: false
     default: ""
 
+  storage-env:
+    description: >-
+      Optional object-storage settings as KEY=VALUE lines (LPG_STORAGE_ENDPOINT_URL,
+      _ACCESS_KEY, _SECRET_KEY, _BUCKET, _REGION). When set, the server writes them
+      into .env; when empty, the server's existing storage settings are left alone.
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
@@ -43,6 +51,7 @@ runs:
         GHCR_USER: ${{ inputs.ghcr-user }}
         GHCR_TOKEN: ${{ inputs.ghcr-token }}
         FCM_SERVICE_ACCOUNT: ${{ inputs.fcm-service-account }}
+        STORAGE_ENV: ${{ inputs.storage-env }}
       run: |
         set -euo pipefail
         install -m 700 -d ~/.ssh
@@ -51,12 +60,17 @@ runs:
         # Pinned host key: refuse to talk to anything that is not our server.
         printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
         # stdin: line 1 = registry token, line 2 = base64 service-account JSON
-        # (empty = leave push settings alone). Never on the command line.
+        # (empty = leave push settings alone), line 3 = base64 storage KEY=VALUE lines
+        # (empty = leave storage settings alone). Never on the command line.
         fcm_b64=""
         if [ -n "$FCM_SERVICE_ACCOUNT" ]; then
           fcm_b64="$(printf '%s' "$FCM_SERVICE_ACCOUNT" | base64 -w0)"
         fi
-        printf '%s\n%s\n' "$GHCR_TOKEN" "$fcm_b64" | ssh \
+        storage_b64=""
+        if [ -n "$STORAGE_ENV" ]; then
+          storage_b64="$(printf '%s\n' "$STORAGE_ENV" | base64 -w0)"
+        fi
+        printf '%s\n%s\n%s\n' "$GHCR_TOKEN" "$fcm_b64" "$storage_b64" | ssh \
           -i ~/.ssh/deploy_key \
           -o BatchMode=yes \
           -o StrictHostKeyChecking=yes \

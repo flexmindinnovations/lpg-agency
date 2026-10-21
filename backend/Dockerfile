@@ -4,7 +4,9 @@
 # Builder — resolves the uv-managed venv from uv.lock. No requirements.txt
 # needed: `uv sync --frozen` installs exactly what's pinned in the lockfile.
 # ==========================================================================
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
+# Base images are pinned by digest so a new upstream push cannot silently
+# invalidate the dependency layers below; Dependabot proposes updates weekly.
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca AS builder
 
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 \
@@ -24,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ==========================================================================
 # Runtime — slim, no uv/build toolchain in the final image.
 # ==========================================================================
-FROM python:3.13-slim-bookworm AS runtime
+FROM python:3.13-slim-bookworm@sha256:b4409e44a3e971621ee4bc2f3dc7a53859980685d261ab7a3a7bd4f0b84445c7 AS runtime
 
 # libgl1 / libglib2.0-0: opencv-python (a transitive dependency of rapidocr,
 # used for server-side OCR) fails to import without them on Debian slim.

@@ -1513,6 +1513,22 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 
 **Consequences:** Filter and button heights match across pages; every list page migrated in one change. New pages follow the same pattern.
 
+## ADR-065: Incremental Deploy Pipeline
+
+**Status:** Accepted
+
+**Context:** A one-line change took about 9 minutes to deploy and re-downloaded every package. Base images used floating tags (`node:24-slim` changed digest between two runs on one day), which invalidated the cached `npm ci` and `uv sync` layers; every change re-ran all front-end lint and tests and rebuilt both images; image builds waited for both gates.
+
+**Decision:**
+- Base images in both Dockerfiles are pinned by digest; Dependabot proposes updates weekly.
+- A `changes` job compares each service's folder with the commit its last deployed image was built from (the `org.opencontainers.image.revision` label on `lpg-<service>:main`). An unchanged service skips its gate and build; its deployed image is re-tagged to the new SHA with `imagetools create`. Any doubt (no `:main`, no label, re-tag failure, manual run) builds in full.
+- `:main` moves only after a healthy deploy (`promote` job), so it always means "what is running".
+- Image builds run in parallel with the gates; only the deploy waits for both. An image whose gate fails is never deployed.
+- Layer cache is stored in the registry (`:buildcache`); `node_modules` and the Nx result cache are cached in the front-end gate.
+- Object-storage settings can be installed from optional GitHub environment secrets (`LPG_STORAGE_*`); all four required values must be present, otherwise the server's settings are untouched.
+
+**Consequences:** One-sided changes deploy in roughly 3-4 minutes. Base-image security updates arrive through Dependabot PRs rather than on every build. Orphan `<sha>` image tags can exist for commits that failed a gate.
+
 ## Summary Table
 
 | ADR | Decision | Status |
