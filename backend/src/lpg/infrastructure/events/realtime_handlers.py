@@ -77,6 +77,7 @@ def register_realtime_handlers(
             "body": event.body,
             "reference_type": event.reference_type,
             "reference_id": str(event.reference_id) if event.reference_id else None,
+            "created_at": event.occurred_at.isoformat(),
         }
         await publisher.publish(channel, message)
 

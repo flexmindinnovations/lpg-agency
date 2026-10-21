@@ -308,3 +308,20 @@ class TestLinkedDeviceConstruction:
         device.touch_last_seen(at=now)
 
         assert device.last_seen_at == now
+
+
+class TestReplaceKey:
+    """DA-09: a lost key can be replaced only before activation."""
+
+    def test_replaces_the_key_of_a_pending_licence(self) -> None:
+        license_ = _license()
+        license_.replace_key(key_hash="new-hash", key_prefix="LPG-WXYZ")
+        assert (license_.key_hash, license_.key_prefix) == ("new-hash", "LPG-WXYZ")
+
+    def test_refuses_an_activated_or_revoked_licence(self) -> None:
+        for license_ in (
+            _license(activated_at=datetime.now(UTC)),
+            _license(revoked_at=datetime.now(UTC)),
+        ):
+            with pytest.raises(InvariantViolation):
+                license_.replace_key(key_hash="new-hash", key_prefix="LPG-WXYZ")

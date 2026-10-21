@@ -14,6 +14,33 @@
 
   <div class="data-toolbar">
     <div class="filters data-toolbar__filters">
+      <div class="filters__field filters__field--search">
+        <label for="order_search">Search</label>
+        <input
+          pInputText
+          id="order_search"
+          type="search"
+          placeholder="Order no., customer, phone or consumer no."
+          [ngModel]="searchText()"
+          (ngModelChange)="onSearchChange($event)"
+        />
+      </div>
+      <div class="filters__field">
+        <label for="date_filter">Delivery date</label>
+        <p-datepicker
+          inputId="date_filter"
+          selectionMode="range"
+          [dateFormat]="dateInputFormat"
+          [placeholder]="dateInputPlaceholder + ' – ' + dateInputPlaceholder"
+          [showIcon]="true"
+          iconDisplay="input"
+          [showButtonBar]="true"
+          [readonlyInput]="true"
+          appendTo="body"
+          [ngModel]="dateRange()"
+          (ngModelChange)="onDateRangeChange($event)"
+        ></p-datepicker>
+      </div>
       <div class="filters__field">
         <label for="status_filter">Status</label>
         <p-select
@@ -27,6 +54,12 @@
           (ngModelChange)="onStatusFilterChange($event)"
         ></p-select>
       </div>
+      @if (hasFilters()) {
+      <button pButton type="button" text severity="secondary" (click)="clearFilters()">
+        <i class="pi pi-filter-slash"></i>
+        <span>Clear filters</span>
+      </button>
+      }
     </div>
     <div class="data-toolbar__actions">
       <button
@@ -43,12 +76,26 @@
   </div>
 
   <section class="grid-section">
+    @if (!loading() && orders().length === 0) { @if (hasFilters()) {
+    <lpg-empty-state
+      icon="pi pi-search"
+      title="No orders match"
+      description="Try another order number, name or phone, or clear the filters."
+    />
+    } @else {
+    <lpg-empty-state
+      icon="pi pi-shopping-cart"
+      title="No orders yet"
+      description="Bookings from the dashboard, the customer app and WhatsApp appear here."
+    />
+    } } @else {
     <lpg-data-grid
       [rows]="orders()"
       [columns]="orderColumns"
       [loading]="loading()"
       ariaLabel="Order queue"
     />
+    }
   </section>
 
   <!-- Create Order Drawer -->
@@ -60,12 +107,20 @@
   >
     <ng-template #header>
       <div class="drawer-header">
-        <h2>Create Booking</h2>
-        <p class="subtitle">Book a new cylinder delivery order</p>
+        <h2>New Booking</h2>
+        <p class="subtitle">
+          Search the customer, check the address and cylinders. Ctrl+Enter books.
+        </p>
       </div>
     </ng-template>
 
-    <form [formGroup]="createForm" (ngSubmit)="onSubmitCreate()" class="dialog-form">
+    <form
+      [formGroup]="createForm"
+      (ngSubmit)="onSubmitCreate()"
+      (keydown.control.enter)="onSubmitCreate()"
+      (keydown.meta.enter)="onSubmitCreate()"
+      class="dialog-form"
+    >
       <div class="dialog-form__fields">
         <lpg-form-field
           label="Customer"
@@ -76,7 +131,7 @@
           <lpg-customer-autocomplete
             inputId="create_customer"
             formControlName="customer"
-            placeholder="Search by name or phone..."
+            placeholder="Name, phone or consumer no."
           ></lpg-customer-autocomplete>
         </lpg-form-field>
 
@@ -91,12 +146,15 @@
             inputId="create_address"
             formControlName="address_id"
             [options]="customer.addresses"
-            optionLabel="line_1"
+            [optionLabel]="'line_1'"
             optionValue="id"
             placeholder="Select an address"
             (onChange)="onAddressChange($event.value)"
             [fluid]="true"
-          ></p-select>
+          >
+            <ng-template #selectedItem let-address>{{ addressLabel(address) }}</ng-template>
+            <ng-template #item let-address>{{ addressLabel(address) }}</ng-template>
+          </p-select>
         </lpg-form-field>
 
         <lpg-form-field
@@ -126,9 +184,10 @@
             inputId="create_requested_date"
             formControlName="requested_date"
             [showIcon]="true"
-            [showTime]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
+            [dateFormat]="dateInputFormat"
+            [placeholder]="dateInputPlaceholder"
+            [minDate]="today"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -207,7 +266,7 @@
           [disabled]="createForm.invalid || !selectedAddress() || loading()"
           (click)="onSubmitCreate()"
         >
-          @if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Create Booking
+          @if (loading()) {<i class="pi pi-spin pi-spinner"></i> }Book
         </button>
       </div>
     </ng-template>

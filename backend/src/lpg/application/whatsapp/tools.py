@@ -42,7 +42,6 @@ from lpg.application.whatsapp.ports import PaymentLinkRequest, PendingOrderQuote
 from lpg.config.logging import get_logger
 from lpg.domain.common.base import DomainError
 from lpg.domain.complaint.value_objects import ComplaintCategory, ComplaintPriority
-from lpg.domain.order.order import DeliveryAddress
 from lpg.domain.tenant.price_list import EffectivePriceResolver
 
 if TYPE_CHECKING:
@@ -391,11 +390,6 @@ async def _place_order(ctx: CustomerToolContext, _args: dict[str, Any]) -> dict[
                 branch_id=customer.branch_id,
                 customer_id=customer.id,
                 address_id=quote.address_id,
-                delivery_address=DeliveryAddress(
-                    address_line=quote.address_line,
-                    latitude=quote.latitude,
-                    longitude=quote.longitude,
-                ),
                 booking_source=WHATSAPP_BOOKING_SOURCE,
                 requested_date=datetime.combine(quote.requested_date, datetime.min.time(), UTC),
                 lines=[

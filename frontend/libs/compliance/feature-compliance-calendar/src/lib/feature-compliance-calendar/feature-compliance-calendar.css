@@ -39,3 +39,9 @@
   flex-shrink: 0;
   min-inline-size: 14rem;
 }
+
+.calendar-section__hint {
+  margin: 0;
+  font-size: var(--typography-body-small-font-size);
+  color: var(--color-text-secondary);
+}

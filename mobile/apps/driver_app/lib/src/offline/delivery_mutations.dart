@@ -74,12 +74,17 @@ class DeliveryMutations {
     String orderId, {
     required String reasonCode,
     String? resolutionAction,
+    String? note,
   }) => _queueOrderTransition(
     orderId: orderId,
     newStatus: 'failed_delivery',
     type: 'order_failed_delivery',
     path: '/api/v1/orders/$orderId/failed-delivery',
-    body: {'reason_code': reasonCode, 'resolution_action': resolutionAction},
+    body: {
+      'reason_code': reasonCode,
+      'resolution_action': resolutionAction,
+      'note': ?note,
+    },
   );
 
   /// End-of-route cash declaration. No cached view to mutate — the screen

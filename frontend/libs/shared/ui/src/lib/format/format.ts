@@ -1,7 +1,10 @@
 /**
  * Small display formatters for data-grid `valueFormatter`s and templates.
  * `Intl` directly — no locale-data registration, works in every browser.
+ * Dates go through `@lpg/shared/util`'s `formatDisplayDate(Time)` so every
+ * screen shows the same "20 Oct 2026" / "20 Oct 2026, 10:09" (IST).
  */
+import { formatDisplayDate } from '@lpg/shared/util';
 
 const NBSP_RE = /\s/g;
 
@@ -18,11 +21,9 @@ export function formatCurrencyInr(value: unknown): string {
     .replace(NBSP_RE, ' ');
 }
 
+/** "20 Oct 2026" — kept as the name grids already import; see `formatDisplayDate`. */
 export function formatReportDate(value: unknown): string {
-  if (value == null || value === '') return '';
-  const d = new Date(String(value));
-  if (Number.isNaN(d.getTime())) return String(value);
-  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(d);
+  return formatDisplayDate(value);
 }
 
 /** `value` is a ratio (0–1); rendered as a percentage. */

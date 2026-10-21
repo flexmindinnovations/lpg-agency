@@ -189,7 +189,7 @@ have always been hand-edited directly. Edit them here.
   --component-data-grid-min-block-size: 400px;
   --component-app-shell-sidebar-width: 260px;
   --component-app-shell-sidebar-collapsed-width: 64px;
-  --component-app-shell-top-bar-height: 56px;
+  --component-app-shell-top-bar-height: 72px;
   --component-avatar-size-md: 2rem;
   --component-avatar-size-lg: 2.5rem;
   --component-avatar-radius: 9999px;
@@ -311,6 +311,17 @@ have always been hand-edited directly. Edit them here.
   --component-profile-menu-item-hover-background: #f3f4f6;
   --component-profile-menu-divider-color: #e5e7eb;
   --component-focus-ring-color: #162b66;
+  /* Status chips (p-tag, activity list): text on tint, every pair WCAG AA (6.4-9.4:1). Per theme because one tint formula cannot clear AA on both a white and a near-black surface (QA DA-22/DA-23). */
+  --component-chip-success-background: #dcfce7;
+  --component-chip-success-text: #166534;
+  --component-chip-warning-background: #fef3c7;
+  --component-chip-warning-text: #92400e;
+  --component-chip-danger-background: #fee2e2;
+  --component-chip-danger-text: #991b1b;
+  --component-chip-info-background: #dbeafe;
+  --component-chip-info-text: #1e40af;
+  --component-chip-neutral-background: #f3f4f6;
+  --component-chip-neutral-text: #374151;
 }
 
 /* Fluent Glass dark theme (Phase 29, Stage 0) — the primary experience.
@@ -388,6 +399,17 @@ have always been hand-edited directly. Edit them here.
   --component-profile-menu-item-hover-background: #17212c;
   --component-profile-menu-divider-color: rgba(255,255,255,0.07);
   --component-focus-ring-color: #4f8df7;
+  /* Status chips: dark tints, text 6.8-8.1:1 (see the :root note). */
+  --component-chip-success-background: #133528;
+  --component-chip-success-text: #5fe0a8;
+  --component-chip-warning-background: #3a2e10;
+  --component-chip-warning-text: #f0c25e;
+  --component-chip-danger-background: #3d1a1d;
+  --component-chip-danger-text: #ff8a8a;
+  --component-chip-info-background: #14294a;
+  --component-chip-info-text: #7cb8ff;
+  --component-chip-neutral-background: #222d3a;
+  --component-chip-neutral-text: #b8c2cc;
 }
 
 [data-theme='high-contrast'] {
@@ -439,6 +461,17 @@ have always been hand-edited directly. Edit them here.
   --component-profile-menu-item-hover-background: #ffffff;
   --component-profile-menu-divider-color: #000000;
   --component-focus-ring-color: #0000ee;
+  /* Status chips: strong text on white; the chip border carries the shape. */
+  --component-chip-success-background: #ffffff;
+  --component-chip-success-text: #14532d;
+  --component-chip-warning-background: #ffffff;
+  --component-chip-warning-text: #78350f;
+  --component-chip-danger-background: #ffffff;
+  --component-chip-danger-text: #7f1d1d;
+  --component-chip-info-background: #ffffff;
+  --component-chip-info-text: #0000ee;
+  --component-chip-neutral-background: #ffffff;
+  --component-chip-neutral-text: #000000;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -498,6 +531,17 @@ have always been hand-edited directly. Edit them here.
     --component-profile-menu-item-hover-background: #17212c;
     --component-profile-menu-divider-color: rgba(255,255,255,0.07);
     --component-focus-ring-color: #4f8df7;
+    /* Status chips: mirrors the [data-theme='dark'] block. */
+    --component-chip-success-background: #133528;
+    --component-chip-success-text: #5fe0a8;
+    --component-chip-warning-background: #3a2e10;
+    --component-chip-warning-text: #f0c25e;
+    --component-chip-danger-background: #3d1a1d;
+    --component-chip-danger-text: #ff8a8a;
+    --component-chip-info-background: #14294a;
+    --component-chip-info-text: #7cb8ff;
+    --component-chip-neutral-background: #222d3a;
+    --component-chip-neutral-text: #b8c2cc;
   }
 }
 

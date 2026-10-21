@@ -12,6 +12,15 @@ import '../../profile/data/profile_provider.dart';
 import '../data/cylinder_types_provider.dart';
 import '../data/orders_provider.dart';
 
+/// What "Order Again" carries over from a delivered order.
+@immutable
+class ReorderDraft {
+  const ReorderDraft({required this.cylinderTypeId, required this.quantity});
+
+  final String cylinderTypeId;
+  final int quantity;
+}
+
 const _paymentMethods = <String, String>{
   'cash': 'Cash on Delivery',
   'upi': 'UPI',
@@ -26,7 +35,10 @@ const _paymentMethods = <String, String>{
 /// (`{quantity, cylinder_size_kg}`) that didn't match what the backend
 /// needs and so could never produce a real order.
 class OrderPlacementScreen extends ConsumerStatefulWidget {
-  const OrderPlacementScreen({super.key});
+  const OrderPlacementScreen({super.key, this.draft});
+
+  /// Pre-fills the form from an earlier order ("Order Again").
+  final ReorderDraft? draft;
 
   @override
   ConsumerState<OrderPlacementScreen> createState() =>
@@ -41,6 +53,13 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
   String? _paymentMethod;
   bool _submitting = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _cylinderTypeId = widget.draft?.cylinderTypeId;
+    _quantity = widget.draft?.quantity ?? 1;
+  }
 
   Future<void> _pickDate(BuildContext context) async {
     final picked = await showDatePicker(
@@ -103,17 +122,19 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
     setState(() => _submitting = false);
 
     result.when(
-      onSuccess: (_) {
-        // Pop *before* invalidating — matches the fix in
-        // order_detail_screen.dart's cancel flow, where invalidating a
+      onSuccess: (created) {
+        // Open the new order rather than dropping the customer back on
+        // Home (CA-06). Navigate *before* invalidating — matches the fix
+        // in order_detail_screen.dart's cancel flow, where invalidating a
         // provider first and touching `context` afterwards hit a real
         // framework assertion crash live.
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.of(context).pop();
-        ref.invalidate(ordersProvider);
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Order placed successfully.')),
+        LpgFeedback.showToast(
+          context,
+          'Order placed. Your agency will confirm it shortly.',
+          tone: LpgTone.success,
         );
+        GoRouter.of(context).pushReplacement('/orders/${created.id}');
+        ref.invalidate(ordersProvider);
       },
       onFailure: (failure) async {
         if (failure.errorCode == 'NETWORK_UNAVAILABLE') {
@@ -124,16 +145,14 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
               .read(syncCoordinatorProvider)
               .enqueueOperation('order_gas', jsonEncode(request.toJson()));
           if (!mounted) return;
-          final messenger = ScaffoldMessenger.of(context);
-          Navigator.of(context).pop();
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text(
-                "You're offline — order queued and will be placed "
-                'automatically once you reconnect.',
-              ),
-            ),
+          // The app-wide messenger keeps the toast up after the pop.
+          LpgFeedback.showToast(
+            context,
+            "You're offline. Your order is saved and will be placed "
+            'automatically once you reconnect.',
+            tone: LpgTone.warning,
           );
+          Navigator.of(context).pop();
           return;
         }
         if (failure.errorCode == 'CYLINDER_NOT_ORDERABLE') {
@@ -232,7 +251,7 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
                           title: type.name,
                           subtitle:
                               '${type.weightKg} kg · '
-                              '${LpgFormat.currency(type.unitPrice)}',
+                              '${LpgFormat.currency(type.unitPrice)} + GST',
                           selected: type.cylinderTypeId == _cylinderTypeId,
                           onTap: () => setState(
                             () => _cylinderTypeId = type.cylinderTypeId,
@@ -319,6 +338,9 @@ class _OrderPlacementScreenState extends ConsumerState<OrderPlacementScreen> {
               ),
               _SubmitBar(
                 submitting: _submitting,
+                summary: selectedType == null
+                    ? null
+                    : _OrderSummary(type: selectedType, quantity: _quantity),
                 onSubmit: () => _submit(profile),
               ),
             ],
@@ -426,10 +448,18 @@ class _DateField extends StatelessWidget {
 /// The pinned footer holding the primary action, so "Place Order" is
 /// always in reach however long the form scrolls.
 class _SubmitBar extends StatelessWidget {
-  const _SubmitBar({required this.submitting, required this.onSubmit});
+  const _SubmitBar({
+    required this.submitting,
+    required this.onSubmit,
+    this.summary,
+  });
 
   final bool submitting;
   final VoidCallback onSubmit;
+
+  /// What is being ordered and what it costs, so the customer sees the
+  /// total before tapping Place Order (CA-06).
+  final Widget? summary;
 
   @override
   Widget build(BuildContext context) {
@@ -448,14 +478,83 @@ class _SubmitBar extends StatelessWidget {
             LpgSpacing.mdl,
             LpgSpacing.smd,
           ),
-          child: LpgButton(
-            label: 'Place Order',
-            icon: LpgIcons.check,
-            isLoading: submitting,
-            expand: true,
-            onPressed: onSubmit,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (summary != null) ...[
+                summary!,
+                const SizedBox(height: LpgSpacing.smd),
+              ],
+              LpgButton(
+                label: 'Place Order',
+                icon: LpgIcons.check,
+                isLoading: submitting,
+                expand: true,
+                onPressed: onSubmit,
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "2 × Domestic 14.2kg @ ₹905.50" and the total, above Place Order.
+class _OrderSummary extends StatelessWidget {
+  const _OrderSummary({required this.type, required this.quantity});
+
+  final OrderableCylinderTypeResponse type;
+  final int quantity;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = context.lpgText;
+    final colors = context.lpgColors;
+    final total = type.unitPrice * quantity;
+    return Semantics(
+      container: true,
+      label:
+          '$quantity ${type.name} at ${LpgFormat.currency(type.unitPrice)} '
+          'each. Total ${LpgFormat.currency(total)}.',
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$quantity × ${type.name}',
+                  style: text.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${LpgFormat.currency(type.unitPrice)} each · confirmed by '
+                  'your agency',
+                  style: text.bodySmall?.copyWith(color: colors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: LpgSpacing.sm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Total',
+                style: text.labelMedium?.copyWith(color: colors.textSecondary),
+              ),
+              Text(
+                LpgFormat.currency(total),
+                key: const Key('order-total'),
+                style: text.titleLarge,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

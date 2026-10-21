@@ -8,7 +8,7 @@ export interface CreateOrderRequest {
   booking_source?: ('mobile_app' | 'staff' | 'phone' | 'walk_in' | 'whatsapp' | 'api' | null);
   branch_id: string;
   customer_id: string;
-  delivery_address: DeliveryAddressPayload;
+  /** @deprecated */delivery_address?: (DeliveryAddressPayload | null);
   lines: Array<CreateOrderLineRequest>;
   payment_method_preference?: ('cash' | 'upi' | 'card' | 'online_gateway' | 'credit' | null);
   requested_date: string;

@@ -6,6 +6,7 @@ import { activateLicenseApiV1AdminLicenseActivatePost } from './generated/fn/adm
 import { getLicenseStatusApiV1AdminLicenseStatusGet } from './generated/fn/administration/get-license-status-api-v-1-admin-license-status-get';
 import { listLinkedDevicesApiV1AdminLicenseDevicesGet } from './generated/fn/administration/list-linked-devices-api-v-1-admin-license-devices-get';
 import { revokeLinkedDeviceApiV1AdminLicenseDevicesDeviceIdRevokePatch } from './generated/fn/administration/revoke-linked-device-api-v-1-admin-license-devices-device-id-revoke-patch';
+import { replaceLicenseKeyApiV1PlatformLicenseTenantIdKeyPost } from './generated/fn/platform-console/replace-license-key-api-v-1-platform-license-tenant-id-key-post';
 import { activateLicenseApiV1PlatformLicenseTenantIdActivatePost } from './generated/fn/platform-console/activate-license-api-v-1-platform-license-tenant-id-activate-post';
 import { issueLicenseApiV1PlatformLicensePost } from './generated/fn/platform-console/issue-license-api-v-1-platform-license-post';
 import { listLicensesApiV1PlatformLicenseGet } from './generated/fn/platform-console/list-licenses-api-v-1-platform-license-get';
@@ -90,6 +91,14 @@ export class LicenseService {
     return activateLicenseApiV1PlatformLicenseTenantIdActivatePost(this.http, this.config.rootUrl, {
       tenant_id: tenantId,
       body: { key },
+    }).pipe(map((response) => response.body));
+  }
+
+  /** Issues a fresh key for a licence still pending activation — the old
+   * key stops working. For when the shown-once key was lost (DA-09). */
+  replaceKey(tenantId: string): Observable<IssuedLicenseResponse> {
+    return replaceLicenseKeyApiV1PlatformLicenseTenantIdKeyPost(this.http, this.config.rootUrl, {
+      tenant_id: tenantId,
     }).pipe(map((response) => response.body));
   }
 

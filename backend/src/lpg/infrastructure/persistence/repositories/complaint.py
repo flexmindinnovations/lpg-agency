@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
+from lpg.application.complaint.ports import ComplaintCustomer, ComplaintOrder, StaffMember
 from lpg.domain.complaint.complaint import Complaint, ComplaintAssignment, ComplaintResolution
 from lpg.domain.complaint.ports import ComplaintRepository
 from lpg.domain.complaint.value_objects import (
@@ -19,8 +20,18 @@ from lpg.infrastructure.persistence.models.complaint import (
     ComplaintModel,
     ComplaintResolutionModel,
 )
+from lpg.infrastructure.persistence.models.customer import CustomerModel
+from lpg.infrastructure.persistence.models.identity import (
+    IdentityUserModel,
+    IdentityUserPermissionModel,
+    PermissionModel,
+)
+from lpg.infrastructure.persistence.models.order import OrderModel
+from lpg.infrastructure.persistence.models.tenant import EmployeeModel
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -214,3 +225,111 @@ class SqlAlchemyComplaintRepository(ComplaintRepository):
             stmt = stmt.where(ComplaintModel.customer_id == customer_id)
 
         return await self._session.scalar(stmt) or 0
+
+
+#: Staff who can be handed a complaint; customers and drivers hold
+#: `complaints.manage` only to raise and track their own.
+_NON_ASSIGNABLE_ROLES = ("customer", "driver")
+_COMPLAINTS_PERMISSION = "complaints.manage"
+
+
+class SqlAlchemyComplaintDirectory:
+    """`ComplaintDirectory` over the identity, tenant, customer and orders
+    schemas. Read-only."""
+
+    def __init__(self, uow: SqlAlchemyUnitOfWork) -> None:
+        self._session = uow.session
+
+    async def assignable_staff(self, tenant_id: uuid.UUID) -> list[StaffMember]:
+        has_permission = (
+            select(IdentityUserPermissionModel.user_id)
+            .join(PermissionModel, PermissionModel.id == IdentityUserPermissionModel.permission_id)
+            .where(PermissionModel.code == _COMPLAINTS_PERMISSION)
+        )
+        stmt = select(IdentityUserModel.id, IdentityUserModel.email, IdentityUserModel.role).where(
+            IdentityUserModel.tenant_id == tenant_id,
+            IdentityUserModel.is_active.is_(True),
+            IdentityUserModel.role.not_in(_NON_ASSIGNABLE_ROLES),
+            IdentityUserModel.id.in_(has_permission),
+        )
+        rows = (await self._session.execute(stmt)).all()
+        names = await self._names_by_email(tenant_id, [row.email for row in rows if row.email])
+        staff = [
+            StaffMember(
+                user_id=row.id,
+                name=_display_name(row.email, names),
+                role=row.role,
+                email=row.email,
+            )
+            for row in rows
+        ]
+        return sorted(staff, key=lambda member: member.name.lower())
+
+    async def staff_names(
+        self, tenant_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, str]:
+        if not user_ids:
+            return {}
+        stmt = select(IdentityUserModel.id, IdentityUserModel.email).where(
+            IdentityUserModel.tenant_id == tenant_id, IdentityUserModel.id.in_(set(user_ids))
+        )
+        rows = (await self._session.execute(stmt)).all()
+        names = await self._names_by_email(tenant_id, [row.email for row in rows if row.email])
+        return {row.id: _display_name(row.email, names) for row in rows}
+
+    async def customers(
+        self, customer_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, ComplaintCustomer]:
+        if not customer_ids:
+            return {}
+        stmt = select(
+            CustomerModel.id,
+            CustomerModel.full_name,
+            CustomerModel.phone_number,
+            CustomerModel.consumer_number,
+        ).where(CustomerModel.id.in_(set(customer_ids)), CustomerModel.is_deleted.is_(False))
+        return {
+            row.id: ComplaintCustomer(
+                customer_id=row.id,
+                full_name=row.full_name,
+                phone_number=row.phone_number,
+                consumer_number=row.consumer_number,
+            )
+            for row in (await self._session.execute(stmt)).all()
+        }
+
+    async def orders(self, order_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, ComplaintOrder]:
+        if not order_ids:
+            return {}
+        stmt = select(OrderModel.id, OrderModel.order_number, OrderModel.customer_id).where(
+            OrderModel.id.in_(set(order_ids)), OrderModel.is_deleted.is_(False)
+        )
+        return {
+            row.id: ComplaintOrder(
+                order_id=row.id, order_number=row.order_number, customer_id=row.customer_id
+            )
+            for row in (await self._session.execute(stmt)).all()
+        }
+
+    async def _names_by_email(self, tenant_id: uuid.UUID, emails: Sequence[str]) -> dict[str, str]:
+        if not emails:
+            return {}
+        stmt = select(
+            func.lower(EmployeeModel.email), EmployeeModel.first_name, EmployeeModel.last_name
+        ).where(
+            EmployeeModel.tenant_id == tenant_id,
+            EmployeeModel.is_deleted.is_(False),
+            func.lower(EmployeeModel.email).in_([email.lower() for email in emails]),
+        )
+        return {
+            email: f"{first} {last}".strip()
+            for email, first, last in (await self._session.execute(stmt)).all()
+        }
+
+
+def _display_name(email: str | None, names_by_email: dict[str, str]) -> str:
+    """The employee's name when the login matches an employee record,
+    otherwise the email address, never an id."""
+    if email is None:
+        return "Staff member"
+    return names_by_email.get(email.lower()) or email

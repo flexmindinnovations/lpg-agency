@@ -11,6 +11,7 @@ from lpg.api.v1.dependencies.identity import get_current_principal
 from lpg.api.v1.dependencies.notification import (
     get_device_token_repository,
     get_notification_repository,
+    get_realtime_publisher,
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.notification import (
@@ -20,7 +21,7 @@ from lpg.api.v1.schemas.notification import (
     UnreadCountResponse,
     UnregisterDeviceRequest,
 )
-from lpg.application.common.ports import UnitOfWork
+from lpg.application.common.ports import RealtimePublisher, UnitOfWork
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.notification.ports import (
     DeviceTokenRepository,
@@ -76,9 +77,11 @@ async def mark_read(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     uow: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     repo: Annotated[InAppNotificationRepository, Depends(get_notification_repository)],
+    publisher: Annotated[RealtimePublisher | None, Depends(get_realtime_publisher)],
 ) -> None:
-    """Mark a specific notification as read."""
-    use_case = MarkReadUseCase(uow, repo)
+    """Mark a specific notification as read. The user's other open tabs and
+    devices get `notification.read` over `/ws`."""
+    use_case = MarkReadUseCase(uow, repo, publisher)
     await use_case.execute(notification_id=id, user_id=principal.user_id or uuid.UUID(int=0))
 
 
@@ -87,10 +90,14 @@ async def mark_all_read(
     principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
     uow: Annotated[UnitOfWork, Depends(get_unit_of_work)],
     repo: Annotated[InAppNotificationRepository, Depends(get_notification_repository)],
+    publisher: Annotated[RealtimePublisher | None, Depends(get_realtime_publisher)],
 ) -> None:
-    """Mark all notifications as read for the current user."""
-    use_case = MarkAllReadUseCase(uow, repo)
-    await use_case.execute(user_id=principal.user_id or uuid.UUID(int=0))
+    """Mark all notifications as read for the current user. The user's
+    other open tabs and devices get `notification.read_all` over `/ws`."""
+    use_case = MarkAllReadUseCase(uow, repo, publisher)
+    await use_case.execute(
+        user_id=principal.user_id or uuid.UUID(int=0), tenant_id=principal.tenant_id
+    )
 
 
 @router.post("/devices", status_code=status.HTTP_204_NO_CONTENT)

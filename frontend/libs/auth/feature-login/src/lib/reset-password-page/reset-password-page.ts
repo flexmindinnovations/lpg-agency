@@ -18,10 +18,43 @@ function isAppError(value: unknown): value is AppError {
   return typeof value === 'object' && value !== null && 'errorCode' in value;
 }
 
-function errorMessageFor(error: unknown): string {
+/**
+ * `reset` — the "forgot password" email link; `setup` — the invitation /
+ * new-agency link an admin sends so a new user chooses their first password.
+ * Both confirm the same single-use token, only the wording differs.
+ */
+export type PasswordLinkMode = 'reset' | 'setup';
+
+interface PasswordLinkCopy {
+  readonly formTitle: string;
+  readonly submitLabel: string;
+  readonly successTitle: string;
+  readonly successLede: string;
+  readonly expired: string;
+}
+
+const COPY: Record<PasswordLinkMode, PasswordLinkCopy> = {
+  reset: {
+    formTitle: 'Choose a new password',
+    submitLabel: 'Save new password',
+    successTitle: 'Password updated',
+    successLede: 'Your password has been reset.',
+    expired: 'This reset link has expired or was already used. Request a new one.',
+  },
+  setup: {
+    formTitle: 'Set your password',
+    submitLabel: 'Set password',
+    successTitle: 'Your password is set',
+    successLede: 'Sign in with your email address and new password to get started.',
+    expired:
+      'This set-up link has expired or was already used. Ask your administrator to send a new one, or use "Forgot password" on the sign-in page.',
+  },
+};
+
+function errorMessageFor(error: unknown, copy: PasswordLinkCopy): string {
   switch (isAppError(error) ? error.errorCode : null) {
     case 'RESET_TOKEN_EXPIRED':
-      return 'This reset link has expired or was already used. Request a new one.';
+      return copy.expired;
     case 'WEAK_PASSWORD':
       return 'Choose a longer password (at least 12 characters).';
     default:
@@ -36,9 +69,10 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 }
 
 /**
- * Confirms a password reset — `reset_token` arrives as a query param on the
- * link `RequestPasswordResetUseCase` emails
- * (`application/identity/password_reset.py`'s `body` string).
+ * Confirms a password reset or first-time password set-up — the token
+ * arrives as the `token` query param on the link the backend sends
+ * (`/reset-password?token=…` from `password_reset.py`, `/set-password?token=…`
+ * from `staff_user.py`'s invitation). Route `data.mode` picks the wording.
  */
 @Component({
   selector: 'lpg-reset-password-page',
@@ -58,17 +92,15 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
       @if (!resetToken()) {
         <div class="login-card__header">
           <h1 class="login-card__title">Invalid link</h1>
-          <p class="login-card__lede">
-            This password reset link is missing its token. Request a new one.
-          </p>
+          <p class="login-card__lede">This link is missing its token. Request a new one.</p>
         </div>
         <div class="login-card__footer">
           <a class="login-card__forgot" routerLink="/login">Back to sign in</a>
         </div>
       } @else if (succeeded()) {
         <div class="login-card__header">
-          <h1 class="login-card__title">Password updated</h1>
-          <p class="login-card__lede">Your password has been reset.</p>
+          <h1 class="login-card__title">{{ copy.successTitle }}</h1>
+          <p class="login-card__lede">{{ copy.successLede }}</p>
         </div>
         <div class="login-card__footer">
           <a class="login-card__submit-link" routerLink="/login">Continue to sign in</a>
@@ -76,7 +108,7 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
       } @else {
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <div class="login-card__header">
-            <h1 class="login-card__title">Choose a new password</h1>
+            <h1 class="login-card__title">{{ copy.formTitle }}</h1>
             <p class="login-card__lede">Use at least 12 characters.</p>
           </div>
 
@@ -163,7 +195,7 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 
           <div class="login-card__footer">
             <button pButton type="submit" [disabled]="submitting()" class="login-card__submit">
-              {{ submitting() ? 'Saving…' : 'Save new password' }}
+              {{ submitting() ? 'Saving…' : copy.submitLabel }}
             </button>
             <a class="login-card__forgot" routerLink="/login">Back to sign in</a>
           </div>
@@ -303,6 +335,9 @@ export class ResetPasswordPage {
   protected readonly succeeded = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly resetToken = signal(this.route.snapshot.queryParamMap.get('token'));
+  protected readonly mode: PasswordLinkMode =
+    this.route.snapshot.data?.['mode'] === 'setup' ? 'setup' : 'reset';
+  protected readonly copy = COPY[this.mode];
 
   // `pInputPassword` is a bare directive with no `exportAs`, so a template
   // reference variable (`#ref`) resolves to the native element —
@@ -362,7 +397,7 @@ export class ResetPasswordPage {
       },
       error: (error: unknown) => {
         this.submitting.set(false);
-        this.errorMessage.set(errorMessageFor(error));
+        this.errorMessage.set(errorMessageFor(error, this.copy));
       },
     });
   }

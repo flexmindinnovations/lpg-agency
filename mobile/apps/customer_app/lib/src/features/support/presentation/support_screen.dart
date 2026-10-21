@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/complaints_provider.dart';
 import 'complaint_presentation.dart';
+import 'emergency_contacts_card.dart';
 
 class SupportScreen extends ConsumerWidget {
   const SupportScreen({super.key});
@@ -28,7 +29,8 @@ class SupportScreen extends ConsumerWidget {
           ),
           const SizedBox(height: LpgSpacing.xs),
           Text(
-            'Our support team is available 24/7 for your assistance.',
+            'Tell us about a delivery, billing or service problem and '
+            'track it here.',
             style: text.bodyMedium?.copyWith(
               color: colors.onHero.withValues(alpha: 0.85),
             ),
@@ -56,7 +58,9 @@ class SupportScreen extends ConsumerWidget {
               padding: LpgSpacing.page.copyWith(bottom: 0),
               sliver: SliverList.list(
                 children: [
-                  LpgFadeSlideIn(child: header),
+                  const LpgFadeSlideIn(child: EmergencyContactsCard()),
+                  const SizedBox(height: LpgSpacing.md),
+                  LpgFadeSlideIn(index: 1, child: header),
                   const LpgSectionHeader(title: 'Your Recent Tickets'),
                 ],
               ),
@@ -104,11 +108,16 @@ class SupportScreen extends ConsumerWidget {
                             child: LpgListTile(
                               leadingIcon: LpgIcons.complaint,
                               leadingTone: severity.tone,
-                              title: item.category,
+                              title: [
+                                complaintCategoryLabel(item.category),
+                                ?item.complaintNumber,
+                              ].join(' · '),
                               subtitle:
                                   'Opened on ${LpgFormat.date(item.createdAt)}',
                               trailing: LpgStatusBadge(
-                                label: item.status.toUpperCase(),
+                                label: humanizePascalCase(
+                                  item.status,
+                                ).toUpperCase(),
                                 severity: severity,
                               ),
                             ),

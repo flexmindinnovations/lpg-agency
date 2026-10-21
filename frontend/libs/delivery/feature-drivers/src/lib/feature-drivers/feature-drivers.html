@@ -10,7 +10,11 @@
 
   @if (errorMessage(); as msg) {
   <p-message severity="error">{{ msg }}</p-message>
-  }
+  } @if (licenceWarnings(); as warn) { @if (warn.text) {
+  <p-message [severity]="warn.expired > 0 ? 'error' : 'warn'" role="status"
+    >{{ warn.text }}</p-message
+  >
+  } }
 
   <div class="data-toolbar">
     <div class="search-bar data-toolbar__filters">
@@ -88,6 +92,8 @@
             inputId="branch_id"
             formControlName="branch_id"
             [options]="branches()"
+            placeholder="Select a branch"
+            ariaLabel="Branch"
             optionLabel="name"
             optionValue="id"
             appendTo="body"
@@ -156,7 +162,6 @@
             formControlName="license_expiry_date"
             [showIcon]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -167,9 +172,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
-          Register
-        </button>
+        <button pButton type="submit" [disabled]="loading()">Register</button>
       </div>
     </form>
   </p-drawer>
@@ -187,6 +190,20 @@
     @if (selectedDriver(); as driver) { @if (!editMode()) {
     <div class="detail-view">
       <div class="detail-view__fields">
+        <div class="detail-item">
+          <span class="detail-label">Name</span>
+          <span class="detail-value"
+            >{{ driver.name ?? employeeNameById().get(driver.employee_id) ?? '—' }}</span
+          >
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Phone</span>
+          @if (driver.phone_number; as phone) {
+          <a class="detail-value" [href]="'tel:' + phone">{{ phone }}</a>
+          } @else {
+          <span class="detail-value">—</span>
+          }
+        </div>
         <div class="detail-item">
           <span class="detail-label">Employee Code</span>
           <span class="detail-value"
@@ -208,7 +225,12 @@
         </div>
         <div class="detail-item">
           <span class="detail-label">License Expiry</span>
-          <span class="detail-value">{{ driver.license_expiry_date ?? '—' }}</span>
+          <span class="detail-value detail-value--with-tag">
+            {{ driver.license_expiry_date ?? '—' }} @if (licenceState(driver.license_expiry_date);
+            as state) { @if (state !== 'valid') {
+            <p-tag [value]="licenceLabel[state]" [severity]="licenceSeverity[state]" />
+            } }
+          </span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Duty Status</span>
@@ -288,6 +310,8 @@
             inputId="edit_branch_id"
             formControlName="branch_id"
             [options]="branches()"
+            placeholder="Select a branch"
+            ariaLabel="Branch"
             optionLabel="name"
             optionValue="id"
             appendTo="body"
@@ -319,7 +343,6 @@
             formControlName="license_expiry_date"
             [showIcon]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -344,9 +367,7 @@
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-        <button pButton type="submit" [disabled]="editForm.invalid || saving()">
-          Save Changes
-        </button>
+        <button pButton type="submit" [disabled]="saving()">Save Changes</button>
       </div>
     </form>
     } }

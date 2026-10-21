@@ -8,6 +8,11 @@ abstract interface class RealtimeSocket {
   Stream<dynamic> get stream;
   void send(String message);
   Future<void> close();
+
+  /// The close code the server sent, once the stream is done (`1008`: the
+  /// token was rejected). `null` while open or when the connection dropped
+  /// without a close frame.
+  int? get closeCode;
 }
 
 final class _WebSocketChannelSocket implements RealtimeSocket {
@@ -23,6 +28,9 @@ final class _WebSocketChannelSocket implements RealtimeSocket {
 
   @override
   Future<void> close() => _channel.sink.close();
+
+  @override
+  int? get closeCode => _channel.closeCode;
 }
 
 /// The real connection factory — opens an actual WebSocket to [uri].

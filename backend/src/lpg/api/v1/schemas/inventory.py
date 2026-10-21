@@ -14,12 +14,18 @@ real business data, not fabricated at mapping time.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 LocationType = Literal["warehouse", "vehicle"]
+#: Mirrors `domain.inventory.inventory_location.OMC_CODES`.
+OmcCode = Literal["iocl", "bpcl", "hpcl", "other"]
+CylinderStatus = Literal["filled", "empty", "damaged", "leakage", "quarantine", "repair", "scrap"]
+#: Mirrors `OMC_RETURNABLE_STATUSES`.
+OmcReturnableStatus = Literal["empty", "damaged", "leakage", "quarantine"]
+ReconciliationState = Literal["pending", "approved", "rejected"]
 
 # ==========================================================================
 # Balance
@@ -47,7 +53,11 @@ class InventoryBalanceResponse(BaseModel):
 class GoodsReceiptRequest(BaseModel):
     cylinder_type_id: uuid.UUID
     quantity_received: int = Field(ge=1)
-    source_omc: str | None = None
+    source_omc: OmcCode | None = None
+    #: The OMC's delivery challan / tax invoice and the truck's registration.
+    challan_number: str | None = Field(default=None, max_length=50)
+    invoice_number: str | None = Field(default=None, max_length=50)
+    truck_number: str | None = Field(default=None, max_length=20)
 
 
 class GoodsReceiptResponse(BaseModel):
@@ -58,8 +68,36 @@ class GoodsReceiptResponse(BaseModel):
     cylinder_type_id: uuid.UUID
     quantity_received: int
     source_omc: str | None
+    challan_number: str | None = None
+    invoice_number: str | None = None
+    truck_number: str | None = None
     received_by: uuid.UUID
     received_at: datetime
+
+
+class OmcReturnRequest(BaseModel):
+    """Empties (or segregated defective cylinders) going back to the plant."""
+
+    cylinder_type_id: uuid.UUID
+    quantity: int = Field(ge=1)
+    destination_omc: OmcCode
+    status: OmcReturnableStatus = "empty"
+    challan_number: str | None = Field(default=None, max_length=50)
+    truck_number: str | None = Field(default=None, max_length=20)
+
+
+class OmcReturnResponse(BaseModel):
+    id: uuid.UUID
+    return_number: str
+    warehouse_id: uuid.UUID
+    cylinder_type_id: uuid.UUID
+    status: str
+    quantity: int
+    destination_omc: str
+    challan_number: str | None
+    truck_number: str | None
+    dispatched_by: uuid.UUID
+    dispatched_at: datetime
 
 
 # ==========================================================================
@@ -106,15 +144,15 @@ class RecordCollectionRequest(BaseModel):
 
 class ChangeCylinderStatusRequest(BaseModel):
     cylinder_type_id: uuid.UUID
-    from_status: str
-    to_status: str
+    from_status: CylinderStatus
+    to_status: CylinderStatus
     quantity: int = Field(ge=1)
 
 
 class AdjustInventoryRequest(BaseModel):
     cylinder_type_id: uuid.UUID
-    from_status: str
-    to_status: str
+    from_status: CylinderStatus
+    to_status: CylinderStatus
     quantity: int = Field(ge=1)
     reason: str = Field(min_length=1, max_length=1000)
 
@@ -126,8 +164,12 @@ class AdjustInventoryRequest(BaseModel):
 
 class ReconciliationRecordCreateRequest(BaseModel):
     cylinder_type_id: uuid.UUID
-    status: str
+    status: CylinderStatus
     actual_quantity: int = Field(ge=0)
+
+
+class ReconciliationRejectRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=1000)
 
 
 class ReconciliationRecordResponse(BaseModel):
@@ -142,6 +184,47 @@ class ReconciliationRecordResponse(BaseModel):
     recorded_by: uuid.UUID
     approved_by: uuid.UUID | None
     approved_at: datetime | None
+    #: `pending` until someone other than the counter approves or rejects it.
+    state: ReconciliationState = "pending"
+    recorded_at: datetime | None = None
+    rejected_by: uuid.UUID | None = None
+    rejected_at: datetime | None = None
+    rejection_reason: str | None = None
+
+
+class ReconciliationRecordListResponse(BaseModel):
+    items: list[ReconciliationRecordResponse]
+
+
+# ==========================================================================
+# Status rules and stock register
+# ==========================================================================
+
+
+class StatusTransitionsResponse(BaseModel):
+    """The legal target statuses for each status — the same rule the server
+    enforces, so a client never offers a move that would be refused."""
+
+    status_change: dict[str, list[str]]
+    adjustment: dict[str, list[str]]
+
+
+class StockRegisterLineResponse(BaseModel):
+    date: date
+    cylinder_type_id: uuid.UUID
+    status: str
+    opening: int
+    receipts: int
+    issues: int
+    closing: int
+
+
+class StockRegisterResponse(BaseModel):
+    location_type: LocationType
+    location_ref_id: uuid.UUID
+    date_from: date
+    date_to: date
+    lines: list[StockRegisterLineResponse]
 
 
 # ==========================================================================

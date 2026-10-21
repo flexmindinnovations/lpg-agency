@@ -3,7 +3,7 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Fleet Vehicles</h1>
-        <p class="page-subtitle">Manage the vehicle fleet, registration, and maintenance status.</p>
+        <p class="page-subtitle">Your delivery vans and their status.</p>
       </div>
     </ng-template>
   </div>
@@ -88,6 +88,8 @@
             inputId="branch_id"
             formControlName="branch_id"
             [options]="branches()"
+            placeholder="Select a branch"
+            ariaLabel="Branch"
             optionLabel="name"
             optionValue="id"
             [fluid]="true"
@@ -138,7 +140,6 @@
             formControlName="rc_expiry_date"
             [showIcon]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -216,9 +217,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
-          Register
-        </button>
+        <button pButton type="submit" [disabled]="loading()">Register</button>
       </div>
     </form>
   </p-drawer>
@@ -357,9 +356,7 @@
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-        <button pButton type="submit" [disabled]="editForm.invalid || saving()">
-          Save Changes
-        </button>
+        <button pButton type="submit" [disabled]="saving()">Save Changes</button>
       </div>
     </form>
     } }

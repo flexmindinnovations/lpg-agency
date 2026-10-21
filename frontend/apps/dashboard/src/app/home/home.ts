@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
-import { catchError, of } from 'rxjs';
+import { catchError, debounceTime, of } from 'rxjs';
 import {
   ActivityListComponent,
   type ActivityItem,
@@ -26,17 +26,22 @@ import {
   SkeletonComponent,
   StatCardComponent,
   type StatTone,
+  formatCurrencyInr,
+  toSentenceCase,
 } from '@lpg/shared/ui';
+import { formatDisplayDate } from '@lpg/shared/util';
 import {
   CustomerService,
   DashboardService,
   type CylinderTypePriceCardResponse,
   type DashboardActivityEntryResponse,
   DashboardSummaryResponse,
+  type OperationsSnapshotResponse,
   type RefillDueCustomerResponse,
   WebSocketService,
 } from '@lpg/shared/data-access';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { SetupChecklist } from './setup-checklist/setup-checklist';
 
 interface KpiData {
   title: string;
@@ -52,6 +57,12 @@ const ACTION_ICON: Record<string, string> = {
   create: 'pi pi-plus-circle',
   update: 'pi pi-pencil',
   delete: 'pi pi-trash',
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  create: 'Created',
+  update: 'Changed',
+  delete: 'Deleted',
 };
 
 const ACTION_TONE: Record<string, ActivityStatusTone> = {
@@ -77,7 +88,23 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status;
+  return STATUS_LABELS[status] ?? toSentenceCase(status);
+}
+
+/** "Fleet status: 4 available, 1 in maintenance." — a chart's numbers as text. */
+function chartSummary(
+  title: string,
+  counts: Readonly<Record<string, number>> | undefined,
+  noun: string,
+): string {
+  const entries = Object.entries(counts ?? {});
+  if (entries.length === 0) return `${title}: no ${noun} yet.`;
+  const parts = entries.map(([status, count]) => `${count} ${statusLabel(status).toLowerCase()}`);
+  return `${title}: ${parts.join(', ')}.`;
+}
+
+function tile(title: string, value: number, icon: string, tone: StatTone, route: string): KpiData {
+  return { title, value: value.toLocaleString('en-IN'), icon, tone, route };
 }
 
 @Component({
@@ -93,16 +120,34 @@ function statusLabel(status: string): string {
     ActivityListComponent,
     EmptyStateComponent,
     SkeletonComponent,
+    SetupChecklist,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dashboard">
       <ng-template lpgHeaderTitlePortal>
-        <lpg-page-header
-          title="Agency Overview"
-          subtitle="Live summary of your agency's operational data across every module."
-        />
+        <lpg-page-header title="Agency Overview" subtitle="Today at your agency." />
       </ng-template>
+
+      <lpg-setup-checklist />
+      <!-- Today's operations (DO-28) — what the day's work looks like. -->
+      @if (operationsKpis().length > 0) {
+        <section class="dashboard__ops" aria-labelledby="ops-heading">
+          <h2 id="ops-heading" class="dashboard__section-title">Today's operations</h2>
+          <div class="dashboard__kpis">
+            @for (kpi of operationsKpis(); track kpi.title) {
+              <lpg-stat-card
+                [label]="kpi.title"
+                [value]="kpi.value"
+                [icon]="kpi.icon"
+                [tone]="kpi.tone"
+                [loading]="loading()"
+                [route]="kpi.route"
+              />
+            }
+          </div>
+        </section>
+      }
 
       <!-- KPI Section — each card links to the module it summarises. -->
       <section class="dashboard__kpis">
@@ -128,6 +173,7 @@ function statusLabel(status: string): string {
                 type="bar"
                 [data]="vehicleStatusChartData()"
                 [options]="barChartOptions()"
+                [ariaLabel]="vehicleChartSummary()"
               ></p-chart>
             }
           </div>
@@ -142,6 +188,7 @@ function statusLabel(status: string): string {
                 type="doughnut"
                 [data]="inventoryChartData()"
                 [options]="doughnutChartOptions()"
+                [ariaLabel]="inventoryChartSummary()"
               ></p-chart>
             }
           </div>
@@ -168,17 +215,16 @@ function statusLabel(status: string): string {
       </lpg-section-card>
 
       <!-- Price Cards -->
-      <lpg-section-card
-        *lpgHasPermission="'tenant:configure'"
-        heading="Cylinder Pricing (Domestic)"
-      >
+      <lpg-section-card *lpgHasPermission="'tenant:configure'" heading="Cylinder Prices">
         @if (priceCards().length > 0) {
           <div class="mini-cards">
             @for (card of priceCards(); track card.cylinder_type_id) {
               <div class="mini-card">
-                <span class="mini-card__label">{{ card.name }} · {{ card.weight_kg }} kg</span>
+                <span class="mini-card__label"
+                  >{{ card.name }} · {{ customerTypeLabel(card.customer_type) }} price</span
+                >
                 <span class="mini-card__value">
-                  {{ card.price ? '₹' + card.price : 'Not configured' }}
+                  {{ card.price ? formatCurrencyInr(card.price) : 'No price set' }}
                 </span>
               </div>
             }
@@ -232,6 +278,12 @@ function statusLabel(status: string): string {
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xl);
+      }
+
+      .dashboard__section-title {
+        margin: 0 0 var(--spacing-md);
+        font-size: var(--typography-heading3-font-size);
+        font-weight: var(--typography-heading3-font-weight);
       }
 
       .dashboard__kpis {
@@ -304,6 +356,96 @@ export class Home implements OnDestroy {
   private readonly summary = signal<DashboardSummaryResponse | null>(null);
 
   protected readonly kpis = signal<KpiData[]>([]);
+  private readonly operations = signal<OperationsSnapshotResponse | null>(null);
+  protected readonly formatCurrencyInr = formatCurrencyInr;
+  protected readonly customerTypeLabel = (type: string): string => toSentenceCase(type);
+
+  /** DO-28: the day's pipeline first; invoice and cash tiles only appear
+   * when the server included them (the caller may see them). */
+  protected readonly operationsKpis = computed<KpiData[]>(() => {
+    const ops = this.operations();
+    if (!ops) return [];
+    const open = ops.orders.open_by_status;
+    const count = (...statuses: string[]) =>
+      statuses.reduce((sum, status) => sum + (open[status] ?? 0), 0);
+    const kpis: KpiData[] = [
+      tile('Bookings today', ops.orders.bookings_today, 'pi pi-calendar-plus', 'info', '/orders'),
+      tile('Awaiting confirmation', count('booked'), 'pi pi-inbox', 'warning', '/orders'),
+      tile(
+        'Waiting for a trip',
+        count('confirmed', 'assigned', 'ready_for_dispatch'),
+        'pi pi-clock',
+        'warning',
+        '/orders',
+      ),
+      tile('Out for delivery', count('out_for_delivery'), 'pi pi-truck', 'primary', '/orders'),
+      tile(
+        'Delivered today',
+        ops.orders.delivered_today,
+        'pi pi-check-circle',
+        'success',
+        '/orders',
+      ),
+      tile('Failed today', ops.orders.failed_today, 'pi pi-times-circle', 'danger', '/orders'),
+      tile(
+        'Cancellations to approve',
+        ops.orders.pending_cancellations,
+        'pi pi-ban',
+        'warning',
+        '/orders',
+      ),
+      tile('Open complaints', ops.open_complaints, 'pi pi-comments', 'warning', '/complaints'),
+      tile('Low-stock locations', ops.low_stock_count, 'pi pi-box', 'danger', '/inventory'),
+    ];
+    if (ops.invoices) {
+      kpis.push(
+        {
+          title: `Outstanding (${ops.invoices.outstanding_count} invoices)`,
+          value: formatCurrencyInr(ops.invoices.outstanding_amount),
+          icon: 'pi pi-wallet',
+          tone: 'info',
+          route: '/invoices',
+        },
+        {
+          title: `Overdue > ${ops.payment_terms_days} days (${ops.invoices.overdue_count})`,
+          value: formatCurrencyInr(ops.invoices.overdue_amount),
+          icon: 'pi pi-exclamation-circle',
+          tone: 'danger',
+          route: '/invoices',
+        },
+      );
+      if (ops.invoices.on_hold_count > 0) {
+        kpis.push(
+          tile(
+            'Invoices on hold',
+            ops.invoices.on_hold_count,
+            'pi pi-pause',
+            'danger',
+            '/invoices',
+          ),
+        );
+      }
+    }
+    if (ops.cash) {
+      kpis.push(
+        {
+          title: 'Cash with drivers',
+          value: formatCurrencyInr(ops.cash.awaiting_handover),
+          icon: 'pi pi-money-bill',
+          tone: 'warning',
+          route: '/cash-handovers',
+        },
+        tile(
+          'Handovers to verify',
+          ops.cash.handovers_awaiting_review,
+          'pi pi-verified',
+          'info',
+          '/cash-handovers',
+        ),
+      );
+    }
+    return kpis;
+  });
   protected readonly inventoryCards = signal<InventoryStatusCard[]>([]);
   protected readonly priceCards = signal<CylinderTypePriceCardResponse[]>([]);
 
@@ -328,7 +470,7 @@ export class Home implements OnDestroy {
           icon: 'pi pi-bell',
           title: customer.full_name,
           description: customer.phone_number,
-          status: overdue ? 'Overdue' : `Due ${customer.refill_due_date}`,
+          status: overdue ? 'Overdue' : `Due ${formatDisplayDate(customer.refill_due_date)}`,
           statusTone: overdue ? 'danger' : 'warning',
         };
       }),
@@ -342,15 +484,23 @@ export class Home implements OnDestroy {
       .map((entry) => ({
         time: formatTimestamp(entry.performed_at),
         icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
-        title: formatEntityName(entry.entity_name),
-        description: entry.entity_id
-          ? String(entry.entity_id).slice(0, 8).toUpperCase()
-          : undefined,
+        title: entry.entity_display_name
+          ? `${formatEntityName(entry.entity_name)} ${entry.entity_display_name}`
+          : formatEntityName(entry.entity_name),
+        description: entry.actor_display_name ? `by ${entry.actor_display_name}` : undefined,
         status: entry.action
-          ? entry.action.charAt(0).toUpperCase() + entry.action.slice(1)
+          ? (ACTION_LABEL[entry.action] ?? toSentenceCase(entry.action))
           : undefined,
         statusTone: ACTION_TONE[entry.action] ?? 'neutral',
       })),
+  );
+
+  /** Text alternatives for the two charts (WCAG 1.1.1): the same numbers in words. */
+  protected readonly vehicleChartSummary = computed(() =>
+    chartSummary('Fleet status', this.summary()?.vehicles_by_status, 'vehicles'),
+  );
+  protected readonly inventoryChartSummary = computed(() =>
+    chartSummary('Cylinder inventory', this.summary()?.inventory_by_status, 'cylinders'),
   );
 
   // PrimeNG's ChartData<...> generic is impractical to satisfy exactly.
@@ -375,10 +525,14 @@ export class Home implements OnDestroy {
     this.loadDashboardData();
     this.loadRefillsDueSoon();
 
+    // DO-24: KPIs follow order and trip events live. Debounced so a burst
+    // (a whole trip delivered) is one refetch; a reconnect refetches what
+    // was missed while the socket was down.
     this.wsService.subscribeTo('dashboard');
+    this.wsService.subscribeTo('orders');
     this.wsService
-      .on('dashboard.metrics_stale')
-      .pipe(takeUntilDestroyed())
+      .changes$('dashboard.metrics_stale', 'order.status_changed')
+      .pipe(debounceTime(1000), takeUntilDestroyed())
       .subscribe(() => {
         this.loadDashboardData();
       });
@@ -408,6 +562,11 @@ export class Home implements OnDestroy {
 
   private loadDashboardData(): void {
     this.loading.set(true);
+
+    this.dashboardService
+      .getOperations()
+      .pipe(catchError(() => of(null)))
+      .subscribe((operations) => this.operations.set(operations));
 
     this.dashboardService
       .getSummary()
@@ -529,7 +688,7 @@ export class Home implements OnDestroy {
     const vehicleStatuses = this.summary()?.vehicles_by_status ?? {};
     const vehicleLabels = Object.keys(vehicleStatuses);
     this.vehicleStatusChartData.set({
-      labels: vehicleLabels.length > 0 ? vehicleLabels : ['No vehicles yet'],
+      labels: vehicleLabels.length > 0 ? vehicleLabels.map(statusLabel) : ['No vehicles yet'],
       datasets: [
         {
           label: 'Vehicles',
@@ -577,7 +736,7 @@ export class Home implements OnDestroy {
       scrap: surfaceBorder,
     };
     this.inventoryChartData.set({
-      labels: inventoryLabels.length > 0 ? inventoryLabels : ['No inventory yet'],
+      labels: inventoryLabels.length > 0 ? inventoryLabels.map(statusLabel) : ['No inventory yet'],
       datasets: [
         {
           data: inventoryLabels.length > 0 ? inventoryLabels.map((s) => inventoryStatuses[s]) : [1],

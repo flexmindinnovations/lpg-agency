@@ -7,43 +7,24 @@ import {
   getComplaintApiV1ComplaintsComplaintIdGet,
   listComplaintsApiV1ComplaintsGet,
   raiseComplaintApiV1ComplaintsPost,
+  listComplaintAssigneesApiV1ComplaintsAssigneesGet,
   resolveComplaintApiV1ComplaintsComplaintIdResolvePost,
+  type AssignComplaintRequest as GeneratedAssignComplaintRequest,
+  type ComplaintAssigneeResponse,
+  type ComplaintCategory,
+  type ComplaintPriority,
+  type ComplaintResponse,
+  type ComplaintStatus,
+  type RaiseComplaintRequest as GeneratedRaiseComplaintRequest,
+  type ResolutionOutcome,
+  type ResolveComplaintRequest as GeneratedResolveComplaintRequest,
 } from '@lpg/shared/data-access';
 
-export interface ComplaintAssignment {
-  id: string;
-  assigned_to: string;
-  assigned_at: string;
-  created_at: string;
-  created_by?: string;
-}
-
-export interface ComplaintResolution {
-  id: string;
-  outcome: 'Resolved' | 'Compensated' | 'Rejected';
-  resolution_notes: string;
-  resolved_by: string;
-  resolved_at: string;
-  created_at: string;
-}
-
-export interface Complaint {
-  id: string;
-  complaint_number?: string;
-  customer_id: string;
-  order_id?: string;
-  category: string;
-  priority: string;
-  status: 'Open' | 'Assigned' | 'InProgress' | 'Resolved' | 'Rejected' | 'Closed';
-  description: string;
-  sla_due_at?: string;
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-  updated_by?: string;
-  assignments: ComplaintAssignment[];
-  resolution?: ComplaintResolution;
-}
+// The generated contract (DO-17..DO-20): names, numbers and the safety
+// category come from the server instead of hand-kept copies.
+export type Complaint = ComplaintResponse;
+export type ComplaintAssignee = ComplaintAssigneeResponse;
+export type { ComplaintCategory, ComplaintPriority, ResolutionOutcome };
 
 export interface ComplaintListResponse {
   items: Complaint[];
@@ -52,22 +33,9 @@ export interface ComplaintListResponse {
   limit: number;
 }
 
-export interface RaiseComplaintRequest {
-  customer_id: string;
-  category: string;
-  priority: string;
-  description: string;
-  order_id?: string;
-}
-
-export interface AssignComplaintRequest {
-  assigned_to: string;
-}
-
-export interface ResolveComplaintRequest {
-  outcome: 'Resolved' | 'Compensated' | 'Rejected';
-  resolution_notes: string;
-}
+export type RaiseComplaintRequest = GeneratedRaiseComplaintRequest;
+export type AssignComplaintRequest = GeneratedAssignComplaintRequest;
+export type ResolveComplaintRequest = GeneratedResolveComplaintRequest;
 
 /**
  * Was a hand-rolled `HttpClient` service with a hardcoded relative
@@ -90,7 +58,7 @@ export class ComplaintService {
   listComplaints(
     skip = 0,
     limit = 50,
-    status?: string,
+    status?: ComplaintStatus,
     customer_id?: string,
   ): Observable<ComplaintListResponse> {
     return listComplaintsApiV1ComplaintsGet(this.http, this.config.rootUrl, {
@@ -101,6 +69,13 @@ export class ComplaintService {
     }).pipe(map((res) => res.body as unknown as ComplaintListResponse));
   }
 
+  /** Staff who can take complaints, with their names (DO-18). */
+  listAssignees(): Observable<ComplaintAssignee[]> {
+    return listComplaintAssigneesApiV1ComplaintsAssigneesGet(this.http, this.config.rootUrl).pipe(
+      map((res) => res.body),
+    );
+  }
+
   getComplaint(id: string): Observable<Complaint> {
     return getComplaintApiV1ComplaintsComplaintIdGet(this.http, this.config.rootUrl, {
       complaint_id: id,
@@ -109,7 +84,7 @@ export class ComplaintService {
 
   raiseComplaint(request: RaiseComplaintRequest): Observable<{ id: string }> {
     return raiseComplaintApiV1ComplaintsPost(this.http, this.config.rootUrl, {
-      body: request as never,
+      body: request,
     }).pipe(map((res) => res.body as { id: string }));
   }
 
@@ -123,7 +98,7 @@ export class ComplaintService {
   resolveComplaint(id: string, request: ResolveComplaintRequest): Observable<void> {
     return resolveComplaintApiV1ComplaintsComplaintIdResolvePost(this.http, this.config.rootUrl, {
       complaint_id: id,
-      body: request as never,
+      body: request,
     }).pipe(map(() => undefined));
   }
 }

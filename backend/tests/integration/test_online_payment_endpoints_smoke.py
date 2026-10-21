@@ -187,9 +187,14 @@ async def _seed_order(
             "VALUES (gen_random_uuid(), :tenant_id, :customer_id, '1 Pay Rd') RETURNING id",
             customer_id=str(customer_id),
         )
+        # GST must be configured before anything can be invoiced or prepaid
+        # (DA-06). Without `gst_percent` the cylinder type itself is
+        # classified at 0%; with it, the legacy tenant-wide rate applies.
         cylinder_type_id = await scalar(
-            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
-            "VALUES (gen_random_uuid(), :tenant_id, 'Pay 14.2kg', 14.2) RETURNING id"
+            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg, hsn_code, "
+            "gst_rate_percent) VALUES (gen_random_uuid(), :tenant_id, 'Pay 14.2kg', 14.2, "
+            "'27111900', CASE WHEN :classified THEN 0 END) RETURNING id",
+            classified=gst_percent is None,
         )
         order_id = await scalar(
             "INSERT INTO orders.order (id, tenant_id, branch_id, customer_id, address_id, "
@@ -264,6 +269,27 @@ def _webhook(event: str, *, link_id: str, tenant_id: uuid.UUID) -> tuple[bytes, 
     return body, {"X-Razorpay-Signature": signature, "Content-Type": "application/json"}
 
 
+class TestOnlinePaymentAvailability:
+    async def test_reports_whether_a_gateway_is_configured(
+        self,
+        client: AsyncClient,
+        admin_engine: AsyncEngine,
+        integration_settings: Settings,
+        gateway: _StubbedRazorpay,
+    ) -> None:
+        """CA-17: the customer app hides Pay Online when it cannot work."""
+        _tenant_id, email = await _seed_tenant_with_staff(admin_engine, integration_settings)
+        headers = await _headers(client, email)
+
+        configured = await client.get("/api/v1/online-payments/availability", headers=headers)
+        assert configured.status_code == 200, configured.text
+        assert configured.json() == {"available": gateway.is_configured}
+        assert gateway.is_configured is True
+
+        anonymous = await client.get("/api/v1/online-payments/availability")
+        assert anonymous.status_code == 401
+
+
 class TestOnlinePaymentFlow:
     async def test_prepay_link_then_webhook_marks_paid(
         self,
@@ -279,6 +305,7 @@ class TestOnlinePaymentFlow:
         created = await client.post(f"/api/v1/orders/{order_id}/payment-links", headers=headers)
         assert created.status_code == 201, created.text
         body = created.json()
+        # 2 x 450 at 5%: prices exclude GST by default, so the link is 945.00.
         assert Decimal(body["amount"]) == Decimal("945.00")
         assert body["status"] == "created"
         assert body["payment_url"].startswith("https://rzp.io/i/plink_")

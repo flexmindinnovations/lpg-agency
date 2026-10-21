@@ -22,6 +22,7 @@ export interface CustomerResponse {
   date_of_birth: (string | null);
   email: (string | null);
   full_name: string;
+  gstin?: (string | null);
   id: string;
   kyc_status: string;
   lpg_subsidy_id: (string | null);

@@ -7,13 +7,19 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from lpg.application.accounting.gst import (
+    GstClass,
+    resolve_gst_classes,
+    resolve_place_of_supply,
+    resolve_prices_include_gst,
+)
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import ConflictError, NotFoundError, ValidationError
 from lpg.config.logging import get_logger
-from lpg.domain.accounting.cash_handover import CashHandover
+from lpg.domain.accounting.cash_handover import CashHandover, CashHandoverReview
 from lpg.domain.accounting.credit_note import CreditNote
-from lpg.domain.accounting.invoice import Invoice, InvoiceLine
-from lpg.domain.tenant.tenant_configuration import TenantConfigurationResolver
+from lpg.domain.accounting.invoice import STAFF_PAYMENT_METHODS, Invoice, InvoiceLine
+from lpg.domain.common.gst import compute_line_tax, split_inclusive, to_cents
 
 if TYPE_CHECKING:
     import datetime
@@ -21,6 +27,7 @@ if TYPE_CHECKING:
 
     from lpg.application.accounting.ports import (
         CashHandoverNumberSequence,
+        CashHandoverRegisterEntry,
         CashHandoverRepository,
         CreditNoteNumberSequence,
         CreditNoteRepository,
@@ -28,34 +35,22 @@ if TYPE_CHECKING:
         InvoiceRepository,
         OnlinePaymentRepository,
         ProofOfDeliveryReader,
+        UninvoicedOrder,
+        UninvoicedOrderReader,
     )
     from lpg.application.common.ports import UnitOfWork
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.delivery.ports import RouteRepository
     from lpg.application.order.ports import OrderRepository, ProofOfDeliveryEntry
-    from lpg.application.tenant.ports import TenantConfigurationRepository
+    from lpg.application.tenant.ports import (
+        CylinderTypeRepository,
+        TenantConfigurationRepository,
+        TenantRepository,
+    )
     from lpg.domain.accounting.online_payment import OnlinePayment
+    from lpg.domain.order.order import Order
 
 _logger = get_logger(__name__)
-
-
-async def resolve_gst_rate_percent(
-    tenant_config_repository: TenantConfigurationRepository,
-    tenant_id: uuid.UUID,
-    at: datetime.datetime,
-) -> Decimal:
-    """The tenant's `gst_rate_percent` in force at `at`, or 0 if unset or
-    malformed. Shared by invoice generation and online-payment amounts so a
-    prepayment is computed exactly the way its invoice will be.
-    """
-    configs = await tenant_config_repository.list_for_tenant_and_key(tenant_id, "gst_rate_percent")
-    gst_config = TenantConfigurationResolver.resolve(configs, "gst_rate_percent", at)
-    gst_rate = gst_config.config_value if gst_config else None
-    try:
-        return Decimal(gst_rate) if gst_rate else Decimal("0.0")
-    except (ValueError, TypeError, ArithmeticError):
-        _logger.warning("invalid_gst_rate", gst_rate=gst_rate)
-        return Decimal("0.0")
 
 
 def apply_online_payments_to_invoice(
@@ -150,8 +145,51 @@ def apply_doorstep_collection_to_invoice(
     return True
 
 
+def _taxed_line(
+    *,
+    cylinder_type_id: uuid.UUID,
+    quantity: int,
+    unit_price: Decimal,
+    gst: GstClass,
+    prices_include_gst: bool,
+    kind: str = "supply",
+    description: str | None = None,
+) -> InvoiceLine:
+    """One invoice line. `unit_price` is the price-list amount. By default
+    (exclusive) GST is added on top of `unit_price * quantity`. When the
+    tenant set `prices_include_gst`, the line total is exactly `unit_price *
+    quantity` and the taxable value and tax are derived inside it, rounded
+    per line so they add back to the paisa.
+    """
+    if prices_include_gst:
+        subtotal, tax_amount = split_inclusive(unit_price * quantity, gst.rate_percent)
+    else:
+        subtotal = to_cents(unit_price * quantity)
+        tax_amount = compute_line_tax(subtotal, gst.rate_percent)
+    return InvoiceLine(
+        line_id=uuid.uuid4(),
+        cylinder_type_id=cylinder_type_id,
+        quantity=quantity,
+        unit_price=unit_price,
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        total_amount=subtotal + tax_amount,
+        hsn_code=gst.hsn_code,
+        gst_rate_percent=gst.rate_percent,
+        kind=kind,
+        description=description,
+    )
+
+
 class GenerateInvoiceForOrderUseCase:
-    """Generates an invoice for an order when it is delivered."""
+    """Issues the tax invoice for a delivered order (BR-17) or, for an
+    order cancelled after dispatch, for its cancellation charge (DO-14).
+
+    Raises `GstNotConfiguredError` when a cylinder type on the order has no
+    GST rate (DA-06) — nothing is written, and the order shows up in
+    `ListUninvoicedOrdersUseCase` until someone configures the rate and
+    issues it.
+    """
 
     def __init__(
         self,
@@ -160,6 +198,8 @@ class GenerateInvoiceForOrderUseCase:
         customer_repository: CustomerRepository,
         tenant_config_repository: TenantConfigurationRepository,
         invoice_number_sequence: InvoiceNumberSequence,
+        cylinder_type_repository: CylinderTypeRepository,
+        tenant_repository: TenantRepository,
         online_payment_repository: OnlinePaymentRepository | None = None,
         proof_of_delivery_reader: ProofOfDeliveryReader | None = None,
     ) -> None:
@@ -168,6 +208,8 @@ class GenerateInvoiceForOrderUseCase:
         self._customer_repository = customer_repository
         self._tenant_config_repository = tenant_config_repository
         self._invoice_number_sequence = invoice_number_sequence
+        self._cylinder_type_repository = cylinder_type_repository
+        self._tenant_repository = tenant_repository
         # Optional so callers that never take online payments (and the
         # existing unit tests) need not wire it; the production event
         # handler always does, so gateway prepayments land on the invoice.
@@ -181,69 +223,48 @@ class GenerateInvoiceForOrderUseCase:
         tenant_id: uuid.UUID,
         order_id: uuid.UUID,
         delivered_at: datetime.datetime,
-    ) -> None:
-        """Execute the use case.
-
-        Args:
-            tenant_id: The scoping tenant.
-            order_id: The order that was delivered.
-            delivered_at: The time the order was delivered.
+    ) -> Invoice | None:
+        """Invoice a delivered order. Returns the new invoice, or `None`
+        when there is nothing to invoice (already invoiced, unknown order,
+        nothing delivered).
         """
         existing_invoice = await self._invoice_repository.get_by_order_id(tenant_id, order_id)
         if existing_invoice is not None:
             _logger.info("invoice_already_exists", order_id=str(order_id))
-            return
+            return None
 
         order = await self._order_repository.get_by_id(order_id)
         if order is None:
             _logger.error("order_not_found_for_invoice", order_id=str(order_id))
-            return
+            return None
 
-        gst_rate_decimal = await resolve_gst_rate_percent(
+        delivered = [line for line in order.lines if line.quantity_delivered > 0]
+        if not delivered:
+            _logger.info("order_had_no_delivered_lines", order_id=str(order_id))
+            return None
+
+        gst_classes = await resolve_gst_classes(
+            cylinder_type_repository=self._cylinder_type_repository,
+            tenant_config_repository=self._tenant_config_repository,
+            tenant_id=tenant_id,
+            cylinder_type_ids=[line.cylinder_type_id for line in delivered],
+            at=delivered_at,
+        )
+        inclusive = await resolve_prices_include_gst(
             self._tenant_config_repository, tenant_id, delivered_at
         )
-
-        # Generate invoice lines from order lines
-        lines = []
-        for line in order.lines:
-            if line.quantity_delivered <= 0:
-                continue
-
-            unit_price = line.unit_price or Decimal("0.0")
-            subtotal = unit_price * line.quantity_delivered
-            tax_amount = (subtotal * gst_rate_decimal) / Decimal("100")
-            total_amount = subtotal + tax_amount
-            lines.append(
-                InvoiceLine(
-                    line_id=uuid.uuid4(),
-                    cylinder_type_id=line.cylinder_type_id,
-                    quantity=line.quantity_delivered,
-                    unit_price=unit_price,
-                    subtotal=subtotal,
-                    tax_amount=tax_amount,
-                    total_amount=total_amount,
-                )
+        lines = [
+            _taxed_line(
+                cylinder_type_id=line.cylinder_type_id,
+                quantity=line.quantity_delivered,
+                unit_price=line.unit_price or Decimal("0.00"),
+                gst=gst_classes[line.cylinder_type_id],
+                prices_include_gst=inclusive,
             )
+            for line in delivered
+        ]
 
-        if not lines:
-            _logger.info("order_had_no_delivered_lines", order_id=str(order_id))
-            return
-
-        customer = await self._customer_repository.get_by_id(order.customer_id)
-
-        invoice_id = uuid.uuid4()
-        invoice_number = await self._invoice_number_sequence.next()
-        invoice = Invoice.generate_for_delivered_order(
-            invoice_id=invoice_id,
-            tenant_id=tenant_id,
-            invoice_number=invoice_number,
-            customer_id=order.customer_id,
-            order_id=order.id,
-            delivered_at=delivered_at,
-            lines=lines,
-            order_number=order.order_number,
-            customer_consumer_number=customer.consumer_number if customer else None,
-        )
+        invoice = await self._issue(tenant_id, order, lines, delivered_at)
         if self._online_payment_repository is not None:
             prepayments = await self._online_payment_repository.list_for_order(order.id)
             for online_payment in apply_online_payments_to_invoice(invoice, prepayments):
@@ -254,6 +275,87 @@ class GenerateInvoiceForOrderUseCase:
             )
         await self._invoice_repository.add(invoice)
         _logger.info("invoice_generated", invoice_id=str(invoice.id), order_id=str(order_id))
+        return invoice
+
+    async def execute_cancellation_charge(
+        self,
+        tenant_id: uuid.UUID,
+        order_id: uuid.UUID,
+        charge: Decimal,
+        cancelled_at: datetime.datetime,
+    ) -> Invoice | None:
+        """Bill the fee for a cancellation a manager approved (D-19, DO-14).
+
+        Contract with Order Management: `BookingCancelled.cancellation_charge`
+        the amount configured in `cancellation_fee_amount`, read on the
+        same basis as the price list: before GST, with GST added on top
+        (the default), or GST-inclusive when the tenant set
+        `prices_include_gst` to true. Under GST a cancellation charge is
+        consideration for the supply it relates to, so it is taxed at that
+        supply's rate and HSN; with lines at different rates the highest
+        applies.
+        """
+        if charge <= 0:
+            return None
+        if await self._invoice_repository.get_by_order_id(tenant_id, order_id) is not None:
+            _logger.info("invoice_already_exists", order_id=str(order_id))
+            return None
+        order = await self._order_repository.get_by_id(order_id)
+        if order is None or not order.lines:
+            _logger.error("order_not_found_for_invoice", order_id=str(order_id))
+            return None
+
+        gst_classes = await resolve_gst_classes(
+            cylinder_type_repository=self._cylinder_type_repository,
+            tenant_config_repository=self._tenant_config_repository,
+            tenant_id=tenant_id,
+            cylinder_type_ids=[line.cylinder_type_id for line in order.lines],
+            at=cancelled_at,
+        )
+        principal_line = max(
+            order.lines, key=lambda line: gst_classes[line.cylinder_type_id].rate_percent
+        )
+        line = _taxed_line(
+            cylinder_type_id=principal_line.cylinder_type_id,
+            quantity=1,
+            unit_price=to_cents(charge),
+            gst=gst_classes[principal_line.cylinder_type_id],
+            prices_include_gst=await resolve_prices_include_gst(
+                self._tenant_config_repository, tenant_id, cancelled_at
+            ),
+            kind="cancellation_charge",
+            description="Cancellation charge",
+        )
+        invoice = await self._issue(tenant_id, order, [line], cancelled_at)
+        await self._invoice_repository.add(invoice)
+        _logger.info(
+            "cancellation_charge_invoiced", invoice_id=str(invoice.id), order_id=str(order_id)
+        )
+        return invoice
+
+    async def _issue(
+        self,
+        tenant_id: uuid.UUID,
+        order: Order,
+        lines: list[InvoiceLine],
+        issued_at: datetime.datetime,
+    ) -> Invoice:
+        customer = await self._customer_repository.get_by_id(order.customer_id)
+        supply = await resolve_place_of_supply(
+            tenant_repository=self._tenant_repository, tenant_id=tenant_id, customer=customer
+        )
+        return Invoice.generate_for_delivered_order(
+            invoice_id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            invoice_number=await self._invoice_number_sequence.next(),
+            customer_id=order.customer_id,
+            order_id=order.id,
+            delivered_at=issued_at,
+            lines=lines,
+            order_number=order.order_number,
+            customer_consumer_number=customer.consumer_number if customer else None,
+            supply=supply,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +370,9 @@ class ListInvoicesQuery(Query):
     customer_id: uuid.UUID | None = None
     order_id: uuid.UUID | None = None
     status: str | None = None
+    issued_from: datetime.datetime | None = None
+    issued_to: datetime.datetime | None = None
+    search: str | None = None
 
 
 class GetInvoiceUseCase:
@@ -293,11 +398,17 @@ class ListInvoicesUseCase:
             customer_id=query.customer_id,
             order_id=query.order_id,
             status=query.status,
+            issued_from=query.issued_from,
+            issued_to=query.issued_to,
+            search=query.search,
         )
         total = await self._repository.count_invoices(
             customer_id=query.customer_id,
             order_id=query.order_id,
             status=query.status,
+            issued_from=query.issued_from,
+            issued_to=query.issued_to,
+            search=query.search,
         )
         return items, total
 
@@ -309,6 +420,12 @@ class RecordPaymentCommand(Command):
     amount: Decimal
     collected_by: uuid.UUID
     collected_at: datetime.datetime
+    reference: str | None = None
+
+
+#: Office-recorded methods that must carry a reference the accountant can
+#: match against the bank statement.
+_REFERENCE_REQUIRED_METHODS: frozenset[str] = frozenset({"cheque", "bank_transfer"})
 
 
 class RecordPaymentUseCase:
@@ -319,10 +436,24 @@ class RecordPaymentUseCase:
         self._unit_of_work = unit_of_work
 
     async def execute(self, command: RecordPaymentCommand) -> Invoice:
+        if command.method not in STAFF_PAYMENT_METHODS:
+            msg = "Choose cash, UPI, card, cheque or bank transfer."
+            raise ValidationError(msg, errors={"method": [msg]})
+        if command.method in _REFERENCE_REQUIRED_METHODS and not (command.reference or "").strip():
+            msg = "Enter the cheque number or bank reference (UTR)."
+            raise ValidationError(msg, errors={"reference": [msg]})
+
         invoice = await self._repository.get_by_id(command.invoice_id)
         if invoice is None:
             msg = f"No invoice visible with id {command.invoice_id}."
             raise NotFoundError(msg, invoice_id=str(command.invoice_id))
+        if command.amount > invoice.balance_due:
+            msg = (
+                f"Amount is more than the balance due of {invoice.balance_due}."
+                if invoice.balance_due > 0
+                else "Nothing is due on this invoice."
+            )
+            raise ValidationError(msg, errors={"amount": [msg]})
 
         invoice.record_payment(
             payment_id=uuid.uuid4(),
@@ -330,6 +461,7 @@ class RecordPaymentUseCase:
             amount=command.amount,
             collected_by=command.collected_by,
             collected_at=command.collected_at,
+            reference=command.reference,
         )
 
         await self._repository.save(invoice)
@@ -548,3 +680,153 @@ class ApproveRefundUseCase:
         await self._credit_note_repository.save(credit_note)
         await self._unit_of_work.commit()
         return credit_note
+
+
+@dataclass(frozen=True, slots=True)
+class ListCreditNotesQuery(Query):
+    invoice_id: uuid.UUID
+
+
+class ListCreditNotesUseCase:
+    """Refund requests and approvals raised against one invoice."""
+
+    def __init__(self, credit_note_repository: CreditNoteRepository) -> None:
+        self._credit_note_repository = credit_note_repository
+
+    async def execute(self, query: ListCreditNotesQuery) -> list[CreditNote]:
+        return await self._credit_note_repository.list_for_invoice(query.invoice_id)
+
+
+# ---------------------------------------------------------------------------
+# Billing gaps — orders that should have an invoice but don't (DA-06, DO-14)
+# ---------------------------------------------------------------------------
+
+
+class ListUninvoicedOrdersUseCase:
+    def __init__(self, reader: UninvoicedOrderReader) -> None:
+        self._reader = reader
+
+    async def execute(self) -> list[UninvoicedOrder]:
+        return await self._reader.list_uninvoiced()
+
+
+@dataclass(frozen=True, slots=True)
+class IssueInvoiceForOrderCommand(Command):
+    tenant_id: uuid.UUID
+    order_id: uuid.UUID
+    issued_at: datetime.datetime
+
+
+class IssueInvoiceForOrderUseCase:
+    """Issue the invoice that was held back — typically because GST was not
+    configured when the order was delivered or its cancellation approved.
+    Re-raises `GstNotConfiguredError` if it still is.
+    """
+
+    def __init__(
+        self,
+        reader: UninvoicedOrderReader,
+        generator: GenerateInvoiceForOrderUseCase,
+        unit_of_work: UnitOfWork,
+    ) -> None:
+        self._reader = reader
+        self._generator = generator
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: IssueInvoiceForOrderCommand) -> Invoice:
+        pending = await self._reader.get_uninvoiced(command.order_id)
+        if pending is None:
+            msg = "This order has nothing left to invoice."
+            raise NotFoundError(msg, order_id=str(command.order_id))
+
+        if pending.status == "cancelled":
+            invoice = await self._generator.execute_cancellation_charge(
+                command.tenant_id,
+                command.order_id,
+                pending.cancellation_charge or Decimal("0"),
+                command.issued_at,
+            )
+        else:
+            invoice = await self._generator.execute(
+                command.tenant_id, command.order_id, command.issued_at
+            )
+        if invoice is None:
+            msg = "This order has nothing left to invoice."
+            raise ConflictError(msg, order_id=str(command.order_id))
+        await self._unit_of_work.commit()
+        return invoice
+
+
+# ---------------------------------------------------------------------------
+# Cash handover register (DA-33)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class ListCashHandoverRegisterQuery(Query):
+    declared_from: datetime.datetime | None = None
+    declared_to: datetime.datetime | None = None
+    driver_id: uuid.UUID | None = None
+    review_status: str | None = None
+
+
+class ListCashHandoverRegisterUseCase:
+    def __init__(self, repository: CashHandoverRepository) -> None:
+        self._repository = repository
+
+    async def execute(
+        self, query: ListCashHandoverRegisterQuery
+    ) -> list[CashHandoverRegisterEntry]:
+        if query.review_status not in (None, "pending", "accepted", "disputed"):
+            msg = "Status must be pending, accepted or disputed."
+            raise ValidationError(msg, errors={"review_status": [msg]})
+        return await self._repository.list_register(
+            declared_from=query.declared_from,
+            declared_to=query.declared_to,
+            driver_id=query.driver_id,
+            review_status=query.review_status,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewCashHandoverCommand(Command):
+    cash_handover_id: uuid.UUID
+    outcome: str
+    note: str | None
+    reviewed_by: uuid.UUID
+
+
+class ReviewCashHandoverUseCase:
+    """The office counts the driver's cash and accepts or disputes the
+    declaration. One review per handover.
+    """
+
+    def __init__(self, repository: CashHandoverRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ReviewCashHandoverCommand) -> CashHandoverReview:
+        handover = await self._repository.get_by_id(command.cash_handover_id)
+        if handover is None:
+            msg = f"No cash handover visible with id {command.cash_handover_id}."
+            raise NotFoundError(msg, cash_handover_id=str(command.cash_handover_id))
+        if await self._repository.get_review(handover.id) is not None:
+            msg = "This handover has already been reviewed."
+            raise ConflictError(msg, cash_handover_id=str(handover.id))
+
+        review = CashHandoverReview.record(
+            review_id=uuid.uuid4(),
+            handover=handover,
+            outcome=command.outcome,
+            note=command.note,
+            reviewed_by=command.reviewed_by,
+        )
+        await self._repository.add_review(review)
+        await self._unit_of_work.commit()
+        _logger.info(
+            "cash_handover_reviewed",
+            cash_handover_id=str(handover.id),
+            outcome=review.outcome,
+            shortfall=str(handover.shortfall),
+        )
+        return review

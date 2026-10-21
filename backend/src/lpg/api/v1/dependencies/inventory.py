@@ -14,6 +14,8 @@ from lpg.application.inventory.ports import (
     GoodsReceiptNoteRepository,
     GrnNumberSequence,
     InventoryLocationRepository,
+    OmcReturnNoteRepository,
+    OmcReturnNumberSequence,
     ReconciliationRecordRepository,
     ReorderPolicyRepository,
 )
@@ -52,6 +54,32 @@ def get_grn_number_sequence(
         principal.tenant_id,
         entity_type="grn",
         prefix="GRN",
+    )
+
+
+def get_omc_return_note_repository(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OmcReturnNoteRepository:
+    from lpg.infrastructure.persistence.repositories.inventory import (
+        SqlAlchemyOmcReturnNoteRepository,
+    )
+
+    return SqlAlchemyOmcReturnNoteRepository(unit_of_work)  # type: ignore[arg-type]
+
+
+def get_omc_return_number_sequence(
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+) -> OmcReturnNumberSequence:
+    from lpg.infrastructure.persistence.repositories.reference_number import (
+        SqlAlchemyReferenceNumberSequence,
+    )
+
+    return SqlAlchemyReferenceNumberSequence(
+        unit_of_work,  # type: ignore[arg-type]
+        principal.tenant_id,
+        entity_type="omc_return",
+        prefix="ERN",
     )
 
 

@@ -197,14 +197,76 @@ final class OrderApi {
   /// `customer_unavailable` / `wrong_address` / `payment_refused` /
   /// `vehicle_issue` / `safety_issue`; `resolutionAction` is optional
   /// (`reschedule` / `cancel` / `return_stock`).
+  /// [note] is the driver's free text ("gate locked, back at 6"), shown with
+  /// the reason in the order's history.
   Future<Result<OrderResponse>> recordFailedDelivery(
     String orderId, {
     required String reasonCode,
     String? resolutionAction,
+    String? note,
   }) => _postOrderAction(
     '/api/v1/orders/$orderId/failed-delivery',
-    data: {'reason_code': reasonCode, 'resolution_action': ?resolutionAction},
+    data: {
+      'reason_code': reasonCode,
+      'resolution_action': ?resolutionAction,
+      'note': ?note,
+    },
   );
+
+  /// The delivery code the customer gives the driver, for the signed-in
+  /// customer's own order while it is out for delivery. `null` when no code
+  /// is pending.
+  Future<Result<String?>> getDeliveryCode(String orderId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>?>(
+        '/api/v1/orders/$orderId/delivery-code',
+      );
+      return Success(response.data?['code'] as String?);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// The cancellation request waiting for a manager on this order, or
+  /// `null` when there is none.
+  Future<Result<PendingCancellationResponse?>> getPendingCancellation(
+    String orderId,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>?>(
+        '/api/v1/orders/$orderId/cancellation-request',
+      );
+      final data = response.data;
+      return Success(
+        data == null ? null : PendingCancellationResponse.fromJson(data),
+      );
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
+  /// The order's status history, oldest first.
+  Future<Result<List<OrderStatusHistoryEntry>>> getStatusHistory(
+    String orderId,
+  ) async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        '/api/v1/orders/$orderId/history',
+      );
+      return Success([
+        for (final e in response.data ?? const [])
+          OrderStatusHistoryEntry.fromJson(e as Map<String, dynamic>),
+      ]);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 
   Future<Result<OrderResponse>> _postOrderAction(
     String path, {

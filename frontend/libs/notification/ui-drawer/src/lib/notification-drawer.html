@@ -10,56 +10,74 @@
   <div class="drawer-content">
     @if (visibleNotifications().length > 0) {
     <div class="drawer-toolbar">
+      @if (hasUnread()) {
+      <button type="button" class="drawer-action" (click)="markAllAsRead()">Mark all read</button>
+      }
       <button type="button" class="drawer-clear" (click)="clearAll()">Clear all</button>
     </div>
     }
 
-    <div class="notification-list">
+    <div class="notification-list" aria-live="polite">
       @if (visibleNotifications().length === 0) {
-      <div class="empty-state">No recent notifications.</div>
-      } @for (notification of visibleNotifications(); track notification.id) {
-      <div
-        class="notification-item"
-        [class.notification-item--unread]="!notification.is_read"
-        [class.notification-item--linked]="hasLink(notification)"
-        [attr.role]="hasLink(notification) ? 'button' : null"
-        [attr.tabindex]="hasLink(notification) ? 0 : null"
-        (click)="open(notification)"
-        (keydown.enter)="open(notification)"
-        (keydown.space)="open(notification)"
-      >
-        <div class="notification-header">
-          <h4 class="notification-title" [class.notification-title--unread]="!notification.is_read">
-            {{ notification.title }}
-          </h4>
-          <div class="notification-actions">
-            @if (!notification.is_read) {
-            <button
-              pButton
-              type="button"
-              text
-              rounded
-              severity="secondary"
-              size="small"
-              iconOnly
-              aria-label="Mark as read"
-              pTooltip="Mark as read"
-              (click)="markAsRead(notification.id); $event.stopPropagation()"
+      <lpg-empty-state
+        icon="pi pi-bell"
+        title="You're all caught up"
+        description="New orders, cancellation requests, complaints and failed deliveries show up here."
+      />
+      } @for (group of groups(); track group.label) {
+      <section class="notification-group" [attr.aria-label]="group.label">
+        <h3 class="notification-group__label">{{ group.label }}</h3>
+        @for (notification of group.items; track notification.id) {
+        <div
+          class="notification-item"
+          [class.notification-item--unread]="!notification.is_read"
+          [class.notification-item--linked]="hasLink(notification)"
+          [attr.role]="hasLink(notification) ? 'button' : null"
+          [attr.tabindex]="hasLink(notification) ? 0 : null"
+          [attr.aria-label]="(notification.is_read ? '' : 'Unread: ') + notification.title + '. ' + notification.body"
+          (click)="open(notification)"
+          (keydown.enter)="open(notification)"
+          (keydown.space)="open(notification)"
+        >
+          <div class="notification-header">
+            <h4
+              class="notification-title"
+              [class.notification-title--unread]="!notification.is_read"
             >
-              <i class="pi pi-check"></i>
-            </button>
-            }
+              @if (!notification.is_read) {
+              <span class="notification-dot" aria-hidden="true"></span>
+              } {{ notification.title }}
+            </h4>
+            <div class="notification-actions">
+              @if (!notification.is_read) {
+              <button
+                pButton
+                type="button"
+                text
+                rounded
+                severity="secondary"
+                size="small"
+                iconOnly
+                aria-label="Mark as read"
+                pTooltip="Mark as read"
+                (click)="markAsRead(notification.id); $event.stopPropagation()"
+              >
+                <i class="pi pi-check"></i>
+              </button>
+              }
+            </div>
           </div>
+
+          <p class="notification-body">{{ notification.body }}</p>
+
+          <span class="notification-time">
+            {{ notification.created_at | date: 'shortTime' }} @if (hasLink(notification)) {
+            <span class="notification-open-hint">· Open</span>
+            }
+          </span>
         </div>
-
-        <p class="notification-body">{{ notification.body }}</p>
-
-        <span class="notification-time">
-          {{ notification.created_at | date:'short' }} @if (hasLink(notification)) {
-          <span class="notification-open-hint">· Open</span>
-          }
-        </span>
-      </div>
+        }
+      </section>
       }
     </div>
 

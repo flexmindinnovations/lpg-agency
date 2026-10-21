@@ -3,10 +3,7 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Cylinder Units</h1>
-        <p class="page-subtitle">
-          Per-cylinder identity registry — Rule 26/27, Gas Cylinders Rules 2016. A cylinder due for
-          statutory retest cannot be received into fillable stock.
-        </p>
+        <p class="page-subtitle">Track each cylinder and its retest date.</p>
       </div>
     </ng-template>
   </div>
@@ -207,7 +204,6 @@
             formControlName="manufacture_date"
             [showIcon]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -228,9 +224,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
-          Register
-        </button>
+        <button pButton type="submit" [disabled]="loading()">Register</button>
       </div>
     </form>
   </p-drawer>
@@ -326,9 +320,7 @@
           <button pButton type="button" severity="secondary" (click)="cancelAction()">
             Cancel
           </button>
-          <button pButton type="submit" [disabled]="receiveForm.invalid || saving()">
-            Receive
-          </button>
+          <button pButton type="submit" [disabled]="saving()">Receive</button>
         </div>
       </form>
       } @else {
@@ -674,9 +666,7 @@
         </div>
         <div class="summary-field">
           <span class="summary-label">Current Test Due</span>
-          <span class="summary-value">
-            {{ unit.test_due_date ? formatReportDate(unit.test_due_date) : 'Never tested' }}
-          </span>
+          <span class="summary-value"> {{ testDueLabel(unit.test_due_date, unit) }} </span>
         </div>
       </div>
 
@@ -692,7 +682,6 @@
               formControlName="tested_at"
               [showIcon]="true"
               iconDisplay="input"
-              dateFormat="dd-mm-yy"
               appendTo="body"
               [fluid]="true"
               [showOnFocus]="false"
@@ -704,14 +693,13 @@
             label="Next due date"
             for="dialog_due_date"
             [control]="testForm.controls.due_date"
-            hint="The exact statutory retest interval is unconfirmed — enter the date from the cylinder's own stamp or the tenant's own records."
+            hint="The exact statutory retest interval is unconfirmed — enter the date from the cylinder's own stamp or your own records."
           >
             <p-datepicker
               inputId="dialog_due_date"
               formControlName="due_date"
               [showIcon]="true"
               iconDisplay="input"
-              dateFormat="dd-mm-yy"
               appendTo="body"
               [fluid]="true"
               [showOnFocus]="false"
@@ -720,7 +708,7 @@
 
           @if (suggestedDueDate(); as suggestion) {
           <p-message severity="info" [closable]="false" styleClass="w-full">
-            Suggested due date from tenant configuration: {{ formatReportDate(suggestion) }}
+            Suggested due date from your settings: {{ formatReportDate(suggestion) }}
             <button
               pButton
               type="button"

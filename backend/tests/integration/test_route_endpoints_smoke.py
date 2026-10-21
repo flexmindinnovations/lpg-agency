@@ -491,6 +491,9 @@ class _Fixtures:
     tenant_id: uuid.UUID
     branch_id: uuid.UUID
     admin_token: str
+    #: A second staff user with `reconciliation:approve` — a count is never
+    #: approved by the person who recorded it.
+    approver_token: str
     driver_id: uuid.UUID
     driver_token: str
     vehicle_id: uuid.UUID
@@ -515,6 +518,18 @@ async def _seed_full_fixture_set(client: AsyncClient, engine: AsyncEngine) -> _F
         role="agency_admin",
     )
     admin_token = await _login(client, email=admin_email, password=admin_password)
+
+    approver_email = f"{uuid.uuid4().hex}@route-smoke.example"
+    approver_password = "correct horse battery staple 45"
+    await _seed_staff_user(
+        engine,
+        tenant_id=tenant_id,
+        branch_id=branch_id,
+        email=approver_email,
+        password_hash=hasher.hash(approver_password),
+        role="warehouse_staff",
+    )
+    approver_token = await _login(client, email=approver_email, password=approver_password)
 
     driver_email = f"{uuid.uuid4().hex}@route-smoke.example"
     driver_password = "correct horse battery staple 43"
@@ -553,6 +568,7 @@ async def _seed_full_fixture_set(client: AsyncClient, engine: AsyncEngine) -> _F
         tenant_id=tenant_id,
         branch_id=branch_id,
         admin_token=admin_token,
+        approver_token=approver_token,
         driver_id=driver_id,
         driver_token=driver_token,
         vehicle_id=vehicle_id,
@@ -804,7 +820,8 @@ class TestRouteEndpointsThroughRealStack:
         assert reconciliation_response.status_code == 201, reconciliation_response.text
         record_id = reconciliation_response.json()["id"]
         approve_response = await client.post(
-            f"/api/v1/reconciliation-records/{record_id}/approve", headers=admin_headers
+            f"/api/v1/reconciliation-records/{record_id}/approve",
+            headers={"Authorization": f"Bearer {fixtures.approver_token}"},
         )
         assert approve_response.status_code == 200, approve_response.text
 
@@ -816,58 +833,60 @@ class TestRouteEndpointsThroughRealStack:
         assert reconcile_response.json()["status"] == "reconciled"
 
         # 13. PATCH .../status directly, on two fresh routes that never go
-        # through the order pipeline: "loaded -> in_progress" and
-        # "planned -> cancelled".
+        # through the order pipeline: "planned -> cancelled", then
+        # "loaded -> in_progress".
+        plan_body = {
+            "branch_id": str(fixtures.branch_id),
+            "driver_id": str(fixtures.driver_id),
+            "vehicle_id": str(fixtures.vehicle_id),
+        }
         second_plan_response = await client.post(
-            "/api/v1/routes",
-            json={
-                "branch_id": str(fixtures.branch_id),
-                "driver_id": str(fixtures.driver_id),
-                "vehicle_id": str(fixtures.vehicle_id),
-            },
-            headers=admin_headers,
+            "/api/v1/routes", json=plan_body, headers=admin_headers
         )
         assert second_plan_response.status_code == 201, second_plan_response.text
         second_route_id = second_plan_response.json()["id"]
-        second_load_response = await client.post(
-            f"/api/v1/routes/{second_route_id}/load",
-            json={
-                "warehouse_id": str(fixtures.warehouse_id),
-                "lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 1}],
-            },
-            headers=admin_headers,
-        )
-        assert second_load_response.status_code == 200, second_load_response.text
-        status_response = await client.patch(
-            f"/api/v1/routes/{second_route_id}/status",
-            json={"status": "in_progress"},
-            headers=admin_headers,
-        )
-        assert status_response.status_code == 200, status_response.text
-        assert status_response.json()["status"] == "in_progress"
 
-        third_plan_response = await client.post(
-            "/api/v1/routes",
-            json={
-                "branch_id": str(fixtures.branch_id),
-                "driver_id": str(fixtures.driver_id),
-                "vehicle_id": str(fixtures.vehicle_id),
-            },
-            headers=admin_headers,
+        # DO-23: the driver (and van) now has an open trip — a second one is
+        # refused by the server, not only greyed out in the dashboard.
+        duplicate_response = await client.post(
+            "/api/v1/routes", json=plan_body, headers=admin_headers
         )
-        assert third_plan_response.status_code == 201, third_plan_response.text
-        third_route_id = third_plan_response.json()["id"]
+        assert duplicate_response.status_code == 409, duplicate_response.text
+        assert duplicate_response.json()["error_code"] == "DRIVER_ALREADY_ON_TRIP"
+
         cancel_status_response = await client.patch(
-            f"/api/v1/routes/{third_route_id}/status",
+            f"/api/v1/routes/{second_route_id}/status",
             json={"status": "cancelled"},
             headers=admin_headers,
         )
         assert cancel_status_response.status_code == 200, cancel_status_response.text
         assert cancel_status_response.json()["status"] == "cancelled"
 
+        third_plan_response = await client.post(
+            "/api/v1/routes", json=plan_body, headers=admin_headers
+        )
+        assert third_plan_response.status_code == 201, third_plan_response.text
+        third_route_id = third_plan_response.json()["id"]
+        third_load_response = await client.post(
+            f"/api/v1/routes/{third_route_id}/load",
+            json={
+                "warehouse_id": str(fixtures.warehouse_id),
+                "lines": [{"cylinder_type_id": str(fixtures.cylinder_type_id), "quantity": 1}],
+            },
+            headers=admin_headers,
+        )
+        assert third_load_response.status_code == 200, third_load_response.text
+        status_response = await client.patch(
+            f"/api/v1/routes/{third_route_id}/status",
+            json={"status": "in_progress"},
+            headers=admin_headers,
+        )
+        assert status_response.status_code == 200, status_response.text
+        assert status_response.json()["status"] == "in_progress"
+
         # 14. Illegal transition (cancelled -> in_progress) -> 409.
         illegal_response = await client.patch(
-            f"/api/v1/routes/{third_route_id}/status",
+            f"/api/v1/routes/{second_route_id}/status",
             json={"status": "in_progress"},
             headers=admin_headers,
         )
@@ -946,11 +965,24 @@ async def _create_and_confirm_order_at(
 ) -> dict[str, Any]:
     """Same shape as `_create_and_confirm_order`, but with real delivery
     coordinates — needed to exercise `OptimizeRouteSequenceUseCase`, which
-    has nothing to reorder without them."""
+    has nothing to reorder without them. The order takes its coordinates
+    from the customer's saved address, so each order gets its own."""
+    address_response = await client.post(
+        f"/api/v1/customers/{fixtures.customer_id}/addresses",
+        json={
+            "line_1": "123 Test St",
+            "city": "Pune",
+            "pincode": "411001",
+            "latitude": latitude,
+            "longitude": longitude,
+        },
+        headers=headers,
+    )
+    assert address_response.status_code in (200, 201), address_response.text
     create_payload = {
         "branch_id": str(fixtures.branch_id),
         "customer_id": str(fixtures.customer_id),
-        "address_id": str(fixtures.address_id),
+        "address_id": address_response.json(),
         "delivery_address": {
             "address_line": "123 Test St",
             "latitude": latitude,
@@ -972,6 +1004,63 @@ async def _create_and_confirm_order_at(
     assert confirm_response.status_code == 200, confirm_response.text
     result: dict[str, Any] = confirm_response.json()
     return result
+
+
+class TestActiveRoutePrefersTheOneOnTheRoad:
+    async def test_newer_planned_route_does_not_hide_in_progress_one(
+        self, stack: _AppAndClient, admin_engine: AsyncEngine
+    ) -> None:
+        """DR-05: a second route planned for a driver mid-trip must not hide
+        the route they are still out on."""
+        client = stack.client
+        fixtures = await _seed_full_fixture_set(client, admin_engine)
+        admin_headers = {"Authorization": f"Bearer {fixtures.admin_token}"}
+        driver_headers = {"Authorization": f"Bearer {fixtures.driver_token}"}
+
+        first = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(fixtures.vehicle_id),
+            },
+            headers=admin_headers,
+        )
+        assert first.status_code == 201, first.text
+        first_id = first.json()["id"]
+        # DO-23 now refuses a second open trip for the same driver, so the
+        # older trip is parked as completed while the newer one is planned,
+        # then put back on the road: the shape left by data from before the
+        # guard existed.
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text("UPDATE delivery.route SET status = 'completed' WHERE id = :id"),
+                {"id": first_id},
+            )
+
+        other_vehicle = await _seed_vehicle(
+            admin_engine, tenant_id=fixtures.tenant_id, branch_id=fixtures.branch_id
+        )
+        second = await client.post(
+            "/api/v1/routes",
+            json={
+                "branch_id": str(fixtures.branch_id),
+                "driver_id": str(fixtures.driver_id),
+                "vehicle_id": str(other_vehicle),
+            },
+            headers=admin_headers,
+        )
+        assert second.status_code == 201, second.text
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text("UPDATE delivery.route SET status = 'in_progress' WHERE id = :id"),
+                {"id": first_id},
+            )
+
+        active = await client.get("/api/v1/routes/active", headers=driver_headers)
+        assert active.status_code == 200, active.text
+        assert active.json()["id"] == first_id
+        assert active.json()["status"] == "in_progress"
 
 
 class TestRouteOptimization:

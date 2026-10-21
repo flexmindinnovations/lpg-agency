@@ -1,5 +1,24 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+
+interface DeadEndCopy {
+  readonly code: string;
+  readonly title: string;
+  readonly description: string;
+}
+
+const NOT_FOUND: DeadEndCopy = {
+  code: '404',
+  title: 'Page not found',
+  description: "The page you're looking for doesn't exist or has been moved.",
+};
+
+/** Shown by `permissionGuard` (route `data.variant: 'no-access'`) — DO-31. */
+const NO_ACCESS: DeadEndCopy = {
+  code: '403',
+  title: "You don't have access to this page",
+  description: 'Your role does not include this area. Ask your agency admin if you need it.',
+};
 
 @Component({
   selector: 'lpg-not-found',
@@ -9,9 +28,9 @@ import { RouterLink } from '@angular/router';
   template: `
     <div class="not-found">
       <div class="not-found__content">
-        <span class="not-found__code">404</span>
-        <h1 class="not-found__title">Page not found</h1>
-        <p class="not-found__desc">The page you're looking for doesn't exist or has been moved.</p>
+        <span class="not-found__code" aria-hidden="true">{{ copy.code }}</span>
+        <h1 class="not-found__title">{{ copy.title }}</h1>
+        <p class="not-found__desc">{{ copy.description }}</p>
         <a routerLink="/" class="not-found__link">
           <i class="pi pi-arrow-left" aria-hidden="true"></i>
           Back to home
@@ -75,4 +94,7 @@ import { RouterLink } from '@angular/router';
     `,
   ],
 })
-export class NotFound {}
+export class NotFound {
+  protected readonly copy =
+    inject(ActivatedRoute).snapshot.data['variant'] === 'no-access' ? NO_ACCESS : NOT_FOUND;
+}

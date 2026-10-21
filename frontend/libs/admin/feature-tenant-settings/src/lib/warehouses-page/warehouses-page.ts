@@ -1,5 +1,15 @@
+import { selectableByName, notBlank } from '@lpg/shared/util';
+import { ConfirmationService } from 'primeng/api';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -14,6 +24,7 @@ import {
   NotifyService,
   type BranchResponse,
   type WarehouseResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
@@ -84,8 +95,8 @@ class WarehouseStatusCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openCreateDrawer()">
               <i class="pi pi-plus"></i><span>Add Warehouse</span>
@@ -94,7 +105,7 @@ class WarehouseStatusCell {
         </div>
       }
 
-      @if (!loading() && warehouses().length === 0) {
+      @if (!loading() && !loadError() && warehouses().length === 0) {
         <div class="empty-state">
           <i class="pi pi-building empty-state__icon"></i>
           <p class="empty-state__title">No warehouses found</p>
@@ -111,6 +122,8 @@ class WarehouseStatusCell {
             [rows]="warehouses()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Warehouses"
           />
@@ -148,7 +161,7 @@ class WarehouseStatusCell {
               <p-select
                 inputId="warehouse-branch"
                 formControlName="branchId"
-                [options]="branches()"
+                [options]="selectableBranches()"
                 optionLabel="name"
                 optionValue="id"
                 appendTo="body"
@@ -198,7 +211,7 @@ class WarehouseStatusCell {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -225,14 +238,26 @@ class WarehouseStatusCell {
   ],
 })
 export class WarehousesPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('warehouses');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly branchService = inject(AdminBranchService);
   private readonly notify = inject(NotifyService);
+  private readonly confirmation = inject(ConfirmationService);
 
   protected readonly warehouses = signal<WarehouseResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
+  /** Only active, named branches can be picked (DA-19). */
+  protected readonly selectableBranches = computed(() => selectableByName(this.branches()));
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
 
   protected readonly createDrawerVisible = signal(false);
@@ -257,7 +282,7 @@ export class WarehousesPage implements OnInit {
 
   protected readonly form = this.formBuilder.group({
     branchId: ['', [Validators.required]],
-    name: ['', [Validators.required]],
+    name: ['', [Validators.required, notBlank]],
     addressLine: ['', [Validators.required]],
   });
 
@@ -266,14 +291,18 @@ export class WarehousesPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.warehouseService.listWarehouses().subscribe({
       next: (warehouses) => {
         this.warehouses.set(warehouses);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 
@@ -307,7 +336,21 @@ export class WarehousesPage implements OnInit {
   }
 
   protected toggleActive(warehouse: WarehouseResponse): void {
-    const nextActive = !warehouse.is_active;
+    if (!warehouse.is_active) {
+      this.setActive(warehouse, true);
+      return;
+    }
+    this.confirmation.confirm({
+      header: 'Deactivate godown?',
+      message: `"${warehouse.name}" will no longer be offered in forms. You can activate it again later.`,
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.setActive(warehouse, false),
+    });
+  }
+
+  private setActive(warehouse: WarehouseResponse, nextActive: boolean): void {
     this.warehouseService.setActive(warehouse.id, nextActive).subscribe({
       next: () => {
         this.notify.success(`"${warehouse.name}" ${nextActive ? 'activated' : 'deactivated'}.`);

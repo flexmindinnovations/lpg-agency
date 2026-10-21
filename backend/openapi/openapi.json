@@ -82,12 +82,18 @@
         "properties": {
           "address_type": {
             "default": "delivery",
+            "enum": [
+              "delivery",
+              "billing",
+              "both"
+            ],
             "title": "Address Type",
             "type": "string"
           },
           "area": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -97,19 +103,15 @@
             "title": "Area"
           },
           "city": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City"
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
           },
           "district": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -121,6 +123,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -132,6 +135,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -145,6 +150,7 @@
             "title": "Latitude"
           },
           "line_1": {
+            "maxLength": 500,
             "minLength": 1,
             "title": "Line 1",
             "type": "string"
@@ -152,6 +158,7 @@
           "line_2": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -163,6 +170,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -176,19 +185,14 @@
             "title": "Longitude"
           },
           "pincode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pincode"
+            "pattern": "^\\s*[1-9]\\d{5}\\s*$",
+            "title": "Pincode",
+            "type": "string"
           },
           "state": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -199,7 +203,9 @@
           }
         },
         "required": [
-          "line_1"
+          "line_1",
+          "city",
+          "pincode"
         ],
         "title": "AddCustomerAddressRequest",
         "type": "object"
@@ -234,6 +240,15 @@
             "type": "string"
           },
           "from_status": {
+            "enum": [
+              "filled",
+              "empty",
+              "damaged",
+              "leakage",
+              "quarantine",
+              "repair",
+              "scrap"
+            ],
             "title": "From Status",
             "type": "string"
           },
@@ -249,6 +264,15 @@
             "type": "string"
           },
           "to_status": {
+            "enum": [
+              "filled",
+              "empty",
+              "damaged",
+              "leakage",
+              "quarantine",
+              "repair",
+              "scrap"
+            ],
             "title": "To Status",
             "type": "string"
           }
@@ -288,6 +312,80 @@
           "reason"
         ],
         "title": "AdjustLedgerBalanceRequest",
+        "type": "object"
+      },
+      "AgencyBusinessProfileResponse": {
+        "properties": {
+          "address_line_1": {
+            "title": "Address Line 1",
+            "type": "string"
+          },
+          "address_line_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line 2"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "pincode": {
+            "title": "Pincode",
+            "type": "string"
+          },
+          "state_code": {
+            "title": "State Code",
+            "type": "string"
+          },
+          "state_name": {
+            "title": "State Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "gstin",
+          "address_line_1",
+          "address_line_2",
+          "city",
+          "state_code",
+          "state_name",
+          "pincode",
+          "phone"
+        ],
+        "title": "AgencyBusinessProfileResponse",
         "type": "object"
       },
       "AgencyUserSetupResponse": {
@@ -330,6 +428,70 @@
           "setup_token_expires_at"
         ],
         "title": "AgencyUserSetupResponse",
+        "type": "object"
+      },
+      "AmendOrderRequest": {
+        "description": "Edit a booking before it is put on a trip (DO-13). Omitted fields\nkeep their current value; `lines` replaces every line.",
+        "properties": {
+          "address_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Id"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CreateOrderLineRequest"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "payment_method_preference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cash",
+                  "upi",
+                  "card",
+                  "online_gateway",
+                  "credit"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Preference"
+          },
+          "requested_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Date"
+          }
+        },
+        "title": "AmendOrderRequest",
         "type": "object"
       },
       "ApproveCustomerRequest": {
@@ -741,6 +903,7 @@
             "type": "array"
           },
           "reason": {
+            "description": "Why — required, cannot be blank.",
             "maxLength": 1000,
             "minLength": 1,
             "title": "Reason",
@@ -792,6 +955,7 @@
       "CancelOrderRequest": {
         "properties": {
           "reason": {
+            "description": "Why — required, cannot be blank.",
             "maxLength": 1000,
             "minLength": 1,
             "title": "Reason",
@@ -819,6 +983,118 @@
           "pending_approval"
         ],
         "title": "CancelOrderResponse",
+        "type": "object"
+      },
+      "CashHandoverRegisterEntryResponse": {
+        "description": "One row of the accountant's cash-handover register (DA-33).",
+        "properties": {
+          "actual_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Actual Amount",
+            "type": "string"
+          },
+          "cash_stop_count": {
+            "title": "Cash Stop Count",
+            "type": "integer"
+          },
+          "declared_at": {
+            "format": "date-time",
+            "title": "Declared At",
+            "type": "string"
+          },
+          "driver_id": {
+            "format": "uuid",
+            "title": "Driver Id",
+            "type": "string"
+          },
+          "driver_name": {
+            "title": "Driver Name",
+            "type": "string"
+          },
+          "excess": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Excess",
+            "type": "string"
+          },
+          "expected_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Expected Amount",
+            "type": "string"
+          },
+          "handover_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handover Number"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CashHandoverReviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "route_date": {
+            "format": "date-time",
+            "title": "Route Date",
+            "type": "string"
+          },
+          "route_id": {
+            "format": "uuid",
+            "title": "Route Id",
+            "type": "string"
+          },
+          "shortfall": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shortfall",
+            "type": "string"
+          },
+          "vehicle_registration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehicle Registration"
+          }
+        },
+        "required": [
+          "id",
+          "handover_number",
+          "driver_id",
+          "driver_name",
+          "route_id",
+          "route_date",
+          "vehicle_registration",
+          "cash_stop_count",
+          "expected_amount",
+          "actual_amount",
+          "shortfall",
+          "excess",
+          "declared_at",
+          "review_status"
+        ],
+        "title": "CashHandoverRegisterEntryResponse",
         "type": "object"
       },
       "CashHandoverResponse": {
@@ -888,6 +1164,79 @@
         "title": "CashHandoverResponse",
         "type": "object"
       },
+      "CashHandoverReviewResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "format": "uuid",
+            "title": "Reviewed By",
+            "type": "string"
+          },
+          "reviewed_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By Name"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "note",
+          "reviewed_by",
+          "reviewed_at"
+        ],
+        "title": "CashHandoverReviewResponse",
+        "type": "object"
+      },
+      "CashSnapshotResponse": {
+        "properties": {
+          "awaiting_handover": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Awaiting Handover",
+            "type": "string"
+          },
+          "handovers_awaiting_review": {
+            "title": "Handovers Awaiting Review",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "awaiting_handover",
+          "handovers_awaiting_review"
+        ],
+        "title": "CashSnapshotResponse",
+        "type": "object"
+      },
       "ChangeCylinderConditionStatusRequest": {
         "properties": {
           "new_status": {
@@ -920,6 +1269,15 @@
             "type": "string"
           },
           "from_status": {
+            "enum": [
+              "filled",
+              "empty",
+              "damaged",
+              "leakage",
+              "quarantine",
+              "repair",
+              "scrap"
+            ],
             "title": "From Status",
             "type": "string"
           },
@@ -929,6 +1287,15 @@
             "type": "integer"
           },
           "to_status": {
+            "enum": [
+              "filled",
+              "empty",
+              "damaged",
+              "leakage",
+              "quarantine",
+              "repair",
+              "scrap"
+            ],
             "title": "To Status",
             "type": "string"
           }
@@ -957,6 +1324,92 @@
         "title": "ChangeEmployeeStatusRequest",
         "type": "object"
       },
+      "ChangeMyPasswordRequest": {
+        "properties": {
+          "current_password": {
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangeMyPasswordRequest",
+        "type": "object"
+      },
+      "ClassifyCylinderTypeForGstRequest": {
+        "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "maximum": 28.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "pattern": "^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$",
+            "title": "Hsn Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hsn_code",
+          "gst_rate_percent"
+        ],
+        "title": "ClassifyCylinderTypeForGstRequest",
+        "type": "object"
+      },
+      "ComplaintAssigneeResponse": {
+        "description": "A staff member a complaint can be assigned to (DO-18).",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "role"
+        ],
+        "title": "ComplaintAssigneeResponse",
+        "type": "object"
+      },
       "ComplaintAssignmentResponse": {
         "properties": {
           "assigned_at": {
@@ -968,6 +1421,17 @@
             "format": "uuid",
             "title": "Assigned To",
             "type": "string"
+          },
+          "assigned_to_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Name"
           },
           "created_at": {
             "format": "date-time",
@@ -1009,6 +1473,7 @@
           "BillingDispute",
           "DriverConduct",
           "LateDelivery",
+          "GasLeakSafety",
           "Other"
         ],
         "title": "ComplaintCategory",
@@ -1098,6 +1563,17 @@
       },
       "ComplaintResponse": {
         "properties": {
+          "assignee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Name"
+          },
           "assignments": {
             "items": {
               "$ref": "#/components/schemas/ComplaintAssignmentResponse"
@@ -1118,6 +1594,17 @@
               }
             ],
             "title": "Complaint Number"
+          },
+          "consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
           },
           "created_at": {
             "format": "date-time",
@@ -1141,6 +1628,28 @@
             "title": "Customer Id",
             "type": "string"
           },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "customer_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Phone"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -1161,6 +1670,17 @@
               }
             ],
             "title": "Order Id"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
           },
           "priority": {
             "$ref": "#/components/schemas/ComplaintPriority"
@@ -1441,6 +1961,7 @@
       "CreateBranchRequest": {
         "properties": {
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -1448,6 +1969,7 @@
           "region": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -1465,6 +1987,35 @@
       },
       "CreateCylinderTypeRequest": {
         "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "maximum": 28.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
           "name": {
             "minLength": 1,
             "title": "Name",
@@ -1586,7 +2137,15 @@
             "type": "string"
           },
           "delivery_address": {
-            "$ref": "#/components/schemas/DeliveryAddressPayload"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeliveryAddressPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true
           },
           "lines": {
             "items": {
@@ -1624,7 +2183,6 @@
           "branch_id",
           "customer_id",
           "address_id",
-          "delivery_address",
           "requested_date",
           "lines"
         ],
@@ -2004,6 +2562,17 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2086,10 +2655,32 @@
             "title": "Balances",
             "type": "array"
           },
+          "consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          },
           "customer_id": {
             "format": "uuid",
             "title": "Customer Id",
             "type": "string"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
           }
         },
         "required": [
@@ -2144,6 +2735,29 @@
       },
       "CylinderTypeResponse": {
         "properties": {
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -2275,6 +2889,16 @@
             "title": "Serial Number",
             "type": "string"
           },
+          "test_due_basis": {
+            "default": "recorded",
+            "enum": [
+              "recorded",
+              "manufacture",
+              "unknown"
+            ],
+            "title": "Test Due Basis",
+            "type": "string"
+          },
           "test_due_date": {
             "anyOf": [
               {
@@ -2320,9 +2944,26 @@
             ],
             "title": "Branch Id"
           },
+          "branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Name"
+          },
           "sale_date": {
             "format": "date",
             "title": "Sale Date",
+            "type": "string"
+          },
+          "taxable_value": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Taxable Value",
             "type": "string"
           },
           "total_invoices": {
@@ -2624,6 +3265,20 @@
         "title": "DeliveryAddressPayload",
         "type": "object"
       },
+      "DeliveryCodeResponse": {
+        "description": "The code the customer reads out to the driver to confirm delivery.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "DeliveryCodeResponse",
+        "type": "object"
+      },
       "DependencyStatus": {
         "properties": {
           "detail": {
@@ -2899,9 +3554,45 @@
       },
       "DriverPerformanceResponse": {
         "properties": {
+          "branch_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Name"
+          },
           "cash_accuracy": {
-            "title": "Cash Accuracy",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Accuracy"
+          },
+          "cash_expected": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cash Expected",
+            "type": "string"
+          },
+          "cash_handed_over": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Handed Over"
           },
           "date": {
             "format": "date",
@@ -2917,6 +3608,26 @@
             "title": "Driver Id",
             "type": "string"
           },
+          "driver_name": {
+            "title": "Driver Name",
+            "type": "string"
+          },
+          "employee_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Code"
+          },
+          "failed_stops": {
+            "default": 0,
+            "title": "Failed Stops",
+            "type": "integer"
+          },
           "total_stops": {
             "title": "Total Stops",
             "type": "integer"
@@ -2924,10 +3635,10 @@
         },
         "required": [
           "driver_id",
+          "driver_name",
           "date",
           "total_stops",
-          "delivered_stops",
-          "cash_accuracy"
+          "delivered_stops"
         ],
         "title": "DriverPerformanceResponse",
         "type": "object"
@@ -2976,6 +3687,28 @@
           "license_number": {
             "title": "License Number",
             "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
           },
           "status": {
             "title": "Status",
@@ -3246,10 +3979,34 @@
       },
       "GoodsReceiptRequest": {
         "properties": {
+          "challan_number": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challan Number"
+          },
           "cylinder_type_id": {
             "format": "uuid",
             "title": "Cylinder Type Id",
             "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
           },
           "quantity_received": {
             "minimum": 1.0,
@@ -3259,6 +4016,12 @@
           "source_omc": {
             "anyOf": [
               {
+                "enum": [
+                  "iocl",
+                  "bpcl",
+                  "hpcl",
+                  "other"
+                ],
                 "type": "string"
               },
               {
@@ -3266,6 +4029,18 @@
               }
             ],
             "title": "Source Omc"
+          },
+          "truck_number": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truck Number"
           }
         },
         "required": [
@@ -3277,6 +4052,17 @@
       },
       "GoodsReceiptResponse": {
         "properties": {
+          "challan_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challan Number"
+          },
           "cylinder_type_id": {
             "format": "uuid",
             "title": "Cylinder Type Id",
@@ -3297,6 +4083,17 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
           },
           "quantity_received": {
             "title": "Quantity Received",
@@ -3327,6 +4124,17 @@
             "format": "uuid",
             "title": "Tenant Id",
             "type": "string"
+          },
+          "truck_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truck Number"
           },
           "warehouse_id": {
             "format": "uuid",
@@ -3364,6 +4172,250 @@
           "total_gst"
         ],
         "title": "GstFilingResponse",
+        "type": "object"
+      },
+      "GstStateResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "GstStateResponse",
+        "type": "object"
+      },
+      "GstTaxTotalsResponse": {
+        "properties": {
+          "cgst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cgst",
+            "type": "string"
+          },
+          "igst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Igst",
+            "type": "string"
+          },
+          "sgst": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Sgst",
+            "type": "string"
+          },
+          "taxable_value": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Taxable Value",
+            "type": "string"
+          },
+          "total_tax": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Total Tax",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taxable_value",
+          "cgst",
+          "sgst",
+          "igst",
+          "total_tax"
+        ],
+        "title": "GstTaxTotalsResponse",
+        "type": "object"
+      },
+      "Gstr1B2csRowResponse": {
+        "properties": {
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "rate_percent": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate Percent",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          }
+        },
+        "required": [
+          "place_of_supply",
+          "rate_percent",
+          "totals"
+        ],
+        "title": "Gstr1B2csRowResponse",
+        "type": "object"
+      },
+      "Gstr1HsnRowResponse": {
+        "properties": {
+          "hsn_code": {
+            "title": "Hsn Code",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "rate_percent": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate Percent",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          },
+          "uqc": {
+            "default": "NOS",
+            "title": "Uqc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hsn_code",
+          "rate_percent",
+          "quantity",
+          "totals"
+        ],
+        "title": "Gstr1HsnRowResponse",
+        "type": "object"
+      },
+      "Gstr1InvoiceRowResponse": {
+        "properties": {
+          "customer_gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Gstin"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "invoice_date": {
+            "format": "date-time",
+            "title": "Invoice Date",
+            "type": "string"
+          },
+          "invoice_id": {
+            "format": "uuid",
+            "title": "Invoice Id",
+            "type": "string"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "invoice_value": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Invoice Value",
+            "type": "string"
+          },
+          "place_of_supply": {
+            "title": "Place Of Supply",
+            "type": "string"
+          },
+          "rate_percent": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Rate Percent",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          }
+        },
+        "required": [
+          "invoice_id",
+          "invoice_number",
+          "invoice_date",
+          "customer_name",
+          "customer_gstin",
+          "invoice_value",
+          "place_of_supply",
+          "rate_percent",
+          "totals"
+        ],
+        "title": "Gstr1InvoiceRowResponse",
+        "type": "object"
+      },
+      "Gstr1ReportResponse": {
+        "description": "Outward supplies for a period, laid out like GSTR-1 (DA-12).",
+        "properties": {
+          "b2b": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1InvoiceRowResponse"
+            },
+            "title": "B2B",
+            "type": "array"
+          },
+          "b2cl": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1InvoiceRowResponse"
+            },
+            "title": "B2Cl",
+            "type": "array"
+          },
+          "b2cs": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1B2csRowResponse"
+            },
+            "title": "B2Cs",
+            "type": "array"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "hsn": {
+            "items": {
+              "$ref": "#/components/schemas/Gstr1HsnRowResponse"
+            },
+            "title": "Hsn",
+            "type": "array"
+          },
+          "invoice_count": {
+            "title": "Invoice Count",
+            "type": "integer"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/GstTaxTotalsResponse"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date",
+          "invoice_count",
+          "b2b",
+          "b2cl",
+          "b2cs",
+          "hsn",
+          "totals"
+        ],
+        "title": "Gstr1ReportResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -3596,9 +4648,60 @@
       },
       "InvoiceLineResponse": {
         "properties": {
+          "cgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cgst Amount",
+            "type": "string"
+          },
           "cylinder_type_id": {
             "format": "uuid",
             "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "gst_rate_percent": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Rate Percent"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
+          },
+          "igst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Igst Amount",
+            "type": "string"
+          },
+          "kind": {
+            "default": "supply",
+            "title": "Kind",
             "type": "string"
           },
           "line_id": {
@@ -3609,6 +4712,12 @@
           "quantity": {
             "title": "Quantity",
             "type": "integer"
+          },
+          "sgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Sgst Amount",
+            "type": "string"
           },
           "subtotal": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -3682,6 +4791,18 @@
             "title": "Amount Paid",
             "type": "string"
           },
+          "balance_due": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Balance Due",
+            "type": "string"
+          },
+          "cgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cgst Amount",
+            "type": "string"
+          },
           "customer_consumer_number": {
             "anyOf": [
               {
@@ -3693,9 +4814,37 @@
             ],
             "title": "Customer Consumer Number"
           },
+          "customer_gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Gstin"
+          },
           "customer_id": {
             "format": "uuid",
             "title": "Customer Id",
+            "type": "string"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "igst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Igst Amount",
             "type": "string"
           },
           "invoice_id": {
@@ -3713,6 +4862,11 @@
               }
             ],
             "title": "Invoice Number"
+          },
+          "is_inter_state": {
+            "default": false,
+            "title": "Is Inter State",
+            "type": "boolean"
           },
           "issued_at": {
             "format": "date-time",
@@ -3749,6 +4903,23 @@
             "title": "Payments",
             "type": "array"
           },
+          "place_of_supply_state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Of Supply State Code"
+          },
+          "sgst_amount": {
+            "default": "0",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Sgst Amount",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -3757,6 +4928,17 @@
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subtotal",
             "type": "string"
+          },
+          "supplier_state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier State Code"
           },
           "tax_amount": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -3792,6 +4974,55 @@
           "version"
         ],
         "title": "InvoiceResponse",
+        "type": "object"
+      },
+      "InvoiceSnapshotResponse": {
+        "properties": {
+          "on_hold_count": {
+            "title": "On Hold Count",
+            "type": "integer"
+          },
+          "outstanding_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Outstanding Amount",
+            "type": "string"
+          },
+          "outstanding_count": {
+            "title": "Outstanding Count",
+            "type": "integer"
+          },
+          "overdue_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Overdue Amount",
+            "type": "string"
+          },
+          "overdue_count": {
+            "title": "Overdue Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "outstanding_count",
+          "outstanding_amount",
+          "overdue_count",
+          "overdue_amount",
+          "on_hold_count"
+        ],
+        "title": "InvoiceSnapshotResponse",
+        "type": "object"
+      },
+      "IssueInvoiceRequest": {
+        "properties": {
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id"
+        ],
+        "title": "IssueInvoiceRequest",
         "type": "object"
       },
       "IssueLicenseRequest": {
@@ -4475,6 +5706,61 @@
         "title": "MoveCylinderCustodyRequest",
         "type": "object"
       },
+      "MyProfileResponse": {
+        "description": "`GET`/`PATCH /auth/me/profile` (DA-30).",
+        "properties": {
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "role",
+          "display_name",
+          "contact_phone"
+        ],
+        "title": "MyProfileResponse",
+        "type": "object"
+      },
       "NextConsumerNumberResponse": {
         "properties": {
           "consumer_number": {
@@ -4555,6 +5841,155 @@
           "created_at"
         ],
         "title": "NotificationResponse",
+        "type": "object"
+      },
+      "OmcReturnRequest": {
+        "description": "Empties (or segregated defective cylinders) going back to the plant.",
+        "properties": {
+          "challan_number": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challan Number"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "destination_omc": {
+            "enum": [
+              "iocl",
+              "bpcl",
+              "hpcl",
+              "other"
+            ],
+            "title": "Destination Omc",
+            "type": "string"
+          },
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "status": {
+            "default": "empty",
+            "enum": [
+              "empty",
+              "damaged",
+              "leakage",
+              "quarantine"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "truck_number": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truck Number"
+          }
+        },
+        "required": [
+          "cylinder_type_id",
+          "quantity",
+          "destination_omc"
+        ],
+        "title": "OmcReturnRequest",
+        "type": "object"
+      },
+      "OmcReturnResponse": {
+        "properties": {
+          "challan_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challan Number"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "destination_omc": {
+            "title": "Destination Omc",
+            "type": "string"
+          },
+          "dispatched_at": {
+            "format": "date-time",
+            "title": "Dispatched At",
+            "type": "string"
+          },
+          "dispatched_by": {
+            "format": "uuid",
+            "title": "Dispatched By",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "return_number": {
+            "title": "Return Number",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "truck_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Truck Number"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "return_number",
+          "warehouse_id",
+          "cylinder_type_id",
+          "status",
+          "quantity",
+          "destination_omc",
+          "challan_number",
+          "truck_number",
+          "dispatched_by",
+          "dispatched_at"
+        ],
+        "title": "OmcReturnResponse",
         "type": "object"
       },
       "OnboardingDraftListResponse": {
@@ -4659,6 +6094,20 @@
           "updated_at"
         ],
         "title": "OnboardingDraftResponse",
+        "type": "object"
+      },
+      "OnlinePaymentAvailabilityResponse": {
+        "description": "Whether \"Pay Online\" can be offered (a gateway is configured).",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "OnlinePaymentAvailabilityResponse",
         "type": "object"
       },
       "OnlinePaymentListResponse": {
@@ -4792,6 +6241,56 @@
         "title": "OnlinePaymentResponse",
         "type": "object"
       },
+      "OperationsSnapshotResponse": {
+        "description": "The Home page's operations KPIs (DO-28). `invoices`/`cash` are\n`null` for a caller without access to those modules.",
+        "properties": {
+          "cash": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CashSnapshotResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoices": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvoiceSnapshotResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "low_stock_count": {
+            "title": "Low Stock Count",
+            "type": "integer"
+          },
+          "open_complaints": {
+            "title": "Open Complaints",
+            "type": "integer"
+          },
+          "orders": {
+            "$ref": "#/components/schemas/OrderPipelineResponse"
+          },
+          "payment_terms_days": {
+            "title": "Payment Terms Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "orders",
+          "open_complaints",
+          "low_stock_count",
+          "invoices",
+          "cash",
+          "payment_terms_days"
+        ],
+        "title": "OperationsSnapshotResponse",
+        "type": "object"
+      },
       "OptimizeRouteResponse": {
         "description": "AI Operational Intelligence, Horizon 1 Stage 5 — the result of\n`POST /routes/{id}/optimize`. `km_saved` is a heuristic straight-line\n(haversine) estimate, not a routed-road distance; `route` is the\nalready-resequenced route (the reorder is applied immediately, not\nproposed for a separate accept step — fully reversible, since only\nsequence numbers moved).",
         "properties": {
@@ -4818,6 +6317,48 @@
           "km_saved"
         ],
         "title": "OptimizeRouteResponse",
+        "type": "object"
+      },
+      "OrderCustomerResponse": {
+        "description": "Who the order is for (DO-12).",
+        "properties": {
+          "consumer_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumer Number"
+          },
+          "customer_type": {
+            "title": "Customer Type",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone_number": {
+            "title": "Phone Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "phone_number",
+          "consumer_number",
+          "customer_type"
+        ],
+        "title": "OrderCustomerResponse",
         "type": "object"
       },
       "OrderLineResponse": {
@@ -4899,6 +6440,42 @@
         "title": "OrderPageResponse",
         "type": "object"
       },
+      "OrderPipelineResponse": {
+        "properties": {
+          "bookings_today": {
+            "title": "Bookings Today",
+            "type": "integer"
+          },
+          "delivered_today": {
+            "title": "Delivered Today",
+            "type": "integer"
+          },
+          "failed_today": {
+            "title": "Failed Today",
+            "type": "integer"
+          },
+          "open_by_status": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Open By Status",
+            "type": "object"
+          },
+          "pending_cancellations": {
+            "title": "Pending Cancellations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bookings_today",
+          "open_by_status",
+          "delivered_today",
+          "failed_today",
+          "pending_cancellations"
+        ],
+        "title": "OrderPipelineResponse",
+        "type": "object"
+      },
       "OrderResponse": {
         "properties": {
           "address_id": {
@@ -4922,6 +6499,21 @@
             "format": "uuid",
             "title": "Branch Id",
             "type": "string"
+          },
+          "cancellation_pending": {
+            "default": false,
+            "title": "Cancellation Pending",
+            "type": "boolean"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrderCustomerResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "customer_id": {
             "format": "uuid",
@@ -5379,6 +6971,17 @@
             "format": "uuid",
             "title": "Payment Id",
             "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
           }
         },
         "required": [
@@ -5392,8 +6995,44 @@
         "type": "object"
       },
       "PendingCancellationResponse": {
-        "description": "A post-dispatch cancellation request waiting for Manager approval (D-19).",
+        "description": "A post-dispatch cancellation request (D-19): waiting for a Manager,\nor — when asked for with `include_decided` — approved or rejected.",
         "properties": {
+          "cancellation_charge": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Charge"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "estimated_charge": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Charge"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -5408,6 +7047,17 @@
             "title": "Reason",
             "type": "string"
           },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
           "requested_at": {
             "format": "date-time",
             "title": "Requested At",
@@ -5416,6 +7066,16 @@
           "requested_by": {
             "format": "uuid",
             "title": "Requested By",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
             "type": "string"
           }
         },
@@ -5635,6 +7295,28 @@
       "PrincipalResponse": {
         "description": "Returned by `GET /auth/me` — feeds the Dashboard's permission-driven\nUI (`08-security-architecture.md` §3: the same permission list drives\nwhat renders client-side, while the API remains the actual enforcement\npoint regardless).",
         "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
           "email": {
             "anyOf": [
               {
@@ -5794,6 +7476,17 @@
             ],
             "title": "Photo Blob Ref"
           },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
@@ -5814,6 +7507,17 @@
               }
             ],
             "title": "Signature Blob Ref"
+          },
+          "signature_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature Url"
           },
           "tenant_id": {
             "format": "uuid",
@@ -6470,6 +8174,15 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "filled",
+              "empty",
+              "damaged",
+              "leakage",
+              "quarantine",
+              "repair",
+              "scrap"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -6480,6 +8193,22 @@
           "actual_quantity"
         ],
         "title": "ReconciliationRecordCreateRequest",
+        "type": "object"
+      },
+      "ReconciliationRecordListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationRecordResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReconciliationRecordListResponse",
         "type": "object"
       },
       "ReconciliationRecordResponse": {
@@ -6531,9 +8260,66 @@
             "title": "Inventory Location Id",
             "type": "string"
           },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
           "recorded_by": {
             "format": "uuid",
             "title": "Recorded By",
+            "type": "string"
+          },
+          "rejected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejected At"
+          },
+          "rejected_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejected By"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "state": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "State",
             "type": "string"
           },
           "status": {
@@ -6564,6 +8350,21 @@
           "approved_at"
         ],
         "title": "ReconciliationRecordResponse",
+        "type": "object"
+      },
+      "ReconciliationRejectRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReconciliationRejectRequest",
         "type": "object"
       },
       "RecordCollectionRequest": {
@@ -6628,6 +8429,18 @@
       },
       "RecordFailedDeliveryRequest": {
         "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "reason_code": {
             "enum": [
               "customer_unavailable",
@@ -6671,7 +8484,7 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)",
                 "type": "string"
               }
             ],
@@ -6680,6 +8493,18 @@
           "method": {
             "title": "Method",
             "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
           }
         },
         "required": [
@@ -6819,6 +8644,11 @@
           "address_type": {
             "anyOf": [
               {
+                "enum": [
+                  "delivery",
+                  "billing",
+                  "both"
+                ],
                 "type": "string"
               },
               {
@@ -6892,6 +8722,12 @@
           },
           "customer_type": {
             "default": "domestic",
+            "enum": [
+              "domestic",
+              "commercial",
+              "industrial",
+              "government"
+            ],
             "title": "Customer Type",
             "type": "string"
           },
@@ -6936,6 +8772,18 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gstin": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
           "landmark": {
             "anyOf": [
               {
@@ -6950,6 +8798,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -6987,6 +8837,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -7020,6 +8872,7 @@
           "pincode": {
             "anyOf": [
               {
+                "pattern": "^\\s*[1-9]\\d{5}\\s*$",
                 "type": "string"
               },
               {
@@ -7075,6 +8928,18 @@
             "title": "Cylinder Type Id",
             "type": "string"
           },
+          "last_tested_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Tested At"
+          },
           "manufacture_date": {
             "anyOf": [
               {
@@ -7113,6 +8978,18 @@
             "minLength": 1,
             "title": "Serial Number",
             "type": "string"
+          },
+          "test_due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Test Due Date"
           }
         },
         "required": [
@@ -7397,6 +9274,22 @@
         "title": "RegisterVehicleRequest",
         "type": "object"
       },
+      "RejectCancellationRequest": {
+        "properties": {
+          "reason": {
+            "description": "Why — required, cannot be blank.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RejectCancellationRequest",
+        "type": "object"
+      },
       "RelocateWarehouseRequest": {
         "properties": {
           "address_line": {
@@ -7414,6 +9307,7 @@
       "RenameBranchRequest": {
         "properties": {
           "name": {
+            "maxLength": 200,
             "minLength": 1,
             "title": "Name",
             "type": "string"
@@ -7732,6 +9626,24 @@
         "title": "RequestRefundRequest",
         "type": "object"
       },
+      "RescheduleOrderRequest": {
+        "properties": {
+          "requested_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Date"
+          }
+        },
+        "title": "RescheduleOrderRequest",
+        "type": "object"
+      },
       "ResolutionOutcome": {
         "enum": [
           "Resolved",
@@ -7758,6 +9670,35 @@
           "resolution_notes"
         ],
         "title": "ResolveComplaintRequest",
+        "type": "object"
+      },
+      "ReviewCashHandoverRequest": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "disputed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "ReviewCashHandoverRequest",
         "type": "object"
       },
       "ReviewPriceListProposalRequest": {
@@ -8233,6 +10174,7 @@
           "region": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -8491,6 +10433,28 @@
         "title": "SetWarehouseActiveRequest",
         "type": "object"
       },
+      "SetupProgressResponse": {
+        "description": "Which first-time setup steps the agency has done, in the order to do\nthem. Keys: branch, warehouse, cylinder_types, prices, gst, staff, drivers,\nvehicles.",
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "steps": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Steps",
+            "type": "object"
+          }
+        },
+        "required": [
+          "steps",
+          "complete"
+        ],
+        "title": "SetupProgressResponse",
+        "type": "object"
+      },
       "StaffUserResponse": {
         "properties": {
           "branch_id": {
@@ -8503,6 +10467,28 @@
               }
             ],
             "title": "Branch Id"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
           },
           "email": {
             "anyOf": [
@@ -8538,15 +10524,140 @@
         "title": "StaffUserResponse",
         "type": "object"
       },
+      "StatusTransitionsResponse": {
+        "description": "The legal target statuses for each status — the same rule the server\nenforces, so a client never offers a move that would be refused.",
+        "properties": {
+          "adjustment": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Adjustment",
+            "type": "object"
+          },
+          "status_change": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Status Change",
+            "type": "object"
+          }
+        },
+        "required": [
+          "status_change",
+          "adjustment"
+        ],
+        "title": "StatusTransitionsResponse",
+        "type": "object"
+      },
+      "StockRegisterLineResponse": {
+        "properties": {
+          "closing": {
+            "title": "Closing",
+            "type": "integer"
+          },
+          "cylinder_type_id": {
+            "format": "uuid",
+            "title": "Cylinder Type Id",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "issues": {
+            "title": "Issues",
+            "type": "integer"
+          },
+          "opening": {
+            "title": "Opening",
+            "type": "integer"
+          },
+          "receipts": {
+            "title": "Receipts",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "cylinder_type_id",
+          "status",
+          "opening",
+          "receipts",
+          "issues",
+          "closing"
+        ],
+        "title": "StockRegisterLineResponse",
+        "type": "object"
+      },
+      "StockRegisterResponse": {
+        "properties": {
+          "date_from": {
+            "format": "date",
+            "title": "Date From",
+            "type": "string"
+          },
+          "date_to": {
+            "format": "date",
+            "title": "Date To",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/StockRegisterLineResponse"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "location_ref_id": {
+            "format": "uuid",
+            "title": "Location Ref Id",
+            "type": "string"
+          },
+          "location_type": {
+            "enum": [
+              "warehouse",
+              "vehicle"
+            ],
+            "title": "Location Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "location_type",
+          "location_ref_id",
+          "date_from",
+          "date_to",
+          "lines"
+        ],
+        "title": "StockRegisterResponse",
+        "type": "object"
+      },
       "SubmitKycDocumentRequest": {
         "properties": {
           "doc_type": {
-            "maxLength": 50,
-            "minLength": 1,
+            "enum": [
+              "aadhaar",
+              "pan",
+              "voter_id",
+              "driving_license",
+              "passport"
+            ],
             "title": "Doc Type",
             "type": "string"
           },
           "document_number": {
+            "maxLength": 30,
             "minLength": 1,
             "title": "Document Number",
             "type": "string"
@@ -8614,6 +10725,31 @@
           "suggested_due_date"
         ],
         "title": "SuggestCylinderTestDueDateResponse",
+        "type": "object"
+      },
+      "SupportContactsResponse": {
+        "properties": {
+          "agency_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agency Phone"
+          },
+          "emergency_helpline": {
+            "title": "Emergency Helpline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emergency_helpline",
+          "agency_phone"
+        ],
+        "title": "SupportContactsResponse",
         "type": "object"
       },
       "TdtBandDistributionResponse": {
@@ -8710,6 +10846,16 @@
       },
       "TenantResponse": {
         "properties": {
+          "business_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgencyBusinessProfileResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "country": {
             "title": "Country",
             "type": "string"
@@ -8827,6 +10973,81 @@
         "title": "TrackingDriverInfo",
         "type": "object"
       },
+      "UninvoicedOrderResponse": {
+        "description": "An order that should have an invoice but does not yet — usually\nbecause GST was not configured when it was delivered or cancelled.",
+        "properties": {
+          "cancellation_charge": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancellation Charge"
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "customer_name": {
+            "title": "Customer Name",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "order_id": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          },
+          "order_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Number"
+          },
+          "order_total": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Total"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order_id",
+          "order_number",
+          "customer_id",
+          "customer_name",
+          "status",
+          "occurred_at",
+          "order_total",
+          "cancellation_charge"
+        ],
+        "title": "UninvoicedOrderResponse",
+        "type": "object"
+      },
       "UnreadCountResponse": {
         "properties": {
           "count": {
@@ -8856,16 +11077,99 @@
         "title": "UnregisterDeviceRequest",
         "type": "object"
       },
+      "UpdateAgencyBusinessProfileRequest": {
+        "properties": {
+          "address_line_1": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Address Line 1",
+            "type": "string"
+          },
+          "address_line_2": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line 2"
+          },
+          "city": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "maxLength": 15,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "legal_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "pincode": {
+            "pattern": "^[1-9][0-9]{5}$",
+            "title": "Pincode",
+            "type": "string"
+          },
+          "state_code": {
+            "pattern": "^[0-9]{2}$",
+            "title": "State Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "address_line_1",
+          "city",
+          "state_code",
+          "pincode"
+        ],
+        "title": "UpdateAgencyBusinessProfileRequest",
+        "type": "object"
+      },
       "UpdateCustomerAddressRequest": {
         "properties": {
           "address_type": {
             "default": "delivery",
+            "enum": [
+              "delivery",
+              "billing",
+              "both"
+            ],
             "title": "Address Type",
             "type": "string"
           },
           "area": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -8875,19 +11179,15 @@
             "title": "Area"
           },
           "city": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "City"
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
           },
           "district": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -8899,6 +11199,7 @@
           "landmark": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -8910,6 +11211,8 @@
           "latitude": {
             "anyOf": [
               {
+                "maximum": 90.0,
+                "minimum": -90.0,
                 "type": "number"
               },
               {
@@ -8923,6 +11226,7 @@
             "title": "Latitude"
           },
           "line_1": {
+            "maxLength": 500,
             "minLength": 1,
             "title": "Line 1",
             "type": "string"
@@ -8930,6 +11234,7 @@
           "line_2": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -8941,6 +11246,8 @@
           "longitude": {
             "anyOf": [
               {
+                "maximum": 180.0,
+                "minimum": -180.0,
                 "type": "number"
               },
               {
@@ -8954,19 +11261,14 @@
             "title": "Longitude"
           },
           "pincode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pincode"
+            "pattern": "^\\s*[1-9]\\d{5}\\s*$",
+            "title": "Pincode",
+            "type": "string"
           },
           "state": {
             "anyOf": [
               {
+                "maxLength": 100,
                 "type": "string"
               },
               {
@@ -8977,7 +11279,9 @@
           }
         },
         "required": [
-          "line_1"
+          "line_1",
+          "city",
+          "pincode"
         ],
         "title": "UpdateCustomerAddressRequest",
         "type": "object"
@@ -9014,6 +11318,12 @@
             "title": "Contact Person"
           },
           "customer_type": {
+            "enum": [
+              "domestic",
+              "commercial",
+              "industrial",
+              "government"
+            ],
             "title": "Customer Type",
             "type": "string"
           },
@@ -9047,6 +11357,18 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gstin": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
           "lpg_subsidy_id": {
             "anyOf": [
               {
@@ -9066,6 +11388,14 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "onboarding",
+              "pending_approval",
+              "active",
+              "inactive",
+              "blocked",
+              "closed"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -9192,6 +11522,36 @@
           "role"
         ],
         "title": "UpdateEmployeeRequest",
+        "type": "object"
+      },
+      "UpdateMyProfileRequest": {
+        "properties": {
+          "contact_phone": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "title": "UpdateMyProfileRequest",
         "type": "object"
       },
       "UpdateRouteStatusRequest": {
@@ -9653,6 +12013,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 100,
                   "type": "string"
                 },
                 {
@@ -9680,6 +12041,63 @@
             }
           },
           {
+            "description": "create, update or delete",
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(create|update|delete)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "create, update or delete",
+              "title": "Action"
+            }
+          },
+          {
+            "description": "Only entries at or after this instant",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries at or after this instant",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "Only entries before this instant",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entries before this instant",
+              "title": "Date To"
+            }
+          },
+          {
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -9701,6 +12119,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -9729,6 +12149,32 @@
           }
         },
         "summary": "View the audit log",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/audit-log/entity-types": {
+      "get": {
+        "description": "Distinct `entity_name` values for this tenant — feeds the Audit Log's\n\"Record type\" filter.",
+        "operationId": "list_audit_log_entity_types_api_v1_admin_audit_log_entity_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Audit Log Entity Types Api V1 Admin Audit Log Entity Types Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Record types that appear in the audit log",
         "tags": [
           "Administration"
         ]
@@ -10046,6 +12492,60 @@
         ]
       }
     },
+    "/api/v1/admin/cylinder-types/{cylinder_type_id}/gst": {
+      "patch": {
+        "description": "BR-16/BR-31: the rate is the tenant's own configuration (typically\n5% for domestic LPG, 18% for commercial). Applies to invoices issued\nfrom now on; issued invoices keep their rate.",
+        "operationId": "classify_cylinder_type_for_gst_api_v1_admin_cylinder_types__cylinder_type_id__gst_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cylinder_type_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cylinder Type Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassifyCylinderTypeForGstRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CylinderTypeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set a cylinder type's HSN code and GST rate",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/cylinder-types/{cylinder_type_id}/rename": {
       "patch": {
         "operationId": "rename_cylinder_type_api_v1_admin_cylinder_types__cylinder_type_id__rename_patch",
@@ -10254,6 +12754,31 @@
           }
         },
         "summary": "Whether a flag is enabled for the current tenant",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
+    "/api/v1/admin/gst-states": {
+      "get": {
+        "operationId": "list_gst_states_api_v1_admin_gst_states_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GstStateResponse"
+                  },
+                  "title": "Response List Gst States Api V1 Admin Gst States Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "GST state and union-territory codes",
         "tags": [
           "Administration"
         ]
@@ -10621,6 +13146,28 @@
         ]
       }
     },
+    "/api/v1/admin/setup-progress": {
+      "get": {
+        "description": "Whether the agency has a branch, warehouse, cylinder types, prices, a GST rate, staff, drivers and vehicles - for the checklist on Home (DA-32).",
+        "operationId": "get_setup_progress_api_v1_admin_setup_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "New-agency setup checklist",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/tenant": {
       "get": {
         "operationId": "get_tenant_api_v1_admin_tenant_get",
@@ -10756,6 +13303,48 @@
         ]
       }
     },
+    "/api/v1/admin/tenant/business-profile": {
+      "put": {
+        "description": "What every tax invoice prints as the supplier (CGST Rules, rule 46).\n`state_code` also decides CGST+SGST versus IGST. The GSTIN is validated\n(format, state code, check digit) and must belong to the same state.",
+        "operationId": "update_business_profile_api_v1_admin_tenant_business_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAgencyBusinessProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set the agency's GST business profile (legal name, address, GSTIN)",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/tenant/rename": {
       "patch": {
         "operationId": "rename_tenant_api_v1_admin_tenant_rename_patch",
@@ -10863,6 +13452,7 @@
     },
     "/api/v1/admin/users/{user_id}/deactivate": {
       "patch": {
+        "description": "Signs the user out everywhere and blocks sign-in until reactivated. 409 for your own account or the agency's last active agency admin.",
         "operationId": "deactivate_staff_user_api_v1_admin_users__user_id__deactivate_patch",
         "parameters": [
           {
@@ -10988,8 +13578,45 @@
         ]
       }
     },
+    "/api/v1/admin/users/{user_id}/reactivate": {
+      "patch": {
+        "operationId": "reactivate_staff_user_api_v1_admin_users__user_id__reactivate_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reactivate a deactivated staff user",
+        "tags": [
+          "Administration"
+        ]
+      }
+    },
     "/api/v1/admin/users/{user_id}/role": {
       "patch": {
+        "description": "Also resets the user's permissions to the new role's defaults.",
         "operationId": "reassign_role_api_v1_admin_users__user_id__role_patch",
         "parameters": [
           {
@@ -11373,6 +14000,101 @@
         ]
       }
     },
+    "/api/v1/auth/me/password": {
+      "post": {
+        "description": "Requires the current password. 422 with field errors when it is wrong or the new one breaks the password policy.",
+        "operationId": "change_my_password_api_v1_auth_me_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMyPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change your own password",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me/profile": {
+      "get": {
+        "operationId": "get_my_profile_api_v1_auth_me_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Your own profile",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "patch": {
+        "operationId": "update_my_profile_api_v1_auth_me_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit your own name and phone",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
     "/api/v1/auth/otp/request": {
       "post": {
         "operationId": "otp_request_api_v1_auth_otp_request_post",
@@ -11558,6 +14280,115 @@
       }
     },
     "/api/v1/cash-handovers": {
+      "get": {
+        "description": "The accountant's cash-handover register (DA-33): every driver's\ndeclared cash against what their deliveries say they collected, with\nshortfalls and the office's review.",
+        "operationId": "list_cash_handover_register_api_v1_cash_handovers_get",
+        "parameters": [
+          {
+            "description": "First day, inclusive (IST)",
+            "in": "query",
+            "name": "declared_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day, inclusive (IST)",
+              "title": "Declared From"
+            }
+          },
+          {
+            "description": "Last day, inclusive (IST)",
+            "in": "query",
+            "name": "declared_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day, inclusive (IST)",
+              "title": "Declared To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "driver_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Driver Id"
+            }
+          },
+          {
+            "description": "pending, accepted or disputed",
+            "in": "query",
+            "name": "review_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "pending, accepted or disputed",
+              "title": "Review Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CashHandoverRegisterEntryResponse"
+                  },
+                  "title": "Response List Cash Handover Register Api V1 Cash Handovers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cash Handover Register",
+        "tags": [
+          "Cash Handovers"
+        ]
+      },
       "post": {
         "description": "A driver (or dispatcher/manager on their behalf) declares the cash\nhanded over at the end of a route. `expected_amount` is computed\nserver-side from real cash-payment proof-of-delivery records — never\ntrusted from the request.\n\n`Idempotency-Key` is optional (the offline Driver App sends one so a\nqueued retry replays rather than hitting the `uq_cash_handover_route`\n409) — see `run_idempotent`.",
         "operationId": "declare_cash_handover_api_v1_cash_handovers_post",
@@ -11643,6 +14474,60 @@
         ]
       }
     },
+    "/api/v1/cash-handovers/{cash_handover_id}/review": {
+      "post": {
+        "description": "Accept the counted cash, or dispute it with a note. One review per\nhandover; the person who declared it cannot review it. A short handover\ncan only be accepted with a note on how the shortfall was settled.",
+        "operationId": "review_cash_handover_api_v1_cash_handovers__cash_handover_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cash_handover_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cash Handover Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCashHandoverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashHandoverReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Cash Handover",
+        "tags": [
+          "Cash Handovers"
+        ]
+      }
+    },
     "/api/v1/complaints": {
       "get": {
         "operationId": "list_complaints_api_v1_complaints_get",
@@ -11677,7 +14562,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ComplaintStatus"
                 },
                 {
                   "type": "null"
@@ -11732,6 +14617,7 @@
         ]
       },
       "post": {
+        "description": "Raise a complaint. 422 when the customer, or the order for that\ncustomer, does not exist. A Gas leak complaint is always Critical.",
         "operationId": "raise_complaint_api_v1_complaints_post",
         "requestBody": {
           "content": {
@@ -11771,6 +14657,32 @@
           }
         },
         "summary": "Raise Complaint",
+        "tags": [
+          "Complaints"
+        ]
+      }
+    },
+    "/api/v1/complaints/assignees": {
+      "get": {
+        "description": "Active staff of this agency who can take complaints, by name (DO-18).",
+        "operationId": "list_complaint_assignees_api_v1_complaints_assignees_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAssigneeResponse"
+                  },
+                  "title": "Response List Complaint Assignees Api V1 Complaints Assignees Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Complaint Assignees",
         "tags": [
           "Complaints"
         ]
@@ -11821,6 +14733,7 @@
     },
     "/api/v1/complaints/{complaint_id}/assign": {
       "post": {
+        "description": "Assign to a staff member from `GET /complaints/assignees`; 422 for\nanyone else, 404 for an unknown complaint, 409 once resolved.",
         "operationId": "assign_complaint_api_v1_complaints__complaint_id__assign_post",
         "parameters": [
           {
@@ -11913,7 +14826,7 @@
     },
     "/api/v1/compliance-documents": {
       "get": {
-        "description": "Tenant-wide compliance-document list for the drivers/vehicles pages —\n`expiry` is `expiring` (<=30 days) or `expired`.",
+        "description": "Tenant-wide compliance-document list for the drivers/vehicles pages —\n`expiry` is `expiring` (<=30 days), `expired`, or `upcoming` (overdue or\ndue within 90 days — the compliance calendar). Sorted by expiry date.",
         "operationId": "list_compliance_documents_api_v1_compliance_documents_get",
         "parameters": [
           {
@@ -12692,6 +15605,51 @@
       }
     },
     "/api/v1/customers/{customer_id}/addresses/{address_id}": {
+      "delete": {
+        "description": "Remove one of the customer's addresses. Past orders keep the address\nthey were booked with (a snapshot); the last address cannot be removed.",
+        "operationId": "remove_address_api_v1_customers__customer_id__addresses__address_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Customer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "address_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Address Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Address",
+        "tags": [
+          "Customers"
+        ]
+      },
       "put": {
         "operationId": "update_address_api_v1_customers__customer_id__addresses__address_id__put",
         "parameters": [
@@ -13098,6 +16056,7 @@
     },
     "/api/v1/customers/{customer_id}/ledger/adjust": {
       "post": {
+        "description": "Manually correct a customer's cylinder balance. 404 for an unknown\ncustomer.",
         "operationId": "adjust_balance_api_v1_customers__customer_id__ledger_adjust_post",
         "parameters": [
           {
@@ -13759,6 +16718,28 @@
         "summary": "Record Cylinder Statutory Test",
         "tags": [
           "Compliance — Cylinder Identity"
+        ]
+      }
+    },
+    "/api/v1/dashboard/operations": {
+      "get": {
+        "description": "Bookings today, the open order pipeline, deliveries done and failed\ntoday, cancellations awaiting approval, open complaints, low stock,\nunpaid and overdue invoices, and cash still with drivers (DO-28).",
+        "operationId": "get_operations_snapshot_api_v1_dashboard_operations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsSnapshotResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Today's operations KPIs for the Home page",
+        "tags": [
+          "Dashboard"
         ]
       }
     },
@@ -14900,8 +17881,96 @@
       }
     },
     "/api/v1/inventory-locations/{location_type}/{location_ref_id}/reconciliation-records": {
+      "get": {
+        "description": "Stock counts at this location, newest first — `state=pending` is the\napprover's queue.",
+        "operationId": "list_reconciliation_records_api_v1_inventory_locations__location_type___location_ref_id__reconciliation_records_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRecordListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reconciliation Records",
+        "tags": [
+          "Inventory"
+        ]
+      },
       "post": {
-        "description": "Record a physical count against the tracked balance.\n\nRecording is routine; approval is the gated step.",
+        "description": "Record a physical count against the tracked balance. Stock does not\nchange until someone else approves the count.",
         "operationId": "create_reconciliation_record_api_v1_inventory_locations__location_type___location_ref_id__reconciliation_records_post",
         "parameters": [
           {
@@ -15028,6 +18097,83 @@
           }
         },
         "summary": "Change Cylinder Status",
+        "tags": [
+          "Inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory-locations/{location_type}/{location_ref_id}/stock-register": {
+      "get": {
+        "description": "Daily stock register: opening, receipts, issues and closing per\ncylinder type and status, for each IST day in the range (max 92 days).",
+        "operationId": "get_stock_register_api_v1_inventory_locations__location_type___location_ref_id__stock_register_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "warehouse",
+                "vehicle"
+              ],
+              "title": "Location Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "location_ref_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Ref Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockRegisterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Stock Register",
         "tags": [
           "Inventory"
         ]
@@ -15241,9 +18387,31 @@
         ]
       }
     },
+    "/api/v1/inventory/status-transitions": {
+      "get": {
+        "description": "Which status each status may move to, for Change Status and Adjust.",
+        "operationId": "get_status_transitions_api_v1_inventory_status_transitions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusTransitionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Status Transitions",
+        "tags": [
+          "Inventory"
+        ]
+      }
+    },
     "/api/v1/invoices": {
       "get": {
-        "description": "List invoices with optional filters.",
+        "description": "List invoices, newest first. `search` matches the invoice, order and\nconsumer numbers and the customer's name.",
         "operationId": "list_invoices_api_v1_invoices_get",
         "parameters": [
           {
@@ -15318,6 +18486,61 @@
               ],
               "title": "Status"
             }
+          },
+          {
+            "description": "First day, inclusive (IST)",
+            "in": "query",
+            "name": "issued_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First day, inclusive (IST)",
+              "title": "Issued From"
+            }
+          },
+          {
+            "description": "Last day, inclusive (IST)",
+            "in": "query",
+            "name": "issued_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last day, inclusive (IST)",
+              "title": "Issued To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
           }
         ],
         "responses": {
@@ -15343,6 +18566,72 @@
           }
         },
         "summary": "List Invoices",
+        "tags": [
+          "Invoices"
+        ]
+      },
+      "post": {
+        "description": "Issue a held invoice for a delivered order or a billed cancellation.\nFails with `GST_NOT_CONFIGURED` (422) while a cylinder type on the\norder still has no GST rate.",
+        "operationId": "issue_invoice_api_v1_invoices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue Invoice",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
+    "/api/v1/invoices/uninvoiced-orders": {
+      "get": {
+        "description": "Invoices on hold: delivered orders with no invoice, and approved\ncancellations whose charge was never billed — almost always because GST\nwas not configured at the time (DA-06, DO-14).",
+        "operationId": "list_uninvoiced_orders_api_v1_invoices_uninvoiced_orders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UninvoicedOrderResponse"
+                  },
+                  "title": "Response List Uninvoiced Orders Api V1 Invoices Uninvoiced Orders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Uninvoiced Orders",
         "tags": [
           "Invoices"
         ]
@@ -15392,9 +18681,57 @@
         ]
       }
     },
+    "/api/v1/invoices/{invoice_id}/credit-notes": {
+      "get": {
+        "description": "Refunds requested and approved against this invoice (BR-20).",
+        "operationId": "list_credit_notes_api_v1_invoices__invoice_id__credit_notes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invoice_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invoice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CreditNoteResponse"
+                  },
+                  "title": "Response List Credit Notes Api V1 Invoices  Invoice Id  Credit Notes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credit Notes",
+        "tags": [
+          "Invoices"
+        ]
+      }
+    },
     "/api/v1/invoices/{invoice_id}/payments": {
       "post": {
-        "description": "Record a payment against an invoice (R10, `PaymentCollected`,\nBR-18/D-11). Supports partial payments — `status` only reaches `paid`\nonce cumulative payments equal `total_amount`.",
+        "description": "Record a payment received at the office against an invoice (R10,\n`PaymentCollected`, BR-18/D-11): cash, UPI, card, cheque or bank\ntransfer, with its reference. Supports partial payments — `status` only\nreaches `paid` once cumulative payments equal `total_amount`; more than\nthe balance due is refused.",
         "operationId": "record_payment_api_v1_invoices__invoice_id__payments_post",
         "parameters": [
           {
@@ -15693,7 +19030,7 @@
     },
     "/api/v1/notifications/read-all": {
       "post": {
-        "description": "Mark all notifications as read for the current user.",
+        "description": "Mark all notifications as read for the current user. The user's\nother open tabs and devices get `notification.read_all` over `/ws`.",
         "operationId": "mark_all_read_api_v1_notifications_read_all_post",
         "responses": {
           "204": {
@@ -15730,7 +19067,7 @@
     },
     "/api/v1/notifications/{id}/read": {
       "patch": {
-        "description": "Mark a specific notification as read.",
+        "description": "Mark a specific notification as read. The user's other open tabs and\ndevices get `notification.read` over `/ws`.",
         "operationId": "mark_read_api_v1_notifications__id__read_patch",
         "parameters": [
           {
@@ -15767,6 +19104,28 @@
         "summary": "Mark Read",
         "tags": [
           "Notifications"
+        ]
+      }
+    },
+    "/api/v1/online-payments/availability": {
+      "get": {
+        "description": "`available` is false when no payment gateway is configured; creating a\npayment link would then fail with 503, so the apps don't offer it.",
+        "operationId": "get_online_payment_availability_api_v1_online_payments_availability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnlinePaymentAvailabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Whether online payment can be offered in this environment",
+        "tags": [
+          "Online Payments"
         ]
       }
     },
@@ -15815,7 +19174,7 @@
     },
     "/api/v1/orders": {
       "get": {
-        "description": "Order Queue — the dominant query pattern, status/branch/date filterable.",
+        "description": "Order Queue — newest first; filter by status, delivery date range,\ncustomer, or a free-text search (DO-12). Each order carries its\ncustomer's name, phone and consumer number.",
         "operationId": "list_orders_api_v1_orders_get",
         "parameters": [
           {
@@ -15824,6 +19183,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Skip",
               "type": "integer"
             }
@@ -15834,6 +19194,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 200,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -15845,6 +19207,18 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "draft",
+                    "booked",
+                    "confirmed",
+                    "assigned",
+                    "ready_for_dispatch",
+                    "out_for_delivery",
+                    "delivered",
+                    "failed_delivery",
+                    "cancelled",
+                    "closed"
+                  ],
                   "type": "string"
                 },
                 {
@@ -15852,6 +19226,82 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "description": "Order number, or the customer's name, phone or consumer number.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Order number, or the customer's name, phone or consumer number.",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Delivery date on or after (inclusive).",
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Delivery date on or after (inclusive).",
+              "title": "From Date"
+            }
+          },
+          {
+            "description": "Delivery date on or before (inclusive).",
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Delivery date on or before (inclusive).",
+              "title": "To Date"
+            }
+          },
+          {
+            "description": "One customer's orders (staff only).",
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One customer's orders (staff only).",
+              "title": "Customer Id"
             }
           }
         ],
@@ -15883,7 +19333,7 @@
         ]
       },
       "post": {
-        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.\n\n409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,\nhas no price for the customer, or is out of stock at the branch.",
+        "description": "Create a booking (`draft -> booked`). Idempotency-Key required.\n\nThe delivery address is always the customer's saved address\n`address_id`; `delivery_address` in the body is ignored.\n\n- 404 when the customer is not visible.\n- 409 `CUSTOMER_NOT_ELIGIBLE` when the connection is not active or KYC\n  is rejected/expired; `ADDRESS_NOT_FOUND` when `address_id` is not one\n  of the customer's addresses.\n- 409 `CYLINDER_NOT_ORDERABLE` when a line's cylinder type is inactive,\n  has no price for the customer, or is out of stock at the branch.\n- 409 `CYLINDER_CAP_EXCEEDED` when the booking takes the customer over\n  the tenant's cylinder holding cap for their connection type.",
         "operationId": "create_order_api_v1_orders_post",
         "requestBody": {
           "content": {
@@ -16078,6 +19528,58 @@
         "tags": [
           "Orders"
         ]
+      },
+      "patch": {
+        "description": "Edit a booked or confirmed order before it is put on a trip (DO-13):\nquantities, cylinder types, delivery address (one of the customer's\nsaved addresses) or delivery date. A confirmed order is re-priced at\ntoday's prices. Needs `orders:confirm` — the staff who accept bookings\nare the ones who change them.\n\n409 when the order is already on a trip (`CONFLICT`), the date is in the\npast, the address is not the customer's (`ADDRESS_NOT_FOUND`), or a\nbooking rule fails (`CYLINDER_NOT_ORDERABLE`, `CYLINDER_CAP_EXCEEDED`,\n`CREDIT_LIMIT_EXCEEDED`).",
+        "operationId": "amend_order_api_v1_orders__order_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AmendOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Amend Order",
+        "tags": [
+          "Orders"
+        ]
       }
     },
     "/api/v1/orders/{order_id}/assign": {
@@ -16232,9 +19734,63 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/cancel/reject": {
+      "post": {
+        "description": "Reject a pending post-dispatch cancellation request with a reason\n(DO-14). The order keeps its status and delivery goes ahead; the\ncustomer may ask again. Live-checked, like approval (D-19).\n\n404 when the order has no request waiting; 422 without a reason.",
+        "operationId": "reject_order_cancellation_api_v1_orders__order_id__cancel_reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectCancellationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingCancellationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Order Cancellation",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/cancellation-request": {
       "get": {
-        "description": "The cancellation request waiting for Manager approval on this order,\nor `null` when there is none (D-19).",
+        "description": "The cancellation request waiting for Manager approval on this order,\nwith the charge approving it would record, or `null` when there is none\n(D-19). With `include_decided=true`, the latest request whatever its\noutcome, so the apps can show that it was rejected and why (CA-07).",
         "operationId": "get_pending_cancellation_api_v1_orders__order_id__cancellation_request_get",
         "parameters": [
           {
@@ -16245,6 +19801,18 @@
               "format": "uuid",
               "title": "Order Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Return the latest request even once approved or rejected.",
+            "in": "query",
+            "name": "include_decided",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Return the latest request even once approved or rejected.",
+              "title": "Include Decided",
+              "type": "boolean"
             }
           }
         ],
@@ -16330,7 +19898,7 @@
     },
     "/api/v1/orders/{order_id}/confirm": {
       "post": {
-        "description": "`booked -> confirmed`. Resolves and snapshots unit prices; runs the\nBR-04/BR-19 stub policy checks (see `infrastructure/order/policies.py`).",
+        "description": "`booked -> confirmed`. Resolves and snapshots unit prices.\n\n409 `CYLINDER_CAP_EXCEEDED` (BR-04) or `CREDIT_LIMIT_EXCEEDED` (BR-19)\nwhen the tenant's configured `cylinder_holding_cap` /\n`credit_limit_default` for the customer's type would be exceeded.",
         "operationId": "confirm_order_api_v1_orders__order_id__confirm_post",
         "parameters": [
           {
@@ -16421,6 +19989,58 @@
           }
         },
         "summary": "Deliver Order",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{order_id}/delivery-code": {
+      "get": {
+        "description": "The delivery code the customer gives the driver at the door, for the\ncustomer's own order while it is out for delivery; `null` when no code is\npending. Customers only: the code is the proof that the cylinder reached\nthe customer, so neither the driver nor office staff may read it. Another\ncustomer's order is a 404, the same as an order that does not exist.",
+        "operationId": "get_delivery_code_api_v1_orders__order_id__delivery_code_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DeliveryCodeResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Delivery Code Api V1 Orders  Order Id  Delivery Code Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Delivery Code",
         "tags": [
           "Orders"
         ]
@@ -16803,9 +20423,61 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/proof-of-delivery": {
+      "get": {
+        "description": "The delivery record of a delivered order (DO-26): when the OTP was\nverified, where, how much was collected and how, with short-lived links\nto the signature and photo when the driver captured them. `null` until\nthe order is delivered. Same row-scoping as `GET /orders/{order_id}`.",
+        "operationId": "get_proof_of_delivery_api_v1_orders__order_id__proof_of_delivery_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ProofOfDeliveryResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Proof Of Delivery Api V1 Orders  Order Id  Proof Of Delivery Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Proof Of Delivery",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/api/v1/orders/{order_id}/reschedule": {
       "post": {
-        "description": "`failed_delivery -> ready_for_dispatch`. Also resets the paired\n`RouteStop` back to `pending` so the retry can reach `delivered` (see\n`RescheduleOrderUseCase`'s docstring).\n\n`Idempotency-Key` is optional — see `run_idempotent`.",
+        "description": "Without a body: `failed_delivery -> ready_for_dispatch`, retrying on\nthe same trip (the paired `RouteStop` goes back to `pending`).\n\nWith `requested_date` (DO-13): `failed_delivery -> confirmed` — the order\nleaves its trip (the stop stays failed, the van's reservation is\nreleased) and waits to be planned onto a trip on that date. A date in\nthe past is a 409.\n\n`Idempotency-Key` is optional — see `run_idempotent`.",
         "operationId": "reschedule_order_api_v1_orders__order_id__reschedule_post",
         "parameters": [
           {
@@ -16819,6 +20491,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RescheduleOrderRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -17662,6 +21351,49 @@
         ]
       }
     },
+    "/api/v1/platform/license/{tenant_id}/key": {
+      "post": {
+        "description": "For when the one-time key shown at issue was lost before activation. The old key stops working; the new plaintext key is returned once. 409 if the licence is already activated or revoked.",
+        "operationId": "replace_license_key_api_v1_platform_license__tenant_id__key_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedLicenseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate a new key for a licence that is not activated yet",
+        "tags": [
+          "Platform Console"
+        ]
+      }
+    },
     "/api/v1/platform/license/{tenant_id}/plan-tier": {
       "patch": {
         "operationId": "set_license_plan_tier_api_v1_platform_license__tenant_id__plan_tier_patch",
@@ -17808,7 +21540,7 @@
     },
     "/api/v1/reconciliation-records/{record_id}/approve": {
       "post": {
-        "description": "Approve a reconciliation record. Live-checked (`docs/data/17-api-security.md` §7).",
+        "description": "Approve a pending count and book its variance into stock, once.\nLive-checked (`docs/data/17-api-security.md` §7). 409\n`RECONCILIATION_ALREADY_DECIDED` on a repeat, 409\n`SELF_APPROVAL_NOT_ALLOWED` for the person who counted.",
         "operationId": "approve_reconciliation_record_api_v1_reconciliation_records__record_id__approve_post",
         "parameters": [
           {
@@ -17850,6 +21582,60 @@
         ]
       }
     },
+    "/api/v1/reconciliation-records/{record_id}/reject": {
+      "post": {
+        "description": "Close a pending count without changing stock (e.g. recount needed).",
+        "operationId": "reject_reconciliation_record_api_v1_reconciliation_records__record_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Reconciliation Record",
+        "tags": [
+          "Inventory"
+        ]
+      }
+    },
     "/api/v1/reporting/consumption": {
       "get": {
         "operationId": "get_customer_consumption_api_v1_reporting_consumption_get",
@@ -17877,6 +21663,7 @@
     },
     "/api/v1/reporting/drivers": {
       "get": {
+        "description": "One row per driver per business day (IST): stops, deliveries,\nfailures, and cash handed over against cash collected.",
         "operationId": "get_driver_performance_api_v1_reporting_drivers_get",
         "parameters": [
           {
@@ -17897,6 +21684,23 @@
               "format": "date",
               "title": "End Date",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
             }
           }
         ],
@@ -17957,8 +21761,63 @@
         ]
       }
     },
+    "/api/v1/reporting/gst/gstr1": {
+      "get": {
+        "description": "Outward supplies for `[start_date, end_date]` (IST) laid out like\nGSTR-1: B2B, B2C large, B2C small and the HSN summary, with taxable\nvalue and CGST/SGST/IGST.",
+        "operationId": "get_gstr1_report_api_v1_reporting_gst_gstr1_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Gstr1ReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Gstr1 Report",
+        "tags": [
+          "reporting"
+        ]
+      }
+    },
     "/api/v1/reporting/sales": {
       "get": {
+        "description": "Invoiced sales per branch per business day (IST), inclusive dates.",
         "operationId": "get_daily_sales_api_v1_reporting_sales_get",
         "parameters": [
           {
@@ -17979,6 +21838,23 @@
               "format": "date",
               "title": "End Date",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "branch_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch Id"
             }
           }
         ],
@@ -19006,6 +22882,27 @@
         ]
       }
     },
+    "/api/v1/support/contacts": {
+      "get": {
+        "operationId": "get_support_contacts_api_v1_support_contacts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportContactsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The emergency helpline and the agency's support phone",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
     "/api/v1/tdt-rating/live-projection": {
       "get": {
         "description": "The current, still-open calendar quarter's rating so far — \"so the\ndistributor can still act\" (source plan), rather than only finding out\nonce the quarter has already closed.",
@@ -19830,6 +23727,60 @@
           }
         },
         "summary": "Record Goods Receipt",
+        "tags": [
+          "Inventory"
+        ]
+      }
+    },
+    "/api/v1/warehouses/{warehouse_id}/omc-returns": {
+      "post": {
+        "description": "Dispatch empties (or segregated defective cylinders) back to the OMC's\nbottling plant — debits the warehouse and issues a numbered return note.\n409 INSUFFICIENT_STOCK if the warehouse holds fewer.",
+        "operationId": "return_stock_to_omc_api_v1_warehouses__warehouse_id__omc_returns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "warehouse_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Warehouse Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OmcReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OmcReturnResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Return Stock To Omc",
         "tags": [
           "Inventory"
         ]

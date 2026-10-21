@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -47,3 +48,39 @@ class RouteCashHandoverResponse(BaseModel):
     expected_amount: Decimal
     cash_stop_count: int
     handover: CashHandoverResponse | None = None
+
+
+class CashHandoverReviewResponse(BaseModel):
+    id: uuid.UUID
+    outcome: str
+    note: str | None
+    reviewed_by: uuid.UUID
+    reviewed_by_name: str | None = None
+    reviewed_at: datetime
+
+
+class CashHandoverRegisterEntryResponse(BaseModel):
+    """One row of the accountant's cash-handover register (DA-33)."""
+
+    id: uuid.UUID
+    handover_number: str | None
+    driver_id: uuid.UUID
+    driver_name: str
+    route_id: uuid.UUID
+    route_date: datetime
+    vehicle_registration: str | None
+    cash_stop_count: int
+    expected_amount: Decimal
+    actual_amount: Decimal
+    shortfall: Decimal
+    #: Cash handed over beyond what the deliveries account for.
+    excess: Decimal
+    declared_at: datetime
+    #: `pending` until the office reviews it, then `accepted` or `disputed`.
+    review_status: str
+    review: CashHandoverReviewResponse | None = None
+
+
+class ReviewCashHandoverRequest(BaseModel):
+    outcome: Literal["accepted", "disputed"]
+    note: str | None = Field(default=None, max_length=1000)

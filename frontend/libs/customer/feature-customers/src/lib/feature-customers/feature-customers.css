@@ -249,3 +249,15 @@
   font-size: var(--typography-caption-font-size);
   color: var(--color-status-danger);
 }
+
+.detail-actions,
+.address-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.detail-card-header {
+  flex-wrap: wrap;
+}

@@ -15,6 +15,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from lpg.application.common.errors import AuthenticationError, NotFoundError, ValidationError
+from lpg.application.complaint.ports import ComplaintCustomer, ComplaintOrder, StaffMember
 from lpg.application.complaint.use_cases import (
     AssignComplaintCommand,
     AssignComplaintUseCase,
@@ -80,6 +82,39 @@ def _make_complaint(**kwargs: object) -> Complaint:
     return Complaint.create(**defaults)  # type: ignore[arg-type]
 
 
+def _directory(
+    *,
+    staff: list[uuid.UUID] | None = None,
+    customers: list[uuid.UUID] | None = None,
+    orders: dict[uuid.UUID, uuid.UUID] | None = None,
+) -> MagicMock:
+    directory = MagicMock()
+    directory.assignable_staff = AsyncMock(
+        return_value=[
+            StaffMember(user_id=user_id, name="Asha Rao", role="manager", email=None)
+            for user_id in staff or []
+        ]
+    )
+    directory.customers = AsyncMock(
+        return_value={
+            customer_id: ComplaintCustomer(
+                customer_id=customer_id,
+                full_name="Meena Iyer",
+                phone_number="+919876543210",
+                consumer_number="CN-000001",
+            )
+            for customer_id in customers or []
+        }
+    )
+    directory.orders = AsyncMock(
+        return_value={
+            order_id: ComplaintOrder(order_id=order_id, order_number="ORD000001", customer_id=cid)
+            for order_id, cid in (orders or {}).items()
+        }
+    )
+    return directory
+
+
 @pytest.fixture
 def mock_complaint_number_sequence() -> MagicMock:
     sequence = MagicMock()
@@ -105,7 +140,9 @@ class TestRaiseComplaintUseCase:
             priority=ComplaintPriority.HIGH,
             description="Two hours late.",
         )
-        use_case = RaiseComplaintUseCase(mock_uow, mock_complaint_number_sequence)
+        use_case = RaiseComplaintUseCase(
+            mock_uow, mock_complaint_number_sequence, _directory(customers=[command.customer_id])
+        )
 
         complaint_id = await use_case.execute(_make_tenant_context(), command)
 
@@ -127,7 +164,7 @@ class TestRaiseComplaintUseCase:
         )
         use_case = RaiseComplaintUseCase(mock_uow, mock_complaint_number_sequence)
 
-        with pytest.raises(ValueError, match="authenticated"):
+        with pytest.raises(AuthenticationError):
             await use_case.execute(_make_tenant_context(user_id=None), command)
 
         mock_uow.commit.assert_not_called()
@@ -145,7 +182,7 @@ class TestAssignComplaintUseCase:
         assigned_to = uuid.uuid4()
         command = AssignComplaintCommand(complaint_id=complaint.id, assigned_to=assigned_to)
 
-        use_case = AssignComplaintUseCase(mock_uow)
+        use_case = AssignComplaintUseCase(mock_uow, _directory(staff=[assigned_to]))
         await use_case.execute(_make_tenant_context(), command)
 
         assert complaint.status == ComplaintStatus.ASSIGNED
@@ -157,10 +194,11 @@ class TestAssignComplaintUseCase:
         self, mock_uow: MagicMock, mock_repo: MagicMock
     ) -> None:
         mock_repo.get_by_id = AsyncMock(return_value=None)
-        command = AssignComplaintCommand(complaint_id=uuid.uuid4(), assigned_to=uuid.uuid4())
-        use_case = AssignComplaintUseCase(mock_uow)
+        assignee = uuid.uuid4()
+        command = AssignComplaintCommand(complaint_id=uuid.uuid4(), assigned_to=assignee)
+        use_case = AssignComplaintUseCase(mock_uow, _directory(staff=[assignee]))
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(NotFoundError):
             await use_case.execute(_make_tenant_context(), command)
 
         mock_repo.save.assert_not_called()
@@ -168,9 +206,9 @@ class TestAssignComplaintUseCase:
 
     async def test_rejects_unauthenticated_request(self, mock_uow: MagicMock) -> None:
         command = AssignComplaintCommand(complaint_id=uuid.uuid4(), assigned_to=uuid.uuid4())
-        use_case = AssignComplaintUseCase(mock_uow)
+        use_case = AssignComplaintUseCase(mock_uow, _directory())
 
-        with pytest.raises(ValueError, match="authenticated"):
+        with pytest.raises(AuthenticationError):
             await use_case.execute(_make_tenant_context(user_id=None), command)
 
 
@@ -225,7 +263,60 @@ class TestResolveComplaintUseCase:
         )
         use_case = ResolveComplaintUseCase(mock_uow)
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(NotFoundError):
             await use_case.execute(_make_tenant_context(), command)
 
         mock_repo.save.assert_not_called()
+
+
+class TestComplaintChecks:
+    """DO-18 / DO-19: complaints only reference real customers, their own
+    orders and real staff; a gas leak is always Critical."""
+
+    async def test_unknown_customer_is_refused(
+        self, mock_uow: MagicMock, mock_complaint_number_sequence: MagicMock
+    ) -> None:
+        command = RaiseComplaintCommand(
+            customer_id=uuid.uuid4(),
+            category=ComplaintCategory.OTHER,
+            priority=ComplaintPriority.LOW,
+            description="Late",
+        )
+        with pytest.raises(ValidationError, match="customer"):
+            await RaiseComplaintUseCase(
+                mock_uow, mock_complaint_number_sequence, _directory()
+            ).execute(_make_tenant_context(), command)
+        mock_complaint_number_sequence.next.assert_not_called()
+
+    async def test_another_customers_order_is_refused(
+        self, mock_uow: MagicMock, mock_complaint_number_sequence: MagicMock
+    ) -> None:
+        customer_id, order_id = uuid.uuid4(), uuid.uuid4()
+        command = RaiseComplaintCommand(
+            customer_id=customer_id,
+            category=ComplaintCategory.OTHER,
+            priority=ComplaintPriority.LOW,
+            description="Late",
+            order_id=order_id,
+        )
+        directory = _directory(customers=[customer_id], orders={order_id: uuid.uuid4()})
+        with pytest.raises(ValidationError, match="order"):
+            await RaiseComplaintUseCase(
+                mock_uow, mock_complaint_number_sequence, directory
+            ).execute(_make_tenant_context(), command)
+
+    async def test_unknown_assignee_is_refused(
+        self, mock_uow: MagicMock, mock_repo: MagicMock
+    ) -> None:
+        with pytest.raises(ValidationError, match="staff member"):
+            await AssignComplaintUseCase(mock_uow, _directory(staff=[uuid.uuid4()])).execute(
+                _make_tenant_context(),
+                AssignComplaintCommand(complaint_id=uuid.uuid4(), assigned_to=uuid.uuid4()),
+            )
+        mock_repo.save.assert_not_called()
+
+    def test_a_gas_leak_is_always_critical(self) -> None:
+        complaint = _make_complaint(
+            category=ComplaintCategory.GAS_LEAK_SAFETY, priority=ComplaintPriority.LOW
+        )
+        assert complaint.priority == ComplaintPriority.CRITICAL

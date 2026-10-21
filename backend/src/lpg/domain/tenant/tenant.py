@@ -19,6 +19,7 @@ import uuid
 from dataclasses import dataclass
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
+from lpg.domain.common.gst import GST_STATE_CODES, normalize_gstin
 
 #: An agency's `slug` is also its future subdomain (`<slug>.example.com`), so
 #: it must be a valid, lowercase DNS label: letters/digits/single hyphens,
@@ -38,6 +39,82 @@ RESERVED_SLUGS = frozenset(
 
 _SLUG_RE = re.compile(SLUG_PATTERN)
 _COUNTRY_RE = re.compile(r"^[A-Z]{2}$")
+_PINCODE_RE = re.compile(r"^[1-9][0-9]{5}$")
+
+
+@dataclass(frozen=True, slots=True)
+class AgencyBusinessProfile:
+    """The agency as a GST supplier — what every tax invoice prints in its
+    header (CGST Rules, rule 46: supplier name, address and GSTIN), and
+    whose `state_code` decides CGST+SGST versus IGST against the place of
+    supply. `gstin` may be empty only for an agency not yet registered;
+    invoices then show "GSTIN not registered" rather than leaving it out
+    silently.
+    """
+
+    legal_name: str
+    address_line_1: str
+    city: str
+    state_code: str
+    pincode: str
+    gstin: str | None = None
+    address_line_2: str | None = None
+    phone: str | None = None
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        legal_name: str,
+        address_line_1: str,
+        city: str,
+        state_code: str,
+        pincode: str,
+        gstin: str | None = None,
+        address_line_2: str | None = None,
+        phone: str | None = None,
+    ) -> AgencyBusinessProfile:
+        """Validate and normalise; raises `InvariantViolation` field by field."""
+        clean_name = legal_name.strip()
+        if not clean_name:
+            msg = "Legal name is required."
+            raise InvariantViolation(msg, field="legal_name")
+        clean_line_1 = address_line_1.strip()
+        if not clean_line_1:
+            msg = "Address is required."
+            raise InvariantViolation(msg, field="address_line_1")
+        clean_city = city.strip()
+        if not clean_city:
+            msg = "City is required."
+            raise InvariantViolation(msg, field="city")
+        if state_code not in GST_STATE_CODES:
+            msg = "State is not a recognised GST state."
+            raise InvariantViolation(msg, field="state_code", state_code=state_code)
+        clean_pincode = pincode.strip()
+        if not _PINCODE_RE.match(clean_pincode):
+            msg = "PIN code must be 6 digits."
+            raise InvariantViolation(msg, field="pincode")
+        clean_gstin = normalize_gstin(gstin) if gstin and gstin.strip() else None
+        if clean_gstin is not None and clean_gstin[:2] != state_code:
+            msg = (
+                f"GSTIN is registered in {GST_STATE_CODES[clean_gstin[:2]]}, but the "
+                f"address is in {GST_STATE_CODES[state_code]}. They must match."
+            )
+            raise InvariantViolation(msg, field="gstin")
+        return cls(
+            legal_name=clean_name,
+            address_line_1=clean_line_1,
+            address_line_2=(address_line_2 or "").strip() or None,
+            city=clean_city,
+            state_code=state_code,
+            pincode=clean_pincode,
+            gstin=clean_gstin,
+            phone=(phone or "").strip() or None,
+        )
+
+    @property
+    def state_name(self) -> str:
+        return GST_STATE_CODES[self.state_code]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +161,7 @@ class Tenant(AggregateRoot):
     """
 
     __slots__ = (
+        "_business_profile",
         "_country",
         "_name",
         "_primary_contact_email",
@@ -102,9 +180,11 @@ class Tenant(AggregateRoot):
         subscription_plan: str = "standard",
         primary_contact_email: str,
         country: str = "IN",
+        business_profile: AgencyBusinessProfile | None = None,
         version: int = 1,
     ) -> None:
         super().__init__(tenant_id, version=version)
+        self._business_profile = business_profile
         self._name = name
         self._slug = slug
         self._status = status
@@ -193,6 +273,17 @@ class Tenant(AggregateRoot):
     def country(self) -> str:
         return self._country
 
+    @property
+    def business_profile(self) -> AgencyBusinessProfile | None:
+        return self._business_profile
+
+    def update_business_profile(self, profile: AgencyBusinessProfile) -> None:
+        """Replace the GST business profile. Invoices already issued keep
+        the supplier state they were issued under (snapshotted on the
+        invoice); only later invoices pick this up.
+        """
+        self._business_profile = profile
+
     def rename(self, new_name: str) -> None:
         """Change the tenant's display name.
 
@@ -212,6 +303,19 @@ class Tenant(AggregateRoot):
     def activate(self) -> None:
         """`trial` → `active` — the tenant's first real activation."""
         self._transition_to("active", allowed_from={"trial"})
+
+    def apply_license(self, plan_tier: str) -> None:
+        """A licence was activated, or its plan tier changed (DA-28).
+
+        The licence is the source of truth for an agency's commercial state:
+        once one is active the agency is no longer on trial, and its plan is
+        the licence's plan tier. Suspended and closed agencies keep their
+        status - those are deliberate platform decisions a licence change
+        must not undo.
+        """
+        if self._status == "trial":
+            self.activate()
+        self._subscription_plan = plan_tier
 
     def suspend(self) -> None:
         """`active` → `suspended`."""

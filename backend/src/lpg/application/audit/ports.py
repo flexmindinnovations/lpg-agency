@@ -54,6 +54,7 @@ class AuditLogRepository(Protocol):
         *,
         entity_name: str | None = None,
         actor_id: uuid.UUID | None = None,
+        action: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         cursor: str | None = None,
@@ -65,3 +66,33 @@ class AuditLogRepository(Protocol):
         cliff.
         """
         ...
+
+    async def list_entity_names(self, tenant_id: uuid.UUID) -> list[str]:
+        """Distinct record types (table names) in this tenant's audit log."""
+        ...
+
+
+@runtime_checkable
+class AuditTrail(Protocol):
+    """Writes one explicit audit entry for a security-sensitive action.
+
+    The generic audit hook only sees ORM changes made through a Unit of
+    Work's own session. Identity writes (deactivating a user, changing a
+    role or a permission set) go through repositories that open their own
+    sessions, so without this they leave no trace (QA finding DA-24). The
+    entry is attributed to the current tenant with the current user as the
+    actor. Never put a token, password or hash in `details`, `before` or
+    `after`.
+    """
+
+    async def record(
+        self,
+        *,
+        action: str,
+        entity_name: str,
+        entity_id: str,
+        entity_display_name: str | None,
+        details: dict[str, object],
+        before: dict[str, object] | None = None,
+        after: dict[str, object] | None = None,
+    ) -> None: ...

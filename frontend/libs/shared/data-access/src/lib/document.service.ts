@@ -29,7 +29,8 @@ export type ComplianceOwnerType = 'driver' | 'vehicle' | 'warehouse' | 'tenant';
 export interface ComplianceDocumentListFilter {
   owner_type?: ComplianceOwnerType;
   status?: string;
-  expiry?: 'expiring' | 'expired';
+  /** `upcoming` = overdue or due within 90 days, earliest first. */
+  expiry?: 'expiring' | 'expired' | 'upcoming';
   skip?: number;
   limit?: number;
 }

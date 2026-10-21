@@ -6,7 +6,7 @@ rejection."""
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -296,7 +296,7 @@ class TestReceiveCylinderUnit:
 
 
 class TestSuggestStatutoryTestDueDate:
-    async def test_returns_none_when_the_tenant_has_no_interval_configured(
+    async def test_falls_back_to_the_statutory_five_years_when_unconfigured(
         self, database: Database, admin_engine: AsyncEngine
     ) -> None:
         tenant_id = await _seed_tenant(admin_engine)
@@ -309,10 +309,10 @@ class TestSuggestStatutoryTestDueDate:
                 )
                 suggestion = await use_case.execute(
                     SuggestStatutoryTestDueDateQuery(
-                        tenant_id=tenant_id, tested_at=datetime.now(UTC).date()
+                        tenant_id=tenant_id, tested_at=date(2026, 3, 1)
                     )
                 )
-                assert suggestion is None
+                assert suggestion == date(2031, 3, 1)
 
     async def test_suggests_tested_at_plus_the_configured_interval(
         self, database: Database, admin_engine: AsyncEngine

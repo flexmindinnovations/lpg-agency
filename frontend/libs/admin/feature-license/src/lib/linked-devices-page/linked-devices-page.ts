@@ -41,9 +41,7 @@ class DeviceStatusCell {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Linked Devices</h1>
-            <p class="page-subtitle">
-              Customer, Driver, and Warehouse app instances registered to this tenant.
-            </p>
+            <p class="page-subtitle">Phones and tablets using your licence.</p>
           </div>
         </ng-template>
       </div>

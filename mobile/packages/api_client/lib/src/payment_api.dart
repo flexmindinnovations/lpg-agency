@@ -19,6 +19,21 @@ final class PaymentApi {
   Future<Result<OnlinePaymentResponse>> createPaymentLink(String orderId) =>
       _single(() => _dio.post('/api/v1/orders/$orderId/payment-links'));
 
+  /// Whether online payment can be offered at all (a gateway is
+  /// configured). When it isn't, creating a link fails with 503.
+  Future<Result<bool>> isAvailable() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/online-payments/availability',
+      );
+      return Success(response.data?['available'] == true);
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
+
   /// Every payment attempt for [orderId], newest first.
   Future<Result<List<OnlinePaymentResponse>>> listOrderPayments(
     String orderId,

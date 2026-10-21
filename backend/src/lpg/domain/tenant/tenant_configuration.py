@@ -28,9 +28,32 @@ if TYPE_CHECKING:
 #: this catalog updated.
 RECOGNIZED_CONFIG_KEYS = frozenset(
     {
+        # Tenant-wide GST fallback — only for cylinder types with no GST
+        # rate of their own (`CylinderType.gst_rate_percent` is the
+        # primary source since DA-06). Unset on both means invoices are
+        # held, never issued at 0%.
         "gst_rate_percent",
+        # Whether price-list amounts already include GST. Defaults to false
+        # (absent = exclusive): the Pricing amount is before GST and the
+        # invoice adds GST on top. Set true for an agency that quotes
+        # GST-inclusive prices; the invoice then derives taxable value + tax
+        # inside the price.
+        "prices_include_gst",
+        # Cancellation charge — before GST (GST added on top) unless
+        # `prices_include_gst` is true.
         "cancellation_fee_amount",
+        # Days a customer has to pay an invoice before the Home dashboard
+        # counts it as overdue. Falls back to
+        # `application.dashboard.get_operations_snapshot.
+        # DEFAULT_PAYMENT_TERMS_DAYS` (30) when unset.
+        "invoice_payment_terms_days",
+        # BR-19: the largest unpaid amount a customer may owe once a booking
+        # is billed — one number, or per customer type
+        # (`{"domestic": 5000, "commercial": 50000}`). Unset = no limit.
         "credit_limit_default",
+        # BR-04: how many cylinders a customer may hold — one number, or per
+        # customer type (`{"domestic": 2, "commercial": 10}`). Unset = no cap.
+        "cylinder_holding_cap",
         # Nightly `check_compliance_expiry` cron's lead time (days) — how far
         # ahead of a driver/vehicle compliance document's expiry to notify
         # staff. Falls back to `compliance_jobs.DEFAULT_LEAD_DAYS` (30) when
@@ -167,6 +190,13 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # current value matches (`tenant.whatsapp_resolve_tenant_id`); a
         # number claimed by two tenants routes to neither.
         "whatsapp_phone_number_id",
+        # Shown in the customer app's Support screen (CA-10): the number
+        # customers call about a gas leak, and the agency's own phone.
+        # `emergency_helpline_number` falls back to
+        # `Settings.emergency_helpline_number` (1906, India's national LPG
+        # emergency helpline) when a tenant has not set one.
+        "emergency_helpline_number",
+        "customer_support_phone",
     }
 )
 

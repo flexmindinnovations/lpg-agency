@@ -253,7 +253,7 @@ class ListComplianceDocumentsForOwnerUseCase:
 class ListComplianceDocumentsQuery(Query):
     owner_type: str | None = None
     status: str | None = None
-    expiry: str | None = None  # "expiring" | "expired"
+    expiry: str | None = None  # "expiring" | "expired" | "upcoming"
     skip: int = 0
     limit: int = 50
 

@@ -267,12 +267,20 @@ forbidden_modules = ["sqlalchemy", "asyncpg"]
 # infrastructure only through application-layer ports.
 ignore_imports = [
     "lpg.api.app -> lpg.infrastructure.persistence.database",
+    # DA-03: the composition root hands the Problem Details handlers the
+    # translator that turns a driver error into a safe, user-facing message.
+    "lpg.api.app -> lpg.infrastructure.persistence.errors",
     # Domain-event handlers are infrastructure adapters (they open their own
     # session and build concrete repositories), so the composition root is
     # what registers them and hands them the Database.
     "lpg.api.app -> lpg.infrastructure.events.cylinder_ledger_handlers",
     "lpg.api.app -> lpg.infrastructure.events.accounting_handlers",
     "lpg.api.app -> lpg.infrastructure.events.tenant_admin_handlers",
+    # Notification handlers write in-app rows after commit (their own
+    # session) — same reasoning as the handlers above.
+    "lpg.api.app -> lpg.infrastructure.events.notification_handlers",
+    "lpg.api.app -> lpg.infrastructure.events.low_stock_handlers",
+    "lpg.api.app -> lpg.infrastructure.notification.delivery",
     "lpg.api.app -> lpg.infrastructure.redis.client",
     "lpg.api.app -> lpg.infrastructure.health",
     "lpg.api.app -> lpg.infrastructure.realtime.publisher",
@@ -282,6 +290,14 @@ ignore_imports = [
     # exist — exactly the composition root's role, scoped to one seam each,
     # so that routers and use cases never import infrastructure directly.
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.unit_of_work",
+    # dependencies/realtime.py: the WebSocket subscription gate's ownership
+    # lookups (driver record, order owner) — read-only, own session.
+    "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.database",
+    "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.unit_of_work",
+    "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.repositories.customer",
+    "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.repositories.driver",
+    "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.persistence.repositories.order",
+    "lpg.api.v1.dependencies.realtime -> lpg.infrastructure.security.field_encryption",
     # dependencies/unit_of_work.py also names the cylinder type in an error
     # message (see `_name_cylinder_type`) through its repository.
     "lpg.api.v1.dependencies.unit_of_work -> lpg.infrastructure.persistence.database",
@@ -304,6 +320,9 @@ ignore_imports = [
     # the admin surface's own seams.
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.database",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.audit",
+    # DA-24: explicit audit entries for staff-user changes, which go through
+    # repositories the generic audit hook cannot see.
+    "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.audit_trail",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.identity",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.platform",
     "lpg.api.v1.dependencies.admin -> lpg.infrastructure.persistence.repositories.tenant",
@@ -379,6 +398,15 @@ ignore_imports = [
     # its own UnitOfWork-scoped seam) the concrete SqlAlchemyUnitOfWork type.
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.accounting",
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.unit_of_work",
+    # DA-06: dependencies/accounting.py builds the same invoice generator
+    # the post-delivery event handler does, so a held invoice can be issued
+    # from the dashboard once GST is configured.
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.customer",
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.order",
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.tenant",
+    # DO-28: dependencies/dashboard.py wires the Home page's operations reader.
+    "lpg.api.v1.dependencies.dashboard -> lpg.infrastructure.persistence.repositories.dashboard",
+    "lpg.api.v1.dependencies.dashboard -> lpg.infrastructure.persistence.unit_of_work",
     # ADR-053: dependencies/payments.py wires the payment gateway factory,
     # the online-payment repository, and the webhook's own tenant-scoped
     # Unit of Work (a webhook has no JWT to resolve a tenant from).

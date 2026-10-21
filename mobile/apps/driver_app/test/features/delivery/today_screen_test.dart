@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:design_system/design_system.dart';
 import 'package:driver_app/src/features/cash_handover/data/cash_handover_provider.dart';
 import 'package:driver_app/src/features/delivery/data/active_route_provider.dart';
+import 'package:driver_app/src/features/profile/data/profile_provider.dart';
 import 'package:driver_app/src/features/delivery/data/location_sharing.dart';
 import 'package:driver_app/src/features/delivery/presentation/today_screen.dart';
 import 'package:driver_app/src/features/van_load/data/van_load_provider.dart';
@@ -40,6 +41,7 @@ RouteSummary _route({
   status: status,
   driverId: 'driver-1',
   vehicleId: 'vehicle-1',
+  date: DateTime(2026, 10, 20),
   stops: stops,
 );
 
@@ -64,7 +66,21 @@ Widget _screen({
 }) => ProviderScope(
   overrides: [
     activeRouteProvider.overrideWith((ref) async => route),
-    pendingCashHandoverProvider.overrideWith((ref) async => pendingCash),
+    driverProfileProvider.overrideWith(
+      (ref) async => const DriverMe(
+        driverId: 'driver-1',
+        name: 'Ravi',
+        phoneNumber: '+919000000001',
+        licenseNumber: 'TS0920230001',
+        status: 'active',
+        vehicle: DriverMeVehicle(
+          registrationNumber: 'TS09AB1234',
+          make: 'Tata',
+          model: 'Ace',
+        ),
+      ),
+    ),
+    pendingCashHandoversProvider.overrideWith((ref) async => [?pendingCash]),
     pendingLoadProvider.overrideWith((ref) async => pendingLoad),
     locationSharingControllerProvider.overrideWithValue(_FakeController()),
     locationSharingStateProvider.overrideWith(
@@ -88,6 +104,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('1 of 2 delivered'), findsOneWidget);
+      // DR-11: the route card names its date and van.
+      expect(find.textContaining('TS09AB1234'), findsOneWidget);
       expect(find.textContaining('Next stop · Stop 2'), findsOneWidget);
       expect(find.text('Order ORD000027'), findsOneWidget);
       // The live-location card sits below the fold on a phone-sized screen.

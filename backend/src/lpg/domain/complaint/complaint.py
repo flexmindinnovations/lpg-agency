@@ -2,8 +2,9 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from lpg.domain.common.base import AggregateRoot, DomainEvent, Entity
+from lpg.domain.common.base import AggregateRoot, DomainEvent, Entity, InvariantViolation
 from lpg.domain.complaint.value_objects import (
+    SAFETY_CATEGORIES,
     ComplaintCategory,
     ComplaintPriority,
     ComplaintStatus,
@@ -25,6 +26,17 @@ class ComplaintRaised(DomainEvent):
     category: ComplaintCategory
     priority: ComplaintPriority
     sla_due_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ComplaintAssigned(DomainEvent):
+    """Fired when a complaint is (re)assigned to a staff member — they are
+    told it's now theirs to handle."""
+
+    complaint_id: uuid.UUID
+    tenant_id: uuid.UUID
+    assigned_to: uuid.UUID
+    assigned_by: uuid.UUID
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +147,11 @@ class Complaint(AggregateRoot):
         complaint_number: str,
         order_id: uuid.UUID | None = None,
     ) -> "Complaint":
+        if category in SAFETY_CATEGORIES:
+            priority = ComplaintPriority.CRITICAL
+        description = description.strip()
+        if not description:
+            raise InvariantViolation("Describe the complaint.")
         # Calculate SLA Due At based on priority
         sla_due_at = cls._calculate_sla(priority)
 
@@ -205,6 +222,14 @@ class Complaint(AggregateRoot):
 
         self.updated_at = now
         self.updated_by = assigned_by
+        self.record_event(
+            ComplaintAssigned(
+                complaint_id=self.id,
+                tenant_id=self.tenant_id,
+                assigned_to=assigned_to,
+                assigned_by=assigned_by,
+            )
+        )
 
     def resolve(
         self,

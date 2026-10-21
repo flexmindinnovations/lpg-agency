@@ -24,7 +24,7 @@ from lpg.domain.tenant.branch import Branch
 from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list import PriceListEntry
 from lpg.domain.tenant.price_list_proposal import PriceListProposal
-from lpg.domain.tenant.tenant import Tenant
+from lpg.domain.tenant.tenant import AgencyBusinessProfile, Tenant
 from lpg.domain.tenant.tenant_configuration import TenantConfiguration
 from lpg.domain.tenant.warehouse import Warehouse
 from lpg.infrastructure.persistence.models.audit_log import AuditLogModel
@@ -48,6 +48,25 @@ if TYPE_CHECKING:
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 
+def _business_profile_from_row(row: Any) -> AgencyBusinessProfile | None:
+    """`None` until an admin first saves the profile — `legal_name` and
+    `state_code` are both required by `AgencyBusinessProfile`, so a row
+    missing either has never been set.
+    """
+    if not row.legal_name or not row.state_code:
+        return None
+    return AgencyBusinessProfile(
+        legal_name=row.legal_name,
+        gstin=row.gstin,
+        address_line_1=row.address_line_1 or "",
+        address_line_2=row.address_line_2,
+        city=row.city or "",
+        state_code=row.state_code,
+        pincode=row.pincode or "",
+        phone=row.phone,
+    )
+
+
 class SqlAlchemyTenantRepository:
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
         self._uow = unit_of_work
@@ -65,6 +84,7 @@ class SqlAlchemyTenantRepository:
             subscription_plan=row.subscription_plan,
             primary_contact_email=row.primary_contact_email,
             country=row.country,
+            business_profile=_business_profile_from_row(row),
             version=row.version,
         )
         self._uow.register_aggregate(tenant)
@@ -86,6 +106,7 @@ class SqlAlchemyTenantRepository:
             subscription_plan=row.subscription_plan,
             primary_contact_email=row.primary_contact_email,
             country=row.country,
+            business_profile=_business_profile_from_row(row),
             version=row.version,
         )
         self._uow.register_aggregate(tenant)
@@ -157,6 +178,15 @@ class SqlAlchemyTenantRepository:
         row.subscription_plan = tenant.subscription_plan
         row.primary_contact_email = tenant.primary_contact_email
         row.country = tenant.country
+        profile = tenant.business_profile
+        row.legal_name = profile.legal_name if profile else None
+        row.gstin = profile.gstin if profile else None
+        row.address_line_1 = profile.address_line_1 if profile else None
+        row.address_line_2 = profile.address_line_2 if profile else None
+        row.city = profile.city if profile else None
+        row.state_code = profile.state_code if profile else None
+        row.pincode = profile.pincode if profile else None
+        row.phone = profile.phone if profile else None
 
     async def list_all(self) -> Sequence[Tenant]:
         """Every tenant, platform-wide — see `TenantRepository.list_all`'s
@@ -177,6 +207,7 @@ class SqlAlchemyTenantRepository:
                 subscription_plan=row.subscription_plan,
                 primary_contact_email=row.primary_contact_email,
                 country=row.country,
+                business_profile=_business_profile_from_row(row),
                 version=row.version,
             )
             for row in result
@@ -332,6 +363,8 @@ class SqlAlchemyCylinderTypeRepository:
             row.name,
             row.weight_kg,
             is_active=row.is_active,
+            hsn_code=row.hsn_code,
+            gst_rate_percent=row.gst_rate_percent,
             version=row.version,
         )
         self._uow.register_aggregate(cylinder_type)
@@ -352,6 +385,8 @@ class SqlAlchemyCylinderTypeRepository:
                 row.name,
                 row.weight_kg,
                 is_active=row.is_active,
+                hsn_code=row.hsn_code,
+                gst_rate_percent=row.gst_rate_percent,
                 version=row.version,
             )
             for row in result.scalars()
@@ -365,6 +400,8 @@ class SqlAlchemyCylinderTypeRepository:
                 name=cylinder_type.name,
                 weight_kg=cylinder_type.weight_kg,
                 is_active=cylinder_type.is_active,
+                hsn_code=cylinder_type.hsn_code,
+                gst_rate_percent=cylinder_type.gst_rate_percent,
             )
         )
         self._uow.register_aggregate(cylinder_type)
@@ -378,6 +415,8 @@ class SqlAlchemyCylinderTypeRepository:
         row.name = cylinder_type.name
         row.weight_kg = cylinder_type.weight_kg
         row.is_active = cylinder_type.is_active
+        row.hsn_code = cylinder_type.hsn_code
+        row.gst_rate_percent = cylinder_type.gst_rate_percent
 
 
 class SqlAlchemyTenantConfigurationRepository:

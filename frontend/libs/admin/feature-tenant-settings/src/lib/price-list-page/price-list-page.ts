@@ -1,3 +1,4 @@
+import { selectableByName } from '@lpg/shared/util';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
@@ -6,6 +7,7 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -24,6 +26,7 @@ import {
   type CylinderTypeResponse,
   type PriceListEntryResponse,
   type PriceListProposalResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
@@ -74,9 +77,7 @@ type PriceRow = PriceListEntryResponse & {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Pricing</h1>
-            <p class="page-subtitle">
-              Set and track cylinder prices by type, customer category, and branch.
-            </p>
+            <p class="page-subtitle">Cylinder prices by branch and customer type.</p>
           </div>
         </ng-template>
       </div>
@@ -145,8 +146,8 @@ type PriceRow = PriceListEntryResponse & {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openCreateDrawer()">
               <i class="pi pi-plus"></i><span>Set Price</span>
@@ -155,7 +156,7 @@ type PriceRow = PriceListEntryResponse & {
         </div>
       }
 
-      @if (!loading() && prices().length === 0) {
+      @if (!loading() && !loadError() && prices().length === 0) {
         <div class="empty-state">
           <i class="pi pi-tag empty-state__icon"></i>
           <p class="empty-state__title">No prices set</p>
@@ -170,6 +171,8 @@ type PriceRow = PriceListEntryResponse & {
             [rows]="priceRows()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Prices"
           />
@@ -244,7 +247,7 @@ type PriceRow = PriceListEntryResponse & {
               <p-select
                 inputId="price-branch"
                 formControlName="branchId"
-                [options]="branches()"
+                [options]="selectableBranches()"
                 optionLabel="name"
                 optionValue="id"
                 placeholder="Tenant-wide default"
@@ -282,7 +285,7 @@ type PriceRow = PriceListEntryResponse & {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -353,6 +356,13 @@ type PriceRow = PriceListEntryResponse & {
   ],
 })
 export class PriceListPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('price-list');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly priceListService = inject(AdminPriceListService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
@@ -362,8 +372,12 @@ export class PriceListPage implements OnInit {
   protected readonly prices = signal<PriceListEntryResponse[]>([]);
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly branches = signal<BranchResponse[]>([]);
+  /** Only active, named branches can be picked (DA-19). */
+  protected readonly selectableBranches = computed(() => selectableByName(this.branches()));
   protected readonly searchQuery = signal('');
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
   protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({
@@ -457,14 +471,18 @@ export class PriceListPage implements OnInit {
     });
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.priceListService.listPrices().subscribe({
       next: (prices) => {
         this.prices.set(prices);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

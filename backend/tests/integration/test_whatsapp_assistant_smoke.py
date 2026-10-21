@@ -96,8 +96,11 @@ async def _seed_tenant(engine: AsyncEngine, *, enabled: bool = True) -> _Seed:
             {"t": str(tenant_id), "c": str(customer_id)},
         )
         cylinder_type_id = await scalar(
-            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
-            "VALUES (gen_random_uuid(), :t, '14.2 kg Domestic', 14.2) RETURNING id",
+            # Domestic LPG: HSN 27111900 at 5% GST, so the payment link is
+            # price + GST (prices are GST-exclusive by default).
+            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg, hsn_code, "
+            "gst_rate_percent) VALUES (gen_random_uuid(), :t, '14.2 kg Domestic', 14.2, "
+            "'27111900', 5) RETURNING id",
             t=str(tenant_id),
         )
         await conn.execute(
@@ -456,7 +459,7 @@ async def test_payment_link_goes_through_the_shared_razorpay_use_case(
         {
             "available": True,
             "payment_url": f"https://rzp.io/i/{razorpay.link_id}",
-            "amount": "903.00",
+            "amount": "948.15",
         }
     ]
     assert razorpay.requests[0].customer_phone == seed.customer_phone

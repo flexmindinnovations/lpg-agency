@@ -31,10 +31,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lpg.api.v1.dependencies.admin import (
     get_audit_log_repository,
+    get_audit_trail,
     get_branch_repository,
     get_cylinder_type_repository,
     get_feature_flag_override_repository,
@@ -46,6 +47,7 @@ from lpg.api.v1.dependencies.admin import (
     get_tenant_repository,
     get_warehouse_repository,
 )
+from lpg.api.v1.dependencies.delivery import get_driver_repository, get_vehicle_repository
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
     get_email_sender,
@@ -63,9 +65,11 @@ from lpg.api.v1.dependencies.license import (
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.admin import (
     AdjustCylinderTypeWeightRequest,
+    AgencyBusinessProfileResponse,
     AuditLogEntryResponse,
     AuditLogPageResponse,
     BranchResponse,
+    ClassifyCylinderTypeForGstRequest,
     CreateBranchRequest,
     CreateCylinderTypeRequest,
     CreateWarehouseRequest,
@@ -73,6 +77,7 @@ from lpg.api.v1.schemas.admin import (
     FeatureFlagEnabledResponse,
     FeatureFlagOverrideResponse,
     FeatureFlagSummaryResponse,
+    GstStateResponse,
     InviteStaffUserRequest,
     PriceListEntryResponse,
     PriceListProposalListResponse,
@@ -90,10 +95,12 @@ from lpg.api.v1.schemas.admin import (
     SetFeatureFlagOverrideRequest,
     SetPriceRequest,
     SetTenantConfigurationRequest,
+    SetupProgressResponse,
     SetWarehouseActiveRequest,
     StaffUserResponse,
     TenantConfigurationResponse,
     TenantResponse,
+    UpdateAgencyBusinessProfileRequest,
     UpdateStaffUserPermissionsRequest,
     WarehouseResponse,
 )
@@ -104,9 +111,10 @@ from lpg.api.v1.schemas.license import (
     LinkedDeviceResponse,
 )
 from lpg.application.audit.list_audit_log import ListAuditLogQuery, ListAuditLogUseCase
-from lpg.application.audit.ports import AuditLogRepository
+from lpg.application.audit.ports import AuditLogRepository, AuditTrail
 from lpg.application.common.errors import NotFoundError
 from lpg.application.common.ports import UnitOfWork
+from lpg.application.delivery.ports import DriverRepository, VehicleRepository
 from lpg.application.identity.ports import (
     AuthenticatedPrincipal,
     EmailSender,
@@ -127,6 +135,8 @@ from lpg.application.identity.staff_user import (
     ListPermissionsUseCase,
     ListStaffUsersQuery,
     ListStaffUsersUseCase,
+    ReactivateStaffUserCommand,
+    ReactivateStaffUserUseCase,
     ReassignRoleCommand,
     ReassignRoleUseCase,
     UpdateStaffUserPermissionsCommand,
@@ -172,9 +182,15 @@ from lpg.application.tenant.branch import (
     SetBranchRegionCommand,
     SetBranchRegionUseCase,
 )
+from lpg.application.tenant.business_profile import (
+    UpdateAgencyBusinessProfileCommand,
+    UpdateAgencyBusinessProfileUseCase,
+)
 from lpg.application.tenant.cylinder_type import (
     AdjustCylinderTypeWeightCommand,
     AdjustCylinderTypeWeightUseCase,
+    ClassifyCylinderTypeForGstCommand,
+    ClassifyCylinderTypeForGstUseCase,
     CreateCylinderTypeCommand,
     CreateCylinderTypeUseCase,
     ListCylinderTypesQuery,
@@ -210,6 +226,7 @@ from lpg.application.tenant.price_list_proposal import (
     RejectPriceListProposalUseCase,
 )
 from lpg.application.tenant.rename_tenant import RenameTenantCommand, RenameTenantUseCase
+from lpg.application.tenant.setup_progress import GetSetupProgressQuery, GetSetupProgressUseCase
 from lpg.application.tenant.tenant_configuration import (
     GetEffectiveTenantConfigurationQuery,
     GetEffectiveTenantConfigurationUseCase,
@@ -231,14 +248,45 @@ from lpg.application.tenant.warehouse import (
     SetWarehouseActiveUseCase,
 )
 from lpg.config.settings import Settings, get_settings
+from lpg.domain.common.gst import GST_STATE_CODES
 from lpg.domain.license.license import License
 from lpg.domain.license.linked_device import LinkedDevice
+from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list_proposal import PriceListProposal
+from lpg.domain.tenant.tenant import Tenant
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
 
 # -- Tenant -------------------------------------------------------------------
+
+
+def _tenant_to_response(tenant: Tenant) -> TenantResponse:
+    profile = tenant.business_profile
+    return TenantResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        slug=tenant.slug,
+        status=tenant.status,
+        subscription_plan=tenant.subscription_plan,
+        primary_contact_email=tenant.primary_contact_email,
+        country=tenant.country,
+        business_profile=(
+            AgencyBusinessProfileResponse(
+                legal_name=profile.legal_name,
+                gstin=profile.gstin,
+                address_line_1=profile.address_line_1,
+                address_line_2=profile.address_line_2,
+                city=profile.city,
+                state_code=profile.state_code,
+                state_name=profile.state_name,
+                pincode=profile.pincode,
+                phone=profile.phone,
+            )
+            if profile is not None
+            else None
+        ),
+    )
 
 
 @router.get("/tenant", response_model=TenantResponse, summary="The current tenant")
@@ -250,15 +298,7 @@ async def get_tenant(
     if tenant is None:
         msg = f"No tenant visible with id {principal.tenant_id}."
         raise NotFoundError(msg, tenant_id=str(principal.tenant_id))
-    return TenantResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        slug=tenant.slug,
-        status=tenant.status,
-        subscription_plan=tenant.subscription_plan,
-        primary_contact_email=tenant.primary_contact_email,
-        country=tenant.country,
-    )
+    return _tenant_to_response(tenant)
 
 
 @router.patch("/tenant/rename", response_model=TenantResponse, summary="Rename the current tenant")
@@ -272,15 +312,86 @@ async def rename_tenant(
     await use_case.execute(RenameTenantCommand(tenant_id=principal.tenant_id, new_name=body.name))
     tenant = await repository.get(principal.tenant_id)
     assert tenant is not None
-    return TenantResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        slug=tenant.slug,
-        status=tenant.status,
-        subscription_plan=tenant.subscription_plan,
-        primary_contact_email=tenant.primary_contact_email,
-        country=tenant.country,
+    return _tenant_to_response(tenant)
+
+
+@router.put(
+    "/tenant/business-profile",
+    response_model=TenantResponse,
+    summary="Set the agency's GST business profile (legal name, address, GSTIN)",
+)
+async def update_business_profile(
+    body: UpdateAgencyBusinessProfileRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> TenantResponse:
+    """What every tax invoice prints as the supplier (CGST Rules, rule 46).
+    `state_code` also decides CGST+SGST versus IGST. The GSTIN is validated
+    (format, state code, check digit) and must belong to the same state.
+    """
+    use_case = UpdateAgencyBusinessProfileUseCase(repository, unit_of_work)
+    tenant = await use_case.execute(
+        UpdateAgencyBusinessProfileCommand(
+            tenant_id=principal.tenant_id,
+            legal_name=body.legal_name,
+            gstin=body.gstin,
+            address_line_1=body.address_line_1,
+            address_line_2=body.address_line_2,
+            city=body.city,
+            state_code=body.state_code,
+            pincode=body.pincode,
+            phone=body.phone,
+        )
     )
+    return _tenant_to_response(tenant)
+
+
+@router.get(
+    "/gst-states",
+    response_model=list[GstStateResponse],
+    summary="GST state and union-territory codes",
+)
+async def list_gst_states(
+    _principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+) -> list[GstStateResponse]:
+    return [GstStateResponse(code=code, name=name) for code, name in GST_STATE_CODES.items()]
+
+
+# -- Setup checklist ----------------------------------------------------------------
+
+
+@router.get(
+    "/setup-progress",
+    response_model=SetupProgressResponse,
+    summary="New-agency setup checklist",
+    description="Whether the agency has a branch, warehouse, cylinder types, prices, a GST "
+    "rate, staff, drivers and vehicles - for the checklist on Home (DA-32).",
+)
+async def get_setup_progress(
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    branches: Annotated[BranchRepository, Depends(get_branch_repository)],
+    warehouses: Annotated[WarehouseRepository, Depends(get_warehouse_repository)],
+    cylinder_types: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    prices: Annotated[PriceListRepository, Depends(get_price_list_repository)],
+    configuration: Annotated[
+        TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
+    ],
+    staff: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    drivers: Annotated[DriverRepository, Depends(get_driver_repository)],
+    vehicles: Annotated[VehicleRepository, Depends(get_vehicle_repository)],
+) -> SetupProgressResponse:
+    progress = await GetSetupProgressUseCase(
+        branches=branches,
+        warehouses=warehouses,
+        cylinder_types=cylinder_types,
+        prices=prices,
+        configuration=configuration,
+        staff=staff,
+        drivers=drivers,
+        vehicles=vehicles,
+    ).execute(GetSetupProgressQuery(tenant_id=principal.tenant_id))
+    return SetupProgressResponse(steps=progress.done, complete=progress.complete)
 
 
 # -- Branches -------------------------------------------------------------------
@@ -453,6 +564,17 @@ async def set_warehouse_active(
 # -- Cylinder Types -------------------------------------------------------------
 
 
+def _cylinder_type_to_response(cylinder_type: CylinderType) -> CylinderTypeResponse:
+    return CylinderTypeResponse(
+        id=str(cylinder_type.id),
+        name=cylinder_type.name,
+        weight_kg=cylinder_type.weight_kg,
+        is_active=cylinder_type.is_active,
+        hsn_code=cylinder_type.hsn_code,
+        gst_rate_percent=cylinder_type.gst_rate_percent,
+    )
+
+
 @router.get(
     "/cylinder-types", response_model=list[CylinderTypeResponse], summary="List cylinder types"
 )
@@ -462,12 +584,7 @@ async def list_cylinder_types(
 ) -> list[CylinderTypeResponse]:
     use_case = ListCylinderTypesUseCase(repository)
     cylinder_types = await use_case.execute(ListCylinderTypesQuery(tenant_id=principal.tenant_id))
-    return [
-        CylinderTypeResponse(
-            id=str(c.id), name=c.name, weight_kg=c.weight_kg, is_active=c.is_active
-        )
-        for c in cylinder_types
-    ]
+    return [_cylinder_type_to_response(c) for c in cylinder_types]
 
 
 @router.post(
@@ -485,15 +602,14 @@ async def create_cylinder_type(
     use_case = CreateCylinderTypeUseCase(repository, unit_of_work)
     cylinder_type = await use_case.execute(
         CreateCylinderTypeCommand(
-            tenant_id=principal.tenant_id, name=body.name, weight_kg=body.weight_kg
+            tenant_id=principal.tenant_id,
+            name=body.name,
+            weight_kg=body.weight_kg,
+            hsn_code=body.hsn_code,
+            gst_rate_percent=body.gst_rate_percent,
         )
     )
-    return CylinderTypeResponse(
-        id=str(cylinder_type.id),
-        name=cylinder_type.name,
-        weight_kg=cylinder_type.weight_kg,
-        is_active=cylinder_type.is_active,
-    )
+    return _cylinder_type_to_response(cylinder_type)
 
 
 @router.patch(
@@ -548,6 +664,33 @@ async def set_cylinder_type_active(
     await use_case.execute(
         SetCylinderTypeActiveCommand(cylinder_type_id=cylinder_type_id, is_active=body.is_active)
     )
+
+
+@router.patch(
+    "/cylinder-types/{cylinder_type_id}/gst",
+    response_model=CylinderTypeResponse,
+    summary="Set a cylinder type's HSN code and GST rate",
+)
+async def classify_cylinder_type_for_gst(
+    cylinder_type_id: uuid.UUID,
+    body: ClassifyCylinderTypeForGstRequest,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> CylinderTypeResponse:
+    """BR-16/BR-31: the rate is the tenant's own configuration (typically
+    5% for domestic LPG, 18% for commercial). Applies to invoices issued
+    from now on; issued invoices keep their rate.
+    """
+    use_case = ClassifyCylinderTypeForGstUseCase(repository, unit_of_work)
+    cylinder_type = await use_case.execute(
+        ClassifyCylinderTypeForGstCommand(
+            cylinder_type_id=cylinder_type_id,
+            hsn_code=body.hsn_code,
+            gst_rate_percent=body.gst_rate_percent,
+        )
+    )
+    return _cylinder_type_to_response(cylinder_type)
 
 
 # -- Tenant Configuration ---------------------------------------------------------
@@ -950,8 +1093,11 @@ async def activate_license(
     token_hasher: Annotated[TokenHasher, Depends(get_token_hasher)],
     status_checker: Annotated[LicenseStatusChecker, Depends(get_license_status_checker)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+    tenant_repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
 ) -> LicenseResponse:
-    use_case = ActivateLicenseUseCase(repository, token_hasher, status_checker, unit_of_work)
+    use_case = ActivateLicenseUseCase(
+        repository, token_hasher, status_checker, unit_of_work, tenant_repository
+    )
     license_ = await use_case.execute(
         ActivateLicenseCommand(tenant_id=principal.tenant_id, presented_key=body.key)
     )
@@ -994,6 +1140,13 @@ async def revoke_linked_device(
 # -- Staff Users ------------------------------------------------------------------
 
 
+def _actor_id(principal: AuthenticatedPrincipal) -> uuid.UUID:
+    """The acting admin's id - every staff-management rule needs it."""
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    return principal.user_id
+
+
 @router.get("/users", response_model=list[StaffUserResponse], summary="List staff users")
 async def list_staff_users(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
@@ -1008,6 +1161,8 @@ async def list_staff_users(
             role=u.role,
             branch_id=str(u.branch_id) if u.branch_id else None,
             is_active=u.is_active,
+            display_name=u.display_name,
+            contact_phone=u.contact_phone,
         )
         for u in users
     ]
@@ -1033,6 +1188,7 @@ async def invite_staff_user(
         token_hasher,
         email_sender,
         reset_token_ttl=timedelta(seconds=settings.password_reset_token_ttl_seconds),
+        link_base=settings.dashboard_url,
     )
     user = await use_case.execute(
         InviteStaffUserCommand(
@@ -1048,31 +1204,70 @@ async def invite_staff_user(
         role=user.role,
         branch_id=str(user.branch_id) if user.branch_id else None,
         is_active=user.is_active,
+        display_name=user.display_name,
+        contact_phone=user.contact_phone,
     )
 
 
-@router.patch("/users/{user_id}/deactivate", status_code=204, summary="Deactivate a staff user")
+@router.patch(
+    "/users/{user_id}/deactivate",
+    status_code=204,
+    summary="Deactivate a staff user",
+    description=(
+        "Signs the user out everywhere and blocks sign-in until reactivated. "
+        "409 for your own account or the agency's last active agency admin."
+    ),
+)
 async def deactivate_staff_user(
     user_id: uuid.UUID,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     refresh_token_repository: Annotated[
         RefreshTokenRepository, Depends(get_refresh_token_repository)
     ],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = DeactivateStaffUserUseCase(repository, refresh_token_repository)
-    await use_case.execute(DeactivateStaffUserCommand(user_id=user_id))
+    use_case = DeactivateStaffUserUseCase(repository, refresh_token_repository, audit)
+    await use_case.execute(
+        DeactivateStaffUserCommand(user_id=user_id, actor_id=_actor_id(principal))
+    )
 
 
-@router.patch("/users/{user_id}/role", status_code=204, summary="Reassign a staff user's role")
+@router.patch(
+    "/users/{user_id}/reactivate",
+    status_code=204,
+    summary="Reactivate a deactivated staff user",
+)
+async def reactivate_staff_user(
+    user_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
+) -> None:
+    use_case = ReactivateStaffUserUseCase(repository, audit)
+    await use_case.execute(
+        ReactivateStaffUserCommand(user_id=user_id, actor_id=_actor_id(principal))
+    )
+
+
+@router.patch(
+    "/users/{user_id}/role",
+    status_code=204,
+    summary="Reassign a staff user's role",
+    description="Also resets the user's permissions to the new role's defaults.",
+)
 async def reassign_role(
     user_id: uuid.UUID,
     body: ReassignRoleRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
+    permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = ReassignRoleUseCase(repository)
-    await use_case.execute(ReassignRoleCommand(user_id=user_id, new_role=body.new_role))
+    use_case = ReassignRoleUseCase(repository, permission_repository, audit)
+    await use_case.execute(
+        ReassignRoleCommand(user_id=user_id, new_role=body.new_role, actor_id=_actor_id(principal))
+    )
 
 
 @router.get(
@@ -1099,14 +1294,17 @@ async def get_user_permissions(
 async def update_user_permissions(
     user_id: uuid.UUID,
     body: UpdateStaffUserPermissionsRequest,
-    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("users:manage"))],
     staff_repository: Annotated[StaffUserRepository, Depends(get_staff_user_repository)],
     permission_repository: Annotated[PermissionRepository, Depends(get_permission_repository)],
+    audit: Annotated[AuditTrail, Depends(get_audit_trail)],
 ) -> None:
-    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository)
+    use_case = UpdateStaffUserPermissionsUseCase(staff_repository, permission_repository, audit)
     await use_case.execute(
         UpdateStaffUserPermissionsCommand(
-            user_id=user_id, permission_codes=set(body.permission_codes)
+            user_id=user_id,
+            permission_codes=set(body.permission_codes),
+            actor_id=_actor_id(principal),
         )
     )
 
@@ -1128,14 +1326,38 @@ async def list_permissions(
 # -- Audit Log ----------------------------------------------------------------------
 
 
+@router.get(
+    "/audit-log/entity-types",
+    response_model=list[str],
+    summary="Record types that appear in the audit log",
+)
+async def list_audit_log_entity_types(
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("audit:read"))],
+    repository: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> list[str]:
+    """Distinct `entity_name` values for this tenant — feeds the Audit Log's
+    "Record type" filter."""
+    return await repository.list_entity_names(principal.tenant_id)
+
+
 @router.get("/audit-log", response_model=AuditLogPageResponse, summary="View the audit log")
 async def list_audit_log(
     principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("audit:read"))],
     repository: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    entity_name: str | None = None,
+    entity_name: Annotated[str | None, Query(max_length=100)] = None,
     actor_id: uuid.UUID | None = None,
+    action: Annotated[
+        str | None,
+        Query(pattern="^(create|update|delete)$", description="create, update or delete"),
+    ] = None,
+    date_from: Annotated[
+        datetime | None, Query(description="Only entries at or after this instant")
+    ] = None,
+    date_to: Annotated[
+        datetime | None, Query(description="Only entries before this instant")
+    ] = None,
     cursor: str | None = None,
-    limit: int = 50,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> AuditLogPageResponse:
     use_case = ListAuditLogUseCase(repository)
     page = await use_case.execute(
@@ -1143,6 +1365,9 @@ async def list_audit_log(
             tenant_id=principal.tenant_id,
             entity_name=entity_name,
             actor_id=actor_id,
+            action=action,
+            date_from=date_from,
+            date_to=date_to,
             cursor=cursor,
             limit=limit,
         )

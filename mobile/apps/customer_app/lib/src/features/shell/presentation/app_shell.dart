@@ -1,6 +1,7 @@
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:realtime/realtime.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../dashboard/data/notifications_provider.dart';
@@ -31,6 +32,11 @@ class AppShell extends ConsumerWidget {
         // mean the order itself moved: refresh the Home and Orders lists,
         // and the order's own screen if it's open. A delivery also issues
         // (and may settle) the order's invoice.
+        // After a dropped connection any order may have moved meanwhile.
+        if (message['type'] == reconnectedMessageType) {
+          ref.invalidate(ordersProvider);
+          ref.invalidate(invoicesProvider);
+        }
         if (message['reference_type'] == 'order') {
           ref.invalidate(ordersProvider);
           ref.invalidate(invoicesProvider);
@@ -40,34 +46,34 @@ class AppShell extends ConsumerWidget {
       });
     });
 
-    return Scaffold(
+    // Bottom bar on phones; a rail and a width-capped column on tablets
+    // (CA-13).
+    return LpgAdaptiveShell(
       body: navigationShell,
-      bottomNavigationBar: LpgNavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => _onTap(context, index),
-        destinations: const [
-          LpgNavDestination(
-            icon: LpgIcons.home,
-            selectedIcon: LpgIcons.homeFilled,
-            label: 'Home',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.orders,
-            selectedIcon: LpgIcons.ordersFilled,
-            label: 'Orders',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.support,
-            selectedIcon: LpgIcons.supportFilled,
-            label: 'Support',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.profile,
-            selectedIcon: LpgIcons.profileFilled,
-            label: 'Profile',
-          ),
-        ],
-      ),
+      selectedIndex: navigationShell.currentIndex,
+      onDestinationSelected: (index) => _onTap(context, index),
+      destinations: const [
+        LpgNavDestination(
+          icon: LpgIcons.home,
+          selectedIcon: LpgIcons.homeFilled,
+          label: 'Home',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.orders,
+          selectedIcon: LpgIcons.ordersFilled,
+          label: 'Orders',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.support,
+          selectedIcon: LpgIcons.supportFilled,
+          label: 'Support',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.profile,
+          selectedIcon: LpgIcons.profileFilled,
+          label: 'Profile',
+        ),
+      ],
     );
   }
 

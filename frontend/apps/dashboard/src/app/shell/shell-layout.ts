@@ -86,7 +86,7 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
     </lpg-app-shell>
     <lib-notification-drawer [(visible)]="isDrawerVisible" />
     <lpg-command-palette [navItems]="flatNavItems()" />
-    <p-toast position="bottom-right" />
+    <p-toast position="top-center" [preventDuplicates]="true" />
     <p-confirmdialog />
   `,
   styles: [
@@ -104,7 +104,8 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
         padding: 6px var(--spacing-sm);
         border: var(--border-width) solid var(--color-border-default);
         border-radius: var(--radius-input);
-        background: var(--color-surface-overlay);
+        /* Page-ground fill: secondary text on the overlay tint was 4.39:1. */
+        background: var(--color-surface-base);
         color: var(--color-text-secondary);
         font: inherit;
         font-size: var(--typography-secondary-font-size);
@@ -244,6 +245,12 @@ export class ShellLayout {
           icon: 'pi pi-receipt',
           route: '/invoices',
           condition: can('invoices:read'),
+        },
+        {
+          label: 'Cash Handovers',
+          icon: 'pi pi-money-bill',
+          route: '/cash-handovers',
+          condition: can('cash_handovers:review'),
         },
       ]),
       ...buildGroup('Logistics', [

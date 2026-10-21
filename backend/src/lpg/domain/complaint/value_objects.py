@@ -7,7 +7,15 @@ class ComplaintCategory(StrEnum):
     BILLING_DISPUTE = "BillingDispute"
     DRIVER_CONDUCT = "DriverConduct"
     LATE_DELIVERY = "LateDelivery"
+    #: Gas leak, smell of gas, a hissing valve, a fire risk. Always raised at
+    #: Critical priority (the shortest SLA) whatever the customer chose.
+    GAS_LEAK_SAFETY = "GasLeakSafety"
     OTHER = "Other"
+
+
+#: Categories that are safety issues: raised at Critical priority whatever
+#: the caller picked, so they get the shortest SLA.
+SAFETY_CATEGORIES = frozenset({ComplaintCategory.GAS_LEAK_SAFETY})
 
 
 class ComplaintPriority(StrEnum):

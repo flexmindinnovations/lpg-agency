@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/order_tracking_provider.dart';
 import '../data/orders_provider.dart';
 import 'order_presentation.dart';
+import 'widgets/delivery_code_card.dart';
 
 /// A live driver position older than this is shown as paused rather than
 /// current — the Driver App sends a ping roughly every 15s.
@@ -115,29 +116,21 @@ class OrderTrackingScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: LpgSpacing.md),
-                      // Order + tracking reference — tap either to copy.
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _CopyableRef(
-                              label: 'Order',
-                              display: LpgFormat.orderNumber(
-                                order.orderNumber,
-                                order.id,
-                              ),
-                              value: order.orderNumber ?? order.id,
-                            ),
-                          ),
-                          const SizedBox(width: LpgSpacing.sm),
-                          Expanded(
-                            child: _CopyableRef(
-                              label: 'Tracking ID',
-                              display: order.id.substring(0, 8).toUpperCase(),
-                              value: order.id,
-                            ),
-                          ),
-                        ],
+                      // The order number customers quote to the agency —
+                      // tap to copy. (A UUID fragment used to sit next to it
+                      // as a "Tracking ID"; it meant nothing to anyone, CA-16.)
+                      _CopyableRef(
+                        label: 'Order',
+                        display: LpgFormat.orderNumber(
+                          order.orderNumber,
+                          order.id,
+                        ),
+                        value: order.orderNumber ?? order.id,
                       ),
+                      if (order.isTrackable) ...[
+                        const SizedBox(height: LpgSpacing.md),
+                        DeliveryCodeCard(orderId: orderId),
+                      ],
                       if (trackingAsync.value?.driver case final driver?) ...[
                         const SizedBox(height: LpgSpacing.md),
                         _DriverRow(driver: driver),
@@ -591,7 +584,7 @@ class _CopyableRef extends StatelessWidget {
     required this.value,
   });
 
-  /// Caption above the value, e.g. "Order" / "Tracking ID".
+  /// Caption above the value, e.g. "Order".
   final String label;
 
   /// What's shown — may be shortened for display.

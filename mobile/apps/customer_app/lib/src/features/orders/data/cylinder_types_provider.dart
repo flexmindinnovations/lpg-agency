@@ -31,3 +31,16 @@ final orderableCylinderTypesProvider =
         onFailure: (failure) => throw Exception(failure.message),
       );
     });
+
+/// Every cylinder type's display name by id, inactive ones included, so an
+/// old order still names what was booked ("Domestic 14.2kg × 2") rather
+/// than just a quantity (CA-06).
+final cylinderTypeNamesProvider = FutureProvider<Map<String, String>>((
+  ref,
+) async {
+  final result = await ref.watch(cylinderTypeApiProvider).list();
+  return result.when(
+    onSuccess: (types) => {for (final t in types) t.id: t.name},
+    onFailure: (failure) => throw Exception(failure.message),
+  );
+});

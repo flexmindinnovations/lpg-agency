@@ -93,8 +93,8 @@ class TestCustomerRepository:
                     full_name="Alice Smith",
                     phone_number="+1234567890",
                 )
-                customer.add_address("123 Main St")
-                customer.submit_kyc("aadhaar", "REF-A123")
+                customer.add_address("123 Main St", city="Hyderabad", pincode="500016")
+                customer.submit_kyc("aadhaar", "234123412346")
                 await repo.save(customer)
 
         async for verify_session in database.open_session(tenant_id=tenant_id):
@@ -109,7 +109,7 @@ class TestCustomerRepository:
                 assert len(reloaded.kyc_documents) == 1
                 assert reloaded.kyc_documents[0].doc_type == "aadhaar"
                 # Decrypted back to the original plaintext reference.
-                assert reloaded.kyc_documents[0].document_number == "REF-A123"
+                assert reloaded.kyc_documents[0].document_number == "234123412346"
 
     async def test_consumer_number_assigned_on_approval_persists_across_an_update(
         self, database: Database, admin_engine: AsyncEngine, integration_settings: Settings
@@ -182,7 +182,7 @@ class TestCustomerRepository:
                     full_name="Carla Diaz",
                     phone_number="+1234567891",
                 )
-                customer.submit_kyc("aadhaar", "PLAINTEXT-AADHAAR-REF")
+                customer.submit_kyc("aadhaar", "234123412346")
                 await repo.save(customer)
 
         async with admin_engine.begin() as conn:
@@ -213,13 +213,13 @@ class TestCustomerRepository:
                 .all()
             )
 
-        assert raw_reference != "PLAINTEXT-AADHAAR-REF"
-        assert field_encryptor.decrypt(raw_reference) == "PLAINTEXT-AADHAAR-REF"
+        assert raw_reference != "234123412346"
+        assert field_encryptor.decrypt(raw_reference) == "234123412346"
 
         for state in audit_rows:
             if state and "document_number" in state:
-                assert state["document_number"] != "PLAINTEXT-AADHAAR-REF"
-                assert field_encryptor.decrypt(state["document_number"]) == "PLAINTEXT-AADHAAR-REF"
+                assert state["document_number"] != "234123412346"
+                assert field_encryptor.decrypt(state["document_number"]) == "234123412346"
 
     async def test_get_by_lpg_subsidy_id_round_trips(
         self, database: Database, admin_engine: AsyncEngine, integration_settings: Settings
@@ -300,7 +300,7 @@ class TestConsumerNumberSequence:
                     values.append(await sequence.next())
                     await uow.commit()
 
-        assert values == ["CN000001", "CN000002", "CN000003"]
+        assert values == ["CN-000001", "CN-000002", "CN-000003"]
 
     async def test_next_is_independent_per_tenant(
         self, database: Database, admin_engine: AsyncEngine
@@ -323,5 +323,83 @@ class TestConsumerNumberSequence:
                 await uow.commit()
 
         # Each tenant's counter starts fresh at 1, independently of the other.
-        assert first == "CN000001"
-        assert second == "CN000001"
+        assert first == "CN-000001"
+        assert second == "CN-000001"
+
+    async def test_next_never_reuses_a_number_already_issued_in_either_format(
+        self, database: Database, admin_engine: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        # DO-05: customers imported as "CN-000012" (and one issued under the
+        # old unhyphenated "CN000005" format) exist before the counter does.
+        tenant_id = await _seed_tenant(admin_engine)
+        branch_id = await _seed_branch(admin_engine, tenant_id=tenant_id, name="Seeded")
+        context = RequestTenantContext(tenant_id=tenant_id)
+        field_encryptor = FernetFieldEncryptor(integration_settings)
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                imported = (("CN-000012", "+919000000012"), ("CN000005", "+919000000005"))
+                for number, phone in imported:
+                    await repo.save(
+                        Customer(
+                            customer_id=uuid.uuid4(),
+                            tenant_id=tenant_id,
+                            branch_id=branch_id,
+                            consumer_number=number,
+                            full_name=f"Imported {number}",
+                            phone_number=phone,
+                            status="active",
+                        )
+                    )
+                await uow.commit()
+
+        issued = []
+        for _ in range(2):
+            async for session in database.open_session(tenant_id=tenant_id):
+                async with SqlAlchemyUnitOfWork(session, context) as uow:
+                    issued.append(await SqlAlchemyConsumerNumberSequence(uow, tenant_id).next())
+                    await uow.commit()
+        assert issued == ["CN-000013", "CN-000014"]
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                # A manually typed number in the other format is the same number.
+                same = await repo.get_by_consumer_number("cn 000012")
+                assert same is not None
+                assert same.consumer_number == "CN-000012"
+
+
+class TestCustomerSearch:
+    async def test_search_normalizes_whitespace_phone_and_consumer_number(
+        self, database: Database, admin_engine: AsyncEngine, integration_settings: Settings
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        branch_id = await _seed_branch(admin_engine, tenant_id=tenant_id, name="Search")
+        context = RequestTenantContext(tenant_id=tenant_id)
+        field_encryptor = FernetFieldEncryptor(integration_settings)
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                await repo.save(
+                    Customer(
+                        customer_id=uuid.uuid4(),
+                        tenant_id=tenant_id,
+                        branch_id=branch_id,
+                        consumer_number="CN-000003",
+                        full_name="Meena Iyer",
+                        phone_number="+919876543210",
+                        status="active",
+                    )
+                )
+                await uow.commit()
+
+        async for session in database.open_session(tenant_id=tenant_id):
+            async with SqlAlchemyUnitOfWork(session, context) as uow:
+                repo = SqlAlchemyCustomerRepository(uow, field_encryptor)
+                queries = ("Meena  Iyer", "  meena iyer ", "98765 43210", "+91 98765", "cn000003")
+                for query in queries:
+                    found = await repo.list_customers(search=query)
+                    assert [c.full_name for c in found] == ["Meena Iyer"], query
+                    assert await repo.count_customers(search=query) == 1
+                assert await repo.list_customers(search="100%") == []

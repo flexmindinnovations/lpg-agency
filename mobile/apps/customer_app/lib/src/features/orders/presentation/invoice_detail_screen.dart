@@ -98,9 +98,13 @@ class InvoiceDetailScreen extends ConsumerWidget {
                     LpgListTile(
                       leadingIcon: LpgIcons.cylinder,
                       title: cylinderNames[line.cylinderTypeId] ?? 'Cylinder',
-                      subtitle:
-                          'Qty ${line.quantity} × '
-                          '${LpgFormat.currency(line.unitPrice)}',
+                      subtitle: [
+                        'Qty ${line.quantity} × '
+                            '${LpgFormat.currency(line.unitPrice)}',
+                        // GST exactly as the invoice carries it (CA-15).
+                        if (line.taxAmount > 0)
+                          'GST ${LpgFormat.currency(line.taxAmount)}',
+                      ].join('  ·  '),
                       trailing: Text(
                         LpgFormat.currency(line.totalAmount),
                         style: text.titleSmall,
@@ -119,7 +123,7 @@ class InvoiceDetailScreen extends ConsumerWidget {
                     value: LpgFormat.currency(invoice.subtotal),
                   ),
                   LpgKeyValueRow(
-                    label: 'Tax',
+                    label: 'GST',
                     value: LpgFormat.currency(invoice.taxAmount),
                   ),
                   const Padding(

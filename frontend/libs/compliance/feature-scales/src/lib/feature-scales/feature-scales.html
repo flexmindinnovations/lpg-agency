@@ -3,10 +3,7 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Scales</h1>
-        <p class="page-subtitle">
-          Weighing-instrument registry — MDG 2022 cl. 1.2 requires a certified scale of least count
-          ≤10g at every warehouse.
-        </p>
+        <p class="page-subtitle">Certified weighing scales at each godown.</p>
       </div>
     </ng-template>
   </div>
@@ -152,7 +149,6 @@
             formControlName="certificate_expiry_date"
             [showIcon]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -163,9 +159,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
-          Register
-        </button>
+        <button pButton type="submit" [disabled]="loading()">Register</button>
       </div>
     </form>
   </p-drawer>
@@ -282,7 +276,6 @@
             formControlName="certificate_expiry_date"
             [showIcon]="true"
             iconDisplay="input"
-            dateFormat="dd-mm-yy"
             appendTo="body"
             [fluid]="true"
           ></p-datepicker>
@@ -291,9 +284,7 @@
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-        <button pButton type="submit" [disabled]="editForm.invalid || saving()">
-          Save Recalibration
-        </button>
+        <button pButton type="submit" [disabled]="saving()">Save Recalibration</button>
       </div>
     </form>
     } }

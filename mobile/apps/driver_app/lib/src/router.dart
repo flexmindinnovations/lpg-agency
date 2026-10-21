@@ -1,4 +1,5 @@
 import 'package:auth/auth.dart';
+import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -58,7 +59,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => const LpgContentWidth(
+          maxWidth: LpgBreakpoints.formMaxWidth,
+          paintCanvas: true,
+          child: LoginScreen(),
+        ),
+      ),
+      // One-off tasks reached from more than one tab (Today's nudges, the
+      // Deliveries history) sit above the shell and are *pushed*, so Back
+      // returns to wherever the driver came from and no tab keeps them in
+      // its stack. Nested under Deliveries, the cash handover reopened
+      // every time the Deliveries tab was tapped (DR-08).
+      GoRoute(
+        path: '/routes/:routeId/cash-handover',
+        name: 'cashHandover',
+        builder: (context, state) => LpgContentWidth(
+          paintCanvas: true,
+          child: CashHandoverScreen(routeId: state.pathParameters['routeId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/routes/:routeId/load',
+        name: 'vanLoad',
+        builder: (context, state) => LpgContentWidth(
+          paintCanvas: true,
+          child: VanLoadScreen(routeId: state.pathParameters['routeId']!),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -73,11 +99,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // The delivery drill-in (stop detail → record delivery) and the
-          // end-of-route cash reconciliation live under the Deliveries
-          // branch so the bottom bar stays visible; they're reached from the
-          // Today cards and the Alerts inbox with `goNamed` (a cross-branch
-          // navigate), which builds the full `[Deliveries, …]` back stack.
+          // The delivery drill-in (stop detail → record delivery) lives
+          // under the Deliveries branch so the bottom bar stays visible;
+          // it's reached from the Today cards and the Alerts inbox with
+          // `goNamed` (a cross-branch navigate), which builds the full
+          // `[Deliveries, …]` back stack.
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -100,20 +126,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                         ),
                       ),
                     ],
-                  ),
-                  GoRoute(
-                    path: 'routes/:routeId/cash-handover',
-                    name: 'cashHandover',
-                    builder: (context, state) => CashHandoverScreen(
-                      routeId: state.pathParameters['routeId']!,
-                    ),
-                  ),
-                  GoRoute(
-                    path: 'routes/:routeId/load',
-                    name: 'vanLoad',
-                    builder: (context, state) => VanLoadScreen(
-                      routeId: state.pathParameters['routeId']!,
-                    ),
                   ),
                 ],
               ),

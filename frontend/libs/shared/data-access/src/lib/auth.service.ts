@@ -37,6 +37,7 @@ function toAuthPrincipal(response: PrincipalResponse): AuthPrincipal {
     role: response.role,
     permissions: new Set(response.permissions),
     email: response.email ?? null,
+    branchId: response.branch_id ?? null,
   };
 }
 

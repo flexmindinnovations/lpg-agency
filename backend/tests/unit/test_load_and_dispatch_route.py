@@ -54,6 +54,7 @@ def _confirmed_order(quantity: int = 3, cylinder_type_id: uuid.UUID = CYLINDER) 
         delivery_address=DeliveryAddress(address_line="1 Test Street"),
         booking_source="staff",
         requested_date=datetime.now(UTC),
+        order_number="ORD000006",
         lines=[
             OrderLine(
                 line_id=uuid.uuid4(), cylinder_type_id=cylinder_type_id, quantity_ordered=quantity
@@ -170,7 +171,9 @@ class TestLoadAndDispatchRoute:
 
         route = await world.use_case().execute(world.command([order.id]))
 
-        assert _manifest(route) == [(CYLINDER, 1)]
+        # Only 1 was loaded, but the driver checks the whole van: the 2 that
+        # were already on it are part of this trip's manifest (DR-04).
+        assert _manifest(route) == [(CYLINDER, 3)]
         assert world.warehouse.balance_of(CYLINDER, "filled") == 49
         assert order.status == "ready_for_dispatch"
 
@@ -216,10 +219,10 @@ class TestLoadAndDispatchRoute:
         assert early.lines[0].quantity_pending == 0
 
     async def test_top_up_on_a_loaded_trip_adds_to_the_manifest(self) -> None:
-        world = _World(_route(status="loaded"))
+        world = _World(_route(status="loaded"), van_stock=5)
         world.route.record_load_manifest([LoadedLine(cylinder_type_id=CYLINDER, quantity=5)])
         world.route.confirm_load(uuid.uuid4())
-        order = world.add(_confirmed_order(2))
+        order = world.add(_confirmed_order(7))
 
         route = await world.use_case().execute(world.command([order.id]))
 
@@ -228,6 +231,25 @@ class TestLoadAndDispatchRoute:
         # The van changed since the driver checked it.
         assert route.load_confirmed_at is None
         assert order.status == "ready_for_dispatch"
+
+    async def test_a_trip_using_only_van_stock_keeps_the_drivers_confirmation(self) -> None:
+        world = _World(_route(status="loaded"), van_stock=5)
+        world.route.record_load_manifest([LoadedLine(cylinder_type_id=CYLINDER, quantity=5)])
+        world.route.confirm_load(uuid.uuid4())
+        order = world.add(_confirmed_order(2))
+
+        route = await world.use_case().execute(world.command([order.id]))
+
+        assert _manifest(route) == [(CYLINDER, 5)]
+        assert route.load_confirmed_at is not None
+
+    async def test_new_stops_carry_the_order_number(self) -> None:
+        world = _World(_route())
+        order = world.add(_confirmed_order(1))
+
+        route = await world.use_case().execute(world.command([order.id]))
+
+        assert route.stops[0].order_number == "ORD000006"
 
     async def test_short_warehouse_moves_nothing(self) -> None:
         world = _World(_route(), warehouse_stock=1)

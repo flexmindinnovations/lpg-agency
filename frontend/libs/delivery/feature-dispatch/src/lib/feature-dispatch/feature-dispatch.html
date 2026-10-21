@@ -3,9 +3,7 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Dispatch</h1>
-        <p class="page-subtitle">
-          Make a trip for a driver: pick the orders, load the van from the godown, and send it out.
-        </p>
+        <p class="page-subtitle">Plan trips, load vans and send them out.</p>
       </div>
     </ng-template>
   </div>
@@ -38,7 +36,6 @@
           [showIcon]="true"
           [showOnFocus]="false"
           [showButtonBar]="true"
-          dateFormat="yy-mm-dd"
           placeholder="All dates"
           appendTo="body"
           [ngModel]="filterDate()"
@@ -196,7 +193,6 @@
             iconDisplay="input"
             [showIcon]="true"
             [showOnFocus]="false"
-            dateFormat="yy-mm-dd"
             appendTo="body"
             [ngModel]="tripDate()"
             (ngModelChange)="tripDate.set($event ?? tripDate())"
@@ -208,9 +204,12 @@
           <p-select
             inputId="trip_branch"
             name="trip_branch"
+            ariaLabel="Branch"
             [options]="branches()"
             optionLabel="name"
             optionValue="id"
+            placeholder="Select a branch"
+            ariaLabel="Branch"
             [ngModel]="tripBranchId()"
             (ngModelChange)="onTripBranchChange($event)"
             [fluid]="true"
@@ -257,7 +256,8 @@
         </div>
         } @empty {
         <p class="empty-hint trip-orders__empty">
-          No confirmed orders for this branch are waiting for a trip.
+          @if (tripBranchId()) { No confirmed orders for this branch are waiting for a trip. } @else
+          { Choose a branch to see its orders. }
         </p>
         }
       </div>
@@ -271,6 +271,7 @@
           optionLabel="name"
           optionValue="id"
           placeholder="Select a godown"
+          ariaLabel="Load from godown"
           [ngModel]="tripWarehouseId()"
           (ngModelChange)="onTripWarehouseChange($event)"
           [fluid]="true"

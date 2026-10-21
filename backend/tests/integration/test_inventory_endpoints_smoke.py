@@ -340,11 +340,15 @@ class TestInventoryEndpointsThroughRealStack:
         assert record["variance"] == -3
         assert record["approved_by"] is None
 
+        assert record["state"] == "pending"
+
+        # The counter cannot approve their own count (maker-checker); the
+        # full approve/reject flow is in `test_inventory_count_approval.py`.
         approve_response = await client.post(
             f"/api/v1/reconciliation-records/{record['id']}/approve", headers=headers
         )
-        assert approve_response.status_code == 200, approve_response.text
-        assert approve_response.json()["approved_by"] is not None
+        assert approve_response.status_code == 409, approve_response.text
+        assert approve_response.json()["error_code"] == "SELF_APPROVAL_NOT_ALLOWED"
 
         # 10. Transaction history is populated and cursor-paginated.
         transactions_response = await client.get(

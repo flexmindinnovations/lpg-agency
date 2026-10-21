@@ -1,5 +1,5 @@
 import { Injectable, inject, OnDestroy } from '@angular/core';
-import { filter, map, Observable, Subject } from 'rxjs';
+import { filter, map, merge, Observable, Subject } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { AuthTokenStore } from './auth-token.store';
 
@@ -18,6 +18,9 @@ export class WebSocketService implements OnDestroy {
     'connected' | 'disconnected' | 'connecting'
   >();
   private readonly tokenRejectedSubject = new Subject<void>();
+  private readonly reconnectedSubject = new Subject<void>();
+  /** The server has accepted this socket's auth frame at least once. */
+  private hasBeenReady = false;
 
   private activeIntents = new Set<string>();
   private reconnectAttempts = 0;
@@ -33,6 +36,12 @@ export class WebSocketService implements OnDestroy {
    * an idle tab whose socket dropped stayed offline until the next HTTP 401.
    */
   readonly tokenRejected$ = this.tokenRejectedSubject.asObservable();
+  /**
+   * The socket is back after a drop. Messages published while it was down
+   * are gone (Redis Pub/Sub keeps nothing), so screens refetch what they
+   * show — see `changes$`.
+   */
+  readonly reconnected$ = this.reconnectedSubject.asObservable();
 
   connect(token: string): void {
     if (
@@ -45,25 +54,25 @@ export class WebSocketService implements OnDestroy {
 
     this.connectionStateSubject.next('connecting');
     const wsUrl = this.config.rootUrl.replace('http://', 'ws://').replace('https://', 'wss://');
-    const url = `${wsUrl}/api/v1/ws?token=${encodeURIComponent(token)}`;
+    // No credentials in the URL — it would land in access logs (DO-38). The
+    // token goes in the first frame, inside the TLS stream.
+    const socket = new WebSocket(`${wsUrl}/api/v1/ws`);
+    this.socket = socket;
 
-    this.socket = new WebSocket(url);
-
-    this.socket.onopen = () => {
-      this.reconnectAttempts = 0;
-      this.connectionStateSubject.next('connected');
-
-      // Resubscribe to active intents on reconnect
-      if (this.activeIntents.size > 0) {
-        this.send({ subscribe: Array.from(this.activeIntents) });
-      }
+    socket.onopen = () => {
+      socket.send(JSON.stringify({ type: 'auth', token }));
     };
 
-    this.socket.onmessage = (event) => {
+    socket.onmessage = (event) => {
+      if (this.socket !== socket) return;
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'ping') {
           this.send({ type: 'pong' });
+          return;
+        }
+        if (data.type === 'ready') {
+          this.onReady();
           return;
         }
         this.messageSubject.next(data);
@@ -72,7 +81,10 @@ export class WebSocketService implements OnDestroy {
       }
     };
 
-    this.socket.onclose = (event) => {
+    socket.onclose = (event) => {
+      // A socket replaced by `refreshToken()`/`disconnect()` closing late
+      // must not tear down its successor.
+      if (this.socket !== socket) return;
       this.socket = null;
       this.connectionStateSubject.next('disconnected');
 
@@ -90,7 +102,7 @@ export class WebSocketService implements OnDestroy {
       this.scheduleReconnect();
     };
 
-    this.socket.onerror = () => {
+    socket.onerror = () => {
       // Browser handles the actual error logging. onclose will fire next.
     };
   }
@@ -108,8 +120,9 @@ export class WebSocketService implements OnDestroy {
   }
 
   subscribeTo(intent: string): void {
+    if (this.activeIntents.has(intent)) return;
     this.activeIntents.add(intent);
-    if (this.socket?.readyState === WebSocket.OPEN) {
+    if (this.socket?.readyState === WebSocket.OPEN && this.hasBeenReady) {
       this.send({ subscribe: [intent] });
     }
   }
@@ -123,7 +136,7 @@ export class WebSocketService implements OnDestroy {
 
   refreshToken(newToken: string): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.send({ refresh_token: newToken });
+      this.send({ type: 'auth', token: newToken });
     } else {
       // If disconnected, reconnect with new token
       this.disconnect();
@@ -136,6 +149,31 @@ export class WebSocketService implements OnDestroy {
       filter((msg) => msg.type === messageType),
       map((msg) => msg as T),
     );
+  }
+
+  /**
+   * Fires for any of `messageTypes`, and after every reconnect — the one
+   * stream a live screen needs to stay current: reload on it (debounced).
+   */
+  changes$(...messageTypes: string[]): Observable<void> {
+    return merge(
+      this.messages$.pipe(filter((msg) => messageTypes.includes(msg.type))),
+      this.reconnected$,
+    ).pipe(map(() => undefined));
+  }
+
+  /** Authenticated: (re)subscribe, and tell screens if this is a reconnect. */
+  private onReady(): void {
+    this.reconnectAttempts = 0;
+    this.connectionStateSubject.next('connected');
+    // The server forgets a dropped socket's subscriptions.
+    if (this.activeIntents.size > 0) {
+      this.send({ subscribe: Array.from(this.activeIntents) });
+    }
+    if (this.hasBeenReady) {
+      this.reconnectedSubject.next();
+    }
+    this.hasBeenReady = true;
   }
 
   private send(payload: any): void {
@@ -168,5 +206,6 @@ export class WebSocketService implements OnDestroy {
     this.messageSubject.complete();
     this.connectionStateSubject.complete();
     this.tokenRejectedSubject.complete();
+    this.reconnectedSubject.complete();
   }
 }

@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
-import { FeatureCylinderUnits } from './feature-cylinder-units';
+import { FeatureCylinderUnits, testDueLabel } from './feature-cylinder-units';
 import { ApiConfiguration } from '@lpg/shared/data-access';
 import { PERMISSION_CHECKER } from '@lpg/shared/util';
 
@@ -107,5 +107,23 @@ describe('FeatureCylinderUnits', () => {
     component['onDocumentEscape']();
 
     expect(component['showDetailDrawer']()).toBe(false);
+  });
+});
+
+describe('testDueLabel', () => {
+  it('says a never-tested cylinder is due from its manufacture date', () => {
+    expect(testDueLabel('2099-01-15', { test_due_basis: 'manufacture' })).toContain(
+      '(from manufacture date)',
+    );
+  });
+
+  it('flags an overdue test', () => {
+    expect(testDueLabel('2001-01-15', { test_due_basis: 'recorded' })).toContain('overdue');
+  });
+
+  it('asks for a manufacture date when no due date can be worked out', () => {
+    expect(testDueLabel(null, { test_due_basis: 'unknown' })).toBe(
+      'Unknown — add manufacture date',
+    );
   });
 });

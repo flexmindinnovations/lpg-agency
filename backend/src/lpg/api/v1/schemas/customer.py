@@ -13,8 +13,21 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+CustomerType = Literal["domestic", "commercial", "industrial", "government"]
+CustomerStatus = Literal[
+    "onboarding", "pending_approval", "active", "inactive", "blocked", "closed"
+]
+AddressType = Literal["delivery", "billing", "both"]
+KycDocumentType = Literal["aadhaar", "pan", "voter_id", "driving_license", "passport"]
+
+#: Indian PIN code — 6 digits, never starting with 0. The domain re-checks
+#: it (`domain/customer/identifiers.py`); this gives API clients a 422 with
+#: the field named before anything else runs.
+_PINCODE = r"^\s*[1-9]\d{5}\s*$"
 
 
 class CustomerAddressResponse(BaseModel):
@@ -74,6 +87,9 @@ class CustomerResponse(BaseModel):
     kyc_status: str
     status: str
     lpg_subsidy_id: str | None
+    #: GST number of a commercial/industrial/government customer — printed on
+    #: B2B tax invoices. Always `None` for domestic customers.
+    gstin: str | None = None
     addresses: list[CustomerAddressResponse]
 
 
@@ -86,10 +102,11 @@ class RegisterCustomerRequest(BaseModel):
     alternate_mobile: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=200)
     date_of_birth: date | None = None
-    customer_type: str = "domestic"
+    customer_type: CustomerType = "domestic"
     # The nationally-standardized 17-digit LPG ID (subsidy/KYC/bank-linking)
     # — distinct from consumer_number, see `domain/customer/customer.py`.
     lpg_subsidy_id: str | None = Field(default=None, pattern=r"^\d{17}$")
+    gstin: str | None = Field(default=None, max_length=20)
 
     line_1: str | None = None
     line_2: str | None = None
@@ -98,10 +115,10 @@ class RegisterCustomerRequest(BaseModel):
     city: str | None = None
     district: str | None = None
     state: str | None = None
-    pincode: str | None = None
-    address_type: str | None = None
-    latitude: Decimal | None = None
-    longitude: Decimal | None = None
+    pincode: str | None = Field(default=None, pattern=_PINCODE)
+    address_type: AddressType | None = None
+    latitude: Decimal | None = Field(default=None, ge=-90, le=90)
+    longitude: Decimal | None = Field(default=None, ge=-180, le=180)
 
 
 class UpdateCustomerProfileRequest(BaseModel):
@@ -112,9 +129,10 @@ class UpdateCustomerProfileRequest(BaseModel):
     alternate_mobile: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=200)
     date_of_birth: date | None = None
-    customer_type: str
-    status: str
+    customer_type: CustomerType
+    status: CustomerStatus
     lpg_subsidy_id: str | None = Field(default=None, pattern=r"^\d{17}$")
+    gstin: str | None = Field(default=None, max_length=20)
 
 
 class NextConsumerNumberResponse(BaseModel):
@@ -122,36 +140,38 @@ class NextConsumerNumberResponse(BaseModel):
 
 
 class AddCustomerAddressRequest(BaseModel):
-    line_1: str = Field(min_length=1)
-    line_2: str | None = None
-    landmark: str | None = None
-    area: str | None = None
-    city: str | None = None
-    district: str | None = None
-    state: str | None = None
-    pincode: str | None = None
-    address_type: str = "delivery"
-    latitude: Decimal | None = None
-    longitude: Decimal | None = None
+    line_1: str = Field(min_length=1, max_length=500)
+    line_2: str | None = Field(default=None, max_length=500)
+    landmark: str | None = Field(default=None, max_length=200)
+    area: str | None = Field(default=None, max_length=200)
+    city: str = Field(min_length=1, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    state: str | None = Field(default=None, max_length=100)
+    pincode: str = Field(pattern=_PINCODE)
+    address_type: AddressType = "delivery"
+    #: Optional map pin. Both or neither.
+    latitude: Decimal | None = Field(default=None, ge=-90, le=90)
+    longitude: Decimal | None = Field(default=None, ge=-180, le=180)
 
 
 class UpdateCustomerAddressRequest(BaseModel):
-    line_1: str = Field(min_length=1)
-    line_2: str | None = None
-    landmark: str | None = None
-    area: str | None = None
-    city: str | None = None
-    district: str | None = None
-    state: str | None = None
-    pincode: str | None = None
-    address_type: str = "delivery"
-    latitude: Decimal | None = None
-    longitude: Decimal | None = None
+    line_1: str = Field(min_length=1, max_length=500)
+    line_2: str | None = Field(default=None, max_length=500)
+    landmark: str | None = Field(default=None, max_length=200)
+    area: str | None = Field(default=None, max_length=200)
+    city: str = Field(min_length=1, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    state: str | None = Field(default=None, max_length=100)
+    pincode: str = Field(pattern=_PINCODE)
+    address_type: AddressType = "delivery"
+    #: Optional map pin. Both or neither.
+    latitude: Decimal | None = Field(default=None, ge=-90, le=90)
+    longitude: Decimal | None = Field(default=None, ge=-180, le=180)
 
 
 class SubmitKycDocumentRequest(BaseModel):
-    doc_type: str = Field(min_length=1, max_length=50)
-    document_number: str = Field(min_length=1)
+    doc_type: KycDocumentType
+    document_number: str = Field(min_length=1, max_length=30)
     file_url: str | None = None
     issue_date: date | None = None
     expiry_date: date | None = None

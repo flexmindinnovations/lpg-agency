@@ -1,5 +1,14 @@
+import { notBlank } from '@lpg/shared/util';
+import { ConfirmationService } from 'primeng/api';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
@@ -7,7 +16,12 @@ import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { AdminBranchService, NotifyService, type BranchResponse } from '@lpg/shared/data-access';
+import {
+  AdminBranchService,
+  NotifyService,
+  type BranchResponse,
+  errorMessageFor,
+} from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
@@ -76,8 +90,8 @@ class BranchStatusCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openCreateDrawer()">
               <i class="pi pi-plus"></i><span>Add Branch</span>
@@ -86,7 +100,7 @@ class BranchStatusCell {
         </div>
       }
 
-      @if (!loading() && branches().length === 0) {
+      @if (!loading() && !loadError() && branches().length === 0) {
         <div class="empty-state">
           <i class="pi pi-map-marker empty-state__icon"></i>
           <p class="empty-state__title">No branches found</p>
@@ -101,6 +115,8 @@ class BranchStatusCell {
             [rows]="branches()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Branches"
           />
@@ -169,7 +185,7 @@ class BranchStatusCell {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -196,12 +212,22 @@ class BranchStatusCell {
   ],
 })
 export class BranchesPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('branches');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly branchService = inject(AdminBranchService);
   private readonly notify = inject(NotifyService);
+  private readonly confirmation = inject(ConfirmationService);
 
   protected readonly branches = signal<BranchResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   /** Filters `branches()` client-side (the full list is already loaded) via
    *  `lpg-data-grid`'s built-in quick filter — see its own `searchQuery`
    *  input docstring. */
@@ -227,7 +253,7 @@ export class BranchesPage implements OnInit {
   ];
 
   protected readonly form = this.formBuilder.group({
-    name: ['', [Validators.required]],
+    name: ['', [Validators.required, notBlank, Validators.maxLength(200)]],
     region: [''],
   });
 
@@ -235,14 +261,18 @@ export class BranchesPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.branchService.listBranches().subscribe({
       next: (branches) => {
         this.branches.set(branches);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 
@@ -276,7 +306,21 @@ export class BranchesPage implements OnInit {
   }
 
   protected toggleActive(branch: BranchResponse): void {
-    const nextActive = !branch.is_active;
+    if (!branch.is_active) {
+      this.setActive(branch, true);
+      return;
+    }
+    this.confirmation.confirm({
+      header: 'Deactivate branch?',
+      message: `"${branch.name}" will no longer be offered in forms. You can activate it again later.`,
+      acceptLabel: 'Deactivate',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => this.setActive(branch, false),
+    });
+  }
+
+  private setActive(branch: BranchResponse, nextActive: boolean): void {
     this.branchService.setActive(branch.id, nextActive).subscribe({
       next: () => {
         this.notify.success(`"${branch.name}" ${nextActive ? 'activated' : 'deactivated'}.`);

@@ -85,10 +85,12 @@ class DeliveriesScreen extends ConsumerWidget {
                     icon: LpgIcons.history,
                   );
                 }
-                final pendingCashRouteId = ref
-                    .watch(pendingCashHandoverProvider)
-                    .value
-                    ?.routeId;
+                final pendingCashRouteIds = {
+                  for (final view
+                      in ref.watch(pendingCashHandoversProvider).value ??
+                          const <RouteCashHandover>[])
+                    view.routeId,
+                };
                 return Column(
                   children: [
                     for (final (i, r) in routes.indexed)
@@ -100,9 +102,9 @@ class DeliveriesScreen extends ConsumerWidget {
                           ),
                           child: _HistoryRow(
                             route: r,
-                            cashPending: r.id == pendingCashRouteId,
+                            cashPending: pendingCashRouteIds.contains(r.id),
                             onTap: r.status == 'completed'
-                                ? () => context.goNamed(
+                                ? () => context.pushNamed(
                                     'cashHandover',
                                     pathParameters: {'routeId': r.id},
                                   )

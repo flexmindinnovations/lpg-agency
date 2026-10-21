@@ -1,7 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
+import { SKIP_ERROR_TOAST } from './global-error-toast.interceptor';
+import { getStatusTransitionsApiV1InventoryStatusTransitionsGet } from './generated/fn/inventory/get-status-transitions-api-v-1-inventory-status-transitions-get';
+import { getStockRegisterApiV1InventoryLocationsLocationTypeLocationRefIdStockRegisterGet } from './generated/fn/inventory/get-stock-register-api-v-1-inventory-locations-location-type-location-ref-id-stock-register-get';
+import { listReconciliationRecordsApiV1InventoryLocationsLocationTypeLocationRefIdReconciliationRecordsGet } from './generated/fn/inventory/list-reconciliation-records-api-v-1-inventory-locations-location-type-location-ref-id-reconciliation-records-get';
+import { rejectReconciliationRecordApiV1ReconciliationRecordsRecordIdRejectPost } from './generated/fn/inventory/reject-reconciliation-record-api-v-1-reconciliation-records-record-id-reject-post';
+import { returnStockToOmcApiV1WarehousesWarehouseIdOmcReturnsPost } from './generated/fn/inventory/return-stock-to-omc-api-v-1-warehouses-warehouse-id-omc-returns-post';
 
 import { adjustInventoryApiV1InventoryLocationsLocationTypeLocationRefIdAdjustmentsPost } from './generated/fn/inventory/adjust-inventory-api-v-1-inventory-locations-location-type-location-ref-id-adjustments-post';
 import { approveReconciliationRecordApiV1ReconciliationRecordsRecordIdApprovePost } from './generated/fn/inventory/approve-reconciliation-record-api-v-1-reconciliation-records-record-id-approve-post';
@@ -32,6 +38,18 @@ import type { RecordDeliveryRequest } from './generated/models/record-delivery-r
 import type { ReorderPolicyResponse } from './generated/models/reorder-policy-response';
 import type { ReorderSignalResponse } from './generated/models/reorder-signal-response';
 import type { SetReorderPolicyRequest } from './generated/models/set-reorder-policy-request';
+import type { OmcReturnRequest } from './generated/models/omc-return-request';
+import type { OmcReturnResponse } from './generated/models/omc-return-response';
+import type { StatusTransitionsResponse } from './generated/models/status-transitions-response';
+import type { StockRegisterResponse } from './generated/models/stock-register-response';
+
+export type ReconciliationState = 'pending' | 'approved' | 'rejected';
+
+/** Stock mutations are submitted from drawers that show their own error
+ * inline, so they opt out of the app-wide error toast (DA-16). */
+function inlineErrors(): HttpContext {
+  return new HttpContext().set(SKIP_ERROR_TOAST, true);
+}
 
 export type InventoryLocationType = 'warehouse' | 'vehicle';
 
@@ -80,13 +98,19 @@ export class InventoryService {
       this.http,
       this.config.rootUrl,
       { warehouse_id: warehouseId, body: request },
+      inlineErrors(),
     ).pipe(map((res) => res.body));
   }
 
   createLoadTransfer(request: LoadTransferRequest): Observable<LoadTransferResponse> {
-    return createLoadTransferApiV1InventoryLoadTransfersPost(this.http, this.config.rootUrl, {
-      body: request,
-    }).pipe(map((res) => res.body));
+    return createLoadTransferApiV1InventoryLoadTransfersPost(
+      this.http,
+      this.config.rootUrl,
+      {
+        body: request,
+      },
+      inlineErrors(),
+    ).pipe(map((res) => res.body));
   }
 
   // ---------------------------------------------------------------------------
@@ -97,20 +121,30 @@ export class InventoryService {
     vehicleId: string,
     request: RecordDeliveryRequest,
   ): Observable<InventoryBalanceResponse> {
-    return recordDeliveryApiV1VehiclesVehicleIdDeliveriesPost(this.http, this.config.rootUrl, {
-      vehicle_id: vehicleId,
-      body: request,
-    }).pipe(map((res) => res.body));
+    return recordDeliveryApiV1VehiclesVehicleIdDeliveriesPost(
+      this.http,
+      this.config.rootUrl,
+      {
+        vehicle_id: vehicleId,
+        body: request,
+      },
+      inlineErrors(),
+    ).pipe(map((res) => res.body));
   }
 
   recordCollection(
     vehicleId: string,
     request: RecordCollectionRequest,
   ): Observable<InventoryBalanceResponse> {
-    return recordCollectionApiV1VehiclesVehicleIdCollectionsPost(this.http, this.config.rootUrl, {
-      vehicle_id: vehicleId,
-      body: request,
-    }).pipe(map((res) => res.body));
+    return recordCollectionApiV1VehiclesVehicleIdCollectionsPost(
+      this.http,
+      this.config.rootUrl,
+      {
+        vehicle_id: vehicleId,
+        body: request,
+      },
+      inlineErrors(),
+    ).pipe(map((res) => res.body));
   }
 
   // ---------------------------------------------------------------------------
@@ -126,6 +160,7 @@ export class InventoryService {
       this.http,
       this.config.rootUrl,
       { location_type: locationType, location_ref_id: locationRefId, body: request },
+      inlineErrors(),
     ).pipe(map((res) => res.body));
   }
 
@@ -138,6 +173,7 @@ export class InventoryService {
       this.http,
       this.config.rootUrl,
       { location_type: locationType, location_ref_id: locationRefId, body: request },
+      inlineErrors(),
     ).pipe(map((res) => res.body));
   }
 
@@ -154,6 +190,7 @@ export class InventoryService {
       this.http,
       this.config.rootUrl,
       { location_type: locationType, location_ref_id: locationRefId, body: request },
+      inlineErrors(),
     ).pipe(map((res) => res.body));
   }
 
@@ -162,6 +199,77 @@ export class InventoryService {
       this.http,
       this.config.rootUrl,
       { record_id: recordId },
+      inlineErrors(),
+    ).pipe(map((res) => res.body));
+  }
+
+  rejectReconciliationRecord(
+    recordId: string,
+    reason: string,
+  ): Observable<ReconciliationRecordResponse> {
+    return rejectReconciliationRecordApiV1ReconciliationRecordsRecordIdRejectPost(
+      this.http,
+      this.config.rootUrl,
+      { record_id: recordId, body: { reason } },
+      inlineErrors(),
+    ).pipe(map((res) => res.body));
+  }
+
+  listReconciliationRecords(
+    locationType: InventoryLocationType,
+    locationRefId: string,
+    state?: ReconciliationState,
+    limit = 50,
+  ): Observable<ReconciliationRecordResponse[]> {
+    return listReconciliationRecordsApiV1InventoryLocationsLocationTypeLocationRefIdReconciliationRecordsGet(
+      this.http,
+      this.config.rootUrl,
+      { location_type: locationType, location_ref_id: locationRefId, state, limit },
+    ).pipe(map((res) => res.body.items));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Empties return to the OMC (warehouse-only)
+  // ---------------------------------------------------------------------------
+
+  returnStockToOmc(warehouseId: string, request: OmcReturnRequest): Observable<OmcReturnResponse> {
+    return returnStockToOmcApiV1WarehousesWarehouseIdOmcReturnsPost(
+      this.http,
+      this.config.rootUrl,
+      { warehouse_id: warehouseId, body: request },
+      inlineErrors(),
+    ).pipe(map((res) => res.body));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Allowed status moves / stock register
+  // ---------------------------------------------------------------------------
+
+  /** The status moves the domain allows — the same rule the API enforces. */
+  getStatusTransitions(): Observable<StatusTransitionsResponse> {
+    return getStatusTransitionsApiV1InventoryStatusTransitionsGet(
+      this.http,
+      this.config.rootUrl,
+    ).pipe(map((res) => res.body));
+  }
+
+  /** Opening / receipts / issues / closing per cylinder type and status per
+   * business day (IST), at most 92 days. Dates are `yyyy-mm-dd`. */
+  getStockRegister(
+    locationType: InventoryLocationType,
+    locationRefId: string,
+    dateFrom: string,
+    dateTo: string,
+  ): Observable<StockRegisterResponse> {
+    return getStockRegisterApiV1InventoryLocationsLocationTypeLocationRefIdStockRegisterGet(
+      this.http,
+      this.config.rootUrl,
+      {
+        location_type: locationType,
+        location_ref_id: locationRefId,
+        date_from: dateFrom,
+        date_to: dateTo,
+      },
     ).pipe(map((res) => res.body));
   }
 

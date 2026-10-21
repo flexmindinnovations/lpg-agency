@@ -62,8 +62,27 @@ class LpgDropdownField<T> extends StatelessWidget {
             ),
           ),
         ...items.entries.map(
-          (e) => DropdownMenuItem<T>(value: e.key, child: Text(e.value)),
+          (e) => DropdownMenuItem<T>(
+            value: e.key,
+            child: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
         ),
+      ],
+      // The closed field shows one line that ends in an ellipsis, so a long
+      // address never looks cut off mid-word (CA-14); the open menu above
+      // allows two lines so the options stay distinguishable.
+      selectedItemBuilder: (context) => [
+        if (placeholder != null)
+          Text(
+            placeholder!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.lpgText.bodyLarge?.copyWith(
+              color: colors.textDisabled,
+            ),
+          ),
+        for (final label in items.values)
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ],
       onChanged: onChanged,
     );
@@ -73,8 +92,11 @@ class LpgDropdownField<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        LpgFieldLabel(label!, isRequired: isRequired),
-        field,
+        ExcludeSemantics(child: LpgFieldLabel(label!, isRequired: isRequired)),
+        Semantics(
+          label: isRequired ? '${label!}, required' : label,
+          child: field,
+        ),
       ],
     );
   }

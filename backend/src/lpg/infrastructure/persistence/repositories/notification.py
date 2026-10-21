@@ -307,3 +307,80 @@ class SqlAlchemyDeviceTokenRepository:
             )
             for row in result.mappings()
         ]
+
+
+class SqlAlchemyNotificationRecipientRepository:
+    """Who should hear about an event — read straight off
+    `identity.identity_user` and the per-user permission set, so a tenant's
+    own permission edits decide who gets which alert (RBAC), and a user
+    pinned to a branch only hears about that branch.
+
+    Runs on a tenant-scoped (RLS) session; the explicit `tenant_id` filter
+    is defence in depth, not the isolation boundary.
+    """
+
+    #: Staff alerts never go to the mobile-app roles, even where a role
+    #: shares a permission (drivers hold `orders:dispatch`, customers hold
+    #: `complaints.manage` for their own complaints).
+    _NON_STAFF_ROLES = ("customer", "driver")
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def staff_with_permission(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        permission_code: str,
+        branch_id: uuid.UUID | None,
+    ) -> list[uuid.UUID]:
+        """Active staff holding `permission_code`. With a `branch_id`, only
+        tenant-wide staff (no branch) and staff of that branch."""
+        from sqlalchemy import text
+
+        stmt = text("""
+            SELECT DISTINCT u.id
+            FROM identity.identity_user u
+            JOIN identity.identity_user_permission up ON up.user_id = u.id
+            JOIN identity.permission p ON p.id = up.permission_id
+            WHERE u.tenant_id = :tenant_id
+              AND p.code = :permission_code
+              AND u.is_active = true
+              AND u.is_deleted = false
+              AND u.role <> ALL(:non_staff_roles)
+              AND (CAST(:branch_id AS uuid) IS NULL
+                   OR u.branch_id IS NULL
+                   OR u.branch_id = CAST(:branch_id AS uuid))
+            ORDER BY u.id
+        """)
+        result = await self._session.execute(
+            stmt,
+            {
+                "tenant_id": tenant_id,
+                "permission_code": permission_code,
+                "non_staff_roles": list(self._NON_STAFF_ROLES),
+                "branch_id": str(branch_id) if branch_id is not None else None,
+            },
+        )
+        return [row[0] for row in result]
+
+    async def is_active_staff(self, *, tenant_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Whether `user_id` is an active staff member of this tenant — a
+        complaint can be assigned to any id the client sends."""
+        from sqlalchemy import text
+
+        stmt = text("""
+            SELECT 1 FROM identity.identity_user u
+            WHERE u.id = :user_id AND u.tenant_id = :tenant_id
+              AND u.is_active = true AND u.is_deleted = false
+              AND u.role <> ALL(:non_staff_roles)
+        """)
+        result = await self._session.execute(
+            stmt,
+            {
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+                "non_staff_roles": list(self._NON_STAFF_ROLES),
+            },
+        )
+        return result.first() is not None

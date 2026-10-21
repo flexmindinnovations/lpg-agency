@@ -34,3 +34,12 @@ errorlog = "-"  # stderr
 
 print(f"Starting Gunicorn with {workers} workers.")
 print(f"Worker connections: {worker_connections}")
+
+
+def post_worker_init(worker):  # noqa: ARG001 - gunicorn hook signature
+    """Never let a token in a URL reach the access log (DO-38): the app's
+    own `configure_logging` installs the same filter, this covers lines
+    gunicorn/uvicorn log before the app has started."""
+    from lpg.config.logging import install_query_secret_redaction
+
+    install_query_secret_redaction()

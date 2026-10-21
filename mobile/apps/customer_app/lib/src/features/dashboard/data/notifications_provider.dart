@@ -1,6 +1,7 @@
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:realtime/realtime.dart';
 
 import '../../../auth_provider.dart';
 import '../../../providers.dart';
@@ -38,14 +39,15 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
   return 0;
 });
 
-/// Live `notification.new` events for the signed-in user, over the
-/// backend's `/ws` (`RealtimeClient.subscribeToNotifications`). The message
-/// carries the notification's id, title, body and `reference_type`/
-/// `reference_id` (`realtime_handlers.py`'s `on_notification_created`);
-/// callers still refetch [notificationsProvider]/
-/// [unreadNotificationCountProvider] for the list itself.
+/// Live inbox changes for the signed-in user over the backend's `/ws`
+/// (`RealtimeClient.subscribeToNotificationChanges`): `notification.new`
+/// (carrying id, title, body and `reference_type`/`reference_id`), reads
+/// made on another device (`notification.read`/`notification.read_all`),
+/// and a synthetic [reconnectedMessageType] after a dropped connection.
+/// Listeners refetch [notificationsProvider]/[unreadNotificationCountProvider]
+/// on every event.
 final notificationsRealtimeProvider =
     StreamProvider.autoDispose<Map<String, dynamic>>((ref) {
       final client = ref.watch(realtimeClientProvider);
-      return client.subscribeToNotifications();
+      return client.subscribeToNotificationChanges();
     });

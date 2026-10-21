@@ -56,3 +56,10 @@
   font-size: var(--typography-body-small-font-size);
   color: var(--color-text-primary);
 }
+
+.detail-value--with-tag {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}

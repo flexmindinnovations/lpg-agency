@@ -86,6 +86,8 @@ class IdentityUserModel(Base):
     is_active: Mapped[bool] = mapped_column(Boolean(), server_default=text("true"))
     failed_login_count: Mapped[int] = mapped_column(Integer(), server_default=text("0"))
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    display_name: Mapped[str | None] = mapped_column(String(120))
+    contact_phone: Mapped[str | None] = mapped_column(String(20))
     sso_subject: Mapped[str | None] = mapped_column(String(200))
     sso_provider: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(

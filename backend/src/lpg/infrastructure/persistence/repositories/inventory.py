@@ -18,6 +18,8 @@ from lpg.application.inventory.ports import (
     GoodsReceiptNoteEntry,
     InventoryTransactionEntry,
     InventoryTransactionPage,
+    LedgerMovement,
+    OmcReturnNoteEntry,
     ReconciliationRecordEntry,
     ReorderPolicy,
     ReorderSignal,
@@ -28,14 +30,20 @@ from lpg.infrastructure.persistence.models.inventory import (
     InventoryBalanceModel,
     InventoryLocationModel,
     InventoryTransactionModel,
+    OmcReturnNoteModel,
     ReconciliationRecordModel,
     ReorderPolicyModel,
 )
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 _CURSOR_SEPARATOR = "|"
+
+#: Indian distributors close their stock register on the IST calendar day.
+BUSINESS_TIMEZONE = "Asia/Kolkata"
 
 
 def _encode_cursor(performed_at: datetime, entry_id: uuid.UUID) -> str:
@@ -261,6 +269,40 @@ class SqlAlchemyInventoryLocationRepository:
             next_cursor=next_cursor,
         )
 
+    async def list_movements_since(
+        self, location_id: uuid.UUID, since: date
+    ) -> list[LedgerMovement]:
+        business_date = func.date(
+            func.timezone(BUSINESS_TIMEZONE, InventoryTransactionModel.performed_at)
+        ).label("business_date")
+        stmt = (
+            select(
+                business_date,
+                InventoryTransactionModel.cylinder_type_id,
+                InventoryTransactionModel.transaction_type,
+                InventoryTransactionModel.from_status,
+                InventoryTransactionModel.to_status,
+                InventoryTransactionModel.quantity,
+            )
+            .where(
+                InventoryTransactionModel.inventory_location_id == location_id,
+                business_date >= since,
+            )
+            .order_by(InventoryTransactionModel.performed_at, InventoryTransactionModel.id)
+        )
+        rows = (await self._uow.session.execute(stmt)).all()
+        return [
+            LedgerMovement(
+                business_date=row.business_date,
+                cylinder_type_id=row.cylinder_type_id,
+                transaction_type=row.transaction_type,
+                from_status=row.from_status,
+                to_status=row.to_status,
+                quantity=row.quantity,
+            )
+            for row in rows
+        ]
+
     async def get_balance_summary(self) -> dict[str, int]:
         stmt = (
             select(InventoryBalanceModel.status, func.sum(InventoryBalanceModel.quantity))
@@ -306,6 +348,9 @@ class SqlAlchemyGoodsReceiptNoteRepository:
         source_omc: str | None,
         received_by: uuid.UUID,
         grn_number: str,
+        challan_number: str | None = None,
+        invoice_number: str | None = None,
+        truck_number: str | None = None,
     ) -> GoodsReceiptNoteEntry:
         row = GoodsReceiptNoteModel(
             id=grn_id,
@@ -315,6 +360,9 @@ class SqlAlchemyGoodsReceiptNoteRepository:
             cylinder_type_id=cylinder_type_id,
             quantity_received=quantity_received,
             source_omc=source_omc,
+            challan_number=challan_number,
+            invoice_number=invoice_number,
+            truck_number=truck_number,
             received_by=received_by,
         )
         self._uow.session.add(row)
@@ -329,6 +377,64 @@ class SqlAlchemyGoodsReceiptNoteRepository:
             received_by=row.received_by,
             received_at=row.received_at,
             grn_number=row.grn_number,
+            challan_number=row.challan_number,
+            invoice_number=row.invoice_number,
+            truck_number=row.truck_number,
+        )
+
+
+class SqlAlchemyOmcReturnNoteRepository:
+    def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
+        self._uow = unit_of_work
+
+    def next_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    async def create(
+        self,
+        *,
+        note_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        return_number: str,
+        warehouse_id: uuid.UUID,
+        cylinder_type_id: uuid.UUID,
+        status: str,
+        quantity: int,
+        destination_omc: str,
+        challan_number: str | None,
+        truck_number: str | None,
+        dispatched_by: uuid.UUID,
+    ) -> OmcReturnNoteEntry:
+        row = OmcReturnNoteModel(
+            id=note_id,
+            tenant_id=tenant_id,
+            return_number=return_number,
+            warehouse_id=warehouse_id,
+            cylinder_type_id=cylinder_type_id,
+            status=status,
+            quantity=quantity,
+            destination_omc=destination_omc,
+            challan_number=challan_number,
+            truck_number=truck_number,
+            dispatched_by=dispatched_by,
+            created_by=dispatched_by,
+        )
+        self._uow.session.add(row)
+        await self._uow.session.flush()
+        await self._uow.session.refresh(row)
+        return OmcReturnNoteEntry(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            return_number=row.return_number,
+            warehouse_id=row.warehouse_id,
+            cylinder_type_id=row.cylinder_type_id,
+            status=row.status,
+            quantity=row.quantity,
+            destination_omc=row.destination_omc,
+            challan_number=row.challan_number,
+            truck_number=row.truck_number,
+            dispatched_by=row.dispatched_by,
+            dispatched_at=row.dispatched_at,
         )
 
 
@@ -388,21 +494,69 @@ class SqlAlchemyReconciliationRecordRepository:
         row = (await self._uow.session.execute(stmt)).scalars().first()
         return self._to_entry(row) if row is not None else None
 
-    async def approve(
-        self, record_id: uuid.UUID, *, approved_by: uuid.UUID
-    ) -> ReconciliationRecordEntry:
-        stmt = select(ReconciliationRecordModel).where(
-            ReconciliationRecordModel.id == record_id,
-            ReconciliationRecordModel.is_deleted.is_(False),
+    async def get_for_decision(self, record_id: uuid.UUID) -> ReconciliationRecordEntry | None:
+        stmt = (
+            select(ReconciliationRecordModel)
+            .where(
+                ReconciliationRecordModel.id == record_id,
+                ReconciliationRecordModel.is_deleted.is_(False),
+            )
+            .with_for_update()
         )
         row = (await self._uow.session.execute(stmt)).scalars().first()
-        if row is None:
+        return self._to_entry(row) if row is not None else None
+
+    async def list_for_location(
+        self, inventory_location_id: uuid.UUID, *, state: str | None = None, limit: int = 50
+    ) -> list[ReconciliationRecordEntry]:
+        stmt = select(ReconciliationRecordModel).where(
+            ReconciliationRecordModel.inventory_location_id == inventory_location_id,
+            ReconciliationRecordModel.is_deleted.is_(False),
+        )
+        if state == "pending":
+            stmt = stmt.where(
+                ReconciliationRecordModel.approved_at.is_(None),
+                ReconciliationRecordModel.rejected_at.is_(None),
+            )
+        elif state == "approved":
+            stmt = stmt.where(ReconciliationRecordModel.approved_at.is_not(None))
+        elif state == "rejected":
+            stmt = stmt.where(ReconciliationRecordModel.rejected_at.is_not(None))
+        stmt = stmt.order_by(ReconciliationRecordModel.created_at.desc()).limit(limit)
+        rows = (await self._uow.session.execute(stmt)).scalars().all()
+        return [self._to_entry(row) for row in rows]
+
+    async def mark_approved(
+        self, record_id: uuid.UUID, *, approved_by: uuid.UUID
+    ) -> ReconciliationRecordEntry:
+        row = await self._require(record_id)
+        now = datetime.now(UTC)
+        row.approved_by = approved_by
+        row.approved_at = now
+        return await self._finish_update(row, approved_by, now)
+
+    async def mark_rejected(
+        self, record_id: uuid.UUID, *, rejected_by: uuid.UUID, reason: str
+    ) -> ReconciliationRecordEntry:
+        row = await self._require(record_id)
+        now = datetime.now(UTC)
+        row.rejected_by = rejected_by
+        row.rejected_at = now
+        row.rejection_reason = reason
+        return await self._finish_update(row, rejected_by, now)
+
+    async def _require(self, record_id: uuid.UUID) -> ReconciliationRecordModel:
+        row = await self._uow.session.get(ReconciliationRecordModel, record_id)
+        if row is None or row.is_deleted:
             msg = f"Reconciliation record {record_id} not found."
             raise NotFoundError(msg)
+        return row
 
-        row.approved_by = approved_by
-        row.approved_at = datetime.now(UTC)
-        row.updated_at = datetime.now(UTC)
+    async def _finish_update(
+        self, row: ReconciliationRecordModel, actor: uuid.UUID, now: datetime
+    ) -> ReconciliationRecordEntry:
+        row.updated_at = now
+        row.updated_by = actor
         row.version += 1
         await self._uow.session.flush()
         # An UPDATE (unlike the INSERT in create()) doesn't get its
@@ -427,6 +581,10 @@ class SqlAlchemyReconciliationRecordRepository:
             recorded_by=row.recorded_by,
             approved_by=row.approved_by,
             approved_at=row.approved_at,
+            recorded_at=row.created_at,
+            rejected_by=row.rejected_by,
+            rejected_at=row.rejected_at,
+            rejection_reason=row.rejection_reason,
         )
 
 

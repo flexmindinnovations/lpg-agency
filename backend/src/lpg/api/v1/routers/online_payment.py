@@ -7,6 +7,8 @@
 - `POST /online-payments/{id}/refresh` — ask Razorpay for the link's status
   now (the app calls this when the customer returns from the payment page,
   so a missed or not-yet-delivered webhook never leaves an order unpaid).
+- `GET /online-payments/availability` — whether online payment can be
+  offered at all, so the apps hide "Pay Online" instead of failing with 503.
 - `POST /payments/razorpay/webhook` — Razorpay's server-to-server callback.
   Unauthenticated by design; trusted only after its HMAC signature verifies.
 """
@@ -20,7 +22,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from lpg.api.v1.dependencies.accounting import get_invoice_repository
-from lpg.api.v1.dependencies.admin import get_tenant_configuration_repository
+from lpg.api.v1.dependencies.admin import (
+    get_cylinder_type_repository,
+    get_tenant_configuration_repository,
+)
 from lpg.api.v1.dependencies.customer import get_customer_repository
 from lpg.api.v1.dependencies.identity import get_current_principal, require_permission
 from lpg.api.v1.dependencies.order import get_order_repository
@@ -32,6 +37,7 @@ from lpg.api.v1.dependencies.payments import (
 )
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.online_payment import (
+    OnlinePaymentAvailabilityResponse,
     OnlinePaymentListResponse,
     OnlinePaymentResponse,
     WebhookAck,
@@ -55,7 +61,7 @@ from lpg.application.common.ports import UnitOfWork
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.application.order.ports import OrderRepository
-from lpg.application.tenant.ports import TenantConfigurationRepository
+from lpg.application.tenant.ports import CylinderTypeRepository, TenantConfigurationRepository
 from lpg.config.logging import get_logger
 from lpg.config.settings import get_settings
 from lpg.domain.accounting.online_payment import OnlinePayment
@@ -128,6 +134,9 @@ async def create_payment_link(
     tenant_config_repository: Annotated[
         TenantConfigurationRepository, Depends(get_tenant_configuration_repository)
     ],
+    cylinder_type_repository: Annotated[
+        CylinderTypeRepository, Depends(get_cylinder_type_repository)
+    ],
     gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> OnlinePaymentResponse:
@@ -143,6 +152,7 @@ async def create_payment_link(
         online_payment_repository=online_payment_repository,
         customer_repository=customer_repository,
         tenant_config_repository=tenant_config_repository,
+        cylinder_type_repository=cylinder_type_repository,
         gateway=gateway,
         unit_of_work=unit_of_work,
         link_ttl=timedelta(minutes=get_settings().payment_link_ttl_minutes),
@@ -156,6 +166,21 @@ async def create_payment_link(
         )
     )
     return _to_response(payment)
+
+
+@router.get(
+    "/online-payments/availability",
+    response_model=OnlinePaymentAvailabilityResponse,
+    dependencies=[Depends(require_permission("orders:read"))],
+    summary="Whether online payment can be offered in this environment",
+)
+async def get_online_payment_availability(
+    gateway: Annotated[PaymentGateway, Depends(get_payment_gateway)],
+) -> OnlinePaymentAvailabilityResponse:
+    """`available` is false when no payment gateway is configured; creating a
+    payment link would then fail with 503, so the apps don't offer it.
+    """
+    return OnlinePaymentAvailabilityResponse(available=gateway.is_configured)
 
 
 @router.get(

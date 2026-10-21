@@ -119,6 +119,7 @@ def get_optimize_route_sequence_use_case(
 
 def get_load_vehicle_for_route_use_case(
     route_repository: Annotated[RouteRepository, Depends(get_route_repository)],
+    order_repository: Annotated[OrderRepository, Depends(get_order_repository)],
     inventory_location_repository: Annotated[
         InventoryLocationRepository, Depends(get_inventory_location_repository)
     ],
@@ -142,6 +143,7 @@ def get_load_vehicle_for_route_use_case(
         unit_of_work,
         weighment_record_repository,
         tenant_config_repository,
+        order_repository,
     )
 
 

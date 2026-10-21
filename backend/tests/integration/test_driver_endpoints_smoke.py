@@ -268,6 +268,9 @@ class TestDriverEndpointsThroughRealStack:
         )
         assert get_response.status_code == 200, get_response.text
         assert get_response.json()["license_number"] == "DL-12345-MH"
+        # DO-34 — the detail drawer shows who the driver is, from the employee.
+        assert get_response.json()["name"] == "Test Driver"
+        assert get_response.json()["phone_number"] == "1234567890"
 
         # 3. Update Driver Status
         patch_response = await real_lifespan_client.patch(
@@ -282,6 +285,8 @@ class TestDriverEndpointsThroughRealStack:
         list_response = await real_lifespan_client.get("/api/v1/drivers", headers=headers)
         assert list_response.status_code == 200, list_response.text
         assert list_response.json()["total"] >= 1
+        listed = next(d for d in list_response.json()["items"] if d["id"] == driver_id)
+        assert listed["name"] == "Test Driver"
 
     async def test_vehicle_lifecycle_smoke(
         self,

@@ -3,26 +3,93 @@
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Notifications</h1>
-        <p class="page-subtitle">View and manage your recent notifications.</p>
+        <p class="page-subtitle">
+          New orders, approvals, complaints, failed deliveries and payments — newest first.
+        </p>
       </div>
     </ng-template>
   </div>
 
   <div class="data-toolbar">
-    <div class="data-toolbar__filters"></div>
+    <div class="data-toolbar__filters">
+      <p-selectbutton
+        [options]="filterOptions"
+        [ngModel]="filter()"
+        (ngModelChange)="setFilter($event)"
+        optionLabel="label"
+        optionValue="value"
+        [allowEmpty]="false"
+        ariaLabel="Show"
+      />
+    </div>
     <div class="data-toolbar__actions">
-      <button pButton severity="secondary" (click)="markAllAsRead()">
-        <i class="pi pi-check-circle"></i><span>Mark All as Read</span>
+      <button
+        pButton
+        severity="secondary"
+        [disabled]="unreadCount() === 0"
+        (click)="markAllAsRead()"
+      >
+        <i class="pi pi-check-circle"></i><span>Mark all as read</span>
       </button>
     </div>
   </div>
 
-  <section class="grid-section">
-    <lpg-data-grid
-      [rows]="notifications()"
-      [columns]="columns"
-      [loading]="loading()"
-      ariaLabel="Notifications"
+  <section class="inbox" aria-label="Notifications" aria-live="polite">
+    @if (loading() && !loaded()) {
+    <lpg-skeleton variant="text" [lines]="6" />
+    } @else if (groups().length === 0) {
+    <lpg-empty-state
+      icon="pi pi-bell"
+      [title]="filter() === 'unread' ? 'Nothing unread' : 'No notifications yet'"
+      description="Alerts about orders, cancellation requests, complaints, failed deliveries, payments and stock appear here as they happen."
     />
+    } @else { @for (group of groups(); track group.label) {
+    <section class="inbox__day" [attr.aria-label]="group.label">
+      <h2 class="inbox__day-label">{{ group.label }}</h2>
+      <ul class="inbox__list">
+        @for (n of group.items; track n.id) {
+        <li
+          class="inbox__item"
+          [class.inbox__item--unread]="!n.is_read"
+          [class.inbox__item--linked]="hasLink(n)"
+        >
+          <button
+            type="button"
+            class="inbox__open"
+            [attr.aria-label]="(n.is_read ? '' : 'Unread: ') + n.title + '. ' + n.body"
+            (click)="open(n)"
+          >
+            <span class="inbox__title">
+              @if (!n.is_read) {
+              <span class="inbox__dot" aria-hidden="true"></span>
+              } {{ n.title }}
+            </span>
+            <span class="inbox__body">{{ n.body }}</span>
+            <span class="inbox__meta">
+              {{ n.created_at | date: 'shortTime' }} @if (hasLink(n)) {
+              <span class="inbox__open-hint">· Open</span>
+              }
+            </span>
+          </button>
+          @if (!n.is_read) {
+          <button
+            pButton
+            type="button"
+            text
+            rounded
+            severity="secondary"
+            size="small"
+            iconOnly
+            aria-label="Mark as read"
+            (click)="markAsRead(n.id)"
+          >
+            <i class="pi pi-check"></i>
+          </button>
+          }
+        </li>
+        }
+      </ul>
+    </section>
+    } }
   </section>
 </div>

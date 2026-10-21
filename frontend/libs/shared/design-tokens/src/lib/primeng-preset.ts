@@ -293,6 +293,37 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
       secondary: { detailColor: 'var(--color-text-primary)' },
       contrast: { detailColor: 'var(--color-text-primary)' },
     },
+    // Status chips read our own per-theme chip tokens. Aura's defaults are
+    // `light-dark()` pairs, which follow the nearest `color-scheme` — AG Grid
+    // sets `color-scheme: light` on its wrapper, so every chip in a grid kept
+    // its light colours in dark mode (3.65:1, QA DA-22); `info`/`warn` also
+    // came from Aura's own sky/orange ramps, not our status tokens.
+    tag: {
+      primary: {
+        background: 'var(--component-chip-info-background)',
+        color: 'var(--component-chip-info-text)',
+      },
+      secondary: {
+        background: 'var(--component-chip-neutral-background)',
+        color: 'var(--component-chip-neutral-text)',
+      },
+      success: {
+        background: 'var(--component-chip-success-background)',
+        color: 'var(--component-chip-success-text)',
+      },
+      info: {
+        background: 'var(--component-chip-info-background)',
+        color: 'var(--component-chip-info-text)',
+      },
+      warn: {
+        background: 'var(--component-chip-warning-background)',
+        color: 'var(--component-chip-warning-text)',
+      },
+      danger: {
+        background: 'var(--component-chip-danger-background)',
+        color: 'var(--component-chip-danger-text)',
+      },
+    },
     select: {
       option: {
         focusBackground: 'color-mix(in srgb, var(--color-text-primary), transparent 90%)',

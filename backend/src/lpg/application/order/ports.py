@@ -8,12 +8,9 @@ load-and-mutate through `Order` itself — the same reasoning
 ReconciliationRecord, so their repositories are thin insert/get ports
 returning plain read-model dataclasses, not domain objects.
 
-`CylinderCapPolicy`/`CreditLimitEvaluator` are the two BR-04/BR-19 checks
-`ConfirmOrderUseCase` runs before `Order.confirm()` — real ports, but their
-only implementation this phase (`infrastructure/order/policies.py`) is a
-permissive no-op, since both checks genuinely depend on modules that don't
-exist yet (Cylinder Ledger — Phase 12; Accounting — Phase 13). See those
-classes' own docstrings.
+`CylinderCapPolicy`/`CreditLimitEvaluator` are the BR-04/BR-19 checks run
+when an order is booked, edited and confirmed; their implementation is
+`application/order/booking_policies.py`.
 """
 
 from __future__ import annotations
@@ -41,6 +38,29 @@ class CancellationRecordEntry:
     reason: str
     requested_at: datetime
     approved_at: datetime | None
+    rejected_by: uuid.UUID | None = None
+    rejected_at: datetime | None = None
+    rejection_reason: str | None = None
+
+    @property
+    def status(self) -> str:
+        """`pending` until a Manager approves or rejects it (DO-14)."""
+        if self.approved_by is not None:
+            return "approved"
+        if self.rejected_by is not None:
+            return "rejected"
+        return "pending"
+
+
+@dataclass(frozen=True, slots=True)
+class OrderCustomerSummary:
+    """Who an order is for, as the order screens show it (DO-12)."""
+
+    customer_id: uuid.UUID
+    full_name: str
+    phone_number: str
+    consumer_number: str | None
+    customer_type: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +123,7 @@ class OrderRepository(Protocol):
         driver_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        search: str | None = None,
     ) -> list[Order]: ...
 
     async def count_orders(
@@ -113,6 +134,7 @@ class OrderRepository(Protocol):
         driver_id: uuid.UUID | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        search: str | None = None,
     ) -> int: ...
 
     async def list_status_history(self, order_id: uuid.UUID) -> list[OrderStatusHistoryEntry]: ...
@@ -144,14 +166,34 @@ class CancellationRecordRepository(Protocol):
     ) -> CancellationRecordEntry: ...
 
     async def get_pending_by_order_id(self, order_id: uuid.UUID) -> CancellationRecordEntry | None:
-        """The at-most-one row with `approved_by IS NULL` for this order
-        (enforced by a DB partial unique index — see the migration).
+        """The at-most-one row neither approved nor rejected for this order
+        (enforced by a DB partial unique index — see the migrations).
         """
+        ...
+
+    async def get_latest_by_order_id(self, order_id: uuid.UUID) -> CancellationRecordEntry | None:
+        """The most recent request for this order, whatever its outcome."""
+        ...
+
+    async def pending_order_ids(self, order_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        """Which of `order_ids` have a request waiting for a decision."""
         ...
 
     async def approve(
         self, record_id: uuid.UUID, *, approved_by: uuid.UUID, cancellation_charge: Decimal
     ) -> CancellationRecordEntry: ...
+
+    async def reject(
+        self, record_id: uuid.UUID, *, rejected_by: uuid.UUID, reason: str
+    ) -> CancellationRecordEntry: ...
+
+
+class OrderCustomerDirectory(Protocol):
+    async def summaries(
+        self, customer_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, OrderCustomerSummary]:
+        """Name, phone and consumer number for each visible customer."""
+        ...
 
 
 class ProofOfDeliveryRepository(Protocol):
@@ -174,6 +216,8 @@ class ProofOfDeliveryRepository(Protocol):
         dac_code: str | None = None,
     ) -> ProofOfDeliveryEntry: ...
 
+    async def get_by_order_id(self, order_id: uuid.UUID) -> ProofOfDeliveryEntry | None: ...
+
 
 class CylinderCapPolicy(Protocol):
     async def evaluate(
@@ -183,22 +227,38 @@ class CylinderCapPolicy(Protocol):
         customer_id: uuid.UUID,
         customer_type: str,
         requested_lines: Sequence[tuple[uuid.UUID, int]],
+        exclude_order_id: uuid.UUID | None = None,
     ) -> None:
         """Raise `CylinderCapExceededError` if this booking would exceed the
         tenant-configured, customer-type-parameterized cylinder holding cap
-        (BR-04). Depends on Cylinder Ledger (Phase 12, not built) for the
-        customer's current holding count.
+        (BR-04). `exclude_order_id` leaves an existing order's own lines out
+        of the customer's open orders when that order is confirmed or edited.
         """
         ...
 
 
 class CreditLimitEvaluator(Protocol):
     async def evaluate(
-        self, *, tenant_id: uuid.UUID, customer_id: uuid.UUID, order_total: Decimal
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        customer_id: uuid.UUID,
+        customer_type: str,
+        order_total: Decimal,
     ) -> None:
         """Raise `CreditLimitExceededError` if outstanding balance +
-        `order_total` exceeds the tenant-configured credit limit (BR-19).
-        Depends on Accounting (Phase 13, not built) for outstanding balance.
+        `order_total` exceeds the tenant-configured credit limit for the
+        customer's type (BR-19, D-11).
+        """
+        ...
+
+
+class CustomerOpenOrderReader(Protocol):
+    async def open_quantities(
+        self, customer_id: uuid.UUID, *, exclude_order_id: uuid.UUID | None = None
+    ) -> dict[uuid.UUID, int]:
+        """Cylinders per type the customer's open orders (booked up to out for
+        delivery, and failed deliveries awaiting a retry) will still deliver.
         """
         ...
 
@@ -225,4 +285,27 @@ class BranchStockReader(Protocol):
         so confirming an order is not blocked by its own booking. A type
         with no stock may be missing from the result or be zero or less.
         """
+        ...
+
+
+class DeliveryCodeStore(Protocol):
+    """Keeps the plaintext delivery code of an out-for-delivery order so the
+    customer who owns it can read it in their app (the "share this code with
+    the driver" card), alongside the hashed copy `OtpStore` verifies against.
+
+    The SMS alone is not reliable enough to be the only way the customer
+    learns the code: when it is late or never arrives the driver is stuck at
+    the door. Codes are scoped by tenant and order, expire with the same TTL
+    as the verification hash, and are replaced on every resend.
+    """
+
+    async def remember(
+        self, tenant_id: uuid.UUID, order_id: uuid.UUID, code: str, *, ttl_seconds: int
+    ) -> None:
+        """Store `code` as this order's current delivery code for `ttl_seconds`."""
+        ...
+
+    async def recall(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> str | None:
+        """The order's current delivery code, or `None` once it has expired
+        or was never issued."""
         ...

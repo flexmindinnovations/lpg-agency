@@ -36,6 +36,9 @@ class DriverResponse(BaseModel):
     license_expiry_date: date | None
     status: str
     version: int
+    # From the linked employee record; null only if that record is missing.
+    name: str | None = None
+    phone_number: str | None = None
 
 
 class DriverPageResponse(BaseModel):

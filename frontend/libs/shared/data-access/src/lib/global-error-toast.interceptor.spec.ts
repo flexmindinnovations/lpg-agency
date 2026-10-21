@@ -1,10 +1,10 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { authInterceptor } from './auth.interceptor';
-import { globalErrorToastInterceptor } from './global-error-toast.interceptor';
+import { SKIP_ERROR_TOAST, globalErrorToastInterceptor } from './global-error-toast.interceptor';
 import { problemDetailsInterceptor, type ProblemDetails } from './problem-details';
 import { AuthTokenStore } from './auth-token.store';
 import { NotifyService } from './services/notify.service';
@@ -48,6 +48,25 @@ describe('globalErrorToastInterceptor', () => {
       .flush(problem(), { status: 400, statusText: 'Bad Request' });
 
     expect(errorSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not toast a failed mutation whose caller shows the error inline', () => {
+    const errorSpy = jest.spyOn(notifyService, 'error');
+
+    http
+      .post(
+        '/api/v1/warehouses/w1/omc-returns',
+        {},
+        {
+          context: new HttpContext().set(SKIP_ERROR_TOAST, true),
+        },
+      )
+      .subscribe({ error: () => undefined });
+    httpTesting
+      .expectOne('/api/v1/warehouses/w1/omc-returns')
+      .flush(problem(), { status: 409, statusText: 'Conflict' });
+
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('does not toast a failed GET', () => {

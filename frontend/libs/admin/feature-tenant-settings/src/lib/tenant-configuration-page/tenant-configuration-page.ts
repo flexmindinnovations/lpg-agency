@@ -1,5 +1,12 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
@@ -32,10 +39,15 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       'The GST tax rate applied when computing invoice tax at issuance (BR-16). Historized so a past invoice stays reproducible against the rate that was actually in effect when it was issued.',
   },
+  prices_include_gst: {
+    label: 'Prices Include GST',
+    description:
+      'Whether the amounts on the Pricing page already include GST — defaults to off (absent = exclusive): prices are before GST and invoices, payment links and cancellation charges add GST on top. Set to true if your prices already include GST; the invoice then works out the taxable value and CGST/SGST or IGST inside the price, so the customer pays exactly the listed price.',
+  },
   cancellation_fee_amount: {
     label: 'Cancellation Fee Amount',
     description:
-      "Flat fee charged to a customer when an order is cancelled, per the tenant's cancellation policy.",
+      "Flat fee charged to a customer when an order is cancelled, per the tenant's cancellation policy. GST is added on top unless Prices Include GST is on.",
   },
   credit_limit_default: {
     label: 'Default Credit Limit',
@@ -110,6 +122,7 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
 
 const RECOGNIZED_CONFIG_KEYS = [
   'gst_rate_percent',
+  'prices_include_gst',
   'cancellation_fee_amount',
   'credit_limit_default',
   'ai_gateway_enabled',
@@ -211,9 +224,7 @@ class ConfigKeyCell {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Tenant Configuration</h1>
-            <p class="page-subtitle">
-              Manage tenant-wide settings like GST rates and credit limits.
-            </p>
+            <p class="page-subtitle">GST rates, credit limits and other settings.</p>
           </div>
         </ng-template>
       </div>
@@ -245,8 +256,8 @@ class ConfigKeyCell {
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openCreateDrawer()">
               <i class="pi pi-plus"></i><span>Set Value</span>
@@ -342,7 +353,7 @@ class ConfigKeyCell {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -413,6 +424,13 @@ class ConfigKeyCell {
   ],
 })
 export class TenantConfigurationPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('tenant-configuration');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly configService = inject(AdminTenantConfigurationService);
   private readonly notify = inject(NotifyService);

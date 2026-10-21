@@ -168,3 +168,17 @@ class TestProvision:
     def test_rejects_a_bad_country_code(self) -> None:
         with pytest.raises(InvariantViolation):
             self._provision(country="India")
+
+
+class TestApplyLicense:
+    """DA-28: an activated licence decides the agency's status and plan."""
+
+    def test_moves_a_trial_agency_to_active_on_the_licences_plan(self) -> None:
+        tenant = _make_tenant()
+        tenant.apply_license("premium")
+        assert (tenant.status, tenant.subscription_plan) == ("active", "premium")
+
+    def test_never_reopens_a_suspended_agency(self) -> None:
+        tenant = _make_tenant(status="suspended")
+        tenant.apply_license("basic")
+        assert (tenant.status, tenant.subscription_plan) == ("suspended", "basic")

@@ -12,6 +12,7 @@ layer has no config-loading capability, by design.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -72,6 +73,11 @@ VALID_ROLES = frozenset(
 )
 
 
+_MAX_DISPLAY_NAME = 120
+#: Loose on purpose: a contact number is free text people read, not a key.
+_CONTACT_PHONE = re.compile(r"^\+?[0-9][0-9 \-]{5,18}[0-9]$")
+
+
 class IdentityUser(AggregateRoot):
     """A platform principal: Dashboard staff (password) or Customer/Driver (OTP).
 
@@ -84,6 +90,8 @@ class IdentityUser(AggregateRoot):
 
     __slots__ = (
         "_branch_id",
+        "_contact_phone",
+        "_display_name",
         "_email",
         "_failed_login_count",
         "_is_active",
@@ -108,8 +116,12 @@ class IdentityUser(AggregateRoot):
         failed_login_count: int = 0,
         locked_until: datetime | None = None,
         version: int = 1,
+        display_name: str | None = None,
+        contact_phone: str | None = None,
     ) -> None:
         super().__init__(user_id, version=version)
+        self._display_name = display_name
+        self._contact_phone = contact_phone
         self._tenant_id = tenant_id
         self._branch_id = branch_id
         self._email = email
@@ -147,6 +159,29 @@ class IdentityUser(AggregateRoot):
     @property
     def is_active(self) -> bool:
         return self._is_active
+
+    @property
+    def display_name(self) -> str | None:
+        return self._display_name
+
+    @property
+    def contact_phone(self) -> str | None:
+        """A contact number for colleagues - never a sign-in identifier
+        (that is `phone_number`, for OTP accounts)."""
+        return self._contact_phone
+
+    def update_profile(self, *, display_name: str | None, contact_phone: str | None) -> None:
+        """Set the person's own name and contact number (DA-30)."""
+        name = (display_name or "").strip()
+        if len(name) > _MAX_DISPLAY_NAME:
+            msg = f"Name can be at most {_MAX_DISPLAY_NAME} characters."
+            raise InvariantViolation(msg, user_id=str(self.id))
+        phone = (contact_phone or "").strip()
+        if phone and not _CONTACT_PHONE.match(phone):
+            msg = "Enter a phone number using digits, spaces, '+' or '-' only."
+            raise InvariantViolation(msg, user_id=str(self.id))
+        self._display_name = name or None
+        self._contact_phone = phone or None
 
     @property
     def failed_login_count(self) -> int:

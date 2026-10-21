@@ -3,5 +3,9 @@
 
 export interface BulkCancelOrdersRequest {
   order_ids: Array<string>;
+
+  /**
+   * Why — required, cannot be blank.
+   */
   reason: string;
 }

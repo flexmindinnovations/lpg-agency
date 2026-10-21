@@ -138,9 +138,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="registerForm.invalid || loading()">
-          Register
-        </button>
+        <button pButton type="submit" [disabled]="loading()">Register</button>
       </div>
     </form>
   </p-drawer>
@@ -323,7 +321,7 @@
         <button pButton type="button" severity="secondary" (click)="showEditDrawer.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="editForm.invalid || loading()">Save</button>
+        <button pButton type="submit" [disabled]="loading()">Save</button>
       </div>
     </form>
   </p-drawer>

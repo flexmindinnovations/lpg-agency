@@ -5,11 +5,12 @@ export interface UpdateCustomerProfileRequest {
   alternate_mobile?: (string | null);
   branch_id: string;
   contact_person?: (string | null);
-  customer_type: string;
+  customer_type: 'domestic' | 'commercial' | 'industrial' | 'government';
   date_of_birth?: (string | null);
   email?: (string | null);
   full_name: string;
+  gstin?: (string | null);
   lpg_subsidy_id?: (string | null);
   phone_number: string;
-  status: string;
+  status: 'onboarding' | 'pending_approval' | 'active' | 'inactive' | 'blocked' | 'closed';
 }

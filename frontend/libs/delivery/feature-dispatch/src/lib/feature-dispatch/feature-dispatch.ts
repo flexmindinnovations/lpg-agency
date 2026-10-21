@@ -18,6 +18,8 @@ import {
 } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { debounceTime } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { Checkbox } from 'primeng/checkbox';
 import { Drawer } from 'primeng/drawer';
@@ -29,14 +31,17 @@ import { Tag } from 'primeng/tag';
 import { DatePicker } from 'primeng/datepicker';
 import { Tooltip } from 'primeng/tooltip';
 import {
+  AuthTokenStore,
   AdminBranchService,
   AdminCylinderTypeService,
   AdminEmployeeService,
   AdminWarehouseService,
+  AuthService,
   DeliveryService,
   InventoryService,
   NotifyService,
   OrderService,
+  WebSocketService,
   WeighmentService,
   errorMessageFor as sharedErrorMessageFor,
   type AppError,
@@ -164,8 +169,28 @@ export class FeatureDispatch implements OnInit {
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
   private readonly inventoryService = inject(InventoryService);
   private readonly weighmentService = inject(WeighmentService);
+  private readonly authTokenStore = inject(AuthTokenStore);
   private readonly notify = inject(NotifyService);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly wsService = inject(WebSocketService);
+
+  constructor() {
+    // DO-24: keep the board live. Order status changes (a new confirmed
+    // order waiting for a trip, a cancellation) arrive on the orders feed;
+    // trip changes (load, depart, deliver, fail) on the dispatch feed. A
+    // reconnect refetches whatever was missed while the socket was down.
+    this.wsService.subscribeTo('orders');
+    this.wsService.subscribeTo('dispatch');
+    this.wsService
+      .changes$('order.status_changed', 'delivery.route_updated', 'driver.updated')
+      .pipe(debounceTime(500), takeUntilDestroyed())
+      .subscribe(() => {
+        this.loadRoutes();
+        this.loadUnassignedOrders();
+        this.refreshSelectedRoute();
+      });
+  }
 
   protected readonly routes = signal<RouteResponse[]>([]);
   // Active-only — this backs the trip sheet's driver picker, which must
@@ -211,6 +236,7 @@ export class FeatureDispatch implements OnInit {
   // ---------------------------------------------------------------------------
 
   protected readonly filterBranchId = signal<string | null>(null);
+
   protected readonly filterDate = signal<Date | null>(null);
 
   protected readonly employeeById = computed(() => {
@@ -220,6 +246,7 @@ export class FeatureDispatch implements OnInit {
   });
 
   private driverDisplayName(driver: DriverResponse): string {
+    if (driver.name) return driver.name;
     const employee = this.employeeById().get(driver.employee_id);
     // Falls back to the raw FK only if the employee record hasn't loaded
     // yet (or was deleted) — should be rare, never the normal case.
@@ -364,11 +391,22 @@ export class FeatureDispatch implements OnInit {
     () => this.allVehicles().find((v) => v.id === this.tripVehicleId()) ?? null,
   );
 
+  /** The trip branch's own godowns; every godown only when that branch has
+   * none (a branch supplied from a shared depot). */
   protected readonly tripWarehouseOptions = computed(() => {
-    const branchId = this.tripBranchId();
-    const inBranch = this.warehouses().filter((w) => w.branch_id === branchId);
+    const inBranch = this.branchWarehouses();
     return inBranch.length > 0 ? inBranch : this.warehouses();
   });
+
+  private readonly branchWarehouses = computed(() => {
+    const branchId = this.tripBranchId();
+    return branchId ? this.warehouses().filter((w) => w.branch_id === branchId) : [];
+  });
+
+  /** Pre-selected godown: the trip branch's own, never another branch's. */
+  private defaultTripWarehouseId(): string | null {
+    return this.branchWarehouses()[0]?.id ?? null;
+  }
 
   /** Confirmed orders not on any trip yet, for this trip's branch. */
   protected readonly tripCandidateOrders = computed(() => {
@@ -455,7 +493,10 @@ export class FeatureDispatch implements OnInit {
   );
 
   protected openNewTrip(preselectOrder?: OrderResponse): void {
-    const branchId = preselectOrder?.branch_id ?? this.filterBranchId() ?? this.branches()[0]?.id;
+    const branchId =
+      preselectOrder?.branch_id ??
+      this.filterBranchId() ??
+      this.authTokenStore.defaultBranchIdAmong(this.branches());
     this.tripRoute.set(null);
     this.tripBranchId.set(branchId ?? null);
     this.tripDriverId.set(null);
@@ -465,7 +506,7 @@ export class FeatureDispatch implements OnInit {
     this.tripSpares.set({});
     this.tripError.set(null);
     this.vanStock.set(new Map());
-    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.onTripWarehouseChange(this.defaultTripWarehouseId());
     this.showTripSheet.set(true);
   }
 
@@ -479,7 +520,7 @@ export class FeatureDispatch implements OnInit {
     this.tripSpares.set({});
     this.tripError.set(null);
     this.loadVanStock(route.vehicle_id);
-    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.onTripWarehouseChange(this.defaultTripWarehouseId());
     this.showRouteDetail.set(false);
     this.showTripSheet.set(true);
   }
@@ -496,7 +537,7 @@ export class FeatureDispatch implements OnInit {
   protected onTripBranchChange(branchId: string | null): void {
     this.tripBranchId.set(branchId);
     this.tripOrderIds.set(new Set());
-    this.onTripWarehouseChange(this.tripWarehouseOptions()[0]?.id ?? null);
+    this.onTripWarehouseChange(this.defaultTripWarehouseId());
   }
 
   protected onTripVehicleChange(vehicleId: string | null): void {
@@ -736,9 +777,13 @@ export class FeatureDispatch implements OnInit {
       next: (types) => this.cylinderTypes.set(types),
       error: () => this.errorMessage.set('Failed to load cylinder types.'),
     });
-    this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
-      next: (res) => this.scales.set(res.items),
-    });
+    // `/scales` needs `weighment:record`; a role without it (e.g. a
+    // dispatcher) would only get a 403 — skip the call (DO-31).
+    if (this.authService.principal()?.permissions.has('weighment:record')) {
+      this.weighmentService.listScales({ status: 'active', limit: 200 }).subscribe({
+        next: (res) => this.scales.set(res.items),
+      });
+    }
     this.loadDriversAndVehicles();
     this.loadRoutes();
     this.loadUnassignedOrders();
@@ -765,6 +810,14 @@ export class FeatureDispatch implements OnInit {
       next: (page) => this.allVehicles.set(page.items),
       error: () => this.errorMessage.set('Failed to load vehicles.'),
     });
+  }
+
+  /** Re-reads the board — trips, the orders waiting for one, and driver/van
+   * availability. Public so a realtime event (DO-24) can trigger it. */
+  reload(): void {
+    this.loadRoutes();
+    this.loadUnassignedOrders();
+    this.loadDriversAndVehicles();
   }
 
   protected loadRoutes(): void {

@@ -2,10 +2,7 @@
   <div class="customer-list-section">
     <div class="page-header">
       <ng-template lpgHeaderTitlePortal>
-        <lpg-page-header
-          title="Customers"
-          subtitle="Manage customer registrations, addresses, and KYC documents."
-        />
+        <lpg-page-header title="Customers" subtitle="Customers, addresses and KYC." />
       </ng-template>
     </div>
 
@@ -100,6 +97,8 @@
         [rows]="filteredCustomers()"
         [columns]="columns"
         [loading]="loading()"
+        [error]="loadError()"
+        (retry)="reloadList()"
         ariaLabel="Customers list"
       />
     </section>
@@ -138,17 +137,66 @@
           />
         </div>
       </div>
-      <div>
+      <div class="detail-actions">
+        @if (customer.status === 'active' || customer.status === 'onboarding') {
         <a
+          *lpgHasPermission="'orders:create'"
+          pButton
+          size="small"
+          routerLink="/orders"
+          [queryParams]="{ create: true, customer: customer.id }"
+        >
+          <i class="pi pi-shopping-cart" aria-hidden="true"></i>
+          <span>Book</span>
+        </a>
+        }
+        <a
+          *lpgHasPermission="'ledger:read'"
           pButton
           type="button"
           severity="info"
           size="small"
           [routerLink]="['/ledger', customer.id]"
         >
-          <i class="pi pi-book"></i>
+          <i class="pi pi-book" aria-hidden="true"></i>
           <span>View Ledger</span>
         </a>
+        <button
+          *lpgHasPermission="'customers:update'"
+          pButton
+          type="button"
+          severity="secondary"
+          size="small"
+          (click)="openEditProfile()"
+        >
+          <i class="pi pi-pencil" aria-hidden="true"></i>
+          <span>Edit profile</span>
+        </button>
+        @if (customer.status !== 'closed') {
+        <button
+          *lpgHasPermission="'customers:update'"
+          pButton
+          type="button"
+          severity="danger"
+          size="small"
+          [outlined]="!confirmingClose()"
+          (click)="closeConnection()"
+        >
+          <i class="pi pi-power-off" aria-hidden="true"></i>
+          <span>{{ confirmingClose() ? 'Confirm close' : 'Close connection' }}</span>
+        </button>
+        @if (confirmingClose()) {
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          size="small"
+          [text]="true"
+          (click)="confirmingClose.set(false)"
+        >
+          Keep open
+        </button>
+        } }
       </div>
     </div>
 
@@ -161,7 +209,22 @@
         <span class="info-label">Customer Type</span>
         <span class="info-value capitalize">{{ customer.customer_type }}</span>
       </div>
-      @if (customer.lpg_subsidy_id) {
+      @if (isBusinessCustomer(customer) && customer.contact_person) {
+      <div class="info-item">
+        <span class="info-label">Contact person</span>
+        <span class="info-value">{{ customer.contact_person }}</span>
+      </div>
+      } @if (isBusinessCustomer(customer) && customer.gstin) {
+      <div class="info-item">
+        <span class="info-label">GSTIN</span>
+        <span class="info-value">{{ customer.gstin }}</span>
+      </div>
+      } @if (customer.email) {
+      <div class="info-item">
+        <span class="info-label">Email</span>
+        <span class="info-value">{{ customer.email }}</span>
+      </div>
+      } @if (customer.lpg_subsidy_id) {
       <div class="info-item">
         <span class="info-label">LPG ID (17-digit)</span>
         <span class="info-value">{{ customer.lpg_subsidy_id }}</span>
@@ -173,6 +236,7 @@
       <p-tablist>
         <p-tab value="0">Delivery Addresses</p-tab>
         <p-tab value="1">KYC Documents</p-tab>
+        <p-tab value="2">Orders</p-tab>
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="0">
@@ -195,22 +259,53 @@
               @for (addr of customer.addresses; track addr.id) {
               <div class="address-item">
                 <div>
-                  <span class="text-sm">{{ addr.line_1 }}</span>
+                  <span class="text-sm">{{ addressLabel(addr) }}</span>
                   @if (addr.is_primary) {
                   <p-tag class="ml-2" severity="success" value="Primary" />
                   }
                 </div>
-                @if (!addr.is_primary) {
-                <button
-                  pButton
-                  type="button"
-                  severity="secondary"
-                  size="small"
-                  (click)="makeAddressPrimary(addr.id)"
-                >
-                  Make Primary
-                </button>
-                }
+                <div class="address-actions">
+                  @if (!addr.is_primary) {
+                  <button
+                    pButton
+                    type="button"
+                    severity="secondary"
+                    size="small"
+                    [text]="true"
+                    (click)="makeAddressPrimary(addr.id)"
+                  >
+                    Make primary
+                  </button>
+                  }
+                  <button
+                    pButton
+                    type="button"
+                    severity="secondary"
+                    size="small"
+                    [text]="true"
+                    [attr.aria-label]="'Edit address ' + addressLabel(addr)"
+                    (click)="openEditAddressModal(addr)"
+                  >
+                    <i class="pi pi-pencil" aria-hidden="true"></i>
+                    <span>Edit</span>
+                  </button>
+                  @if (!addr.is_primary) {
+                  <button
+                    pButton
+                    type="button"
+                    severity="danger"
+                    size="small"
+                    [text]="pendingRemoveAddressId() !== addr.id"
+                    (click)="removeAddress(addr)"
+                  >
+                    <i class="pi pi-trash" aria-hidden="true"></i>
+                    <span
+                      >{{ pendingRemoveAddressId() === addr.id ? 'Confirm remove' : 'Remove'
+                      }}</span
+                    >
+                  </button>
+                  }
+                </div>
               </div>
               } @empty {
               <p class="empty-hint">No delivery addresses registered yet.</p>
@@ -290,15 +385,44 @@
             </div>
           </div>
         </p-tabpanel>
+        <p-tabpanel value="2">
+          <div class="kyc-section">
+            <div class="section-header">
+              <h3 class="section-heading">Recent orders</h3>
+            </div>
+            @if (customerOrdersLoading()) {
+            <p class="empty-hint">Loading orders…</p>
+            } @else {
+            <div class="kyc-doc-list">
+              @for (order of customerOrders(); track order.id) {
+              <div class="kyc-doc-item">
+                <div class="kyc-doc-info">
+                  <a class="text-sm" [routerLink]="['/orders', order.id]"
+                    ><strong>{{ order.order_number }}</strong></a
+                  >
+                  <span class="text-sm">{{ formatDate(order.requested_date) }}</span>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <span class="text-sm">{{ formatAmount(order.total_amount) }}</span>
+                  <p-tag severity="secondary" [value]="orderStatusLabel(order.status)" />
+                </div>
+              </div>
+              } @empty {
+              <p class="empty-hint">No orders yet.</p>
+              }
+            </div>
+            }
+          </div>
+        </p-tabpanel>
       </p-tabpanels>
     </p-tabs>
     }
   </div>
 </p-drawer>
 
-<!-- Modal 2: Add Address -->
+<!-- Drawer: Add / edit address -->
 <p-drawer
-  header="Add Address"
+  [header]="editingAddressId() ? 'Edit address' : 'Add address'"
   [(visible)]="addAddressModalVisible"
   position="right"
   [modal]="true"
@@ -317,16 +441,113 @@
   >
     <div class="dialog-form__fields">
       <lpg-form-field
-        label="Address line"
-        for="addr-line"
-        [control]="addressForm.controls.address_line"
-        [messages]="fieldMessages.address_line"
+        label="House / building and street"
+        for="addr-line1"
+        [control]="addressForm.controls.line_1"
+        [messages]="fieldMessages.line_1"
       >
         <input
           pInputText
-          id="addr-line"
-          formControlName="address_line"
-          placeholder="Street, Building, Area"
+          id="addr-line1"
+          formControlName="line_1"
+          placeholder="Flat 4B, Sai Residency, MG Road"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Address line 2 (optional)"
+        for="addr-line2"
+        [control]="addressForm.controls.line_2"
+      >
+        <input pInputText id="addr-line2" formControlName="line_2" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Landmark (optional)"
+        for="addr-landmark"
+        [control]="addressForm.controls.landmark"
+      >
+        <input
+          pInputText
+          id="addr-landmark"
+          formControlName="landmark"
+          placeholder="Near the temple"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Area / locality (optional)"
+        for="addr-area"
+        [control]="addressForm.controls.area"
+      >
+        <input pInputText id="addr-area" formControlName="area" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="City"
+        for="addr-city"
+        [control]="addressForm.controls.city"
+        [messages]="fieldMessages.city"
+      >
+        <input pInputText id="addr-city" formControlName="city" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="District (optional)"
+        for="addr-district"
+        [control]="addressForm.controls.district"
+      >
+        <input pInputText id="addr-district" formControlName="district" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="State (optional)"
+        for="addr-state"
+        [control]="addressForm.controls.state"
+      >
+        <input pInputText id="addr-state" formControlName="state" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="PIN code"
+        for="addr-pincode"
+        [control]="addressForm.controls.pincode"
+        [messages]="fieldMessages.pincode"
+      >
+        <input
+          pInputText
+          id="addr-pincode"
+          formControlName="pincode"
+          placeholder="6 digits"
+          inputmode="numeric"
+          maxlength="6"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Latitude (optional)"
+        for="addr-lat"
+        [control]="addressForm.controls.latitude"
+        [messages]="fieldMessages.latitude"
+      >
+        <p-inputnumber
+          inputId="addr-lat"
+          formControlName="latitude"
+          mode="decimal"
+          [minFractionDigits]="0"
+          [maxFractionDigits]="6"
+          [useGrouping]="false"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Longitude (optional)"
+        for="addr-lng"
+        [control]="addressForm.controls.longitude"
+        [messages]="fieldMessages.longitude"
+      >
+        <p-inputnumber
+          inputId="addr-lng"
+          formControlName="longitude"
+          mode="decimal"
+          [minFractionDigits]="0"
+          [maxFractionDigits]="6"
+          [useGrouping]="false"
           [fluid]="true"
         />
       </lpg-form-field>
@@ -335,9 +556,91 @@
       <button pButton type="button" severity="secondary" (click)="closeAddAddressModal()">
         Cancel
       </button>
-      <button pButton type="submit" [disabled]="addressForm.invalid">Add</button>
+      <button pButton type="submit">
+        {{ editingAddressId() ? 'Save address' : 'Add address' }}
+      </button>
     </div>
   </form>
+</p-drawer>
+
+<!-- Drawer: Edit profile -->
+<p-drawer
+  header="Edit profile"
+  [(visible)]="editProfileVisible"
+  position="right"
+  [modal]="true"
+  styleClass="w-full"
+  [style]="{ width: '100%', maxWidth: '32rem' }"
+  [closeOnEscape]="true"
+  closeAriaLabel="Close dialog"
+>
+  @if (selectedCustomer(); as customer) {
+  <form [formGroup]="profileForm" (ngSubmit)="submitEditProfile()" class="dialog-form" novalidate>
+    <div class="dialog-form__fields">
+      <lpg-form-field
+        [label]="isBusinessCustomer(customer) ? 'Business name' : 'Full name'"
+        for="profile-name"
+        [control]="profileForm.controls.full_name"
+        [messages]="fieldMessages.full_name"
+      >
+        <input pInputText id="profile-name" formControlName="full_name" [fluid]="true" />
+      </lpg-form-field>
+      @if (isBusinessCustomer(customer)) {
+      <lpg-form-field
+        label="Contact person"
+        for="profile-contact"
+        [control]="profileForm.controls.contact_person"
+      >
+        <input pInputText id="profile-contact" formControlName="contact_person" [fluid]="true" />
+      </lpg-form-field>
+      <lpg-form-field
+        label="GSTIN (optional)"
+        for="profile-gstin"
+        [control]="profileForm.controls.gstin"
+        [messages]="fieldMessages.gstin"
+      >
+        <input
+          pInputText
+          id="profile-gstin"
+          formControlName="gstin"
+          maxlength="15"
+          placeholder="27AAPFU0939F1ZV"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      }
+      <lpg-form-field
+        label="Alternate mobile (optional)"
+        for="profile-alt"
+        [control]="profileForm.controls.alternate_mobile"
+        [messages]="fieldMessages.alternate_mobile"
+      >
+        <input
+          pInputText
+          id="profile-alt"
+          formControlName="alternate_mobile"
+          inputmode="tel"
+          placeholder="+919876543210"
+          [fluid]="true"
+        />
+      </lpg-form-field>
+      <lpg-form-field
+        label="Email (optional)"
+        for="profile-email"
+        [control]="profileForm.controls.email"
+        [messages]="fieldMessages.email"
+      >
+        <input pInputText id="profile-email" type="email" formControlName="email" [fluid]="true" />
+      </lpg-form-field>
+    </div>
+    <div class="modal-actions">
+      <button pButton type="button" severity="secondary" (click)="editProfileVisible = false">
+        Cancel
+      </button>
+      <button pButton type="submit">Save profile</button>
+    </div>
+  </form>
+  }
 </p-drawer>
 
 <!-- Modal 3: Submit KYC -->

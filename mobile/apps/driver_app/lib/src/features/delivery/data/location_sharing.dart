@@ -116,10 +116,57 @@ class DriverGeolocator {
     locationSettings: buildRouteLocationSettings(),
   );
 
+  /// Whether the phone's location service (GPS) is switched on.
+  Future<bool> serviceEnabled() => Geolocator.isLocationServiceEnabled();
+
   /// A single fix — used to stamp a proof of delivery.
   Future<Position> currentPosition() => Geolocator.getCurrentPosition(
     locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
   );
+
+  /// The GPS stamp for a proof of delivery (BR-08/BR-23: required, never
+  /// skipped). Asks for permission when it hasn't been granted yet, and
+  /// gives up after [timeLimit] instead of spinning forever under a roof —
+  /// each failure is a [GpsFixException] with a message the driver can act
+  /// on, so the screen can offer a retry.
+  Future<Position> deliveryFix({
+    Duration timeLimit = const Duration(seconds: 20),
+  }) async {
+    if (!await serviceEnabled()) {
+      throw const GpsFixException(
+        'Location is switched off. Turn on GPS in your phone settings, '
+        'then try again.',
+      );
+    }
+    final permission = await ensurePermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw GpsFixException(
+        permission == LocationPermission.deniedForever
+            ? 'Location permission is blocked. Allow it for this app in '
+                  'your phone settings — a delivery needs a GPS stamp.'
+            : 'Allow location access — a delivery needs a GPS stamp.',
+      );
+    }
+    try {
+      return await currentPosition().timeout(timeLimit);
+    } on TimeoutException {
+      throw const GpsFixException(
+        "Couldn't get a GPS fix. Step outside or near a window and try "
+        'again.',
+      );
+    }
+  }
+}
+
+/// Why a delivery's GPS stamp couldn't be taken; [message] is driver-facing.
+class GpsFixException implements Exception {
+  const GpsFixException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 final driverGeolocatorProvider = Provider<DriverGeolocator>(

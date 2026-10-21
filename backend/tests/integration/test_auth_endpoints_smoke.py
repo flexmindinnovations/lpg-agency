@@ -163,6 +163,9 @@ class TestLoginEndToEnd:
         assert principal["tenant_id"] == str(tenant_id)
         assert principal["role"] == "manager"
         assert principal["email"] == email
+        # A user with no home branch gets null — the dashboard then falls back
+        # to its own default branch choice.
+        assert principal["branch_id"] is None
 
     async def test_wrong_password_returns_401_with_stable_error_code(
         self,

@@ -2,6 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessageService } from 'primeng/api';
+import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
+import { PERMISSION_CHECKER } from '@lpg/shared/util';
 import { FeatureLedger } from './feature-ledger';
 
 describe('FeatureLedger', () => {
@@ -11,7 +14,13 @@ describe('FeatureLedger', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeatureLedger],
-      providers: [provideHttpClient(), provideHttpClientTesting(), MessageService],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: PERMISSION_CHECKER, useValue: signal(null) },
+        MessageService,
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FeatureLedger);

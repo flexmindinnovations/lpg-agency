@@ -1,7 +1,44 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+} from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, Validators } from '@angular/forms';
+import { AbstractControl, FormGroupDirective, NgForm, Validators } from '@angular/forms';
 import { of, startWith, switchMap } from 'rxjs';
+
+/**
+ * The one submit rule for every form (QA DA-29): keep the submit button
+ * enabled, and on submit call this. An invalid form gets every field marked
+ * touched — so each `lpg-form-field` shows its message — focus moves to the
+ * first invalid control, and the caller stops.
+ *
+ * ```ts
+ * protected save(): void {
+ *   if (!validateForSubmit(this.form, this.host.nativeElement)) return;
+ *   ...
+ * }
+ * ```
+ */
+export function validateForSubmit(form: AbstractControl, scope?: HTMLElement | null): boolean {
+  if (form.valid || form.disabled) return true;
+  form.markAllAsTouched();
+  if (scope && typeof requestAnimationFrame === 'function') {
+    // After change detection has rendered the messages and aria-invalid.
+    requestAnimationFrame(() =>
+      scope
+        .querySelector<HTMLElement>(
+          '[aria-invalid="true"], input.ng-invalid, textarea.ng-invalid, .ng-invalid input',
+        )
+        ?.focus(),
+    );
+  }
+  return false;
+}
 
 /**
  * The standard form field wrapper (doc §19) — a 13px medium label above the
@@ -9,8 +46,8 @@ import { of, startWith, switchMap } from 'rxjs';
  * labelled control in the app: data-entry forms and filter rows alike.
  *
  * Pass the bound `AbstractControl` via `[control]` so the field knows when to
- * surface an error (`invalid && (touched || dirty)`) and whether to show the
- * required asterisk; `[messages]` maps validator keys to copy. The error
+ * surface an error (`invalid && (touched || dirty || form submitted)`) and
+ * whether to show the required asterisk; `[messages]` maps validator keys to copy. The error
  * carries an icon as well as colour — status is never communicated by colour
  * alone (doc §28). A filter row can omit `[control]` entirely: it then renders
  * just the label + control.
@@ -42,12 +79,12 @@ import { of, startWith, switchMap } from 'rxjs';
       <ng-content />
 
       @if (showError()) {
-        <span class="lpg-field__error" role="alert">
+        <span class="lpg-field__error" role="alert" [attr.id]="errorId()">
           <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
           {{ errorText() }}
         </span>
       } @else if (hint()) {
-        <span class="lpg-field__hint">{{ hint() }}</span>
+        <span class="lpg-field__hint" [attr.id]="hintId()">{{ hint() }}</span>
       }
     </div>
   `,
@@ -139,6 +176,17 @@ export class FormFieldComponent {
    *  field is required — a field is never both. */
   readonly optional = input(false);
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** The enclosing form, so a submit shows every message even before touch. */
+  private readonly formDirective =
+    inject(FormGroupDirective, { optional: true }) ?? inject(NgForm, { optional: true });
+  private readonly submitTick = toSignal(this.formDirective?.ngSubmit ?? of(null), {
+    initialValue: null,
+  });
+
+  protected readonly errorId = computed(() => (this.for() ? `${this.for()}-error` : null));
+  protected readonly hintId = computed(() => (this.for() ? `${this.for()}-hint` : null));
+
   /**
    * `AbstractControl`'s validity / touched / dirty flags are plain
    * properties, not signals — a `computed` reading them alone would never
@@ -155,9 +203,30 @@ export class FormFieldComponent {
 
   protected readonly showError = computed(() => {
     this.controlTick();
+    this.submitTick();
     const c = this.control();
-    return !!c && c.invalid && (c.touched || c.dirty);
+    const submitted = this.formDirective?.submitted ?? false;
+    return !!c && c.invalid && (c.touched || c.dirty || submitted);
   });
+
+  constructor() {
+    // Tie the message to the control for assistive tech: aria-invalid and
+    // aria-describedby on the element whose id is `for`.
+    effect(() => {
+      const id = this.for();
+      const invalid = this.showError();
+      const describedBy = invalid ? this.errorId() : this.hint() ? this.hintId() : null;
+      if (!id) return;
+      const target = this.host.nativeElement.querySelector<HTMLElement>(
+        `[id="${id.replace(/"/g, '\\"')}"]`,
+      );
+      if (!target) return;
+      if (invalid) target.setAttribute('aria-invalid', 'true');
+      else target.removeAttribute('aria-invalid');
+      if (describedBy) target.setAttribute('aria-describedby', describedBy);
+      else target.removeAttribute('aria-describedby');
+    });
+  }
 
   protected readonly isRequired = computed(() => {
     this.controlTick();

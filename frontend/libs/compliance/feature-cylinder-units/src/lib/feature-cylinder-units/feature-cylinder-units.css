@@ -145,3 +145,8 @@
   color: var(--color-text-primary);
   word-break: break-word;
 }
+
+::ng-deep .test-due--overdue {
+  color: var(--color-status-danger);
+  font-weight: var(--typography-label-font-weight);
+}

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     import datetime
     import uuid
+    from collections.abc import Collection
 
     from lpg.domain.delivery.compliance_document import ComplianceDocument
     from lpg.domain.delivery.driver import Driver
@@ -33,6 +34,14 @@ class RouteStopOwner:
     route_id: uuid.UUID
     driver_id: uuid.UUID
     vehicle_id: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
+class DriverContact:
+    """A driver's name and phone, which live on the linked employee record."""
+
+    name: str
+    phone_number: str
 
 
 class DriverRepository(Protocol):
@@ -63,6 +72,13 @@ class DriverRepository(Protocol):
         status: str | None = None,
         branch_id: uuid.UUID | None = None,
     ) -> int: ...
+
+    async def contacts_for_employees(
+        self, employee_ids: Collection[uuid.UUID]
+    ) -> dict[uuid.UUID, DriverContact]:
+        """Name and phone for each driver's employee, keyed by employee id, in
+        one query — so a driver list never needs the employee directory."""
+        ...
 
 
 class VehicleRepository(Protocol):
@@ -102,7 +118,15 @@ class RouteRepository(Protocol):
 
     async def get_by_id(self, route_id: uuid.UUID) -> Route | None: ...
 
-    async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None: ...
+    async def get_active_route_for_driver(self, driver_id: uuid.UUID) -> Route | None:
+        """The driver's open trip — the one on the road first, then a loaded
+        one, then a planned one; newest within the same status."""
+        ...
+
+    async def lock_crew(self, driver_id: uuid.UUID, vehicle_id: uuid.UUID) -> None:
+        """Serialises trip creation for this driver and this vehicle until the
+        transaction ends, so two dispatchers can't both open a trip for them."""
+        ...
 
     async def get_active_route_for_vehicle(self, vehicle_id: uuid.UUID) -> Route | None:
         """Same shape as `get_active_route_for_driver` — the auto-assignment

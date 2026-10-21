@@ -19,6 +19,8 @@ from lpg.infrastructure.persistence.models.delivery import ComplianceDocumentMod
 if TYPE_CHECKING:
     from lpg.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
+UPCOMING_HORIZON_DAYS = 90
+
 
 class SqlAlchemyComplianceDocumentRepository:
     def __init__(self, unit_of_work: SqlAlchemyUnitOfWork) -> None:
@@ -154,6 +156,13 @@ class SqlAlchemyComplianceDocumentRepository:
             stmt = stmt.where(
                 ComplianceDocumentModel.expiry_date >= today,
                 ComplianceDocumentModel.expiry_date <= today + timedelta(days=30),
+            )
+        elif expiry == "upcoming":
+            # The compliance calendar: everything already overdue plus
+            # everything falling due within the planning horizon.
+            stmt = stmt.where(
+                ComplianceDocumentModel.expiry_date
+                <= today + timedelta(days=UPCOMING_HORIZON_DAYS),
             )
         return stmt
 

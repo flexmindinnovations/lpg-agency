@@ -31,9 +31,11 @@ warehouse/vehicle has no row and therefore no id a client could supply.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, date, datetime
 from typing import Annotated, cast
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from lpg.api.v1.dependencies.identity import (
     get_current_principal,
@@ -44,6 +46,8 @@ from lpg.api.v1.dependencies.inventory import (
     get_goods_receipt_note_repository,
     get_grn_number_sequence,
     get_inventory_location_repository,
+    get_omc_return_note_repository,
+    get_omc_return_number_sequence,
     get_reconciliation_record_repository,
     get_reorder_policy_repository,
 )
@@ -60,8 +64,13 @@ from lpg.api.v1.schemas.inventory import (
     LoadTransferRequest,
     LoadTransferResponse,
     LocationType,
+    OmcReturnRequest,
+    OmcReturnResponse,
     ReconciliationRecordCreateRequest,
+    ReconciliationRecordListResponse,
     ReconciliationRecordResponse,
+    ReconciliationRejectRequest,
+    ReconciliationState,
     RecordCollectionRequest,
     RecordDeliveryRequest,
     ReorderPolicyListResponse,
@@ -69,6 +78,9 @@ from lpg.api.v1.schemas.inventory import (
     ReorderSignalListResponse,
     ReorderSignalResponse,
     SetReorderPolicyRequest,
+    StatusTransitionsResponse,
+    StockRegisterLineResponse,
+    StockRegisterResponse,
 )
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.identity.ports import AuthenticatedPrincipal
@@ -78,6 +90,9 @@ from lpg.application.inventory.ports import (
     GrnNumberSequence,
     InventoryLocationRepository,
     InventoryTransactionEntry,
+    OmcReturnNoteEntry,
+    OmcReturnNoteRepository,
+    OmcReturnNumberSequence,
     ReconciliationRecordEntry,
     ReconciliationRecordRepository,
     ReorderPolicy,
@@ -104,8 +119,12 @@ from lpg.application.inventory.use_cases import (
     GetInventoryBalanceQuery,
     GetInventoryBalanceUseCase,
     GetOrCreateInventoryLocationUseCase,
+    GetStockRegisterQuery,
+    GetStockRegisterUseCase,
     ListInventoryTransactionsQuery,
     ListInventoryTransactionsUseCase,
+    ListReconciliationRecordsQuery,
+    ListReconciliationRecordsUseCase,
     LoadTransferCommand,
     LoadTransferLine,
     LoadTransferUseCase,
@@ -115,8 +134,19 @@ from lpg.application.inventory.use_cases import (
     RecordDeliveryUseCase,
     RecordGoodsReceiptCommand,
     RecordGoodsReceiptUseCase,
+    RejectReconciliationCommand,
+    RejectReconciliationUseCase,
+    ReturnStockToOmcCommand,
+    ReturnStockToOmcUseCase,
 )
-from lpg.domain.inventory.inventory_location import InventoryLocation
+from lpg.domain.inventory.inventory_location import (
+    InventoryLocation,
+    adjustment_targets,
+    status_change_targets,
+)
+
+#: The agency's calendar — the stock register's "today".
+_BUSINESS_TZ = ZoneInfo("Asia/Kolkata")
 
 router = APIRouter(tags=["Inventory"])
 
@@ -171,8 +201,27 @@ def _grn_to_response(entry: GoodsReceiptNoteEntry) -> GoodsReceiptResponse:
         cylinder_type_id=entry.cylinder_type_id,
         quantity_received=entry.quantity_received,
         source_omc=entry.source_omc,
+        challan_number=entry.challan_number,
+        invoice_number=entry.invoice_number,
+        truck_number=entry.truck_number,
         received_by=entry.received_by,
         received_at=entry.received_at,
+    )
+
+
+def _omc_return_to_response(entry: OmcReturnNoteEntry) -> OmcReturnResponse:
+    return OmcReturnResponse(
+        id=entry.id,
+        return_number=entry.return_number,
+        warehouse_id=entry.warehouse_id,
+        cylinder_type_id=entry.cylinder_type_id,
+        status=entry.status,
+        quantity=entry.quantity,
+        destination_omc=entry.destination_omc,
+        challan_number=entry.challan_number,
+        truck_number=entry.truck_number,
+        dispatched_by=entry.dispatched_by,
+        dispatched_at=entry.dispatched_at,
     )
 
 
@@ -219,6 +268,11 @@ def _reconciliation_to_response(
         recorded_by=entry.recorded_by,
         approved_by=entry.approved_by,
         approved_at=entry.approved_at,
+        state=cast("ReconciliationState", entry.state),
+        recorded_at=entry.recorded_at,
+        rejected_by=entry.rejected_by,
+        rejected_at=entry.rejected_at,
+        rejection_reason=entry.rejection_reason,
     )
 
 
@@ -280,6 +334,64 @@ async def list_inventory_transactions(
     )
 
 
+@router.get(
+    "/inventory-locations/{location_type}/{location_ref_id}/stock-register",
+    response_model=StockRegisterResponse,
+    dependencies=[Depends(require_permission("inventory:read"))],
+)
+async def get_stock_register(
+    location_type: LocationType,
+    location_ref_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[InventoryLocationRepository, Depends(get_inventory_location_repository)],
+    date_from: date,
+    date_to: date,
+) -> StockRegisterResponse:
+    """Daily stock register: opening, receipts, issues and closing per
+    cylinder type and status, for each IST day in the range (max 92 days)."""
+    lines = await GetStockRegisterUseCase(repository).execute(
+        GetStockRegisterQuery(
+            tenant_id=principal.tenant_id,
+            location_type=location_type,
+            location_ref_id=location_ref_id,
+            date_from=date_from,
+            date_to=date_to,
+            today=datetime.now(UTC).astimezone(_BUSINESS_TZ).date(),
+        )
+    )
+    return StockRegisterResponse(
+        location_type=location_type,
+        location_ref_id=location_ref_id,
+        date_from=date_from,
+        date_to=date_to,
+        lines=[
+            StockRegisterLineResponse(
+                date=line.business_date,
+                cylinder_type_id=line.cylinder_type_id,
+                status=line.status,
+                opening=line.opening,
+                receipts=line.receipts,
+                issues=line.issues,
+                closing=line.closing,
+            )
+            for line in lines
+        ],
+    )
+
+
+@router.get(
+    "/inventory/status-transitions",
+    response_model=StatusTransitionsResponse,
+    dependencies=[Depends(require_permission("inventory:read"))],
+)
+async def get_status_transitions() -> StatusTransitionsResponse:
+    """Which status each status may move to, for Change Status and Adjust."""
+    return StatusTransitionsResponse(
+        status_change={k: sorted(v) for k, v in status_change_targets().items()},
+        adjustment={k: sorted(v) for k, v in adjustment_targets().items()},
+    )
+
+
 # ==========================================================================
 # Goods Receipt (D-15)
 # ==========================================================================
@@ -317,9 +429,52 @@ async def record_goods_receipt(
             quantity_received=request.quantity_received,
             received_by=actor_id,
             source_omc=request.source_omc,
+            challan_number=request.challan_number,
+            invoice_number=request.invoice_number,
+            truck_number=request.truck_number,
         )
     )
     return _grn_to_response(grn)
+
+
+@router.post(
+    "/warehouses/{warehouse_id}/omc-returns",
+    response_model=OmcReturnResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("inventory:load"))],
+)
+async def return_stock_to_omc(
+    warehouse_id: uuid.UUID,
+    request: OmcReturnRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
+    note_repository: Annotated[OmcReturnNoteRepository, Depends(get_omc_return_note_repository)],
+    number_sequence: Annotated[OmcReturnNumberSequence, Depends(get_omc_return_number_sequence)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> OmcReturnResponse:
+    """Dispatch empties (or segregated defective cylinders) back to the OMC's
+    bottling plant — debits the warehouse and issues a numbered return note.
+    409 INSUFFICIENT_STOCK if the warehouse holds fewer."""
+    actor_id = _require_actor(principal)
+    use_case = ReturnStockToOmcUseCase(
+        location_repository, note_repository, number_sequence, unit_of_work
+    )
+    note = await use_case.execute(
+        ReturnStockToOmcCommand(
+            tenant_id=principal.tenant_id,
+            warehouse_id=warehouse_id,
+            cylinder_type_id=request.cylinder_type_id,
+            quantity=request.quantity,
+            destination_omc=request.destination_omc,
+            status=request.status,
+            challan_number=request.challan_number,
+            truck_number=request.truck_number,
+            dispatched_by=actor_id,
+        )
+    )
+    return _omc_return_to_response(note)
 
 
 # ==========================================================================
@@ -522,9 +677,8 @@ async def create_reconciliation_record(
     ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> ReconciliationRecordResponse:
-    """Record a physical count against the tracked balance.
-
-    Recording is routine; approval is the gated step.
+    """Record a physical count against the tracked balance. Stock does not
+    change until someone else approves the count.
     """
     actor_id = _require_actor(principal)
     use_case = CreateReconciliationRecordUseCase(
@@ -544,6 +698,42 @@ async def create_reconciliation_record(
     return _reconciliation_to_response(record)
 
 
+@router.get(
+    "/inventory-locations/{location_type}/{location_ref_id}/reconciliation-records",
+    response_model=ReconciliationRecordListResponse,
+    dependencies=[Depends(require_permission("inventory:read"))],
+)
+async def list_reconciliation_records(
+    location_type: LocationType,
+    location_ref_id: uuid.UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
+    reconciliation_repository: Annotated[
+        ReconciliationRecordRepository, Depends(get_reconciliation_record_repository)
+    ],
+    state: ReconciliationState | None = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> ReconciliationRecordListResponse:
+    """Stock counts at this location, newest first — `state=pending` is the
+    approver's queue."""
+    records = await ListReconciliationRecordsUseCase(
+        location_repository, reconciliation_repository
+    ).execute(
+        ListReconciliationRecordsQuery(
+            tenant_id=principal.tenant_id,
+            location_type=location_type,
+            location_ref_id=location_ref_id,
+            state=state,
+            limit=limit,
+        )
+    )
+    return ReconciliationRecordListResponse(
+        items=[_reconciliation_to_response(record) for record in records]
+    )
+
+
 @router.post(
     "/reconciliation-records/{record_id}/approve",
     response_model=ReconciliationRecordResponse,
@@ -555,13 +745,43 @@ async def approve_reconciliation_record(
     repository: Annotated[
         ReconciliationRecordRepository, Depends(get_reconciliation_record_repository)
     ],
+    location_repository: Annotated[
+        InventoryLocationRepository, Depends(get_inventory_location_repository)
+    ],
     unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
 ) -> ReconciliationRecordResponse:
-    """Approve a reconciliation record. Live-checked (`docs/data/17-api-security.md` §7)."""
+    """Approve a pending count and book its variance into stock, once.
+    Live-checked (`docs/data/17-api-security.md` §7). 409
+    `RECONCILIATION_ALREADY_DECIDED` on a repeat, 409
+    `SELF_APPROVAL_NOT_ALLOWED` for the person who counted."""
     actor_id = _require_actor(principal)
-    use_case = ApproveReconciliationUseCase(repository, unit_of_work)
+    use_case = ApproveReconciliationUseCase(repository, location_repository, unit_of_work)
     record = await use_case.execute(
         ApproveReconciliationCommand(record_id=record_id, approved_by=actor_id)
+    )
+    return _reconciliation_to_response(record)
+
+
+@router.post(
+    "/reconciliation-records/{record_id}/reject",
+    response_model=ReconciliationRecordResponse,
+    dependencies=[Depends(require_live_permission("reconciliation:approve"))],
+)
+async def reject_reconciliation_record(
+    record_id: uuid.UUID,
+    request: ReconciliationRejectRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    repository: Annotated[
+        ReconciliationRecordRepository, Depends(get_reconciliation_record_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> ReconciliationRecordResponse:
+    """Close a pending count without changing stock (e.g. recount needed)."""
+    actor_id = _require_actor(principal)
+    record = await RejectReconciliationUseCase(repository, unit_of_work).execute(
+        RejectReconciliationCommand(
+            record_id=record_id, rejected_by=actor_id, reason=request.reason
+        )
     )
     return _reconciliation_to_response(record)
 

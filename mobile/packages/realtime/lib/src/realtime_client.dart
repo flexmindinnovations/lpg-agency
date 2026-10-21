@@ -17,78 +17,129 @@ import 'realtime_socket.dart';
 const _initialBackoff = Duration(seconds: 1);
 const _maxBackoff = Duration(seconds: 30);
 
-/// Wraps the backend's single multiplexed `/ws` WebSocket
+/// WebSocket close code the backend uses when it rejects the access token
+/// (RFC 6455 1008, "policy violation").
+const tokenRejectedCloseCode = 1008;
+
+/// Synthetic message type the client puts on its change streams when the
+/// connection becomes ready again after a drop: anything may have changed
+/// while offline, so listeners should refetch.
+const reconnectedMessageType = 'realtime.reconnected';
+
+const _notificationChangeTypes = {
+  'notification.new',
+  'notification.read',
+  'notification.read_all',
+  reconnectedMessageType,
+};
+
+/// Wraps the backend's single multiplexed `/api/v1/ws` WebSocket
 /// (`backend/src/lpg/api/v1/routers/ws.py`) behind typed per-topic streams.
-/// One physical connection carries every subscription: [subscribeToOrder]
-/// and [subscribeToNotifications] each add a server-side "subscribe" intent
-/// over that shared connection and filter the inbound message stream by the
-/// `type` field the backend's `realtime_handlers.py` puts on every message
-/// (`order.status_changed`, `notification.new`).
+/// One physical connection carries every subscription: each `subscribeTo…`
+/// method adds a server-side "subscribe" intent over that shared connection
+/// and filters the inbound message stream by the `type` field the backend's
+/// `realtime_handlers.py` puts on every message.
+///
+/// Authentication: the access token is sent as the first frame
+/// (`{"type":"auth","token":…}`), never in the URL, so it cannot end up in
+/// proxy or server access logs. The server answers `{"type":"ready"}`; only
+/// then are subscribe intents sent.
 ///
 /// Reconnects with exponential backoff on drop, and — because the server
-/// forgets a dropped connection's subscriptions (`ConnectionManager
-/// .disconnect` clears them) — replays every active intent once the new
-/// connection is open.
+/// forgets a dropped connection's subscriptions — replays every active intent
+/// once the new connection is ready, then emits on [reconnected] so callers
+/// can refetch whatever they may have missed while offline.
 final class RealtimeClient {
   RealtimeClient({
     required String wsBaseUrl,
     required String? Function() getAccessToken,
     RealtimeSocket Function(Uri uri)? connect,
+    Future<void> Function()? onTokenRejected,
   }) : _wsBaseUrl = wsBaseUrl,
        _getAccessToken = getAccessToken,
-       _connect = connect ?? connectRealtimeSocket;
+       _connect = connect ?? connectRealtimeSocket,
+       _onTokenRejected = onTokenRejected;
 
   final String _wsBaseUrl;
   final String? Function() _getAccessToken;
   final RealtimeSocket Function(Uri uri) _connect;
+  final Future<void> Function()? _onTokenRejected;
 
   RealtimeSocket? _socket;
   StreamSubscription<dynamic>? _socketSubscription;
   final _messages = StreamController<Map<String, dynamic>>.broadcast();
+  final _reconnected = StreamController<void>.broadcast();
   final Set<String> _activeIntents = {};
   Duration _backoff = _initialBackoff;
   Timer? _reconnectTimer;
   bool _closed = false;
+  bool _paused = false;
+  bool _ready = false;
+  bool _everReady = false;
+
+  /// Emits each time the connection becomes ready again after a drop (not on
+  /// the first connect). Listeners should refetch state that live events
+  /// would otherwise have delivered while the socket was down.
+  Stream<void> get reconnected => _reconnected.stream;
 
   /// Opens the connection and replays any subscriptions already requested.
-  /// [subscribeToOrder]/[subscribeToNotifications] call this automatically
-  /// on first use — most callers never need to call it directly.
+  /// The `subscribeTo…` methods call this automatically on first use — most
+  /// callers never need to call it directly.
   Future<void> connect() async {
-    if (_socket != null || _closed) return;
+    if (_socket != null || _closed || _paused) return;
     _reconnectTimer?.cancel();
 
     final token = _getAccessToken();
+    if (token == null || token.isEmpty) {
+      // Signed out or token not yet loaded — try again later rather than
+      // opening a socket the server will reject.
+      _scheduleReconnect();
+      return;
+    }
+
     // The backend mounts ws.py's router under its versioned API prefix
-    // like every other route (`app.include_router(ws.router,
-    // prefix=settings.api_v1_prefix)`, api.app.py) -- there's no bare
-    // `/ws` at the origin root. Confirmed live: connecting to `/ws`
-    // instead of `/api/v1/ws` got an HTTP 403 on the upgrade request,
-    // silently breaking every subscription with no visible error beyond
-    // a WebSocketChannelException logged to stderr.
-    final uri = Uri.parse(
-      '$_wsBaseUrl/api/v1/ws',
-    ).replace(queryParameters: {'token': ?token});
+    // like every other route — there's no bare `/ws` at the origin root.
+    final uri = Uri.parse('$_wsBaseUrl/api/v1/ws');
 
     final socket = _connect(uri);
     _socket = socket;
+    _ready = false;
     _socketSubscription = socket.stream.listen(
       _handleRawMessage,
-      onDone: _handleDisconnect,
-      onError: (Object _, StackTrace _) => _handleDisconnect(),
+      onDone: () => _handleDisconnect(socket),
+      onError: (Object _, StackTrace _) => _handleDisconnect(socket),
     );
-
-    if (_activeIntents.isNotEmpty) {
-      _sendSubscribe(_activeIntents);
-    }
+    socket.send(jsonEncode({'type': 'auth', 'token': token}));
   }
 
   /// Closes the connection permanently — no further reconnect attempts.
   Future<void> disconnect() async {
     _closed = true;
-    _reconnectTimer?.cancel();
-    await _socketSubscription?.cancel();
-    await _socket?.close();
-    _socket = null;
+    await _closeSocket();
+  }
+
+  /// Closes the connection until [resume] is called — for example while the
+  /// user is signed out. Active subscriptions are kept and replayed on resume.
+  Future<void> pause() async {
+    _paused = true;
+    await _closeSocket();
+  }
+
+  /// Reopens a [pause]d connection (for example after sign-in).
+  void resume() {
+    if (!_paused) return;
+    _paused = false;
+    _backoff = _initialBackoff;
+    if (_activeIntents.isNotEmpty) unawaited(connect());
+  }
+
+  /// Sends a refreshed access token over the open connection so the server
+  /// keeps it authorised past the old token's expiry. If no connection is
+  /// open, the next connect uses [getAccessToken] anyway.
+  void updateAccessToken() {
+    final token = _getAccessToken();
+    if (!_ready || token == null || token.isEmpty) return;
+    _socket?.send(jsonEncode({'type': 'auth', 'token': token}));
   }
 
   /// Live status-change events for one order — confirmed, assigned, out for
@@ -108,6 +159,48 @@ final class RealtimeClient {
     return _messages.stream.where((m) => m['type'] == 'notification.new');
   }
 
+  /// Read-state changes for the signed-in user's notifications made on any
+  /// device or tab — `notification.read` (one) and `notification.read_all`.
+  Stream<Map<String, dynamic>> subscribeToNotificationReads() {
+    _addIntent('notifications');
+    return _messages.stream.where(
+      (m) =>
+          m['type'] == 'notification.read' ||
+          m['type'] == 'notification.read_all',
+    );
+  }
+
+  /// Everything that changes the signed-in user's inbox or unread count:
+  /// new notifications, reads on any device, and [reconnectedMessageType]
+  /// after a drop. The single stream an app shell needs to keep its badge
+  /// and inbox current.
+  Stream<Map<String, dynamic>> subscribeToNotificationChanges() {
+    _addIntent('notifications');
+    return _messages.stream.where(
+      (m) => _notificationChangeTypes.contains(m['type']),
+    );
+  }
+
+  /// [subscribeToNotificationChanges] plus the signed-in driver's route
+  /// changes (`delivery.route_updated`) — what the Driver App shell refreshes
+  /// its badge, inbox and active route on.
+  Stream<Map<String, dynamic>> subscribeToDriverUpdates() {
+    _addIntent('driver');
+    _addIntent('notifications');
+    return _messages.stream.where(
+      (m) =>
+          _notificationChangeTypes.contains(m['type']) ||
+          m['type'] == 'delivery.route_updated',
+    );
+  }
+
+  /// Route changes for the signed-in driver — the backend's
+  /// `delivery.route_updated` messages on the driver's own channel.
+  Stream<Map<String, dynamic>> subscribeToDriverRoutes() {
+    _addIntent('driver');
+    return _messages.stream.where((m) => m['type'] == 'delivery.route_updated');
+  }
+
   /// The delivery driver's live position for one order — the backend's
   /// `driver.location` messages, published on the same `order:{orderId}`
   /// channel as [subscribeToOrder]'s status events (so this adds no new
@@ -123,9 +216,10 @@ final class RealtimeClient {
     if (!_activeIntents.add(intent)) return;
     if (_socket == null) {
       unawaited(connect());
-    } else {
+    } else if (_ready) {
       _sendSubscribe({intent});
     }
+    // Otherwise the intent is sent once the server reports ready.
   }
 
   void _sendSubscribe(Set<String> intents) {
@@ -141,29 +235,68 @@ final class RealtimeClient {
       return;
     }
 
-    // Any message — including the server's own idle-keepalive ping — is
-    // proof the connection is healthy, so this is where backoff resets.
-    // Resetting it in `connect()` instead would mean a server that accepts
-    // the socket and then immediately drops it (mid-outage) gets hammered
-    // at a constant 1s interval forever, never actually backing off.
-    _backoff = _initialBackoff;
-
-    if (data['type'] == 'ping') {
-      _socket?.send(jsonEncode({'type': 'pong'}));
-      return;
+    switch (data['type']) {
+      case 'ready':
+        _onReady();
+      case 'ping':
+        _socket?.send(jsonEncode({'type': 'pong'}));
+      default:
+        _messages.add(data);
     }
-    _messages.add(data);
   }
 
-  void _handleDisconnect() {
-    if (_socket == null) return; // already handled
+  void _onReady() {
+    final wasReady = _ready;
+    _ready = true;
+    // Backoff resets only once the server has accepted the token: a server
+    // that accepts the socket and then immediately drops it (mid-outage, or
+    // rejecting the token) must keep backing off, not be hammered at 1s.
+    _backoff = _initialBackoff;
+    if (wasReady) return; // in-band token refresh acknowledgement
+    if (_activeIntents.isNotEmpty) _sendSubscribe(_activeIntents);
+    if (_everReady) {
+      _reconnected.add(null);
+      _messages.add({'type': reconnectedMessageType});
+    }
+    _everReady = true;
+  }
+
+  void _handleDisconnect(RealtimeSocket socket) {
+    // A replaced socket's late close must not tear down its successor.
+    if (!identical(_socket, socket)) return;
+    final closeCode = socket.closeCode;
     unawaited(_socketSubscription?.cancel());
     _socketSubscription = null;
     _socket = null;
-    if (_closed) return;
+    _ready = false;
+    if (_closed || _paused) return;
 
+    if (closeCode == tokenRejectedCloseCode) {
+      final onTokenRejected = _onTokenRejected;
+      if (onTokenRejected != null) unawaited(onTokenRejected());
+    }
+    _scheduleReconnect();
+  }
+
+  void _scheduleReconnect() {
+    if (_closed || _paused) return;
+    _reconnectTimer?.cancel();
     _reconnectTimer = Timer(_backoff, connect);
     final doubled = _backoff * 2;
     _backoff = doubled > _maxBackoff ? _maxBackoff : doubled;
+  }
+
+  Future<void> _closeSocket() async {
+    _reconnectTimer?.cancel();
+    final socket = _socket;
+    final subscription = _socketSubscription;
+    _socket = null;
+    _socketSubscription = null;
+    _ready = false;
+    // Close first: the identity guard in [_handleDisconnect] ignores the
+    // resulting onDone because [_socket] no longer points at this socket.
+    final closing = socket?.close();
+    await subscription?.cancel();
+    await closing;
   }
 }

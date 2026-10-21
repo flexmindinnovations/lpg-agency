@@ -46,3 +46,40 @@ class DashboardSummaryResponse(BaseModel):
     #: activity feed is a glance-level summary, not the full audit trail
     #: (that detail is `GET /admin/audit-log`'s job).
     recent_activity: list[DashboardActivityEntryResponse]
+
+
+class OrderPipelineResponse(BaseModel):
+    bookings_today: int
+    #: Orders now in each open status, `booked` through `failed_delivery`.
+    open_by_status: dict[str, int]
+    delivered_today: int
+    failed_today: int
+    pending_cancellations: int
+
+
+class InvoiceSnapshotResponse(BaseModel):
+    outstanding_count: int
+    outstanding_amount: Decimal
+    overdue_count: int
+    overdue_amount: Decimal
+    #: Delivered orders or billed cancellations with no invoice yet.
+    on_hold_count: int
+
+
+class CashSnapshotResponse(BaseModel):
+    #: Cash drivers collected on routes with no handover declared yet.
+    awaiting_handover: Decimal
+    handovers_awaiting_review: int
+
+
+class OperationsSnapshotResponse(BaseModel):
+    """The Home page's operations KPIs (DO-28). `invoices`/`cash` are
+    `null` for a caller without access to those modules.
+    """
+
+    orders: OrderPipelineResponse
+    open_complaints: int
+    low_stock_count: int
+    invoices: InvoiceSnapshotResponse | None
+    cash: CashSnapshotResponse | None
+    payment_terms_days: int

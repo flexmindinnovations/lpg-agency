@@ -180,7 +180,7 @@ class FlagDefaultCell {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -284,7 +284,6 @@ class FlagDefaultCell {
                     formControlName="startsAt"
                     [showIcon]="true"
                     iconDisplay="input"
-                    dateFormat="dd-mm-yy"
                     appendTo="body"
                     [fluid]="true"
                   ></p-datepicker>
@@ -301,7 +300,6 @@ class FlagDefaultCell {
                     formControlName="endsAt"
                     [showIcon]="true"
                     iconDisplay="input"
-                    dateFormat="dd-mm-yy"
                     appendTo="body"
                     [fluid]="true"
                   ></p-datepicker>
@@ -312,9 +310,7 @@ class FlagDefaultCell {
                 <button pButton type="button" severity="secondary" (click)="cancelEdit()">
                   Cancel
                 </button>
-                <button pButton type="submit" [disabled]="editForm.invalid || saving()">
-                  Save Changes
-                </button>
+                <button pButton type="submit" [disabled]="saving()">Save Changes</button>
               </div>
             </form>
           }

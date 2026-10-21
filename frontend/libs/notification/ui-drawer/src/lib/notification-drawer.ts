@@ -1,11 +1,17 @@
 import { Component, computed, effect, inject, model, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { DrawerModule } from 'primeng/drawer';
 import { ButtonDirective } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
-import { NotificationService, NotifyService, errorMessageFor } from '@lpg/shared/data-access';
+import { DrawerA11yDirective, EmptyStateComponent } from '@lpg/shared/ui';
+import {
+  NotificationService,
+  NotifyService,
+  errorMessageFor,
+  groupNotificationsByDay,
+} from '@lpg/shared/data-access';
 import type { NotificationResponse } from '@lpg/shared/data-access';
 
 @Component({
@@ -15,6 +21,7 @@ import type { NotificationResponse } from '@lpg/shared/data-access';
     RouterLink,
     DrawerModule,
     DrawerA11yDirective,
+    EmptyStateComponent,
     ButtonDirective,
     TooltipModule,
   ],
@@ -43,6 +50,11 @@ export class NotificationDrawer {
     this.notifications().filter((n) => !this.dismissed().has(n.id)),
   );
 
+  /** Sections for the list: Today, Yesterday, then dated days. */
+  readonly groups = computed(() => groupNotificationsByDay(this.visibleNotifications()));
+
+  readonly hasUnread = computed(() => this.visibleNotifications().some((n) => !n.is_read));
+
   protected hasLink(n: NotificationResponse): boolean {
     return this.notificationService.routeFor(n) !== null;
   }
@@ -63,10 +75,15 @@ export class NotificationDrawer {
         this.loadNotifications();
       }
     });
+    // While open, keep the list live: a new alert, a read on another tab or
+    // device, or a reconnect after a drop.
+    this.notificationService.changed$.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.visible()) this.loadNotifications();
+    });
   }
 
   loadNotifications() {
-    this.notificationService.list(0, 10).subscribe({
+    this.notificationService.list(0, 20).subscribe({
       next: (res) => {
         this.notifications.set(res.items);
       },
@@ -79,23 +96,33 @@ export class NotificationDrawer {
   }
 
   markAsRead(id: string) {
-    this.notificationService.markRead(id).subscribe({
-      next: () => {
-        this.loadNotifications();
-      },
+    this.markLocallyRead(id);
+    this.notificationService.markRead(id).subscribe();
+  }
+
+  markAllAsRead() {
+    this.notificationService.markAllRead().subscribe({
+      next: () => this.notifications.update((items) => items.map((n) => ({ ...n, is_read: true }))),
     });
   }
 
   /** Click a notification: mark it read, then jump to what it references. */
   open(notification: NotificationResponse) {
-    const route = this.notificationService.routeFor(notification);
+    const link = this.notificationService.routeFor(notification);
     if (!notification.is_read) {
+      this.markLocallyRead(notification.id);
       this.notificationService.markRead(notification.id).subscribe();
     }
-    if (route) {
+    if (link) {
       this.visible.set(false);
-      void this.router.navigate(route);
+      void this.router.navigate(link.commands, { queryParams: link.queryParams });
     }
+  }
+
+  private markLocallyRead(id: string) {
+    this.notifications.update((items) =>
+      items.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+    );
   }
 
   onHide() {

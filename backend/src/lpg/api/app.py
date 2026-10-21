@@ -46,6 +46,7 @@ from lpg.api.v1.routers import (
     printing,
     reporting,
     route,
+    support,
     whatsapp,
     ws,
 )
@@ -62,6 +63,7 @@ from lpg.infrastructure.events.cylinder_ledger_handlers import (
     register_cylinder_ledger_handlers,
 )
 from lpg.infrastructure.events.dispatcher import DomainEventDispatcher
+from lpg.infrastructure.events.low_stock_handlers import register_low_stock_handlers
 from lpg.infrastructure.events.notification_handlers import (
     register_notification_handlers,
 )
@@ -78,7 +80,9 @@ from lpg.infrastructure.health import (
 from lpg.infrastructure.identity.jwt_signer import PyJwtSigner
 from lpg.infrastructure.identity.password_hasher import Argon2PasswordHasher
 from lpg.infrastructure.jobs.pool import JobQueue
+from lpg.infrastructure.notification.delivery import InAppFirstNotifier
 from lpg.infrastructure.persistence.database import Database
+from lpg.infrastructure.persistence.errors import DATABASE_ERROR_TYPES, translate_database_error
 from lpg.infrastructure.realtime.connection_manager import ConnectionManager
 from lpg.infrastructure.realtime.publisher import RedisRealtimePublisher
 from lpg.infrastructure.realtime.subscriber import RedisSubscriber
@@ -188,7 +192,17 @@ async def lifespan(
     register_cylinder_ledger_handlers(_state.event_dispatcher, database)
     register_tenant_admin_handlers(_state.event_dispatcher, database)
     register_accounting_handlers(_state.event_dispatcher, database)
-    register_notification_handlers(_state.event_dispatcher, job_queue)
+    # In-app rows are written here, after commit, so the bell and the
+    # apps' inboxes never depend on the worker; push/SMS/email are queued.
+    register_notification_handlers(
+        _state.event_dispatcher,
+        InAppFirstNotifier(database, _state.event_dispatcher, job_queue),
+    )
+    register_low_stock_handlers(
+        _state.event_dispatcher,
+        database,
+        InAppFirstNotifier(database, _state.event_dispatcher, job_queue),
+    )
     register_auto_assignment_handlers(_state.event_dispatcher, job_queue)
     _state.job_queue = job_queue
 
@@ -298,7 +312,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=[settings.correlation_id_header],
     )
 
-    register_exception_handlers(app)
+    register_exception_handlers(
+        app,
+        database_error_types=DATABASE_ERROR_TYPES,
+        translate_database_error=translate_database_error,
+    )
 
     # Health endpoints sit outside the versioned prefix: they serve the
     # platform, not API clients, and their contract must not change when the
@@ -335,6 +353,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(online_payment.router, prefix=settings.api_v1_prefix)
     app.include_router(cash_handover.router, prefix=settings.api_v1_prefix)
     app.include_router(complaint.router, prefix=settings.api_v1_prefix)
+    app.include_router(support.router, prefix=settings.api_v1_prefix)
     app.include_router(printing.router, prefix=settings.api_v1_prefix)
     app.include_router(reporting.router, prefix=settings.api_v1_prefix)
     app.include_router(ws.router, prefix=settings.api_v1_prefix)

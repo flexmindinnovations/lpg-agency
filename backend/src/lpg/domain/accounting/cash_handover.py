@@ -163,3 +163,66 @@ class CashHandover(AggregateRoot):
     def shortfall(self) -> Decimal:
         difference = self._expected_amount - self._actual_amount
         return difference if difference > 0 else Decimal("0")
+
+
+# ---------------------------------------------------------------------------
+# Office review (DA-33)
+# ---------------------------------------------------------------------------
+
+#: `accepted` — the cash was counted and matches what the register shows
+#: (any shortfall is acknowledged). `disputed` — the count does not match
+#: the declaration, or a shortfall needs following up with the driver.
+CASH_HANDOVER_REVIEW_OUTCOMES: frozenset[str] = frozenset({"accepted", "disputed"})
+
+
+@dataclass(frozen=True, slots=True)
+class CashHandoverReview:
+    """An accountant's or manager's verdict on a declared handover.
+
+    Append-only, one per handover — like the handover itself, a review is a
+    record of what someone attested at a point in time, never edited.
+    """
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    cash_handover_id: uuid.UUID
+    outcome: str
+    note: str | None
+    reviewed_by: uuid.UUID
+    reviewed_at: datetime
+
+    @classmethod
+    def record(
+        cls,
+        *,
+        review_id: uuid.UUID,
+        handover: CashHandover,
+        outcome: str,
+        note: str | None,
+        reviewed_by: uuid.UUID,
+        reviewed_at: datetime | None = None,
+    ) -> CashHandoverReview:
+        if outcome not in CASH_HANDOVER_REVIEW_OUTCOMES:
+            msg = f"'{outcome}' is not a valid review outcome."
+            raise InvariantViolation(msg, outcome=outcome)
+        clean_note = (note or "").strip() or None
+        if outcome == "disputed" and clean_note is None:
+            msg = "Say what is wrong with this handover so the driver can be asked about it."
+            raise InvariantViolation(msg, field="note")
+        if handover.shortfall > 0 and outcome == "accepted" and clean_note is None:
+            msg = "This handover is short. Add a note on how the shortfall was settled."
+            raise InvariantViolation(msg, field="note")
+        # Segregation of duties: whoever declared the cash cannot also
+        # sign it off.
+        if reviewed_by == handover.declared_by:
+            msg = "The person who declared this handover cannot also verify it."
+            raise InvariantViolation(msg, cash_handover_id=str(handover.id))
+        return cls(
+            id=review_id,
+            tenant_id=handover.tenant_id,
+            cash_handover_id=handover.id,
+            outcome=outcome,
+            note=clean_note,
+            reviewed_by=reviewed_by,
+            reviewed_at=reviewed_at or datetime.now(UTC),
+        )

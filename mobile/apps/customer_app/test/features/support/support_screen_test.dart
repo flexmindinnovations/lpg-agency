@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:customer_app/src/features/support/data/complaints_provider.dart';
+import 'package:customer_app/src/features/support/presentation/emergency_contacts_card.dart';
 import 'package:customer_app/src/features/support/presentation/support_screen.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -20,16 +21,23 @@ ComplaintResponse _complaint({String status = 'Open'}) => ComplaintResponse(
   updatedAt: DateTime(2026, 8, 18),
 );
 
-Widget _screen({List<ComplaintResponse>? complaints, Object? error}) =>
-    ProviderScope(
-      overrides: [
-        complaintsProvider.overrideWith((ref) async {
-          if (error != null) throw error;
-          return complaints ?? const [];
-        }),
-      ],
-      child: MaterialApp(theme: LpgTheme.light, home: const SupportScreen()),
-    );
+Widget _screen({
+  List<ComplaintResponse>? complaints,
+  Object? error,
+  String? agencyPhone,
+}) => ProviderScope(
+  overrides: [
+    supportContactsProvider.overrideWith(
+      (ref) async =>
+          SupportContacts(emergencyHelpline: '1906', agencyPhone: agencyPhone),
+    ),
+    complaintsProvider.overrideWith((ref) async {
+      if (error != null) throw error;
+      return complaints ?? const [];
+    }),
+  ],
+  child: MaterialApp(theme: LpgTheme.light, home: const SupportScreen()),
+);
 
 void main() {
   group('SupportScreen', () {
@@ -45,8 +53,22 @@ void main() {
     ) async {
       await pumpScreen(tester, _screen(complaints: [_complaint()]));
 
-      expect(find.text('LateDelivery'), findsOneWidget);
+      // CA-09: readable category and the complaint number, not the enum.
+      expect(find.text('Late Delivery · CMP000007'), findsOneWidget);
       expect(find.text('OPEN'), findsOneWidget);
+    });
+
+    testWidgets('leads with the emergency helpline and the agency (CA-10)', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        _screen(complaints: const [], agencyPhone: '+914012345678'),
+      );
+
+      expect(find.text('Smell gas?'), findsOneWidget);
+      expect(find.text('Call 1906 (emergency)'), findsOneWidget);
+      expect(find.byKey(EmergencyContactsCard.agencyButtonKey), findsOneWidget);
     });
 
     testWidgets('shows an error state with retry when the load fails', (

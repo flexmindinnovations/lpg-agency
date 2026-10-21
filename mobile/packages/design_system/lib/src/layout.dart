@@ -67,3 +67,24 @@ abstract final class LpgSizes {
   static const double buttonHeight =
       (LpgTokens.spacing2xl + LpgTokens.spacingSm) * 1.0;
 }
+
+/// Window-size breakpoints, from Material 3's window size classes. Phones
+/// are "compact"; a tablet (or a phone in landscape) is "medium" or wider,
+/// where the apps switch the bottom bar for a navigation rail and cap
+/// content width so cards and key/value rows don't stretch edge to edge.
+abstract final class LpgBreakpoints {
+  /// Below this width is a phone layout.
+  static const double medium = 600;
+
+  /// The widest a column of cards and forms is allowed to grow: wide enough
+  /// for two-column key/value rows to stay readable, narrow enough that a
+  /// label and its value never sit a whole tablet-width apart.
+  static const double contentMaxWidth = 720;
+
+  /// The widest a single short form (sign-in) grows: phone-width, centred.
+  static const double formMaxWidth = 480;
+
+  /// Whether [context] is wider than a phone.
+  static bool isWide(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= medium;
+}

@@ -38,9 +38,14 @@ import {
   CustomerService,
   AdminBranchService,
   NotifyService,
+  OrderService,
+  type CustomerAddressResponse,
+  type OrderResponse,
+  type UpdateCustomerProfileRequest,
   type BranchResponse,
   type CustomerResponse,
   type KycDocumentResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
@@ -50,7 +55,17 @@ import {
   HasPermissionDirective,
   PageHeaderComponent,
   StatusChipCell,
+  formatCurrencyInr,
+  formatReportDate,
 } from '@lpg/shared/ui';
+import {
+  PINCODE_PATTERN,
+  compactIdentifier,
+  gstinValidator,
+  kycNumberValidator,
+  type KycDocType,
+} from '../validators/identifier-validators';
+import { InputNumber } from 'primeng/inputnumber';
 
 import { RouterLink } from '@angular/router';
 import { TitleCasePipe } from '@angular/common';
@@ -85,6 +100,7 @@ import { TitleCasePipe } from '@angular/common';
     FormFieldComponent,
     DocumentUploadComponent,
     HasPermissionDirective,
+    InputNumber,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-customers.html',
@@ -93,6 +109,7 @@ import { TitleCasePipe } from '@angular/common';
 export class FeatureCustomers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly customerService = inject(CustomerService);
+  private readonly orderService = inject(OrderService);
   private readonly branchService = inject(AdminBranchService);
   private readonly notify = inject(NotifyService);
   private readonly keyboardShortcuts = inject(KeyboardShortcutsService);
@@ -106,6 +123,8 @@ export class FeatureCustomers implements OnInit {
   protected readonly selectedCustomer = signal<CustomerResponse | null>(null);
   protected readonly kycDocuments = signal<KycDocumentResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
 
   // Document preview — an in-app modal rather than `target="_blank"`, so
@@ -190,13 +209,14 @@ export class FeatureCustomers implements OnInit {
     { label: 'Closed', value: 'closed' },
   ];
 
-  protected readonly kycDocTypeOptions = [
-    { label: 'Aadhaar Card', value: 'aadhaar' },
-    { label: 'PAN Card', value: 'pan' },
-    { label: 'Voter ID', value: 'voter_id' },
+  // The document types the server accepts (DO-03); a business's GSTIN is
+  // part of its profile, not a KYC document.
+  protected readonly kycDocTypeOptions: { label: string; value: KycDocType }[] = [
+    { label: 'Aadhaar card', value: 'aadhaar' },
+    { label: 'PAN card', value: 'pan' },
+    { label: 'Voter ID (EPIC)', value: 'voter_id' },
+    { label: 'Driving licence', value: 'driving_license' },
     { label: 'Passport', value: 'passport' },
-    { label: 'GSTIN', value: 'gstin' },
-    { label: 'Utility Bill (Address Proof)', value: 'utility_bill' },
   ];
 
   // Column definitions for customer list data grid
@@ -232,20 +252,103 @@ export class FeatureCustomers implements OnInit {
 
   // Forms
 
+  /** Structured address (DO-07): what the driver needs to find the door,
+   *  with an optional map pin. */
   protected readonly addressForm = this.fb.group({
-    address_line: ['', [Validators.required]],
+    line_1: ['', [Validators.required, Validators.maxLength(255)]],
+    line_2: [''],
+    landmark: [''],
+    area: [''],
+    city: ['', [Validators.required]],
+    district: [''],
+    state: [''],
+    pincode: ['', [Validators.required, Validators.pattern(PINCODE_PATTERN)]],
+    latitude: [null as number | null, [Validators.min(-90), Validators.max(90)]],
+    longitude: [null as number | null, [Validators.min(-180), Validators.max(180)]],
   });
 
   protected readonly kycForm = this.fb.group({
-    doc_type: ['aadhaar', [Validators.required]],
+    doc_type: ['aadhaar' as KycDocType, [Validators.required]],
     doc_reference: ['', [Validators.required]],
   });
 
+  protected readonly profileForm = this.fb.group({
+    full_name: ['', [Validators.required, Validators.maxLength(255)]],
+    contact_person: [''],
+    alternate_mobile: ['', [Validators.pattern(/^\+[1-9]\d{9,14}$/)]],
+    email: ['', [Validators.email]],
+    gstin: ['', [gstinValidator]],
+  });
+
   protected readonly fieldMessages = {
-    address_line: { required: 'An address line is required.' },
+    line_1: { required: 'House / building and street are required.' },
+    city: { required: 'City is required.' },
+    pincode: {
+      required: 'A PIN code is required.',
+      pattern: 'Enter a valid 6-digit PIN code (it cannot start with 0).',
+    },
+    latitude: { min: 'Latitude is between -90 and 90.', max: 'Latitude is between -90 and 90.' },
+    longitude: {
+      min: 'Longitude is between -180 and 180.',
+      max: 'Longitude is between -180 and 180.',
+    },
     doc_type: { required: 'Select a document type.' },
-    doc_reference: { required: 'A document reference is required.' },
+    doc_reference: {
+      required: 'A document number is required.',
+      kycNumber: 'Check the document number.',
+    },
+    full_name: { required: 'A name is required.' },
+    alternate_mobile: { pattern: 'Enter the number with country code, e.g. +919876543210.' },
+    email: { email: 'Enter a valid email address.' },
+    gstin: { gstin: 'Enter a valid 15-character GSTIN, like 27AAPFU0939F1ZV.' },
   };
+
+  /** The address being edited, or `null` when adding one. */
+  protected readonly editingAddressId = signal<string | null>(null);
+  /** The address waiting for "Confirm remove". */
+  protected readonly pendingRemoveAddressId = signal<string | null>(null);
+  protected readonly showEditProfile = signal(false);
+  protected readonly confirmingClose = signal(false);
+  protected readonly customerOrders = signal<OrderResponse[]>([]);
+  protected readonly customerOrdersLoading = signal(false);
+
+  protected get editProfileVisible(): boolean {
+    return this.showEditProfile();
+  }
+  protected set editProfileVisible(value: boolean) {
+    this.showEditProfile.set(value);
+  }
+
+  protected isBusinessCustomer(customer: CustomerResponse): boolean {
+    return customer.customer_type !== 'domestic';
+  }
+
+  protected addressLabel(address: CustomerAddressResponse): string {
+    return [
+      address.line_1,
+      address.line_2,
+      address.landmark,
+      address.area,
+      address.city,
+      address.state,
+      address.pincode,
+    ]
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  protected orderStatusLabel(status: string): string {
+    const words = status.replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
+  protected formatDate(value: string): string {
+    return formatReportDate(value);
+  }
+
+  protected formatAmount(value: string | number | null | undefined): string {
+    return value == null ? '—' : formatCurrencyInr(value);
+  }
 
   // p-dialog/p-drawer's [(visible)] two-way-binds to a plain property, not a signal
   // directly — thin getter/setter bridges keep the rest of the component
@@ -266,6 +369,9 @@ export class FeatureCustomers implements OnInit {
   }
 
   ngOnInit(): void {
+    this.kycForm.controls.doc_reference.addValidators(
+      kycNumberValidator(() => this.kycForm.controls.doc_type.value),
+    );
     this.reloadList();
     this.loadBranches();
     this.openCustomerFromQueryParam();
@@ -286,8 +392,9 @@ export class FeatureCustomers implements OnInit {
     });
   }
 
-  private reloadList(): void {
+  protected reloadList(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.customerService.list(0, 100, this.searchQuery() || undefined).subscribe({
       next: (res) => {
         this.customers.set(res.items);
@@ -300,11 +407,10 @@ export class FeatureCustomers implements OnInit {
           this.selectedCustomer.set(updated ?? null);
         }
       },
-      // GET — not covered by the global error-toast interceptor
-      // (mutating methods only).
-      error: () => {
+      // Shown in the grid as an error state with Retry, not a toast.
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
         this.loading.set(false);
-        this.notify.error('Failed to load customers.');
       },
     });
   }
@@ -364,14 +470,129 @@ export class FeatureCustomers implements OnInit {
 
   protected async viewCustomer(customer: CustomerResponse) {
     this.selectedCustomer.set(customer);
+    this.pendingRemoveAddressId.set(null);
+    this.confirmingClose.set(false);
     this.loadKycDocuments(customer.id);
+    this.loadCustomerOrders(customer.id);
     this.showDetailDrawer.set(true);
+  }
+
+  /** The customer's recent orders, newest first (DO-06). */
+  private loadCustomerOrders(customerId: string): void {
+    this.customerOrders.set([]);
+    this.customerOrdersLoading.set(true);
+    this.orderService.listOrders({ customerId, limit: 20 }).subscribe({
+      next: (page) => {
+        if (this.selectedCustomer()?.id === customerId) this.customerOrders.set(page.items);
+        this.customerOrdersLoading.set(false);
+      },
+      error: () => this.customerOrdersLoading.set(false),
+    });
+  }
+
+  // Profile actions (DO-06)
+  protected openEditProfile(): void {
+    const customer = this.selectedCustomer();
+    if (!customer) return;
+    this.profileForm.reset({
+      full_name: customer.full_name,
+      contact_person: customer.contact_person ?? '',
+      alternate_mobile: customer.alternate_mobile ?? '',
+      email: customer.email ?? '',
+      gstin: customer.gstin ?? '',
+    });
+    this.showEditProfile.set(true);
+  }
+
+  protected submitEditProfile(): void {
+    const customer = this.selectedCustomer();
+    if (!customer || this.profileForm.invalid) {
+      this.profileForm.markAllAsTouched();
+      return;
+    }
+    const value = this.profileForm.getRawValue();
+    const business = this.isBusinessCustomer(customer);
+    this.customerService
+      .update(customer.id, {
+        full_name: value.full_name.trim(),
+        contact_person: business ? value.contact_person.trim() || null : null,
+        alternate_mobile: value.alternate_mobile.trim() || null,
+        email: value.email.trim() || null,
+        gstin: business && value.gstin.trim() ? compactIdentifier(value.gstin) : null,
+        // Unchanged here; the server keeps them for staff without
+        // customers:update.
+        phone_number: customer.phone_number,
+        branch_id: customer.branch_id,
+        customer_type: customer.customer_type as UpdateCustomerProfileRequest['customer_type'],
+        status: customer.status as UpdateCustomerProfileRequest['status'],
+        date_of_birth: customer.date_of_birth,
+        lpg_subsidy_id: customer.lpg_subsidy_id,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.notify.success('Profile updated.');
+          this.selectedCustomer.set(updated);
+          this.showEditProfile.set(false);
+          this.reloadList();
+        },
+      });
+  }
+
+  protected closeConnection(): void {
+    const customer = this.selectedCustomer();
+    if (!customer) return;
+    if (!this.confirmingClose()) {
+      this.confirmingClose.set(true);
+      return;
+    }
+    this.customerService.closeConnection(customer.id).subscribe({
+      next: () => {
+        this.confirmingClose.set(false);
+        this.notify.success(`${customer.full_name}'s connection is closed.`);
+        this.reloadList();
+      },
+    });
   }
 
   // Address Actions
   protected openAddAddressModal(): void {
+    this.editingAddressId.set(null);
     this.addressForm.reset();
     this.showAddAddressModal.set(true);
+  }
+
+  protected openEditAddressModal(address: CustomerAddressResponse): void {
+    this.editingAddressId.set(address.id);
+    this.addressForm.reset({
+      line_1: address.line_1,
+      line_2: address.line_2 ?? '',
+      landmark: address.landmark ?? '',
+      area: address.area ?? '',
+      city: address.city ?? '',
+      district: address.district ?? '',
+      state: address.state ?? '',
+      pincode: address.pincode ?? '',
+      latitude: address.latitude != null ? Number(address.latitude) : null,
+      longitude: address.longitude != null ? Number(address.longitude) : null,
+    });
+    this.showAddAddressModal.set(true);
+  }
+
+  protected removeAddress(address: CustomerAddressResponse): void {
+    const customer = this.selectedCustomer();
+    if (!customer) return;
+    if (this.pendingRemoveAddressId() !== address.id) {
+      this.pendingRemoveAddressId.set(address.id);
+      return;
+    }
+    this.customerService.removeAddress(customer.id, address.id).subscribe({
+      next: () => {
+        this.pendingRemoveAddressId.set(null);
+        this.notify.success('Address removed.');
+        this.reloadList();
+      },
+      error: () => this.pendingRemoveAddressId.set(null),
+    });
   }
 
   protected closeAddAddressModal(): void {
@@ -380,12 +601,34 @@ export class FeatureCustomers implements OnInit {
 
   protected submitAddAddress(): void {
     const customer = this.selectedCustomer();
-    if (!customer || this.addressForm.invalid) return;
-
-    const { address_line } = this.addressForm.getRawValue();
-    this.customerService.addAddress(customer.id, { line_1: address_line }).subscribe({
+    if (!customer || this.addressForm.invalid) {
+      this.addressForm.markAllAsTouched();
+      return;
+    }
+    const value = this.addressForm.getRawValue();
+    if ((value.latitude == null) !== (value.longitude == null)) {
+      this.notify.error('Give both latitude and longitude for the map pin, or neither.');
+      return;
+    }
+    const body = {
+      line_1: value.line_1.trim(),
+      line_2: value.line_2.trim() || null,
+      landmark: value.landmark.trim() || null,
+      area: value.area.trim() || null,
+      city: value.city.trim(),
+      district: value.district.trim() || null,
+      state: value.state.trim() || null,
+      pincode: value.pincode.trim(),
+      latitude: value.latitude,
+      longitude: value.longitude,
+    };
+    const editingId = this.editingAddressId();
+    const request = editingId
+      ? this.customerService.updateAddress(customer.id, editingId, body)
+      : this.customerService.addAddress(customer.id, body).pipe(map(() => undefined));
+    request.subscribe({
       next: () => {
-        this.notify.success('Address added successfully.');
+        this.notify.success(editingId ? 'Address updated.' : 'Address added.');
         this.closeAddAddressModal();
         this.reloadList();
       },
@@ -465,7 +708,7 @@ export class FeatureCustomers implements OnInit {
 
   private finishSubmitKyc(
     customerId: string,
-    docType: string,
+    docType: KycDocType,
     docReference: string,
     fileUrl: string | null,
   ): void {

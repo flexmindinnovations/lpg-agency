@@ -40,6 +40,15 @@ def _make_complaint(
 
 
 class TestComplaintCreation:
+    def test_a_gas_leak_report_is_always_critical(self) -> None:
+        """CA-10: a safety report is never queued behind routine tickets."""
+        complaint = _make_complaint(
+            priority=ComplaintPriority.LOW, category=ComplaintCategory.GAS_LEAK_SAFETY
+        )
+        assert complaint.priority == ComplaintPriority.CRITICAL
+        assert complaint.sla_due_at is not None
+        assert complaint.sla_due_at - complaint.created_at <= timedelta(hours=4, seconds=5)
+
     def test_create_starts_open_with_no_assignment_or_resolution(self) -> None:
         complaint = _make_complaint()
         assert complaint.status == ComplaintStatus.OPEN

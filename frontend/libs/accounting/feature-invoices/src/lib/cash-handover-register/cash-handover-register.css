@@ -1,0 +1,63 @@
+:host {
+  display: block;
+}
+
+.register {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.register__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.register__field,
+.register__note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.register__note {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.register__spacer {
+  flex: 1;
+}
+
+.register__totals,
+.register__detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--spacing-md);
+  margin: 0;
+}
+
+.register__totals dt,
+.register__detail dt {
+  color: var(--color-text-secondary);
+  font-size: var(--typography-caption-font-size);
+}
+
+.register__totals dd,
+.register__detail dd {
+  margin: 0;
+  font-weight: var(--typography-label-font-weight);
+}
+
+.register__short {
+  color: var(--color-status-danger);
+}
+
+:host ::ng-deep .cell--danger {
+  color: var(--color-status-danger);
+}

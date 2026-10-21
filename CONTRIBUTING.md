@@ -32,6 +32,27 @@ That checks prerequisites, creates `.env` from `.env.example`, installs dependen
 ./scripts/dev-up.sh
 ```
 
+Then migrate and load the demo data (an agency, an **active licence** so sign-in
+works, branches, stock, customers, orders, and one login per role, all with the
+password `correct-horse-battery`):
+
+```bash
+cd backend
+uv run alembic upgrade head
+uv run python scripts/seed_demo_data.py
+```
+
+Frontend notes:
+
+- `frontend/.npmrc` sets `legacy-peer-deps=true`: `@ngrx/signals@21` still
+  declares an Angular 21 peer range while the workspace is on Angular 22, so a
+  plain `npm ci` would fail with `ERESOLVE`. Remove it once a 22-compatible
+  release is out.
+- `apps/dashboard/src/app/prime-license.ts` is git-ignored (a deployment pastes
+  its PrimeNG key there). `npm ci` and every `build`/`serve`/`test` of the
+  dashboard create it from `prime-license.example.ts` when it is missing, so
+  locally PrimeNG simply runs unlicensed.
+
 ## Running things
 
 | What | Command |

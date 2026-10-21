@@ -7,34 +7,16 @@ Widget _wrap(Widget child) => MaterialApp(theme: LpgTheme.light, home: child);
 
 void main() {
   group('PaymentMethodsScreen', () {
-    testWidgets('shows the empty state and both add actions', (tester) async {
-      await tester.pumpWidget(_wrap(const PaymentMethodsScreen()));
-
-      expect(
-        find.textContaining('No payment methods saved yet'),
-        findsOneWidget,
-      );
-      expect(find.text('Add Credit / Debit Card'), findsOneWidget);
-      expect(find.text('Add UPI ID'), findsOneWidget);
-    });
-
-    testWidgets('an add action explains the feature is not live yet', (
+    testWidgets('explains the ways to pay without asking for a card', (
       tester,
     ) async {
       await tester.pumpWidget(_wrap(const PaymentMethodsScreen()));
 
-      await tester.tap(find.text('Add UPI ID'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('UPI payments are coming soon'), findsOneWidget);
-      // The sheet dismisses without persisting anything.
-      await tester.tap(find.text('Got it'));
-      await tester.pumpAndSettle();
-      expect(find.text('UPI payments are coming soon'), findsNothing);
-      expect(
-        find.textContaining('No payment methods saved yet'),
-        findsOneWidget,
-      );
+      expect(find.text('Cash on delivery'), findsOneWidget);
+      expect(find.text('UPI or card on delivery'), findsOneWidget);
+      expect(find.text('Pay online'), findsOneWidget);
+      // CA-16: no "add a card" action that contradicts the copy.
+      expect(find.textContaining('Add Credit'), findsNothing);
     });
   });
 }

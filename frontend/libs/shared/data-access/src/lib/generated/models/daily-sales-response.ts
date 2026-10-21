@@ -3,7 +3,9 @@
 
 export interface DailySalesResponse {
   branch_id: (string | null);
+  branch_name?: (string | null);
   sale_date: string;
+  taxable_value?: string;
   total_invoices: number;
   total_revenue: string;
   total_tax: string;

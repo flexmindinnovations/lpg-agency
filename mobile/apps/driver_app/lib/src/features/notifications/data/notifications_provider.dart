@@ -36,11 +36,13 @@ final pushMessagesProvider = StreamProvider<void>((ref) {
   return ref.watch(pushNotificationServiceProvider).messages;
 });
 
-/// Live `notification.new` events for the signed-in driver over `/ws`
-/// (`RealtimeClient.subscribeToNotifications`) — a new stop, a cancelled
-/// stop, the route being ready. Covers the case push can't: a device where
+/// Live updates for the signed-in driver over `/ws`
+/// (`RealtimeClient.subscribeToDriverUpdates`): new notifications (a new
+/// stop, a cancelled stop, the route being ready), reads made on another
+/// device, route changes on the driver's own channel, and a reconnect marker
+/// after a dropped connection. Covers the case push can't: a device where
 /// FCM isn't available or the push was dropped.
 final notificationsRealtimeProvider =
     StreamProvider.autoDispose<Map<String, dynamic>>((ref) {
-      return ref.watch(realtimeClientProvider).subscribeToNotifications();
+      return ref.watch(realtimeClientProvider).subscribeToDriverUpdates();
     });

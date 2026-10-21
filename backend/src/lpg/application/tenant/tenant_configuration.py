@@ -78,3 +78,46 @@ class ListTenantConfigurationUseCase:
 
     async def execute(self, query: ListTenantConfigurationQuery) -> list[TenantConfiguration]:
         return list(await self._repository.list_for_tenant(query.tenant_id))
+
+
+@dataclass(frozen=True, slots=True)
+class SupportContacts:
+    emergency_helpline: str
+    agency_phone: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class GetSupportContactsQuery:
+    tenant_id: uuid.UUID
+
+
+class GetSupportContactsUseCase:
+    """The phone numbers a customer may need in a hurry: the gas-leak
+    emergency helpline (the tenant's own, else `default_emergency_helpline`)
+    and the agency's support phone, if the tenant has set one.
+    """
+
+    def __init__(
+        self, repository: TenantConfigurationRepository, *, default_emergency_helpline: str
+    ) -> None:
+        self._get = GetEffectiveTenantConfigurationUseCase(repository)
+        self._default_emergency_helpline = default_emergency_helpline
+
+    async def execute(self, query: GetSupportContactsQuery) -> SupportContacts:
+        emergency = await self._get.execute(
+            GetEffectiveTenantConfigurationQuery(query.tenant_id, "emergency_helpline_number")
+        )
+        agency = await self._get.execute(
+            GetEffectiveTenantConfigurationQuery(query.tenant_id, "customer_support_phone")
+        )
+        return SupportContacts(
+            emergency_helpline=_phone_or_none(emergency) or self._default_emergency_helpline,
+            agency_phone=_phone_or_none(agency),
+        )
+
+
+def _phone_or_none(config: TenantConfiguration | None) -> str | None:
+    if config is None:
+        return None
+    value = str(config.config_value or "").strip()
+    return value or None

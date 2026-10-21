@@ -71,6 +71,7 @@ CYLINDER_STATUSES: frozenset[str] = frozenset(
 TRANSACTION_TYPES: frozenset[str] = frozenset(
     {
         "grn_receipt",
+        "omc_return",
         "load",
         "unload",
         "delivery",
@@ -83,21 +84,79 @@ TRANSACTION_TYPES: frozenset[str] = frozenset(
     }
 )
 
+#: The oil marketing companies a distributor receives filled cylinders from
+#: and returns empties to. `other` covers a parallel-marketer supplier.
+OMC_CODES: frozenset[str] = frozenset({"iocl", "bpcl", "hpcl", "other"})
+
+#: Statuses that can be sent back to the OMC's bottling plant: empties for
+#: refilling, and segregated defective cylinders (MDG 2022 cl. 1.4(b) —
+#: damaged, leaking or due-for-test cylinders go back to the plant, they are
+#: never repaired or filled at the agency).
+OMC_RETURNABLE_STATUSES: frozenset[str] = frozenset({"empty", "damaged", "leakage", "quarantine"})
+
 # Same-location, same-transaction status moves only. `filled⇄empty` is
 # deliberately absent: filled→empty happens through record_delivery (a
 # different physical unit leaving to the customer), empty→filled only
 # through receive_goods (the GRN cycle) — neither is a same-status-pair,
 # 1:1 transition (BR-13's worked example: Filled 50→35 delivering 15,
 # Empty 10→24 collecting 14 — the two counters move independently).
+# `filled→damaged` is allowed: a full cylinder found dented or with a
+# broken valve guard is damaged without leaking.
 _STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "empty": frozenset({"damaged", "leakage"}),
-    "filled": frozenset({"leakage"}),
+    "filled": frozenset({"damaged", "leakage"}),
     "damaged": frozenset({"quarantine"}),
     "leakage": frozenset({"quarantine"}),
     "quarantine": frozenset({"repair", "scrap"}),
     "repair": frozenset({"filled"}),
     "scrap": frozenset(),
 }
+
+
+def _with_reversals(graph: dict[str, frozenset[str]]) -> dict[str, frozenset[str]]:
+    reversed_edges = {status: set(targets) for status, targets in graph.items()}
+    for source, targets in graph.items():
+        for target in targets:
+            reversed_edges[target].add(source)
+    return {status: frozenset(targets) for status, targets in reversed_edges.items()}
+
+
+# A manual adjustment corrects a status move, so it may also undo one (a
+# leak report that turned out wrong goes back to filled). It still can't
+# invent a move that is no step of the cycle — empty→filled stays GRN-only.
+_ADJUSTMENT_TRANSITIONS: dict[str, frozenset[str]] = _with_reversals(_STATUS_TRANSITIONS)
+
+
+def status_change_targets() -> dict[str, frozenset[str]]:
+    """Every status → the statuses a routine status change may move it to.
+    Published by the API so clients offer only legal targets (one rule,
+    owned here)."""
+    return dict(_STATUS_TRANSITIONS)
+
+
+def adjustment_targets() -> dict[str, frozenset[str]]:
+    """Every status → the statuses a manual adjustment may move it to."""
+    return dict(_ADJUSTMENT_TRANSITIONS)
+
+
+def signed_balance_changes(
+    transaction_type: str, from_status: str | None, to_status: str, quantity: int
+) -> tuple[tuple[str, int], ...]:
+    """How one ledger row moved the balance: `(status, signed quantity)`
+    pairs. The stock register is built from these, so it can never disagree
+    with how the aggregate itself applied the row.
+
+    A `reconciliation` row with no `from_status` is a counted surplus; one
+    with `from_status` set is a shortage (see `apply_count_variance`).
+    """
+    if transaction_type in ("grn_receipt", "load", "collection", "reservation_release"):
+        return ((to_status, quantity),)
+    if transaction_type in ("unload", "delivery", "reservation", "omc_return"):
+        return ((to_status, -quantity),)
+    if transaction_type == "reconciliation":
+        return ((to_status, quantity if from_status is None else -quantity),)
+    # status_change / adjustment: one status down, another up.
+    return ((from_status or to_status, -quantity), (to_status, quantity))
 
 
 # ---------------------------------------------------------------------------
@@ -136,9 +195,10 @@ class InventoryLocation(AggregateRoot):
     Business invariants:
     - Balance for any ``(cylinder_type_id, status)`` pair never goes negative
       (``_debit`` raises ``InsufficientStockError`` before it would).
-    - Status moves (``change_status``/``adjust``) must follow
-      ``_STATUS_TRANSITIONS`` — ``InvalidStatusTransitionError`` otherwise.
-    - ``receive_goods``/``unload`` are warehouse-only; ``load``,
+    - Status moves must follow ``_STATUS_TRANSITIONS`` (``change_status``)
+      or ``_ADJUSTMENT_TRANSITIONS`` (``adjust``) —
+      ``InvalidStatusTransitionError`` otherwise.
+    - ``receive_goods``/``unload``/``return_to_omc`` are warehouse-only; ``load``,
       ``record_delivery``, ``record_collection`` are vehicle-only.
     """
 
@@ -341,7 +401,13 @@ class InventoryLocation(AggregateRoot):
     ) -> None:
         """Move stock between statuses at this location (e.g. filled→leakage)."""
         self._move(
-            cylinder_type_id, from_status, to_status, quantity, "status_change", performed_by
+            cylinder_type_id,
+            from_status,
+            to_status,
+            quantity,
+            "status_change",
+            performed_by,
+            allowed_moves=_STATUS_TRANSITIONS,
         )
 
     def adjust(
@@ -362,36 +428,74 @@ class InventoryLocation(AggregateRoot):
             quantity,
             "adjustment",
             performed_by,
+            allowed_moves=_ADJUSTMENT_TRANSITIONS,
             reason=reason,
         )
 
-    def reconcile(
+    def return_to_omc(
         self,
         cylinder_type_id: uuid.UUID,
         status: str,
-        actual_quantity: int,
+        quantity: int,
         *,
         performed_by: uuid.UUID,
+        reason: str | None = None,
     ) -> None:
-        """Set the tracked balance to a physically-counted value.
+        """Empties (or segregated defective cylinders) leave the warehouse on
+        the OMC's truck back to the bottling plant. Warehouse-only."""
+        self._require_warehouse()
+        self._validate_quantity(quantity)
+        self._validate_status(status)
+        if status not in OMC_RETURNABLE_STATUSES:
+            msg = (
+                f"'{status}' cylinders can't be returned to the OMC. Only "
+                f"{', '.join(sorted(OMC_RETURNABLE_STATUSES))} stock goes back to the plant."
+            )
+            raise InvariantViolation(msg, status=status)
+        self._debit(cylinder_type_id, status, quantity)
+        self._record_transaction(
+            "omc_return", cylinder_type_id, status, status, quantity, performed_by, reason=reason
+        )
 
-        Records the delta (if any) as a ``reconciliation`` transaction so the
-        "balance updated only within the same transaction as its source"
-        invariant holds even for count corrections.
+    def apply_count_variance(
+        self,
+        cylinder_type_id: uuid.UUID,
+        status: str,
+        variance: int,
+        *,
+        performed_by: uuid.UUID,
+        reason: str | None = None,
+    ) -> None:
+        """Book an *approved* physical-count variance (D-16).
+
+        Applies the difference the counter found (``actual - expected`` at
+        count time) rather than overwriting the balance with the counted
+        figure: stock that moved between the count and its approval stays
+        correct. A shortage larger than today's balance raises
+        ``InsufficientStockError`` — the count is stale and must be redone.
+
+        A surplus is recorded with no ``from_status`` (a pure credit), a
+        shortage with ``from_status == to_status`` — see
+        ``signed_balance_changes``.
         """
         self._validate_status(status)
-        if actual_quantity < 0:
-            msg = f"Actual quantity cannot be negative, got {actual_quantity}."
-            raise InvariantViolation(msg)
-
-        key = (cylinder_type_id, status)
-        expected = self._balances.get(key, 0)
-        delta = actual_quantity - expected
-        self._balances[key] = actual_quantity
-        if delta == 0:
+        if variance == 0:
             return
+        quantity = abs(variance)
+        if variance > 0:
+            self._credit(cylinder_type_id, status, quantity)
+            from_status: str | None = None
+        else:
+            self._debit(cylinder_type_id, status, quantity)
+            from_status = status
         self._record_transaction(
-            "reconciliation", cylinder_type_id, status, status, abs(delta), performed_by
+            "reconciliation",
+            cylinder_type_id,
+            from_status,
+            status,
+            quantity,
+            performed_by,
+            reason=reason,
         )
 
     # ------------------------------------------------------------------
@@ -407,12 +511,13 @@ class InventoryLocation(AggregateRoot):
         transaction_type: str,
         performed_by: uuid.UUID,
         *,
+        allowed_moves: dict[str, frozenset[str]],
         reason: str | None = None,
     ) -> None:
         self._validate_quantity(quantity)
         self._validate_status(from_status)
         self._validate_status(to_status)
-        allowed = _STATUS_TRANSITIONS.get(from_status, frozenset())
+        allowed = allowed_moves.get(from_status, frozenset())
         if to_status not in allowed:
             msg = f"Cannot transition cylinder status from '{from_status}' to '{to_status}'."
             raise InvalidStatusTransitionError(msg, from_status=from_status, to_status=to_status)

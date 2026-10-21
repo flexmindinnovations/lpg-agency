@@ -72,4 +72,21 @@ final class ComplaintApi {
       return FailureResult(Failure(message: e.toString()));
     }
   }
+
+  /// The emergency helpline and the agency's phone, for the Support screen.
+  Future<Result<SupportContacts>> getSupportContacts() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/support/contacts',
+      );
+      if (response.data == null) {
+        return const FailureResult(Failure(message: 'Response data is null'));
+      }
+      return Success(SupportContacts.fromJson(response.data!));
+    } on DioException catch (e) {
+      return FailureResult(mapDioError(e));
+    } catch (e) {
+      return FailureResult(Failure(message: e.toString()));
+    }
+  }
 }

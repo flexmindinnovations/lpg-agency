@@ -1,3 +1,4 @@
+export 'lpg_adaptive_shell.dart';
 export 'lpg_avatar.dart';
 export 'lpg_banner.dart';
 export 'lpg_brand_mark.dart';

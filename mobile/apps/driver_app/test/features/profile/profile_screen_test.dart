@@ -134,7 +134,11 @@ void main() {
 
       await tester.tap(find.text('Log Out'));
       await tester.pumpAndSettle();
+      expect(find.text('Log out?'), findsOneWidget);
+      expect(repo.loggedOut, isFalse);
 
+      await tester.tap(find.text('Log Out').last);
+      await tester.pumpAndSettle();
       expect(repo.loggedOut, isTrue);
     });
   });

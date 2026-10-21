@@ -3,6 +3,9 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 
+import { amendOrderApiV1OrdersOrderIdPatch } from './generated/fn/orders/amend-order-api-v-1-orders-order-id-patch';
+import { getProofOfDeliveryApiV1OrdersOrderIdProofOfDeliveryGet } from './generated/fn/orders/get-proof-of-delivery-api-v-1-orders-order-id-proof-of-delivery-get';
+import { rejectOrderCancellationApiV1OrdersOrderIdCancelRejectPost } from './generated/fn/orders/reject-order-cancellation-api-v-1-orders-order-id-cancel-reject-post';
 import { approveOrderCancellationApiV1OrdersOrderIdCancelApprovePost } from './generated/fn/orders/approve-order-cancellation-api-v-1-orders-order-id-cancel-approve-post';
 import { assignOrderApiV1OrdersOrderIdAssignPost } from './generated/fn/orders/assign-order-api-v-1-orders-order-id-assign-post';
 import { bulkCancelOrdersApiV1OrdersBulkCancelPost } from './generated/fn/orders/bulk-cancel-orders-api-v-1-orders-bulk-cancel-post';
@@ -17,12 +20,17 @@ import { getOrderApiV1OrdersOrderIdGet } from './generated/fn/orders/get-order-a
 import { getPendingCancellationApiV1OrdersOrderIdCancellationRequestGet } from './generated/fn/orders/get-pending-cancellation-api-v-1-orders-order-id-cancellation-request-get';
 import { listOrderStatusHistoryApiV1OrdersOrderIdHistoryGet } from './generated/fn/orders/list-order-status-history-api-v-1-orders-order-id-history-get';
 import { listOrderableCylinderTypesApiV1OrdersOrderableCylinderTypesGet } from './generated/fn/orders/list-orderable-cylinder-types-api-v-1-orders-orderable-cylinder-types-get';
-import { listOrdersApiV1OrdersGet } from './generated/fn/orders/list-orders-api-v-1-orders-get';
+import {
+  listOrdersApiV1OrdersGet,
+  type ListOrdersApiV1OrdersGet$Params,
+} from './generated/fn/orders/list-orders-api-v-1-orders-get';
 import { recordFailedDeliveryApiV1OrdersOrderIdFailedDeliveryPost } from './generated/fn/orders/record-failed-delivery-api-v-1-orders-order-id-failed-delivery-post';
 import { rescheduleOrderApiV1OrdersOrderIdReschedulePost } from './generated/fn/orders/reschedule-order-api-v-1-orders-order-id-reschedule-post';
 import { uploadPodAttachmentApiV1OrdersOrderIdPodAttachmentsPost } from './generated/fn/orders/upload-pod-attachment-api-v-1-orders-order-id-pod-attachments-post';
 
 import type { LpgApiV1SchemasOrderAssignOrderRequest } from './generated/models/lpg-api-v-1-schemas-order-assign-order-request';
+import type { AmendOrderRequest } from './generated/models/amend-order-request';
+import type { ProofOfDeliveryResponse } from './generated/models/proof-of-delivery-response';
 import type { BulkCancelOrdersRequest } from './generated/models/bulk-cancel-orders-request';
 import type { BulkCancelOrdersResponse } from './generated/models/bulk-cancel-orders-response';
 import type { CancelOrderRequest } from './generated/models/cancel-order-request';
@@ -39,10 +47,18 @@ import type { PodAttachmentResponse } from './generated/models/pod-attachment-re
 import type { RecordFailedDeliveryRequest } from './generated/models/record-failed-delivery-request';
 import { randomUuid } from './random-uuid';
 
+export type OrderStatusValue = NonNullable<ListOrdersApiV1OrdersGet$Params['status']>;
+
 export interface ListOrdersParams {
   skip?: number;
   limit?: number;
-  status?: string;
+  status?: OrderStatusValue;
+  /** Order number, or the customer's name, phone or consumer number. */
+  search?: string;
+  /** ISO date-times bounding the delivery date (inclusive). */
+  fromDate?: string;
+  toDate?: string;
+  customerId?: string;
 }
 
 /**
@@ -83,10 +99,32 @@ export class OrderService {
     ).pipe(map((res) => res.body));
   }
 
-  listOrders(params?: ListOrdersParams): Observable<OrderPageResponse> {
-    return listOrdersApiV1OrdersGet(this.http, this.config.rootUrl, params).pipe(
-      map((res) => res.body),
-    );
+  listOrders(params: ListOrdersParams = {}): Observable<OrderPageResponse> {
+    const search = params.search?.replace(/\s+/g, ' ').trim();
+    return listOrdersApiV1OrdersGet(this.http, this.config.rootUrl, {
+      skip: params.skip,
+      limit: params.limit,
+      status: params.status,
+      search: search || undefined,
+      from_date: params.fromDate,
+      to_date: params.toDate,
+      customer_id: params.customerId,
+    }).pipe(map((res) => res.body));
+  }
+
+  /** Edit a booked or confirmed order before it is put on a trip. */
+  amendOrder(orderId: string, request: AmendOrderRequest): Observable<OrderResponse> {
+    return amendOrderApiV1OrdersOrderIdPatch(this.http, this.config.rootUrl, {
+      order_id: orderId,
+      body: request,
+    }).pipe(map((res) => res.body));
+  }
+
+  /** The delivery record of a delivered order, or `null` before delivery. */
+  getProofOfDelivery(orderId: string): Observable<ProofOfDeliveryResponse | null> {
+    return getProofOfDeliveryApiV1OrdersOrderIdProofOfDeliveryGet(this.http, this.config.rootUrl, {
+      order_id: orderId,
+    }).pipe(map((res) => res.body ?? null));
   }
 
   getOrder(orderId: string): Observable<OrderResponse> {
@@ -133,9 +171,14 @@ export class OrderService {
     }).pipe(map((res) => res.body));
   }
 
-  rescheduleOrder(orderId: string): Observable<OrderResponse> {
+  /**
+   * Without a date: retry on the same trip. With `requestedDate` (ISO): the
+   * order leaves its trip and waits to be planned for that day.
+   */
+  rescheduleOrder(orderId: string, requestedDate?: string): Observable<OrderResponse> {
     return rescheduleOrderApiV1OrdersOrderIdReschedulePost(this.http, this.config.rootUrl, {
       order_id: orderId,
+      body: requestedDate ? { requested_date: requestedDate } : null,
     }).pipe(map((res) => res.body));
   }
 
@@ -191,6 +234,18 @@ export class OrderService {
       this.config.rootUrl,
       { order_id: orderId },
     ).pipe(map((res) => res.body ?? null));
+  }
+
+  /** Decline a waiting post-dispatch cancellation request, with a reason. */
+  rejectOrderCancellation(
+    orderId: string,
+    reason: string,
+  ): Observable<PendingCancellationResponse> {
+    return rejectOrderCancellationApiV1OrdersOrderIdCancelRejectPost(
+      this.http,
+      this.config.rootUrl,
+      { order_id: orderId, body: { reason } },
+    ).pipe(map((res) => res.body));
   }
 
   approveOrderCancellation(orderId: string): Observable<OrderResponse> {

@@ -8,8 +8,8 @@ import '../../../offline/sync_providers.dart';
 import '../../delivery/data/active_route_provider.dart';
 import '../../notifications/data/notifications_provider.dart';
 
-/// The Driver App shell: a persistent bottom [LpgNavigationBar] across the
-/// four tabs (Today / Deliveries / Alerts / Profile). Mirrors the Customer
+/// The Driver App shell: a persistent [LpgAdaptiveShell] (bottom bar on
+/// phones, rail on tablets) across the four tabs (Today / Deliveries / Alerts / Profile). Mirrors the Customer
 /// App's `AppShell` — same edge-to-edge bar and high-contrast treatment.
 ///
 /// It's the always-mounted widget, so it owns the Alerts-tab unread badge
@@ -49,7 +49,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final unread = ref.watch(unreadNotificationCountProvider).value ?? 0;
     final syncIssues = ref.watch(syncIssuesProvider).value?.length ?? 0;
 
-    return Scaffold(
+    return LpgAdaptiveShell(
       // The banner sits above the tab screens' own Scaffolds, so it has to
       // carry the top status-bar inset itself.
       body: SafeArea(
@@ -61,36 +61,36 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
       ),
-      bottomNavigationBar: LpgNavigationBar(
-        selectedIndex: widget.navigationShell.currentIndex,
-        onDestinationSelected: _onTap,
-        destinations: [
-          const LpgNavDestination(
-            icon: LpgIcons.today,
-            selectedIcon: LpgIcons.todayFilled,
-            label: 'Today',
-          ),
-          const LpgNavDestination(
-            icon: LpgIcons.deliveries,
-            selectedIcon: LpgIcons.deliveriesFilled,
-            label: 'Deliveries',
-          ),
-          LpgNavDestination(
-            icon: LpgIcons.notifications,
-            selectedIcon: LpgIcons.notificationsFilled,
-            label: 'Alerts',
-            badgeCount: unread,
-          ),
-          // Sync issues badge the Profile tab — "something in the queue
-          // needs you" (the Sync status screen is reached from Profile).
-          LpgNavDestination(
-            icon: LpgIcons.profile,
-            selectedIcon: LpgIcons.profileFilled,
-            label: 'Profile',
-            badgeCount: syncIssues,
-          ),
-        ],
-      ),
+      // Bottom bar on phones; a rail and a width-capped column on tablets
+      // (DR-12).
+      selectedIndex: widget.navigationShell.currentIndex,
+      onDestinationSelected: _onTap,
+      destinations: [
+        const LpgNavDestination(
+          icon: LpgIcons.today,
+          selectedIcon: LpgIcons.todayFilled,
+          label: 'Today',
+        ),
+        const LpgNavDestination(
+          icon: LpgIcons.deliveries,
+          selectedIcon: LpgIcons.deliveriesFilled,
+          label: 'Deliveries',
+        ),
+        LpgNavDestination(
+          icon: LpgIcons.notifications,
+          selectedIcon: LpgIcons.notificationsFilled,
+          label: 'Alerts',
+          badgeCount: unread,
+        ),
+        // Sync issues badge the Profile tab — "something in the queue
+        // needs you" (the Sync status screen is reached from Profile).
+        LpgNavDestination(
+          icon: LpgIcons.profile,
+          selectedIcon: LpgIcons.profileFilled,
+          label: 'Profile',
+          badgeCount: syncIssues,
+        ),
+      ],
     );
   }
 

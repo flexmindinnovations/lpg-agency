@@ -1,47 +1,87 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { JsonPipe, UpperCasePipe } from '@angular/common';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DOCUMENT,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { catchError, of } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
+import { Select } from 'primeng/select';
+import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { Tag } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import { AdminAuditLogService, type AuditLogEntryResponse } from '@lpg/shared/data-access';
+import {
+  AdminAuditLogService,
+  AdminStaffUserService,
+  errorMessageFor,
+  type AuditLogAction,
+  type AuditLogEntryResponse,
+} from '@lpg/shared/data-access';
 import {
   ActionChipCell,
-  CopyableIdCell,
   DataGridComponent,
-  formatEntityName,
-  formatTimestamp,
+  DrawerA11yDirective,
+  FormFieldComponent,
   type DataGridColumn,
 } from '@lpg/shared/ui';
+import { DATE_INPUT_PLACEHOLDER, formatDisplayDateTime } from '@lpg/shared/util';
+import {
+  ACTION_LABELS,
+  actionLabel,
+  actorLabel,
+  auditChanges,
+  auditLogCsv,
+  entityTypeLabel,
+  recordLabel,
+} from './audit-log-format';
 
-const ACTION_SEVERITY: Record<string, string> = {
+type ActionSeverity = 'success' | 'info' | 'danger' | 'secondary';
+
+const ACTION_SEVERITY: Record<string, ActionSeverity> = {
   create: 'success',
   update: 'info',
   delete: 'danger',
 };
 
+interface Option<T> {
+  readonly label: string;
+  readonly value: T;
+}
+
+/**
+ * Admin › Audit Log — who changed what, when (QA UR-04, DA-25).
+ *
+ * Rows name the record ("ORD000027", "Meena Iyer (CN-000001)") and the person
+ * who acted; raw ids live only in the detail drawer. Filters run server-side
+ * (record type, action, person, date range); the search box narrows the
+ * loaded page.
+ */
 @Component({
   selector: 'lpg-audit-log-page',
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
-    ReactiveFormsModule,
+    FormsModule,
     ButtonDirective,
     InputText,
     IconFieldModule,
     InputIconModule,
+    Select,
+    DatePicker,
     DataGridComponent,
+    FormFieldComponent,
     Drawer,
     DrawerA11yDirective,
     Tag,
-    JsonPipe,
-    UpperCasePipe,
     TooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,37 +91,101 @@ const ACTION_SEVERITY: Record<string, string> = {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Audit Log</h1>
-            <p class="page-subtitle">View a chronological record of all system actions.</p>
+            <p class="page-subtitle">Who changed what, and when.</p>
           </div>
         </ng-template>
       </div>
 
       <div class="data-toolbar">
         <div class="data-toolbar__filters">
-          <p-iconfield styleClass="w-full md:w-80" iconPosition="left">
-            <p-inputicon class="pi pi-search" />
-            <input
-              pInputText
-              type="text"
-              class="w-full"
-              placeholder="Search by entity name..."
-              [formControl]="filterForm.controls.entityName"
-              (keyup.enter)="applyFilters()"
+          <lpg-form-field label="Record type" for="audit_entity">
+            <p-select
+              inputId="audit_entity"
+              [options]="entityOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All records"
+              [showClear]="true"
+              [filter]="entityOptions().length > 8"
+              [ngModel]="entityName()"
+              (ngModelChange)="entityName.set($event ?? null); reload()"
             />
-          </p-iconfield>
+          </lpg-form-field>
+          <lpg-form-field label="Action" for="audit_action">
+            <p-select
+              inputId="audit_action"
+              [options]="actionOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="All actions"
+              [showClear]="true"
+              [ngModel]="action()"
+              (ngModelChange)="action.set($event ?? null); reload()"
+            />
+          </lpg-form-field>
+          @if (actorOptions().length > 0) {
+            <lpg-form-field label="Done by" for="audit_actor">
+              <p-select
+                inputId="audit_actor"
+                [options]="actorOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Anyone"
+                [showClear]="true"
+                [filter]="true"
+                [ngModel]="actorId()"
+                (ngModelChange)="actorId.set($event ?? null); reload()"
+              />
+            </lpg-form-field>
+          }
+          <lpg-form-field label="Dates" for="audit_dates">
+            <p-datepicker
+              inputId="audit_dates"
+              selectionMode="range"
+              [readonlyInput]="true"
+              [showIcon]="true"
+              iconDisplay="input"
+              [showButtonBar]="true"
+              [placeholder]="datePlaceholder"
+              [maxDate]="today"
+              [ngModel]="dateRange()"
+              (ngModelChange)="onDateRangeChange($event)"
+            />
+          </lpg-form-field>
+          <lpg-form-field label="Search" for="audit_search">
+            <p-iconfield iconPosition="left">
+              <p-inputicon class="pi pi-search" />
+              <input
+                pInputText
+                id="audit_search"
+                type="search"
+                placeholder="Record or person"
+                [ngModel]="searchQuery()"
+                (ngModelChange)="searchQuery.set($event)"
+              />
+            </p-iconfield>
+          </lpg-form-field>
         </div>
         <div class="data-toolbar__actions">
           <button
             pButton
             type="button"
             severity="secondary"
-            iconOnly
+            [disabled]="entries().length === 0"
+            (click)="exportCsv()"
+          >
+            <i class="pi pi-download" aria-hidden="true"></i><span>Export CSV</span>
+          </button>
+          <button
+            pButton
+            type="button"
+            severity="secondary"
             aria-label="Refresh"
-            (click)="applyFilters()"
             pTooltip="Refresh"
             tooltipPosition="left"
+            (click)="reload()"
           >
-            <i class="pi pi-refresh"></i>
+            <i class="pi pi-refresh" aria-hidden="true"></i>
           </button>
         </div>
       </div>
@@ -90,9 +194,11 @@ const ACTION_SEVERITY: Record<string, string> = {
         <lpg-data-grid
           [rows]="entries()"
           [columns]="columns"
-          [loading]="loading()"
-          [selectionMode]="'single'"
-          (selectionChange)="onSelectionChange($event)"
+          [loading]="loading() && entries().length === 0"
+          [error]="loadError()"
+          (retry)="reload()"
+          [searchQuery]="searchQuery()"
+          emptyMessage="No activity matches these filters."
           ariaLabel="Audit log"
         />
       </section>
@@ -106,77 +212,97 @@ const ACTION_SEVERITY: Record<string, string> = {
             (click)="loadMore()"
             [disabled]="loading()"
           >
-            <i class="pi pi-chevron-down"></i><span>Load more</span>
+            <i class="pi pi-chevron-down" aria-hidden="true"></i><span>Load more</span>
           </button>
         </div>
       }
     </div>
 
-    <!-- Details Drawer -->
     <p-drawer
-      header="Audit Entry Details"
+      header="Audit entry"
       [(visible)]="drawerVisible"
       position="right"
       [modal]="true"
-      styleClass="w-full"
       [style]="{ width: '100%', maxWidth: '36rem' }"
       [closeOnEscape]="true"
-      closeAriaLabel="Close details"
+      ariaCloseLabel="Close details"
     >
       @if (selectedEntry(); as entry) {
         <div class="dialog-form">
           <div class="dialog-form__fields">
             <div class="audit-detail-header">
               <div class="audit-detail-header__title">
-                <span class="entity-name">{{ formatEntity(entry.entity_name) }}</span>
+                <span class="entity-name">{{ recordLabel(entry) }}</span>
                 <p-tag
-                  [value]="entry.action | uppercase"
+                  [value]="actionLabel(entry.action)"
                   [severity]="actionSeverity(entry.action)"
                 />
               </div>
-              <span class="audit-detail-header__time">{{ formatTime(entry.performed_at) }}</span>
+              <p class="audit-detail-header__meta">
+                {{ entityTypeLabel(entry.entity_name) }} · {{ formatTime(entry.performed_at) }} ·
+                {{ actorLabel(entry) }}
+              </p>
             </div>
 
             <section class="detail-section">
-              <p class="section-label">Identifiers</p>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Entity</span>
-                  <span class="info-value">{{ formatEntity(entry.entity_name) }}</span>
-                  <span class="info-value mono dim">{{ entry.entity_name }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Entity ID</span>
-                  <span class="info-value mono">{{ entry.entity_id || 'N/A' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Actor ID</span>
-                  <span class="info-value mono">{{ entry.actor_id || 'System' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Correlation ID</span>
-                  <span class="info-value mono">{{ entry.correlation_id || 'N/A' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Log ID</span>
-                  <span class="info-value mono">{{ entry.id }}</span>
-                </div>
-              </div>
+              <h3 class="section-label">
+                {{ entry.action === 'update' ? 'What changed' : 'Details' }}
+              </h3>
+              @if (changesOf(entry); as changes) {
+                @if (changes.length === 0) {
+                  <p class="dim">No field-level details were recorded.</p>
+                } @else {
+                  <table class="changes">
+                    <thead>
+                      <tr>
+                        <th scope="col">Field</th>
+                        @if (entry.action !== 'create') {
+                          <th scope="col">Before</th>
+                        }
+                        @if (entry.action !== 'delete') {
+                          <th scope="col">{{ entry.action === 'update' ? 'After' : 'Value' }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (change of changes; track change.field) {
+                        <tr>
+                          <th scope="row">{{ change.field }}</th>
+                          @if (entry.action !== 'create') {
+                            <td>{{ change.before }}</td>
+                          }
+                          @if (entry.action !== 'delete') {
+                            <td>{{ change.after }}</td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              }
             </section>
 
-            @if (entry.before_state) {
-              <section class="detail-section">
-                <p class="section-label">Before State</p>
-                <pre class="state-code"><code>{{ entry.before_state | json }}</code></pre>
-              </section>
-            }
-
-            @if (entry.after_state) {
-              <section class="detail-section">
-                <p class="section-label">After State</p>
-                <pre class="state-code"><code>{{ entry.after_state | json }}</code></pre>
-              </section>
-            }
+            <details class="detail-section ids">
+              <summary class="section-label">Technical identifiers</summary>
+              <dl class="info-grid">
+                <div class="info-item">
+                  <dt class="info-label">Record ID</dt>
+                  <dd class="info-value mono">{{ entry.entity_id || '—' }}</dd>
+                </div>
+                <div class="info-item">
+                  <dt class="info-label">User ID</dt>
+                  <dd class="info-value mono">{{ entry.actor_id || 'System' }}</dd>
+                </div>
+                <div class="info-item">
+                  <dt class="info-label">Correlation ID</dt>
+                  <dd class="info-value mono">{{ entry.correlation_id || '—' }}</dd>
+                </div>
+                <div class="info-item">
+                  <dt class="info-label">Log ID</dt>
+                  <dd class="info-value mono">{{ entry.id }}</dd>
+                </div>
+              </dl>
+            </details>
           </div>
 
           <div class="modal-actions">
@@ -208,7 +334,6 @@ const ACTION_SEVERITY: Record<string, string> = {
         padding-block: var(--spacing-sm);
       }
 
-      /* Drawer detail layout */
       .audit-detail-header {
         display: flex;
         flex-direction: column;
@@ -221,6 +346,7 @@ const ACTION_SEVERITY: Record<string, string> = {
         display: flex;
         align-items: center;
         gap: var(--spacing-sm);
+        flex-wrap: wrap;
       }
 
       .entity-name {
@@ -229,7 +355,9 @@ const ACTION_SEVERITY: Record<string, string> = {
         color: var(--color-text-primary);
       }
 
-      .audit-detail-header__time {
+      .audit-detail-header__meta,
+      .dim {
+        margin: 0;
         font-size: var(--typography-body-small-font-size);
         color: var(--color-text-secondary);
       }
@@ -240,19 +368,8 @@ const ACTION_SEVERITY: Record<string, string> = {
         gap: var(--spacing-sm);
       }
 
-      .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-md);
-      }
-
-      .info-item {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .info-label {
+      .section-label {
+        margin: 0;
         font-size: var(--typography-caption-font-size);
         font-weight: var(--typography-label-font-weight);
         color: var(--color-text-secondary);
@@ -260,87 +377,133 @@ const ACTION_SEVERITY: Record<string, string> = {
         letter-spacing: 0.04em;
       }
 
-      .info-value {
+      .ids summary {
+        cursor: pointer;
+      }
+
+      .changes {
+        inline-size: 100%;
+        border-collapse: collapse;
         font-size: var(--typography-body-small-font-size);
+      }
+
+      .changes th,
+      .changes td {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-block-end: var(--border-width) solid var(--color-border-default);
+        text-align: start;
+        vertical-align: top;
+        overflow-wrap: anywhere;
         color: var(--color-text-primary);
-        word-break: break-all;
       }
 
-      .mono {
-        font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+      .changes thead th {
+        color: var(--color-text-secondary);
+        font-weight: var(--typography-label-font-weight);
+      }
+
+      .changes tbody th {
+        font-weight: var(--typography-label-font-weight);
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-md);
+        margin: 0;
+      }
+
+      .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        min-inline-size: 0;
+      }
+
+      .info-label {
         font-size: var(--typography-caption-font-size);
-      }
-
-      .dim {
         color: var(--color-text-secondary);
       }
 
-      .state-code {
+      .info-value {
         margin: 0;
-        padding: var(--spacing-md);
-        background: var(--color-surface-sunken);
-        border: var(--border-width) solid var(--color-border-default);
-        border-radius: var(--radius-md);
-        overflow-x: auto;
-        font-size: var(--typography-caption-font-size);
-        font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+        font-size: var(--typography-body-small-font-size);
         color: var(--color-text-primary);
-        line-height: 1.6;
+        overflow-wrap: anywhere;
+      }
+
+      .mono {
+        font-family: ui-monospace, monospace;
+        font-size: var(--typography-caption-font-size);
       }
     `,
   ],
 })
 export class AuditLogPage implements OnInit {
-  private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly auditLogService = inject(AdminAuditLogService);
+  private readonly staffUserService = inject(AdminStaffUserService);
+  private readonly document = inject(DOCUMENT);
 
   protected readonly entries = signal<AuditLogEntryResponse[]>([]);
   protected readonly nextCursor = signal<string | null>(null);
   protected readonly loading = signal(false);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly selectedEntry = signal<AuditLogEntryResponse | null>(null);
   protected readonly showDrawer = signal(false);
 
-  protected readonly filterForm = this.formBuilder.group({
-    entityName: [''],
-  });
+  protected readonly entityName = signal<string | null>(null);
+  protected readonly action = signal<AuditLogAction | null>(null);
+  protected readonly actorId = signal<string | null>(null);
+  protected readonly dateRange = signal<(Date | null)[] | null>(null);
+  protected readonly searchQuery = signal('');
+
+  private readonly entityTypes = signal<string[]>([]);
+  protected readonly entityOptions = computed<Option<string>[]>(() =>
+    this.entityTypes().map((name) => ({ label: entityTypeLabel(name), value: name })),
+  );
+  protected readonly actionOptions: Option<AuditLogAction>[] = (
+    Object.keys(ACTION_LABELS) as AuditLogAction[]
+  ).map((value) => ({ label: ACTION_LABELS[value], value }));
+  protected readonly actorOptions = signal<Option<string>[]>([]);
+
+  protected readonly today = new Date();
+  protected readonly datePlaceholder = `${DATE_INPUT_PLACEHOLDER} – ${DATE_INPUT_PLACEHOLDER}`;
 
   protected readonly columns: DataGridColumn<AuditLogEntryResponse>[] = [
     {
       field: 'performed_at',
       header: 'When',
-      sortable: true,
-      width: 210,
-      valueFormatter: (v) => formatTimestamp(v),
-      tooltipValueGetter: (v) => formatTimestamp(v),
+      width: 170,
+      valueFormatter: (v) => formatDisplayDateTime(v),
+    },
+    {
+      field: 'entity_display_name',
+      header: 'Record',
+      flex: 2,
+      minWidth: 160,
+      valueFormatter: (_v, row) => recordLabel(row),
+      onLinkClick: (row) => this.openEntry(row),
     },
     {
       field: 'entity_name',
-      header: 'Entity',
-      sortable: true,
-      filterable: true,
-      width: 160,
-      valueFormatter: (v) => formatEntityName(v),
-      tooltipValueGetter: (v) => String(v ?? ''),
+      header: 'Record type',
+      flex: 1,
+      valueFormatter: (v) => entityTypeLabel(v),
+      priority: 'low',
     },
     {
       field: 'action',
       header: 'Action',
-      sortable: true,
-      filterable: true,
-      width: 100,
+      width: 120,
       cellRenderer: ActionChipCell,
     },
     {
-      field: 'entity_id',
-      header: 'Entity Details',
-      width: 180,
-      cellRenderer: CopyableIdCell,
-    },
-    {
-      field: 'actor_id',
-      header: 'Actor Details',
-      width: 180,
-      cellRenderer: CopyableIdCell,
+      field: 'actor_display_name',
+      header: 'Done by',
+      flex: 1.5,
+      minWidth: 160,
+      valueFormatter: (_v, row) => actorLabel(row),
+      tooltipValueGetter: (_v, row) => actorLabel(row),
     },
   ];
 
@@ -351,54 +514,93 @@ export class AuditLogPage implements OnInit {
     this.showDrawer.set(value);
   }
 
-  protected readonly formatTime = formatTimestamp;
-  protected readonly formatEntity = formatEntityName;
+  protected readonly formatTime = formatDisplayDateTime;
+  protected readonly recordLabel = recordLabel;
+  protected readonly actorLabel = actorLabel;
+  protected readonly actionLabel = actionLabel;
+  protected readonly entityTypeLabel = entityTypeLabel;
+  protected readonly changesOf = auditChanges;
 
-  protected actionSeverity(action: string): 'success' | 'info' | 'danger' | 'secondary' {
-    return (ACTION_SEVERITY[action] as 'success' | 'info' | 'danger') ?? 'secondary';
+  protected actionSeverity(action: string): ActionSeverity {
+    return ACTION_SEVERITY[action] ?? 'secondary';
   }
 
   ngOnInit(): void {
     this.reload();
+    this.auditLogService
+      .listEntityTypes()
+      .pipe(catchError(() => of([] as string[])))
+      .subscribe((types) => this.entityTypes.set(types));
+    // Shown only to roles that may list staff users; everyone else filters
+    // by the other fields.
+    this.staffUserService
+      .listStaffUsers()
+      .pipe(catchError(() => of([])))
+      .subscribe((users) =>
+        this.actorOptions.set(
+          users.map((user) => ({ label: user.email ?? user.id, value: user.id })),
+        ),
+      );
   }
 
-  protected applyFilters(): void {
+  protected onDateRangeChange(range: (Date | null)[] | null): void {
+    this.dateRange.set(range);
+    // The range picker emits on the first click too; wait for both ends.
+    if (range && range[0] && !range[1]) return;
     this.reload();
+  }
+
+  protected reload(): void {
+    this.fetch(null, false);
   }
 
   protected loadMore(): void {
     const cursor = this.nextCursor();
-    if (!cursor) {
-      return;
-    }
-    this.fetch(cursor, true);
+    if (cursor) this.fetch(cursor, true);
   }
 
-  protected onSelectionChange(selectedRows: AuditLogEntryResponse[]): void {
-    if (selectedRows && selectedRows.length > 0) {
-      this.selectedEntry.set(selectedRows[0]);
-      this.showDrawer.set(true);
-    } else {
-      this.selectedEntry.set(null);
-      this.showDrawer.set(false);
-    }
+  protected openEntry(entry: AuditLogEntryResponse): void {
+    this.selectedEntry.set(entry);
+    this.showDrawer.set(true);
   }
 
-  private reload(): void {
-    this.fetch(null, false);
+  protected exportCsv(): void {
+    const blob = new Blob([auditLogCsv(this.entries())], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+    link.href = url;
+    link.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   private fetch(cursor: string | null, append: boolean): void {
     this.loading.set(true);
-    const { entityName } = this.filterForm.getRawValue();
+    this.loadError.set(null);
+    const [from, to] = this.dateRange() ?? [];
+    const end = to ?? from;
+    // The picked last day is inclusive; the API's upper bound is exclusive.
+    const dayAfter = end ? new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1) : null;
 
-    this.auditLogService.listAuditLog({ entityName: entityName || null, cursor }).subscribe({
-      next: (page) => {
-        this.entries.set(append ? [...this.entries(), ...page.items] : page.items);
-        this.nextCursor.set(page.next_cursor);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.auditLogService
+      .listAuditLog({
+        entityName: this.entityName(),
+        action: this.action(),
+        actorId: this.actorId(),
+        dateFrom: from ? from.toISOString() : null,
+        dateTo: dayAfter ? dayAfter.toISOString() : null,
+        cursor,
+      })
+      .subscribe({
+        next: (page) => {
+          this.entries.set(append ? [...this.entries(), ...page.items] : page.items);
+          this.nextCursor.set(page.next_cursor);
+          this.loading.set(false);
+        },
+        error: (error: unknown) => {
+          this.loadError.set(errorMessageFor(error));
+          this.loading.set(false);
+        },
+      });
   }
 }

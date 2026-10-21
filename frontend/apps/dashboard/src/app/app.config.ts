@@ -9,6 +9,7 @@ import {
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import {
+  AppMessageService,
   authInterceptor,
   correlationIdInterceptor,
   globalErrorToastInterceptor,
@@ -20,7 +21,7 @@ import { appRoutes } from './app.routes';
 import { PRIME_NG_LICENSE_KEY } from './prime-license';
 import { environment } from '../environments/environment';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { PERMISSION_CHECKER, API_BASE_URL } from '@lpg/shared/util';
+import { PERMISSION_CHECKER, API_BASE_URL, DATE_INPUT_FORMAT } from '@lpg/shared/util';
 import { inject } from '@angular/core';
 import {
   AuthService,
@@ -35,7 +36,9 @@ export const appConfig: ApplicationConfig = {
       provide: PERMISSION_CHECKER,
       useFactory: () => inject(AuthService).principal,
     },
-    MessageService,
+    // Every toast follows one rule set (a success clears stale errors, one
+    // lifetime per severity) — see AppMessageService (QA DO-21).
+    { provide: MessageService, useClass: AppMessageService },
     ConfirmationService,
     provideBrowserGlobalErrorListeners(),
     provideRouter(
@@ -121,6 +124,14 @@ export const appConfig: ApplicationConfig = {
       // here). `prime-license.ts` is git-ignored; see
       // `prime-license.example.ts` for how to supply a real key locally/CI.
       license: PRIME_NG_LICENSE_KEY,
+      // Dropdown, date, autocomplete and multiselect panels open on <body>, so
+      // a drawer's or dialog's scrolling body can never clip them (QA UR-01:
+      // the last Role in Register Employee could not be reached on a tablet).
+      // Drawers keep rendering inline — DrawerA11yDirective pins them.
+      overlayAppendTo: 'body',
+      // Every date input reads and shows dd/mm/yyyy (QA DO-08); never set
+      // `dateFormat` per picker. Display formatting is `formatDisplayDate`.
+      translation: { dateFormat: DATE_INPUT_FORMAT },
       theme: {
         preset: LpgPrimeNgPreset,
         options: {

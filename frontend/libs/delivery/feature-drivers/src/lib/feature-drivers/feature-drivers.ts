@@ -45,6 +45,7 @@ import { Select } from 'primeng/select';
 import { Tag } from 'primeng/tag';
 import { DatePicker } from 'primeng/datepicker';
 import {
+  AuthTokenStore,
   DeliveryService,
   DocumentService,
   AdminBranchService,
@@ -69,8 +70,29 @@ function formatDateForApi(value: unknown): string | undefined {
   return `${year}-${month}-${day}`;
 }
 
-/** A driver as the grid shows it: the API row plus the employee's name. */
-type DriverRow = DriverResponse & { readonly employee_name: string };
+/** Where a driver's licence stands against today. */
+export type LicenceState = 'expired' | 'expiring' | 'valid' | 'missing';
+
+/** Days before expiry at which a licence is flagged. */
+const LICENCE_WARNING_DAYS = 30;
+
+export function licenceState(expiry: string | null | undefined, today = new Date()): LicenceState {
+  if (!expiry) return 'missing';
+  const [y, m, d] = expiry.split('-').map(Number);
+  const days = Math.round(
+    (Date.UTC(y, m - 1, d) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+      86_400_000,
+  );
+  if (days < 0) return 'expired';
+  return days <= LICENCE_WARNING_DAYS ? 'expiring' : 'valid';
+}
+
+/** A driver as the grid shows it: the API row plus the employee's name and
+ * where their licence stands. */
+type DriverRow = DriverResponse & {
+  readonly employee_name: string;
+  readonly licence_state: LicenceState;
+};
 
 @Component({
   selector: 'lpg-feature-drivers',
@@ -103,6 +125,7 @@ type DriverRow = DriverResponse & { readonly employee_name: string };
 export class FeatureDrivers implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly deliveryService = inject(DeliveryService);
+  private readonly authTokenStore = inject(AuthTokenStore);
   private readonly documentService = inject(DocumentService);
   private readonly branchService = inject(AdminBranchService);
   private readonly employeeService = inject(AdminEmployeeService);
@@ -115,6 +138,22 @@ export class FeatureDrivers implements OnInit {
     on_leave: 'warn',
     inactive: 'secondary',
   };
+
+  private static readonly LICENCE_SEVERITY: Record<LicenceState, ChipSeverity> = {
+    expired: 'danger',
+    expiring: 'warn',
+    valid: 'success',
+    missing: 'warn',
+  };
+  protected static readonly LICENCE_LABEL: Record<LicenceState, string> = {
+    expired: 'Expired',
+    expiring: 'Expires soon',
+    valid: 'Valid',
+    missing: 'No expiry date',
+  };
+  protected readonly licenceLabel = FeatureDrivers.LICENCE_LABEL;
+  protected readonly licenceSeverity = FeatureDrivers.LICENCE_SEVERITY;
+  protected readonly licenceState = licenceState;
 
   protected readonly statusOptions = [
     { label: 'Active', value: 'active' },
@@ -166,6 +205,11 @@ export class FeatureDrivers implements OnInit {
   });
 
   protected readonly branches = signal<BranchResponse[]>([]);
+
+  /** Register's branch default — the user's own branch (DO-25). */
+  private defaultBranchId(): string {
+    return this.authTokenStore.defaultBranchIdAmong(this.branches()) ?? '';
+  }
   protected readonly employees = signal<(EmployeeResponse & { _displayName?: string })[]>([]);
   // Unscoped (all branches) — feeds the grid's Employee Code lookup, distinct
   // from `employees` above which is branch-scoped for the register modal's
@@ -244,9 +288,28 @@ export class FeatureDrivers implements OnInit {
   protected readonly driverRows = computed<DriverRow[]>(() =>
     this.filteredDrivers().map((d) => ({
       ...d,
-      employee_name: this.employeeNameById().get(d.employee_id) ?? '—',
+      employee_name: d.name ?? this.employeeNameById().get(d.employee_id) ?? '—',
+      licence_state: licenceState(d.license_expiry_date),
     })),
   );
+
+  /** Drivers whose licence has lapsed or lapses within 30 days — the list's
+   * warning banner (DO-34). Counted over every driver, not the filtered view. */
+  protected readonly licenceWarnings = computed(() => {
+    let expired = 0;
+    let expiring = 0;
+    for (const d of this.drivers()) {
+      const state = licenceState(d.license_expiry_date);
+      if (state === 'expired') expired++;
+      else if (state === 'expiring') expiring++;
+    }
+    const parts: string[] = [];
+    if (expired > 0)
+      parts.push(`${expired} driver licence${expired === 1 ? ' has' : 's have'} expired.`);
+    if (expiring > 0) parts.push(`${expiring} expire${expiring === 1 ? 's' : ''} within 30 days.`);
+    const text = parts.length ? `${parts.join(' ')} Renew them from the driver details.` : '';
+    return { expired, expiring, text };
+  });
 
   // Column definitions for drivers data grid
   protected readonly columns: DataGridColumn<DriverRow>[] = [
@@ -261,6 +324,16 @@ export class FeatureDrivers implements OnInit {
     { field: 'employee_name', header: 'Name', sortable: true, filterable: true },
     { field: 'license_number', header: 'License Number', sortable: true },
     { field: 'license_expiry_date', header: 'License Expiry', sortable: true },
+    {
+      field: 'licence_state',
+      header: 'Licence',
+      sortable: true,
+      cellRenderer: StatusChipCell,
+      cellRendererParams: {
+        severityMap: FeatureDrivers.LICENCE_SEVERITY,
+        labelMap: FeatureDrivers.LICENCE_LABEL,
+      },
+    },
     {
       field: 'status',
       header: 'Status',
@@ -447,7 +520,7 @@ export class FeatureDrivers implements OnInit {
   }
 
   protected openRegisterModal(): void {
-    const initialBranchId = this.branches().length > 0 ? this.branches()[0].id : '';
+    const initialBranchId = this.defaultBranchId();
     this.registerForm.reset({
       branch_id: initialBranchId,
       employee_id: '',

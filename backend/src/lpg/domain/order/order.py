@@ -69,6 +69,33 @@ class BookingCancelled(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class CancellationRequested(DomainEvent):
+    """A cancellation that needs a Manager's approval (D-19) is waiting.
+
+    The order's status is unchanged until someone approves it, so nothing
+    else tells the office a decision is pending — this is what puts it in
+    their notification bell.
+    """
+
+    order_id: uuid.UUID
+    tenant_id: uuid.UUID
+    order_number: str | None
+    requested_by: uuid.UUID | None
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class BookingAmended(DomainEvent):
+    """Staff changed a booking's quantities, address or date before it was
+    put on a trip (DO-13)."""
+
+    order_id: uuid.UUID
+    tenant_id: uuid.UUID
+    customer_id: uuid.UUID
+    amended_by: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
 class InventoryReserved(DomainEvent):
     """Published by Order Management at assignment (`confirmed -> assigned`).
 
@@ -197,6 +224,16 @@ PAYMENT_METHODS: frozenset[str] = frozenset({"cash", "upi", "card", "online_gate
 FAILED_DELIVERY_REASON_CODES: frozenset[str] = frozenset(
     {"customer_unavailable", "wrong_address", "payment_refused", "vehicle_issue", "safety_issue"}
 )
+# How each reason reads in the order's status history — the line the
+# customer and the office see for a failed delivery.
+FAILED_DELIVERY_REASON_LABELS: dict[str, str] = {
+    "customer_unavailable": "Customer unavailable",
+    "wrong_address": "Wrong address",
+    "payment_refused": "Payment refused",
+    "vehicle_issue": "Vehicle issue",
+    "safety_issue": "Safety issue",
+}
+FAILED_DELIVERY_NOTE_MAX_LENGTH = 500
 FAILED_DELIVERY_RESOLUTION_ACTIONS: frozenset[str] = frozenset(
     {"reschedule", "cancel", "return_stock"}
 )
@@ -214,7 +251,9 @@ _TRANSITIONS: dict[str, frozenset[str]] = {
     "assigned": frozenset({"ready_for_dispatch", "cancelled"}),
     "ready_for_dispatch": frozenset({"out_for_delivery", "cancelled"}),
     "out_for_delivery": frozenset({"delivered", "failed_delivery", "cancelled"}),
-    "failed_delivery": frozenset({"ready_for_dispatch", "cancelled"}),
+    # `-> confirmed`: rescheduled to another day (DO-13) — the order leaves
+    # its trip and waits to be planned onto a new one.
+    "failed_delivery": frozenset({"ready_for_dispatch", "confirmed", "cancelled"}),
     "delivered": frozenset({"closed"}),
     "cancelled": frozenset(),
     "closed": frozenset(),
@@ -226,6 +265,8 @@ _FREE_CANCEL_STATES: frozenset[str] = frozenset(
     {"booked", "confirmed", "assigned", "ready_for_dispatch"}
 )
 _APPROVAL_CANCEL_STATES: frozenset[str] = frozenset({"out_for_delivery", "failed_delivery"})
+#: A booking can be edited until it is put on a trip (DO-13).
+_AMENDABLE_STATES: frozenset[str] = frozenset({"booked", "confirmed"})
 
 
 # ---------------------------------------------------------------------------
@@ -694,13 +735,28 @@ class Order(AggregateRoot):
         )
 
     def fail_delivery(
-        self, *, reason_code: str, resolution_action: str | None, recorded_by: uuid.UUID
+        self,
+        *,
+        reason_code: str,
+        resolution_action: str | None,
+        recorded_by: uuid.UUID,
+        note: str | None = None,
     ) -> None:
-        """`out_for_delivery -> failed_delivery` (D-12)."""
+        """`out_for_delivery -> failed_delivery` (D-12). The status-history
+        entry reads as the reason, plus the driver's optional `note` (what
+        the reason codes can't say: "gate locked, neighbour says back at 6",
+        "customer asked for Thursday").
+        """
         self._ensure_transition_allowed("failed_delivery")
         self._validate_failed_delivery_reason_code(reason_code)
         if resolution_action is not None:
             self._validate_resolution_action(resolution_action)
+        note = (note or "").strip() or None
+        if note is not None and len(note) > FAILED_DELIVERY_NOTE_MAX_LENGTH:
+            msg = f"The note must be at most {FAILED_DELIVERY_NOTE_MAX_LENGTH} characters."
+            raise InvariantViolation(msg)
+        label = FAILED_DELIVERY_REASON_LABELS[reason_code]
+        history_reason = f"{label} — {note}" if note else label
 
         self._pending_failed_delivery_entries.append(
             FailedDeliveryEntry(
@@ -709,7 +765,7 @@ class Order(AggregateRoot):
                 recorded_by=recorded_by,
             )
         )
-        self._apply_transition("failed_delivery", changed_by=recorded_by)
+        self._apply_transition("failed_delivery", changed_by=recorded_by, reason=history_reason)
         self.record_event(
             DeliveryFailed(
                 order_id=self.id,
@@ -721,8 +777,102 @@ class Order(AggregateRoot):
         )
 
     def reschedule(self, *, changed_by: uuid.UUID) -> None:
-        """`failed_delivery -> ready_for_dispatch`."""
+        """`failed_delivery -> ready_for_dispatch`: retry on the same trip."""
         self._transition("ready_for_dispatch", changed_by=changed_by)
+
+    def reschedule_to(self, *, requested_date: datetime, changed_by: uuid.UUID) -> None:
+        """`failed_delivery -> confirmed`: deliver on another day (DO-13).
+        The order leaves its trip — the use case releases the van's
+        reservation for it — and waits to be planned onto a new trip.
+        """
+        self._ensure_transition_allowed("confirmed")
+        self._ensure_not_in_the_past(requested_date)
+        for line in self._lines:
+            line.quantity_pending = 0
+            line.is_backordered = False
+        self._route_stop_id = None
+        self._requested_date = requested_date
+        self._apply_transition(
+            "confirmed",
+            changed_by=changed_by,
+            reason=f"Rescheduled to {requested_date.date().isoformat()}",
+        )
+
+    @property
+    def can_amend(self) -> bool:
+        return self._status in _AMENDABLE_STATES
+
+    def amend(
+        self,
+        *,
+        lines: Sequence[OrderLine],
+        requested_date: datetime,
+        address_id: uuid.UUID,
+        delivery_address: DeliveryAddress,
+        payment_method_preference: str | None,
+        changed_by: uuid.UUID,
+        unit_prices: dict[uuid.UUID, Decimal] | None = None,
+    ) -> None:
+        """Change a booking before it is put on a trip (DO-13). A confirmed
+        order is re-priced with `unit_prices` (the prices in effect now),
+        exactly as `confirm()` prices it.
+        """
+        if not self.can_amend:
+            msg = (
+                "This order can no longer be edited: it is already on a trip. "
+                "Cancel it and book again instead."
+            )
+            raise InvalidOrderStatusTransitionError(
+                msg, order_id=str(self.id), from_status=self._status, to_status=self._status
+            )
+        if not lines:
+            msg = "An order must have at least one line."
+            raise InvariantViolation(msg, order_id=str(self.id))
+        cylinder_type_ids = [line.cylinder_type_id for line in lines]
+        if len(cylinder_type_ids) != len(set(cylinder_type_ids)):
+            msg = "An order cannot have two lines for the same cylinder type."
+            raise InvariantViolation(msg, order_id=str(self.id))
+        if (
+            payment_method_preference is not None
+            and payment_method_preference not in PAYMENT_METHODS
+        ):
+            msg = f"Invalid payment method: {payment_method_preference}"
+            raise InvariantViolation(msg, order_id=str(self.id))
+        if requested_date != self._requested_date:
+            self._ensure_not_in_the_past(requested_date)
+
+        total: Decimal | None = None
+        if self._status == "confirmed":
+            total = Decimal("0")
+            for line in lines:
+                price = (unit_prices or {}).get(line.cylinder_type_id)
+                if price is None:
+                    msg = f"No price configured for cylinder type {line.cylinder_type_id}."
+                    raise InvariantViolation(
+                        msg, order_id=str(self.id), cylinder_type_id=str(line.cylinder_type_id)
+                    )
+                line.set_unit_price(price)
+                total += price * line.quantity_ordered
+
+        self._lines = list(lines)
+        self._total_amount = total
+        self._requested_date = requested_date
+        self._address_id = address_id
+        self._delivery_address = delivery_address
+        self._payment_method_preference = payment_method_preference
+        self.record_event(
+            BookingAmended(
+                order_id=self.id,
+                tenant_id=self._tenant_id,
+                customer_id=self._customer_id,
+                amended_by=changed_by,
+            )
+        )
+
+    def _ensure_not_in_the_past(self, requested_date: datetime) -> None:
+        if requested_date.date() < datetime.now(UTC).date():
+            msg = "The delivery date cannot be in the past."
+            raise InvariantViolation(msg, order_id=str(self.id))
 
     def cancel_free(self, *, cancelled_by: uuid.UUID, reason: str) -> None:
         """Free cancellation — only from `_FREE_CANCEL_STATES` (D-19)."""
@@ -743,9 +893,12 @@ class Order(AggregateRoot):
             )
         )
 
-    def request_cancellation_approval(self, *, reason: str) -> None:
-        """Pure guard — only from `_APPROVAL_CANCEL_STATES` (D-19). Status
-        is unchanged; the use case creates the pending `CancellationRecord`.
+    def request_cancellation_approval(
+        self, *, reason: str, requested_by: uuid.UUID | None = None
+    ) -> None:
+        """Guard — only from `_APPROVAL_CANCEL_STATES` (D-19). Status is
+        unchanged; the use case creates the pending `CancellationRecord`.
+        Records `CancellationRequested` so the approvers hear about it.
         """
         if self._status not in _APPROVAL_CANCEL_STATES:
             msg = (
@@ -756,6 +909,15 @@ class Order(AggregateRoot):
         if not reason.strip():
             msg = "Cancellation reason cannot be empty."
             raise InvariantViolation(msg, order_id=str(self.id))
+        self.record_event(
+            CancellationRequested(
+                order_id=self.id,
+                tenant_id=self._tenant_id,
+                order_number=self._order_number,
+                requested_by=requested_by,
+                reason=reason.strip(),
+            )
+        )
 
     def approve_cancellation(
         self, *, approved_by: uuid.UUID, cancellation_charge: Decimal, reason: str

@@ -62,7 +62,7 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">License</h1>
-            <p class="page-subtitle">Manage this tenant's product license.</p>
+            <p class="page-subtitle">Your product licence.</p>
           </div>
         </ng-template>
       </div>
@@ -89,7 +89,7 @@ const _STATUS_SEVERITY: Record<LicenseLifecycleState, 'success' | 'warn' | 'dang
               />
             </lpg-form-field>
             <div class="admin-form-actions">
-              <button pButton type="submit" [disabled]="submitting() || form.invalid">
+              <button pButton type="submit" [disabled]="submitting()">
                 @if (submitting()) {
                   <i class="pi pi-spin pi-spinner"></i>
                 }

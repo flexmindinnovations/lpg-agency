@@ -4,6 +4,7 @@ real ASGI stack (auth, RBAC, RLS, DB)."""
 from __future__ import annotations
 
 import uuid
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -232,3 +233,27 @@ async def test_warehouse_and_tenant_document_add_list_smoke(
         headers=headers,
     )
     assert wrong_type.status_code == 422, wrong_type.text
+
+    # DO-33 — the calendar's single upcoming-expiry view: overdue and
+    # due-within-90-days documents across owners, earliest first; the
+    # far-off Form F (2029) and insurance (2027) are not in it.
+    soon = (date.today() + timedelta(days=20)).isoformat()
+    overdue = (date.today() - timedelta(days=3)).isoformat()
+    for number, expiry in (("PESO/SOON", soon), ("PESO/OVERDUE", overdue)):
+        added = await client.post(
+            f"/api/v1/warehouses/{uuid.uuid4()}/documents",
+            json={
+                "doc_type": "peso_form_f",
+                "document_number": number,
+                "file_ref": f"tenant/x/compliance-staging/{uuid.uuid4().hex}_peso.png",
+                "expiry_date": expiry,
+            },
+            headers=headers,
+        )
+        assert added.status_code == 201, added.text
+    upcoming = await client.get(
+        "/api/v1/compliance-documents?expiry=upcoming&limit=200", headers=headers
+    )
+    assert upcoming.status_code == 200, upcoming.text
+    numbers = [item["document_number"] for item in upcoming.json()["items"]]
+    assert numbers == ["PESO/OVERDUE", "PESO/SOON"]

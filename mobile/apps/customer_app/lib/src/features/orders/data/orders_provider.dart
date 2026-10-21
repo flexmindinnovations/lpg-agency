@@ -48,3 +48,43 @@ final orderRealtimeProvider = StreamProvider.autoDispose
       final client = ref.watch(realtimeClientProvider);
       return client.subscribeToOrder(orderId);
     });
+
+/// The delivery code the customer reads out to the driver, while the order
+/// is out for delivery; `null` otherwise. Shown in the app so a late or
+/// lost SMS never strands the driver at the door (CA-04).
+final deliveryCodeProvider = FutureProvider.autoDispose.family<String?, String>(
+  (ref, orderId) async {
+    final result = await ref.watch(orderApiProvider).getDeliveryCode(orderId);
+    return result.when(
+      onSuccess: (code) => code,
+      onFailure: (failure) => throw Exception(failure.message),
+    );
+  },
+);
+
+/// The cancellation request waiting for a manager on this order, if any —
+/// so the order screen shows "Cancellation requested" instead of offering
+/// Cancel again (CA-07).
+final pendingCancellationProvider = FutureProvider.autoDispose
+    .family<PendingCancellationResponse?, String>((ref, orderId) async {
+      final result = await ref
+          .watch(orderApiProvider)
+          .getPendingCancellation(orderId);
+      return result.when(
+        onSuccess: (request) => request,
+        onFailure: (failure) => throw Exception(failure.message),
+      );
+    });
+
+/// The order's status history, oldest first — where a failed delivery's or
+/// a cancellation's reason is recorded.
+final orderHistoryProvider = FutureProvider.autoDispose
+    .family<List<OrderStatusHistoryEntry>, String>((ref, orderId) async {
+      final result = await ref
+          .watch(orderApiProvider)
+          .getStatusHistory(orderId);
+      return result.when(
+        onSuccess: (entries) => entries,
+        onFailure: (failure) => throw Exception(failure.message),
+      );
+    });
