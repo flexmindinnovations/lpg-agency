@@ -10,25 +10,23 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonDirective } from 'primeng/button';
-import { MessageService } from 'primeng/api';
 import { Select } from 'primeng/select';
 import { InputText } from 'primeng/inputtext';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 
-import { FormFieldComponent } from '@lpg/shared/ui';
+import { EmptyStateComponent, FormFieldComponent, HasPermissionDirective } from '@lpg/shared/ui';
+import { RouterLink } from '@angular/router';
 
 import {
   CylinderLedgerService,
   AdminCylinderTypeService,
+  NotifyService,
+  errorMessageFor,
   type CylinderLedgerResponse,
   type CylinderTypeResponse,
   type AppError,
 } from '@lpg/shared/data-access';
-
-function isAppError(value: unknown): value is AppError {
-  return typeof value === 'object' && value !== null && 'errorCode' in value;
-}
 
 interface EnrichedBalance {
   cylinder_type_id: string;
@@ -48,6 +46,9 @@ interface EnrichedBalance {
     Drawer,
     DrawerA11yDirective,
     FormFieldComponent,
+    EmptyStateComponent,
+    HasPermissionDirective,
+    RouterLink,
   ],
   templateUrl: './feature-ledger.html',
   styleUrl: './feature-ledger.css',
@@ -59,12 +60,14 @@ export class FeatureLedger implements OnInit {
 
   private readonly ledgerService = inject(CylinderLedgerService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
-  private readonly messageService = inject(MessageService);
+  private readonly notify = inject(NotifyService);
   private readonly fb = inject(NonNullableFormBuilder);
 
   ledger = signal<CylinderLedgerResponse | null>(null);
   cylinderTypes = signal<CylinderTypeResponse[]>([]);
   loading = signal(false);
+  /** Why the ledger could not be shown, e.g. an unknown customer (DO-22). */
+  loadError = signal<string | null>(null);
 
   adjustModalVisible = signal(false);
   isSubmitting = signal(false);
@@ -72,13 +75,13 @@ export class FeatureLedger implements OnInit {
   adjustForm = this.fb.group({
     cylinder_type_id: this.fb.control<string>('', [Validators.required]),
     delta: this.fb.control<number>(0, [Validators.required]),
-    reason: this.fb.control<string>('', [Validators.required]),
+    reason: this.fb.control<string>('', [Validators.required, Validators.maxLength(500)]),
   });
 
   protected readonly fieldMessages = {
     cylinder_type_id: { required: 'Select a cylinder type.' },
-    delta: { required: 'Enter an adjustment quantity.' },
-    reason: { required: 'A reason is required.' },
+    delta: { required: 'Enter an adjustment quantity.', notZero: 'Enter a number other than 0.' },
+    reason: { required: 'A reason is required.', maxlength: 'Keep it under 500 characters.' },
   };
 
   enrichedBalances = computed(() => {
@@ -120,7 +123,7 @@ export class FeatureLedger implements OnInit {
     // Load cylinder types
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (types) => this.cylinderTypes.set(types),
-      error: () => this.showError('Failed to load cylinder types'),
+      error: () => this.notify.error('Could not load cylinder types.'),
     });
 
     // Load ledger
@@ -129,13 +132,19 @@ export class FeatureLedger implements OnInit {
 
   loadLedger() {
     this.loading.set(true);
+    this.loadError.set(null);
     this.ledgerService.getLedger(this.customerId()).subscribe({
       next: (res) => {
         this.ledger.set(res);
         this.loading.set(false);
       },
-      error: () => {
-        this.showError('Failed to load cylinder ledger');
+      error: (err: unknown) => {
+        const status = (err as Partial<AppError> | null)?.status;
+        this.loadError.set(
+          status === 404
+            ? 'This customer could not be found. They may have been removed, or the link is wrong.'
+            : errorMessageFor(err),
+        );
         this.loading.set(false);
       },
     });
@@ -155,6 +164,8 @@ export class FeatureLedger implements OnInit {
   }
 
   submitAdjustment() {
+    const delta = this.adjustForm.controls.delta;
+    if (delta.value === 0) delta.setErrors({ notZero: true });
     if (this.adjustForm.invalid) {
       this.adjustForm.markAllAsTouched();
       return;
@@ -167,35 +178,17 @@ export class FeatureLedger implements OnInit {
       .adjustBalance(this.customerId(), {
         cylinder_type_id: formValue.cylinder_type_id,
         delta: formValue.delta,
-        reason: formValue.reason,
+        reason: formValue.reason.trim(),
       })
       .subscribe({
         next: (res) => {
           this.ledger.set(res);
           this.isSubmitting.set(false);
           this.closeAdjustModal();
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'Ledger balance adjusted.',
-          });
+          this.notify.success('Cylinder balance adjusted.');
         },
-        error: (err) => {
-          this.isSubmitting.set(false);
-          if (isAppError(err.error)) {
-            this.showError(err.error.detail || 'Failed to adjust balance');
-          } else {
-            this.showError('Failed to adjust balance');
-          }
-        },
+        // The app-wide error toast explains the failure.
+        error: () => this.isSubmitting.set(false),
       });
-  }
-
-  private showError(msg: string) {
-    this.messageService.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: msg,
-    });
   }
 }
