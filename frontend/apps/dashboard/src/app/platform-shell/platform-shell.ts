@@ -36,7 +36,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
     >
       <router-outlet />
     </lpg-app-shell>
-    <p-toast position="bottom-right" />
+    <p-toast position="top-center" [preventDuplicates]="true" />
     <p-confirmdialog />
   `,
 })

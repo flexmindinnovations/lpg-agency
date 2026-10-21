@@ -27,9 +27,12 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import event, inspect
 
 from lpg.config.logging import get_logger
+from lpg.infrastructure.persistence.audit_labels import audit_label
 from lpg.infrastructure.persistence.models.audit_log import AuditLogModel
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.orm import Session
 
@@ -87,6 +90,35 @@ def _snapshot_before(obj: Base) -> dict[str, Any]:
     return result
 
 
+def _loaded_lookup(session: Session) -> Callable[[str, str], Mapping[str, Any] | None]:
+    """Find a parent record among the objects this session already holds —
+    persistent ones in the identity map and ones being inserted in this same
+    flush (an order and its lines). Never queries."""
+    loaded: dict[tuple[str, str], Base] | None = None
+
+    def lookup(table: str, entity_id: str) -> Mapping[str, Any] | None:
+        nonlocal loaded
+        if loaded is None:
+            loaded = {}
+            for candidate in [*session.identity_map.values(), *session.new]:
+                key_id = _jsonable_id(inspect(candidate).dict.get("id"))
+                table_name = getattr(type(candidate), "__tablename__", None)
+                if key_id is not None and table_name:
+                    loaded[(table_name, key_id)] = candidate
+        found = loaded.get((table, entity_id))
+        if found is None:
+            return None
+        # Already-loaded values only (`state.dict`): reading an expired
+        # attribute would lazy-load inside the flush.
+        return {key: _jsonable(value) for key, value in inspect(found).dict.items()}
+
+    return lookup
+
+
+def _jsonable_id(value: object) -> str | None:
+    return None if value is None else str(value)
+
+
 def _entity_id(obj: Base) -> str | None:
     value = getattr(obj, "id", None)
     return None if value is None else str(value)
@@ -104,12 +136,14 @@ class AuditRecorder:
     ) -> None:
         self._tenant_context = tenant_context
         self._correlation_id = correlation_id
+        self._lookup: Callable[[str, str], Mapping[str, Any] | None] = lambda _t, _i: None
         # AsyncSession wraps a sync Session, reachable via .sync_session —
         # ORM events are always registered on (and fire on) the sync side,
         # even for async usage; this is the documented SQLAlchemy 2.0 pattern.
         event.listen(session.sync_session, "before_flush", self._before_flush)
 
     def _before_flush(self, session: Session, _flush_context: object, _instances: object) -> None:
+        self._lookup = _loaded_lookup(session)
         for obj in list(session.new):
             if isinstance(obj, AuditLogModel):
                 continue
@@ -139,13 +173,11 @@ class AuditRecorder:
         before: dict[str, Any] | None,
         after: dict[str, Any] | None,
     ) -> None:
-        entity_display_name = None
-        if hasattr(obj, "name"):
-            entity_display_name = obj.name
-        elif hasattr(obj, "full_name"):
-            entity_display_name = obj.full_name
-        elif hasattr(obj, "consumer_number"):
-            entity_display_name = obj.consumer_number
+        # "ORD000027", "Meena Iyer (CN-000001)", a status-history row's order
+        # number — see audit_labels (QA UR-04).
+        entity_display_name = audit_label(
+            type(obj).__tablename__, after if after is not None else before, self._lookup
+        )
 
         row = AuditLogModel(
             tenant_id=self._tenant_context.tenant_id,
@@ -153,7 +185,7 @@ class AuditRecorder:
             actor_display_name=getattr(self._tenant_context, "user_display_name", None),
             entity_name=type(obj).__tablename__,
             entity_id=_entity_id(obj),
-            entity_display_name=str(entity_display_name) if entity_display_name else None,
+            entity_display_name=entity_display_name,
             action=action,
             performed_at=datetime.now(UTC),
             correlation_id=self._correlation_id,

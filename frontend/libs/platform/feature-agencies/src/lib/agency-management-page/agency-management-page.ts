@@ -87,7 +87,7 @@ interface SetupLinkView {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Agencies</h1>
-            <p class="page-subtitle">Every agency (tenant) on this platform.</p>
+            <p class="page-subtitle">Every agency on the platform.</p>
           </div>
         </ng-template>
       </div>
@@ -220,7 +220,7 @@ interface SetupLinkView {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -377,7 +377,7 @@ interface SetupLinkView {
                     >
                       Cancel
                     </button>
-                    <button pButton type="submit" [disabled]="acting() || adminForm.invalid">
+                    <button pButton type="submit" [disabled]="acting()">
                       @if (acting()) {
                         <i class="pi pi-spin pi-spinner"></i>
                       }

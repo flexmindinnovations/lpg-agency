@@ -51,6 +51,28 @@ const initialState: ReportingState = {
   error: null,
 };
 
+/**
+ * The message shown when a report fails to load. HTTP errors reach here as
+ * the app's normalised `AppError` (`problemDetailsInterceptor`), which has a
+ * `detail`, not a `message` — reading `.message` gave `undefined`, so a 500
+ * rendered as an empty "No Rows To Show" report instead of an error (QA
+ * DA-15). This lib may not import `@lpg/shared/data-access`'s
+ * `errorMessageFor`, hence the small local reader.
+ */
+export function loadErrorMessage(error: unknown): string {
+  const fallback = 'The report could not be loaded. Please try again.';
+  if (typeof error !== 'object' || error === null) return fallback;
+  const { detail, message, isNetworkError } = error as {
+    detail?: unknown;
+    message?: unknown;
+    isNetworkError?: unknown;
+  };
+  if (isNetworkError === true) return 'Cannot reach the server. Check your connection and try again.';
+  if (typeof detail === 'string' && detail) return detail;
+  if (typeof message === 'string' && message) return message;
+  return fallback;
+}
+
 export const ReportingStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
@@ -66,8 +88,8 @@ export const ReportingStore = signalStore(
             .pipe(
               tapResponse({
                 next: (dailySales) => patchState(store, { dailySales, loading: false }),
-                error: (error: Error) =>
-                  patchState(store, { error: error.message, loading: false }),
+                error: (error: unknown) =>
+                  patchState(store, { error: loadErrorMessage(error), loading: false }),
               }),
             ),
         ),
@@ -85,8 +107,8 @@ export const ReportingStore = signalStore(
               tapResponse({
                 next: (driverPerformance) =>
                   patchState(store, { driverPerformance, loading: false }),
-                error: (error: Error) =>
-                  patchState(store, { error: error.message, loading: false }),
+                error: (error: unknown) =>
+                  patchState(store, { error: loadErrorMessage(error), loading: false }),
               }),
             ),
         ),
@@ -100,7 +122,8 @@ export const ReportingStore = signalStore(
             tapResponse({
               next: (customerConsumption) =>
                 patchState(store, { customerConsumption, loading: false }),
-              error: (error: Error) => patchState(store, { error: error.message, loading: false }),
+              error: (error: unknown) =>
+                patchState(store, { error: loadErrorMessage(error), loading: false }),
             }),
           ),
         ),
@@ -113,7 +136,8 @@ export const ReportingStore = signalStore(
           http.get<GstFilingRecord[]>(`${apiBaseUrl}/api/v1/reporting/gst`).pipe(
             tapResponse({
               next: (gstFiling) => patchState(store, { gstFiling, loading: false }),
-              error: (error: Error) => patchState(store, { error: error.message, loading: false }),
+              error: (error: unknown) =>
+                patchState(store, { error: loadErrorMessage(error), loading: false }),
             }),
           ),
         ),

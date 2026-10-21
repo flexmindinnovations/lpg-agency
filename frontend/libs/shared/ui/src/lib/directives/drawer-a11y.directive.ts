@@ -6,9 +6,11 @@ import {
   PLATFORM_ID,
   effect,
   inject,
+  signal,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Drawer } from 'primeng/drawer';
+import type { PrimeNG } from 'primeng/config';
 
 /**
  * Retro-fits the ARIA modal-dialog contract onto PrimeNG's `p-drawer`.
@@ -28,9 +30,15 @@ import { Drawer } from 'primeng/drawer';
  * drawer. Add `DrawerA11yDirective` to the host component's `imports`.
  *
  * Assumptions (both hold across this app): one modal drawer open at a time, and
- * the drawer renders inline (no `appendTo` on the `<p-drawer>` itself — inner
- * `p-select`/`p-datepicker` overlays with `appendTo="body"` are fine, they
- * mount after this snapshot and stay interactive).
+ * the drawer renders inline. `app.config.ts` sets PrimeNG's `overlayAppendTo`
+ * to `body` app-wide so select / date / autocomplete lists inside a drawer are
+ * never clipped by its scrolling body (QA UR-01) — that default would move the
+ * drawer itself to `<body>` too, so this directive pins its own drawer inline
+ * (see `keepDrawerInline`). Inner overlays mount on `<body>` after this
+ * snapshot and stay interactive.
+ *
+ * It also names the header close button ("Close"), which PrimeNG renders as
+ * an icon-only button with no accessible name (QA DO-35, axe `button-name`).
  */
 /** Overlays that can open above a modal drawer and must stay interactive. */
 const OVERLAY_SELECTOR =
@@ -54,6 +62,7 @@ export class DrawerA11yDirective implements OnDestroy {
   private readonly inerted: HTMLElement[] = [];
 
   constructor() {
+    this.keepDrawerInline();
     // PrimeNG's `Drawer` only emits `(onHide)` when closed via its internal header 'X'
     // button (`close()`). When closed programmatically (e.g. `visible.set(false)` from
     // a form Cancel/Close button or Escape handler), `Drawer` calls `hide(false)` on
@@ -86,6 +95,7 @@ export class DrawerA11yDirective implements OnDestroy {
       panel.setAttribute('role', 'dialog');
       panel.setAttribute('aria-modal', 'true');
       this.labelPanel(panel);
+      this.nameCloseButton(panel);
       this.inertBackground();
       this.focusInto(panel);
     });
@@ -107,6 +117,27 @@ export class DrawerA11yDirective implements OnDestroy {
   ngOnDestroy(): void {
     // Route change (or *ngIf) while the drawer is open — never leave the app inert.
     this.revert();
+  }
+
+  /**
+   * The app default `overlayAppendTo: 'body'` is meant for dropdown panels; the
+   * drawer reads the same setting, and on `<body>` it would escape the
+   * background-inerting walk below. Give this drawer a view of the config
+   * whose `overlayAppendTo` is `self`, leaving every other setting shared.
+   * Runs before the drawer first reads it (its `$appendTo` is a lazy computed).
+   */
+  private keepDrawerInline(): void {
+    const drawer = this.drawer;
+    if (!drawer) return;
+    const inline: PrimeNG = Object.create(drawer.config);
+    inline.overlayAppendTo = signal('self');
+    drawer.config = inline;
+  }
+
+  /** PrimeNG's header close button is icon-only and unnamed. */
+  private nameCloseButton(panel: HTMLElement): void {
+    const close = panel.querySelector<HTMLElement>('.p-drawer-close-button');
+    if (close && !close.hasAttribute('aria-label')) close.setAttribute('aria-label', 'Close');
   }
 
   /** Wire `aria-labelledby` from the drawer's heading when nothing labels it. */

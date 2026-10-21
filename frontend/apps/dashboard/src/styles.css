@@ -248,14 +248,20 @@ body {
   color: var(--color-text-primary);
 }
 
+/* Title and subtitle each stay on one line in the shell's top bar and end
+   in an ellipsis when the bar is narrow, so they never push into the header
+   search (QA UR-02/UR-03). Keep subtitles short — a few plain words. */
+.page-title,
+.page-subtitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .page-subtitle {
   font-size: var(--typography-body-small-font-size);
   color: var(--color-text-secondary);
   margin: var(--spacing-xs) 0 0 0;
-  /* Shown in the shell's top bar, which has room for one line: at 60ch a
-     one-sentence subtitle (Dispatch, Scales) wrapped to two and made that
-     page's header 20px taller than every other page's. 90ch is still a
-     comfortable measure and the header itself caps it on narrow screens. */
   max-inline-size: 90ch;
   line-height: var(--typography-body-line-height);
 }
@@ -347,6 +353,12 @@ body {
   flex-wrap: wrap;
   gap: var(--spacing-sm);
   min-block-size: var(--component-control-height);
+}
+
+/* A button label never breaks mid-label ("Chang / Status"); the row wraps
+   whole buttons instead (QA DA-21 at 820px and 390px). */
+.data-toolbar__actions .p-button {
+  white-space: nowrap;
 }
 
 /* ========================================================================
@@ -898,17 +910,11 @@ p-toast {
   letter-spacing: 0.01em;
 }
 
-.p-tag.p-tag-danger {
-  background: color-mix(in srgb, var(--color-status-danger) 12%, transparent) !important;
-  color: #991b1b !important;
-  border: 1px solid color-mix(in srgb, var(--color-status-danger) 24%, transparent) !important;
-  font-weight: 600 !important;
-}
-
-[data-theme='dark'] .p-tag.p-tag-danger {
-  background: color-mix(in srgb, var(--color-status-danger) 20%, transparent) !important;
-  color: #f87171 !important;
-  border: 1px solid color-mix(in srgb, var(--color-status-danger) 35%, transparent) !important;
+/* Chip colours come from the --component-chip-* tokens via the preset's
+   `tag` section (per theme, all AA). High contrast gives every chip a border
+   since its tint is plain white there. */
+[data-theme='high-contrast'] .p-tag {
+  border: var(--border-width) solid currentColor !important;
 }
 
 /* Danger Button refinements — high-contrast solid fill with white text */
@@ -935,7 +941,14 @@ p-toast {
   font-size: var(--typography-body-small-font-size) !important;
 }
 
-/* Toast refinements — bottom-right (set on <p-toast> in the shells). Solid. */
+/* Toast refinements. Toasts sit top-centre, just under the shell header
+   (set on <p-toast> in the shells): bottom-right put them on top of every
+   drawer's footer buttons, and top-right on its close button (QA DO-21). */
+.p-toast.p-toast-top-center {
+  inset-block-start: calc(var(--component-app-shell-top-bar-height) + var(--spacing-sm)) !important;
+  max-inline-size: calc(100vw - 2 * var(--spacing-md));
+}
+
 .p-toast-message {
   border-radius: var(--radius-md) !important;
   background: var(--surface-acrylic) !important;

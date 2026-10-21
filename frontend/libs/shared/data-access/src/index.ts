@@ -47,4 +47,5 @@ export * from './lib/invoice.service';
 export * from './lib/printing.service';
 export * from './lib/services/notification';
 export * from './lib/services/notify.service';
+export * from './lib/services/app-message.service';
 export * from './lib/websocket.service';

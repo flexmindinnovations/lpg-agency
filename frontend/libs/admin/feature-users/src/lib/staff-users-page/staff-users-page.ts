@@ -21,6 +21,7 @@ import {
   AuthService,
   NotifyService,
   type StaffUserResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import { ASSIGNABLE_STAFF_ROLES, ROLE_LABELS, roleLabel } from '@lpg/shared/util';
 import {
@@ -105,7 +106,7 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
         </div>
       }
 
-      @if (!loading() && users().length === 0) {
+      @if (!loading() && !loadError() && users().length === 0) {
         <div class="empty-state">
           <i class="pi pi-users empty-state__icon"></i>
           <p class="empty-state__title">No staff users found</p>
@@ -120,6 +121,8 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
             [rows]="rows()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Staff users"
           />
@@ -195,7 +198,7 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -446,6 +449,8 @@ export class StaffUsersPage implements OnInit {
 
   protected readonly users = signal<StaffUserResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
   protected readonly busy = signal(false);
@@ -528,14 +533,18 @@ export class StaffUsersPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.staffUserService.listStaffUsers().subscribe({
       next: (users) => {
         this.users.set(users);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

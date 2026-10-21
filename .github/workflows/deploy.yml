@@ -94,8 +94,12 @@ jobs:
         env:
           KEY: ${{ secrets.PRIME_NG_LICENSE_KEY }}
         run: |
+          # A production image without the key shows PrimeNG's red "Invalid
+          # PrimeUI License" badge over every customer's screen (QA DA-27) -
+          # refuse to build it rather than warn.
           if [ -z "$KEY" ]; then
-            echo "::warning::PRIME_NG_LICENSE_KEY is empty - the dashboard will show PrimeNG's unlicensed banner"
+            echo "::error::PRIME_NG_LICENSE_KEY is empty - set it in the production environment secrets"
+            exit 1
           fi
           # A hash, used only to bust Docker's layer cache when the key changes.
           echo "fingerprint=$(printf '%s' "$KEY" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"

@@ -25,6 +25,7 @@ import {
   type CylinderTypeResponse,
   type PriceListEntryResponse,
   type PriceListProposalResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import {
   DataGridComponent,
@@ -75,9 +76,7 @@ type PriceRow = PriceListEntryResponse & {
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">Pricing</h1>
-            <p class="page-subtitle">
-              Set and track cylinder prices by type, customer category, and branch.
-            </p>
+            <p class="page-subtitle">Cylinder prices by branch and customer type.</p>
           </div>
         </ng-template>
       </div>
@@ -156,7 +155,7 @@ type PriceRow = PriceListEntryResponse & {
         </div>
       }
 
-      @if (!loading() && prices().length === 0) {
+      @if (!loading() && !loadError() && prices().length === 0) {
         <div class="empty-state">
           <i class="pi pi-tag empty-state__icon"></i>
           <p class="empty-state__title">No prices set</p>
@@ -171,6 +170,8 @@ type PriceRow = PriceListEntryResponse & {
             [rows]="priceRows()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Prices"
           />
@@ -283,7 +284,7 @@ type PriceRow = PriceListEntryResponse & {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -367,6 +368,8 @@ export class PriceListPage implements OnInit {
   protected readonly selectableBranches = computed(() => selectableByName(this.branches()));
   protected readonly searchQuery = signal('');
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
   protected readonly customerTypes = CUSTOMER_TYPES.map((t) => ({
@@ -460,14 +463,18 @@ export class PriceListPage implements OnInit {
     });
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.priceListService.listPrices().subscribe({
       next: (prices) => {
         this.prices.set(prices);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

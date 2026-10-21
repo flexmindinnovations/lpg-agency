@@ -163,4 +163,58 @@ describe('DataGridComponent', () => {
 
     expect(readySpy).toHaveBeenCalledTimes(1);
   });
+
+  it('shows an error state with Retry instead of an empty grid when loading failed', () => {
+    const fixture = create();
+    fixture.componentRef.setInput('error', 'The server did not respond.');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const retrySpy = jest.fn();
+    fixture.componentInstance.retry.subscribe(retrySpy);
+
+    expect(el.querySelector('ag-grid-angular')).toBeNull();
+    expect(el.textContent).toContain("Couldn't load this list");
+    expect(el.textContent).toContain('The server did not respond.');
+    (el.querySelector('button') as HTMLButtonElement).click();
+    expect(retrySpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives flexed columns a readable minimum width but keeps fixed widths', () => {
+    const fixture = TestBed.createComponent(DataGridComponent<Row>);
+    fixture.componentRef.setInput('rows', rows);
+    fixture.componentRef.setInput('columns', [
+      { field: 'id', header: 'Cylinder type' },
+      { field: 'quantity', header: 'Qty', width: 80 },
+    ]);
+    fixture.componentRef.setInput('ariaLabel', 'Test grid');
+    fixture.detectChanges();
+    const defs = (
+      fixture.componentInstance as unknown as { columnDefs: () => { minWidth?: number }[] }
+    ).columnDefs();
+    expect(defs[0].minWidth).toBeGreaterThanOrEqual(120);
+    expect(defs[1].minWidth).toBeUndefined();
+  });
+
+  it('hides low-priority columns when the grid is narrow', () => {
+    const fixture = TestBed.createComponent(DataGridComponent<Row>);
+    fixture.componentRef.setInput('rows', rows);
+    fixture.componentRef.setInput('columns', [
+      { field: 'id', header: 'ID' },
+      { field: 'quantity', header: 'Quantity', priority: 'low' },
+    ]);
+    fixture.componentRef.setInput('ariaLabel', 'Test grid');
+    fixture.detectChanges();
+    const setColumnsVisible = jest.fn();
+    const sized = (clientWidth: number) =>
+      (
+        fixture.componentInstance as unknown as {
+          onGridSizeChanged: (e: unknown) => void;
+        }
+      ).onGridSizeChanged({ clientWidth, api: { setColumnsVisible } });
+
+    sized(600);
+    sized(1000);
+    expect(setColumnsVisible).toHaveBeenNthCalledWith(1, ['quantity'], false);
+    expect(setColumnsVisible).toHaveBeenNthCalledWith(2, ['quantity'], true);
+  });
 });

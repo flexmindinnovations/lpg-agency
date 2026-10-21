@@ -128,24 +128,24 @@ export interface ActivityItem {
       }
 
       .activity-list__status--neutral {
-        background: var(--color-surface-overlay);
-        color: var(--color-text-secondary);
+        background: var(--component-chip-neutral-background);
+        color: var(--component-chip-neutral-text);
       }
       .activity-list__status--success {
-        background: color-mix(in srgb, var(--color-status-success) 16%, transparent);
-        color: var(--color-status-success);
+        background: var(--component-chip-success-background);
+        color: var(--component-chip-success-text);
       }
       .activity-list__status--warning {
-        background: color-mix(in srgb, var(--color-status-warning) 16%, transparent);
-        color: var(--color-status-warning);
+        background: var(--component-chip-warning-background);
+        color: var(--component-chip-warning-text);
       }
       .activity-list__status--danger {
-        background: color-mix(in srgb, var(--color-status-danger) 16%, transparent);
-        color: var(--color-status-danger);
+        background: var(--component-chip-danger-background);
+        color: var(--component-chip-danger-text);
       }
       .activity-list__status--info {
-        background: color-mix(in srgb, var(--color-status-info) 16%, transparent);
-        color: var(--color-status-info);
+        background: var(--component-chip-info-background);
+        color: var(--component-chip-info-text);
       }
     `,
   ],

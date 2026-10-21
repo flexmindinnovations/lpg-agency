@@ -8,7 +8,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { DatePipe, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { InputIcon } from 'primeng/inputicon';
@@ -42,7 +42,9 @@ import {
   type CylinderTypeResponse,
   type InvoiceResponse,
   type OrderResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
+import { LpgDatePipe, formatDisplayDate } from '@lpg/shared/util';
 
 @Component({
   selector: 'lpg-feature-invoices',
@@ -59,7 +61,7 @@ import {
     ButtonDirective,
     DataGridComponent,
     PreviewDialog,
-    DatePipe,
+    LpgDatePipe,
     CurrencyPipe,
   ],
   templateUrl: './feature-invoices.html',
@@ -76,6 +78,8 @@ export class FeatureInvoices implements OnInit {
   private readonly messageService = inject(MessageService);
 
   readonly isLoading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  readonly loadError = signal<string | null>(null);
   readonly isPrinting = signal(false);
   readonly invoices = signal<InvoiceResponse[]>([]);
   readonly selectedInvoice = signal<InvoiceResponse | null>(null);
@@ -187,7 +191,7 @@ export class FeatureInvoices implements OnInit {
       field: 'issued_at',
       header: 'Date',
       sortable: true,
-      valueFormatter: (val) => new Date(val as string).toLocaleDateString(),
+      valueFormatter: (val) => formatDisplayDate(val),
     },
     {
       field: 'customer_consumer_number',
@@ -226,6 +230,7 @@ export class FeatureInvoices implements OnInit {
 
   loadInvoices(): void {
     this.isLoading.set(true);
+    this.loadError.set(null);
     this.invoiceService.list(1, 100).subscribe({
       next: (res) => {
         const items = res.items;
@@ -260,7 +265,8 @@ export class FeatureInvoices implements OnInit {
           this.isLoading.set(false);
         });
       },
-      error: () => {
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
         this.isLoading.set(false);
       },
     });

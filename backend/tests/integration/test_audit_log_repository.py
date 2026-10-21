@@ -4,6 +4,7 @@ read path `audit.audit_log` has ever had (Phase 2 built it write-only).
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -201,3 +202,128 @@ class TestPaginationAndFiltering:
         page = await use_case.execute(ListAuditLogQuery(tenant_id=own_tenant))
 
         assert page.items == []
+
+
+async def _seed_vehicle(admin_engine: AsyncEngine, tenant_id: uuid.UUID, registration: str) -> str:
+    async with admin_engine.begin() as conn:
+        branch_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO tenant.branch (tenant_id, name) VALUES (:t, 'Main') RETURNING id"
+                ),
+                {"t": str(tenant_id)},
+            )
+        ).scalar_one()
+        vehicle_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO delivery.vehicle "
+                    "(tenant_id, branch_id, registration_number, make, model, capacity_units) "
+                    "VALUES (:t, :b, :reg, 'Tata', 'Ace', 40) RETURNING id"
+                ),
+                {"t": str(tenant_id), "b": str(branch_id), "reg": registration},
+            )
+        ).scalar_one()
+    return str(vehicle_id)
+
+
+async def _seed_state_row(
+    admin_engine: AsyncEngine,
+    *,
+    tenant_id: uuid.UUID,
+    entity_name: str,
+    after_state: dict[str, object],
+    action: str = "create",
+) -> uuid.UUID:
+    async with admin_engine.begin() as conn:
+        entry_id = (
+            await conn.execute(
+                text(
+                    "INSERT INTO audit.audit_log "
+                    "(id, tenant_id, entity_name, entity_id, action, performed_at, after_state) "
+                    "VALUES (gen_random_uuid(), :tenant_id, :entity_name, gen_random_uuid()::text, "
+                    ":action, now(), CAST(:after_state AS jsonb)) RETURNING id"
+                ),
+                {
+                    "tenant_id": str(tenant_id),
+                    "entity_name": entity_name,
+                    "action": action,
+                    "after_state": json.dumps(after_state),
+                },
+            )
+        ).scalar_one()
+    return uuid.UUID(str(entry_id))
+
+
+class TestReadableRecordLabels:
+    """Rows written without a label get one at read time (QA UR-04)."""
+
+    async def test_labels_an_unnamed_row_from_its_state_and_parent(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        vehicle_id = await _seed_vehicle(admin_engine, tenant_id, "KA01AB1234")
+        await _seed_state_row(
+            admin_engine,
+            tenant_id=tenant_id,
+            entity_name="route",
+            after_state={"route_date": "2026-10-20", "vehicle_id": vehicle_id},
+        )
+        await _seed_state_row(
+            admin_engine,
+            tenant_id=tenant_id,
+            entity_name="order",
+            after_state={"order_number": "ORD000027"},
+        )
+
+        page = await SqlAlchemyAuditLogRepository(database).get_page(tenant_id)
+
+        labels = {item.entity_name: item.entity_display_name for item in page.items}
+        assert labels == {"route": "Trip on 20 Oct 2026 · KA01AB1234", "order": "ORD000027"}
+
+    async def test_never_reads_a_parent_from_another_tenant(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        own_tenant = await _seed_tenant(admin_engine)
+        other_tenant = await _seed_tenant(admin_engine)
+        foreign_vehicle = await _seed_vehicle(admin_engine, other_tenant, "SECRET-REG")
+        await _seed_state_row(
+            admin_engine,
+            tenant_id=own_tenant,
+            entity_name="route",
+            after_state={"route_date": "2026-10-20", "vehicle_id": foreign_vehicle},
+        )
+
+        page = await SqlAlchemyAuditLogRepository(database).get_page(own_tenant)
+
+        assert page.items[0].entity_display_name == "Trip on 20 Oct 2026"
+
+
+class TestActionFilterAndEntityTypes:
+    async def test_filters_by_action_and_lists_entity_types(
+        self, database: Database, admin_engine: AsyncEngine
+    ) -> None:
+        tenant_id = await _seed_tenant(admin_engine)
+        other_tenant = await _seed_tenant(admin_engine)
+        now = datetime.now(UTC)
+        await _seed_audit_row(
+            admin_engine, tenant_id=tenant_id, entity_name="branch", performed_at=now
+        )
+        deleted_id = await _seed_audit_row(
+            admin_engine,
+            tenant_id=tenant_id,
+            entity_name="warehouse",
+            performed_at=now,
+            action="delete",
+        )
+        await _seed_audit_row(
+            admin_engine, tenant_id=other_tenant, entity_name="vehicle", performed_at=now
+        )
+        repository = SqlAlchemyAuditLogRepository(database)
+
+        page = await ListAuditLogUseCase(repository).execute(
+            ListAuditLogQuery(tenant_id=tenant_id, action="delete")
+        )
+
+        assert [item.id for item in page.items] == [deleted_id]
+        assert await repository.list_entity_names(tenant_id) == ["branch", "warehouse"]

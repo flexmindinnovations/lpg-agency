@@ -10,8 +10,19 @@ import {
 } from '@angular/core';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
+import type {
+  ColDef,
+  GridApi,
+  GridOptions,
+  GridReadyEvent,
+  GridSizeChangedEvent,
+} from 'ag-grid-community';
+import { ButtonDirective } from 'primeng/button';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
+import { EmptyStateComponent } from '../empty-state/empty-state.component';
+
+/** Below this grid width, `priority: 'low'` columns are hidden (tablet/phone). */
+const NARROW_GRID_PX = 720;
 
 // AG Grid 33+ uses a modular architecture — features (row selection, column
 // filters, etc.) are no-ops unless their module is registered first. This is
@@ -39,6 +50,17 @@ export interface DataGridColumn<TRow = unknown> {
   readonly resizable?: boolean;
   readonly width?: number;
   readonly flex?: number;
+  /**
+   * Narrowest this column may get before the grid scrolls sideways instead.
+   * Defaults to a width that keeps the header readable, so at tablet widths
+   * key columns stay legible ("Cylinde…" was the QA finding DA-21).
+   */
+  readonly minWidth?: number;
+  /**
+   * `low` columns are hidden when the grid is narrower than 720px, leaving
+   * room for the columns a user scans for (number, name, status, amount).
+   */
+  readonly priority?: 'high' | 'low';
   /** Right-align with tabular figures — the convention for numeric columns. */
   readonly numeric?: boolean;
   readonly valueFormatter?: (value: unknown, row: TRow) => string;
@@ -137,6 +159,19 @@ export class DataGridLinkCell<TRow = unknown> {
 
 export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
 
+/** Enough for the header label plus sort icon; narrower numbers/dates. */
+function defaultMinWidth(column: Pick<DataGridColumn, 'header' | 'numeric'>): number {
+  const headerPx = column.header.length * 8 + 40;
+  return Math.max(column.numeric ? 96 : 120, Math.min(headerPx, 200));
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(
+    /[&<>"']/g,
+    (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch,
+  );
+}
+
 /**
  * The one place AG Grid is used.
  *
@@ -154,7 +189,7 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
 @Component({
   selector: 'lpg-data-grid',
   standalone: true,
-  imports: [AgGridAngular, SkeletonComponent],
+  imports: [AgGridAngular, SkeletonComponent, EmptyStateComponent, ButtonDirective],
   host: {
     '[class.lpg-data-grid--auto]': 'autoHeight()',
     '[class.lpg-data-grid--bordered]': 'bordered()',
@@ -165,6 +200,19 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
       <div class="lpg-data-grid__skeleton">
         <lpg-skeleton variant="table" [rows]="8" [columns]="columns().length || 4" />
       </div>
+    } @else if (error()) {
+      <!-- A failed load is never shown as "no data yet" (QA DA-15). -->
+      <lpg-empty-state
+        tone="error"
+        icon="pi pi-exclamation-triangle"
+        title="Couldn't load this list"
+        [description]="error() ?? ''"
+      >
+        <button pButton type="button" severity="secondary" actions (click)="retry.emit()">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+          <span>Retry</span>
+        </button>
+      </lpg-empty-state>
     } @else {
       <ag-grid-angular
         class="lpg-data-grid"
@@ -173,6 +221,7 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
         [gridOptions]="gridOptions()"
         [attr.aria-label]="ariaLabel()"
         (gridReady)="onGridReady($event)"
+        (gridSizeChanged)="onGridSizeChanged($event)"
         (selectionChanged)="onSelectionChanged($event)"
       />
     }
@@ -198,6 +247,10 @@ export type DataGridSelectionMode = 'none' | 'single' | 'multiple';
       }
       .lpg-data-grid__skeleton {
         padding: var(--spacing-md);
+      }
+      ::ng-deep .lpg-data-grid .lpg-data-grid__empty {
+        color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
       }
       .lpg-data-grid {
         block-size: 100%;
@@ -338,8 +391,15 @@ export class DataGridComponent<TRow = unknown> {
    *  a paginated/cursor-based endpoint needs a real server-side search
    *  instead of this. */
   readonly searchQuery = input('');
+  /** A load failure message. Replaces the grid with an error state and a
+   *  Retry button (emits `retry`) — never an empty "no data" grid. */
+  readonly error = input<string | null>(null);
+  /** Shown in the grid body when there are no rows (AG Grid's own text is
+   *  "No Rows To Show"). Pages wanting a call to action use `lpg-empty-state`. */
+  readonly emptyMessage = input('Nothing to show yet.');
 
   readonly ready = output<void>();
+  readonly retry = output<void>();
 
   /** Mutable copy for AG Grid which expects a non-readonly array. */
   protected readonly rowData = computed(() => [...this.rows()]);
@@ -356,6 +416,9 @@ export class DataGridComponent<TRow = unknown> {
       // pin a fixed pixel width or supply their own flex weight per column.
       width: column.width,
       flex: column.flex ?? (column.width === undefined ? 1 : undefined),
+      // A flexed column without a floor squeezes to "Cylinde…" on a tablet;
+      // with one, the grid scrolls sideways instead. Fixed widths are kept.
+      minWidth: column.minWidth ?? (column.width === undefined ? defaultMinWidth(column) : undefined),
       type: column.numeric ? 'numericColumn' : undefined,
       cellClass:
         typeof column.cellClass === 'function'
@@ -409,6 +472,7 @@ export class DataGridComponent<TRow = unknown> {
     paginationPageSize: this.pageSize() || 25,
     paginationPageSizeSelector: [10, 25, 50, 100],
     quickFilterText: this.searchQuery(),
+    overlayNoRowsTemplate: `<span class="lpg-data-grid__empty">${escapeHtml(this.emptyMessage())}</span>`,
   }));
 
   readonly selectionChange = output<TRow[]>();
@@ -460,6 +524,15 @@ export class DataGridComponent<TRow = unknown> {
     this.gridApi = event.api;
     this.ready.emit();
     this.scheduleCellRendererRefresh();
+  }
+
+  /** Hide `priority: 'low'` columns while the grid is narrow. */
+  protected onGridSizeChanged(event: GridSizeChangedEvent<TRow>): void {
+    const low = this.columns()
+      .filter((c) => c.priority === 'low')
+      .map((c) => c.field);
+    if (low.length === 0) return;
+    event.api.setColumnsVisible(low, event.clientWidth >= NARROW_GRID_PX);
   }
 
   protected onSelectionChanged(event: any): void {

@@ -12,6 +12,7 @@ import {
   AdminCylinderTypeService,
   NotifyService,
   type CylinderTypeResponse,
+  errorMessageFor,
 } from '@lpg/shared/data-access';
 import { DataGridComponent, type DataGridColumn, FormFieldComponent } from '@lpg/shared/ui';
 
@@ -92,7 +93,7 @@ class CylinderTypeStatusCell {
         </div>
       }
 
-      @if (!loading() && cylinderTypes().length === 0) {
+      @if (!loading() && !loadError() && cylinderTypes().length === 0) {
         <div class="empty-state">
           <i class="pi pi-box empty-state__icon"></i>
           <p class="empty-state__title">No cylinder types found</p>
@@ -107,6 +108,8 @@ class CylinderTypeStatusCell {
             [rows]="cylinderTypes()"
             [columns]="columns"
             [loading]="loading()"
+            [error]="loadError()"
+            (retry)="reload()"
             [searchQuery]="searchQuery()"
             ariaLabel="Cylinder Types"
           />
@@ -179,7 +182,7 @@ class CylinderTypeStatusCell {
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || form.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
@@ -213,6 +216,8 @@ export class CylinderTypesPage implements OnInit {
 
   protected readonly cylinderTypes = signal<CylinderTypeResponse[]>([]);
   protected readonly loading = signal(false);
+  /** Set when the list failed to load — the grid shows it with Retry (QA DA-15). */
+  protected readonly loadError = signal<string | null>(null);
   protected readonly searchQuery = signal('');
   protected readonly submitting = signal(false);
   protected readonly createDrawerVisible = signal(false);
@@ -243,14 +248,18 @@ export class CylinderTypesPage implements OnInit {
     this.reload();
   }
 
-  private reload(): void {
+  protected reload(): void {
     this.loading.set(true);
+    this.loadError.set(null);
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (cylinderTypes) => {
         this.cylinderTypes.set(cylinderTypes);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: (error: unknown) => {
+        this.loadError.set(errorMessageFor(error));
+        this.loading.set(false);
+      },
     });
   }
 

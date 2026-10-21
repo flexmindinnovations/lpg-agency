@@ -80,7 +80,8 @@ function errorMessageFor(_error: unknown): string {
   templateUrl: './feature-complaints.html',
   styleUrl: './feature-complaints.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [MessageService],
+  // No local MessageService: a component-level instance has no <p-toast>
+  // listening, so this page's success toasts were never shown (QA DO-21).
 })
 export class FeatureComplaints implements OnInit {
   private readonly complaintService = inject(ComplaintService);

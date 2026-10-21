@@ -68,7 +68,7 @@ const VALIDITY_OPTIONS = [
         <ng-template lpgHeaderTitlePortal>
           <div class="page-header__text">
             <h1 class="page-title">License Issuance</h1>
-            <p class="page-subtitle">Issue and manage every tenant's product license.</p>
+            <p class="page-subtitle">Issue and manage agency licences.</p>
           </div>
         </ng-template>
       </div>
@@ -193,7 +193,7 @@ const VALIDITY_OPTIONS = [
             >
               Cancel
             </button>
-            <button pButton type="submit" [disabled]="submitting() || issueForm.invalid">
+            <button pButton type="submit" [disabled]="submitting()">
               @if (submitting()) {
                 <i class="pi pi-spin pi-spinner"></i>
               }
