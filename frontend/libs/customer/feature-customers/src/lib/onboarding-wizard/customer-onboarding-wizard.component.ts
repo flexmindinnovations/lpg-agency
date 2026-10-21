@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { firstValueFrom, map, tap, type Observable } from 'rxjs';
+import { catchError, firstValueFrom, map, of, tap, type Observable } from 'rxjs';
 
 import { StepperModule } from 'primeng/stepper';
 import { ButtonDirective } from 'primeng/button';
@@ -18,10 +18,22 @@ import { DocumentUploadComponent, FormFieldComponent } from '@lpg/shared/ui';
 import {
   CustomerService,
   AdminBranchService,
+  errorMessageFor,
   type BranchResponse,
   type OnboardingDraftResponse,
   type RecognizeKycDocumentResponse,
 } from '@lpg/shared/data-access';
+import {
+  DATE_INPUT_FORMAT,
+  DATE_INPUT_PLACEHOLDER,
+  PINCODE_PATTERN,
+  asKycDocType,
+  compactIdentifier,
+  gstinValidator,
+  kycNumberValidator,
+  toIsoDate,
+  type KycDocType,
+} from '../validators/identifier-validators';
 
 // Backend validation requires strict E.164 (`domain/customer/customer.py`'s
 // `_E164_PHONE_REGEX`) — a `+` and country code are non-negotiable on
@@ -29,6 +41,9 @@ import {
 // bare local number typed without a country code can be unambiguously
 // normalized to +91 on blur rather than forcing every user to type it.
 const PHONE_PATTERN = /^\+[1-9]\d{9,14}$/;
+type CustomerType = 'domestic' | 'commercial' | 'industrial' | 'government';
+type AddressType = 'delivery' | 'billing' | 'both';
+const BUSINESS_TYPES: readonly CustomerType[] = ['commercial', 'industrial', 'government'];
 const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
 
 @Component({
@@ -90,32 +105,51 @@ export class CustomerOnboardingWizardComponent implements OnInit {
   protected readonly showResumeBanner = signal(false);
   protected readonly latestDraft = signal<OnboardingDraftResponse | null>(null);
 
-  protected readonly customerCategoryOptions = [
-    { label: 'Domestic', value: 'domestic' },
-    { label: 'Commercial', value: 'commercial' },
+  protected readonly customerCategoryOptions: { label: string; value: CustomerType }[] = [
+    { label: 'Domestic (household)', value: 'domestic' },
+    { label: 'Commercial (shop, hotel, restaurant)', value: 'commercial' },
     { label: 'Industrial', value: 'industrial' },
+    { label: 'Government / institution', value: 'government' },
   ];
+  protected readonly dateInputFormat = DATE_INPUT_FORMAT;
+  protected readonly dateInputPlaceholder = DATE_INPUT_PLACEHOLDER;
+  protected readonly today = new Date();
+  /** Business connections are billed to the business (name + GSTIN on B2B
+   *  invoices); the person's name becomes the contact person (DO-02). */
+  protected readonly isBusiness = signal(false);
+  /** Shown after a successful Submit & Approve. */
+  protected readonly createdConsumerNumber = signal<string | null>(null);
 
-  protected readonly addressTypeOptions = [
+  protected readonly addressTypeOptions: { label: string; value: AddressType }[] = [
     { label: 'Delivery', value: 'delivery' },
     { label: 'Billing', value: 'billing' },
     { label: 'Both', value: 'both' },
   ];
 
-  protected readonly kycDocTypeOptions = [
-    { label: 'Aadhaar Card', value: 'aadhaar' },
-    { label: 'PAN Card', value: 'pan' },
+  protected readonly kycDocTypeOptions: { label: string; value: KycDocType }[] = [
+    { label: 'Aadhaar card', value: 'aadhaar' },
+    { label: 'PAN card', value: 'pan' },
+    { label: 'Voter ID (EPIC)', value: 'voter_id' },
+    { label: 'Driving licence', value: 'driving_license' },
     { label: 'Passport', value: 'passport' },
   ];
+
+  protected docTypeLabel(value: string | undefined): string {
+    return this.kycDocTypeOptions.find((o) => o.value === value)?.label ?? '—';
+  }
+
+  protected categoryLabel(value: string | undefined): string {
+    return this.customerCategoryOptions.find((o) => o.value === value)?.label ?? '—';
+  }
 
   protected readonly registrationForm = this.fb.group({
     first_name: ['', Validators.required],
     last_name: ['', Validators.required],
     phone_number: ['', [Validators.required, Validators.pattern(PHONE_PATTERN)]],
     branch_id: ['', Validators.required],
-    consumer_category: ['domestic', Validators.required],
-    is_commercial: [false],
-    contact_person: [''],
+    consumer_category: ['domestic' as CustomerType, Validators.required],
+    business_name: [''],
+    gstin: ['', gstinValidator],
     // Optional — Validators.pattern only runs against a non-empty value, so
     // this doesn't make the field required.
     alternate_mobile: ['', Validators.pattern(PHONE_PATTERN)],
@@ -123,7 +157,7 @@ export class CustomerOnboardingWizardComponent implements OnInit {
   });
 
   protected readonly addressForm = this.fb.group({
-    address_type: ['delivery', Validators.required],
+    address_type: ['delivery' as AddressType, Validators.required],
     line_1: ['', Validators.required],
     line_2: [''],
     landmark: [''],
@@ -131,11 +165,11 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     city: ['', Validators.required],
     district: ['', Validators.required],
     state: ['', Validators.required],
-    pincode: ['', [Validators.required, Validators.pattern(/^[0-9]{6}$/)]],
+    pincode: ['', [Validators.required, Validators.pattern(PINCODE_PATTERN)]],
   });
 
   protected readonly kycForm = this.fb.group({
-    doc_type: ['aadhaar', Validators.required],
+    doc_type: ['aadhaar' as KycDocType, Validators.required],
     document_number: ['', Validators.required],
     // Aadhaar/PAN cards carry neither an issue nor an expiry date — only
     // required when the selected document type actually has one (Passport).
@@ -157,7 +191,8 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     alternate_mobile: { pattern: CustomerOnboardingWizardComponent.PHONE_MSG },
     branch_id: { required: 'Select an operating branch.' },
     consumer_category: { required: 'Select a consumer category.' },
-    contact_person: { required: 'Contact person is required for commercial entities.' },
+    business_name: { required: 'Enter the business or institution name.' },
+    gstin: { gstin: 'Enter a valid 15-character GSTIN, like 27AAPFU0939F1ZV.' },
     date_of_birth: { required: 'Date of birth is required.' },
     address_type: { required: 'Select an address type.' },
     line_1: { required: 'Address line 1 is required.' },
@@ -166,24 +201,31 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     district: { required: 'District is required.' },
     state: { required: 'State is required.' },
     pincode: {
-      required: 'A pincode is required.',
-      pattern: 'Enter a valid 6-digit pincode.',
+      required: 'A PIN code is required.',
+      pattern: 'Enter a valid 6-digit PIN code (it cannot start with 0).',
     },
     doc_type: { required: 'Select a document type.' },
-    document_number: { required: 'Document number is required.' },
+    document_number: {
+      required: 'Document number is required.',
+      kycNumber: 'Check the document number.',
+    },
     issue_date: { required: 'Issue date is required.' },
     expiry_date: { required: 'Expiry date is required.' },
   };
 
   constructor() {
-    this.registrationForm.controls.is_commercial.valueChanges.subscribe((isCommercial) => {
-      const contactPersonCtrl = this.registrationForm.controls.contact_person;
-      if (isCommercial) {
-        contactPersonCtrl.setValidators(Validators.required);
-      } else {
-        contactPersonCtrl.clearValidators();
-      }
-      contactPersonCtrl.updateValueAndValidity();
+    this.kycForm.controls.document_number.addValidators(
+      kycNumberValidator(() => this.kycForm.controls.doc_type.value),
+    );
+    this.registrationForm.controls.consumer_category.valueChanges.subscribe((category) => {
+      const business = BUSINESS_TYPES.includes(category);
+      this.isBusiness.set(business);
+      const { business_name, date_of_birth } = this.registrationForm.controls;
+      business_name.setValidators(business ? Validators.required : null);
+      // A business has no date of birth; a household's account holder does.
+      date_of_birth.setValidators(business ? null : Validators.required);
+      business_name.updateValueAndValidity();
+      date_of_birth.updateValueAndValidity();
     });
 
     this.kycForm.controls.doc_type.valueChanges.subscribe((docType) => {
@@ -198,6 +240,7 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       }
       issueDateCtrl.updateValueAndValidity();
       expiryDateCtrl.updateValueAndValidity();
+      this.kycForm.controls.document_number.updateValueAndValidity();
     });
   }
 
@@ -279,7 +322,7 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     }
 
     this.kycForm.patchValue({
-      doc_type: result.doc_type,
+      doc_type: asKycDocType(result.doc_type),
       document_number: result.document_number,
     });
     this.kycForm.controls.document_number.markAsTouched();
@@ -451,14 +494,14 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       last_name: (reg['last_name'] as string) ?? '',
       phone_number: (reg['phone_number'] as string) ?? '',
       branch_id: (reg['branch_id'] as string) ?? '',
-      consumer_category: (reg['consumer_category'] as string) ?? 'domestic',
-      is_commercial: Boolean(reg['is_commercial']),
-      contact_person: (reg['contact_person'] as string) ?? '',
+      consumer_category: (reg['consumer_category'] as CustomerType) ?? 'domestic',
+      business_name: (reg['business_name'] as string) ?? '',
+      gstin: (reg['gstin'] as string) ?? '',
       alternate_mobile: (reg['alternate_mobile'] as string) ?? '',
       date_of_birth: reg['date_of_birth'] ? new Date(reg['date_of_birth'] as string) : null,
     });
     this.addressForm.patchValue({
-      address_type: (addr['address_type'] as string) ?? 'delivery',
+      address_type: (addr['address_type'] as AddressType) ?? 'delivery',
       line_1: (addr['line_1'] as string) ?? '',
       line_2: (addr['line_2'] as string) ?? '',
       landmark: (addr['landmark'] as string) ?? '',
@@ -469,7 +512,7 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       pincode: (addr['pincode'] as string) ?? '',
     });
     this.kycForm.patchValue({
-      doc_type: (kyc['doc_type'] as string) ?? 'aadhaar',
+      doc_type: asKycDocType(kyc['doc_type']),
       document_number: (kyc['document_number'] as string) ?? '',
       issue_date: kyc['issue_date'] ? new Date(kyc['issue_date'] as string) : null,
       expiry_date: kyc['expiry_date'] ? new Date(kyc['expiry_date'] as string) : null,
@@ -504,58 +547,56 @@ export class CustomerOnboardingWizardComponent implements OnInit {
     const kycData = this.kycForm.getRawValue();
 
     try {
-      // 1. Register Customer (Map to RegisterCustomerRequest)
-      const registerPayload = {
-        full_name: `${regData.first_name} ${regData.last_name}`,
-        customer_type: regData.consumer_category,
-        // Deliberately omitted, not defaulted — `RegisterCustomerRequest.
-        // consumer_number` is genuinely optional on the backend (`str |
-        // None = None`), and stays null through "onboarding"/
-        // "pending_approval" by domain design (Customer.__init__'s own
-        // invariant only requires it once status is active+). The real,
-        // properly-sequenced number is assigned once the account is
-        // approved (see VerifyKycDocumentUseCase's auto-approve-on-fully-
-        // verified-KYC path). A client-side `Date.now()` placeholder was
-        // sent here before, producing consumer numbers like
-        // "CN-1787232609075" that never got corrected.
-        phone_number: regData.phone_number,
-        branch_id: regData.branch_id,
-        // No address here. `RegisterCustomerRequest` carries `line_1`/`area`/
-        // `city`/… since `de17b27d462e`; the `address_line` key this used to
-        // send has not existed on that schema since, and Pydantic silently
-        // dropped it — so this looked like it registered an address and never
-        // did. The address is created by the `addAddress` call below, which is
-        // where it actually happened all along.
-      };
+      // One request registers the customer with their address, so a failed
+      // address never leaves a customer behind without one.
+      const personName = `${regData.first_name} ${regData.last_name}`.trim();
+      const business = BUSINESS_TYPES.includes(regData.consumer_category);
+      const customer = await firstValueFrom(
+        this.customerService.register({
+          full_name: business ? regData.business_name.trim() : personName,
+          contact_person: business ? personName : null,
+          customer_type: regData.consumer_category,
+          gstin: business && regData.gstin.trim() ? compactIdentifier(regData.gstin) : null,
+          phone_number: regData.phone_number,
+          alternate_mobile: regData.alternate_mobile || null,
+          date_of_birth:
+            !business && regData.date_of_birth ? toIsoDate(regData.date_of_birth) : null,
+          branch_id: regData.branch_id,
+          address_type: addrData.address_type,
+          line_1: addrData.line_1,
+          line_2: addrData.line_2 || null,
+          landmark: addrData.landmark || null,
+          area: addrData.area,
+          city: addrData.city,
+          district: addrData.district,
+          state: addrData.state,
+          pincode: addrData.pincode,
+        }),
+      );
 
-      const customer = await firstValueFrom(this.customerService.register(registerPayload));
-
-      if (customer) {
-        // 2. Add full Address
-        await firstValueFrom(
-          this.customerService.addAddress(customer.id, {
-            address_type: addrData.address_type,
-            line_1: addrData.line_1,
-            line_2: addrData.line_2 || undefined,
-            landmark: addrData.landmark || undefined,
-            area: addrData.area,
-            city: addrData.city,
-            district: addrData.district,
-            state: addrData.state,
-            pincode: addrData.pincode,
-          }),
-        );
-
-        // 3. Submit KYC
-        await firstValueFrom(
-          this.customerService.submitKyc(
-            customer.id,
-            kycData.doc_type,
-            kycData.document_number,
-            kycData.document_file_ref,
-          ),
-        );
-      }
+      const docId = await firstValueFrom(
+        this.customerService.submitKyc(
+          customer.id,
+          kycData.doc_type,
+          compactIdentifier(kycData.document_number),
+          kycData.document_file_ref,
+        ),
+      );
+      // "Submit & Approve": verifying the document activates the connection
+      // and assigns the consumer number. Staff without KYC rights leave it
+      // pending for someone who has them.
+      const approved = await firstValueFrom(
+        this.customerService.verifyKyc(customer.id, docId, 'verified').pipe(
+          map(() => true),
+          catchError(() => of(false)),
+        ),
+      );
+      const refreshed = approved
+        ? await firstValueFrom(
+            this.customerService.get(customer.id).pipe(catchError(() => of(customer))),
+          )
+        : customer;
+      this.createdConsumerNumber.set(refreshed.consumer_number ?? null);
 
       const draftId = this.draftId();
       if (draftId) {
@@ -567,17 +608,21 @@ export class CustomerOnboardingWizardComponent implements OnInit {
       this.addressForm.markAsPristine();
       this.kycForm.markAsPristine();
 
+      const consumerNumber = this.createdConsumerNumber();
       this.messageService.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Customer onboarded successfully.',
+        summary: consumerNumber ? 'Connection approved' : 'Customer registered',
+        detail: consumerNumber
+          ? `Consumer number ${consumerNumber}. The customer can book now.`
+          : 'KYC is waiting for verification before the customer can book.',
+        life: 8000,
       });
       this.router.navigate(['/customers']);
-    } catch {
+    } catch (err) {
       this.messageService.add({
         severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to onboard customer.',
+        summary: 'Could not register the customer',
+        detail: errorMessageFor(err),
       });
     } finally {
       this.isSubmitting.set(false);
