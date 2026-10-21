@@ -8,9 +8,9 @@
 - [x] Customer app: refresh lists/detail on order notifications
 - [x] Driver app: `/ws` + refresh route on notification/push
 - [x] Backend unit tests (handlers, connection manager)
-- [ ] The WebSocket `driver` intent subscribes to `driver:{identity user id}` but
+- [x] (Fixed 2026-10-21, feature 47) The WebSocket `driver` intent subscribes to `driver:{identity user id}` but
       route events publish `driver:{driver id}`, so that channel never matches.
       Unused by the apps today (the driver app uses `notifications`); fix or
       remove when something needs it.
-- [ ] The `order:{id}` intent lets any customer in the tenant subscribe to any
+- [x] (Fixed 2026-10-21, feature 47) The `order:{id}` intent lets any customer in the tenant subscribe to any
       order id (messages carry only id and status). Add an ownership check.

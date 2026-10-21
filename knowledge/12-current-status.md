@@ -273,6 +273,7 @@ Never:
 
 | Date | Version | Description |
 |------|---------|-------------|
+| 2026-10-21 | 1.20 | **QA fixes** (`planning/features/47-qa-fixes/`, ADR-057 to ADR-063): fixes from the 2026-10-20 QA pass across inventory, users and licences, realtime notifications, dashboard UI, GST and invoices (per cylinder type, exclusive by default, held instead of 0%), both apps, and orders and complaints. |
 | 2026-10-19 | 1.19 | **Post-delivery customer actions** (`planning/features/43-post-delivery-customer-actions/`): invoice generation records the driver's doorstep collection (`payment-flow.md` Path B step 4; migration `c8d4e2f6a1b3` backfills), payment links refused on settled invoices, Customer App detail screens refetch and only offer Cancel in cancellable states. |
 | 2026-10-19 | 1.18 | **Optional delivery signature and photo** (`planning/features/39-optional-delivery-proof/`): the Driver App and `POST /orders/{id}/deliver` accept a delivery without the customer's signature and/or photo; OTP and GPS still gate it (BR-08/BR-23, FR-DM-06 amended; migration `b7e1d3f5a2c9`). |
 | 2026-10-17 | 1.17 | **Online payments (Razorpay, ADR-053)** built: payment links for order prepayment and invoice settlement, signed webhook + refresh, prepayments applied at invoice generation, Customer App "Pay Online". Tested against a stubbed gateway; not yet against real test keys. See `planning/features/35-online-payments-razorpay/STATUS.md`. |

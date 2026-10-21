@@ -84,6 +84,7 @@ class CancellationRequested(DomainEvent):
     reason: str
 
 
+@dataclass(frozen=True, slots=True)
 class BookingAmended(DomainEvent):
     """Staff changed a booking's quantities, address or date before it was
     put on a trip (DO-13)."""

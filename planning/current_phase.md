@@ -52,6 +52,8 @@ LPG Agency Management Platform
 
 **Simpler dispatch (trip sheet)** ✅ **DONE** — 2026-10-19. One "New trip" drawer on the Dispatch page: pick driver and van, tick the orders, the load sheet works out the cylinders against godown stock, and one Load & dispatch call loads the van and releases the orders to the driver. A single order can also go out from its own page with Send out, and the order page shows a progress line. Fixes orders assigned before loading that reserved nothing. ADR-056. See [`planning/features/45-simpler-dispatch/STATUS.md`](./features/45-simpler-dispatch/STATUS.md).
 
+**QA fixes** ✅ **DONE** — 2026-10-21. Fixes for the 2026-10-20 QA pass across inventory, users and licences, realtime notifications, dashboard UI conventions, GST and invoices (GST per cylinder type, exclusive by default), the customer and driver apps, and orders and complaints (cylinder cap, credit limit, order editing, reschedule, cancellation rejection). ADR-057 to ADR-063. See [`planning/features/47-qa-fixes/STATUS.md`](./features/47-qa-fixes/STATUS.md).
+
 **Recommended next:** Mobile Application Development (Phase 19 execution).
 
 Phase 1 — Repository / Development Foundation — is complete: 64/67 actionable tasks (96%); re-verified fresh on 2026-08-09, 1 item blocked (Playwright e2e execution, deferred to Phase 4). PrimeNG installation & integration (T-68) closed out same day — see [`planning/features/01-repository-foundation/STATUS.md`](./features/01-repository-foundation/STATUS.md).

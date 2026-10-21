@@ -1410,6 +1410,94 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 **Alternatives Considered:**
 - **Keep the separate steps and only add hints** — rejected: the order of steps itself was the trap.
 - **Make the frontend chain the existing calls** — rejected: a failure halfway would leave a half-loaded van or orders released with nothing reserved.
+## ADR-057: Identity Changes Audited Explicitly; Licence Drives Tenant Status; Least-Privilege Drivers; No Raw Database Errors
+
+**Status:** Accepted
+
+**Context:** The 2026-10-20 QA pass (planning/features/47-qa-fixes) found identity changes missing from the audit log, tenants on an active licence still shown as trial, drivers holding broad `*:read` grants, and SQL text leaking into API errors.
+
+**Decision:**
+- Identity use cases record action, entity, before/after and actor through an `AuditTrail` application port (`SqlAlchemyAuditTrail`), because the identity repositories open their own sessions and the generic audit hook never sees them.
+- Activating a licence, or changing an active licence's plan, updates the tenant's status and `subscription_plan` in the same unit of work; a data migration aligned existing rows.
+- The driver role holds only what the driver app's own-delivery workflow needs; self-service endpoints (`/drivers/me`) authorise by identity.
+- `DBAPIError` is translated by SQLSTATE into domain-neutral problem types at the API boundary; anything unknown is a generic 500.
+
+**Consequences:** every new identity use case must call `AuditTrail`; future driver needs get narrow self-scoped endpoints, not read grants.
+
+## ADR-058: GST per Cylinder Type, Exclusive by Default; Invoices Held Instead of Issued at 0%
+
+**Status:** Accepted
+
+**Context:** One tenant-wide GST rate cannot fit domestic (5%) and commercial (18%) LPG, and a missing rate silently produced 0% tax invoices.
+
+**Decision:**
+- `tenant.cylinder_type` carries the HSN code and GST rate; the tenant-wide `gst_rate_percent` is a fallback only.
+- When no rate resolves, invoice generation raises `GST_NOT_CONFIGURED`; the order stays uninvoiced and can be issued from the Invoices screen once configured.
+- Invoices snapshot supplier state, place of supply, customer GSTIN, and HSN and rate per line; CGST/SGST versus IGST is derived from the snapshot.
+- Price-list amounts and the cancellation charge are before GST and GST is added on top (product owner decision, 2026-10-21). A tenant may opt into GST-inclusive prices with `prices_include_gst = true`.
+
+**Consequences:** agencies must set HSN and GST on each cylinder type before invoicing; past 0% invoices need an accounting correction outside the system; "+ GST" labels do not yet follow the opt-in flag.
+
+## ADR-059: Two-Person Stock Count Reconciliation, Applied on Approval
+
+**Status:** Accepted
+
+**Context:** A stock count changed stock when recorded and again when approved, and the counter could approve their own count.
+
+**Decision:** a count records book quantity and variance only. A different user with `reconciliation:approve` approves it, which applies the variance exactly once under a row lock, or rejects it with a reason. A check constraint backs the single decision. The migration closed old pending counts as rejected, since their stock had already been applied.
+
+**Consequences:** book stock stays as it was until approval; the location page shows pending counts.
+
+## ADR-060: Booking Rules, Order Editing and Cancellation Decisions
+
+**Status:** Accepted
+
+**Context:** Bookings ignored the cylinder cap and credit limit, could not be edited, failed deliveries could not be rescheduled with a date, and cancellation requests could only be approved.
+
+**Decision:**
+- `cylinder_holding_cap` and `credit_limit_default` are tenant configuration keys holding a number or a map by customer type; unset means no limit. The cap counts cylinders held plus open-order quantities; the credit check uses outstanding finalised invoices.
+- New state edge `failed_delivery -> confirmed` (reschedule) releases the vehicle reservation and detaches the route stop.
+- `PATCH /orders/{id}` (under `orders:confirm`) amends booked and confirmed orders; a confirmed order is repriced.
+- A cancellation request can be rejected with a reason; the one-pending-per-order index excludes rejected rows.
+- `GasLeakSafety` complaints are always Critical.
+
+**Consequences:** no settings screen yet for the cap key; the WhatsApp booking path checks the cap only at confirmation.
+
+## ADR-061: In-App Notifications Written After Commit; WebSocket Authentication by First Frame
+
+**Status:** Accepted
+
+**Context:** In-app alerts depended on the background worker and silently disappeared without it, and the WebSocket token travelled in the URL where proxies log it.
+
+**Decision:**
+- Domain-event handlers in the API process write in-app notification rows in a fresh unit of work right after the business transaction commits; each row raises `notification.created` for realtime fan-out. Email, SMS and push are still enqueued to arq.
+- Recipients are chosen by permission code plus branch scope under RLS.
+- WebSocket clients authenticate with a first-frame auth message and wait for `ready`; failure closes with 1008. Tokens refresh in-band. `?token=` remains only for installed apps; query secrets are redacted from server logs. The `order:{id}` intent checks ownership and the driver intent subscribes by driver id.
+
+**Consequences:** one extra short transaction per notifying action; a notification failure is logged and never fails the business action.
+
+## ADR-062: Customer-Readable Delivery Code, Support Contacts and Payment Availability for the Apps
+
+**Status:** Accepted
+
+**Decision:**
+- Departure and resend write the delivery code's plaintext to Redis with the OTP's TTL; only the owning customer can read it, through `GET /orders/{id}/delivery-code`, while the order is out for delivery. Postgres keeps only the hash.
+- `emergency_helpline_number` (default 1906) and `customer_support_phone` are tenant configuration served by `GET /support/contacts`; the app falls back to 1906 offline.
+- Apps ask whether online payment is configured before offering Pay Online.
+- A driver's active route is the one on the road first (in progress, then loaded, then planned).
+
+## ADR-063: Dashboard-Wide UI Conventions (Amends ADR-028)
+
+**Status:** Accepted
+
+**Decision:**
+- PrimeNG overlays append to `<body>` app-wide; drawers stay inline for their focus handling.
+- One date format ("20 Oct 2026", "20 Oct 2026, 10:09", Asia/Kolkata, dd/mm/yyyy inputs) only through `@lpg/shared/util`.
+- One toast service (`AppMessageService`); features never provide their own `MessageService`.
+- Forms keep submit enabled and show messages on touch or submit through `lpg-form-field`.
+- Status chips colour only from `--component-chip-*` tokens.
+- List pages show failures through `lpg-data-grid`'s `[error]`/`(retry)`, never an empty grid.
+
 ## Summary Table
 
 | ADR | Decision | Status |
@@ -1466,6 +1554,13 @@ Both problems were root-caused against the live source. The contrast bug: `LpgPr
 | 054 | MSG91 SMS provider behind a template-based `SmsChannel` port (DLT) | Accepted |
 | 055 | WhatsApp customer assistant on Meta's Cloud API, model gateway with customer-scoped tools, two-step booking | Accepted |
 | 056 | One-step trip sheet: load and dispatch a route in one transaction | Accepted |
+| 057 | Identity changes audited explicitly; licence drives tenant status; least-privilege drivers; no raw DB errors | Accepted |
+| 058 | GST per cylinder type, exclusive by default; invoices held instead of 0% | Accepted |
+| 059 | Two-person stock count reconciliation, applied on approval | Accepted |
+| 060 | Booking rules (cap, credit limit), order editing, reschedule and cancellation rejection | Accepted |
+| 061 | In-app notifications written after commit; WebSocket first-frame auth | Accepted |
+| 062 | Customer-readable delivery code, support contacts, payment availability for apps | Accepted |
+| 063 | Dashboard-wide UI conventions (amends 028) | Accepted |
 
 ## Deferred Decisions
 
