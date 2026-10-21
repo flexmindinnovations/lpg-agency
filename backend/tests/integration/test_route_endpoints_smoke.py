@@ -1015,9 +1015,13 @@ class TestActiveRoutePrefersTheOneOnTheRoad:
         )
         assert first.status_code == 201, first.text
         first_id = first.json()["id"]
+        # DO-23 now refuses a second open trip for the same driver, so the
+        # older trip is parked as completed while the newer one is planned,
+        # then put back on the road: the shape left by data from before the
+        # guard existed.
         async with admin_engine.begin() as conn:
             await conn.execute(
-                text("UPDATE delivery.route SET status = 'in_progress' WHERE id = :id"),
+                text("UPDATE delivery.route SET status = 'completed' WHERE id = :id"),
                 {"id": first_id},
             )
 
@@ -1034,6 +1038,11 @@ class TestActiveRoutePrefersTheOneOnTheRoad:
             headers=admin_headers,
         )
         assert second.status_code == 201, second.text
+        async with admin_engine.begin() as conn:
+            await conn.execute(
+                text("UPDATE delivery.route SET status = 'in_progress' WHERE id = :id"),
+                {"id": first_id},
+            )
 
         active = await client.get("/api/v1/routes/active", headers=driver_headers)
         assert active.status_code == 200, active.text
