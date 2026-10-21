@@ -75,15 +75,26 @@
           <i class="pi pi-exclamation-triangle"></i>
           <span>Failed Delivery</span>
         </button>
+        } @if (canAmend()) {
+        <button
+          *lpgHasPermission="'orders:confirm'"
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="openAmendDrawer()"
+        >
+          <i class="pi pi-pencil"></i>
+          <span>Edit booking</span>
+        </button>
         } @if (canReschedule()) {
         <button
-          *lpgHasPermission="'orders:assign'"
+          *lpgHasPermission="'orders:dispatch'"
           pButton
           type="button"
           [disabled]="loading()"
-          (click)="onReschedule()"
+          (click)="openRescheduleDrawer()"
         >
-          <i [class]="loading() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>
+          <i class="pi pi-calendar"></i>
           <span>Reschedule</span>
         </button>
         } @if (canClose()) {
@@ -118,6 +129,17 @@
           <i class="pi pi-check"></i>
           <span>Approve Cancellation</span>
         </button>
+        <button
+          *lpgHasPermission="'orders:cancel_approve'"
+          pButton
+          type="button"
+          severity="danger"
+          [outlined]="true"
+          (click)="openRejectCancelDrawer()"
+        >
+          <i class="pi pi-ban"></i>
+          <span>Reject request</span>
+        </button>
         }
       </div>
     </div>
@@ -130,8 +152,13 @@
   <p-message severity="info">{{ msg }}</p-message>
   } @if (canApproveCancellation() && pendingCancellation(); as pending) {
   <p-message severity="warn">
-    Cancellation requested: "{{ pending.reason }}". Waiting for Manager approval.
+    Cancellation requested: "{{ pending.reason }}". Waiting for Manager approval. @if
+    (pending.estimated_charge && pending.estimated_charge !== '0' && pending.estimated_charge !==
+    '0.00') { Approving it charges the customer {{ formatCurrencyInr(pending.estimated_charge) }}. }
+    @else { Approving it is free of charge. }
   </p-message>
+  } @if (failedReason(); as reason) {
+  <p-message severity="warn">Delivery failed: {{ reason }}.</p-message>
   } @if (order(); as o) { @if (progressIndex() !== null) {
   <section class="progress" aria-label="Order progress">
     <ol class="progress__steps">
@@ -158,13 +185,27 @@
   </section>
   }
   <div class="detail-grid">
+    @if (o.customer; as customer) {
+    <div class="detail-field">
+      <span class="detail-field__label">Customer</span>
+      <span>{{ customer.full_name }}</span>
+      <span class="detail-field__hint"
+        >{{ customer.phone_number }}@if (customer.consumer_number) { · {{ customer.consumer_number
+        }} }</span
+      >
+      <span class="detail-field__links">
+        <a [routerLink]="['/customers']" [queryParams]="{ id: customer.id }">Profile</a>
+        <a *lpgHasPermission="'ledger:read'" [routerLink]="['/ledger', customer.id]">Ledger</a>
+      </span>
+    </div>
+    }
     <div class="detail-field">
       <span class="detail-field__label">Booking Source</span>
       <span>{{ bookingSourceLabel(o.booking_source) }}</span>
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Requested Date</span>
-      <span>{{ o.requested_date | date: 'medium' }}</span>
+      <span>{{ o.requested_date | date: 'dd/MM/yyyy' }}</span>
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Delivery Address</span>
@@ -172,7 +213,7 @@
     </div>
     <div class="detail-field">
       <span class="detail-field__label">Total Amount</span>
-      <span>{{ o.total_amount ? ('₹' + o.total_amount) : 'Not confirmed yet' }}</span>
+      <span>{{ o.total_amount ? formatCurrencyInr(o.total_amount) : 'Not confirmed yet' }}</span>
     </div>
     @if (o.payment_method_preference) {
     <div class="detail-field">
@@ -204,11 +245,64 @@
         <td>{{ line.quantity_pending }}</td>
         <td>{{ line.quantity_collected_empty }}</td>
         <td>{{ line.is_backordered ? 'Yes' : 'No' }}</td>
-        <td>{{ line.unit_price ? ('₹' + line.unit_price) : '—' }}</td>
+        <td>{{ line.unit_price ? formatCurrencyInr(line.unit_price) : '—' }}</td>
       </tr>
       }
     </tbody>
   </table>
+
+  @if (proofOfDelivery(); as pod) {
+  <h2 class="section-title">Proof of delivery</h2>
+  <div class="detail-grid">
+    <div class="detail-field">
+      <span class="detail-field__label">Delivered</span>
+      <span>{{ pod.recorded_at | date: 'dd/MM/yyyy, h:mm a' }}</span>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field__label">Collected</span>
+      <span
+        >{{ formatCurrencyInr(pod.amount_collected) }} · {{ statusLabel(pod.payment_method) }}</span
+      >
+    </div>
+    <div class="detail-field">
+      <span class="detail-field__label">OTP checked</span>
+      <span>{{ pod.otp_verified_at | date: 'dd/MM/yyyy, h:mm a' }}</span>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field__label">Location</span>
+      <a
+        [href]="'https://www.google.com/maps?q=' + pod.gps_lat + ',' + pod.gps_lng"
+        target="_blank"
+        rel="noopener"
+        >{{ pod.gps_lat }}, {{ pod.gps_lng }}</a
+      >
+    </div>
+  </div>
+  @if (pod.signature_url || pod.photo_url) {
+  <div class="pod-media">
+    @if (pod.signature_url) {
+    <figure class="pod-media__item">
+      <img [src]="pod.signature_url" alt="Customer signature" />
+      <figcaption>Signature</figcaption>
+    </figure>
+    } @if (pod.photo_url) {
+    <figure class="pod-media__item">
+      <img [src]="pod.photo_url" alt="Delivery photo" />
+      <figcaption>Photo</figcaption>
+    </figure>
+    }
+  </div>
+  } } @if (invoices().length > 0) {
+  <h2 class="section-title">Invoices</h2>
+  <ul class="invoice-list">
+    @for (invoice of invoices(); track invoice.id) {
+    <li>
+      <a routerLink="/invoices">{{ invoice.invoice_number ?? 'Draft invoice' }}</a>
+      · {{ statusLabel(invoice.status) }}
+    </li>
+    }
+  </ul>
+  }
 
   <h2 class="section-title">Timeline</h2>
   <ol class="timeline">
@@ -659,6 +753,206 @@
           [disabled]="deliverForm.invalid || !deliverReady() || loading()"
         >
           Confirm Delivery
+        </button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Edit booking Drawer (DO-13) -->
+  <p-drawer
+    header="Edit booking"
+    [(visible)]="showAmendDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '32rem' }"
+  >
+    <form [formGroup]="amendForm" (ngSubmit)="onSubmitAmend()" class="dialog-form" novalidate>
+      <div class="dialog-form__fields">
+        @if (order()?.status === 'confirmed') {
+        <p-message severity="info">
+          The order is already confirmed. Prices are worked out again when you save.
+        </p-message>
+        }
+        <lpg-form-field
+          label="Delivery date"
+          for="amend_date"
+          [control]="amendForm.controls.requested_date"
+          [messages]="fieldMessages.requested_date"
+        >
+          <p-datepicker
+            inputId="amend_date"
+            formControlName="requested_date"
+            [showIcon]="true"
+            iconDisplay="input"
+            [dateFormat]="dateInputFormat"
+            [placeholder]="dateInputPlaceholder"
+            [minDate]="today"
+            appendTo="body"
+            [fluid]="true"
+          />
+        </lpg-form-field>
+        <lpg-form-field
+          label="Delivery address"
+          for="amend_address"
+          [control]="amendForm.controls.address_id"
+          [messages]="fieldMessages.address_id"
+        >
+          <p-select
+            inputId="amend_address"
+            formControlName="address_id"
+            [options]="amendAddresses()"
+            [optionLabel]="'line_1'"
+            optionValue="id"
+            placeholder="Pick an address"
+            [fluid]="true"
+            appendTo="body"
+          >
+            <ng-template #selectedItem let-address> {{ amendAddressLabel(address) }} </ng-template>
+            <ng-template #item let-address> {{ amendAddressLabel(address) }} </ng-template>
+          </p-select>
+        </lpg-form-field>
+        <lpg-form-field label="Payment method" for="amend_payment">
+          <p-select
+            inputId="amend_payment"
+            formControlName="payment_method_preference"
+            [options]="paymentMethods"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="No preference"
+            [showClear]="true"
+            [fluid]="true"
+            appendTo="body"
+          />
+        </lpg-form-field>
+        <div formArrayName="lines" class="dialog-form__fields">
+          @for (line of amendLines.controls; track $index; let i = $index) {
+          <lpg-form-field
+            [formGroupName]="i"
+            [label]="
+              cylinderTypeNameById().get(line.controls.cylinder_type_id.value) ?? 'Cylinder'
+            "
+            [for]="'amend_qty_' + i"
+            [control]="line.controls.quantity"
+            [messages]="fieldMessages.quantity"
+          >
+            <p-inputnumber
+              [inputId]="'amend_qty_' + i"
+              formControlName="quantity"
+              [min]="0"
+              [showButtons]="true"
+              [fluid]="true"
+            />
+          </lpg-form-field>
+          }
+        </div>
+        <p class="empty-hint">Set a quantity to 0 to drop that cylinder.</p>
+      </div>
+      <div class="modal-actions">
+        <button pButton type="button" severity="secondary" (click)="showAmendDrawer.set(false)">
+          Close
+        </button>
+        <button pButton type="submit" [disabled]="loading()">Save changes</button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Reschedule Drawer -->
+  <p-drawer
+    header="Reschedule delivery"
+    [(visible)]="showRescheduleDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '28rem' }"
+  >
+    <form [formGroup]="rescheduleForm" (ngSubmit)="onReschedule()" class="dialog-form" novalidate>
+      <div class="dialog-form__fields">
+        @if (failedReason(); as reason) {
+        <p-message severity="warn">Last attempt failed: {{ reason }}.</p-message>
+        }
+        <lpg-form-field
+          label="New delivery date"
+          for="reschedule_date"
+          [control]="rescheduleForm.controls.requested_date"
+          [messages]="fieldMessages.requested_date"
+        >
+          <p-datepicker
+            inputId="reschedule_date"
+            formControlName="requested_date"
+            [showIcon]="true"
+            iconDisplay="input"
+            [dateFormat]="dateInputFormat"
+            [placeholder]="dateInputPlaceholder"
+            [minDate]="today"
+            appendTo="body"
+            [fluid]="true"
+          />
+        </lpg-form-field>
+        <p class="empty-hint">
+          The order goes back to Confirmed and is taken off its old trip. Send it out again on the
+          new day.
+        </p>
+      </div>
+      <div class="modal-actions">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="showRescheduleDrawer.set(false)"
+        >
+          Close
+        </button>
+        <button pButton type="submit" [disabled]="loading()">Reschedule</button>
+      </div>
+    </form>
+  </p-drawer>
+
+  <!-- Reject cancellation Drawer (DO-14) -->
+  <p-drawer
+    header="Reject cancellation request"
+    [(visible)]="showRejectCancelDrawer"
+    position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [style]="{ width: '100%', maxWidth: '28rem' }"
+  >
+    <form
+      [formGroup]="rejectCancelForm"
+      (ngSubmit)="onRejectCancellation()"
+      class="dialog-form"
+      novalidate
+    >
+      <div class="dialog-form__fields">
+        @if (pendingCancellation(); as pending) {
+        <p class="empty-hint">Requested because: "{{ pending.reason }}"</p>
+        }
+        <lpg-form-field
+          label="Why is it rejected?"
+          for="reject_reason"
+          [control]="rejectCancelForm.controls.reason"
+          [messages]="fieldMessages.reject_reason"
+        >
+          <textarea
+            pTextarea
+            id="reject_reason"
+            formControlName="reason"
+            rows="3"
+            [fluid]="true"
+          ></textarea>
+        </lpg-form-field>
+      </div>
+      <div class="modal-actions">
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          (click)="showRejectCancelDrawer.set(false)"
+        >
+          Close
+        </button>
+        <button pButton type="submit" severity="danger" [disabled]="loading()">
+          Reject request
         </button>
       </div>
     </form>

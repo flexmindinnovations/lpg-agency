@@ -26,6 +26,7 @@ import { InputNumber } from 'primeng/inputnumber';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
 import {
+  CustomerService,
   OrderService,
   WebSocketService,
   type OrderStatusValue,
@@ -34,6 +35,7 @@ import {
   type OrderableCylinderTypeResponse,
   type OrderResponse,
 } from '@lpg/shared/data-access';
+
 import {
   DataGridComponent,
   type DataGridColumn,
@@ -119,6 +121,7 @@ const BOOKING_SOURCE_OPTIONS = (['staff', 'phone', 'walk_in', 'whatsapp'] as con
 export class OrderQueue implements OnInit {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly orderService = inject(OrderService);
+  private readonly customerService = inject(CustomerService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly wsService = inject(WebSocketService);
@@ -282,6 +285,13 @@ export class OrderQueue implements OnInit {
     this.route.queryParamMap.subscribe((params) => {
       if (params.get('create') === 'true') {
         this.openCreateDrawer();
+        // "Book" on a customer profile opens the form with them picked.
+        const customerId = params.get('customer');
+        if (customerId) {
+          this.customerService.get(customerId).subscribe({
+            next: (customer) => this.createForm.controls.customer.setValue(customer),
+          });
+        }
       }
     });
   }

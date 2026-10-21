@@ -3,6 +3,7 @@ import {
   FormFieldComponent,
   HasPermissionDirective,
   bookingSourceLabel,
+  formatCurrencyInr,
   shortId,
 } from '@lpg/shared/ui';
 import {
@@ -22,10 +23,11 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, filter, forkJoin } from 'rxjs';
 import { ButtonDirective } from 'primeng/button';
+import { DatePicker } from 'primeng/datepicker';
 import { Drawer } from 'primeng/drawer';
 import { DrawerA11yDirective } from '@lpg/shared/ui';
 import { InputGroup } from 'primeng/inputgroup';
@@ -42,26 +44,40 @@ import {
   AdminEmployeeService,
   AdminWarehouseService,
   AuthService,
+  CustomerService,
   DeliveryService,
+  InvoiceService,
   InventoryService,
   NotifyService,
   OrderService,
   WebSocketService,
+  type AmendOrderRequest,
   type AppError,
+  type CustomerAddressResponse,
   type CylinderTypeResponse,
   type DriverResponse,
   type EmployeeResponse,
+  type InvoiceResponse,
   type InventoryBalanceLine,
   type RecordFailedDeliveryRequest,
   type OrderResponse,
   type OrderStatusHistoryEntryResponse,
   type PendingCancellationResponse,
+  type ProofOfDeliveryResponse,
   type ProofOfDeliverySubmission,
   type RouteResponse,
   type VehicleResponse,
   type WarehouseResponse,
 } from '@lpg/shared/data-access';
-import { errorMessageFor, statusLabel, statusSeverity } from '../order-status.util';
+import {
+  DATE_INPUT_FORMAT,
+  DATE_INPUT_PLACEHOLDER,
+  FAILED_DELIVERY_REASON_LABELS,
+  deliveryDayIso,
+  errorMessageFor,
+  statusLabel,
+  statusSeverity,
+} from '../order-status.util';
 
 /** `order.status_changed` over the realtime socket (`realtime_handlers.py`). */
 interface OrderStatusChangedMessage {
@@ -120,6 +136,9 @@ const RESOLUTION_ACTIONS = [
   { label: 'Return stock', value: 'return_stock' },
 ] as const;
 
+/** Bookings the counter can still change before a trip is planned (DO-13). */
+const AMENDABLE_STATUSES = new Set(['booked', 'confirmed']);
+
 const PAYMENT_METHODS = [
   { label: 'Cash', value: 'cash' },
   { label: 'UPI', value: 'upi' },
@@ -136,6 +155,8 @@ const PAYMENT_METHODS = [
     HasPermissionDirective,
     DatePipe,
     DecimalPipe,
+    DatePicker,
+    RouterLink,
     FormsModule,
     ReactiveFormsModule,
     ButtonDirective,
@@ -164,6 +185,8 @@ export class OrderDetail implements OnInit {
   private readonly employeeService = inject(AdminEmployeeService);
   private readonly warehouseService = inject(AdminWarehouseService);
   private readonly inventoryService = inject(InventoryService);
+  private readonly customerService = inject(CustomerService);
+  private readonly invoiceService = inject(InvoiceService);
   private readonly notify = inject(NotifyService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -208,6 +231,10 @@ export class OrderDetail implements OnInit {
    * build a lookup, join client-side. */
   private readonly employeeById = signal<Map<string, EmployeeResponse>>(new Map());
 
+  /** Delivery record of a delivered order (DO-26). */
+  protected readonly proofOfDelivery = signal<ProofOfDeliveryResponse | null>(null);
+  protected readonly invoices = signal<InvoiceResponse[]>([]);
+
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly infoMessage = signal<string | null>(null);
@@ -216,6 +243,10 @@ export class OrderDetail implements OnInit {
   protected readonly showSendOutDrawer = signal(false);
   protected readonly showFailedDeliveryDrawer = signal(false);
   protected readonly showDeliverDrawer = signal(false);
+  protected readonly showAmendDrawer = signal(false);
+  protected readonly showRescheduleDrawer = signal(false);
+  protected readonly showRejectCancelDrawer = signal(false);
+  protected readonly amendAddresses = signal<CustomerAddressResponse[]>([]);
 
   protected readonly sendOutTrigger = viewChild<ElementRef<HTMLButtonElement>>('sendOutTriggerEl');
   protected readonly failedDeliveryTrigger =
@@ -432,6 +463,37 @@ export class OrderDetail implements OnInit {
   protected readonly canDeliverOrFail = computed(() => this.order()?.status === 'out_for_delivery');
   protected readonly canReschedule = computed(() => this.order()?.status === 'failed_delivery');
   protected readonly canClose = computed(() => this.order()?.status === 'delivered');
+  protected readonly canAmend = computed(() => {
+    const status = this.order()?.status;
+    return !!status && AMENDABLE_STATUSES.has(status);
+  });
+
+  /** Why the last delivery failed, from the timeline (DO-14). */
+  protected readonly failedReason = computed(() => {
+    if (this.order()?.status !== 'failed_delivery') return null;
+    const entry = [...this.history()].reverse().find((e) => e.to_status === 'failed_delivery');
+    if (!entry?.reason) return null;
+    return FAILED_DELIVERY_REASON_LABELS[entry.reason] ?? entry.reason;
+  });
+
+  protected readonly today = startOfToday();
+  protected readonly dateInputFormat = DATE_INPUT_FORMAT;
+  protected readonly dateInputPlaceholder = DATE_INPUT_PLACEHOLDER;
+
+  protected readonly amendForm = this.fb.group({
+    requested_date: [startOfToday(), [Validators.required]],
+    address_id: ['', [Validators.required]],
+    payment_method_preference: ['' as string],
+    lines: this.fb.array<ReturnType<typeof this.buildAmendLineGroup>>([]),
+  });
+
+  protected readonly rescheduleForm = this.fb.group({
+    requested_date: [startOfToday(), [Validators.required]],
+  });
+
+  protected readonly rejectCancelForm = this.fb.group({
+    reason: ['', [Validators.required, Validators.maxLength(1000)]],
+  });
 
   protected readonly cancelForm = this.fb.group({
     reason: ['', [Validators.required, Validators.minLength(3)]],
@@ -457,6 +519,13 @@ export class OrderDetail implements OnInit {
   });
 
   protected readonly fieldMessages = {
+    requested_date: { required: 'Pick a delivery date.' },
+    address_id: { required: 'Pick a delivery address.' },
+    quantity: { required: 'Enter a quantity.', min: 'At least 0.' },
+    reject_reason: {
+      required: 'Tell the requester why.',
+      maxlength: 'Keep it under 1000 characters.',
+    },
     reason: {
       required: 'A reason is required.',
       minlength: 'Give a little more detail.',
@@ -483,6 +552,7 @@ export class OrderDetail implements OnInit {
   protected readonly deliverReady = computed(() => this.gpsCaptured());
 
   protected readonly statusLabel = statusLabel;
+  protected readonly formatCurrencyInr = formatCurrencyInr;
   protected readonly bookingSourceLabel = bookingSourceLabel;
   protected readonly statusSeverity = statusSeverity;
   protected readonly failedDeliveryReasons = [...FAILED_DELIVERY_REASONS];
@@ -524,6 +594,16 @@ export class OrderDetail implements OnInit {
       next: (pending) => this.pendingCancellation.set(pending),
       error: () => this.pendingCancellation.set(null),
     });
+    this.orderService.getProofOfDelivery(orderId).subscribe({
+      next: (pod) => this.proofOfDelivery.set(pod),
+      error: () => this.proofOfDelivery.set(null),
+    });
+    if (this.auth.principal()?.permissions.has('invoices:read')) {
+      this.invoiceService.list(1, 10, undefined, orderId).subscribe({
+        next: (page) => this.invoices.set(page.items),
+        error: () => this.invoices.set([]),
+      });
+    }
   }
 
   protected refresh(): void {
@@ -599,14 +679,106 @@ export class OrderDetail implements OnInit {
     });
   }
 
+  protected openRescheduleDrawer(): void {
+    this.rescheduleForm.reset({ requested_date: startOfToday() });
+    this.showRescheduleDrawer.set(true);
+  }
+
+  /** Back to Confirmed for the picked day; Send out puts it on a trip again. */
   protected onReschedule(): void {
     const order = this.order();
-    if (!order) return;
+    if (!order || this.rescheduleForm.invalid) {
+      this.rescheduleForm.markAllAsTouched();
+      return;
+    }
+    const { requested_date } = this.rescheduleForm.getRawValue();
     this.loading.set(true);
-    this.orderService.rescheduleOrder(order.id).subscribe({
-      next: (updated) => this.applyUpdate(updated, 'Delivery rescheduled.'),
+    this.orderService.rescheduleOrder(order.id, deliveryDayIso(requested_date)).subscribe({
+      next: (updated) => {
+        this.showRescheduleDrawer.set(false);
+        this.applyUpdate(updated, 'Delivery rescheduled. Send it out again when ready.');
+      },
       error: (err) => this.applyError(err),
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Edit booking (DO-13)
+  // ---------------------------------------------------------------------------
+
+  private buildAmendLineGroup(cylinderTypeId: string, quantity: number) {
+    return this.fb.group({
+      cylinder_type_id: [cylinderTypeId],
+      quantity: [quantity, [Validators.required, Validators.min(0)]],
+    });
+  }
+
+  protected get amendLines() {
+    return this.amendForm.controls.lines;
+  }
+
+  protected openAmendDrawer(): void {
+    const order = this.order();
+    if (!order) return;
+    const requested = new Date(order.requested_date);
+    this.amendForm.reset({
+      requested_date: requested < this.today ? startOfToday() : requested,
+      address_id: '',
+      payment_method_preference: order.payment_method_preference ?? '',
+    });
+    this.amendLines.clear();
+    for (const line of order.lines) {
+      this.amendLines.push(this.buildAmendLineGroup(line.cylinder_type_id, line.quantity_ordered));
+    }
+    this.amendAddresses.set([]);
+    if (order.customer) {
+      this.customerService.get(order.customer.id).subscribe({
+        next: (customer) => {
+          this.amendAddresses.set(customer.addresses);
+          const current = customer.addresses.find(
+            (a) => a.line_1 === order.delivery_address.address_line,
+          );
+          const fallback = customer.addresses.find((a) => a.is_primary) ?? customer.addresses[0];
+          this.amendForm.controls.address_id.setValue((current ?? fallback)?.id ?? '');
+        },
+      });
+    }
+    this.showAmendDrawer.set(true);
+  }
+
+  protected amendAddressLabel(address: CustomerAddressResponse): string {
+    return [address.line_1, address.area, address.city, address.pincode]
+      .filter((part) => !!part)
+      .join(', ');
+  }
+
+  protected onSubmitAmend(): void {
+    const order = this.order();
+    if (!order || this.amendForm.invalid) {
+      this.amendForm.markAllAsTouched();
+      return;
+    }
+    const value = this.amendForm.getRawValue();
+    const lines = value.lines.filter((line) => line.quantity > 0);
+    if (lines.length === 0) {
+      this.errorMessage.set('Keep at least one cylinder, or cancel the order instead.');
+      return;
+    }
+    this.loading.set(true);
+    this.orderService
+      .amendOrder(order.id, {
+        requested_date: deliveryDayIso(value.requested_date),
+        address_id: value.address_id,
+        payment_method_preference: (value.payment_method_preference || null) as AmendPaymentMethod,
+        lines,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.showAmendDrawer.set(false);
+          this.applyUpdate(updated, 'Booking updated.');
+        },
+        error: (err) => this.applyError(err),
+      });
   }
 
   protected onClose(): void {
@@ -980,9 +1152,42 @@ export class OrderDetail implements OnInit {
     });
   }
 
+  protected openRejectCancelDrawer(): void {
+    this.rejectCancelForm.reset({ reason: '' });
+    this.showRejectCancelDrawer.set(true);
+  }
+
+  /** The order carries on; the requester sees why (DO-14). */
+  protected onRejectCancellation(): void {
+    const order = this.order();
+    if (!order || this.rejectCancelForm.invalid) {
+      this.rejectCancelForm.markAllAsTouched();
+      return;
+    }
+    const reason = this.rejectCancelForm.getRawValue().reason.trim();
+    this.loading.set(true);
+    this.orderService.rejectOrderCancellation(order.id, reason).subscribe({
+      next: () => {
+        this.showRejectCancelDrawer.set(false);
+        this.loading.set(false);
+        this.notify.success('Cancellation request rejected. The order carries on.');
+        this.refresh();
+      },
+      error: (err) => this.applyError(err),
+    });
+  }
+
   protected backToQueue(): void {
     void this.router.navigate(['/orders']);
   }
+}
+
+type AmendPaymentMethod = AmendOrderRequest['payment_method_preference'];
+
+function startOfToday(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
 }
 
 function filledStock(balances: InventoryBalanceLine[]): Map<string, number> {
