@@ -19,6 +19,7 @@ from lpg.api.v1.dependencies.identity import get_redis_client, require_permissio
 from lpg.api.v1.dependencies.order import get_order_repository
 from lpg.application.customer.ports import CustomerRepository
 from lpg.application.order.ports import OrderRepository
+from lpg.domain.common.phone import normalize_phone_number
 from lpg.infrastructure.identity.otp_delivery import dev_otp_inbox_key
 from lpg.infrastructure.redis.client import RedisClient
 
@@ -30,7 +31,7 @@ async def get_dev_otp(
     phone_number: str,
     redis: Annotated[RedisClient, Depends(get_redis_client)],
 ) -> dict[str, str]:
-    code = await redis.client.get(dev_otp_inbox_key(phone_number))
+    code = await redis.client.get(dev_otp_inbox_key(normalize_phone_number(phone_number)))
     if code is None:
         raise HTTPException(status_code=404, detail="No OTP pending for this phone number.")
     return {"code": code}

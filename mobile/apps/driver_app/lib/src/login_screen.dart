@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,7 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _requestCode() async {
     final tenantId = _tenantIdController.text.trim();
-    final phone = _phoneController.text.trim();
+    final phone = normalizePhoneNumber(_phoneController.text);
 
     if (tenantId.isEmpty || phone.isEmpty) {
       setState(
@@ -51,11 +52,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     // No format check on the Agency Code beyond non-empty — `tenant.slug` has
     // no server-side format constraint, just uniqueness.
-    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(phone)) {
-      setState(() => _errorMessage = 'Please enter a valid phone number.');
+    if (!isValidPhoneNumber(phone)) {
+      setState(
+        () => _errorMessage = 'Please enter a valid 10-digit mobile number.',
+      );
       return;
     }
 
+    _phoneController.text = phone;
     setState(() {
       _submitting = true;
       _errorMessage = null;
@@ -199,6 +203,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: LpgSpacing.mdl),
                         LpgTextField(
                           label: 'Phone number',
+                          hintText: '10-digit mobile number',
                           prefixIcon: LpgIcons.phone,
                           controller: _phoneController,
                           enabled: !_codeRequested,

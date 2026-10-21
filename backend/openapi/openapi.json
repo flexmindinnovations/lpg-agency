@@ -6856,6 +6856,7 @@
         "type": "object"
       },
       "OtpRequestRequest": {
+        "description": "`phone_number` may be typed without `+91` (`9876543210`, `09876543210`);\nit is normalised to E.164 so it matches the stored number.",
         "properties": {
           "phone_number": {
             "title": "Phone Number",

@@ -6,7 +6,9 @@ router this codebase mounts under `settings.api_v1_prefix`.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from lpg.domain.common.phone import normalize_phone_number
 
 
 class LoginRequest(BaseModel):
@@ -15,14 +17,21 @@ class LoginRequest(BaseModel):
 
 
 class OtpRequestRequest(BaseModel):
+    """`phone_number` may be typed without `+91` (`9876543210`, `09876543210`);
+    it is normalised to E.164 so it matches the stored number."""
+
     tenant_id: str
     phone_number: str
+
+    _normalize_phone = field_validator("phone_number")(normalize_phone_number)
 
 
 class OtpVerifyRequest(BaseModel):
     tenant_id: str
     phone_number: str
     code: str
+
+    _normalize_phone = field_validator("phone_number")(normalize_phone_number)
 
 
 class RefreshRequest(BaseModel):
