@@ -212,6 +212,33 @@ export const LpgPrimeNgPreset = definePreset(Aura, {
     },
   },
   components: {
+    // Toggle / select buttons (the Notifications "All | Unread" switch).
+    // Aura's checked text is `light-dark({surface.900}, {surface.0})`, and
+    // `{surface.0}` is remapped to --color-surface-base above, so the checked
+    // label was near-black on a near-black pill in dark mode. A segmented
+    // control in our own tokens: a raised track, the checked segment in the
+    // primary action colour like the active nav item.
+    togglebutton: {
+      root: {
+        background: 'var(--color-surface-raised)',
+        checkedBackground: 'var(--color-surface-raised)',
+        hoverBackground: 'var(--color-surface-raised)',
+        borderColor: 'var(--color-border-default)',
+        checkedBorderColor: 'var(--color-border-default)',
+        color: 'var(--color-text-secondary)',
+        hoverColor: 'var(--color-text-primary)',
+        checkedColor: 'var(--color-action-primary-text)',
+      },
+      icon: {
+        color: 'var(--color-text-secondary)',
+        hoverColor: 'var(--color-text-primary)',
+        checkedColor: 'var(--color-action-primary-text)',
+      },
+      content: {
+        checkedBackground: 'var(--color-action-primary)',
+        checkedShadow: 'none',
+      },
+    },
     drawer: {
       // Aura's default gives the header uniform overlay.modal.padding (our
       // --spacing-lg) on all four sides. That creates a large dead gap between

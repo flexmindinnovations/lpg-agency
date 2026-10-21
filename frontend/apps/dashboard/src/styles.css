@@ -705,8 +705,7 @@ textarea {
 p-drawer,
 p-dialog,
 p-confirmdialog,
-p-confirmpopup,
-p-toast {
+p-confirmpopup {
   display: contents;
 }
 
@@ -1038,6 +1037,22 @@ p-toast {
   border: var(--border-width) solid currentColor !important;
 }
 
+/* A button never shrinks below its own label. In a flex row next to long
+   text (the user drawer's "Deactivate account" row) it was squeezed until
+   its padding vanished and the label overflowed the red fill. Full-width
+   (fluid) buttons are left alone. */
+.p-button:not(.p-button-fluid) {
+  flex-shrink: 0;
+}
+
+/* Fieldset legend: drawn as a tab sitting on the fieldset's top border,
+   outlined in the same border colour, so the title reads as part of the
+   box rather than a label floating over a gap in the line. */
+.p-fieldset .p-fieldset-legend {
+  border: var(--border-width) solid var(--color-border-default) !important;
+  background: var(--color-surface-raised) !important;
+}
+
 /* Danger Button refinements — high-contrast solid fill with white text */
 .p-button.p-button-danger:not(.p-button-outlined):not(.p-button-text) {
   background-color: var(--color-status-danger) !important;
@@ -1062,12 +1077,16 @@ p-toast {
   font-size: var(--typography-body-small-font-size) !important;
 }
 
-/* Toast refinements. Toasts sit top-centre, just under the shell header
-   (set on <p-toast> in the shells): bottom-right put them on top of every
-   drawer's footer buttons, and top-right on its close button (QA DO-21). */
-.p-toast.p-toast-top-center {
-  inset-block-start: calc(var(--component-app-shell-top-bar-height) + var(--spacing-sm)) !important;
-  max-inline-size: calc(100vw - 2 * var(--spacing-md));
+/* Toast refinements. Toasts sit bottom-right (set once on <p-toast> in the
+   shells, so no page can place one differently). The <p-toast> host IS the
+   fixed container (PrimeNG puts .p-toast on the host), so it must never be
+   `display: contents` like the closed overlays above: that dropped its box,
+   and every toast spread across the top of the page with unreadable text.
+   Width is capped so a long message wraps instead of spanning the screen. */
+.p-toast.p-toast-bottom-right {
+  inset-block-end: var(--spacing-lg) !important;
+  inset-inline-end: var(--spacing-lg) !important;
+  inline-size: min(25rem, calc(100vw - 2 * var(--spacing-md))) !important;
 }
 
 .p-toast-message {
