@@ -85,6 +85,9 @@
 }
 
 .held-list__meta {
+  /* Always its own line under the order number and customer, never beside
+     them when the row happens to have room. */
+  flex-basis: 100%;
   color: var(--color-text-secondary);
   font-size: var(--typography-caption-font-size);
 }

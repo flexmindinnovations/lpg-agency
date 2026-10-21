@@ -86,7 +86,7 @@ const GRACE_REMINDER_INTERVAL_MS = 300_000;
     </lpg-app-shell>
     <lib-notification-drawer [(visible)]="isDrawerVisible" />
     <lpg-command-palette [navItems]="flatNavItems()" />
-    <p-toast position="top-center" [preventDuplicates]="true" />
+    <p-toast position="bottom-right" [preventDuplicates]="true" />
     <p-confirmdialog />
   `,
   styles: [
