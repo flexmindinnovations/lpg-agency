@@ -415,12 +415,7 @@ class _TotalCard extends ConsumerWidget {
       );
       label = 'Estimated total';
       value = known
-          ? '${LpgFormat.currency(
-              order.lines.fold<double>(
-                0,
-                (sum, l) => sum + prices[l.cylinderTypeId]! * l.quantityOrdered,
-              ),
-            )} + GST'
+          ? '${LpgFormat.currency(order.lines.fold<double>(0, (sum, l) => sum + prices[l.cylinderTypeId]! * l.quantityOrdered))} + GST'
           : 'Set on confirmation';
       note = 'The final amount is fixed when your agency confirms the order.';
     }
