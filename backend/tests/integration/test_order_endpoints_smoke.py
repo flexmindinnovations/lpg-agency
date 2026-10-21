@@ -1732,7 +1732,7 @@ class TestEditAndRescheduleBooking:
         )
         assert failed.status_code == 200, failed.text
         history = (await client.get(f"/api/v1/orders/{order_id}/history", headers=headers)).json()
-        assert any(h["reason"] == "customer_unavailable" for h in history)
+        assert any((h["reason"] or "").startswith("Customer unavailable") for h in history)
 
         filled_before = await _vehicle_filled_balance(
             admin_engine_lpg_test,

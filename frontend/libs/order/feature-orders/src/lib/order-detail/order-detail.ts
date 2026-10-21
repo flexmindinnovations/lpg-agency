@@ -604,7 +604,7 @@ export class OrderDetail implements OnInit {
       error: () => this.proofOfDelivery.set(null),
     });
     if (this.auth.principal()?.permissions.has('invoices:read')) {
-      this.invoiceService.list(1, 10, undefined, orderId).subscribe({
+      this.invoiceService.list({ page: 1, pageSize: 10, orderId }).subscribe({
         next: (page) => this.invoices.set(page.items),
         error: () => this.invoices.set([]),
       });

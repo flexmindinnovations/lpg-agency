@@ -310,9 +310,7 @@ class FlagDefaultCell {
                 <button pButton type="button" severity="secondary" (click)="cancelEdit()">
                   Cancel
                 </button>
-                <button pButton type="submit" [disabled]="saving()">
-                  Save Changes
-                </button>
+                <button pButton type="submit" [disabled]="saving()">Save Changes</button>
               </div>
             </form>
           }

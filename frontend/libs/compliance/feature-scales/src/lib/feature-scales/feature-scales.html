@@ -159,9 +159,7 @@
         <button pButton type="button" severity="secondary" (click)="showRegisterModal.set(false)">
           Cancel
         </button>
-        <button pButton type="submit" [disabled]="loading()">
-          Register
-        </button>
+        <button pButton type="submit" [disabled]="loading()">Register</button>
       </div>
     </form>
   </p-drawer>
@@ -286,9 +284,7 @@
 
       <div class="modal-actions">
         <button pButton type="button" severity="secondary" (click)="cancelEdit()">Cancel</button>
-        <button pButton type="submit" [disabled]="saving()">
-          Save Recalibration
-        </button>
+        <button pButton type="submit" [disabled]="saving()">Save Recalibration</button>
       </div>
     </form>
     } }

@@ -11,7 +11,11 @@ const navGroups: readonly NavGroup[] = [
 
 function render(width: 'phone' | 'tablet' | 'desktop') {
   const matches = (query: string) =>
-    query.includes('767') ? width === 'phone' : query.includes('1199') ? width !== 'desktop' : false;
+    query.includes('767')
+      ? width === 'phone'
+      : query.includes('1199')
+        ? width !== 'desktop'
+        : false;
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),

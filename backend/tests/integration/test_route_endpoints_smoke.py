@@ -965,11 +965,24 @@ async def _create_and_confirm_order_at(
 ) -> dict[str, Any]:
     """Same shape as `_create_and_confirm_order`, but with real delivery
     coordinates — needed to exercise `OptimizeRouteSequenceUseCase`, which
-    has nothing to reorder without them."""
+    has nothing to reorder without them. The order takes its coordinates
+    from the customer's saved address, so each order gets its own."""
+    address_response = await client.post(
+        f"/api/v1/customers/{fixtures.customer_id}/addresses",
+        json={
+            "line_1": "123 Test St",
+            "city": "Pune",
+            "pincode": "411001",
+            "latitude": latitude,
+            "longitude": longitude,
+        },
+        headers=headers,
+    )
+    assert address_response.status_code in (200, 201), address_response.text
     create_payload = {
         "branch_id": str(fixtures.branch_id),
         "customer_id": str(fixtures.customer_id),
-        "address_id": str(fixtures.address_id),
+        "address_id": address_response.json(),
         "delivery_address": {
             "address_line": "123 Test St",
             "latitude": latitude,

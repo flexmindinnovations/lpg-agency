@@ -281,9 +281,7 @@
         <div class="line-item">
           <div class="line-info">
             <span class="line-name">{{ note.credit_note_number ?? 'Credit note' }}</span>
-            <span class="line-qty"
-              >{{ note.reason }} · {{ note.requested_at | lpgDate }}</span
-            >
+            <span class="line-qty">{{ note.reason }} · {{ note.requested_at | lpgDate }}</span>
           </div>
           <div class="credit-note-actions">
             <span class="line-total">{{ note.amount | currency:'INR' }}</span>

@@ -135,7 +135,8 @@ export function loadErrorMessage(error: unknown): string {
     message?: unknown;
     isNetworkError?: unknown;
   };
-  if (isNetworkError === true) return 'Cannot reach the server. Check your connection and try again.';
+  if (isNetworkError === true)
+    return 'Cannot reach the server. Check your connection and try again.';
   if (typeof detail === 'string' && detail) return detail;
   if (typeof message === 'string' && message) return message;
   return fallback;

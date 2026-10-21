@@ -92,9 +92,7 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
       @if (!resetToken()) {
         <div class="login-card__header">
           <h1 class="login-card__title">Invalid link</h1>
-          <p class="login-card__lede">
-            This link is missing its token. Request a new one.
-          </p>
+          <p class="login-card__lede">This link is missing its token. Request a new one.</p>
         </div>
         <div class="login-card__footer">
           <a class="login-card__forgot" routerLink="/login">Back to sign in</a>

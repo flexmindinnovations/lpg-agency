@@ -21,8 +21,9 @@ function entry(overrides: Partial<AuditLogEntryResponse>): AuditLogEntryResponse
 describe('audit log formatting', () => {
   it('names the record, never the raw id', () => {
     expect(recordLabel(entry({}))).toBe('ORD000027');
-    expect(recordLabel(entry({ entity_display_name: null, entity_name: 'order_status_history' })))
-      .toBe('Order Status History');
+    expect(
+      recordLabel(entry({ entity_display_name: null, entity_name: 'order_status_history' })),
+    ).toBe('Order Status History');
   });
 
   it('shows who did it, or System for background jobs', () => {

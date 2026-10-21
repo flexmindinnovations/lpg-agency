@@ -317,6 +317,6 @@ class TestComplaintChecks:
 
     def test_a_gas_leak_is_always_critical(self) -> None:
         complaint = _make_complaint(
-            category=ComplaintCategory.GAS_LEAK, priority=ComplaintPriority.LOW
+            category=ComplaintCategory.GAS_LEAK_SAFETY, priority=ComplaintPriority.LOW
         )
         assert complaint.priority == ComplaintPriority.CRITICAL

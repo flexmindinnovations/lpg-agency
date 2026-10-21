@@ -418,7 +418,8 @@ export class DataGridComponent<TRow = unknown> {
       flex: column.flex ?? (column.width === undefined ? 1 : undefined),
       // A flexed column without a floor squeezes to "Cylinde…" on a tablet;
       // with one, the grid scrolls sideways instead. Fixed widths are kept.
-      minWidth: column.minWidth ?? (column.width === undefined ? defaultMinWidth(column) : undefined),
+      minWidth:
+        column.minWidth ?? (column.width === undefined ? defaultMinWidth(column) : undefined),
       type: column.numeric ? 'numericColumn' : undefined,
       cellClass:
         typeof column.cellClass === 'function'
