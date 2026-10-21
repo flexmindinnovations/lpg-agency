@@ -97,7 +97,9 @@ class ProfileScreen extends ConsumerWidget {
                         LpgListTile(
                           leadingIcon: LpgIcons.email,
                           title: 'Email',
-                          subtitle: profile.email ?? 'Not provided',
+                          subtitle:
+                              profile.email ??
+                              'Not added — use Edit Profile to add one',
                         ),
                         if (profile.consumerNumber != null) ...[
                           const Divider(indent: LpgSpacing.md),
