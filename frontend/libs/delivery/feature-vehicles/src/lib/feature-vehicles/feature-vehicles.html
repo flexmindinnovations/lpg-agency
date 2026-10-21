@@ -12,10 +12,22 @@
   <p-message severity="error">{{ msg }}</p-message>
   }
 
+  <ng-template lpgPageActions>
+    <button
+      *lpgHasPermission="'vehicles:manage'"
+      #registerTriggerEl
+      pButton
+      type="button"
+      (click)="openRegisterModal()"
+    >
+      <i class="pi pi-plus"></i>
+      <span>Register Vehicle</span>
+    </button>
+  </ng-template>
   <div class="data-toolbar">
     <div class="search-bar data-toolbar__filters">
       @if (vehicles().length > 0 || searchQuery().length > 0) {
-      <p-iconfield styleClass="w-full">
+      <p-iconfield>
         <p-inputicon class="pi pi-search" />
         <input
           id="vehicle-search-input"
@@ -34,21 +46,8 @@
         [ngModel]="expiryFilter()"
         (ngModelChange)="expiryFilter.set($event)"
         aria-label="Filter by document expiry"
-        styleClass="expiry-filter-select"
       ></p-select>
       }
-    </div>
-    <div class="data-toolbar__actions">
-      <button
-        *lpgHasPermission="'vehicles:manage'"
-        #registerTriggerEl
-        pButton
-        type="button"
-        (click)="openRegisterModal()"
-      >
-        <i class="pi pi-plus"></i>
-        <span>Register Vehicle</span>
-      </button>
     </div>
   </div>
 

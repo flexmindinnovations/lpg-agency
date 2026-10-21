@@ -6,6 +6,12 @@
       </ng-template>
     </div>
 
+    <ng-template lpgPageActions>
+      <a *lpgHasPermission="'customers:create'" pButton routerLink="new">
+        <i class="pi pi-plus"></i>
+        <span>Register Customer</span>
+      </a>
+    </ng-template>
     <div class="data-toolbar">
       <div class="data-toolbar__filters">
         @if (customers().length > 0 || searchQuery().length > 0) {
@@ -21,10 +27,7 @@
             (input)="onSearch($event)"
           />
         </p-iconfield>
-        }
-      </div>
-      <div class="data-toolbar__actions">
-        @if (customers().length > 0 || searchQuery().length > 0) {
+        } @if (customers().length > 0 || searchQuery().length > 0) {
         <button pButton severity="secondary" (click)="filterPopover.toggle($event)">
           <i class="pi pi-filter"></i>
           <span>Filter</span>
@@ -85,10 +88,6 @@
           </ng-template>
         </p-popover>
         }
-        <a *lpgHasPermission="'customers:create'" pButton routerLink="new">
-          <i class="pi pi-plus"></i>
-          <span>Register Customer</span>
-        </a>
       </div>
     </div>
 

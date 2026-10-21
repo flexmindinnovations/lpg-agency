@@ -24,22 +24,6 @@
   font-weight: normal;
 }
 
-/* Scoped override of the shared .page-header__actions row (component
-   view encapsulation keeps this from leaking to other pages using the
-   same class) — Back sits on the left, the status-action buttons group
-   on the right, instead of everything crowding into one left-aligned row. */
-.page-header__actions {
-  justify-content: space-between;
-  inline-size: 100%;
-}
-
-.page-header__actions-buttons {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-}
-
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
@@ -287,7 +271,34 @@
   background: var(--color-surface-base);
 }
 
-.invoice-list {
+.invoice-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.invoice-card__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--spacing-md);
+}
+
+.invoice-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.invoice-card__due {
+  color: var(--color-status-danger);
+  font-weight: var(--typography-label-font-weight);
+}
+
+.invoice-card__empty {
   margin: 0;
-  padding-left: var(--spacing-lg);
+  color: var(--color-text-secondary);
 }

@@ -10,6 +10,11 @@
     </ng-template>
   </div>
 
+  <ng-template lpgPageActions>
+    <button pButton severity="secondary" [disabled]="unreadCount() === 0" (click)="markAllAsRead()">
+      <i class="pi pi-check-circle"></i><span>Mark all as read</span>
+    </button>
+  </ng-template>
   <div class="data-toolbar">
     <div class="data-toolbar__filters">
       <p-selectbutton
@@ -21,16 +26,6 @@
         [allowEmpty]="false"
         ariaLabel="Show"
       />
-    </div>
-    <div class="data-toolbar__actions">
-      <button
-        pButton
-        severity="secondary"
-        [disabled]="unreadCount() === 0"
-        (click)="markAllAsRead()"
-      >
-        <i class="pi pi-check-circle"></i><span>Mark all as read</span>
-      </button>
     </div>
   </div>
 

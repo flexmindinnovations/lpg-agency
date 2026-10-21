@@ -470,6 +470,30 @@ class RecordPaymentUseCase:
 
 
 @dataclass(frozen=True, slots=True)
+class SendInvoiceToCustomerCommand(Command):
+    invoice_id: uuid.UUID
+    sent_by: uuid.UUID
+
+
+class SendInvoiceToCustomerUseCase:
+    """Staff send an issued invoice to the customer (e-mail and push)."""
+
+    def __init__(self, repository: InvoiceRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: SendInvoiceToCustomerCommand) -> Invoice:
+        invoice = await self._repository.get_by_id(command.invoice_id)
+        if invoice is None:
+            msg = f"No invoice visible with id {command.invoice_id}."
+            raise NotFoundError(msg, invoice_id=str(command.invoice_id))
+        invoice.send_to_customer(sent_by=command.sent_by)
+        await self._repository.save(invoice)
+        await self._unit_of_work.commit()
+        return invoice
+
+
+@dataclass(frozen=True, slots=True)
 class DeclareCashHandoverCommand(Command):
     driver_id: uuid.UUID
     route_id: uuid.UUID

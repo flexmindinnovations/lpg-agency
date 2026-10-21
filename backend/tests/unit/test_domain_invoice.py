@@ -16,7 +16,13 @@ from decimal import Decimal
 
 import pytest
 
-from lpg.domain.accounting.invoice import Invoice, InvoiceGenerated, InvoiceLine, PaymentCollected
+from lpg.domain.accounting.invoice import (
+    Invoice,
+    InvoiceGenerated,
+    InvoiceLine,
+    InvoiceSentToCustomer,
+    PaymentCollected,
+)
 from lpg.domain.common.base import InvariantViolation
 
 
@@ -345,3 +351,34 @@ class TestRecordPayment:
                 collected_by=uuid.uuid4(),
                 collected_at=datetime.now(UTC),
             )
+
+
+class TestSendToCustomer:
+    def _issued(self) -> Invoice:
+        return Invoice.generate_for_delivered_order(
+            invoice_id=uuid.uuid4(),
+            invoice_number="INV-2026-000001",
+            tenant_id=uuid.uuid4(),
+            customer_id=uuid.uuid4(),
+            order_id=uuid.uuid4(),
+            delivered_at=datetime.now(UTC),
+            lines=[_make_line()],
+        )
+
+    def test_records_a_sent_event_and_can_repeat(self) -> None:
+        invoice = self._issued()
+        sender = uuid.uuid4()
+        invoice.send_to_customer(sent_by=sender)
+        invoice.send_to_customer(sent_by=sender)
+        sent = [e for e in invoice.events if isinstance(e, InvoiceSentToCustomer)]
+        assert len(sent) == 2
+        assert sent[0].invoice_id == invoice.id
+        assert sent[0].customer_id == invoice.customer_id
+        assert sent[0].order_id == invoice.order_id
+        assert sent[0].sent_by == sender
+
+    def test_refuses_a_cancelled_invoice(self) -> None:
+        invoice = self._issued()
+        invoice._status = "cancelled"
+        with pytest.raises(InvariantViolation, match="cancelled invoice cannot be sent"):
+            invoice.send_to_customer(sent_by=uuid.uuid4())

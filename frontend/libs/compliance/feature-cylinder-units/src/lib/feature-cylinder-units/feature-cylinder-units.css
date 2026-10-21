@@ -10,11 +10,6 @@
   block-size: 100%;
 }
 
-::ng-deep .due-status-filter-select {
-  flex-shrink: 0;
-  min-inline-size: 12rem;
-}
-
 .detail-view {
   display: flex;
   flex-direction: column;

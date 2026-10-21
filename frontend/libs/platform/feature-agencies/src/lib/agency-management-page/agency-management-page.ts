@@ -28,7 +28,7 @@ import {
   type DataGridColumn,
   toSentenceCase,
 } from '@lpg/shared/ui';
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import type { TenantResponse } from '@lpg/shared/data-access';
 
 /** Mirrors `domain/tenant/tenant.py`'s `SLUG_PATTERN` and length bounds. The
@@ -70,6 +70,7 @@ interface SetupLinkView {
   selector: 'lpg-agency-management-page',
   standalone: true,
   imports: [
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     ButtonDirective,
     Drawer,
@@ -92,14 +93,11 @@ interface SetupLinkView {
         </ng-template>
       </div>
 
-      <div class="data-toolbar">
-        <div class="data-toolbar__filters"></div>
-        <div class="data-toolbar__actions">
-          <button pButton type="button" (click)="openCreateDrawer()">
-            <i class="pi pi-plus"></i><span>Create agency</span>
-          </button>
-        </div>
-      </div>
+      <ng-template lpgPageActions>
+        <button pButton type="button" (click)="openCreateDrawer()">
+          <i class="pi pi-plus"></i><span>Create agency</span>
+        </button>
+      </ng-template>
 
       @if (!loading() && agencies().length === 0) {
         <div class="empty-state">

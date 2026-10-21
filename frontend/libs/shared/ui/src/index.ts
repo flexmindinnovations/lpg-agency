@@ -24,3 +24,5 @@ export * from './lib/app-shell/app-shell.component';
 export * from './lib/app-shell/nav-item';
 export * from './lib/app-shell/breadcrumb.service';
 export * from './lib/profile-menu/profile-menu.component';
+export * from './lib/filter-bar/export-button.component';
+export * from './lib/filter-bar/date-range-filter.component';

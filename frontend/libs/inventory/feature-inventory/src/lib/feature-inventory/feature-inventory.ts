@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import { HasPermissionDirective } from '@lpg/shared/ui';
 import {
   ChangeDetectionStrategy,
@@ -116,6 +116,7 @@ function toIsoDate(date: Date): string {
   selector: 'lpg-feature-inventory',
   standalone: true,
   imports: [
+    PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,
     FormsModule,

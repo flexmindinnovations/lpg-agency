@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -30,8 +30,8 @@ import {
   ActionChipCell,
   DataGridComponent,
   DrawerA11yDirective,
-  FormFieldComponent,
   type DataGridColumn,
+  ExportButtonComponent,
 } from '@lpg/shared/ui';
 import { DATE_INPUT_PLACEHOLDER, formatDisplayDateTime } from '@lpg/shared/util';
 import {
@@ -69,6 +69,8 @@ interface Option<T> {
   selector: 'lpg-audit-log-page',
   standalone: true,
   imports: [
+    ExportButtonComponent,
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     FormsModule,
     ButtonDirective,
@@ -78,7 +80,7 @@ interface Option<T> {
     Select,
     DatePicker,
     DataGridComponent,
-    FormFieldComponent,
+
     Drawer,
     DrawerA11yDirective,
     Tag,
@@ -96,97 +98,85 @@ interface Option<T> {
         </ng-template>
       </div>
 
+      <ng-template lpgPageActions>
+        <button
+          pButton
+          type="button"
+          severity="secondary"
+          aria-label="Refresh"
+          pTooltip="Refresh"
+          tooltipPosition="left"
+          (click)="reload()"
+        >
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+        </button>
+      </ng-template>
       <div class="data-toolbar">
         <div class="data-toolbar__filters">
-          <lpg-form-field label="Record type" for="audit_entity">
-            <p-select
-              inputId="audit_entity"
-              [options]="entityOptions()"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="All records"
-              [showClear]="true"
-              [filter]="entityOptions().length > 8"
-              [ngModel]="entityName()"
-              (ngModelChange)="entityName.set($event ?? null); reload()"
+          <p-iconfield iconPosition="left">
+            <p-inputicon class="pi pi-search" />
+            <input
+              aria-label="Search"
+              pInputText
+              id="audit_search"
+              type="search"
+              placeholder="Record or person"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
             />
-          </lpg-form-field>
-          <lpg-form-field label="Action" for="audit_action">
-            <p-select
-              inputId="audit_action"
-              [options]="actionOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="All actions"
-              [showClear]="true"
-              [ngModel]="action()"
-              (ngModelChange)="action.set($event ?? null); reload()"
-            />
-          </lpg-form-field>
+          </p-iconfield>
+          <p-select
+            ariaLabel="Record type"
+            inputId="audit_entity"
+            [options]="entityOptions()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All records"
+            [showClear]="true"
+            [filter]="entityOptions().length > 8"
+            [ngModel]="entityName()"
+            (ngModelChange)="entityName.set($event ?? null); reload()"
+          />
+          <p-select
+            ariaLabel="Action"
+            inputId="audit_action"
+            [options]="actionOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="All actions"
+            [showClear]="true"
+            [ngModel]="action()"
+            (ngModelChange)="action.set($event ?? null); reload()"
+          />
           @if (actorOptions().length > 0) {
-            <lpg-form-field label="Done by" for="audit_actor">
-              <p-select
-                inputId="audit_actor"
-                [options]="actorOptions()"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Anyone"
-                [showClear]="true"
-                [filter]="true"
-                [ngModel]="actorId()"
-                (ngModelChange)="actorId.set($event ?? null); reload()"
-              />
-            </lpg-form-field>
-          }
-          <lpg-form-field label="Dates" for="audit_dates">
-            <p-datepicker
-              inputId="audit_dates"
-              selectionMode="range"
-              [readonlyInput]="true"
-              [showIcon]="true"
-              iconDisplay="input"
-              [showButtonBar]="true"
-              [placeholder]="datePlaceholder"
-              [maxDate]="today"
-              [ngModel]="dateRange()"
-              (ngModelChange)="onDateRangeChange($event)"
+            <p-select
+              ariaLabel="Done by"
+              inputId="audit_actor"
+              [options]="actorOptions()"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Anyone"
+              [showClear]="true"
+              [filter]="true"
+              [ngModel]="actorId()"
+              (ngModelChange)="actorId.set($event ?? null); reload()"
             />
-          </lpg-form-field>
-          <lpg-form-field label="Search" for="audit_search">
-            <p-iconfield iconPosition="left">
-              <p-inputicon class="pi pi-search" />
-              <input
-                pInputText
-                id="audit_search"
-                type="search"
-                placeholder="Record or person"
-                [ngModel]="searchQuery()"
-                (ngModelChange)="searchQuery.set($event)"
-              />
-            </p-iconfield>
-          </lpg-form-field>
-        </div>
-        <div class="data-toolbar__actions">
-          <button
-            pButton
-            type="button"
-            severity="secondary"
-            [disabled]="entries().length === 0"
-            (click)="exportCsv()"
-          >
-            <i class="pi pi-download" aria-hidden="true"></i><span>Export CSV</span>
-          </button>
-          <button
-            pButton
-            type="button"
-            severity="secondary"
-            aria-label="Refresh"
-            pTooltip="Refresh"
-            tooltipPosition="left"
-            (click)="reload()"
-          >
-            <i class="pi pi-refresh" aria-hidden="true"></i>
-          </button>
+          }
+          <p-datepicker
+            ariaLabel="Dates"
+            inputId="audit_dates"
+            selectionMode="range"
+            [readonlyInput]="true"
+            [showIcon]="true"
+            iconDisplay="input"
+            [showButtonBar]="true"
+            [placeholder]="datePlaceholder"
+            [maxDate]="today"
+            [ngModel]="dateRange()"
+            (ngModelChange)="onDateRangeChange($event)"
+          />
+          <span class="data-toolbar__spacer"></span>
+          <lpg-export-button [disabled]="entries().length === 0" (export)="exportCsv()" />
         </div>
       </div>
 

@@ -18,6 +18,7 @@ import type {
   GridSizeChangedEvent,
 } from 'ag-grid-community';
 import { ButtonDirective } from 'primeng/button';
+import { Paginator, type PaginatorState } from 'primeng/paginator';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 
@@ -189,7 +190,7 @@ function escapeHtml(text: string): string {
 @Component({
   selector: 'lpg-data-grid',
   standalone: true,
-  imports: [AgGridAngular, SkeletonComponent, EmptyStateComponent, ButtonDirective],
+  imports: [AgGridAngular, SkeletonComponent, EmptyStateComponent, ButtonDirective, Paginator],
   host: {
     '[class.lpg-data-grid--auto]': 'autoHeight()',
     '[class.lpg-data-grid--bordered]': 'bordered()',
@@ -225,11 +226,27 @@ function escapeHtml(text: string): string {
         (selectionChanged)="onSelectionChanged($event)"
       />
     }
+    @if (totalRecords() !== null && !error()) {
+      <!-- Server-side paging: the pager is part of the grid card, below the
+           rows, so it can never sit on top of them. -->
+      <p-paginator
+        class="lpg-data-grid__pager"
+        [first]="(page() - 1) * serverPageSize()"
+        [rows]="serverPageSize()"
+        [totalRecords]="totalRecords() ?? 0"
+        [rowsPerPageOptions]="[25, 50, 100]"
+        [showCurrentPageReport]="true"
+        [currentPageReportTemplate]="'{first}–{last} of {totalRecords} ' + recordLabel()"
+        appendTo="body"
+        (onPageChange)="onServerPageChange($event)"
+      />
+    }
   `,
   styles: [
     `
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
         flex: 1;
         min-block-size: var(--component-data-grid-min-block-size, 400px);
         block-size: 100%;
@@ -248,11 +265,24 @@ function escapeHtml(text: string): string {
       .lpg-data-grid__skeleton {
         padding: var(--spacing-md);
       }
+      .lpg-data-grid__pager {
+        flex: none;
+        border-block-start: var(--border-width, 1px) solid var(--color-border-default);
+      }
+      :host ::ng-deep .lpg-data-grid__pager .p-paginator {
+        justify-content: flex-end;
+        padding-block: var(--spacing-xs);
+        background: transparent;
+        color: var(--color-text-secondary);
+        font-size: var(--typography-body-small-font-size);
+      }
       ::ng-deep .lpg-data-grid .lpg-data-grid__empty {
         color: var(--color-text-secondary);
         font-size: var(--typography-body-small-font-size);
       }
       .lpg-data-grid {
+        flex: 1 1 auto;
+        min-block-size: 0;
         block-size: 100%;
         inline-size: 100%;
         /* Every value comes from a design token — no raw colours or sizes. */
@@ -397,6 +427,17 @@ export class DataGridComponent<TRow = unknown> {
   /** Shown in the grid body when there are no rows (AG Grid's own text is
    *  "No Rows To Show"). Pages wanting a call to action use `lpg-empty-state`. */
   readonly emptyMessage = input('Nothing to show yet.');
+  /** Server-side paging: the total row count on the server. When set, the
+   *  grid shows its own pager in the card footer (client-side pagination is
+   *  turned off) and emits `pageChange`; the page fetches that page. */
+  readonly totalRecords = input<number | null>(null);
+  /** Current 1-based page for server-side paging. */
+  readonly page = input(1);
+  /** Rows per page for server-side paging. */
+  readonly serverPageSize = input(25);
+  /** Noun in the pager's "1–25 of 80 invoices" report. */
+  readonly recordLabel = input('rows');
+  readonly pageChange = output<{ page: number; pageSize: number }>();
 
   readonly ready = output<void>();
   readonly retry = output<void>();
@@ -469,7 +510,7 @@ export class DataGridComponent<TRow = unknown> {
     tooltipShowDelay: 600,
     tooltipHideDelay: 4000,
     // Client-side pagination — `pageSize()` of 0 turns it off.
-    pagination: this.pageSize() > 0,
+    pagination: this.totalRecords() === null && this.pageSize() > 0,
     paginationPageSize: this.pageSize() || 25,
     paginationPageSizeSelector: [10, 25, 50, 100],
     quickFilterText: this.searchQuery(),
@@ -553,6 +594,11 @@ export class DataGridComponent<TRow = unknown> {
         return formatter(params.value, params.node.data as TRow);
       },
     });
+  }
+
+  protected onServerPageChange(state: PaginatorState): void {
+    const pageSize = state.rows ?? this.serverPageSize();
+    this.pageChange.emit({ page: Math.floor((state.first ?? 0) / pageSize) + 1, pageSize });
   }
 
   protected onSelectionChanged(event: any): void {

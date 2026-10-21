@@ -36,6 +36,18 @@ class InvoiceGenerated(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True)
+class InvoiceSentToCustomer(DomainEvent):
+    """Fired when staff send an issued invoice to the customer: the customer
+    is notified (e-mail and push) with the invoice reference."""
+
+    invoice_id: uuid.UUID
+    tenant_id: uuid.UUID
+    order_id: uuid.UUID
+    customer_id: uuid.UUID
+    sent_by: uuid.UUID
+
+
+@dataclass(frozen=True, slots=True)
 class PaymentCollected(DomainEvent):
     """Fired on every recorded payment (BR-18, D-11) — including a partial
     one; `docs/data/09-domain-events.md`'s payload doesn't distinguish
@@ -448,6 +460,22 @@ class Invoice(AggregateRoot):
             cgst=sum((split.cgst for split in splits), Decimal("0.00")),
             sgst=sum((split.sgst for split in splits), Decimal("0.00")),
             igst=sum((split.igst for split in splits), Decimal("0.00")),
+        )
+
+    def send_to_customer(self, *, sent_by: uuid.UUID) -> None:
+        """Queue the "your invoice is ready" notification to the customer.
+        A cancelled invoice is not worth sending, so it is refused."""
+        if self._status == "cancelled":
+            msg = "A cancelled invoice cannot be sent."
+            raise InvariantViolation(msg, status=self._status)
+        self.record_event(
+            InvoiceSentToCustomer(
+                invoice_id=self.id,
+                tenant_id=self._tenant_id,
+                order_id=self._order_id,
+                customer_id=self._customer_id,
+                sent_by=sent_by,
+            )
         )
 
     def record_payment(

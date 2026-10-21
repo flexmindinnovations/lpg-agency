@@ -22,135 +22,129 @@
   </p-message>
   }
 
+  <ng-template lpgPageActions>
+    @if (locationType() === 'warehouse') {
+    <button
+      *lpgHasPermission="'inventory:load'"
+      #grnTriggerEl
+      pButton
+      type="button"
+      [disabled]="!locationRefId()"
+      (click)="openGrnModal()"
+    >
+      <i class="pi pi-inbox"></i>
+      <span>Receive Goods</span>
+    </button>
+    <button
+      *lpgHasPermission="'inventory:load'"
+      #omcReturnTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      [disabled]="!locationRefId()"
+      (click)="openOmcReturnModal()"
+    >
+      <i class="pi pi-replay"></i>
+      <span>Return to OMC</span>
+    </button>
+    }
+    <button
+      *lpgHasPermission="'inventory:load'"
+      #transferTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      (click)="openTransferModal()"
+    >
+      <i class="pi pi-arrow-right-arrow-left"></i>
+      <span>Load Transfer</span>
+    </button>
+    @if (locationType() === 'vehicle') {
+    <button
+      *lpgHasPermission="'inventory:load'"
+      #deliveryCollectionTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      [disabled]="!locationRefId()"
+      (click)="openDeliveryCollectionModal()"
+    >
+      <i class="pi pi-truck"></i>
+      <span>Delivery / Collection</span>
+    </button>
+    }
+    <button
+      *lpgHasPermission="'inventory:load'"
+      #statusChangeTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      [disabled]="!locationRefId()"
+      (click)="openStatusChangeModal()"
+    >
+      <i class="pi pi-sync"></i>
+      <span>Change Status</span>
+    </button>
+    <button
+      *lpgHasPermission="'inventory:adjust'"
+      #adjustTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      [disabled]="!locationRefId()"
+      (click)="openAdjustModal()"
+    >
+      <i class="pi pi-pencil"></i>
+      <span>Adjust</span>
+    </button>
+    <button
+      *lpgHasPermission="'inventory:load'"
+      #reconcileTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      [disabled]="!locationRefId()"
+      (click)="openReconcileModal()"
+    >
+      <i class="pi pi-check-square"></i>
+      <span>Reconcile</span>
+    </button>
+    <button
+      *lpgHasPermission="'inventory:adjust'"
+      #reorderPolicyTriggerEl
+      pButton
+      type="button"
+      severity="secondary"
+      (click)="openReorderPolicyModal()"
+    >
+      <i class="pi pi-bell"></i>
+      <span>Reorder Policy</span>
+    </button>
+  </ng-template>
   <div class="data-toolbar">
     <div class="location-picker data-toolbar__filters">
-      <div class="location-picker__field">
-        <label for="location_type">Location Type</label>
-        <p-select
-          inputId="location_type"
-          [options]="[
-            { label: 'Warehouse', value: 'warehouse' },
-            { label: 'Vehicle', value: 'vehicle' }
-          ]"
-          optionLabel="label"
-          optionValue="value"
-          [ngModel]="locationType()"
-          (ngModelChange)="onLocationTypeChange($event)"
-        ></p-select>
-      </div>
-      <div class="location-picker__field">
-        <label for="location_ref"
-          >{{ locationType() === 'warehouse' ? 'Warehouse' : 'Vehicle' }}</label
-        >
-        <p-select
-          inputId="location_ref"
-          [options]="locationOptions()"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Select a location"
-          [ngModel]="locationRefId()"
-          (ngModelChange)="onLocationRefChange($event)"
-        ></p-select>
-      </div>
-    </div>
-    <div class="data-toolbar__actions">
-      @if (locationType() === 'warehouse') {
-      <button
-        *lpgHasPermission="'inventory:load'"
-        #grnTriggerEl
-        pButton
-        type="button"
-        [disabled]="!locationRefId()"
-        (click)="openGrnModal()"
-      >
-        <i class="pi pi-inbox"></i>
-        <span>Receive Goods</span>
-      </button>
-      <button
-        *lpgHasPermission="'inventory:load'"
-        #omcReturnTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openOmcReturnModal()"
-      >
-        <i class="pi pi-replay"></i>
-        <span>Return to OMC</span>
-      </button>
-      }
-      <button
-        *lpgHasPermission="'inventory:load'"
-        #transferTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        (click)="openTransferModal()"
-      >
-        <i class="pi pi-arrow-right-arrow-left"></i>
-        <span>Load Transfer</span>
-      </button>
-      @if (locationType() === 'vehicle') {
-      <button
-        *lpgHasPermission="'inventory:load'"
-        #deliveryCollectionTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openDeliveryCollectionModal()"
-      >
-        <i class="pi pi-truck"></i>
-        <span>Delivery / Collection</span>
-      </button>
-      }
-      <button
-        *lpgHasPermission="'inventory:load'"
-        #statusChangeTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openStatusChangeModal()"
-      >
-        <i class="pi pi-sync"></i>
-        <span>Change Status</span>
-      </button>
-      <button
-        *lpgHasPermission="'inventory:adjust'"
-        #adjustTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openAdjustModal()"
-      >
-        <i class="pi pi-pencil"></i>
-        <span>Adjust</span>
-      </button>
-      <button
-        *lpgHasPermission="'inventory:load'"
-        #reconcileTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        [disabled]="!locationRefId()"
-        (click)="openReconcileModal()"
-      >
-        <i class="pi pi-check-square"></i>
-        <span>Reconcile</span>
-      </button>
-      <button
-        *lpgHasPermission="'inventory:adjust'"
-        #reorderPolicyTriggerEl
-        pButton
-        type="button"
-        severity="secondary"
-        (click)="openReorderPolicyModal()"
-      >
-        <i class="pi pi-bell"></i>
-        <span>Reorder Policy</span>
-      </button>
+      <p-select
+        ariaLabel="Location Type"
+        inputId="location_type"
+        [options]="[
+          { label: 'Warehouse', value: 'warehouse' },
+          { label: 'Vehicle', value: 'vehicle' }
+        ]"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="locationType()"
+        (ngModelChange)="onLocationTypeChange($event)"
+      ></p-select>
+      <p-select
+        [ariaLabel]="locationType() === 'warehouse' ? 'Warehouse' : 'Vehicle'"
+        inputId="location_ref"
+        [options]="locationOptions()"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Select a location"
+        [ngModel]="locationRefId()"
+        (ngModelChange)="onLocationRefChange($event)"
+      ></p-select>
     </div>
   </div>
 

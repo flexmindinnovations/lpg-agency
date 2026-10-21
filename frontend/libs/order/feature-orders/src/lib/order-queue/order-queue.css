@@ -10,29 +10,6 @@
   block-size: 100%;
 }
 
-.filters {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.filters__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  min-inline-size: 12rem;
-}
-
-.filters__field--search {
-  min-inline-size: min(20rem, 100%);
-}
-
-.filters__field label {
-  font-size: var(--typography-caption-font-size);
-  color: var(--color-text-secondary);
-}
-
 .lines-header {
   display: flex;
   justify-content: space-between;

@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from lpg.domain.accounting.cash_handover import CashShortfallDeclared
-from lpg.domain.accounting.invoice import InvoiceGenerated, PaymentCollected
+from lpg.domain.accounting.invoice import InvoiceGenerated, InvoiceSentToCustomer, PaymentCollected
 from lpg.domain.accounting.online_payment import OnlinePaymentReceived
 from lpg.domain.complaint.complaint import ComplaintAssigned, ComplaintRaised
 from lpg.domain.delivery.route import (
@@ -148,6 +148,10 @@ def register_notification_handlers(dispatcher: DomainEventDispatcher, notifier: 
             "invoice_generated", event, order_id=event.order_id, invoice_id=event.invoice_id
         )
 
+    async def _on_invoice_sent(event: DomainEvent) -> None:
+        assert isinstance(event, InvoiceSentToCustomer)
+        await notify("invoice_sent", event, order_id=event.order_id, invoice_id=event.invoice_id)
+
     async def _on_online_payment_received(event: DomainEvent) -> None:
         assert isinstance(event, OnlinePaymentReceived)
         ids = {"order_id": event.order_id, "amount": event.amount}
@@ -213,6 +217,7 @@ def register_notification_handlers(dispatcher: DomainEventDispatcher, notifier: 
     dispatcher.register(DeliveryFailed, _on_delivery_failed)
     dispatcher.register(BookingCancelled, _on_booking_cancelled)
     dispatcher.register(InvoiceGenerated, _on_invoice_generated)
+    dispatcher.register(InvoiceSentToCustomer, _on_invoice_sent)
     dispatcher.register(OnlinePaymentReceived, _on_online_payment_received)
     dispatcher.register(PaymentCollected, _on_payment_collected)
     dispatcher.register(ComplaintRaised, _on_complaint_raised)

@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
@@ -37,6 +38,7 @@ describe('FeatureInvoices', () => {
     await TestBed.configureTestingModule({
       imports: [FeatureInvoices],
       providers: [
+        provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: ApiConfiguration, useValue: { rootUrl: 'http://test' } },

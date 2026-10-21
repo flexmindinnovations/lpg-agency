@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,7 +13,7 @@ import { ButtonDirective } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import { Select } from 'primeng/select';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import { DrawerA11yDirective, ExportButtonComponent } from '@lpg/shared/ui';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { TooltipModule } from 'primeng/tooltip';
@@ -204,6 +204,8 @@ class ConfigKeyCell {
   selector: 'lpg-tenant-configuration-page',
   standalone: true,
   imports: [
+    ExportButtonComponent,
+    PageActionsDirective,
     HeaderTitlePortalDirective,
     RouterLink,
     ReactiveFormsModule,
@@ -241,9 +243,14 @@ class ConfigKeyCell {
       </div>
 
       @if (entries().length > 0) {
+        <ng-template lpgPageActions>
+          <button pButton (click)="openCreateDrawer()">
+            <i class="pi pi-plus"></i><span>Set Value</span>
+          </button>
+        </ng-template>
         <div class="data-toolbar">
           <div class="data-toolbar__filters">
-            <p-iconfield styleClass="w-full md:w-64">
+            <p-iconfield>
               <p-inputicon class="pi pi-search" />
               <input
                 pInputText
@@ -254,14 +261,8 @@ class ConfigKeyCell {
                 (input)="searchQuery.set($any($event.target).value)"
               />
             </p-iconfield>
-          </div>
-          <div class="data-toolbar__actions">
-            <button pButton severity="secondary" type="button" (click)="exportCsv()">
-              <i class="pi pi-file-excel"></i><span>Export CSV</span>
-            </button>
-            <button pButton (click)="openCreateDrawer()">
-              <i class="pi pi-plus"></i><span>Set Value</span>
-            </button>
+            <span class="data-toolbar__spacer"></span>
+            <lpg-export-button (export)="exportCsv()" />
           </div>
         </div>
       }

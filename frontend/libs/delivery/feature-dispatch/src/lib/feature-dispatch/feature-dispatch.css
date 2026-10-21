@@ -14,20 +14,6 @@
   min-block-size: 100%;
 }
 
-.filters-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.filters-row__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  min-inline-size: 12rem;
-}
-
 .section-title {
   font-size: var(--typography-heading3-font-size);
   font-weight: var(--typography-heading3-font-weight);
@@ -36,7 +22,6 @@
 
 .empty-hint,
 .route-column__count,
-.filters-row__field label,
 .detail-field__label,
 .unassigned-card__id,
 .stop-card__order,

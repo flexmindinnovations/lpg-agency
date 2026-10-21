@@ -163,9 +163,6 @@
 
     <div class="tdt-config-actions">
       <div class="tdt-config-actions__inner">
-        <button pButton type="button" severity="secondary" routerLink="/settings/configuration">
-          <i class="pi pi-arrow-left"></i><span>Back to Configuration</span>
-        </button>
         <button pButton type="submit" [disabled]="saving() || loading()">
           @if (saving()) {<i class="pi pi-spin pi-spinner"></i> }Save configuration
         </button>

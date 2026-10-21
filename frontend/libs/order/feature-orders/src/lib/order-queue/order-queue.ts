@@ -1,4 +1,4 @@
-import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
+import { HeaderTitlePortalDirective, PageActionsDirective } from '@lpg/shared/ui/app-shell';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -96,6 +96,7 @@ const BOOKING_SOURCE_OPTIONS = (['staff', 'phone', 'walk_in', 'whatsapp'] as con
   selector: 'lpg-order-queue',
   standalone: true,
   imports: [
+    PageActionsDirective,
     PageHeaderComponent,
     HeaderTitlePortalDirective,
     FormsModule,

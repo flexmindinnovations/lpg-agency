@@ -18,16 +18,6 @@
   min-block-size: 0;
 }
 
-.search-bar {
-  display: flex;
-  gap: var(--spacing-sm);
-  inline-size: 100%;
-}
-
-.search-input {
-  flex: 1;
-}
-
 .invoice-detail-content {
   display: flex;
   flex-direction: column;
@@ -267,54 +257,35 @@
   border-block-end: var(--border-width) solid var(--color-border-default);
 }
 
-/* --- Filters (DA-07) ---------------------------------------------------- */
-.search-bar {
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.search-input {
-  min-inline-size: 16rem;
-}
-
-.date-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-text-secondary);
-  font-size: var(--typography-caption-font-size);
-}
-
-/* --- Invoices on hold (DA-06) ------------------------------------------- */
-.held-panel {
+/* --- Invoices on hold: one slim banner + "View all" dialog -------------- */
+.held-banner {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-md);
   border: var(--border-width) solid var(--color-status-warning);
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
 }
 
-.held-panel__header {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: flex-start;
-}
-
-.held-panel__header > .pi {
+.held-banner__icon {
   color: var(--color-status-warning);
-  margin-block-start: var(--spacing-xs);
 }
 
-.held-panel__title {
+.held-banner__text {
   margin: 0;
-  font-size: var(--typography-body-font-size);
-  font-weight: var(--typography-label-font-weight);
+  flex: 1;
+  min-inline-size: 0;
+  font-size: var(--typography-body-small-font-size);
 }
 
-.held-panel__hint {
-  margin: var(--spacing-xs) 0 0;
+.held-banner__hint {
+  color: var(--color-text-secondary);
+  margin-inline-start: var(--spacing-xs);
+}
+
+.held-dialog__hint {
+  margin: 0 0 var(--spacing-sm);
   color: var(--color-text-secondary);
   font-size: var(--typography-caption-font-size);
 }
@@ -330,11 +301,22 @@
 
 .held-list__item {
   display: grid;
-  grid-template-columns: minmax(8rem, auto) 1fr auto auto;
+  grid-template-columns: 1fr auto;
   gap: var(--spacing-md);
   align-items: center;
   padding-block: var(--spacing-xs);
   border-block-start: var(--border-width) solid var(--color-border-default);
+}
+
+.held-list__main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs) var(--spacing-md);
+  align-items: baseline;
+}
+
+.held-list__empty {
+  color: var(--color-text-secondary);
 }
 
 .held-list__order {

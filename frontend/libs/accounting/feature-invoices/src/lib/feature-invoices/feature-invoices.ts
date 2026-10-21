@@ -18,11 +18,16 @@ import { InputText } from 'primeng/inputtext';
 import { IconField } from 'primeng/iconfield';
 import { Tag } from 'primeng/tag';
 import { Drawer } from 'primeng/drawer';
-import { DrawerA11yDirective } from '@lpg/shared/ui';
+import {
+  DateRangeFilterComponent,
+  DrawerA11yDirective,
+  ExportButtonComponent,
+  type DateRangeValue,
+} from '@lpg/shared/ui';
 import { Dialog } from 'primeng/dialog';
 import { ButtonDirective } from 'primeng/button';
 import { Select } from 'primeng/select';
-import { Paginator, type PaginatorState } from 'primeng/paginator';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Message } from 'primeng/message';
 import { MessageService } from 'primeng/api';
 import {
@@ -85,7 +90,9 @@ const REFERENCE_REQUIRED: ReadonlySet<StaffPaymentMethod> = new Set(['cheque', '
     FormsModule,
     ReactiveFormsModule,
     Select,
-    Paginator,
+    RouterLink,
+    DateRangeFilterComponent,
+    ExportButtonComponent,
     Message,
     FormFieldComponent,
   ],
@@ -94,6 +101,7 @@ const REFERENCE_REQUIRED: ReadonlySet<StaffPaymentMethod> = new Set(['cheque', '
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FeatureInvoices implements OnInit {
+  private readonly route = inject(ActivatedRoute);
   private readonly invoiceService = inject(InvoiceService);
   private readonly printingService = inject(PrintingService);
   private readonly cylinderTypeService = inject(AdminCylinderTypeService);
@@ -134,6 +142,7 @@ export class FeatureInvoices implements OnInit {
   // not configured, issued from here once it is.
   protected readonly heldOrders = signal<UninvoicedOrderResponse[]>([]);
   protected readonly issuingOrderId = signal<string | null>(null);
+  protected readonly heldDialogVisible = signal(false);
 
   // Payments, refunds and payment links (DA-07).
   protected readonly creditNotes = signal<CreditNoteResponse[]>([]);
@@ -160,6 +169,7 @@ export class FeatureInvoices implements OnInit {
   });
   protected readonly referenceRequired = signal(false);
 
+  protected readonly canIssue = computed(() => this.can('invoices:issue'));
   protected readonly canRecordPayment = computed(() => this.can('invoices:record_payment'));
   protected readonly canApproveRefund = computed(() => this.can('credit_notes:approve'));
 
@@ -321,10 +331,39 @@ export class FeatureInvoices implements OnInit {
   }
 
   ngOnInit(): void {
+    this.openLinkedInvoice();
     this.loadInvoices();
     this.loadHeldOrders();
     this.cylinderTypeService.listCylinderTypes().subscribe({
       next: (types) => this.cylinderTypes.set(types),
+    });
+  }
+
+  /** `/invoices?invoice=<id>` (from an order page) opens that invoice. */
+  private openLinkedInvoice(): void {
+    const id = this.route.snapshot.queryParamMap.get('invoice');
+    if (!id) return;
+    this.invoiceService.get(id).subscribe({
+      next: (invoice) => this.onInvoiceSelected(invoice),
+    });
+  }
+
+  protected readonly isSending = signal(false);
+
+  sendToCustomer(): void {
+    const inv = this.selectedInvoice();
+    if (!inv) return;
+    this.isSending.set(true);
+    this.invoiceService.sendToCustomer(inv.invoice_id).subscribe({
+      next: () => {
+        this.isSending.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Invoice sent',
+          detail: `${inv.invoice_number ?? 'The invoice'} was sent to ${inv.customer_name ?? 'the customer'}.`,
+        });
+      },
+      error: () => this.isSending.set(false),
     });
   }
 
@@ -363,8 +402,9 @@ export class FeatureInvoices implements OnInit {
     this.loadInvoices();
   }
 
-  protected onDateChange(which: 'from' | 'to', value: string): void {
-    (which === 'from' ? this.issuedFrom : this.issuedTo).set(value);
+  protected onDateRangeChange(range: DateRangeValue): void {
+    this.issuedFrom.set(range.from ?? '');
+    this.issuedTo.set(range.to ?? '');
     this.page.set(1);
     this.loadInvoices();
   }
@@ -378,9 +418,9 @@ export class FeatureInvoices implements OnInit {
     this.loadInvoices();
   }
 
-  protected onPageChange(event: PaginatorState): void {
-    this.pageSize.set(event.rows ?? this.pageSize());
-    this.page.set(Math.floor((event.first ?? 0) / this.pageSize()) + 1);
+  protected onPageChange(event: { page: number; pageSize: number }): void {
+    this.pageSize.set(event.pageSize);
+    this.page.set(event.page);
     this.loadInvoices();
   }
 

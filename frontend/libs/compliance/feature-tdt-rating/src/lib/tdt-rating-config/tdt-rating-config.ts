@@ -1,6 +1,5 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import {
   FormArray,
   FormControl,
@@ -73,7 +72,6 @@ interface RawFineRule {
   standalone: true,
   imports: [
     HeaderTitlePortalDirective,
-    RouterLink,
     ReactiveFormsModule,
     ButtonDirective,
     InputText,
