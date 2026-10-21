@@ -231,7 +231,15 @@ docker compose -f docker-compose.prod.yml up -d backend worker
 ```
 
 Until these are set the app still starts, but `/health/ready` reports storage
-as down and uploads/PDF generation fail.
+as down and uploads (KYC documents, delivery photos and signatures, scale
+certificates) fail. Invoice printing does not use storage.
+
+**Without editing the server:** add `LPG_STORAGE_ENDPOINT_URL`,
+`LPG_STORAGE_ACCESS_KEY`, `LPG_STORAGE_SECRET_KEY`, `LPG_STORAGE_BUCKET` (and
+optionally `LPG_STORAGE_REGION`, default `blr1`) as secrets of the GitHub
+`production` environment. The next deploy writes them into `.env` and
+recreates the containers. All four required secrets must exist; with any
+missing the deploy leaves the server's settings alone.
 
 ### Integrations: SMS, payments, WhatsApp, Claude, push
 

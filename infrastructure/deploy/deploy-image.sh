@@ -36,6 +36,8 @@ main() {
   [[ -n "${ghcr_token:-}" ]] || { echo "refusing: registry token missing on stdin" >&2; exit 2; }
   # Optional line 2: base64 Firebase service-account JSON (empty = keep as is).
   IFS= read -r fcm_b64 || true
+  # Optional line 3: base64 LPG_STORAGE_* KEY=VALUE lines (empty = keep as is).
+  IFS= read -r storage_b64 || true
 
   [[ -f .env ]] || { echo "missing .env - run ./generate-env.sh first" >&2; exit 1; }
   compose=(docker compose -f docker-compose.prod.yml)
@@ -122,6 +124,35 @@ print(json.dumps(sa, separators=(",", ":")))
     echo "FCM credentials installed for Firebase project $project_id"
   }
 
+  # Upserts the LPG_STORAGE_* settings into .env (compose interpolates them into
+  # the backend's environment). Only the five known keys are accepted, and a value
+  # with a quote, backslash, space or $ is refused so .env stays parseable.
+  install_storage_settings() {
+    local decoded line key value tmp
+    decoded="$(printf '%s' "$1" | base64 -d 2>/dev/null)" \
+      || { echo "!! storage settings are not valid base64 - left unchanged" >&2; return 0; }
+    tmp="$(mktemp .env.XXXXXX)"
+    cp .env "$tmp"
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      key="${line%%=*}"; value="${line#*=}"
+      case "$key" in
+        LPG_STORAGE_ENDPOINT_URL|LPG_STORAGE_ACCESS_KEY|LPG_STORAGE_SECRET_KEY|LPG_STORAGE_BUCKET|LPG_STORAGE_REGION) ;;
+        *) echo "!! unexpected storage key - settings left unchanged" >&2; rm -f "$tmp"; return 0 ;;
+      esac
+      if [[ -z "$value" || "$value" =~ [[:space:]\"\'\\\$] ]]; then
+        echo "!! invalid value for $key - settings left unchanged" >&2; rm -f "$tmp"; return 0
+      fi
+      if grep -q "^${key}=" "$tmp"; then
+        sed -i "s|^${key}=.*|${key}=${value}|" "$tmp"
+      else
+        printf '%s=%s\n' "$key" "$value" >> "$tmp"
+      fi
+    done <<<"$decoded"
+    chmod 600 "$tmp" && mv "$tmp" .env
+    echo "storage: object storage settings installed"
+  }
+
   # Which push channel the worker built at startup (no secrets in these lines).
   report_push_status() {
     local status
@@ -144,6 +175,10 @@ print(json.dumps(sa, separators=(",", ":")))
     install_fcm_credentials "$fcm_b64"
   fi
   unset fcm_b64
+  if [[ -n "${storage_b64:-}" ]]; then
+    install_storage_settings "$storage_b64"
+  fi
+  unset storage_b64
   "${compose[@]}" up -d --remove-orphans
 
   if healthy; then

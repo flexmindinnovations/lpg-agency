@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Base images are pinned by digest in the Dockerfiles; this is how they move.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -9,6 +9,14 @@ name: Deploy
 # format/prettier drift, out-of-date generated design tokens, plain `npm ci`
 # failing on a peer-dependency conflict). This gate runs the checks that protect
 # production and currently pass. Tighten it as those CI jobs are repaired.
+#
+# Incremental (ADR-065): a `changes` job compares each service's folder with the
+# commit its last DEPLOYED image was built from (label on lpg-<svc>:main). A
+# service with no changes since then skips its gate and its image build; its
+# deployed image is simply re-tagged with the new commit SHA, so the server
+# still pulls both images at <sha>. Anything unexpected (no :main image yet, a
+# missing label, a failed re-tag) falls back to a full build, never to a skip.
+# Image builds start together with the gates; only the deploy waits for both.
 
 on:
   push:
@@ -23,8 +31,51 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      backend: ${{ steps.diff.outputs.backend }}
+      web: ${{ steps.diff.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compare with the last deployed images
+        id: diff
+        env:
+          OWNER: ${{ github.repository_owner }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # <service>:<folder>. changed=true unless we can PROVE nothing moved.
+          for entry in backend:backend web:frontend; do
+            svc="${entry%%:*}"; dir="${entry##*:}"
+            changed=true
+            if [ "$EVENT" != "workflow_dispatch" ]; then
+              img="ghcr.io/${OWNER}/lpg-${svc}:main"
+              rev="$(docker buildx imagetools inspect "$img" --format '{{json .Image}}' 2>/dev/null \
+                | jq -r 'try ((if has("config") then . else .["linux/amd64"] end) | .config.Labels["org.opencontainers.image.revision"]) // empty' 2>/dev/null || true)"
+              if [ -n "$rev" ] && git cat-file -e "${rev}^{commit}" 2>/dev/null \
+                 && git diff --quiet "$rev" HEAD -- "$dir" .github/workflows/deploy.yml; then
+                changed=false
+              fi
+              echo "$svc: last deployed image built from ${rev:-unknown} -> changed=$changed"
+            fi
+            echo "$svc=$changed" >> "$GITHUB_OUTPUT"
+          done
+
   gate-backend:
     name: Gate - backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,6 +99,8 @@ jobs:
 
   gate-frontend:
     name: Gate - frontend
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,8 +112,24 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      # Skip the install entirely when the lockfile is unchanged.
+      - name: Cache node_modules
+        id: modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-node24-${{ hashFiles('frontend/package-lock.json') }}
       # @ngrx/signals@21 declares an Angular 21 peer range; plain `npm ci` fails.
-      - run: npm ci --legacy-peer-deps
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci --legacy-peer-deps
+      # Nx caches lint/test results by their inputs, so projects whose sources
+      # did not change are replayed instead of re-run.
+      - name: Cache Nx results
+        uses: actions/cache@v4
+        with:
+          path: frontend/.nx/cache
+          key: nx-${{ runner.os }}-${{ github.sha }}
+          restore-keys: nx-${{ runner.os }}-
       # app.config.ts imports the git-ignored prime-license.ts.
       - name: Provide the PrimeNG licence template
         run: cp -n apps/dashboard/src/app/prime-license.example.ts apps/dashboard/src/app/prime-license.ts
@@ -68,8 +137,8 @@ jobs:
         run: npx nx run-many -t lint test --all --parallel=2
 
   build:
-    name: Build image - ${{ matrix.name }}
-    needs: [gate-backend, gate-frontend]
+    name: Image - ${{ matrix.name }}
+    needs: changes
     runs-on: ubuntu-latest
     # Environment secrets (PRIME_NG_LICENSE_KEY) are only visible to jobs that
     # declare the environment - without this the web image silently built
@@ -86,11 +155,25 @@ jobs:
             context: backend
           - name: web
             context: frontend
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/lpg-${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reuse the deployed image (nothing changed for this service)
+        id: retag
+        if: needs.changes.outputs[matrix.name] != 'true'
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create -t "${IMAGE}:${{ github.sha }}" "${IMAGE}:main"
+          echo "done=true" >> "$GITHUB_OUTPUT"
       - name: PrimeNG licence key (web image only)
         id: licence
-        if: matrix.name == 'web'
+        if: matrix.name == 'web' && steps.retag.outputs.done != 'true'
         env:
           KEY: ${{ secrets.PRIME_NG_LICENSE_KEY }}
         run: |
@@ -103,28 +186,33 @@ jobs:
           fi
           # A hash, used only to bust Docker's layer cache when the key changes.
           echo "fingerprint=$(printf '%s' "$KEY" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - if: steps.retag.outputs.done != 'true'
+        uses: docker/setup-buildx-action@v3
+      - if: steps.retag.outputs.done != 'true'
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/lpg-${{ matrix.name }}:${{ github.sha }}
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
           # Links the private package to this repo so GITHUB_TOKEN can pull it.
-          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+          # The revision label is what the next run's `changes` job compares to.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          # Layer cache lives in the registry (no 10 GB cap, only changed layers
+          # are pushed).
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
           build-args: ${{ matrix.name == 'web' && format('PRIME_LICENSE_FINGERPRINT={0}', steps.licence.outputs.fingerprint) || '' }}
           # Only the web image uses the PrimeNG key; empty -> unlicensed template.
           secrets: ${{ matrix.name == 'web' && format('prime_ng_license={0}', secrets.PRIME_NG_LICENSE_KEY) || '' }}
 
   deploy:
     name: Deploy to production
-    needs: build
+    needs: [changes, gate-backend, gate-frontend, build]
+    # A gate is "skipped" when its service did not change; that is fine. A
+    # failed or cancelled gate or build is not.
+    if: ${{ always() && needs.changes.result == 'success' && needs.build.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -132,6 +220,28 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
+      - name: Collect object-storage settings (optional)
+        id: storage
+        env:
+          ENDPOINT: ${{ secrets.LPG_STORAGE_ENDPOINT_URL }}
+          ACCESS_KEY: ${{ secrets.LPG_STORAGE_ACCESS_KEY }}
+          SECRET_KEY: ${{ secrets.LPG_STORAGE_SECRET_KEY }}
+          BUCKET: ${{ secrets.LPG_STORAGE_BUCKET }}
+          REGION: ${{ secrets.LPG_STORAGE_REGION }}
+        run: |
+          # All-or-nothing: a partial set would break a working configuration.
+          if [ -n "$ENDPOINT" ] && [ -n "$ACCESS_KEY" ] && [ -n "$SECRET_KEY" ] && [ -n "$BUCKET" ]; then
+            echo "::add-mask::$SECRET_KEY"
+            {
+              echo "env<<__LPG_STORAGE_EOF__"
+              printf 'LPG_STORAGE_ENDPOINT_URL=%s\nLPG_STORAGE_ACCESS_KEY=%s\nLPG_STORAGE_SECRET_KEY=%s\nLPG_STORAGE_BUCKET=%s\nLPG_STORAGE_REGION=%s\n' \
+                "$ENDPOINT" "$ACCESS_KEY" "$SECRET_KEY" "$BUCKET" "${REGION:-blr1}"
+              echo "__LPG_STORAGE_EOF__"
+            } >> "$GITHUB_OUTPUT"
+            echo "object storage: settings supplied"
+          else
+            echo "object storage: not configured, server settings left untouched"
+          fi
       - uses: ./.github/actions/deploy-to-server
         with:
           sha: ${{ github.sha }}
@@ -142,3 +252,29 @@ jobs:
           ghcr-token: ${{ secrets.GITHUB_TOKEN }}
           # Optional. Turns on real push notifications (see DEPLOY.md, "Push").
           fcm-service-account: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
+          # Optional. Object storage (DigitalOcean Spaces). Stays off until all
+          # four secrets exist in the production environment (see DEPLOY.md).
+          storage-env: ${{ steps.storage.outputs.env }}
+
+  # After a healthy deploy, mark these images as "the deployed ones". The next
+  # run's `changes` job reads the revision label from them.
+  promote:
+    name: Mark images as deployed
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Re-tag as main
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+        run: |
+          for svc in backend web; do
+            docker buildx imagetools create -t "ghcr.io/${OWNER}/lpg-${svc}:main" "ghcr.io/${OWNER}/lpg-${svc}:${SHA}"
+          done
