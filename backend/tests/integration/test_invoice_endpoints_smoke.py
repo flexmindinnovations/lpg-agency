@@ -433,7 +433,7 @@ class TestInvoiceEndpointsThroughTheRealStack:
             headers=headers,
             json={"method": "cash", "amount": "999.00"},
         )
-        assert response.status_code == 409, response.text
+        assert response.status_code == 422, response.text
 
     async def test_record_payment_denied_without_permission(
         self,

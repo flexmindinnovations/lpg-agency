@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ApiConfiguration } from './generated/api-configuration';
 import { adjustCylinderTypeWeightApiV1AdminCylinderTypesCylinderTypeIdWeightPatch } from './generated/fn/administration/adjust-cylinder-type-weight-api-v-1-admin-cylinder-types-cylinder-type-id-weight-patch';
+import { classifyCylinderTypeForGstApiV1AdminCylinderTypesCylinderTypeIdGstPatch } from './generated/fn/administration/classify-cylinder-type-for-gst-api-v-1-admin-cylinder-types-cylinder-type-id-gst-patch';
 import { createCylinderTypeApiV1AdminCylinderTypesPost } from './generated/fn/administration/create-cylinder-type-api-v-1-admin-cylinder-types-post';
 import { listCylinderTypesApiV1AdminCylinderTypesGet } from './generated/fn/administration/list-cylinder-types-api-v-1-admin-cylinder-types-get';
 import { renameCylinderTypeApiV1AdminCylinderTypesCylinderTypeIdRenamePatch } from './generated/fn/administration/rename-cylinder-type-api-v-1-admin-cylinder-types-cylinder-type-id-rename-patch';
@@ -21,10 +22,36 @@ export class AdminCylinderTypeService {
     );
   }
 
-  createCylinderType(name: string, weightKg: number): Observable<CylinderTypeResponse> {
+  createCylinderType(
+    name: string,
+    weightKg: number,
+    gst?: { hsnCode: string; gstRatePercent: number },
+  ): Observable<CylinderTypeResponse> {
     return createCylinderTypeApiV1AdminCylinderTypesPost(this.http, this.config.rootUrl, {
-      body: { name, weight_kg: weightKg },
+      body: {
+        name,
+        weight_kg: weightKg,
+        hsn_code: gst?.hsnCode ?? null,
+        gst_rate_percent: gst?.gstRatePercent ?? null,
+      },
     }).pipe(map((response) => response.body));
+  }
+
+  /** Set the HSN code and GST rate invoices use for this cylinder type
+   * (DA-06). Until it is set, deliveries of it are held, not invoiced. */
+  classifyForGst(
+    cylinderTypeId: string,
+    hsnCode: string,
+    gstRatePercent: number,
+  ): Observable<CylinderTypeResponse> {
+    return classifyCylinderTypeForGstApiV1AdminCylinderTypesCylinderTypeIdGstPatch(
+      this.http,
+      this.config.rootUrl,
+      {
+        cylinder_type_id: cylinderTypeId,
+        body: { hsn_code: hsnCode, gst_rate_percent: gstRatePercent },
+      },
+    ).pipe(map((response) => response.body));
   }
 
   renameCylinderType(cylinderTypeId: string, name: string): Observable<void> {

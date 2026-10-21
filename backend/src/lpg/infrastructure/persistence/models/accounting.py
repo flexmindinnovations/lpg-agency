@@ -39,6 +39,9 @@ class InvoiceModel(Base):
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    supplier_state_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    place_of_supply_state_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    customer_gstin: Mapped[str | None] = mapped_column(String(15), nullable=True)
     version: Mapped[int] = mapped_column(Integer(), server_default=text("1"))
 
     # Relationships
@@ -72,6 +75,10 @@ class InvoiceLineModel(Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    hsn_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    gst_rate_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    line_kind: Mapped[str] = mapped_column(String(30), server_default="supply")
+    description: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     invoice: Mapped[InvoiceModel] = relationship("InvoiceModel", back_populates="lines")
 
@@ -93,6 +100,7 @@ class PaymentModel(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     collected_by: Mapped[uuid.UUID] = mapped_column(Uuid())
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )
@@ -121,6 +129,30 @@ class CashHandoverModel(Base):
     actual_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     declared_by: Mapped[uuid.UUID] = mapped_column(Uuid())
     declared_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()")
+    )
+
+
+class CashHandoverReviewModel(Base):
+    """Append-only office review of a handover (DA-33) — see the
+    `e7b3c9d1f4a6` migration docstring.
+    """
+
+    __tablename__ = "cash_handover_review"
+    __table_args__ = {"schema": "accounting"}  # noqa: RUF012
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("tenant.tenant.id", ondelete="CASCADE")
+    )
+    cash_handover_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("accounting.cash_handover.id", ondelete="CASCADE"), unique=True
+    )
+    outcome: Mapped[str] = mapped_column(String(20))
+    note: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    reviewed_by: Mapped[uuid.UUID] = mapped_column(Uuid())
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

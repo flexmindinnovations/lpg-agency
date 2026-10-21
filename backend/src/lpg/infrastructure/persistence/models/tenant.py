@@ -59,6 +59,15 @@ class TenantModel(Base):
     subscription_plan: Mapped[str] = mapped_column(String(50))
     primary_contact_email: Mapped[str] = mapped_column(String(320))
     country: Mapped[str] = mapped_column(String(2))
+    # GST business profile — what a tax invoice prints as the supplier.
+    legal_name: Mapped[str | None] = mapped_column(String(200))
+    gstin: Mapped[str | None] = mapped_column(String(15))
+    address_line_1: Mapped[str | None] = mapped_column(String(200))
+    address_line_2: Mapped[str | None] = mapped_column(String(200))
+    city: Mapped[str | None] = mapped_column(String(100))
+    state_code: Mapped[str | None] = mapped_column(String(2))
+    pincode: Mapped[str | None] = mapped_column(String(6))
+    phone: Mapped[str | None] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )
@@ -135,6 +144,8 @@ class CylinderTypeModel(Base):
     name: Mapped[str] = mapped_column(String(200))
     weight_kg: Mapped[Decimal] = mapped_column(Numeric(precision=6, scale=2))
     is_active: Mapped[bool] = mapped_column(Boolean(), server_default=text("true"))
+    hsn_code: Mapped[str | None] = mapped_column(String(8))
+    gst_rate_percent: Mapped[Decimal | None] = mapped_column(Numeric(precision=5, scale=2))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()")
     )

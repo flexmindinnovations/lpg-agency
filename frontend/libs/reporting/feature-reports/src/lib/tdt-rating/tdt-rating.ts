@@ -109,14 +109,19 @@ export class TdtRating implements OnInit {
     () => !this.loading() && !this.errorMessage() && this.totalOrders() === 0,
   );
 
+  /** Orders qualify but no star bands are configured (DA-37) — say so
+   * instead of implying there were no deliveries. */
+  protected readonly bandsMissing = computed(
+    () => !this.loading() && this.totalOrders() > 0 && this.overallStars() === null,
+  );
+
   protected readonly columns: DataGridColumn<TdtBandDistributionResponse>[] = [
     {
       field: 'stars',
       header: 'Stars',
-      width: 120,
       valueFormatter: (v) => `${v} ★`,
     },
-    { field: 'order_count', header: 'Orders', numeric: true, width: 140 },
+    { field: 'order_count', header: 'Orders', numeric: true },
   ];
 
   ngOnInit(): void {

@@ -246,6 +246,12 @@ export class ShellLayout {
           route: '/invoices',
           condition: can('invoices:read'),
         },
+        {
+          label: 'Cash Handovers',
+          icon: 'pi pi-money-bill',
+          route: '/cash-handovers',
+          condition: can('cash_handovers:review'),
+        },
       ]),
       ...buildGroup('Logistics', [
         {

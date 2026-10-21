@@ -1,5 +1,6 @@
 """`CreateCylinderTypeUseCase` / `RenameCylinderTypeUseCase` /
-`AdjustCylinderTypeWeightUseCase` / `SetCylinderTypeActiveUseCase`.
+`AdjustCylinderTypeWeightUseCase` / `SetCylinderTypeActiveUseCase` /
+`ClassifyCylinderTypeForGstUseCase`.
 
 Same plain tenant-scoped RLS-backed CRUD pattern as `branch.py`/
 `warehouse.py`.
@@ -27,6 +28,8 @@ class CreateCylinderTypeCommand(Command):
     tenant_id: uuid.UUID
     name: str
     weight_kg: Decimal
+    hsn_code: str | None = None
+    gst_rate_percent: Decimal | None = None
 
 
 class CreateCylinderTypeUseCase:
@@ -38,6 +41,10 @@ class CreateCylinderTypeUseCase:
         cylinder_type = CylinderType(
             uuid.uuid4(), command.tenant_id, command.name, command.weight_kg
         )
+        if command.hsn_code is not None and command.gst_rate_percent is not None:
+            cylinder_type.classify_for_gst(
+                hsn_code=command.hsn_code, gst_rate_percent=command.gst_rate_percent
+            )
         await self._repository.add(cylinder_type)
         await self._unit_of_work.commit()
         return cylinder_type
@@ -113,6 +120,37 @@ class SetCylinderTypeActiveUseCase:
 
         await self._repository.save(cylinder_type)
         await self._unit_of_work.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class ClassifyCylinderTypeForGstCommand(Command):
+    cylinder_type_id: uuid.UUID
+    hsn_code: str
+    gst_rate_percent: Decimal
+
+
+class ClassifyCylinderTypeForGstUseCase:
+    """Set the HSN code and GST rate this cylinder type is invoiced at
+    (BR-16, BR-31). Until set, invoices for it are not generated.
+    """
+
+    def __init__(self, repository: CylinderTypeRepository, unit_of_work: UnitOfWork) -> None:
+        self._repository = repository
+        self._unit_of_work = unit_of_work
+
+    async def execute(self, command: ClassifyCylinderTypeForGstCommand) -> CylinderType:
+        cylinder_type = await self._repository.get(command.cylinder_type_id)
+        if cylinder_type is None:
+            msg = f"No cylinder type visible with id {command.cylinder_type_id}."
+            raise NotFoundError(msg, cylinder_type_id=str(command.cylinder_type_id))
+
+        cylinder_type.classify_for_gst(
+            hsn_code=command.hsn_code, gst_rate_percent=command.gst_rate_percent
+        )
+
+        await self._repository.save(cylinder_type)
+        await self._unit_of_work.commit()
+        return cylinder_type
 
 
 @dataclass(frozen=True, slots=True)

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from lpg.application.reporting.queries.get_daily_sales import check_report_range
+
 if TYPE_CHECKING:
     import uuid
     from collections.abc import Sequence
@@ -16,6 +18,7 @@ class GetDriverPerformanceQuery:
     tenant_id: uuid.UUID
     start_date: date
     end_date: date
+    branch_id: uuid.UUID | None = None
 
 
 class GetDriverPerformanceUseCase:
@@ -23,8 +26,10 @@ class GetDriverPerformanceUseCase:
         self._reporting_repository = reporting_repository
 
     async def execute(self, query: GetDriverPerformanceQuery) -> Sequence[DriverPerformanceRecord]:
+        check_report_range(query.start_date, query.end_date)
         return await self._reporting_repository.get_driver_performance(
             tenant_id=query.tenant_id,
             start_date=query.start_date,
             end_date=query.end_date,
+            branch_id=query.branch_id,
         )

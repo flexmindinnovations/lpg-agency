@@ -7,4 +7,5 @@ export interface PaymentResponse {
   collected_by: string;
   method: string;
   payment_id: string;
+  reference?: (string | null);
 }

@@ -1,0 +1,168 @@
+<ng-template lpgHeaderTitlePortal>
+  <div class="page-header__text">
+    <h1 class="page-title">Cash Handovers</h1>
+    <p class="page-subtitle">Verify the cash drivers hand over at the end of each route.</p>
+  </div>
+</ng-template>
+
+<div class="register">
+  <div class="register__filters" role="group" aria-label="Filters">
+    <label class="register__field">
+      <span>From</span>
+      <input
+        pInputText
+        type="date"
+        [value]="from()"
+        (change)="setRange('from', $any($event.target).value)"
+      />
+    </label>
+    <label class="register__field">
+      <span>To</span>
+      <input
+        pInputText
+        type="date"
+        [value]="to()"
+        (change)="setRange('to', $any($event.target).value)"
+      />
+    </label>
+    <p-select
+      [options]="statusOptions"
+      [ngModel]="status()"
+      (ngModelChange)="setStatus($event)"
+      optionLabel="label"
+      optionValue="value"
+      placeholder="All"
+      [showClear]="true"
+      ariaLabel="Review status"
+    />
+    <span class="register__spacer"></span>
+    <button pButton type="button" severity="secondary" (click)="exportCsv()">
+      <i class="pi pi-file-excel"></i><span>Export CSV</span>
+    </button>
+  </div>
+
+  @if (error()) {
+  <lpg-empty-state
+    tone="error"
+    title="Couldn't load cash handovers"
+    [description]="error() ?? ''"
+  />
+  } @else {
+  <dl class="register__totals" aria-label="Totals">
+    <div>
+      <dt>Expected</dt>
+      <dd>{{ formatCurrencyInr(totals().expected) }}</dd>
+    </div>
+    <div>
+      <dt>Handed over</dt>
+      <dd>{{ formatCurrencyInr(totals().actual) }}</dd>
+    </div>
+    <div>
+      <dt>Shortfall</dt>
+      <dd [class.register__short]="totals().shortfall > 0">
+        {{ formatCurrencyInr(totals().shortfall) }}
+      </dd>
+    </div>
+  </dl>
+  <lpg-data-grid
+    [rows]="entries()"
+    [columns]="columns"
+    [loading]="loading()"
+    [autoHeight]="true"
+    [pageSize]="25"
+    ariaLabel="Cash handover register"
+  />
+  }
+</div>
+
+<p-drawer
+  [visible]="!!selected()"
+  (onHide)="close()"
+  position="right"
+  [modal]="true"
+  header="Verify cash handover"
+  [style]="{ width: '100%', maxWidth: '32rem' }"
+>
+  @if (selected(); as entry) {
+  <div class="dialog-form">
+    <div class="dialog-form__fields">
+      <dl class="register__detail">
+        <div>
+          <dt>Driver</dt>
+          <dd>{{ entry.driver_name }}</dd>
+        </div>
+        <div>
+          <dt>Vehicle</dt>
+          <dd>{{ entry.vehicle_registration ?? '—' }}</dd>
+        </div>
+        <div>
+          <dt>Declared</dt>
+          <dd>{{ formatTimestamp(entry.declared_at) }}</dd>
+        </div>
+        <div>
+          <dt>Cash stops</dt>
+          <dd>{{ entry.cash_stop_count }}</dd>
+        </div>
+        <div>
+          <dt>Expected</dt>
+          <dd>{{ formatCurrencyInr(entry.expected_amount) }}</dd>
+        </div>
+        <div>
+          <dt>Handed over</dt>
+          <dd>{{ formatCurrencyInr(entry.actual_amount) }}</dd>
+        </div>
+        @if (+entry.shortfall > 0) {
+        <div>
+          <dt>Shortfall</dt>
+          <dd class="register__short">{{ formatCurrencyInr(entry.shortfall) }}</dd>
+        </div>
+        } @if (+entry.excess > 0) {
+        <div>
+          <dt>Excess</dt>
+          <dd>{{ formatCurrencyInr(entry.excess) }}</dd>
+        </div>
+        }
+      </dl>
+
+      @if (entry.review; as review) {
+      <p class="page-lede">
+        {{ review.outcome === 'accepted' ? 'Accepted' : 'Disputed' }} by {{ review.reviewed_by_name
+        ?? 'a colleague' }} on {{ formatTimestamp(review.reviewed_at) }}{{ review.note ? ': ' +
+        review.note : '.' }}
+      </p>
+      } @else {
+      <label class="register__note" for="handover-note">
+        <span
+          >Note {{ noteRequired('accepted') ? '(required to accept a short handover)' : '(optional)'
+          }}</span
+        >
+        <textarea
+          pTextarea
+          id="handover-note"
+          rows="3"
+          [value]="note()"
+          (input)="note.set($any($event.target).value)"
+        ></textarea>
+      </label>
+      }
+    </div>
+    @if (!entry.review) {
+    <div class="modal-actions">
+      <button
+        pButton
+        type="button"
+        severity="danger"
+        [outlined]="true"
+        [disabled]="submitting()"
+        (click)="review('disputed')"
+      >
+        Dispute
+      </button>
+      <button pButton type="button" [disabled]="submitting()" (click)="review('accepted')">
+        Accept
+      </button>
+    </div>
+    }
+  </div>
+  }
+</p-drawer>

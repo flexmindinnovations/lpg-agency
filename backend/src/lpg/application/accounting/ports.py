@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     import uuid
+    from datetime import datetime
     from decimal import Decimal
 
     from lpg.application.order.ports import ProofOfDeliveryEntry
-    from lpg.domain.accounting.cash_handover import CashHandover
+    from lpg.domain.accounting.cash_handover import CashHandover, CashHandoverReview
     from lpg.domain.accounting.credit_note import CreditNote
     from lpg.domain.accounting.invoice import Invoice
     from lpg.domain.accounting.online_payment import OnlinePayment
@@ -63,14 +65,28 @@ class InvoiceRepository(Protocol):
         customer_id: uuid.UUID | None = None,
         order_id: uuid.UUID | None = None,
         status: str | None = None,
-    ) -> list[Invoice]: ...
+        issued_from: datetime | None = None,
+        issued_to: datetime | None = None,
+        search: str | None = None,
+    ) -> list[Invoice]:
+        """Newest first. `search` matches invoice, order and consumer
+        numbers and the customer's name; `issued_to` is exclusive.
+        """
 
     async def count_invoices(
         self,
         customer_id: uuid.UUID | None = None,
         order_id: uuid.UUID | None = None,
         status: str | None = None,
+        issued_from: datetime | None = None,
+        issued_to: datetime | None = None,
+        search: str | None = None,
     ) -> int: ...
+
+    async def customer_names(self, customer_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+        """Display names for the invoices' customers, for list and print
+        views — one query instead of a customer lookup per row.
+        """
 
     async def get_by_order_id(self, tenant_id: uuid.UUID, order_id: uuid.UUID) -> Invoice | None:
         """Load an invoice by its associated order ID.
@@ -84,10 +100,48 @@ class InvoiceRepository(Protocol):
         """
 
     async def get_outstanding_balance(self, customer_id: uuid.UUID) -> Decimal:
-        """Sum `total_amount` across this customer's `issued` (unpaid)
-        invoices — same definition `rpt.vw_outstanding_balances` uses.
-        Returns `Decimal("0")` if there are none.
+        """What this customer still owes across `issued` and
+        `partially_paid` invoices (total less payments). Returns
+        `Decimal("0")` if there are none.
         """
+
+
+@dataclass(frozen=True, slots=True)
+class UninvoicedOrder:
+    """A delivered order with no invoice, or an approved cancellation whose
+    charge was never billed — almost always because GST was not configured
+    when it happened (DA-06, DO-14).
+    """
+
+    order_id: uuid.UUID
+    order_number: str | None
+    customer_id: uuid.UUID
+    customer_name: str
+    status: str
+    occurred_at: datetime
+    order_total: Decimal | None
+    cancellation_charge: Decimal | None
+
+
+class UninvoicedOrderReader(Protocol):
+    """Read side over Order Management for billing gaps."""
+
+    async def list_uninvoiced(self, *, limit: int = 100) -> list[UninvoicedOrder]: ...
+
+    async def get_uninvoiced(self, order_id: uuid.UUID) -> UninvoicedOrder | None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class CashHandoverRegisterEntry:
+    """One row of the accountant's cash-handover register (DA-33)."""
+
+    handover: CashHandover
+    driver_name: str
+    vehicle_registration: str | None
+    route_date: datetime
+    cash_stop_count: int
+    review: CashHandoverReview | None
+    reviewer_name: str | None
 
 
 class CashHandoverRepository(Protocol):
@@ -114,6 +168,28 @@ class CashHandoverRepository(Protocol):
         route (BR-32) — the caller relies on that.
         """
 
+    async def get_by_id(self, cash_handover_id: uuid.UUID) -> CashHandover | None: ...
+
+    async def list_register(
+        self,
+        *,
+        declared_from: datetime | None = None,
+        declared_to: datetime | None = None,
+        driver_id: uuid.UUID | None = None,
+        review_status: str | None = None,
+        limit: int = 200,
+    ) -> list[CashHandoverRegisterEntry]:
+        """Newest first. `review_status` is `pending`, `accepted` or
+        `disputed`; `declared_to` is exclusive.
+        """
+
+    async def add_review(self, review: CashHandoverReview) -> None: ...
+
+    async def get_review(self, cash_handover_id: uuid.UUID) -> CashHandoverReview | None: ...
+
+    async def cash_awaiting_handover(self) -> Decimal:
+        """Cash drivers collected on routes with no handover declared yet."""
+
 
 class CreditNoteRepository(Protocol):
     """Repository for the `CreditNote` aggregate."""
@@ -129,6 +205,9 @@ class CreditNoteRepository(Protocol):
         """
 
     async def get_by_id(self, credit_note_id: uuid.UUID) -> CreditNote | None: ...
+
+    async def list_for_invoice(self, invoice_id: uuid.UUID) -> list[CreditNote]:
+        """Oldest first."""
 
 
 class OnlinePaymentRepository(Protocol):

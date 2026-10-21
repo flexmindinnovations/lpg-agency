@@ -12,6 +12,7 @@ import { DriverPerformanceResponse } from '../../models/driver-performance-respo
 export interface GetDriverPerformanceApiV1ReportingDriversGet$Params {
   start_date: string;
   end_date: string;
+  branch_id?: (string | null);
 }
 
 export function getDriverPerformanceApiV1ReportingDriversGet(http: HttpClient, rootUrl: string, params: GetDriverPerformanceApiV1ReportingDriversGet$Params, context?: HttpContext): Observable<StrictHttpResponse<Array<DriverPerformanceResponse>>> {
@@ -19,6 +20,7 @@ export function getDriverPerformanceApiV1ReportingDriversGet(http: HttpClient, r
   if (params) {
     rb.query('start_date', params.start_date, {});
     rb.query('end_date', params.end_date, {});
+    rb.query('branch_id', params.branch_id, {});
   }
 
   return http.request(

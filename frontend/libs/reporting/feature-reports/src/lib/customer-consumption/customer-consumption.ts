@@ -23,7 +23,6 @@ export class CustomerConsumption implements OnInit {
       field: 'avg_refill_interval_days',
       header: 'Avg Refill Interval (days)',
       numeric: true,
-      width: 240,
       valueFormatter: (v) => formatDecimal(v, 1),
     },
   ];

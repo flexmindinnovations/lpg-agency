@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING, Annotated, Any
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from lpg.api.v1.dependencies.accounting import (
     get_cash_handover_number_sequence,
@@ -16,8 +19,11 @@ from lpg.api.v1.dependencies.identity import get_current_principal, require_perm
 from lpg.api.v1.dependencies.order import get_idempotency_service
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.cash_handover import (
+    CashHandoverRegisterEntryResponse,
     CashHandoverResponse,
+    CashHandoverReviewResponse,
     DeclareCashHandoverRequest,
+    ReviewCashHandoverRequest,
     RouteCashHandoverResponse,
 )
 from lpg.application.accounting.ports import CashHandoverNumberSequence, CashHandoverRepository
@@ -26,6 +32,10 @@ from lpg.application.accounting.use_cases import (
     DeclareCashHandoverUseCase,
     GetRouteCashHandoverViewQuery,
     GetRouteCashHandoverViewUseCase,
+    ListCashHandoverRegisterQuery,
+    ListCashHandoverRegisterUseCase,
+    ReviewCashHandoverCommand,
+    ReviewCashHandoverUseCase,
 )
 from lpg.application.common.ports import UnitOfWork
 from lpg.application.delivery.ports import DriverRepository, RouteRepository
@@ -33,9 +43,12 @@ from lpg.application.identity.ports import AuthenticatedPrincipal
 from lpg.infrastructure.idempotency.service import IdempotencyService, run_idempotent
 
 if TYPE_CHECKING:
+    from lpg.application.accounting.ports import CashHandoverRegisterEntry
     from lpg.domain.accounting.cash_handover import CashHandover
 
 router = APIRouter(prefix="/cash-handovers", tags=["Cash Handovers"])
+
+_IST = ZoneInfo("Asia/Kolkata")
 
 
 def _to_response(handover: CashHandover) -> CashHandoverResponse:
@@ -137,3 +150,112 @@ async def declare_cash_handover(
         operation=_operation,
     )
     return CashHandoverResponse.model_validate(result)
+
+
+def _register_entry_to_response(
+    entry: CashHandoverRegisterEntry,
+) -> CashHandoverRegisterEntryResponse:
+    handover = entry.handover
+    review = entry.review
+    excess = handover.actual_amount - handover.expected_amount
+    return CashHandoverRegisterEntryResponse(
+        id=handover.id,
+        handover_number=handover.handover_number,
+        driver_id=handover.driver_id,
+        driver_name=entry.driver_name,
+        route_id=handover.route_id,
+        route_date=entry.route_date,
+        vehicle_registration=entry.vehicle_registration,
+        cash_stop_count=entry.cash_stop_count,
+        expected_amount=handover.expected_amount,
+        actual_amount=handover.actual_amount,
+        shortfall=handover.shortfall,
+        excess=excess if excess > 0 else Decimal("0"),
+        declared_at=handover.declared_at,
+        review_status=review.outcome if review is not None else "pending",
+        review=(
+            CashHandoverReviewResponse(
+                id=review.id,
+                outcome=review.outcome,
+                note=review.note,
+                reviewed_by=review.reviewed_by,
+                reviewed_by_name=entry.reviewer_name,
+                reviewed_at=review.reviewed_at,
+            )
+            if review is not None
+            else None
+        ),
+    )
+
+
+@router.get(
+    "",
+    response_model=list[CashHandoverRegisterEntryResponse],
+    dependencies=[Depends(require_permission("cash_handovers:review"))],
+)
+async def list_cash_handover_register(
+    cash_handover_repository: Annotated[
+        CashHandoverRepository, Depends(get_cash_handover_repository)
+    ],
+    declared_from: Annotated[date | None, Query(description="First day, inclusive (IST)")] = None,
+    declared_to: Annotated[date | None, Query(description="Last day, inclusive (IST)")] = None,
+    driver_id: uuid.UUID | None = None,
+    review_status: Annotated[str | None, Query(description="pending, accepted or disputed")] = None,
+) -> list[CashHandoverRegisterEntryResponse]:
+    """The accountant's cash-handover register (DA-33): every driver's
+    declared cash against what their deliveries say they collected, with
+    shortfalls and the office's review.
+    """
+    entries = await ListCashHandoverRegisterUseCase(cash_handover_repository).execute(
+        ListCashHandoverRegisterQuery(
+            declared_from=(
+                datetime.combine(declared_from, time.min, tzinfo=_IST) if declared_from else None
+            ),
+            declared_to=(
+                datetime.combine(declared_to + timedelta(days=1), time.min, tzinfo=_IST)
+                if declared_to
+                else None
+            ),
+            driver_id=driver_id,
+            review_status=review_status,
+        )
+    )
+    return [_register_entry_to_response(entry) for entry in entries]
+
+
+@router.post(
+    "/{cash_handover_id}/review",
+    response_model=CashHandoverReviewResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("cash_handovers:review"))],
+)
+async def review_cash_handover(
+    cash_handover_id: uuid.UUID,
+    request: ReviewCashHandoverRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+    cash_handover_repository: Annotated[
+        CashHandoverRepository, Depends(get_cash_handover_repository)
+    ],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> CashHandoverReviewResponse:
+    """Accept the counted cash, or dispute it with a note. One review per
+    handover; the person who declared it cannot review it. A short handover
+    can only be accepted with a note on how the shortfall was settled.
+    """
+    if principal.user_id is None:
+        raise HTTPException(status_code=401, detail="User ID is required.")
+    review = await ReviewCashHandoverUseCase(cash_handover_repository, unit_of_work).execute(
+        ReviewCashHandoverCommand(
+            cash_handover_id=cash_handover_id,
+            outcome=request.outcome,
+            note=request.note,
+            reviewed_by=principal.user_id,
+        )
+    )
+    return CashHandoverReviewResponse(
+        id=review.id,
+        outcome=review.outcome,
+        note=review.note,
+        reviewed_by=review.reviewed_by,
+        reviewed_at=review.reviewed_at,
+    )

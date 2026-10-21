@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from lpg.application.printing.amount_in_words import rupees_in_words
 from lpg.application.printing.models import (
     CustomerInfo,
     InvoicePrintPayload,
@@ -11,6 +12,7 @@ from lpg.application.printing.models import (
     TenantHeader,
 )
 from lpg.config.logging import get_logger
+from lpg.domain.common.gst import GstSplit, state_name_for
 
 if TYPE_CHECKING:
     import uuid
@@ -19,8 +21,10 @@ if TYPE_CHECKING:
     from lpg.application.common.ports import FileStorage
     from lpg.application.customer.ports import CustomerRepository
     from lpg.application.printing.ports import PrintingEngine
-    from lpg.application.tenant.ports import CylinderTypeRepository
+    from lpg.application.tenant.ports import CylinderTypeRepository, TenantRepository
+    from lpg.domain.accounting.invoice import Invoice
     from lpg.domain.customer.customer import Customer
+    from lpg.domain.tenant.tenant import Tenant
 
 _logger = get_logger(__name__)
 
@@ -52,12 +56,14 @@ class GeneratePrintJobUseCase:
         invoice_repository: InvoiceRepository,
         customer_repository: CustomerRepository,
         cylinder_type_repository: CylinderTypeRepository,
+        tenant_repository: TenantRepository,
         storage: FileStorage,
     ) -> None:
         self._engine = printing_engine
         self._invoice_repo = invoice_repository
         self._customer_repo = customer_repository
         self._cylinder_type_repo = cylinder_type_repository
+        self._tenant_repo = tenant_repository
         self._storage = storage
 
     async def execute(self, command: PrintJobCommand) -> PrintJobResult:
@@ -73,42 +79,27 @@ class GeneratePrintJobUseCase:
             raise ValueError(msg)
 
         customer = await self._customer_repo.get_by_id(invoice.customer_id)
-        customer_info = self._build_customer_info(customer, invoice.customer_id)
-
-        # Resolve each distinct cylinder type once, even if it appears on
-        # multiple lines.
-        cylinder_type_names: dict[uuid.UUID, str] = {}
-        for line in invoice.lines:
-            if line.cylinder_type_id not in cylinder_type_names:
-                cylinder_type = await self._cylinder_type_repo.get(line.cylinder_type_id)
-                fallback = f"Cylinder Type {str(line.cylinder_type_id)[:8]}"
-                name = cylinder_type.name if cylinder_type else fallback
-                cylinder_type_names[line.cylinder_type_id] = name
-
-        # Assemble the fully-resolved print payload
+        customer_info = self._build_customer_info(
+            customer, invoice.customer_id, gstin=invoice.customer_gstin
+        )
+        tenant = await self._tenant_repo.get(invoice.tenant_id)
+        split = invoice.tax_split()
         payload = InvoicePrintPayload(
-            # Legacy fallback only for pre-backfill rows still missing the
-            # persisted number — every invoice generated after this
-            # migration series always has one.
-            invoice_number=invoice.invoice_number or f"INV-{str(invoice.id)[:8].upper()}",
-            tenant_header=TenantHeader(
-                agency_name="LPG Agency",  # TODO: resolve from tenant config
-            ),
+            invoice_number=invoice.invoice_number or "Not numbered",
+            tenant_header=self._build_tenant_header(tenant),
             customer=customer_info,
-            line_items=[
-                PrintLineItem(
-                    description=cylinder_type_names[line.cylinder_type_id],
-                    quantity=line.quantity,
-                    unit_price=line.unit_price,
-                    subtotal=line.subtotal,
-                    tax_amount=line.tax_amount,
-                    total_amount=line.total_amount,
-                )
-                for line in invoice.lines
-            ],
+            line_items=await self._build_line_items(invoice),
             subtotal=invoice.subtotal,
+            cgst_amount=split.cgst,
+            sgst_amount=split.sgst,
+            igst_amount=split.igst,
             tax_amount=invoice.tax_amount,
             total_amount=invoice.total_amount,
+            total_in_words=rupees_in_words(invoice.total_amount),
+            place_of_supply=self._place_of_supply(invoice.place_of_supply_state_code),
+            is_inter_state=invoice.is_inter_state,
+            amount_paid=invoice.amount_paid,
+            balance_due=invoice.balance_due,
             payment_status=invoice.status,
             issued_at=invoice.issued_at,
             qr_code_data=f"lpg-invoice:{invoice.id}",
@@ -148,10 +139,66 @@ class GeneratePrintJobUseCase:
             content_type=content_type,
         )
 
+    async def _build_line_items(self, invoice: Invoice) -> list[PrintLineItem]:
+        # Resolve each distinct cylinder type once, even if it appears on
+        # multiple lines.
+        names: dict[uuid.UUID, str] = {}
+        for line in invoice.lines:
+            if line.cylinder_type_id not in names:
+                cylinder_type = await self._cylinder_type_repo.get(line.cylinder_type_id)
+                names[line.cylinder_type_id] = (
+                    cylinder_type.name if cylinder_type else "LPG cylinder"
+                )
+        items: list[PrintLineItem] = []
+        for line in invoice.lines:
+            split = GstSplit.of(line.tax_amount, inter_state=invoice.is_inter_state)
+            name = names[line.cylinder_type_id]
+            items.append(
+                PrintLineItem(
+                    description=f"{line.description} ({name})" if line.description else name,
+                    hsn_code=line.hsn_code or "",
+                    gst_rate_percent=line.gst_rate_percent,
+                    quantity=line.quantity,
+                    unit_price=line.unit_price,
+                    subtotal=line.subtotal,
+                    cgst_amount=split.cgst,
+                    sgst_amount=split.sgst,
+                    igst_amount=split.igst,
+                    tax_amount=line.tax_amount,
+                    total_amount=line.total_amount,
+                )
+            )
+        return items
+
     @staticmethod
-    def _build_customer_info(customer: Customer | None, customer_id: uuid.UUID) -> CustomerInfo:
+    def _build_tenant_header(tenant: Tenant | None) -> TenantHeader:
+        profile = tenant.business_profile if tenant is not None else None
+        if profile is None:
+            # Unconfigured agency: print what is known, never a made-up name.
+            return TenantHeader(agency_name=tenant.name if tenant is not None else "")
+        return TenantHeader(
+            agency_name=profile.legal_name,
+            address_line_1=profile.address_line_1,
+            address_line_2=profile.address_line_2 or "",
+            city=profile.city,
+            state=profile.state_name,
+            state_code=profile.state_code,
+            pincode=profile.pincode,
+            gstin=profile.gstin or "",
+            phone=profile.phone or "",
+        )
+
+    @staticmethod
+    def _place_of_supply(state_code: str | None) -> str:
+        name = state_name_for(state_code)
+        return f"{state_code}-{name}" if state_code and name else ""
+
+    @staticmethod
+    def _build_customer_info(
+        customer: Customer | None, customer_id: uuid.UUID, *, gstin: str | None = None
+    ) -> CustomerInfo:
         if customer is None:
-            return CustomerInfo(name=f"Customer {str(customer_id)[:8]}")
+            return CustomerInfo(name=f"Customer {str(customer_id)[:8]}", gstin=gstin or "")
 
         address = next((a for a in customer.addresses if a.is_primary), None) or next(
             iter(customer.addresses), None
@@ -166,4 +213,5 @@ class GeneratePrintJobUseCase:
             consumer_number=customer.consumer_number or "",
             address=address_line,
             phone=customer.phone_number,
+            gstin=gstin or "",
         )

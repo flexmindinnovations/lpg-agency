@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { ConfirmationService } from 'primeng/api';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -96,8 +97,8 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
             </p-iconfield>
           </div>
           <div class="data-toolbar__actions">
-            <button pButton severity="secondary">
-              <i class="pi pi-file-excel"></i><span>Export</span>
+            <button pButton severity="secondary" type="button" (click)="exportCsv()">
+              <i class="pi pi-file-excel"></i><span>Export CSV</span>
             </button>
             <button pButton (click)="openInviteDrawer()">
               <i class="pi pi-user-plus"></i><span>Invite User</span>
@@ -441,6 +442,13 @@ const ROLE_OPTIONS = ASSIGNABLE_STAFF_ROLES.map((value) => ({ label: roleLabel(v
   ],
 })
 export class StaffUsersPage implements OnInit {
+  private readonly grid = viewChild(DataGridComponent);
+
+  /** DA-14: the grid as shown (filtered, sorted, formatted) as a CSV file. */
+  protected exportCsv(): void {
+    this.grid()?.exportCsv('staff-users');
+  }
+
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly staffUserService = inject(AdminStaffUserService);
   private readonly authService = inject(AuthService);

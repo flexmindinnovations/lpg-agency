@@ -306,6 +306,13 @@ export const appRoutes: Route[] = [
           import('@lpg/accounting/feature-invoices').then((m) => m.featureInvoicesRoutes),
       },
       {
+        path: 'cash-handovers',
+        canActivate: [permissionGuard('cash_handovers:review')],
+        data: { breadcrumbs: [{ label: 'Cash Handovers', routerLink: '/cash-handovers' }] },
+        loadChildren: () =>
+          import('@lpg/accounting/feature-invoices').then((m) => m.cashHandoverRegisterRoutes),
+      },
+      {
         path: 'complaints',
         canActivate: [permissionGuard('complaints.manage')],
         data: { breadcrumbs: [{ label: 'Complaints', routerLink: '/complaints' }] },

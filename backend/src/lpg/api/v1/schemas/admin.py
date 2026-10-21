@@ -25,6 +25,18 @@ from lpg.domain.tenant.tenant import (
 # -- Tenant -----------------------------------------------------------------
 
 
+class AgencyBusinessProfileResponse(BaseModel):
+    legal_name: str
+    gstin: str | None
+    address_line_1: str
+    address_line_2: str | None
+    city: str
+    state_code: str
+    state_name: str
+    pincode: str
+    phone: str | None
+
+
 class TenantResponse(BaseModel):
     id: str
     name: str
@@ -33,6 +45,25 @@ class TenantResponse(BaseModel):
     subscription_plan: str
     primary_contact_email: str
     country: str
+    #: `None` until the agency enters its GST details — invoices then
+    #: print "GSTIN not registered" (DA-13).
+    business_profile: AgencyBusinessProfileResponse | None = None
+
+
+class UpdateAgencyBusinessProfileRequest(BaseModel):
+    legal_name: str = Field(min_length=1, max_length=200)
+    gstin: str | None = Field(default=None, max_length=15)
+    address_line_1: str = Field(min_length=1, max_length=200)
+    address_line_2: str | None = Field(default=None, max_length=200)
+    city: str = Field(min_length=1, max_length=100)
+    state_code: str = Field(pattern=r"^[0-9]{2}$")
+    pincode: str = Field(pattern=r"^[1-9][0-9]{5}$")
+    phone: str | None = Field(default=None, max_length=20)
+
+
+class GstStateResponse(BaseModel):
+    code: str
+    name: str
 
 
 class CreateAgencyRequest(BaseModel):
@@ -146,11 +177,22 @@ class CylinderTypeResponse(BaseModel):
     name: str
     weight_kg: Decimal
     is_active: bool
+    #: GST classification invoices use (BR-16). Both `None` until set —
+    #: invoices for this cylinder type are held until then.
+    hsn_code: str | None = None
+    gst_rate_percent: Decimal | None = None
 
 
 class CreateCylinderTypeRequest(BaseModel):
     name: str = Field(min_length=1)
     weight_kg: Decimal = Field(gt=0)
+    hsn_code: str | None = Field(default=None, pattern=r"^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$")
+    gst_rate_percent: Decimal | None = Field(default=None, ge=0, le=28)
+
+
+class ClassifyCylinderTypeForGstRequest(BaseModel):
+    hsn_code: str = Field(pattern=r"^(?:[0-9]{4}|[0-9]{6}|[0-9]{8})$")
+    gst_rate_percent: Decimal = Field(ge=0, le=28)
 
 
 class RenameCylinderTypeRequest(BaseModel):

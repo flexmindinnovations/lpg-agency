@@ -26,6 +26,7 @@ import {
   SkeletonComponent,
   StatCardComponent,
   type StatTone,
+  formatCurrencyInr,
   toSentenceCase,
 } from '@lpg/shared/ui';
 import { formatDisplayDate } from '@lpg/shared/util';
@@ -35,6 +36,7 @@ import {
   type CylinderTypePriceCardResponse,
   type DashboardActivityEntryResponse,
   DashboardSummaryResponse,
+  type OperationsSnapshotResponse,
   type RefillDueCustomerResponse,
   WebSocketService,
 } from '@lpg/shared/data-access';
@@ -101,6 +103,10 @@ function chartSummary(
   return `${title}: ${parts.join(', ')}.`;
 }
 
+function tile(title: string, value: number, icon: string, tone: StatTone, route: string): KpiData {
+  return { title, value: value.toLocaleString('en-IN'), icon, tone, route };
+}
+
 @Component({
   selector: 'lpg-home',
   standalone: true,
@@ -124,6 +130,24 @@ function chartSummary(
       </ng-template>
 
       <lpg-setup-checklist />
+      <!-- Today's operations (DO-28) — what the day's work looks like. -->
+      @if (operationsKpis().length > 0) {
+        <section class="dashboard__ops" aria-labelledby="ops-heading">
+          <h2 id="ops-heading" class="dashboard__section-title">Today's operations</h2>
+          <div class="dashboard__kpis">
+            @for (kpi of operationsKpis(); track kpi.title) {
+              <lpg-stat-card
+                [label]="kpi.title"
+                [value]="kpi.value"
+                [icon]="kpi.icon"
+                [tone]="kpi.tone"
+                [loading]="loading()"
+                [route]="kpi.route"
+              />
+            }
+          </div>
+        </section>
+      }
 
       <!-- KPI Section — each card links to the module it summarises. -->
       <section class="dashboard__kpis">
@@ -191,17 +215,16 @@ function chartSummary(
       </lpg-section-card>
 
       <!-- Price Cards -->
-      <lpg-section-card
-        *lpgHasPermission="'tenant:configure'"
-        heading="Cylinder Pricing (Domestic)"
-      >
+      <lpg-section-card *lpgHasPermission="'tenant:configure'" heading="Cylinder Prices">
         @if (priceCards().length > 0) {
           <div class="mini-cards">
             @for (card of priceCards(); track card.cylinder_type_id) {
               <div class="mini-card">
-                <span class="mini-card__label">{{ card.name }} · {{ card.weight_kg }} kg</span>
+                <span class="mini-card__label"
+                  >{{ card.name }} · {{ customerTypeLabel(card.customer_type) }} price</span
+                >
                 <span class="mini-card__value">
-                  {{ card.price ? '₹' + card.price : 'Not configured' }}
+                  {{ card.price ? formatCurrencyInr(card.price) : 'No price set' }}
                 </span>
               </div>
             }
@@ -255,6 +278,12 @@ function chartSummary(
         display: flex;
         flex-direction: column;
         gap: var(--spacing-xl);
+      }
+
+      .dashboard__section-title {
+        margin: 0 0 var(--spacing-md);
+        font-size: var(--typography-heading3-font-size);
+        font-weight: var(--typography-heading3-font-weight);
       }
 
       .dashboard__kpis {
@@ -327,6 +356,96 @@ export class Home implements OnDestroy {
   private readonly summary = signal<DashboardSummaryResponse | null>(null);
 
   protected readonly kpis = signal<KpiData[]>([]);
+  private readonly operations = signal<OperationsSnapshotResponse | null>(null);
+  protected readonly formatCurrencyInr = formatCurrencyInr;
+  protected readonly customerTypeLabel = (type: string): string => toSentenceCase(type);
+
+  /** DO-28: the day's pipeline first; invoice and cash tiles only appear
+   * when the server included them (the caller may see them). */
+  protected readonly operationsKpis = computed<KpiData[]>(() => {
+    const ops = this.operations();
+    if (!ops) return [];
+    const open = ops.orders.open_by_status;
+    const count = (...statuses: string[]) =>
+      statuses.reduce((sum, status) => sum + (open[status] ?? 0), 0);
+    const kpis: KpiData[] = [
+      tile('Bookings today', ops.orders.bookings_today, 'pi pi-calendar-plus', 'info', '/orders'),
+      tile('Awaiting confirmation', count('booked'), 'pi pi-inbox', 'warning', '/orders'),
+      tile(
+        'Waiting for a trip',
+        count('confirmed', 'assigned', 'ready_for_dispatch'),
+        'pi pi-clock',
+        'warning',
+        '/orders',
+      ),
+      tile('Out for delivery', count('out_for_delivery'), 'pi pi-truck', 'primary', '/orders'),
+      tile(
+        'Delivered today',
+        ops.orders.delivered_today,
+        'pi pi-check-circle',
+        'success',
+        '/orders',
+      ),
+      tile('Failed today', ops.orders.failed_today, 'pi pi-times-circle', 'danger', '/orders'),
+      tile(
+        'Cancellations to approve',
+        ops.orders.pending_cancellations,
+        'pi pi-ban',
+        'warning',
+        '/orders',
+      ),
+      tile('Open complaints', ops.open_complaints, 'pi pi-comments', 'warning', '/complaints'),
+      tile('Low-stock locations', ops.low_stock_count, 'pi pi-box', 'danger', '/inventory'),
+    ];
+    if (ops.invoices) {
+      kpis.push(
+        {
+          title: `Outstanding (${ops.invoices.outstanding_count} invoices)`,
+          value: formatCurrencyInr(ops.invoices.outstanding_amount),
+          icon: 'pi pi-wallet',
+          tone: 'info',
+          route: '/invoices',
+        },
+        {
+          title: `Overdue > ${ops.payment_terms_days} days (${ops.invoices.overdue_count})`,
+          value: formatCurrencyInr(ops.invoices.overdue_amount),
+          icon: 'pi pi-exclamation-circle',
+          tone: 'danger',
+          route: '/invoices',
+        },
+      );
+      if (ops.invoices.on_hold_count > 0) {
+        kpis.push(
+          tile(
+            'Invoices on hold',
+            ops.invoices.on_hold_count,
+            'pi pi-pause',
+            'danger',
+            '/invoices',
+          ),
+        );
+      }
+    }
+    if (ops.cash) {
+      kpis.push(
+        {
+          title: 'Cash with drivers',
+          value: formatCurrencyInr(ops.cash.awaiting_handover),
+          icon: 'pi pi-money-bill',
+          tone: 'warning',
+          route: '/cash-handovers',
+        },
+        tile(
+          'Handovers to verify',
+          ops.cash.handovers_awaiting_review,
+          'pi pi-verified',
+          'info',
+          '/cash-handovers',
+        ),
+      );
+    }
+    return kpis;
+  });
   protected readonly inventoryCards = signal<InventoryStatusCard[]>([]);
   protected readonly priceCards = signal<CylinderTypePriceCardResponse[]>([]);
 
@@ -365,8 +484,10 @@ export class Home implements OnDestroy {
       .map((entry) => ({
         time: formatTimestamp(entry.performed_at),
         icon: ACTION_ICON[entry.action] ?? 'pi pi-circle',
-        title: formatEntityName(entry.entity_name),
-        description: entry.entity_display_name ?? undefined,
+        title: entry.entity_display_name
+          ? `${formatEntityName(entry.entity_name)} ${entry.entity_display_name}`
+          : formatEntityName(entry.entity_name),
+        description: entry.actor_display_name ? `by ${entry.actor_display_name}` : undefined,
         status: entry.action
           ? (ACTION_LABEL[entry.action] ?? toSentenceCase(entry.action))
           : undefined,
@@ -441,6 +562,11 @@ export class Home implements OnDestroy {
 
   private loadDashboardData(): void {
     this.loading.set(true);
+
+    this.dashboardService
+      .getOperations()
+      .pipe(catchError(() => of(null)))
+      .subscribe((operations) => this.operations.set(operations));
 
     this.dashboardService
       .getSummary()

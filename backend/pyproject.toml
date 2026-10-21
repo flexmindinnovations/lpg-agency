@@ -398,6 +398,15 @@ ignore_imports = [
     # its own UnitOfWork-scoped seam) the concrete SqlAlchemyUnitOfWork type.
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.accounting",
     "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.unit_of_work",
+    # DA-06: dependencies/accounting.py builds the same invoice generator
+    # the post-delivery event handler does, so a held invoice can be issued
+    # from the dashboard once GST is configured.
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.customer",
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.order",
+    "lpg.api.v1.dependencies.accounting -> lpg.infrastructure.persistence.repositories.tenant",
+    # DO-28: dependencies/dashboard.py wires the Home page's operations reader.
+    "lpg.api.v1.dependencies.dashboard -> lpg.infrastructure.persistence.repositories.dashboard",
+    "lpg.api.v1.dependencies.dashboard -> lpg.infrastructure.persistence.unit_of_work",
     # ADR-053: dependencies/payments.py wires the payment gateway factory,
     # the online-payment repository, and the webhook's own tenant-scoped
     # Unit of Work (a webhook has no JWT to resolve a tenant from).

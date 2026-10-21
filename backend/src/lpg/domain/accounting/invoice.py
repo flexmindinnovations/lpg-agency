@@ -10,6 +10,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from lpg.domain.common.base import AggregateRoot, DomainEvent, InvariantViolation
+from lpg.domain.common.gst import GstSplit
 
 if TYPE_CHECKING:
     import uuid
@@ -63,7 +64,11 @@ class InvoiceLine:
 
     __slots__ = (
         "cylinder_type_id",
+        "description",
+        "gst_rate_percent",
+        "hsn_code",
         "id",
+        "kind",
         "quantity",
         "subtotal",
         "tax_amount",
@@ -80,7 +85,15 @@ class InvoiceLine:
         subtotal: Decimal,
         tax_amount: Decimal,
         total_amount: Decimal,
+        *,
+        hsn_code: str | None = None,
+        gst_rate_percent: Decimal | None = None,
+        kind: str = "supply",
+        description: str | None = None,
     ) -> None:
+        if kind not in INVOICE_LINE_KINDS:
+            msg = f"'{kind}' is not a valid invoice line kind."
+            raise InvariantViolation(msg, kind=kind)
         if quantity <= 0:
             msg = f"Invoice line quantity must be > 0, got {quantity}."
             raise InvariantViolation(msg)
@@ -95,6 +108,14 @@ class InvoiceLine:
         self.subtotal = subtotal
         self.tax_amount = tax_amount
         self.total_amount = total_amount
+        #: Snapshot of the GST classification at issue (BR-16) — a later
+        #: rate change on the cylinder type never rewrites an issued
+        #: invoice. `None` only on invoices issued before GST was per
+        #: cylinder type.
+        self.hsn_code = hsn_code
+        self.gst_rate_percent = gst_rate_percent
+        self.kind = kind
+        self.description = description
 
 
 class Payment:
@@ -106,7 +127,7 @@ class Payment:
     rather than a single scalar field.
     """
 
-    __slots__ = ("amount", "collected_at", "collected_by", "id", "method")
+    __slots__ = ("amount", "collected_at", "collected_by", "id", "method", "reference")
 
     def __init__(
         self,
@@ -115,6 +136,7 @@ class Payment:
         amount: Decimal,
         collected_by: uuid.UUID,
         collected_at: datetime,
+        reference: str | None = None,
     ) -> None:
         if method not in PAYMENT_METHODS:
             msg = f"'{method}' is not a valid payment method."
@@ -128,6 +150,29 @@ class Payment:
         self.amount = amount
         self.collected_by = collected_by
         self.collected_at = collected_at
+        #: UPI transaction id, cheque number or bank UTR — what the
+        #: accountant reconciles the bank statement against.
+        self.reference = (reference or "").strip() or None
+
+
+@dataclass(frozen=True, slots=True)
+class PlaceOfSupply:
+    """Who supplies whom, from where to where — decides CGST+SGST versus
+    IGST (IGST Act s.10). Snapshotted on the invoice at issue so a later
+    change to the agency's or customer's details never rewrites it.
+    """
+
+    supplier_state_code: str | None = None
+    place_of_supply_state_code: str | None = None
+    customer_gstin: str | None = None
+
+    @property
+    def is_inter_state(self) -> bool:
+        return (
+            self.supplier_state_code is not None
+            and self.place_of_supply_state_code is not None
+            and self.supplier_state_code != self.place_of_supply_state_code
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +186,21 @@ INVOICE_STATUSES: frozenset[str] = frozenset(
 # Mirrors `domain/order/order.py`'s `PAYMENT_METHODS` — duplicated rather
 # than imported, since `accounting` has no other dependency on the `order`
 # domain and one frozenset isn't worth introducing one for.
-PAYMENT_METHODS: frozenset[str] = frozenset({"cash", "upi", "card", "online_gateway", "credit"})
+PAYMENT_METHODS: frozenset[str] = frozenset(
+    {"cash", "upi", "card", "online_gateway", "credit", "cheque", "bank_transfer"}
+)
+
+#: Methods an office user records against an invoice from the dashboard.
+#: `online_gateway` is applied by the gateway webhook, and `credit` is not
+#: a payment at all (goods taken on account).
+STAFF_PAYMENT_METHODS: frozenset[str] = frozenset(
+    {"cash", "upi", "card", "cheque", "bank_transfer"}
+)
+
+#: `supply` is a cylinder delivered; `cancellation_charge` is the fee for
+#: an order cancelled after dispatch (D-19, DO-14), billed at the rate of
+#: the supply it relates to.
+INVOICE_LINE_KINDS: frozenset[str] = frozenset({"supply", "cancellation_charge"})
 
 
 class Invoice(AggregateRoot):
@@ -155,15 +214,19 @@ class Invoice(AggregateRoot):
 
     __slots__ = (
         "_customer_consumer_number",
+        "_customer_gstin",
         "_customer_id",
         "_invoice_number",
+        "_is_inter_state",
         "_issued_at",
         "_lines",
         "_order_id",
         "_order_number",
         "_payments",
+        "_place_of_supply_state_code",
         "_status",
         "_subtotal",
+        "_supplier_state_code",
         "_tax_amount",
         "_tenant_id",
         "_total_amount",
@@ -186,6 +249,7 @@ class Invoice(AggregateRoot):
         payments: Sequence[Payment] = (),
         order_number: str | None = None,
         customer_consumer_number: str | None = None,
+        supply: PlaceOfSupply | None = None,
         version: int = 1,
     ) -> None:
         super().__init__(invoice_id, version=version)
@@ -230,6 +294,11 @@ class Invoice(AggregateRoot):
         self._issued_at = issued_at
         self._lines: list[InvoiceLine] = list(lines)
         self._payments: list[Payment] = list(payments)
+        supply = supply or PlaceOfSupply()
+        self._supplier_state_code = supply.supplier_state_code
+        self._place_of_supply_state_code = supply.place_of_supply_state_code
+        self._customer_gstin = supply.customer_gstin
+        self._is_inter_state = supply.is_inter_state
 
     @classmethod
     def generate_for_delivered_order(
@@ -244,8 +313,12 @@ class Invoice(AggregateRoot):
         lines: Sequence[InvoiceLine],
         order_number: str | None = None,
         customer_consumer_number: str | None = None,
+        supply: PlaceOfSupply | None = None,
     ) -> Invoice:
-        """Factory method to generate a new invoice (Issued status) for a delivered order."""
+        """Factory method to generate a new invoice (Issued status) for a
+        delivered order — or, with a single `cancellation_charge` line, for
+        the fee of an order cancelled after dispatch (DO-14).
+        """
         if not lines:
             msg = "Cannot generate an invoice without line items."
             raise InvariantViolation(msg)
@@ -262,6 +335,7 @@ class Invoice(AggregateRoot):
             order_id=order_id,
             order_number=order_number,
             customer_consumer_number=customer_consumer_number,
+            supply=supply,
             status="issued",
             subtotal=subtotal,
             tax_amount=tax_amount,
@@ -338,6 +412,44 @@ class Invoice(AggregateRoot):
     def amount_paid(self) -> Decimal:
         return sum((payment.amount for payment in self._payments), Decimal("0"))
 
+    @property
+    def balance_due(self) -> Decimal:
+        """What is still owed. A `paid`/`cancelled`/`refunded` invoice owes
+        nothing even if (seeded or legacy) payment rows don't add up.
+        """
+        if self._status not in ("issued", "partially_paid"):
+            return Decimal("0.00")
+        return max(self._total_amount - self.amount_paid, Decimal("0.00"))
+
+    @property
+    def supplier_state_code(self) -> str | None:
+        return self._supplier_state_code
+
+    @property
+    def place_of_supply_state_code(self) -> str | None:
+        return self._place_of_supply_state_code
+
+    @property
+    def customer_gstin(self) -> str | None:
+        return self._customer_gstin
+
+    @property
+    def is_inter_state(self) -> bool:
+        return self._is_inter_state
+
+    def tax_split(self) -> GstSplit:
+        """CGST/SGST/IGST totals, summed line by line so each head matches
+        the per-line amounts printed on the invoice.
+        """
+        splits = [
+            GstSplit.of(line.tax_amount, inter_state=self._is_inter_state) for line in self._lines
+        ]
+        return GstSplit(
+            cgst=sum((split.cgst for split in splits), Decimal("0.00")),
+            sgst=sum((split.sgst for split in splits), Decimal("0.00")),
+            igst=sum((split.igst for split in splits), Decimal("0.00")),
+        )
+
     def record_payment(
         self,
         *,
@@ -346,6 +458,7 @@ class Invoice(AggregateRoot):
         amount: Decimal,
         collected_by: uuid.UUID,
         collected_at: datetime,
+        reference: str | None = None,
     ) -> None:
         """BR-18, D-11. Supports partial payments — `status` only reaches
         `paid` once cumulative `amount_paid` equals `total_amount`;
@@ -372,6 +485,7 @@ class Invoice(AggregateRoot):
             amount=amount,
             collected_by=collected_by,
             collected_at=collected_at,
+            reference=reference,
         )
         self._payments.append(payment)
         self._status = "paid" if prospective_paid == self._total_amount else "partially_paid"

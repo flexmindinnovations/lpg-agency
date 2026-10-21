@@ -1,4 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { HasPermissionDirective } from '@lpg/shared/ui';
+import { AgencyBusinessProfile } from './agency-business-profile';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
@@ -8,8 +10,8 @@ import { AdminTenantService } from '@lpg/shared/data-access';
 /**
  * Read-only agency identity. The agency code is the tenant slug that drivers
  * and customers type to sign in to the mobile apps, so it is surfaced here
- * with that explanation. Nothing on this page is editable today — the tenant
- * name has no self-service edit outside Tenant Config.
+ * with that explanation. The GST business profile below it (DA-13) is
+ * editable by whoever can configure the tenant.
  */
 @Component({
   selector: 'lpg-agency-settings',
@@ -19,13 +21,15 @@ import { AdminTenantService } from '@lpg/shared/data-access';
     SectionCardComponent,
     DetailListComponent,
     DetailItemComponent,
+    HasPermissionDirective,
+    AgencyBusinessProfile,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-template lpgHeaderTitlePortal>
       <div class="page-header__text">
         <h1 class="page-title">Agency</h1>
-        <p class="page-subtitle">Your agency’s identity and subscription details.</p>
+        <p class="page-subtitle">Your agency’s identity, GST details and subscription.</p>
       </div>
     </ng-template>
 
@@ -51,6 +55,11 @@ import { AdminTenantService } from '@lpg/shared/data-access';
           <lpg-detail-item label="Country">{{ agency.country }}</lpg-detail-item>
         </lpg-detail-list>
       </lpg-section-card>
+
+      <lpg-agency-business-profile
+        *lpgHasPermission="'tenant:configure'"
+        [profile]="agency.business_profile ?? null"
+      />
     } @else if (tenant() === null) {
       <p class="state-message" role="alert">
         Couldn’t load your agency details. Refresh the page to try again.
@@ -61,6 +70,12 @@ import { AdminTenantService } from '@lpg/shared/data-access';
   `,
   styles: [
     `
+      :host {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-lg);
+      }
+
       .detail-view {
         max-inline-size: 480px;
       }

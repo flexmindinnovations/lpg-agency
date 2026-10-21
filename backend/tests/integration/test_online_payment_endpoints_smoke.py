@@ -187,9 +187,14 @@ async def _seed_order(
             "VALUES (gen_random_uuid(), :tenant_id, :customer_id, '1 Pay Rd') RETURNING id",
             customer_id=str(customer_id),
         )
+        # GST must be configured before anything can be invoiced or prepaid
+        # (DA-06). Without `gst_percent` the cylinder type itself is
+        # classified at 0%; with it, the legacy tenant-wide rate applies.
         cylinder_type_id = await scalar(
-            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg) "
-            "VALUES (gen_random_uuid(), :tenant_id, 'Pay 14.2kg', 14.2) RETURNING id"
+            "INSERT INTO tenant.cylinder_type (id, tenant_id, name, weight_kg, hsn_code, "
+            "gst_rate_percent) VALUES (gen_random_uuid(), :tenant_id, 'Pay 14.2kg', 14.2, "
+            "'27111900', CASE WHEN :classified THEN 0 END) RETURNING id",
+            classified=gst_percent is None,
         )
         order_id = await scalar(
             "INSERT INTO orders.order (id, tenant_id, branch_id, customer_id, address_id, "
@@ -279,7 +284,8 @@ class TestOnlinePaymentFlow:
         created = await client.post(f"/api/v1/orders/{order_id}/payment-links", headers=headers)
         assert created.status_code == 201, created.text
         body = created.json()
-        assert Decimal(body["amount"]) == Decimal("945.00")
+        # 2 x 450 at 5%: prices include GST by default, so the link is 900.00.
+        assert Decimal(body["amount"]) == Decimal("900.00")
         assert body["status"] == "created"
         assert body["payment_url"].startswith("https://rzp.io/i/plink_")
         assert gateway.requests[0].notes["tenant_id"] == str(tenant_id)

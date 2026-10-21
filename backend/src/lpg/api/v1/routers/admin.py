@@ -65,9 +65,11 @@ from lpg.api.v1.dependencies.license import (
 from lpg.api.v1.dependencies.unit_of_work import get_unit_of_work
 from lpg.api.v1.schemas.admin import (
     AdjustCylinderTypeWeightRequest,
+    AgencyBusinessProfileResponse,
     AuditLogEntryResponse,
     AuditLogPageResponse,
     BranchResponse,
+    ClassifyCylinderTypeForGstRequest,
     CreateBranchRequest,
     CreateCylinderTypeRequest,
     CreateWarehouseRequest,
@@ -75,6 +77,7 @@ from lpg.api.v1.schemas.admin import (
     FeatureFlagEnabledResponse,
     FeatureFlagOverrideResponse,
     FeatureFlagSummaryResponse,
+    GstStateResponse,
     InviteStaffUserRequest,
     PriceListEntryResponse,
     PriceListProposalListResponse,
@@ -97,6 +100,7 @@ from lpg.api.v1.schemas.admin import (
     StaffUserResponse,
     TenantConfigurationResponse,
     TenantResponse,
+    UpdateAgencyBusinessProfileRequest,
     UpdateStaffUserPermissionsRequest,
     WarehouseResponse,
 )
@@ -178,9 +182,15 @@ from lpg.application.tenant.branch import (
     SetBranchRegionCommand,
     SetBranchRegionUseCase,
 )
+from lpg.application.tenant.business_profile import (
+    UpdateAgencyBusinessProfileCommand,
+    UpdateAgencyBusinessProfileUseCase,
+)
 from lpg.application.tenant.cylinder_type import (
     AdjustCylinderTypeWeightCommand,
     AdjustCylinderTypeWeightUseCase,
+    ClassifyCylinderTypeForGstCommand,
+    ClassifyCylinderTypeForGstUseCase,
     CreateCylinderTypeCommand,
     CreateCylinderTypeUseCase,
     ListCylinderTypesQuery,
@@ -238,14 +248,45 @@ from lpg.application.tenant.warehouse import (
     SetWarehouseActiveUseCase,
 )
 from lpg.config.settings import Settings, get_settings
+from lpg.domain.common.gst import GST_STATE_CODES
 from lpg.domain.license.license import License
 from lpg.domain.license.linked_device import LinkedDevice
+from lpg.domain.tenant.cylinder_type import CylinderType
 from lpg.domain.tenant.price_list_proposal import PriceListProposal
+from lpg.domain.tenant.tenant import Tenant
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
 
 # -- Tenant -------------------------------------------------------------------
+
+
+def _tenant_to_response(tenant: Tenant) -> TenantResponse:
+    profile = tenant.business_profile
+    return TenantResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        slug=tenant.slug,
+        status=tenant.status,
+        subscription_plan=tenant.subscription_plan,
+        primary_contact_email=tenant.primary_contact_email,
+        country=tenant.country,
+        business_profile=(
+            AgencyBusinessProfileResponse(
+                legal_name=profile.legal_name,
+                gstin=profile.gstin,
+                address_line_1=profile.address_line_1,
+                address_line_2=profile.address_line_2,
+                city=profile.city,
+                state_code=profile.state_code,
+                state_name=profile.state_name,
+                pincode=profile.pincode,
+                phone=profile.phone,
+            )
+            if profile is not None
+            else None
+        ),
+    )
 
 
 @router.get("/tenant", response_model=TenantResponse, summary="The current tenant")
@@ -257,15 +298,7 @@ async def get_tenant(
     if tenant is None:
         msg = f"No tenant visible with id {principal.tenant_id}."
         raise NotFoundError(msg, tenant_id=str(principal.tenant_id))
-    return TenantResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        slug=tenant.slug,
-        status=tenant.status,
-        subscription_plan=tenant.subscription_plan,
-        primary_contact_email=tenant.primary_contact_email,
-        country=tenant.country,
-    )
+    return _tenant_to_response(tenant)
 
 
 @router.patch("/tenant/rename", response_model=TenantResponse, summary="Rename the current tenant")
@@ -279,15 +312,50 @@ async def rename_tenant(
     await use_case.execute(RenameTenantCommand(tenant_id=principal.tenant_id, new_name=body.name))
     tenant = await repository.get(principal.tenant_id)
     assert tenant is not None
-    return TenantResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        slug=tenant.slug,
-        status=tenant.status,
-        subscription_plan=tenant.subscription_plan,
-        primary_contact_email=tenant.primary_contact_email,
-        country=tenant.country,
+    return _tenant_to_response(tenant)
+
+
+@router.put(
+    "/tenant/business-profile",
+    response_model=TenantResponse,
+    summary="Set the agency's GST business profile (legal name, address, GSTIN)",
+)
+async def update_business_profile(
+    body: UpdateAgencyBusinessProfileRequest,
+    principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[TenantRepository, Depends(get_tenant_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> TenantResponse:
+    """What every tax invoice prints as the supplier (CGST Rules, rule 46).
+    `state_code` also decides CGST+SGST versus IGST. The GSTIN is validated
+    (format, state code, check digit) and must belong to the same state.
+    """
+    use_case = UpdateAgencyBusinessProfileUseCase(repository, unit_of_work)
+    tenant = await use_case.execute(
+        UpdateAgencyBusinessProfileCommand(
+            tenant_id=principal.tenant_id,
+            legal_name=body.legal_name,
+            gstin=body.gstin,
+            address_line_1=body.address_line_1,
+            address_line_2=body.address_line_2,
+            city=body.city,
+            state_code=body.state_code,
+            pincode=body.pincode,
+            phone=body.phone,
+        )
     )
+    return _tenant_to_response(tenant)
+
+
+@router.get(
+    "/gst-states",
+    response_model=list[GstStateResponse],
+    summary="GST state and union-territory codes",
+)
+async def list_gst_states(
+    _principal: Annotated[AuthenticatedPrincipal, Depends(get_current_principal)],
+) -> list[GstStateResponse]:
+    return [GstStateResponse(code=code, name=name) for code, name in GST_STATE_CODES.items()]
 
 
 # -- Setup checklist ----------------------------------------------------------------
@@ -496,6 +564,17 @@ async def set_warehouse_active(
 # -- Cylinder Types -------------------------------------------------------------
 
 
+def _cylinder_type_to_response(cylinder_type: CylinderType) -> CylinderTypeResponse:
+    return CylinderTypeResponse(
+        id=str(cylinder_type.id),
+        name=cylinder_type.name,
+        weight_kg=cylinder_type.weight_kg,
+        is_active=cylinder_type.is_active,
+        hsn_code=cylinder_type.hsn_code,
+        gst_rate_percent=cylinder_type.gst_rate_percent,
+    )
+
+
 @router.get(
     "/cylinder-types", response_model=list[CylinderTypeResponse], summary="List cylinder types"
 )
@@ -505,12 +584,7 @@ async def list_cylinder_types(
 ) -> list[CylinderTypeResponse]:
     use_case = ListCylinderTypesUseCase(repository)
     cylinder_types = await use_case.execute(ListCylinderTypesQuery(tenant_id=principal.tenant_id))
-    return [
-        CylinderTypeResponse(
-            id=str(c.id), name=c.name, weight_kg=c.weight_kg, is_active=c.is_active
-        )
-        for c in cylinder_types
-    ]
+    return [_cylinder_type_to_response(c) for c in cylinder_types]
 
 
 @router.post(
@@ -528,15 +602,14 @@ async def create_cylinder_type(
     use_case = CreateCylinderTypeUseCase(repository, unit_of_work)
     cylinder_type = await use_case.execute(
         CreateCylinderTypeCommand(
-            tenant_id=principal.tenant_id, name=body.name, weight_kg=body.weight_kg
+            tenant_id=principal.tenant_id,
+            name=body.name,
+            weight_kg=body.weight_kg,
+            hsn_code=body.hsn_code,
+            gst_rate_percent=body.gst_rate_percent,
         )
     )
-    return CylinderTypeResponse(
-        id=str(cylinder_type.id),
-        name=cylinder_type.name,
-        weight_kg=cylinder_type.weight_kg,
-        is_active=cylinder_type.is_active,
-    )
+    return _cylinder_type_to_response(cylinder_type)
 
 
 @router.patch(
@@ -591,6 +664,33 @@ async def set_cylinder_type_active(
     await use_case.execute(
         SetCylinderTypeActiveCommand(cylinder_type_id=cylinder_type_id, is_active=body.is_active)
     )
+
+
+@router.patch(
+    "/cylinder-types/{cylinder_type_id}/gst",
+    response_model=CylinderTypeResponse,
+    summary="Set a cylinder type's HSN code and GST rate",
+)
+async def classify_cylinder_type_for_gst(
+    cylinder_type_id: uuid.UUID,
+    body: ClassifyCylinderTypeForGstRequest,
+    _principal: Annotated[AuthenticatedPrincipal, Depends(require_permission("tenant:configure"))],
+    repository: Annotated[CylinderTypeRepository, Depends(get_cylinder_type_repository)],
+    unit_of_work: Annotated[UnitOfWork, Depends(get_unit_of_work)],
+) -> CylinderTypeResponse:
+    """BR-16/BR-31: the rate is the tenant's own configuration (typically
+    5% for domestic LPG, 18% for commercial). Applies to invoices issued
+    from now on; issued invoices keep their rate.
+    """
+    use_case = ClassifyCylinderTypeForGstUseCase(repository, unit_of_work)
+    cylinder_type = await use_case.execute(
+        ClassifyCylinderTypeForGstCommand(
+            cylinder_type_id=cylinder_type_id,
+            hsn_code=body.hsn_code,
+            gst_rate_percent=body.gst_rate_percent,
+        )
+    )
+    return _cylinder_type_to_response(cylinder_type)
 
 
 # -- Tenant Configuration ---------------------------------------------------------
