@@ -123,13 +123,17 @@ jobs:
       - if: steps.modules.outputs.cache-hit != 'true'
         run: npm ci --legacy-peer-deps
       # Nx caches lint/test results by their inputs, so projects whose sources
-      # did not change are replayed instead of re-run.
+      # did not change are replayed instead of re-run. The cache directory alone
+      # is not enough: the index of what is in it lives in workspace-data, and
+      # without it Nx reports "Unrecognized Cache Artifacts" and ignores them.
       - name: Cache Nx results
         uses: actions/cache@v4
         with:
-          path: frontend/.nx/cache
-          key: nx-${{ runner.os }}-${{ github.sha }}
-          restore-keys: nx-${{ runner.os }}-
+          path: |
+            frontend/.nx/cache
+            frontend/.nx/workspace-data
+          key: nx2-${{ runner.os }}-${{ github.sha }}
+          restore-keys: nx2-${{ runner.os }}-
       # app.config.ts imports the git-ignored prime-license.ts.
       - name: Provide the PrimeNG licence template
         run: cp -n apps/dashboard/src/app/prime-license.example.ts apps/dashboard/src/app/prime-license.ts
