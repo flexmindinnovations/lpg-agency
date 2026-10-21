@@ -31,7 +31,7 @@ import { CustomerService, type CustomerResponse } from '@lpg/shared/data-access'
       (completeMethod)="search($event)"
       optionLabel="full_name"
       [delay]="300"
-      [minLength]="2"
+      [minQueryLength]="2"
       [autoOptionFocus]="true"
       [placeholder]="placeholder"
       [inputId]="inputId"

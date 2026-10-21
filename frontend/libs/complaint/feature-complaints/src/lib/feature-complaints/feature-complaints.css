@@ -156,3 +156,8 @@
   gap: var(--spacing-sm);
   inline-size: 100%;
 }
+
+.info-sub {
+  font-size: var(--typography-caption-font-size);
+  color: var(--color-text-secondary);
+}
