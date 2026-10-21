@@ -62,7 +62,7 @@ Branch `qa-fix/billing`. Migration `e7b3c9d1f4a6` (down_revision `c8d4e2f6a1b3`)
 
 ### DO-14 (billing side) — cancellation charge invoiced
 - **Contract**
-  - `BookingCancelled.cancellation_charge` is the taxable value before GST, as configured in `cancellation_fee_amount`.
+  - `BookingCancelled.cancellation_charge` is the amount configured in `cancellation_fee_amount`. It is read on the same basis as the price list: GST-inclusive by default (see Inclusive pricing), or GST added on top when `prices_include_gst` is false.
   - When it is greater than 0, the accounting handler issues one invoice with a single `cancellation_charge` line (quantity 1).
   - The line is taxed at the highest rate and HSN among the order's lines (consideration for the related supply).
   - If GST is not configured, the invoice is held and appears in the uninvoiced list via `orders.cancellation_record`.
@@ -119,7 +119,36 @@ Branch `qa-fix/billing`. Migration `e7b3c9d1f4a6` (down_revision `c8d4e2f6a1b3`)
     - writes `booked` history rows (fixes DA-37's zero TDT).
 - **Verification**: downgrade, then NULL two numbers, then upgrade on `lpg_test_billing`. The invoices were numbered 000006–000007 and next_value became 8.
 
+### Follow-up — price-list amounts are GST-inclusive by default
+- **Flag**: the new tenant configuration key `prices_include_gst`. Absent means true. Values `false`, `"false"`, `"no"`, `"0"`, `"exclusive"` and `0` switch it off. No migration (jsonb config).
+  - Resolved by `resolve_prices_include_gst` in `application/accounting/gst.py`, at the delivery or cancellation time.
+  - Listed in Configuration as "Prices Include GST". That page keeps a hand-written key catalogue, so it was added there.
+- **Rule** (`split_inclusive` in `domain/common/gst.py`): per line, taxable = to_cents(price x qty / (1 + rate)) and tax = price x qty - taxable. So taxable + tax == price x qty to the paisa. CGST/SGST or IGST is split from that tax as before.
+- **Applied to**
+  - invoice lines: `unit_price` stays the list price, `subtotal` is the derived taxable value, `total_amount` is price x qty;
+  - payment-link prepayment totals: price x qty, no GST added;
+  - the cancellation charge: the configured charge is the total;
+  - PDF and thermal print: they print the stored amounts. When every taxed line's total equals rate x qty, the PDF's Rate column reads "Rate (incl. GST)" and both formats add "Prices include GST";
+  - GSTR-1: it already reads the stored per-line taxable value, tax and rate, so it needed no change;
+  - New Booking (dashboard) and the customer app: they already show the unit price and `order.total_amount` = price x qty with no GST. That now matches the invoice, so they needed no change;
+  - seed: demo invoices are written inclusive.
+- **Exclusive mode** (`prices_include_gst` = false) keeps the previous behaviour: GST is added on top.
+- **Existing invoices** keep their stored amounts. Only invoices issued after the change use the new rule.
+- **Verification**:
+  - unit `TestInclusivePricing`, including a sweep over amounts that checks taxable + tax == gross at 5/12/18/28%;
+  - the parametrised flag test in `test_accounting_use_cases.py`;
+  - inclusive and exclusive prepayment tests;
+  - the print test;
+  - integration `test_gst_invoicing_flow.py`: 900.00 at 5% gives 857.14 + 21.43 + 21.43 = 900.00;
+  - the online-payment smoke link is 900.00.
+- **Awaiting** product-owner confirmation. Inclusive is the recommended default.
+
 ## Test results
+- **Inclusive-pricing follow-up**:
+  - backend unit 1288 passed; mypy, ruff and import-linter are clean;
+  - integration (gst flow, online payment, invoice and customer smoke) on `lpg_test_billing`: 27 passed;
+  - admin-feature-tenant-settings lint and test pass;
+  - no API change, so the client was not regenerated.
 - **Backend unit**: 1265 passed. `mypy --strict` is clean (386 files), ruff is clean, and import-linter keeps 7 contracts with 0 broken.
 - **Integration**
   - Run against `lpg_test_billing`: the new `test_gst_invoicing_flow.py` passes 3/3.
@@ -130,7 +159,7 @@ Branch `qa-fix/billing`. Migration `e7b3c9d1f4a6` (down_revision `c8d4e2f6a1b3`)
 
 ## Deferred
 - **Existing invoices issued at 0%** are not re-taxed. Correcting them needs a supplementary invoice or debit note per CGST s.34. That is a product and accounting decision.
-- **Pricing basis**: prices are treated as tax-exclusive and GST is added on top. Indian domestic LPG RSP is usually quoted GST-inclusive. This needs a product-owner decision; if prices are inclusive, back-calculate the taxable value.
+- **Pricing basis**: resolved as GST-inclusive by default via `prices_include_gst` (see the follow-up above). The product owner still has to confirm. There is no dedicated UI beyond the Configuration key.
 - **Customer GSTIN capture** is owned by the orders/customers branch. Billing reads it if present.
 - **Stock register, ageing, cash book and DBTL reports** (rest of DA-12) are out of scope.
 - **Seed re-runs on a later day** fail at routes and ledger rows: `route_date` is matched as a timestamp. This was already the case before this branch and was left alone.
@@ -153,6 +182,7 @@ Branch `qa-fix/billing`. Migration `e7b3c9d1f4a6` (down_revision `c8d4e2f6a1b3`)
   - When no rate resolves, invoice generation raises `GST_NOT_CONFIGURED`, and the order stays uninvoiced, visible and issuable from the Invoices screen once configured.
   - The invoice snapshots supplier state, place of supply, customer GSTIN, and HSN and rate per line, so a later configuration change never rewrites an issued invoice.
   - CGST/SGST versus IGST is derived from the snapshot.
+  - Price-list amounts (and the cancellation charge) are GST-inclusive unless the tenant sets `prices_include_gst` to false. The taxable value is derived per line, rounded to paise, so the invoice total equals price x qty.
 - **Consequences**
   - Agencies must classify cylinder types before invoicing.
   - Seed and demo data set rates explicitly.
