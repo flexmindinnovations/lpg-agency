@@ -12,6 +12,8 @@ ENV NX_DAEMON=false \
     NODE_OPTIONS=--max-old-space-size=1536
 
 COPY package.json package-lock.json ./
+# `npm ci` runs the postinstall script, which needs to exist at this point.
+COPY scripts/ensure-prime-license.mjs scripts/
 # --legacy-peer-deps: @ngrx/signals@21 declares an Angular 21 peer range while
 # the workspace is on Angular 22, so plain `npm ci` fails with ERESOLVE.
 RUN --mount=type=cache,target=/root/.npm npm ci --legacy-peer-deps
