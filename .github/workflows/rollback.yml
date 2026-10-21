@@ -32,7 +32,7 @@ jobs:
           SHA: ${{ inputs.sha }}
         run: |
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "sha must be a full 40-char lowercase hex commit hash" >&2; exit 1; }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/deploy-to-server
         with:
           sha: ${{ inputs.sha }}
