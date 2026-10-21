@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 _logger = get_logger(__name__)
 
 _LEGACY_TENANT_RATE_KEY = "gst_rate_percent"
+_PRICES_INCLUDE_GST_KEY = "prices_include_gst"
 
 
 class GstNotConfiguredError(ValidationError):
@@ -72,6 +73,29 @@ async def _legacy_tenant_rate(
         # A malformed value is "not configured", never "0%".
         _logger.warning("invalid_gst_rate", gst_rate=str(raw), tenant_id=str(tenant_id))
         return None
+
+
+async def resolve_prices_include_gst(
+    tenant_config_repository: TenantConfigurationRepository,
+    tenant_id: uuid.UUID,
+    at: datetime,
+) -> bool:
+    """Whether the tenant's price-list amounts already include GST.
+
+    Defaults to `True`: the amount on the Pricing page is what the customer
+    pays, and an invoice derives the taxable value and the tax inside it.
+    An agency that quotes ex-GST prices sets `prices_include_gst` to false.
+    """
+    configs = await tenant_config_repository.list_for_tenant_and_key(
+        tenant_id, _PRICES_INCLUDE_GST_KEY
+    )
+    resolved = TenantConfigurationResolver.resolve(configs, _PRICES_INCLUDE_GST_KEY, at)
+    raw = resolved.config_value if resolved else None
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str) and raw.strip().lower() in {"false", "no", "0", "exclusive"}:
+        return False
+    return not (isinstance(raw, (int, float)) and raw == 0)
 
 
 async def resolve_gst_classes(

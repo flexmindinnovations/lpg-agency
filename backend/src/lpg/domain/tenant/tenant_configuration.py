@@ -33,6 +33,12 @@ RECOGNIZED_CONFIG_KEYS = frozenset(
         # primary source since DA-06). Unset on both means invoices are
         # held, never issued at 0%.
         "gst_rate_percent",
+        # Whether price-list amounts already include GST. Defaults to true
+        # (absent = inclusive): the Pricing amount is what the customer
+        # pays and the invoice derives taxable value + tax inside it. Set
+        # false for an agency that quotes ex-GST prices.
+        "prices_include_gst",
+        # Cancellation charge — GST-inclusive when `prices_include_gst` is.
         "cancellation_fee_amount",
         # Days a customer has to pay an invoice before the Home dashboard
         # counts it as overdue. Falls back to

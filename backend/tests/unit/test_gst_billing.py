@@ -15,6 +15,7 @@ from lpg.application.accounting.gst import (
     GstNotConfiguredError,
     resolve_gst_classes,
     resolve_place_of_supply,
+    resolve_prices_include_gst,
 )
 from lpg.application.accounting.use_cases import (
     GenerateInvoiceForOrderUseCase,
@@ -36,6 +37,7 @@ from lpg.domain.common.gst import (
     gstin_check_character,
     normalize_gstin,
     normalize_hsn_code,
+    split_inclusive,
     state_code_for,
     validate_gst_rate,
 )
@@ -140,6 +142,65 @@ def _invoice(*, supplier: str | None, destination: str | None) -> Invoice:
             customer_gstin=None,
         ),
     )
+
+
+class TestInclusivePricing:
+    """`prices_include_gst` (default true): the price is what the customer
+    pays; taxable value and tax are derived inside it to the paisa.
+    """
+
+    @pytest.mark.parametrize(
+        ("gross", "rate", "taxable", "tax"),
+        [
+            ("905.50", "5", "862.38", "43.12"),
+            ("1811.00", "5", "1724.76", "86.24"),
+            ("1750.00", "18", "1483.05", "266.95"),
+            ("50.00", "18", "42.37", "7.63"),
+            ("0.01", "18", "0.01", "0.00"),
+            ("100.00", "0", "100.00", "0.00"),
+        ],
+    )
+    def test_split_adds_back_to_the_price(
+        self, gross: str, rate: str, taxable: str, tax: str
+    ) -> None:
+        got_taxable, got_tax = split_inclusive(Decimal(gross), Decimal(rate))
+        assert (got_taxable, got_tax) == (Decimal(taxable), Decimal(tax))
+        assert got_taxable + got_tax == Decimal(gross)
+
+    def test_split_holds_for_every_paisa_amount(self) -> None:
+        for paise in range(1, 300_001, 997):
+            gross = Decimal(paise) / 100
+            for rate in (Decimal("5"), Decimal("12"), Decimal("18"), Decimal("28")):
+                taxable, tax = split_inclusive(gross, rate)
+                assert taxable + tax == gross
+                assert tax >= 0
+                # The derived tax is within a paisa of rate x taxable value.
+                assert abs(compute_line_tax(taxable, rate) - tax) <= Decimal("0.01")
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            (None, True),
+            (True, True),
+            ("true", True),
+            ("", True),
+            (False, False),
+            ("false", False),
+            ("False", False),
+            ("exclusive", False),
+            (0, False),
+        ],
+    )
+    async def test_flag_defaults_to_inclusive(self, stored: object, expected: bool) -> None:
+        repo = MagicMock()
+        if stored is None:
+            repo.list_for_tenant_and_key = AsyncMock(return_value=[])
+        else:
+            entry = MagicMock(config_value=stored, config_key="prices_include_gst")
+            entry.effective_from = datetime(2020, 1, 1, tzinfo=UTC)
+            entry.effective_to = None
+            repo.list_for_tenant_and_key = AsyncMock(return_value=[entry])
+        assert await resolve_prices_include_gst(repo, uuid.uuid4(), NOW) is expected
 
 
 class TestInvoiceTaxSplit:
@@ -287,8 +348,10 @@ class TestCancellationChargeInvoice:
         (line,) = invoice.lines
         assert line.kind == "cancellation_charge"
         assert line.cylinder_type_id == commercial
-        assert line.subtotal == Decimal("50.00")
-        assert line.tax_amount == Decimal("9.00")
+        # The configured charge is GST-inclusive (default): 50 / 1.18.
+        assert line.subtotal == Decimal("42.37")
+        assert line.tax_amount == Decimal("7.63")
+        assert line.total_amount == Decimal("50.00")
         invoice_repo.add.assert_awaited_once()
 
     async def test_no_charge_no_invoice(self) -> None:

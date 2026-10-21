@@ -159,3 +159,15 @@ class GstSplit:
 
 def compute_line_tax(taxable_value: Decimal, rate_percent: Decimal) -> Decimal:
     return to_cents(taxable_value * rate_percent / Decimal("100"))
+
+
+def split_inclusive(gross: Decimal, rate_percent: Decimal) -> tuple[Decimal, Decimal]:
+    """Split a GST-inclusive amount into `(taxable_value, tax)`.
+
+    The taxable value is `gross / (1 + rate)` rounded to paise, and the tax is
+    whatever remains, so `taxable_value + tax == gross` to the paisa — the
+    customer pays exactly the listed price.
+    """
+    gross = to_cents(gross)
+    taxable = to_cents(gross * Decimal("100") / (Decimal("100") + rate_percent))
+    return taxable, gross - taxable

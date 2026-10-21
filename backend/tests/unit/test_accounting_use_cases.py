@@ -205,7 +205,8 @@ class TestGenerateInvoiceForOrderUseCase:
         tenant_id = uuid.uuid4()
         delivered_at = datetime.now(UTC)
 
-        # One line: 4 units x Rs.100.00 = Rs.400 subtotal; 18% GST = Rs.72 tax; total Rs.472
+        # One line: 4 units x Rs.100.00 = Rs.400, GST-inclusive (the default):
+        # taxable 400 / 1.18 = Rs.338.98, tax Rs.61.02, total exactly Rs.400.
         order = _make_order(
             lines=[_make_order_line(quantity_delivered=4, unit_price=Decimal("100.00"))]
         )
@@ -237,9 +238,70 @@ class TestGenerateInvoiceForOrderUseCase:
         mock_invoice_repo.add.assert_called_once()
         invoice: Invoice = mock_invoice_repo.add.call_args[0][0]
         line = invoice.lines[0]
-        assert line.subtotal == Decimal("400.00")
-        assert line.tax_amount == Decimal("72.00")
-        assert line.total_amount == Decimal("472.00")
+        assert line.unit_price == Decimal("100.00")
+        assert line.subtotal == Decimal("338.98")
+        assert line.tax_amount == Decimal("61.02")
+        assert line.total_amount == Decimal("400.00")
+        assert invoice.total_amount == Decimal("400.00")
+
+    @pytest.mark.parametrize(
+        ("flag", "subtotal", "tax", "total"),
+        [
+            (None, "338.98", "61.02", "400.00"),
+            (True, "338.98", "61.02", "400.00"),
+            ("true", "338.98", "61.02", "400.00"),
+            (False, "400.00", "72.00", "472.00"),
+            ("false", "400.00", "72.00", "472.00"),
+        ],
+    )
+    async def test_prices_include_gst_flag_decides_inclusive_or_exclusive(
+        self,
+        mock_invoice_repo: MagicMock,
+        mock_order_repo: MagicMock,
+        mock_customer_repo: MagicMock,
+        mock_invoice_number_sequence: MagicMock,
+        flag: object,
+        subtotal: str,
+        tax: str,
+        total: str,
+    ) -> None:
+        """`prices_include_gst` (default true) decides whether GST sits inside
+        the price or is added on top of it.
+        """
+        order = _make_order(
+            lines=[_make_order_line(quantity_delivered=4, unit_price=Decimal("100.00"))]
+        )
+        mock_order_repo.get_by_id = AsyncMock(return_value=order)
+        entries: dict[str, list[MagicMock]] = {}
+        for key, value in (("gst_rate_percent", "18"), ("prices_include_gst", flag)):
+            if value is None:
+                continue
+            entry = _make_tenant_config_entry(value)  # type: ignore[arg-type]
+            entry.config_key = key
+            entry.effective_from = datetime(2020, 1, 1, tzinfo=UTC)
+            entry.effective_to = None
+            entries[key] = [entry]
+        config_repo = MagicMock()
+        config_repo.list_for_tenant_and_key = AsyncMock(
+            side_effect=lambda _tenant_id, key: entries.get(key, [])
+        )
+        use_case = GenerateInvoiceForOrderUseCase(
+            invoice_repository=mock_invoice_repo,
+            order_repository=mock_order_repo,
+            tenant_config_repository=config_repo,
+            customer_repository=mock_customer_repo,
+            invoice_number_sequence=mock_invoice_number_sequence,
+            cylinder_type_repository=_cylinder_type_repo(None),
+            tenant_repository=_tenant_repo(),
+        )
+        await use_case.execute(uuid.uuid4(), order.id, datetime.now(UTC))
+
+        line = mock_invoice_repo.add.call_args[0][0].lines[0]
+        assert (line.subtotal, line.tax_amount, line.total_amount) == (
+            Decimal(subtotal),
+            Decimal(tax),
+            Decimal(total),
+        )
 
     async def test_skips_lines_with_zero_quantity_delivered(
         self,

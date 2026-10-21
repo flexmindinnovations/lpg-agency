@@ -324,7 +324,7 @@ class TestApplyOnlinePaymentsToInvoice:
 
 
 class TestCreateOrderPaymentLink:
-    async def test_prepayment_amount_is_order_total_plus_gst(self) -> None:
+    async def test_prepayment_amount_is_order_total_when_prices_include_gst(self) -> None:
         order = _order()
         repos = _repos(order)
         config = MagicMock(config_value="5")
@@ -336,8 +336,8 @@ class TestCreateOrderPaymentLink:
 
         payment = await _create_use_case(repos, gateway).execute(_command(order))
 
-        # 2 x 450 = 900, + 5% GST (tenant-wide fallback rate) = 945.00
-        assert payment.amount == Decimal("945.00")
+        # 2 x 450 = 900, GST-inclusive by default: the customer pays 900.00
+        assert payment.amount == Decimal("900.00")
         assert payment.invoice_id is None
         request = gateway.requests[0]
         assert request.notes["tenant_id"] == str(TENANT_ID)
@@ -346,6 +346,24 @@ class TestCreateOrderPaymentLink:
         assert request.customer_phone == "+919800000000"
         repos["online_payment_repository"].add.assert_awaited_once()
         repos["unit_of_work"].commit.assert_awaited_once()
+
+    async def test_prepayment_adds_gst_when_prices_exclude_it(self) -> None:
+        order = _order()
+        repos = _repos(order)
+        rate = MagicMock(config_value="5", config_key="gst_rate_percent")
+        rate.effective_from = NOW - timedelta(days=1)
+        exclusive = MagicMock(config_value=False, config_key="prices_include_gst")
+        exclusive.effective_from = NOW - timedelta(days=1)
+        by_key = {"gst_rate_percent": [rate], "prices_include_gst": [exclusive]}
+        repos["tenant_config_repository"].list_for_tenant_and_key = AsyncMock(
+            side_effect=lambda _tenant_id, key: by_key.get(key, [])
+        )
+        repos["cylinder_type_repository"] = _cylinder_type_repo(None)
+
+        payment = await _create_use_case(repos, _FakeGateway()).execute(_command(order))
+
+        # 2 x 450 = 900, + 5% GST on top = 945.00
+        assert payment.amount == Decimal("945.00")
 
     async def test_invoice_outstanding_is_charged_once_invoiced(self) -> None:
         order = _order(status="delivered")

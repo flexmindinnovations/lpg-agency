@@ -6,7 +6,8 @@ so the amount rule lives in exactly one place:
 
 - the order already has an invoice -> the invoice's outstanding balance;
 - otherwise (a prepayment, `payment-flow.md` Path A) -> the confirmed
-  order's total plus GST at each cylinder type's current rate, computed exactly the
+  order's total — price x quantity when prices include GST (the default),
+  else plus GST at each cylinder type's current rate — computed exactly the
   way `GenerateInvoiceForOrderUseCase` will compute the invoice, minus
   anything already paid online for the order.
 
@@ -23,7 +24,11 @@ from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
-from lpg.application.accounting.gst import GstClass, resolve_gst_classes
+from lpg.application.accounting.gst import (
+    GstClass,
+    resolve_gst_classes,
+    resolve_prices_include_gst,
+)
 from lpg.application.accounting.payment_gateway import (
     PaymentGatewayError,
     PaymentLinkRequest,
@@ -112,14 +117,19 @@ async def _get_scoped_order(
     return order
 
 
-def _prepayment_total(order: Order, gst_classes: dict[uuid.UUID, GstClass]) -> Decimal:
+def _prepayment_total(
+    order: Order, gst_classes: dict[uuid.UUID, GstClass], *, prices_include_gst: bool
+) -> Decimal:
     """Mirror of `GenerateInvoiceForOrderUseCase`'s line arithmetic (each
     line at its own cylinder type's rate), on the ordered (not yet
-    delivered) quantities.
+    delivered) quantities. GST-inclusive prices are already the total.
     """
     total = Decimal("0")
     for line in order.lines:
         subtotal = to_cents((line.unit_price or Decimal("0")) * line.quantity_ordered)
+        if prices_include_gst:
+            total += subtotal
+            continue
         total += subtotal + compute_line_tax(
             subtotal, gst_classes[line.cylinder_type_id].rate_percent
         )
@@ -289,7 +299,10 @@ class CreateOrderPaymentLinkUseCase:
                 at=now,
             )
             paid = sum((p.amount for p in existing if p.status == "paid"), Decimal("0"))
-            due = _prepayment_total(order, gst_classes) - paid
+            inclusive = await resolve_prices_include_gst(
+                self._tenant_config_repository, tenant_id, now
+            )
+            due = _prepayment_total(order, gst_classes, prices_include_gst=inclusive) - paid
             invoice_id = None
 
         if due <= Decimal("0"):

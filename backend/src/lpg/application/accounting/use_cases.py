@@ -11,6 +11,7 @@ from lpg.application.accounting.gst import (
     GstClass,
     resolve_gst_classes,
     resolve_place_of_supply,
+    resolve_prices_include_gst,
 )
 from lpg.application.common.cqrs import Command, Query
 from lpg.application.common.errors import ConflictError, NotFoundError, ValidationError
@@ -18,7 +19,7 @@ from lpg.config.logging import get_logger
 from lpg.domain.accounting.cash_handover import CashHandover, CashHandoverReview
 from lpg.domain.accounting.credit_note import CreditNote
 from lpg.domain.accounting.invoice import STAFF_PAYMENT_METHODS, Invoice, InvoiceLine
-from lpg.domain.common.gst import compute_line_tax, to_cents
+from lpg.domain.common.gst import compute_line_tax, split_inclusive, to_cents
 
 if TYPE_CHECKING:
     import datetime
@@ -150,11 +151,20 @@ def _taxed_line(
     quantity: int,
     unit_price: Decimal,
     gst: GstClass,
+    prices_include_gst: bool,
     kind: str = "supply",
     description: str | None = None,
 ) -> InvoiceLine:
-    subtotal = to_cents(unit_price * quantity)
-    tax_amount = compute_line_tax(subtotal, gst.rate_percent)
+    """One invoice line. `unit_price` is the price-list amount. When prices
+    include GST (the default) the line total is exactly `unit_price *
+    quantity` and the taxable value and tax are derived inside it, rounded
+    per line so they add back to the paisa; otherwise GST is added on top.
+    """
+    if prices_include_gst:
+        subtotal, tax_amount = split_inclusive(unit_price * quantity, gst.rate_percent)
+    else:
+        subtotal = to_cents(unit_price * quantity)
+        tax_amount = compute_line_tax(subtotal, gst.rate_percent)
     return InvoiceLine(
         line_id=uuid.uuid4(),
         cylinder_type_id=cylinder_type_id,
@@ -239,12 +249,16 @@ class GenerateInvoiceForOrderUseCase:
             cylinder_type_ids=[line.cylinder_type_id for line in delivered],
             at=delivered_at,
         )
+        inclusive = await resolve_prices_include_gst(
+            self._tenant_config_repository, tenant_id, delivered_at
+        )
         lines = [
             _taxed_line(
                 cylinder_type_id=line.cylinder_type_id,
                 quantity=line.quantity_delivered,
                 unit_price=line.unit_price or Decimal("0.00"),
                 gst=gst_classes[line.cylinder_type_id],
+                prices_include_gst=inclusive,
             )
             for line in delivered
         ]
@@ -272,8 +286,10 @@ class GenerateInvoiceForOrderUseCase:
         """Bill the fee for a cancellation a manager approved (D-19, DO-14).
 
         Contract with Order Management: `BookingCancelled.cancellation_charge`
-        is the taxable value (before GST), as configured in
-        `cancellation_fee_amount`. Under GST a cancellation charge is
+        the amount configured in `cancellation_fee_amount`, read on the
+        same basis as the price list: GST-inclusive (what the customer
+        pays) unless the tenant set `prices_include_gst` to false, in which
+        case GST is added on top. Under GST a cancellation charge is
         consideration for the supply it relates to, so it is taxed at that
         supply's rate and HSN; with lines at different rates the highest
         applies.
@@ -303,6 +319,9 @@ class GenerateInvoiceForOrderUseCase:
             quantity=1,
             unit_price=to_cents(charge),
             gst=gst_classes[principal_line.cylinder_type_id],
+            prices_include_gst=await resolve_prices_include_gst(
+                self._tenant_config_repository, tenant_id, cancelled_at
+            ),
             kind="cancellation_charge",
             description="Cancellation charge",
         )
