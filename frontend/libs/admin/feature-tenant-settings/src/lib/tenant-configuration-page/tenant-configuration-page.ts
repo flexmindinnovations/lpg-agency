@@ -39,10 +39,15 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
     description:
       'The GST tax rate applied when computing invoice tax at issuance (BR-16). Historized so a past invoice stays reproducible against the rate that was actually in effect when it was issued.',
   },
+  prices_include_gst: {
+    label: 'Prices Include GST',
+    description:
+      'Whether the amounts on the Pricing page already include GST — defaults to on (absent = inclusive): the price is what the customer pays, and the invoice works out the taxable value and CGST/SGST or IGST inside it. Set to false if your prices are before GST, so GST is added on top.',
+  },
   cancellation_fee_amount: {
     label: 'Cancellation Fee Amount',
     description:
-      "Flat fee charged to a customer when an order is cancelled, per the tenant's cancellation policy.",
+      "Flat fee charged to a customer when an order is cancelled, per the tenant's cancellation policy. Includes GST when Prices Include GST is on.",
   },
   credit_limit_default: {
     label: 'Default Credit Limit',
@@ -117,6 +122,7 @@ const CONFIG_KEY_INFO: Record<string, { label: string; description: string }> = 
 
 const RECOGNIZED_CONFIG_KEYS = [
   'gst_rate_percent',
+  'prices_include_gst',
   'cancellation_fee_amount',
   'credit_limit_default',
   'ai_gateway_enabled',
