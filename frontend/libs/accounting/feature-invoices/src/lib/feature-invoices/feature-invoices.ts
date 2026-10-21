@@ -114,7 +114,8 @@ export class FeatureInvoices implements OnInit {
 
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
-  readonly isPrinting = signal(false);
+  /** Which print button is working; only that one shows a spinner. */
+  protected readonly printingFormat = signal<'pdf' | 'thermal' | null>(null);
   readonly invoices = signal<InvoiceResponse[]>([]);
   readonly selectedInvoice = signal<InvoiceResponse | null>(null);
   readonly searchQuery = signal('');
@@ -613,49 +614,52 @@ export class FeatureInvoices implements OnInit {
     });
   }
 
-  printPdf(): void {
+  protected printPdf(): void {
     const inv = this.selectedInvoice();
-    if (!inv) return;
-    this.isPrinting.set(true);
-    this.printingService.printInvoicePdf(inv.invoice_id).subscribe({
-      next: () => this.isPrinting.set(false),
-      error: () => this.isPrinting.set(false),
+    if (!inv || this.printingFormat()) return;
+    // Open the tab inside the click so pop-up blockers allow it.
+    const tab = this.printingService.openPendingTab();
+    this.printingFormat.set('pdf');
+    this.printingService.renderInvoice(inv.invoice_id, 'pdf').subscribe({
+      next: (blob) => {
+        this.printingFormat.set(null);
+        this.printingService.showInTab(blob, tab, `${inv.invoice_number ?? 'invoice'}.pdf`);
+      },
+      // The failed POST already toasts the server's message.
+      error: () => {
+        this.printingFormat.set(null);
+        tab?.close();
+      },
     });
   }
 
-  printThermal(): void {
+  protected printThermal(): void {
     const inv = this.selectedInvoice();
-    if (!inv) return;
-    this.isPrinting.set(true);
-    this.printingService.printInvoiceThermal(inv.invoice_id).subscribe({
-      next: (res) => {
-        this.isPrinting.set(false);
-        this.thermalReceiptUrl.set(res.download_url);
+    if (!inv || this.printingFormat()) return;
+    this.printingFormat.set('thermal');
+    this.printingService.renderInvoice(inv.invoice_id, 'thermal').subscribe({
+      next: (blob) => {
+        this.printingFormat.set(null);
+        this.releaseThermalReceipt();
+        this.thermalReceiptUrl.set(URL.createObjectURL(blob));
         this.showThermalDialog.set(true);
       },
-      error: () => {
-        this.isPrinting.set(false);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to generate the thermal receipt.',
-        });
-      },
+      error: () => this.printingFormat.set(null),
     });
   }
 
-  /** The embedded iframe's own toolbar hides itself once it detects it's
-   * framed (see `render_invoice_thermal_html` on the backend). This
-   * dialog-level button triggers its `window.print()` via `postMessage`
-   * instead of calling `contentWindow.print()` directly — the iframe is
-   * cross-origin (served from object storage, not this app's origin), and
-   * only a small allowlist of properties (postMessage included) is
-   * reachable on a cross-origin window; `.print()` throws a SecurityError. */
+  /** The receipt is a blob URL created by this page, so the preview iframe is
+   * same-origin and can be printed directly. If a browser still refuses, the
+   * receipt page's own handler prints on a postMessage. */
   protected printThermalReceipt(): void {
-    this.thermalFrame()?.nativeElement.contentWindow?.postMessage(
-      { type: 'lpg-thermal-receipt-print' },
-      '*',
-    );
+    const frame = this.thermalFrame()?.nativeElement.contentWindow;
+    if (!frame) return;
+    try {
+      frame.focus();
+      frame.print();
+    } catch {
+      frame.postMessage({ type: 'lpg-thermal-receipt-print' }, '*');
+    }
   }
 
   /** Escape hatch alongside the embedded preview — some browsers/printer
@@ -665,9 +669,15 @@ export class FeatureInvoices implements OnInit {
     if (url) window.open(url, '_blank');
   }
 
+  private releaseThermalReceipt(): void {
+    const url = this.thermalReceiptUrl();
+    if (url) URL.revokeObjectURL(url);
+    this.thermalReceiptUrl.set(null);
+  }
+
   protected closeThermalDialog(): void {
     this.showThermalDialog.set(false);
-    this.thermalReceiptUrl.set(null);
+    this.releaseThermalReceipt();
   }
 
   protected openCustomerPreview(customerId: string): void {

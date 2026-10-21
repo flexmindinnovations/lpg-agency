@@ -1,5 +1,5 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { catchError, throwError } from 'rxjs';
+import { catchError, from, switchMap, throwError } from 'rxjs';
 
 /**
  * RFC 7807 Problem Details, as the backend emits them (ADR-021).
@@ -163,7 +163,47 @@ export function toAppError(response: HttpErrorResponse): AppError {
  */
 export const problemDetailsInterceptor: HttpInterceptorFn = (request, next) =>
   next(request).pipe(
-    catchError((response: unknown) =>
-      throwError(() => (response instanceof HttpErrorResponse ? toAppError(response) : response)),
-    ),
+    catchError((response: unknown) => {
+      if (!(response instanceof HttpErrorResponse)) {
+        return throwError(() => response);
+      }
+      // A request made with responseType 'blob' (PDF/receipt downloads) gets
+      // its JSON error body as a Blob; read it so the real message survives.
+      if (response.error instanceof Blob) {
+        return from(readBlobJson(response.error)).pipe(
+          switchMap((body) =>
+            throwError(() =>
+              toAppError(
+                new HttpErrorResponse({
+                  error: body,
+                  headers: response.headers,
+                  status: response.status,
+                  statusText: response.statusText,
+                  url: response.url ?? undefined,
+                }),
+              ),
+            ),
+          ),
+        );
+      }
+      return throwError(() => toAppError(response));
+    }),
   );
+
+function readBlobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+async function readBlobJson(blob: Blob): Promise<unknown> {
+  try {
+    return JSON.parse(await readBlobText(blob));
+  } catch {
+    return null;
+  }
+}

@@ -461,6 +461,10 @@ export type { MeApiV1PlatformMeGet$Params as MeApiV1PlatformMeGet$Params } from 
 export { meApiV1PlatformMeGet as meApiV1PlatformMeGet } from './fn/platform-console/me-api-v-1-platform-me-get';
 export type { CreatePrintJobApiV1PrintJobsPost$Params as CreatePrintJobApiV1PrintJobsPost$Params } from './fn/printing/create-print-job-api-v-1-print-jobs-post';
 export { createPrintJobApiV1PrintJobsPost as createPrintJobApiV1PrintJobsPost } from './fn/printing/create-print-job-api-v-1-print-jobs-post';
+export type { RenderPrintDocumentApiV1PrintJobsDocumentPost$Pdf$Params as RenderPrintDocumentApiV1PrintJobsDocumentPost$Pdf$Params } from './fn/printing/render-print-document-api-v-1-print-jobs-document-post-pdf';
+export { renderPrintDocumentApiV1PrintJobsDocumentPost$Pdf as renderPrintDocumentApiV1PrintJobsDocumentPost$Pdf } from './fn/printing/render-print-document-api-v-1-print-jobs-document-post-pdf';
+export type { RenderPrintDocumentApiV1PrintJobsDocumentPost$Html$Params as RenderPrintDocumentApiV1PrintJobsDocumentPost$Html$Params } from './fn/printing/render-print-document-api-v-1-print-jobs-document-post-html';
+export { renderPrintDocumentApiV1PrintJobsDocumentPost$Html as renderPrintDocumentApiV1PrintJobsDocumentPost$Html } from './fn/printing/render-print-document-api-v-1-print-jobs-document-post-html';
 export type { GetCustomerConsumptionApiV1ReportingConsumptionGet$Params as GetCustomerConsumptionApiV1ReportingConsumptionGet$Params } from './fn/reporting/get-customer-consumption-api-v-1-reporting-consumption-get';
 export { getCustomerConsumptionApiV1ReportingConsumptionGet as getCustomerConsumptionApiV1ReportingConsumptionGet } from './fn/reporting/get-customer-consumption-api-v-1-reporting-consumption-get';
 export type { GetDriverPerformanceApiV1ReportingDriversGet$Params as GetDriverPerformanceApiV1ReportingDriversGet$Params } from './fn/reporting/get-driver-performance-api-v-1-reporting-drivers-get';
