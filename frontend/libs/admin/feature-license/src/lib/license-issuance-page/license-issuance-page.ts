@@ -69,10 +69,7 @@ const VALIDITY_OPTIONS = [
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <lpg-page-header
-            title="License Issuance"
-            subtitle="Issue and manage agency licences."
-          />
+          <lpg-page-header title="License Issuance" subtitle="Issue and manage agency licences." />
         </ng-template>
       </div>
 

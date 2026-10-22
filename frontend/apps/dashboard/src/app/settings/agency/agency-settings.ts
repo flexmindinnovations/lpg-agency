@@ -4,7 +4,12 @@ import { AgencyBusinessProfile } from './agency-business-profile';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
-import { DetailItemComponent, DetailListComponent, PageHeaderComponent, SectionCardComponent } from '@lpg/shared/ui';
+import {
+  DetailItemComponent,
+  DetailListComponent,
+  PageHeaderComponent,
+  SectionCardComponent,
+} from '@lpg/shared/ui';
 import { AdminTenantService } from '@lpg/shared/data-access';
 
 /**

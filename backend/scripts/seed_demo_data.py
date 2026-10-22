@@ -603,8 +603,10 @@ async def main() -> None:
             # to the fixed `LOGIN_USERS` list — this never touches a real one.
             await conn.execute(
                 text(
-                    "UPDATE identity.identity_user SET tenant_id = :t, role = :role, display_name = :dn "
-                    "WHERE id = :u AND (tenant_id <> :t OR display_name IS NULL OR display_name <> :dn)"
+                    "UPDATE identity.identity_user "
+                    "SET tenant_id = :t, role = :role, display_name = :dn "
+                    "WHERE id = :u AND (tenant_id <> :t OR display_name IS NULL "
+                    "OR display_name <> :dn)"
                 ),
                 {**p, "u": user_id, "role": role, "dn": display_name},
             )

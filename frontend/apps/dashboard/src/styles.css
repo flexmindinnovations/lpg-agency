@@ -719,7 +719,6 @@ p-confirmpopup {
   display: contents;
 }
 
-
 /* Drawer panel — solid elevated surface. The slide-in is PrimeNG's own
    animation; this just sets the material. */
 .p-drawer {

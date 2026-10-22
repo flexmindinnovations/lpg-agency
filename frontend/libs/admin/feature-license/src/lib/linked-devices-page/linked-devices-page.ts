@@ -1,7 +1,12 @@
 import { HeaderTitlePortalDirective } from '@lpg/shared/ui/app-shell';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { LicenseService, NotifyService, type LinkedDeviceResponse } from '@lpg/shared/data-access';
-import { DataGridComponent, type DataGridColumn, PageHeaderComponent, toSentenceCase } from '@lpg/shared/ui';
+import {
+  DataGridComponent,
+  type DataGridColumn,
+  PageHeaderComponent,
+  toSentenceCase,
+} from '@lpg/shared/ui';
 
 /** AG Grid renders a boolean-valued column with its own checkbox cell by
  * default, ignoring `valueFormatter` (same issue fixed for Platform
@@ -39,7 +44,10 @@ class DeviceStatusCell {
     <div class="admin-page">
       <div class="page-header">
         <ng-template lpgHeaderTitlePortal>
-          <lpg-page-header title="Linked Devices" subtitle="Phones and tablets using your licence." />
+          <lpg-page-header
+            title="Linked Devices"
+            subtitle="Phones and tablets using your licence."
+          />
         </ng-template>
       </div>
 

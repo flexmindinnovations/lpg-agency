@@ -124,20 +124,10 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 
       <ng-template #footer>
         <div class="modal-actions">
-          <button
-            pButton
-            type="button"
-            severity="secondary"
-            (click)="visibleChange.emit(false)"
-          >
+          <button pButton type="button" severity="secondary" (click)="visibleChange.emit(false)">
             Cancel
           </button>
-          <button
-            pButton
-            type="button"
-            (click)="submit()"
-            [disabled]="submitting() || loading()"
-          >
+          <button pButton type="button" (click)="submit()" [disabled]="submitting() || loading()">
             @if (submitting()) {
               <i class="pi pi-spin pi-spinner"></i>
             }
